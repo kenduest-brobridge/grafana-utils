@@ -1,4 +1,4 @@
-# Grafana Dashboard Export/Import Tool
+# Grafana Utilities
 
 `grafana-utils.py` exports Grafana dashboards to JSON and can also import JSON back through the Grafana HTTP API.
 
@@ -121,6 +121,73 @@ python3 grafana-utils.py --verify-ssl
 - `dashboards/raw/`: best for preserving the same dashboard `uid` with minimal changes.
 - `dashboards/prompt/`: best for Grafana web import when you want datasource mapping prompts.
 - `--import-dir ./dashboards/raw`: best for API import of normal dashboard JSON.
+
+## Alert Rule Utility
+
+`grafana-alert-utils.py` is a separate CLI for Grafana alert rules. It exists to keep alerting logic out of `grafana-utils.py`.
+
+Current scope:
+
+- alert rules only
+- export to a tool-owned JSON format under `alerts/raw/`
+- import that same tool-owned format back through the Grafana alerting provisioning HTTP API
+
+Not in scope:
+
+- contact points
+- notification policies
+- mute timings
+- direct reuse of Grafana provisioning `/export` files for API import
+
+### Alert rule export
+
+Example:
+
+```bash
+python3 grafana-alert-utils.py \
+  --url https://10.21.104.120 \
+  --output-dir ./alerts \
+  --overwrite
+```
+
+This writes:
+
+- `alerts/raw/`
+- `alerts/index.json`
+- `alerts/raw/index.json`
+
+Files are stored by default under:
+
+- `alerts/raw/<folderUID>/<ruleGroup>/<title>__<uid>.json`
+
+If you want a flat layout:
+
+```bash
+python3 grafana-alert-utils.py --output-dir ./alerts --flat
+```
+
+### Alert rule import
+
+Example:
+
+```bash
+python3 grafana-alert-utils.py \
+  --url https://10.21.104.120 \
+  --import-dir ./alerts/raw \
+  --replace-existing
+```
+
+Behavior:
+
+- `--replace-existing` checks rule `uid` and uses update when the rule already exists
+- without `--replace-existing`, import always uses create and Grafana will reject conflicting UIDs
+- import expects files exported by `grafana-alert-utils.py`
+- do not point `--import-dir` at the combined `alerts/` root
+
+Important limitation:
+
+- Grafana alert provisioning `/export` output is not accepted by this import path
+- Grafana documents that provisioning export format is for file/Terraform provisioning, not direct HTTP API round-trip updates
 
 ## Validation
 
