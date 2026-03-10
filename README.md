@@ -1,10 +1,25 @@
 # Grafana Utilities
 
-`grafana-utils.py` exports Grafana dashboards to JSON and can also import JSON back through the Grafana HTTP API.
-Use explicit subcommands to avoid mixing the two workflows:
+This repository is for exporting, backing up, migrating, and re-importing Grafana configuration as JSON.
+
+It provides two command-line tools:
+
+- `grafana-utils.py`: export and import dashboards
+- `grafana-alert-utils.py`: export and import alerting resources such as alert rules, contact points, mute timings, notification policies, and templates
+
+Use this repo when you need to:
+
+- back up dashboards or alerting resources from a Grafana instance
+- move dashboards or alerting resources from one Grafana instance to another
+- keep Grafana JSON under version control
+- prepare dashboards either for API re-import or for Grafana web UI import with datasource prompts
+
+Dashboard workflow is handled by `grafana-utils.py`. Use explicit subcommands to avoid mixing export and import:
 
 - `python3 grafana-utils.py export ...`
 - `python3 grafana-utils.py import ...`
+
+Alerting workflow is handled separately by `grafana-alert-utils.py` because Grafana alerting uses different APIs and file shapes than dashboards.
 
 Compatibility:
 
