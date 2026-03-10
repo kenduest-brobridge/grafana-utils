@@ -1,7 +1,33 @@
 #!/usr/bin/env python3
-"""Export or import Grafana dashboards."""
+"""Export or import Grafana dashboards.
 
-from __future__ import annotations
+Maintainer overview:
+- The tool has two separate export targets with different consumers.
+- `raw/` keeps dashboard JSON close to Grafana's API shape so it can round-trip
+  back through `POST /api/dashboards/db`.
+- `prompt/` rewrites datasource references into Grafana web-import `__inputs`
+  placeholders so a human can choose datasources during UI import.
+
+Architecture:
+- `GrafanaClient` owns HTTP transport only.
+- export flow is `list dashboards -> fetch payload -> write raw variant ->
+  optionally rewrite datasources -> write prompt variant -> write indexes`.
+- import flow is `discover JSON files -> reject prompt exports with __inputs ->
+  normalize payload -> send to Grafana API`.
+
+Datasource rewrite pipeline for `prompt/` exports:
+- build a datasource catalog from Grafana so refs can be resolved by uid or name
+- walk the dashboard tree and collect every `datasource` field
+- normalize each ref into a stable key so repeated refs share one generated input
+- replace dashboard refs with `${DS_*}` placeholders
+- if every datasource resolves to the same plugin type, collapse panel-level
+  refs to Grafana's conventional `$datasource` template variable for easier
+  human maintenance after import
+
+Keep in mind:
+- `prompt/` exports are for Grafana web import, not API re-import
+- `raw/` exports are the safe input for this script's import mode
+"""
 
 import argparse
 import base64
@@ -11,11 +37,11 @@ import re
 import ssl
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict, List, Optional, Set, Tuple
 from urllib import error, parse, request
 
 
-DEFAULT_URL = "https://10.21.104.120"
+DEFAULT_URL = "http://127.0.0.1:3000"
 DEFAULT_TIMEOUT = 30
 DEFAULT_PAGE_SIZE = 500
 DEFAULT_OUTPUT_DIR = "dashboards"
@@ -53,7 +79,7 @@ class GrafanaError(RuntimeError):
     """Raised when Grafana returns an unexpected response."""
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Export or import Grafana dashboards."
     )
@@ -148,7 +174,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def resolve_auth(args: argparse.Namespace) -> dict[str, str]:
+def resolve_auth(args: argparse.Namespace) -> Dict[str, str]:
     token = args.api_token or env_value("GRAFANA_API_TOKEN")
     if token:
         return {"Authorization": f"Bearer {token}"}
@@ -167,7 +193,7 @@ def resolve_auth(args: argparse.Namespace) -> dict[str, str]:
     )
 
 
-def env_value(name: str) -> str | None:
+def env_value(name: str) -> Optional[str]:
     import os
 
     value = os.environ.get(name)
@@ -190,7 +216,7 @@ def sanitize_path_component(value: str) -> str:
 
 def build_output_path(
     output_dir: Path,
-    summary: dict[str, Any],
+    summary: Dict[str, Any],
     flat: bool,
 ) -> Path:
     folder_title = summary.get("folderTitle") or "General"
@@ -203,7 +229,7 @@ def build_output_path(
     return output_dir / folder_name / filename
 
 
-def build_export_variant_dirs(output_dir: Path) -> tuple[Path, Path]:
+def build_export_variant_dirs(output_dir: Path) -> Tuple[Path, Path]:
     return output_dir / RAW_EXPORT_SUBDIR, output_dir / PROMPT_EXPORT_SUBDIR
 
 
@@ -211,7 +237,7 @@ class GrafanaClient:
     def __init__(
         self,
         base_url: str,
-        headers: dict[str, str],
+        headers: Dict[str, str],
         timeout: int,
         verify_ssl: bool,
     ) -> None:
@@ -223,9 +249,9 @@ class GrafanaClient:
     def request_json(
         self,
         path: str,
-        params: dict[str, Any] | None = None,
+        params: Optional[Dict[str, Any]] = None,
         method: str = "GET",
-        payload: dict[str, Any] | None = None,
+        payload: Optional[Dict[str, Any]] = None,
     ) -> Any:
         query = ""
         if params:
@@ -257,9 +283,9 @@ class GrafanaClient:
         except json.JSONDecodeError as exc:
             raise GrafanaError(f"Invalid JSON response from {url}") from exc
 
-    def iter_dashboard_summaries(self, page_size: int) -> list[dict[str, Any]]:
-        dashboards: list[dict[str, Any]] = []
-        seen_uids: set[str] = set()
+    def iter_dashboard_summaries(self, page_size: int) -> List[Dict[str, Any]]:
+        dashboards: List[Dict[str, Any]] = []
+        seen_uids: Set[str] = set()
         page = 1
 
         while True:
@@ -285,13 +311,13 @@ class GrafanaClient:
 
         return dashboards
 
-    def fetch_dashboard(self, uid: str) -> dict[str, Any]:
+    def fetch_dashboard(self, uid: str) -> Dict[str, Any]:
         data = self.request_json(f"/api/dashboards/uid/{parse.quote(uid, safe='')}")
         if not isinstance(data, dict) or "dashboard" not in data:
             raise GrafanaError(f"Unexpected dashboard payload for UID {uid}.")
         return data
 
-    def import_dashboard(self, payload: dict[str, Any]) -> dict[str, Any]:
+    def import_dashboard(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         data = self.request_json(
             "/api/dashboards/db",
             method="POST",
@@ -301,7 +327,7 @@ class GrafanaClient:
             raise GrafanaError("Unexpected dashboard import response from Grafana.")
         return data
 
-    def list_datasources(self) -> list[dict[str, Any]]:
+    def list_datasources(self) -> List[Dict[str, Any]]:
         data = self.request_json("/api/datasources")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected datasource list response from Grafana.")
@@ -309,7 +335,7 @@ class GrafanaClient:
 
 
 def write_dashboard(
-    payload: dict[str, Any],
+    payload: Dict[str, Any],
     output_path: Path,
     overwrite: bool,
 ) -> None:
@@ -324,7 +350,7 @@ def write_dashboard(
     )
 
 
-def discover_dashboard_files(import_dir: Path) -> list[Path]:
+def discover_dashboard_files(import_dir: Path) -> List[Path]:
     if not import_dir.exists():
         raise GrafanaError(f"Import directory does not exist: {import_dir}")
     if not import_dir.is_dir():
@@ -345,7 +371,7 @@ def discover_dashboard_files(import_dir: Path) -> list[Path]:
     return files
 
 
-def load_json_file(path: Path) -> dict[str, Any]:
+def load_json_file(path: Path) -> Dict[str, Any]:
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
@@ -359,11 +385,12 @@ def load_json_file(path: Path) -> dict[str, Any]:
 
 
 def build_import_payload(
-    document: dict[str, Any],
-    folder_uid_override: str | None,
+    document: Dict[str, Any],
+    folder_uid_override: Optional[str],
     replace_existing: bool,
     message: str,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
+    """Build the POST /api/dashboards/db payload from either export shape we write."""
     if "__inputs" in document:
         raise GrafanaError(
             "Dashboard file contains Grafana web-import placeholders (__inputs). "
@@ -382,7 +409,7 @@ def build_import_payload(
     if folder_uid is None and isinstance(meta, dict):
         folder_uid = meta.get("folderUid")
 
-    payload: dict[str, Any] = {
+    payload: Dict[str, Any] = {
         "dashboard": dashboard,
         "overwrite": replace_existing,
         "message": message,
@@ -392,7 +419,8 @@ def build_import_payload(
     return payload
 
 
-def build_preserved_web_import_document(payload: dict[str, Any]) -> dict[str, Any]:
+def build_preserved_web_import_document(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Keep the dashboard JSON Grafana expects for web import, but clear the numeric id."""
     dashboard_source = payload.get("dashboard")
     if not isinstance(dashboard_source, dict):
         raise GrafanaError("Unexpected dashboard payload from Grafana.")
@@ -403,10 +431,11 @@ def build_preserved_web_import_document(payload: dict[str, Any]) -> dict[str, An
 
 
 def build_datasource_catalog(
-    datasources: list[dict[str, Any]],
-) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
-    by_uid: dict[str, dict[str, Any]] = {}
-    by_name: dict[str, dict[str, Any]] = {}
+    datasources: List[Dict[str, Any]],
+) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]]]:
+    """Index datasources by both uid and name because dashboards use either form."""
+    by_uid: Dict[str, Dict[str, Any]] = {}
+    by_name: Dict[str, Dict[str, Any]] = {}
     for datasource in datasources:
         uid = datasource.get("uid")
         name = datasource.get("name")
@@ -449,7 +478,8 @@ def is_builtin_datasource_ref(value: Any) -> bool:
     return False
 
 
-def collect_datasource_refs(node: Any, refs: list[Any]) -> None:
+def collect_datasource_refs(node: Any, refs: List[Any]) -> None:
+    """Walk the full dashboard tree and collect every datasource reference in place."""
     if isinstance(node, dict):
         for key, value in node.items():
             if key == "datasource":
@@ -482,9 +512,9 @@ def make_input_label(datasource_type: str, index: int) -> str:
 
 def resolve_datasource_ref(
     ref: Any,
-    datasources_by_uid: dict[str, dict[str, Any]],
-    datasources_by_name: dict[str, dict[str, Any]],
-) -> dict[str, str] | None:
+    datasources_by_uid: Dict[str, Dict[str, Any]],
+    datasources_by_name: Dict[str, Dict[str, Any]],
+) -> Optional[Dict[str, str]]:
     """Normalize Grafana datasource references into stable keys for __inputs generation."""
     if ref is None or is_builtin_datasource_ref(ref):
         return None
@@ -547,7 +577,7 @@ def resolve_datasource_ref(
         if has_placeholder:
             return None
 
-        datasource: dict[str, Any] | None = None
+        datasource = None  # type: Optional[Dict[str, Any]]
         if isinstance(uid, str) and uid:
             datasource = datasources_by_uid.get(uid)
         if datasource is None and isinstance(name, str) and name:
@@ -585,10 +615,11 @@ def resolve_datasource_ref(
 
 def replace_datasource_refs_in_dashboard(
     node: Any,
-    ref_mapping: dict[str, dict[str, str]],
-    datasources_by_uid: dict[str, dict[str, Any]],
-    datasources_by_name: dict[str, dict[str, Any]],
+    ref_mapping: Dict[str, Dict[str, str]],
+    datasources_by_uid: Dict[str, Dict[str, Any]],
+    datasources_by_name: Dict[str, Dict[str, Any]],
 ) -> None:
+    """Replace resolved datasource references with the generated __inputs placeholders."""
     if isinstance(node, dict):
         for key, value in node.items():
             if key == "datasource":
@@ -601,6 +632,8 @@ def replace_datasource_refs_in_dashboard(
                     input_name = ref_mapping[resolved["key"]]["input_name"]
                     placeholder = f"${{{input_name}}}"
                     if isinstance(value, dict):
+                        # Keep Grafana's object form when the source dashboard stored
+                        # datasource metadata as {"type": ..., "uid": ...}.
                         replacement = {"uid": placeholder}
                         ds_type = resolved.get("type")
                         if isinstance(ds_type, str) and ds_type:
@@ -627,9 +660,10 @@ def replace_datasource_refs_in_dashboard(
 
 
 def ensure_datasource_template_variable(
-    dashboard: dict[str, Any],
+    dashboard: Dict[str, Any],
     datasource_type: str,
 ) -> None:
+    """Create Grafana's conventional $datasource variable if one does not already exist."""
     templating = dashboard.setdefault("templating", {})
     if not isinstance(templating, dict):
         return
@@ -659,9 +693,10 @@ def ensure_datasource_template_variable(
 
 
 def rewrite_panel_datasources_to_template_variable(
-    panels: list[dict[str, Any]],
-    placeholder_names: set[str],
+    panels: List[Dict[str, Any]],
+    placeholder_names: Set[str],
 ) -> None:
+    """Collapse panel datasource placeholders down to the shared $datasource variable."""
     for panel in panels:
         datasource = panel.get("datasource")
         if isinstance(datasource, str):
@@ -683,12 +718,12 @@ def rewrite_panel_datasources_to_template_variable(
 
 
 def prepare_templating_for_external_import(
-    dashboard: dict[str, Any],
-    ref_mapping: dict[str, dict[str, str]],
-    type_counts: dict[str, int],
-    datasources_by_uid: dict[str, dict[str, Any]],
-    datasources_by_name: dict[str, dict[str, Any]],
-) -> set[str]:
+    dashboard: Dict[str, Any],
+    ref_mapping: Dict[str, Dict[str, str]],
+    type_counts: Dict[str, int],
+    datasources_by_uid: Dict[str, Dict[str, Any]],
+    datasources_by_name: Dict[str, Dict[str, Any]],
+) -> Set[str]:
     """Rewrite datasource template variables so exported dashboards prompt on import."""
     templating = dashboard.get("templating")
     if not isinstance(templating, dict):
@@ -697,8 +732,8 @@ def prepare_templating_for_external_import(
     if not isinstance(variables, list):
         return set()
 
-    datasource_var_types: dict[str, str] = {}
-    datasource_var_placeholders: set[str] = set()
+    datasource_var_types: Dict[str, str] = {}
+    datasource_var_placeholders: Set[str] = set()
 
     for variable in variables:
         if not isinstance(variable, dict):
@@ -777,7 +812,8 @@ def prepare_templating_for_external_import(
     return set(datasource_var_types)
 
 
-def collect_panel_types(panels: list[dict[str, Any]], panel_types: set[str]) -> None:
+def collect_panel_types(panels: List[Dict[str, Any]], panel_types: Set[str]) -> None:
+    """Gather panel plugin ids so __requires mirrors what Grafana exports."""
     for panel in panels:
         panel_type = panel.get("type")
         if isinstance(panel_type, str) and panel_type:
@@ -791,18 +827,20 @@ def collect_panel_types(panels: list[dict[str, Any]], panel_types: set[str]) -> 
 
 
 def build_external_export_document(
-    payload: dict[str, Any],
-    datasource_catalog: tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]],
-) -> dict[str, Any]:
+    payload: Dict[str, Any],
+    datasource_catalog: Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]]],
+) -> Dict[str, Any]:
     """Convert a fetched dashboard into Grafana's portable export/import format."""
     dashboard = build_preserved_web_import_document(payload)
 
     datasources_by_uid, datasources_by_name = datasource_catalog
-    refs: list[Any] = []
+    refs: List[Any] = []
+    # First collect every datasource reference, then build a stable mapping so
+    # repeated references become repeated placeholders instead of duplicate inputs.
     collect_datasource_refs(dashboard, refs)
 
-    ref_mapping: dict[str, dict[str, str]] = {}
-    type_counts: dict[str, int] = {}
+    ref_mapping: Dict[str, Dict[str, str]] = {}
+    type_counts: Dict[str, int] = {}
     datasource_var_names = prepare_templating_for_external_import(
         dashboard,
         ref_mapping=ref_mapping,
@@ -864,7 +902,7 @@ def build_external_export_document(
         for _, mapping in sorted(ref_mapping.items(), key=lambda item: item[1]["input_name"])
     ]
 
-    panel_types: set[str] = set()
+    panel_types: Set[str] = set()
     panels = dashboard.get("panels")
     if isinstance(panels, list):
         collect_panel_types(
@@ -874,6 +912,8 @@ def build_external_export_document(
     dashboard["__requires"] = [
         {"type": "grafana", "id": "grafana", "name": "Grafana", "version": ""}
     ]
+    # Grafana expects datasource and panel plugins to be listed in __requires
+    # alongside the generated __inputs block.
     dashboard["__requires"].extend(
         {
             "type": "datasource",
@@ -897,6 +937,7 @@ def build_external_export_document(
 
 
 def export_dashboards(args: argparse.Namespace) -> int:
+    """Export raw API-safe dashboards and optional prompt-based web-import variants."""
     if args.without_raw and args.without_prompt:
         raise GrafanaError("Nothing to export. Remove one of --without-raw or --without-prompt.")
 
@@ -912,6 +953,8 @@ def export_dashboards(args: argparse.Namespace) -> int:
         prompt_dir.mkdir(parents=True, exist_ok=True)
     datasource_catalog = None
     if export_prompt:
+        # Prompt exports need datasource metadata up front so dashboard references
+        # can be rewritten into Grafana's __inputs import format.
         datasource_catalog = build_datasource_catalog(client.list_datasources())
 
     summaries = client.iter_dashboard_summaries(args.page_size)
@@ -919,7 +962,7 @@ def export_dashboards(args: argparse.Namespace) -> int:
         print("No dashboards found.", file=sys.stderr)
         return 0
 
-    index: list[dict[str, str]] = []
+    index: List[Dict[str, str]] = []
     for summary in summaries:
         uid = str(summary["uid"])
         payload = client.fetch_dashboard(uid)
@@ -1003,6 +1046,7 @@ def export_dashboards(args: argparse.Namespace) -> int:
 
 
 def import_dashboards(args: argparse.Namespace) -> int:
+    """Import previously exported raw dashboard JSON files through Grafana's API."""
     client = build_client(args)
     import_dir = Path(args.import_dir)
     dashboard_files = discover_dashboard_files(import_dir)

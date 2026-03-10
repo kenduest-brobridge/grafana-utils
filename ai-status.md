@@ -1,5 +1,19 @@
 # ai-status.md
 
+## 2026-03-10 - Task: Change Grafana Default Server URL
+- State: Done
+- Scope: `grafana-utils.py`, `grafana-alert-utils.py`, `test_dump_grafana_dashboards.py`, `test_grafana_alert_utils.py`, `README.md`, `ai-status.md`, `ai-changes.md`
+- Baseline: Both utilities default to `https://10.21.104.120`, which assumes a specific remote server instead of a local Grafana instance.
+- Current Update: Changed both CLI defaults to `http://127.0.0.1:3000`, added unit tests that assert the new parse-time default, and updated README command examples to match.
+- Result: Operators now get a local Grafana default out of the box and can still override it with `--url` when targeting another instance.
+
+## 2026-03-10 - Task: Make Grafana Utilities RHEL 8 Python Compatible
+- State: Done
+- Scope: `grafana-utils.py`, `grafana-alert-utils.py`, `ai-status.md`, `ai-changes.md`
+- Baseline: Both utility scripts use `from __future__ import annotations`, PEP 585 built-in generics like `list[str]`, and PEP 604 unions like `str | None`, which Python 3.6 on RHEL 8 cannot parse.
+- Current Update: Replaced those annotations with `typing` module equivalents such as `List[...]`, `Dict[...]`, `Optional[...]`, and `Tuple[...]`, and removed the unsupported future import so both scripts remain parseable on Python 3.6 without changing behavior.
+- Result: The dashboard and alerting utilities now avoid Python 3.9+/3.10+ annotation syntax and are compatible with RHEL 8's default Python parser.
+
 ## 2026-03-10 - Task: Add Grafana Alert Rule Utility
 - State: Done
 - Scope: `grafana-alert-utils.py`, `test_grafana_alert_utils.py`, `README.md`, `ai-status.md`, `ai-changes.md`

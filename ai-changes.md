@@ -1,5 +1,23 @@
 # ai-changes.md
 
+## 2026-03-10 - Change Grafana Default Server URL
+- Summary: Changed the default Grafana base URL in both utilities from a hardcoded remote host to `http://127.0.0.1:3000`. Updated README examples and added direct unit tests so the new default is locked in.
+- Tests: Added parse-args assertions for the default URL in both dashboard and alert utility test suites.
+- Test Run: `python3 -m unittest test_dump_grafana_dashboards.py test_grafana_alert_utils.py` (pass)
+- Validation: Local unit tests passed and README examples now match the CLI defaults.
+- Impact: `grafana-utils.py`, `grafana-alert-utils.py`, `test_dump_grafana_dashboards.py`, `test_grafana_alert_utils.py`, `README.md`, `ai-status.md`
+- Rollback/Risk: Low risk. This only changes the CLI default target; explicit `--url` values still override it.
+- Follow-up: None.
+
+## 2026-03-10 - Make Grafana Utilities RHEL 8 Python Compatible
+- Summary: Reworked type annotations in both Grafana utility scripts so they no longer depend on Python 3.9+ built-in generics or Python 3.10+ union syntax. Removed `from __future__ import annotations` and converted signatures and local annotations to `typing.List`, `typing.Dict`, `typing.Optional`, `typing.Set`, and `typing.Tuple`.
+- Tests: Reused the existing dashboard and alerting `unittest` suites to confirm the syntax-only compatibility refactor did not change behavior. Added a parser-level validation check by parsing both scripts with `ast.parse(..., feature_version=(3, 6))`.
+- Test Run: `python3 -m unittest test_dump_grafana_dashboards.py test_grafana_alert_utils.py` (pass); `python3 -c "import ast, pathlib; [ast.parse(pathlib.Path(p).read_text(encoding='utf-8'), filename=p, feature_version=(3, 6)) for p in ('grafana-utils.py', 'grafana-alert-utils.py')]"` (pass)
+- Validation: Local unit tests passed and both scripts parsed successfully as Python 3.6 grammar.
+- Impact: `grafana-utils.py`, `grafana-alert-utils.py`, `ai-status.md`
+- Rollback/Risk: Low risk. This is a syntax-compatibility refactor only; behavior should remain unchanged.
+- Follow-up: If RHEL 8 deployment uses a stricter runtime baseline than Python 3.6, validate the full CLI workflows there against the target Grafana instance.
+
 ## 2026-03-10 - Add Grafana Alert Rule Utility
 - Summary: Added a new standalone CLI, `grafana-alert-utils.py`, for Grafana alert-rule backup and restore. Export now writes a tool-owned JSON format under `alerts/raw/`, with one file per rule plus index files. Import reads that same format and uses the Grafana alerting provisioning API to create rules by default or update existing rules when `--replace-existing` is provided.
 - Tests: Added `unittest` coverage for alert CLI argument parsing, auth handling, SSL behavior, folder/group path generation, export-root rejection on import, server-managed field stripping, import payload validation, provisioning-export rejection, export file/index generation, create imports, and update imports.

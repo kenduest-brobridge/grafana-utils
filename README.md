@@ -25,7 +25,7 @@ Example:
 
 ```bash
 python3 grafana-utils.py \
-  --url https://10.21.104.120 \
+  --url http://127.0.0.1:3000 \
   --output-dir ./dashboards \
   --overwrite
 ```
@@ -46,7 +46,7 @@ Example:
 
 ```bash
 python3 grafana-utils.py \
-  --url https://10.21.104.120 \
+  --url http://127.0.0.1:3000 \
   --output-dir ./dashboards \
   --overwrite
 ```
@@ -78,7 +78,7 @@ Example:
 
 ```bash
 python3 grafana-utils.py \
-  --url https://10.21.104.120 \
+  --url http://127.0.0.1:3000 \
   --import-dir ./dashboards/raw \
   --replace-existing
 ```
@@ -145,7 +145,7 @@ Example:
 
 ```bash
 python3 grafana-alert-utils.py \
-  --url https://10.21.104.120 \
+  --url http://127.0.0.1:3000 \
   --output-dir ./alerts \
   --overwrite
 ```
@@ -172,7 +172,7 @@ Example:
 
 ```bash
 python3 grafana-alert-utils.py \
-  --url https://10.21.104.120 \
+  --url http://127.0.0.1:3000 \
   --import-dir ./alerts/raw \
   --replace-existing
 ```

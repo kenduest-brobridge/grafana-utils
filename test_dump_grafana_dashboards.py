@@ -37,6 +37,11 @@ class ExporterTests(unittest.TestCase):
 
         self.assertEqual(args.output_dir, "dashboards")
 
+    def test_parse_args_defaults_url_to_local_grafana(self):
+        args = exporter.parse_args([])
+
+        self.assertEqual(args.url, "http://127.0.0.1:3000")
+
     def test_parse_args_supports_variant_switches(self):
         args = exporter.parse_args(["--without-raw", "--without-prompt"])
 
