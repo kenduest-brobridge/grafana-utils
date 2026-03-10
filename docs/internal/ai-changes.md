@@ -1,5 +1,14 @@
 # ai-changes.md
 
+## 2026-03-11 - Refactor Grafana CLI Readability
+- Summary: Refactored `cmd/grafana-utils.py` and `cmd/grafana-alert-utils.py` for human readability without changing behavior. The dashboard CLI now uses smaller helpers for dashboard object extraction, datasource lookup and normalization, template-variable rewrite steps, and export index construction. The alerting CLI now uses smaller helpers for linked-dashboard mapping, per-resource export handling, and per-kind import dispatch.
+- Tests: No new tests were needed because the refactor preserved behavior. Existing coverage was used to validate the structural changes.
+- Test Run: `python3 -m unittest -v` (pass)
+- Validation: Local full-suite unit tests passed after the refactor. The resulting top-level flows are shorter and easier to scan, with behavior-sensitive logic moved into named helpers.
+- Impact: `cmd/grafana-utils.py`, `cmd/grafana-alert-utils.py`, `docs/internal/ai-status.md`
+- Rollback/Risk: Low to moderate risk because logic moved across helper boundaries, but no contracts or CLI behavior were intentionally changed and the existing test suite passed after the refactor.
+- Follow-up: If readability needs more work later, the next candidates are normalizing repeated JSON write patterns and grouping the client API methods by resource family.
+
 ## 2026-03-11 - Move Grafana CLIs Into cmd
 - Summary: Moved the dashboard and alerting CLI entrypoints from the repository root into `cmd/`, updated the scripts' embedded help/output strings to reflect the new invocation paths, and refreshed public and maintainer docs to use `python3 cmd/grafana-utils.py ...` and `python3 cmd/grafana-alert-utils.py ...`.
 - Tests: Updated `tests/test_dump_grafana_dashboards.py` and `tests/test_grafana_alert_utils.py` to load the scripts from `cmd/`, and added `tests/__init__.py` so default `unittest` discovery reaches both modules.

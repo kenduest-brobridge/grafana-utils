@@ -258,10 +258,13 @@ def build_output_path(
 
 
 def build_export_variant_dirs(output_dir: Path) -> Tuple[Path, Path]:
+    """Return the raw/ and prompt/ export directories for one dashboard export root."""
     return output_dir / RAW_EXPORT_SUBDIR, output_dir / PROMPT_EXPORT_SUBDIR
 
 
 class GrafanaClient:
+    """Minimal HTTP wrapper around the Grafana dashboard APIs used by this script."""
+
     def __init__(
         self,
         base_url: str,
@@ -281,6 +284,7 @@ class GrafanaClient:
         method: str = "GET",
         payload: Optional[Dict[str, Any]] = None,
     ) -> Any:
+        """Send one request to Grafana and decode the JSON response."""
         query = ""
         if params:
             query = "?" + parse.urlencode(params)
@@ -288,6 +292,7 @@ class GrafanaClient:
         headers = dict(self.headers)
         data = None
         if payload is not None:
+            # Every write path in this tool talks to Grafana JSON endpoints.
             data = json.dumps(payload).encode("utf-8")
             headers["Content-Type"] = "application/json"
         req = request.Request(url, headers=headers, data=data, method=method)
@@ -312,6 +317,7 @@ class GrafanaClient:
             raise GrafanaError(f"Invalid JSON response from {url}") from exc
 
     def iter_dashboard_summaries(self, page_size: int) -> List[Dict[str, Any]]:
+        """List dashboards through Grafana search pagination and deduplicate by UID."""
         dashboards: List[Dict[str, Any]] = []
         seen_uids: Set[str] = set()
         page = 1
@@ -340,12 +346,14 @@ class GrafanaClient:
         return dashboards
 
     def fetch_dashboard(self, uid: str) -> Dict[str, Any]:
+        """Fetch the full dashboard wrapper for a single Grafana UID."""
         data = self.request_json(f"/api/dashboards/uid/{parse.quote(uid, safe='')}")
         if not isinstance(data, dict) or "dashboard" not in data:
             raise GrafanaError(f"Unexpected dashboard payload for UID {uid}.")
         return data
 
     def import_dashboard(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Create or update a dashboard through POST /api/dashboards/db."""
         data = self.request_json(
             "/api/dashboards/db",
             method="POST",
@@ -356,6 +364,7 @@ class GrafanaClient:
         return data
 
     def list_datasources(self) -> List[Dict[str, Any]]:
+        """List datasource objects used when building prompt-style exports."""
         data = self.request_json("/api/datasources")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected datasource list response from Grafana.")
@@ -367,6 +376,7 @@ def write_dashboard(
     output_path: Path,
     overwrite: bool,
 ) -> None:
+    """Write one dashboard JSON file, creating parent directories as needed."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     if output_path.exists() and not overwrite:
         raise GrafanaError(
@@ -378,7 +388,16 @@ def write_dashboard(
     )
 
 
+def write_json_document(payload: Any, output_path: Path) -> None:
+    """Write a JSON file with the formatting used by this repository."""
+    output_path.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
 def discover_dashboard_files(import_dir: Path) -> List[Path]:
+    """Find dashboard JSON files for import and reject ambiguous combined roots."""
     if not import_dir.exists():
         raise GrafanaError(f"Import directory does not exist: {import_dir}")
     if not import_dir.is_dir():
@@ -400,6 +419,7 @@ def discover_dashboard_files(import_dir: Path) -> List[Path]:
 
 
 def load_json_file(path: Path) -> Dict[str, Any]:
+    """Read one dashboard document from disk and require a top-level JSON object."""
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
@@ -410,6 +430,14 @@ def load_json_file(path: Path) -> Dict[str, Any]:
     if not isinstance(raw, dict):
         raise GrafanaError(f"Dashboard file must contain a JSON object: {path}")
     return raw
+
+
+def extract_dashboard_object(document: Dict[str, Any], error_message: str) -> Dict[str, Any]:
+    """Return the dashboard object from either the wrapped or plain export shape."""
+    dashboard = document.get("dashboard", document)
+    if not isinstance(dashboard, dict):
+        raise GrafanaError(error_message)
+    return dashboard
 
 
 def build_import_payload(
@@ -425,11 +453,9 @@ def build_import_payload(
             "Import it through the Grafana web UI after choosing datasources."
         )
 
-    dashboard_source = document.get("dashboard", document)
-    if not isinstance(dashboard_source, dict):
-        raise GrafanaError("Dashboard payload must be a JSON object.")
-
-    dashboard = copy.deepcopy(dashboard_source)
+    dashboard = copy.deepcopy(
+        extract_dashboard_object(document, "Dashboard payload must be a JSON object.")
+    )
     dashboard["id"] = None
 
     meta = document.get("meta", {})
@@ -449,11 +475,9 @@ def build_import_payload(
 
 def build_preserved_web_import_document(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Keep the dashboard JSON Grafana expects for web import, but clear the numeric id."""
-    dashboard_source = payload.get("dashboard")
-    if not isinstance(dashboard_source, dict):
-        raise GrafanaError("Unexpected dashboard payload from Grafana.")
-
-    dashboard = copy.deepcopy(dashboard_source)
+    dashboard = copy.deepcopy(
+        extract_dashboard_object(payload, "Unexpected dashboard payload from Grafana.")
+    )
     dashboard["id"] = None
     return dashboard
 
@@ -538,6 +562,149 @@ def make_input_label(datasource_type: str, index: int) -> str:
     return f"{title} datasource {index}"
 
 
+def build_resolved_datasource(key: str, label: str, ds_type: str) -> Dict[str, str]:
+    """Create the normalized datasource descriptor used by prompt export helpers."""
+    return {"key": key, "label": label, "type": ds_type}
+
+
+def lookup_datasource(
+    datasources_by_uid: Dict[str, Dict[str, Any]],
+    datasources_by_name: Dict[str, Dict[str, Any]],
+    uid: Optional[str] = None,
+    name: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Resolve a datasource by UID first, then by datasource name."""
+    if isinstance(uid, str) and uid:
+        datasource = datasources_by_uid.get(uid)
+        if datasource is not None:
+            return datasource
+    if isinstance(name, str) and name:
+        return datasources_by_name.get(name)
+    return None
+
+
+def resolve_datasource_type_alias(
+    ref: str,
+    datasources_by_uid: Dict[str, Dict[str, Any]],
+) -> Optional[str]:
+    """Resolve datasource plugin aliases such as 'prometheus' or 'prom'."""
+    ref_lower = ref.lower()
+    datasource_type = DATASOURCE_TYPE_ALIASES.get(ref_lower)
+    if datasource_type is not None:
+        return datasource_type
+
+    for candidate in datasources_by_uid.values():
+        candidate_type = candidate.get("type")
+        if isinstance(candidate_type, str) and candidate_type.lower() == ref_lower:
+            return candidate_type
+    return None
+
+
+def resolve_string_datasource_ref(
+    ref: str,
+    datasources_by_uid: Dict[str, Dict[str, Any]],
+    datasources_by_name: Dict[str, Dict[str, Any]],
+) -> Dict[str, str]:
+    """Resolve string datasource references stored as names, UIDs, or type aliases."""
+    datasource = lookup_datasource(
+        datasources_by_uid,
+        datasources_by_name,
+        uid=ref,
+        name=ref,
+    )
+    if datasource is None:
+        datasource_type = resolve_datasource_type_alias(ref, datasources_by_uid)
+        if datasource_type is not None:
+            return build_resolved_datasource(
+                f"type:{datasource_type}",
+                datasource_type,
+                datasource_type,
+            )
+        raise GrafanaError(
+            f"Cannot resolve datasource name or uid {ref!r} for prompt export."
+        )
+
+    uid = datasource.get("uid") or ref
+    label = datasource.get("name") or ref
+    ds_type = datasource.get("type")
+    if not isinstance(ds_type, str) or not ds_type:
+        raise GrafanaError(f"Datasource {ref!r} does not have a usable type.")
+    return build_resolved_datasource(f"uid:{uid}", label, ds_type)
+
+
+def resolve_placeholder_object_ref(
+    uid: Any,
+    name: Any,
+    ds_type: Any,
+) -> Optional[Dict[str, str]]:
+    """Resolve object refs that already point at a datasource placeholder token."""
+    if not isinstance(ds_type, str) or not ds_type:
+        return None
+
+    placeholder_value = None
+    if isinstance(uid, str) and is_placeholder_string(uid):
+        placeholder_value = uid
+    elif isinstance(name, str) and is_placeholder_string(name):
+        placeholder_value = name
+    if placeholder_value is None:
+        return None
+
+    token = extract_placeholder_name(placeholder_value)
+    return build_resolved_datasource(f"var:{ds_type}:{token}", token, ds_type)
+
+
+def resolve_object_datasource_ref(
+    ref: Dict[str, Any],
+    datasources_by_uid: Dict[str, Dict[str, Any]],
+    datasources_by_name: Dict[str, Dict[str, Any]],
+) -> Optional[Dict[str, str]]:
+    """Resolve object datasource refs stored as {'type': ..., 'uid': ...}."""
+    uid = ref.get("uid")
+    name = ref.get("name")
+    ds_type = ref.get("type")
+    has_placeholder = (
+        isinstance(uid, str)
+        and is_placeholder_string(uid)
+        or isinstance(name, str)
+        and is_placeholder_string(name)
+    )
+
+    resolved = resolve_placeholder_object_ref(uid, name, ds_type)
+    if resolved is not None:
+        return resolved
+    if has_placeholder:
+        return None
+
+    datasource = lookup_datasource(
+        datasources_by_uid,
+        datasources_by_name,
+        uid=uid,
+        name=name,
+    )
+    resolved_type = ds_type
+    resolved_label = name or uid
+    resolved_uid = uid or name
+    if datasource is not None:
+        resolved_type = datasource.get("type") or resolved_type
+        resolved_label = datasource.get("name") or resolved_label
+        resolved_uid = datasource.get("uid") or resolved_uid
+
+    if not isinstance(resolved_type, str) or not resolved_type:
+        raise GrafanaError(
+            f"Cannot resolve datasource type from reference {ref!r}."
+        )
+    if not isinstance(resolved_label, str) or not resolved_label:
+        resolved_label = resolved_type
+    if not isinstance(resolved_uid, str) or not resolved_uid:
+        resolved_uid = resolved_label
+
+    return build_resolved_datasource(
+        f"uid:{resolved_uid}",
+        resolved_label,
+        resolved_type,
+    )
+
+
 def resolve_datasource_ref(
     ref: Any,
     datasources_by_uid: Dict[str, Dict[str, Any]],
@@ -550,93 +717,18 @@ def resolve_datasource_ref(
     if isinstance(ref, str):
         if is_placeholder_string(ref):
             return None
-        datasource = datasources_by_name.get(ref)
-        if datasource is None:
-            datasource = datasources_by_uid.get(ref)
-        if datasource is None:
-            ref_lower = ref.lower()
-            datasource_type = DATASOURCE_TYPE_ALIASES.get(ref_lower)
-            if datasource_type is None:
-                for candidate in datasources_by_uid.values():
-                    candidate_type = candidate.get("type")
-                    if isinstance(candidate_type, str) and candidate_type.lower() == ref_lower:
-                        datasource_type = candidate_type
-                        break
-            if datasource_type is not None:
-                return {
-                    "key": f"type:{datasource_type}",
-                    "label": datasource_type,
-                    "type": datasource_type,
-                }
-            raise GrafanaError(
-                f"Cannot resolve datasource name or uid {ref!r} for prompt export."
-            )
-        uid = datasource.get("uid") or ref
-        label = datasource.get("name") or ref
-        ds_type = datasource.get("type")
-        if not isinstance(ds_type, str) or not ds_type:
-            raise GrafanaError(f"Datasource {ref!r} does not have a usable type.")
-        return {"key": f"uid:{uid}", "label": label, "type": ds_type}
-
-    if isinstance(ref, dict):
-        uid = ref.get("uid")
-        name = ref.get("name")
-        ds_type = ref.get("type")
-        has_placeholder = (
-            isinstance(uid, str)
-            and is_placeholder_string(uid)
-            or isinstance(name, str)
-            and is_placeholder_string(name)
+        return resolve_string_datasource_ref(
+            ref,
+            datasources_by_uid,
+            datasources_by_name,
         )
 
-        if isinstance(ds_type, str) and ds_type:
-            placeholder_value = None
-            if isinstance(uid, str) and is_placeholder_string(uid):
-                placeholder_value = uid
-            elif isinstance(name, str) and is_placeholder_string(name):
-                placeholder_value = name
-            if placeholder_value is not None:
-                token = extract_placeholder_name(placeholder_value)
-                return {
-                    "key": f"var:{ds_type}:{token}",
-                    "label": token,
-                    "type": ds_type,
-                }
-        if has_placeholder:
-            return None
-
-        datasource = None  # type: Optional[Dict[str, Any]]
-        if isinstance(uid, str) and uid:
-            datasource = datasources_by_uid.get(uid)
-        if datasource is None and isinstance(name, str) and name:
-            datasource = datasources_by_name.get(name)
-
-        resolved_type = None
-        resolved_label = None
-        resolved_uid = None
-        if datasource is not None:
-            resolved_type = datasource.get("type")
-            resolved_label = datasource.get("name")
-            resolved_uid = datasource.get("uid")
-
-        resolved_type = resolved_type or ds_type
-        resolved_label = resolved_label or name or uid
-        resolved_uid = resolved_uid or uid or name
-
-        if not isinstance(resolved_type, str) or not resolved_type:
-            raise GrafanaError(
-                f"Cannot resolve datasource type from reference {ref!r}."
-            )
-        if not isinstance(resolved_label, str) or not resolved_label:
-            resolved_label = resolved_type
-        if not isinstance(resolved_uid, str) or not resolved_uid:
-            resolved_uid = resolved_label
-
-        return {
-            "key": f"uid:{resolved_uid}",
-            "label": resolved_label,
-            "type": resolved_type,
-        }
+    if isinstance(ref, dict):
+        return resolve_object_datasource_ref(
+            ref,
+            datasources_by_uid,
+            datasources_by_name,
+        )
 
     return None
 
@@ -745,6 +837,83 @@ def rewrite_panel_datasources_to_template_variable(
             )
 
 
+def allocate_input_mapping(
+    resolved: Dict[str, str],
+    ref_mapping: Dict[str, Dict[str, str]],
+    type_counts: Dict[str, int],
+    key: Optional[str] = None,
+) -> Dict[str, str]:
+    """Create or reuse one __inputs mapping entry for a resolved datasource ref."""
+    mapping_key = key or resolved["key"]
+    mapping = ref_mapping.get(mapping_key)
+    if mapping is not None:
+        return mapping
+
+    ds_type = resolved["type"]
+    index = type_counts.get(ds_type, 0) + 1
+    type_counts[ds_type] = index
+    mapping = {
+        "input_name": f"{make_type_input_base(ds_type)}_{index}",
+        "label": make_input_label(ds_type, index),
+        "type": ds_type,
+    }
+    ref_mapping[mapping_key] = mapping
+    return mapping
+
+
+def rewrite_template_variable_query(
+    variable: Dict[str, Any],
+    mapping: Dict[str, str],
+    datasource_var_types: Dict[str, str],
+    datasource_var_placeholders: Set[str],
+) -> None:
+    """Rewrite one datasource template variable into importer-friendly prompt form."""
+    var_name = variable.get("name")
+    if isinstance(var_name, str) and var_name:
+        datasource_var_types[var_name] = mapping["type"]
+        datasource_var_placeholders.add(f"${var_name}")
+        datasource_var_placeholders.add(f"${{{var_name}}}")
+
+    variable["current"] = {}
+    variable["options"] = []
+    variable["query"] = mapping["type"]
+    variable["refresh"] = 1
+    variable["regex"] = variable.get("regex", "")
+    if variable.get("hide") == 0:
+        variable.pop("hide", None)
+
+
+def rewrite_template_variable_datasource(
+    variable: Dict[str, Any],
+    datasource_var_types: Dict[str, str],
+    datasource_var_placeholders: Set[str],
+) -> None:
+    """Rewrite datasource selectors that point at datasource template variables."""
+    datasource = variable.get("datasource")
+    placeholder_value = None
+    if isinstance(datasource, str):
+        placeholder_value = datasource
+    elif isinstance(datasource, dict):
+        uid = datasource.get("uid")
+        if isinstance(uid, str):
+            placeholder_value = uid
+
+    if not isinstance(placeholder_value, str):
+        return
+    datasource_type = datasource_var_types.get(
+        extract_placeholder_name(placeholder_value)
+    )
+    if placeholder_value not in datasource_var_placeholders or not datasource_type:
+        return
+
+    variable["datasource"] = {
+        "type": datasource_type,
+        "uid": f"${{{make_type_input_base(datasource_type)}_1}}",
+    }
+    variable["current"] = {}
+    variable["options"] = []
+
+
 def prepare_templating_for_external_import(
     dashboard: Dict[str, Any],
     ref_mapping: Dict[str, Dict[str, str]],
@@ -782,60 +951,27 @@ def prepare_templating_for_external_import(
         if resolved is None:
             continue
 
-        key = f"templating:{variable.get('name') or resolved['key']}"
-        mapping = ref_mapping.get(key)
-        if mapping is None:
-            ds_type = resolved["type"]
-            index = type_counts.get(ds_type, 0) + 1
-            type_counts[ds_type] = index
-            mapping = {
-                "input_name": f"{make_type_input_base(ds_type)}_{index}",
-                "label": make_input_label(ds_type, index),
-                "type": ds_type,
-            }
-            ref_mapping[key] = mapping
-
-        var_name = variable.get("name")
-        if isinstance(var_name, str) and var_name:
-            # Track template variable names so downstream datasource selectors can
-            # be rewritten to point at the generated __inputs placeholders.
-            datasource_var_types[var_name] = mapping["type"]
-            datasource_var_placeholders.add(f"${var_name}")
-            datasource_var_placeholders.add(f"${{{var_name}}}")
-
-        variable["current"] = {}
-        variable["options"] = []
-        variable["query"] = mapping["type"]
-        variable["refresh"] = 1
-        variable["regex"] = variable.get("regex", "")
-        if variable.get("hide") == 0:
-            variable.pop("hide", None)
+        mapping = allocate_input_mapping(
+            resolved,
+            ref_mapping,
+            type_counts,
+            key=f"templating:{variable.get('name') or resolved['key']}",
+        )
+        rewrite_template_variable_query(
+            variable,
+            mapping,
+            datasource_var_types,
+            datasource_var_placeholders,
+        )
 
     for variable in variables:
         if not isinstance(variable, dict):
             continue
-        datasource = variable.get("datasource")
-        datasource_type = None
-        if isinstance(datasource, str):
-            datasource_type = datasource_var_types.get(extract_placeholder_name(datasource))
-            if datasource in datasource_var_placeholders and datasource_type:
-                variable["datasource"] = {
-                    "type": datasource_type,
-                    "uid": f"${{{make_type_input_base(datasource_type)}_1}}",
-                }
-                variable["current"] = {}
-                variable["options"] = []
-        elif isinstance(datasource, dict):
-            uid = datasource.get("uid")
-            if isinstance(uid, str):
-                datasource_type = datasource_var_types.get(extract_placeholder_name(uid))
-                if uid in datasource_var_placeholders and datasource_type:
-                    variable["datasource"] = {
-                        "type": datasource_type,
-                        "uid": f"${{{make_type_input_base(datasource_type)}_1}}",
-                    }
-                    variable["current"] = {}
-                    variable["options"] = []
+        rewrite_template_variable_datasource(
+            variable,
+            datasource_var_types,
+            datasource_var_placeholders,
+        )
 
     return set(datasource_var_types)
 
@@ -854,11 +990,83 @@ def collect_panel_types(panels: List[Dict[str, Any]], panel_types: Set[str]) -> 
             )
 
 
+def build_input_definitions(
+    ref_mapping: Dict[str, Dict[str, str]],
+) -> List[Dict[str, str]]:
+    """Build Grafana's __inputs block from the resolved datasource mapping table."""
+    return [
+        {
+            "name": mapping["input_name"],
+            "label": mapping["label"],
+            "description": "",
+            "type": "datasource",
+            "pluginId": mapping["type"],
+            "pluginName": mapping["type"],
+        }
+        for _, mapping in sorted(ref_mapping.items(), key=lambda item: item[1]["input_name"])
+    ]
+
+
+def build_requires_block(
+    ref_mapping: Dict[str, Dict[str, str]],
+    panel_types: Set[str],
+) -> List[Dict[str, str]]:
+    """Build Grafana's __requires block for Grafana itself, datasources, and panels."""
+    requires = [{"type": "grafana", "id": "grafana", "name": "Grafana", "version": ""}]
+    requires.extend(
+        {
+            "type": "datasource",
+            "id": mapping["type"],
+            "name": mapping["type"],
+            "version": "",
+        }
+        for _, mapping in sorted(ref_mapping.items(), key=lambda item: item[1]["input_name"])
+    )
+    requires.extend(
+        {
+            "type": "panel",
+            "id": panel_type,
+            "name": panel_type,
+            "version": "",
+        }
+        for panel_type in sorted(panel_types)
+    )
+    return requires
+
+
+def build_dashboard_index_item(summary: Dict[str, Any], uid: str) -> Dict[str, str]:
+    """Build the shared root index metadata for one exported dashboard."""
+    return {
+        "uid": uid,
+        "title": str(summary.get("title") or ""),
+        "folder": str(summary.get("folderTitle") or ""),
+    }
+
+
+def build_variant_index(
+    index_items: List[Dict[str, str]],
+    path_key: str,
+    format_name: str,
+) -> List[Dict[str, str]]:
+    """Build one variant-specific index file from the shared root index items."""
+    return [
+        {
+            "uid": item["uid"],
+            "title": item["title"],
+            "folder": item["folder"],
+            "path": item[path_key],
+            "format": format_name,
+        }
+        for item in index_items
+        if path_key in item
+    ]
+
+
 def build_external_export_document(
     payload: Dict[str, Any],
     datasource_catalog: Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]]],
 ) -> Dict[str, Any]:
-    """Convert a fetched dashboard into Grafana's portable export/import format."""
+    """Convert a fetched dashboard into Grafana's web-import prompt format."""
     dashboard = build_preserved_web_import_document(payload)
 
     datasources_by_uid, datasources_by_name = datasource_catalog
@@ -869,7 +1077,7 @@ def build_external_export_document(
 
     ref_mapping: Dict[str, Dict[str, str]] = {}
     type_counts: Dict[str, int] = {}
-    datasource_var_names = prepare_templating_for_external_import(
+    prepare_templating_for_external_import(
         dashboard,
         ref_mapping=ref_mapping,
         type_counts=type_counts,
@@ -884,17 +1092,7 @@ def build_external_export_document(
         )
         if resolved is None or resolved["key"] in ref_mapping:
             continue
-
-        ds_type = resolved["type"]
-        index = type_counts.get(ds_type, 0) + 1
-        type_counts[ds_type] = index
-        input_name = f"{make_type_input_base(ds_type)}_{index}"
-
-        ref_mapping[resolved["key"]] = {
-            "input_name": input_name,
-            "label": make_input_label(ds_type, index),
-            "type": ds_type,
-        }
+        allocate_input_mapping(resolved, ref_mapping, type_counts)
 
     replace_datasource_refs_in_dashboard(
         dashboard,
@@ -918,17 +1116,7 @@ def build_external_export_document(
                 placeholder_names,
             )
 
-    dashboard["__inputs"] = [
-        {
-            "name": mapping["input_name"],
-            "label": mapping["label"],
-            "description": "",
-            "type": "datasource",
-            "pluginId": mapping["type"],
-            "pluginName": mapping["type"],
-        }
-        for _, mapping in sorted(ref_mapping.items(), key=lambda item: item[1]["input_name"])
-    ]
+    dashboard["__inputs"] = build_input_definitions(ref_mapping)
 
     panel_types: Set[str] = set()
     panels = dashboard.get("panels")
@@ -937,35 +1125,13 @@ def build_external_export_document(
             [item for item in panels if isinstance(item, dict)],
             panel_types,
         )
-    dashboard["__requires"] = [
-        {"type": "grafana", "id": "grafana", "name": "Grafana", "version": ""}
-    ]
-    # Grafana expects datasource and panel plugins to be listed in __requires
-    # alongside the generated __inputs block.
-    dashboard["__requires"].extend(
-        {
-            "type": "datasource",
-            "id": mapping["type"],
-            "name": mapping["type"],
-            "version": "",
-        }
-        for _, mapping in sorted(ref_mapping.items(), key=lambda item: item[1]["input_name"])
-    )
-    dashboard["__requires"].extend(
-        {
-            "type": "panel",
-            "id": panel_type,
-            "name": panel_type,
-            "version": "",
-        }
-        for panel_type in sorted(panel_types)
-    )
+    dashboard["__requires"] = build_requires_block(ref_mapping, panel_types)
     dashboard["__elements"] = {}
     return dashboard
 
 
 def export_dashboards(args: argparse.Namespace) -> int:
-    """Export raw API-safe dashboards and optional prompt-based web-import variants."""
+    """Export dashboards into raw JSON, prompt JSON, or both variants."""
     if args.without_raw and args.without_prompt:
         raise GrafanaError("Nothing to export. Remove one of --without-raw or --without-prompt.")
 
@@ -990,15 +1156,11 @@ def export_dashboards(args: argparse.Namespace) -> int:
         print("No dashboards found.", file=sys.stderr)
         return 0
 
-    index: List[Dict[str, str]] = []
+    index_items: List[Dict[str, str]] = []
     for summary in summaries:
         uid = str(summary["uid"])
         payload = client.fetch_dashboard(uid)
-        item = {
-            "uid": uid,
-            "title": str(summary.get("title") or ""),
-            "folder": str(summary.get("folderTitle") or ""),
-        }
+        item = build_dashboard_index_item(summary, uid)
         if export_raw:
             raw_document = build_preserved_web_import_document(payload)
             raw_path = build_output_path(raw_dir, summary, args.flat)
@@ -1012,58 +1174,33 @@ def export_dashboards(args: argparse.Namespace) -> int:
             write_dashboard(prompt_document, prompt_path, args.overwrite)
             item["prompt_path"] = str(prompt_path)
             print(f"Exported prompt {uid} -> {prompt_path}")
-        index.append(item)
+        index_items.append(item)
 
     raw_index_path = None
     if export_raw:
         raw_index_path = raw_dir / "index.json"
-        raw_index_path.write_text(
-            json.dumps(
-                [
-                    {
-                        "uid": item["uid"],
-                        "title": item["title"],
-                        "folder": item["folder"],
-                        "path": item["raw_path"],
-                        "format": "grafana-web-import-preserve-uid",
-                    }
-                    for item in index
-                    if "raw_path" in item
-                ],
-                indent=2,
-                ensure_ascii=False,
-            )
-            + "\n",
-            encoding="utf-8",
+        write_json_document(
+            build_variant_index(
+                index_items,
+                "raw_path",
+                "grafana-web-import-preserve-uid",
+            ),
+            raw_index_path,
         )
     prompt_index_path = None
     if export_prompt:
         prompt_index_path = prompt_dir / "index.json"
-        prompt_index_path.write_text(
-            json.dumps(
-                [
-                    {
-                        "uid": item["uid"],
-                        "title": item["title"],
-                        "folder": item["folder"],
-                        "path": item["prompt_path"],
-                        "format": "grafana-web-import-with-datasource-inputs",
-                    }
-                    for item in index
-                    if "prompt_path" in item
-                ],
-                indent=2,
-                ensure_ascii=False,
-            )
-            + "\n",
-            encoding="utf-8",
+        write_json_document(
+            build_variant_index(
+                index_items,
+                "prompt_path",
+                "grafana-web-import-with-datasource-inputs",
+            ),
+            prompt_index_path,
         )
     index_path = output_dir / "index.json"
-    index_path.write_text(
-        json.dumps(index, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    summary_parts = [f"Exported {len(index)} dashboards."]
+    write_json_document(index_items, index_path)
+    summary_parts = [f"Exported {len(index_items)} dashboards."]
     if raw_index_path is not None:
         summary_parts.append(f"Raw index: {raw_index_path}")
     if prompt_index_path is not None:
@@ -1097,6 +1234,7 @@ def import_dashboards(args: argparse.Namespace) -> int:
 
 
 def build_client(args: argparse.Namespace) -> GrafanaClient:
+    """Build the dashboard API client from parsed CLI arguments."""
     headers = resolve_auth(args)
     return GrafanaClient(
         base_url=args.url,

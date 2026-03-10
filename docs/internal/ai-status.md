@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-11 - Task: Refactor Grafana CLI Readability
+- State: Done
+- Scope: `cmd/grafana-utils.py`, `cmd/grafana-alert-utils.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Both CLI modules are functionally covered by tests, but several import/export and API-normalization flows are long enough that humans need to read multiple branches at once to understand them. The current structure leans on comments and helper names, but key paths such as datasource rewriting and alert import dispatch still need cleaner decomposition.
+- Current Update: Refactored the dashboard CLI by splitting datasource resolution, templating rewrite, and export index generation into smaller helpers. Refactored the alerting CLI by splitting linked-dashboard repair, export document generation, and per-resource import handling into clearer dispatcher-style helpers with smaller units of work.
+- Result: Both CLIs now read more like orchestration code with named helper steps instead of large inline branches. Full unit tests still pass, so the refactor changed structure and readability without changing behavior.
+
 ## 2026-03-11 - Task: Move Grafana CLIs Into cmd
 - State: Done
 - Scope: `cmd/grafana-utils.py`, `cmd/grafana-alert-utils.py`, `tests/test_dump_grafana_dashboards.py`, `tests/test_grafana_alert_utils.py`, `tests/__init__.py`, `README.md`, `README.zh-TW.md`, `DEVELOPER.md`, `AGENTS.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

@@ -294,6 +294,7 @@ def build_template_output_path(
 
 
 def discover_alert_resource_files(import_dir: Path) -> List[Path]:
+    """Find alerting resource JSON files and reject the combined export root."""
     if not import_dir.exists():
         raise GrafanaError(f"Import directory does not exist: {import_dir}")
     if not import_dir.is_dir():
@@ -315,6 +316,8 @@ def discover_alert_resource_files(import_dir: Path) -> List[Path]:
 
 
 class GrafanaAlertClient:
+    """Minimal HTTP wrapper around the Grafana alerting provisioning APIs."""
+
     def __init__(
         self,
         base_url: str,
@@ -334,6 +337,7 @@ class GrafanaAlertClient:
         method: str = "GET",
         payload: Optional[Dict[str, Any]] = None,
     ) -> Any:
+        """Send one request to Grafana and decode the JSON response body."""
         query = ""
         if params:
             query = "?" + parse.urlencode(params)
@@ -341,6 +345,7 @@ class GrafanaAlertClient:
         headers = dict(self.headers)
         data = None
         if payload is not None:
+            # Provisioning create/update endpoints all consume JSON bodies.
             data = json.dumps(payload).encode("utf-8")
             headers["Content-Type"] = "application/json"
         req = request.Request(url, headers=headers, data=data, method=method)
@@ -366,12 +371,14 @@ class GrafanaAlertClient:
             raise GrafanaError(f"Invalid JSON response from {url}") from exc
 
     def list_alert_rules(self) -> List[Dict[str, Any]]:
+        """List Grafana-managed alert rules."""
         data = self.request_json("/api/v1/provisioning/alert-rules")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected alert-rule list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
     def search_dashboards(self, query: str) -> List[Dict[str, Any]]:
+        """Search dashboards when linked-rule import needs fallback matching."""
         data = self.request_json(
             "/api/search",
             params={"type": "dash-db", "query": query, "limit": 500},
@@ -381,12 +388,14 @@ class GrafanaAlertClient:
         return [item for item in data if isinstance(item, dict)]
 
     def get_dashboard(self, uid: str) -> Dict[str, Any]:
+        """Fetch one dashboard wrapper by UID."""
         data = self.request_json(f"/api/dashboards/uid/{parse.quote(uid, safe='')}")
         if not isinstance(data, dict):
             raise GrafanaError(f"Unexpected dashboard payload for UID {uid}.")
         return data
 
     def get_alert_rule(self, uid: str) -> Dict[str, Any]:
+        """Fetch one alert rule by UID."""
         data = self.request_json(
             f"/api/v1/provisioning/alert-rules/{parse.quote(uid, safe='')}"
         )
@@ -395,6 +404,7 @@ class GrafanaAlertClient:
         return data
 
     def create_alert_rule(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Create one alert rule."""
         data = self.request_json(
             "/api/v1/provisioning/alert-rules",
             method="POST",
@@ -405,6 +415,7 @@ class GrafanaAlertClient:
         return data
 
     def update_alert_rule(self, uid: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Update one alert rule by UID."""
         data = self.request_json(
             f"/api/v1/provisioning/alert-rules/{parse.quote(uid, safe='')}",
             method="PUT",
@@ -415,12 +426,14 @@ class GrafanaAlertClient:
         return data
 
     def list_contact_points(self) -> List[Dict[str, Any]]:
+        """List contact points."""
         data = self.request_json("/api/v1/provisioning/contact-points")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected contact-point list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
     def create_contact_point(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Create one contact point."""
         data = self.request_json(
             "/api/v1/provisioning/contact-points",
             method="POST",
@@ -431,6 +444,7 @@ class GrafanaAlertClient:
         return data
 
     def update_contact_point(self, uid: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Update one contact point by UID."""
         data = self.request_json(
             f"/api/v1/provisioning/contact-points/{parse.quote(uid, safe='')}",
             method="PUT",
@@ -441,12 +455,14 @@ class GrafanaAlertClient:
         return data
 
     def list_mute_timings(self) -> List[Dict[str, Any]]:
+        """List mute timings."""
         data = self.request_json("/api/v1/provisioning/mute-timings")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected mute-timing list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
     def create_mute_timing(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Create one mute timing."""
         data = self.request_json(
             "/api/v1/provisioning/mute-timings",
             method="POST",
@@ -457,6 +473,7 @@ class GrafanaAlertClient:
         return data
 
     def update_mute_timing(self, name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Update one mute timing by its stable name."""
         data = self.request_json(
             f"/api/v1/provisioning/mute-timings/{parse.quote(name, safe='')}",
             method="PUT",
@@ -467,12 +484,14 @@ class GrafanaAlertClient:
         return data
 
     def get_notification_policies(self) -> Dict[str, Any]:
+        """Fetch Grafana's single notification policy tree."""
         data = self.request_json("/api/v1/provisioning/policies")
         if not isinstance(data, dict):
             raise GrafanaError("Unexpected notification policy response from Grafana.")
         return data
 
     def update_notification_policies(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Replace Grafana's notification policy tree."""
         data = self.request_json(
             "/api/v1/provisioning/policies",
             method="PUT",
@@ -485,6 +504,7 @@ class GrafanaAlertClient:
         return data
 
     def list_templates(self) -> List[Dict[str, Any]]:
+        """List notification templates, treating Grafana null as an empty list."""
         data = self.request_json("/api/v1/provisioning/templates")
         if data is None:
             return []
@@ -493,6 +513,7 @@ class GrafanaAlertClient:
         return [item for item in data if isinstance(item, dict)]
 
     def get_template(self, name: str) -> Dict[str, Any]:
+        """Fetch one notification template by name."""
         data = self.request_json(
             f"/api/v1/provisioning/templates/{parse.quote(name, safe='')}"
         )
@@ -501,6 +522,7 @@ class GrafanaAlertClient:
         return data
 
     def update_template(self, name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Update one template; the stable name lives in the URL, not the body."""
         body = dict(payload)
         body.pop("name", None)
         data = self.request_json(
@@ -514,6 +536,7 @@ class GrafanaAlertClient:
 
 
 def strip_server_managed_fields(kind: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Remove Grafana-owned fields so exports are safe for later import."""
     normalized = copy.deepcopy(payload)
     for field in SERVER_MANAGED_FIELDS_BY_KIND.get(kind, set()):
         normalized.pop(field, None)
@@ -521,6 +544,7 @@ def strip_server_managed_fields(kind: str, payload: Dict[str, Any]) -> Dict[str,
 
 
 def get_rule_linkage(rule: Dict[str, Any]) -> Optional[Dict[str, str]]:
+    """Extract linked dashboard and panel annotations from an alert rule."""
     annotations = rule.get("annotations")
     if not isinstance(annotations, dict):
         return None
@@ -539,6 +563,7 @@ def get_rule_linkage(rule: Dict[str, Any]) -> Optional[Dict[str, str]]:
 
 
 def find_panel_by_id(panels: Any, panel_id: str) -> Optional[Dict[str, Any]]:
+    """Walk nested panel trees until the requested panel id is found."""
     if not isinstance(panels, list):
         return None
     for panel in panels:
@@ -557,6 +582,7 @@ def build_linked_dashboard_metadata(
     client: GrafanaAlertClient,
     rule: Dict[str, Any],
 ) -> Optional[Dict[str, str]]:
+    """Capture extra dashboard context so linked rules can be repaired on import."""
     linkage = get_rule_linkage(rule)
     if not linkage:
         return None
@@ -593,6 +619,7 @@ def filter_dashboard_search_matches(
     candidates: List[Dict[str, Any]],
     linked_dashboard: Dict[str, Any],
 ) -> List[Dict[str, Any]]:
+    """Narrow dashboard matches by title first, then folder title and slug."""
     dashboard_title = str(linked_dashboard.get("dashboardTitle") or "")
     filtered = [
         item for item in candidates if str(item.get("title") or "") == dashboard_title
@@ -623,6 +650,7 @@ def resolve_dashboard_uid_fallback(
     client: GrafanaAlertClient,
     linked_dashboard: Dict[str, Any],
 ) -> str:
+    """Resolve a missing linked dashboard UID from exported metadata."""
     dashboard_title = str(linked_dashboard.get("dashboardTitle") or "").strip()
     if not dashboard_title:
         raise GrafanaError(
@@ -654,6 +682,7 @@ def resolve_dashboard_uid_fallback(
 
 
 def load_string_map(path_value: Optional[str], label: str) -> Dict[str, str]:
+    """Load a simple JSON object map and coerce every key/value to strings."""
     if not path_value:
         return {}
     payload = load_json_file(Path(path_value))
@@ -666,6 +695,7 @@ def load_string_map(path_value: Optional[str], label: str) -> Dict[str, str]:
 
 
 def load_panel_id_map(path_value: Optional[str]) -> Dict[str, Dict[str, str]]:
+    """Load dashboard-specific panel id remapping data from JSON."""
     if not path_value:
         return {}
     payload = load_json_file(Path(path_value))
@@ -684,36 +714,37 @@ def load_panel_id_map(path_value: Optional[str]) -> Dict[str, Dict[str, str]]:
     return normalized
 
 
-def rewrite_rule_dashboard_linkage(
-    client: GrafanaAlertClient,
+def apply_rule_linkage_maps(
     payload: Dict[str, Any],
-    document: Dict[str, Any],
     dashboard_uid_map: Dict[str, str],
     panel_id_map: Dict[str, Dict[str, str]],
-) -> Dict[str, Any]:
+) -> Tuple[Optional[Dict[str, Any]], str]:
+    """Apply explicit dashboard and panel remapping to one alert rule payload."""
     linkage = get_rule_linkage(payload)
     if not linkage:
-        return payload
+        return None, ""
 
     source_dashboard_uid = linkage["dashboardUid"]
     dashboard_uid = dashboard_uid_map.get(source_dashboard_uid, source_dashboard_uid)
     source_panel_id = linkage.get("panelId", "")
     mapped_panel_id = panel_id_map.get(source_dashboard_uid, {}).get(source_panel_id, "")
+
     normalized = copy.deepcopy(payload)
     annotations = normalized.setdefault("annotations", {})
     if not isinstance(annotations, dict):
         raise GrafanaError("Alert-rule annotations must be an object.")
+
     annotations[LINKED_DASHBOARD_ANNOTATION_KEY] = dashboard_uid
     if mapped_panel_id:
         annotations[LINKED_PANEL_ANNOTATION_KEY] = mapped_panel_id
+    return normalized, dashboard_uid
 
-    try:
-        client.get_dashboard(dashboard_uid)
-        return normalized
-    except GrafanaApiError as exc:
-        if exc.status_code != 404:
-            raise
 
+def extract_linked_dashboard_metadata(
+    document: Dict[str, Any],
+    dashboard_uid: str,
+) -> Dict[str, Any]:
+    """Return linked dashboard metadata from an export document, or fail clearly."""
     metadata = document.get("metadata")
     linked_dashboard = metadata.get("linkedDashboard") if isinstance(metadata, dict) else None
     if not isinstance(linked_dashboard, dict):
@@ -722,7 +753,36 @@ def rewrite_rule_dashboard_linkage(
             "does not exist on the target Grafana and the export file has no linked "
             "dashboard metadata for fallback matching."
         )
+    return linked_dashboard
 
+
+def rewrite_rule_dashboard_linkage(
+    client: GrafanaAlertClient,
+    payload: Dict[str, Any],
+    document: Dict[str, Any],
+    dashboard_uid_map: Dict[str, str],
+    panel_id_map: Dict[str, Dict[str, str]],
+) -> Dict[str, Any]:
+    """Apply explicit linkage maps first, then fallback dashboard matching if needed."""
+    normalized, dashboard_uid = apply_rule_linkage_maps(
+        payload,
+        dashboard_uid_map,
+        panel_id_map,
+    )
+    if normalized is None:
+        return payload
+
+    try:
+        # Fast path: the mapped or original dashboard UID already exists on the
+        # target Grafana, so no metadata-based fallback is needed.
+        client.get_dashboard(dashboard_uid)
+        return normalized
+    except GrafanaApiError as exc:
+        if exc.status_code != 404:
+            raise
+
+    linked_dashboard = extract_linked_dashboard_metadata(document, dashboard_uid)
+    annotations = normalized["annotations"]
     replacement_uid = resolve_dashboard_uid_fallback(client, linked_dashboard)
     annotations[LINKED_DASHBOARD_ANNOTATION_KEY] = replacement_uid
     return normalized
@@ -764,6 +824,7 @@ def build_template_metadata(template: Dict[str, Any]) -> Dict[str, str]:
 
 
 def build_tool_document(kind: str, spec: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrap one resource in the tool-owned export document format."""
     metadata_builders = {
         RULE_KIND: build_rule_metadata,
         CONTACT_POINT_KIND: build_contact_point_metadata,
@@ -830,6 +891,7 @@ def build_template_export_document(template: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def reject_provisioning_export(document: Dict[str, Any]) -> None:
+    """Reject Grafana provisioning export files that do not round-trip via API."""
     if (
         "groups" in document
         or "contactPoints" in document
@@ -843,6 +905,7 @@ def reject_provisioning_export(document: Dict[str, Any]) -> None:
 
 
 def detect_document_kind(document: Dict[str, Any]) -> str:
+    """Infer which supported alerting resource a JSON document represents."""
     kind = document.get("kind")
     if kind in RESOURCE_SUBDIR_BY_KIND:
         return str(kind)
@@ -950,6 +1013,7 @@ def build_template_import_payload(document: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def build_import_operation(document: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
+    """Return the detected alerting resource kind and its normalized import payload."""
     if not isinstance(document, dict):
         raise GrafanaError("Unexpected alerting resource document. Expected a JSON object.")
     kind = detect_document_kind(document)
@@ -963,7 +1027,176 @@ def build_import_operation(document: Dict[str, Any]) -> Tuple[str, Dict[str, Any
     return kind, builders[kind](document)
 
 
+def build_empty_root_index() -> Dict[str, List[Dict[str, str]]]:
+    """Create the root export index structure keyed by output subdirectory."""
+    return {
+        RULES_SUBDIR: [],
+        CONTACT_POINTS_SUBDIR: [],
+        MUTE_TIMINGS_SUBDIR: [],
+        POLICIES_SUBDIR: [],
+        TEMPLATES_SUBDIR: [],
+    }
+
+
+def export_rule_documents(
+    client: GrafanaAlertClient,
+    rules: List[Dict[str, Any]],
+    resource_dirs: Dict[str, Path],
+    root_index: Dict[str, List[Dict[str, str]]],
+    flat: bool,
+    overwrite: bool,
+) -> None:
+    """Export alert rules and append rule entries to the root index."""
+    for rule in rules:
+        normalized_rule = copy.deepcopy(rule)
+        linked_dashboard = build_linked_dashboard_metadata(client, rule)
+        if linked_dashboard:
+            normalized_rule["__linkedDashboardMetadata__"] = linked_dashboard
+        document = build_rule_export_document(normalized_rule)
+        spec = document["spec"]
+        output_path = build_rule_output_path(resource_dirs[RULE_KIND], spec, flat)
+        write_json(document, output_path, overwrite)
+        item = {
+            "kind": RULE_KIND,
+            "uid": str(spec.get("uid") or ""),
+            "title": str(spec.get("title") or ""),
+            "folderUID": str(spec.get("folderUID") or ""),
+            "ruleGroup": str(spec.get("ruleGroup") or ""),
+            "path": str(output_path),
+        }
+        root_index[RULES_SUBDIR].append(item)
+        print(f"Exported alert rule {item['uid'] or 'unknown'} -> {output_path}")
+
+
+def export_contact_point_documents(
+    contact_points: List[Dict[str, Any]],
+    resource_dirs: Dict[str, Path],
+    root_index: Dict[str, List[Dict[str, str]]],
+    flat: bool,
+    overwrite: bool,
+) -> None:
+    """Export contact points and append contact-point entries to the root index."""
+    for contact_point in contact_points:
+        document = build_contact_point_export_document(contact_point)
+        spec = document["spec"]
+        output_path = build_contact_point_output_path(
+            resource_dirs[CONTACT_POINT_KIND], spec, flat
+        )
+        write_json(document, output_path, overwrite)
+        item = {
+            "kind": CONTACT_POINT_KIND,
+            "uid": str(spec.get("uid") or ""),
+            "name": str(spec.get("name") or ""),
+            "type": str(spec.get("type") or ""),
+            "path": str(output_path),
+        }
+        root_index[CONTACT_POINTS_SUBDIR].append(item)
+        print(
+            f"Exported contact point {item['uid'] or item['name'] or 'unknown'} -> {output_path}"
+        )
+
+
+def export_mute_timing_documents(
+    mute_timings: List[Dict[str, Any]],
+    resource_dirs: Dict[str, Path],
+    root_index: Dict[str, List[Dict[str, str]]],
+    flat: bool,
+    overwrite: bool,
+) -> None:
+    """Export mute timings and append mute-timing entries to the root index."""
+    for mute_timing in mute_timings:
+        document = build_mute_timing_export_document(mute_timing)
+        spec = document["spec"]
+        output_path = build_mute_timing_output_path(
+            resource_dirs[MUTE_TIMING_KIND], spec, flat
+        )
+        write_json(document, output_path, overwrite)
+        item = {
+            "kind": MUTE_TIMING_KIND,
+            "name": str(spec.get("name") or ""),
+            "path": str(output_path),
+        }
+        root_index[MUTE_TIMINGS_SUBDIR].append(item)
+        print(f"Exported mute timing {item['name'] or 'unknown'} -> {output_path}")
+
+
+def export_policies_document(
+    policies: Dict[str, Any],
+    resource_dirs: Dict[str, Path],
+    root_index: Dict[str, List[Dict[str, str]]],
+    overwrite: bool,
+) -> None:
+    """Export the single notification policy tree and append its index entry."""
+    policies_document = build_policies_export_document(policies)
+    policies_path = build_policies_output_path(resource_dirs[POLICIES_KIND])
+    write_json(policies_document, policies_path, overwrite)
+    policies_item = {
+        "kind": POLICIES_KIND,
+        "receiver": str(policies_document["spec"].get("receiver") or ""),
+        "path": str(policies_path),
+    }
+    root_index[POLICIES_SUBDIR].append(policies_item)
+    print(
+        "Exported notification policies "
+        f"{policies_item['receiver'] or 'unknown'} -> {policies_path}"
+    )
+
+
+def export_template_documents(
+    templates: List[Dict[str, Any]],
+    resource_dirs: Dict[str, Path],
+    root_index: Dict[str, List[Dict[str, str]]],
+    flat: bool,
+    overwrite: bool,
+) -> None:
+    """Export notification templates and append template entries to the root index."""
+    for template in templates:
+        document = build_template_export_document(template)
+        spec = document["spec"]
+        output_path = build_template_output_path(
+            resource_dirs[TEMPLATE_KIND], spec, flat
+        )
+        write_json(document, output_path, overwrite)
+        item = {
+            "kind": TEMPLATE_KIND,
+            "name": str(spec.get("name") or ""),
+            "path": str(output_path),
+        }
+        root_index[TEMPLATES_SUBDIR].append(item)
+        print(f"Exported template {item['name'] or 'unknown'} -> {output_path}")
+
+
+def write_resource_indexes(
+    resource_dirs: Dict[str, Path],
+    root_index: Dict[str, List[Dict[str, str]]],
+) -> None:
+    """Write per-resource index files under the raw export tree."""
+    for kind, subdir in RESOURCE_SUBDIR_BY_KIND.items():
+        write_json(
+            root_index[subdir],
+            resource_dirs[kind] / "index.json",
+            overwrite=True,
+        )
+
+
+def format_export_summary(
+    root_index: Dict[str, List[Dict[str, str]]],
+    index_path: Path,
+) -> str:
+    """Build the final export summary line shown to operators."""
+    return (
+        "Exported "
+        f"{len(root_index[RULES_SUBDIR])} alert rules, "
+        f"{len(root_index[CONTACT_POINTS_SUBDIR])} contact points, "
+        f"{len(root_index[MUTE_TIMINGS_SUBDIR])} mute timings, "
+        f"{len(root_index[POLICIES_SUBDIR])} notification policy documents, "
+        f"{len(root_index[TEMPLATES_SUBDIR])} templates. "
+        f"Root index: {index_path}"
+    )
+
+
 def export_alerting_resources(args: argparse.Namespace) -> int:
+    """Export supported alerting resources into the tool-owned JSON layout."""
     client = build_client(args)
     output_dir = Path(args.output_dir)
     raw_dir = output_dir / RAW_EXPORT_SUBDIR
@@ -980,119 +1213,207 @@ def export_alerting_resources(args: argparse.Namespace) -> int:
     policies = client.get_notification_policies()
     templates = client.list_templates()
 
-    root_index: Dict[str, List[Dict[str, str]]] = {
-        RULES_SUBDIR: [],
-        CONTACT_POINTS_SUBDIR: [],
-        MUTE_TIMINGS_SUBDIR: [],
-        POLICIES_SUBDIR: [],
-        TEMPLATES_SUBDIR: [],
-    }
-
-    for rule in rules:
-        normalized_rule = copy.deepcopy(rule)
-        linked_dashboard = build_linked_dashboard_metadata(client, rule)
-        if linked_dashboard:
-            normalized_rule["__linkedDashboardMetadata__"] = linked_dashboard
-        document = build_rule_export_document(normalized_rule)
-        spec = document["spec"]
-        output_path = build_rule_output_path(resource_dirs[RULE_KIND], spec, args.flat)
-        write_json(document, output_path, args.overwrite)
-        item = {
-            "kind": RULE_KIND,
-            "uid": str(spec.get("uid") or ""),
-            "title": str(spec.get("title") or ""),
-            "folderUID": str(spec.get("folderUID") or ""),
-            "ruleGroup": str(spec.get("ruleGroup") or ""),
-            "path": str(output_path),
-        }
-        root_index[RULES_SUBDIR].append(item)
-        print(f"Exported alert rule {item['uid'] or 'unknown'} -> {output_path}")
-
-    for contact_point in contact_points:
-        document = build_contact_point_export_document(contact_point)
-        spec = document["spec"]
-        output_path = build_contact_point_output_path(
-            resource_dirs[CONTACT_POINT_KIND], spec, args.flat
-        )
-        write_json(document, output_path, args.overwrite)
-        item = {
-            "kind": CONTACT_POINT_KIND,
-            "uid": str(spec.get("uid") or ""),
-            "name": str(spec.get("name") or ""),
-            "type": str(spec.get("type") or ""),
-            "path": str(output_path),
-        }
-        root_index[CONTACT_POINTS_SUBDIR].append(item)
-        print(
-            f"Exported contact point {item['uid'] or item['name'] or 'unknown'} -> {output_path}"
-        )
-
-    for mute_timing in mute_timings:
-        document = build_mute_timing_export_document(mute_timing)
-        spec = document["spec"]
-        output_path = build_mute_timing_output_path(
-            resource_dirs[MUTE_TIMING_KIND], spec, args.flat
-        )
-        write_json(document, output_path, args.overwrite)
-        item = {
-            "kind": MUTE_TIMING_KIND,
-            "name": str(spec.get("name") or ""),
-            "path": str(output_path),
-        }
-        root_index[MUTE_TIMINGS_SUBDIR].append(item)
-        print(f"Exported mute timing {item['name'] or 'unknown'} -> {output_path}")
-
-    policies_document = build_policies_export_document(policies)
-    policies_path = build_policies_output_path(resource_dirs[POLICIES_KIND])
-    write_json(policies_document, policies_path, args.overwrite)
-    policies_item = {
-        "kind": POLICIES_KIND,
-        "receiver": str(policies_document["spec"].get("receiver") or ""),
-        "path": str(policies_path),
-    }
-    root_index[POLICIES_SUBDIR].append(policies_item)
-    print(
-        "Exported notification policies "
-        f"{policies_item['receiver'] or 'unknown'} -> {policies_path}"
+    root_index = build_empty_root_index()
+    export_rule_documents(
+        client,
+        rules,
+        resource_dirs,
+        root_index,
+        flat=args.flat,
+        overwrite=args.overwrite,
     )
-
-    for template in templates:
-        document = build_template_export_document(template)
-        spec = document["spec"]
-        output_path = build_template_output_path(
-            resource_dirs[TEMPLATE_KIND], spec, args.flat
-        )
-        write_json(document, output_path, args.overwrite)
-        item = {
-            "kind": TEMPLATE_KIND,
-            "name": str(spec.get("name") or ""),
-            "path": str(output_path),
-        }
-        root_index[TEMPLATES_SUBDIR].append(item)
-        print(f"Exported template {item['name'] or 'unknown'} -> {output_path}")
-
-    for kind, subdir in RESOURCE_SUBDIR_BY_KIND.items():
-        write_json(
-            root_index[subdir],
-            resource_dirs[kind] / "index.json",
-            overwrite=True,
-        )
+    export_contact_point_documents(
+        contact_points,
+        resource_dirs,
+        root_index,
+        flat=args.flat,
+        overwrite=args.overwrite,
+    )
+    export_mute_timing_documents(
+        mute_timings,
+        resource_dirs,
+        root_index,
+        flat=args.flat,
+        overwrite=args.overwrite,
+    )
+    export_policies_document(
+        policies,
+        resource_dirs,
+        root_index,
+        overwrite=args.overwrite,
+    )
+    export_template_documents(
+        templates,
+        resource_dirs,
+        root_index,
+        flat=args.flat,
+        overwrite=args.overwrite,
+    )
+    write_resource_indexes(resource_dirs, root_index)
 
     index_path = output_dir / "index.json"
     write_json(root_index, index_path, overwrite=True)
-    print(
-        "Exported "
-        f"{len(root_index[RULES_SUBDIR])} alert rules, "
-        f"{len(root_index[CONTACT_POINTS_SUBDIR])} contact points, "
-        f"{len(root_index[MUTE_TIMINGS_SUBDIR])} mute timings, "
-        f"{len(root_index[POLICIES_SUBDIR])} notification policy documents, "
-        f"{len(root_index[TEMPLATES_SUBDIR])} templates. "
-        f"Root index: {index_path}"
-    )
+    print(format_export_summary(root_index, index_path))
     return 0
 
 
+def count_policy_documents(kind: str, policies_seen: int) -> int:
+    """Track notification policy documents and reject import sets with more than one."""
+    if kind != POLICIES_KIND:
+        return policies_seen
+
+    policies_seen += 1
+    if policies_seen > 1:
+        raise GrafanaError(
+            "Multiple notification policy documents found in import set. "
+            "Import only one policy tree at a time."
+        )
+    return policies_seen
+
+
+def import_rule_document(
+    client: GrafanaAlertClient,
+    payload: Dict[str, Any],
+    document: Dict[str, Any],
+    replace_existing: bool,
+    dashboard_uid_map: Dict[str, str],
+    panel_id_map: Dict[str, Dict[str, str]],
+) -> Tuple[str, str]:
+    """Import one alert rule and return the action plus stable identity."""
+    payload = rewrite_rule_dashboard_linkage(
+        client,
+        payload,
+        document,
+        dashboard_uid_map,
+        panel_id_map,
+    )
+    uid = str(payload.get("uid") or "")
+    if replace_existing and uid:
+        try:
+            client.get_alert_rule(uid)
+        except GrafanaApiError as exc:
+            if exc.status_code != 404:
+                raise
+        else:
+            result = client.update_alert_rule(uid, payload)
+            return "updated", str(result.get("uid") or uid or "unknown")
+
+    result = client.create_alert_rule(payload)
+    return "created", str(result.get("uid") or uid or "unknown")
+
+
+def import_contact_point_document(
+    client: GrafanaAlertClient,
+    payload: Dict[str, Any],
+    replace_existing: bool,
+) -> Tuple[str, str]:
+    """Import one contact point and return the action plus stable identity."""
+    uid = str(payload.get("uid") or "")
+    if replace_existing and uid:
+        existing = {str(item.get("uid") or "") for item in client.list_contact_points()}
+        if uid in existing:
+            result = client.update_contact_point(uid, payload)
+            return "updated", str(result.get("uid") or uid or payload.get("name") or "unknown")
+
+    result = client.create_contact_point(payload)
+    return "created", str(result.get("uid") or uid or payload.get("name") or "unknown")
+
+
+def import_mute_timing_document(
+    client: GrafanaAlertClient,
+    payload: Dict[str, Any],
+    replace_existing: bool,
+) -> Tuple[str, str]:
+    """Import one mute timing and return the action plus stable identity."""
+    name = str(payload.get("name") or "")
+    if replace_existing and name:
+        existing = {str(item.get("name") or "") for item in client.list_mute_timings()}
+        if name in existing:
+            result = client.update_mute_timing(name, payload)
+            return "updated", str(result.get("name") or name or "unknown")
+
+    result = client.create_mute_timing(payload)
+    return "created", str(result.get("name") or name or "unknown")
+
+
+def build_template_update_payload(
+    client: GrafanaAlertClient,
+    payload: Dict[str, Any],
+    replace_existing: bool,
+) -> Tuple[str, Dict[str, Any], bool]:
+    """Prepare the template payload and report whether the template already exists."""
+    name = str(payload.get("name") or "")
+    existing_names = {str(item.get("name") or "") for item in client.list_templates()}
+    exists = name in existing_names
+    if exists and not replace_existing:
+        raise GrafanaError(
+            f"Template {name!r} already exists. Use --replace-existing."
+        )
+
+    template_payload = dict(payload)
+    if exists:
+        current_template = client.get_template(name)
+        template_payload["version"] = str(current_template.get("version") or "")
+    else:
+        template_payload["version"] = ""
+    return name, template_payload, exists
+
+
+def import_template_document(
+    client: GrafanaAlertClient,
+    payload: Dict[str, Any],
+    replace_existing: bool,
+) -> Tuple[str, str]:
+    """Import one notification template and return the action plus stable identity."""
+    name, template_payload, exists = build_template_update_payload(
+        client,
+        payload,
+        replace_existing,
+    )
+    result = client.update_template(name, template_payload)
+    action = "updated" if exists else "created"
+    return action, str(result.get("name") or name or "unknown")
+
+
+def import_policies_document(
+    client: GrafanaAlertClient,
+    payload: Dict[str, Any],
+) -> Tuple[str, str]:
+    """Import the single notification policy tree and return its identity."""
+    client.update_notification_policies(payload)
+    return "updated", str(payload.get("receiver") or "root")
+
+
+def import_resource_document(
+    client: GrafanaAlertClient,
+    kind: str,
+    payload: Dict[str, Any],
+    document: Dict[str, Any],
+    args: argparse.Namespace,
+    dashboard_uid_map: Dict[str, str],
+    panel_id_map: Dict[str, Dict[str, str]],
+) -> Tuple[str, str]:
+    """Dispatch one import document to the correct per-kind import handler."""
+    if kind == RULE_KIND:
+        return import_rule_document(
+            client,
+            payload,
+            document,
+            args.replace_existing,
+            dashboard_uid_map,
+            panel_id_map,
+        )
+    if kind == CONTACT_POINT_KIND:
+        return import_contact_point_document(client, payload, args.replace_existing)
+    if kind == MUTE_TIMING_KIND:
+        return import_mute_timing_document(client, payload, args.replace_existing)
+    if kind == TEMPLATE_KIND:
+        return import_template_document(client, payload, args.replace_existing)
+    return import_policies_document(client, payload)
+
+
 def import_alerting_resources(args: argparse.Namespace) -> int:
+    """Import alerting resource documents back into Grafana provisioning APIs."""
     client = build_client(args)
     import_dir = Path(args.import_dir)
     resource_files = discover_alert_resource_files(import_dir)
@@ -1103,86 +1424,16 @@ def import_alerting_resources(args: argparse.Namespace) -> int:
     for resource_file in resource_files:
         document = load_json_file(resource_file)
         kind, payload = build_import_operation(document)
-        if kind == POLICIES_KIND:
-            policies_seen += 1
-            if policies_seen > 1:
-                raise GrafanaError(
-                    "Multiple notification policy documents found in import set. "
-                    "Import only one policy tree at a time."
-                )
-
-        if kind == RULE_KIND:
-            payload = rewrite_rule_dashboard_linkage(
-                client,
-                payload,
-                document,
-                dashboard_uid_map,
-                panel_id_map,
-            )
-            uid = str(payload.get("uid") or "")
-            if args.replace_existing and uid:
-                try:
-                    client.get_alert_rule(uid)
-                except GrafanaApiError as exc:
-                    if exc.status_code != 404:
-                        raise
-                    result = client.create_alert_rule(payload)
-                    action = "created"
-                else:
-                    result = client.update_alert_rule(uid, payload)
-                    action = "updated"
-            else:
-                result = client.create_alert_rule(payload)
-                action = "created"
-            identity = str(result.get("uid") or uid or "unknown")
-        elif kind == CONTACT_POINT_KIND:
-            uid = str(payload.get("uid") or "")
-            if args.replace_existing and uid:
-                existing = {str(item.get("uid") or "") for item in client.list_contact_points()}
-                if uid in existing:
-                    result = client.update_contact_point(uid, payload)
-                    action = "updated"
-                else:
-                    result = client.create_contact_point(payload)
-                    action = "created"
-            else:
-                result = client.create_contact_point(payload)
-                action = "created"
-            identity = str(result.get("uid") or uid or payload.get("name") or "unknown")
-        elif kind == MUTE_TIMING_KIND:
-            name = str(payload.get("name") or "")
-            if args.replace_existing and name:
-                existing = {str(item.get("name") or "") for item in client.list_mute_timings()}
-                if name in existing:
-                    result = client.update_mute_timing(name, payload)
-                    action = "updated"
-                else:
-                    result = client.create_mute_timing(payload)
-                    action = "created"
-            else:
-                result = client.create_mute_timing(payload)
-                action = "created"
-            identity = str(result.get("name") or name or "unknown")
-        elif kind == TEMPLATE_KIND:
-            name = str(payload.get("name") or "")
-            existing = {str(item.get("name") or "") for item in client.list_templates()}
-            template_payload = dict(payload)
-            if name in existing and not args.replace_existing:
-                raise GrafanaError(
-                    f"Template {name!r} already exists. Use --replace-existing."
-                )
-            if name in existing:
-                current_template = client.get_template(name)
-                template_payload["version"] = str(current_template.get("version") or "")
-            else:
-                template_payload["version"] = ""
-            result = client.update_template(name, template_payload)
-            action = "updated" if name in existing else "created"
-            identity = str(result.get("name") or name or "unknown")
-        else:
-            client.update_notification_policies(payload)
-            action = "updated"
-            identity = str(payload.get("receiver") or "root")
+        policies_seen = count_policy_documents(kind, policies_seen)
+        action, identity = import_resource_document(
+            client,
+            kind,
+            payload,
+            document,
+            args,
+            dashboard_uid_map,
+            panel_id_map,
+        )
 
         print(f"Imported {resource_file} -> kind={kind} id={identity} action={action}")
 
@@ -1191,6 +1442,7 @@ def import_alerting_resources(args: argparse.Namespace) -> int:
 
 
 def build_client(args: argparse.Namespace) -> GrafanaAlertClient:
+    """Build the alerting API client from parsed CLI arguments."""
     headers = resolve_auth(args)
     return GrafanaAlertClient(
         base_url=args.url,
