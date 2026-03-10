@@ -6,8 +6,8 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 
 - `grafana-utils.py`: dashboard export/import utility
 - `grafana-alert-utils.py`: alerting resource export/import utility
-- `test_dump_grafana_dashboards.py`: dashboard utility unit tests
-- `test_grafana_alert_utils.py`: alerting utility unit tests
+- `tests/test_dump_grafana_dashboards.py`: dashboard utility unit tests
+- `tests/test_grafana_alert_utils.py`: alerting utility unit tests
 
 ## Python Baseline
 
@@ -173,7 +173,7 @@ Notes:
 
 ### Live validation notes
 
-- Primary automated coverage lives in `test_grafana_alert_utils.py`
+- Primary automated coverage lives in `tests/test_grafana_alert_utils.py`
 - Container-based validation was done against Grafana `12.4.1`
 - Verified round-trip coverage includes:
   - rules
@@ -188,8 +188,8 @@ Notes:
 Common checks:
 
 ```bash
-python3 -m unittest test_dump_grafana_dashboards.py
-python3 -m unittest test_grafana_alert_utils.py
+python3 -m unittest tests.test_dump_grafana_dashboards
+python3 -m unittest tests.test_grafana_alert_utils
 python3 -m unittest -v
 ```
 
@@ -206,11 +206,11 @@ python3 grafana-alert-utils.py -h
 
 - `README.md`: public usage and high-level behavior
 - `DEVELOPER.md`: maintenance notes, internal architecture, compatibility rules, and implementation tradeoffs
-- `ai-status.md` / `ai-changes.md`: internal working notes only; do not treat them as public GitHub-facing documentation
+- `docs/internal/ai-status.md` / `docs/internal/ai-changes.md`: internal working notes only; do not treat them as public GitHub-facing documentation
 
 Documentation policy:
 
 - keep `README.md` suitable for GitHub readers
 - keep environment-specific validation logs, migration notes, and maintainer-only tradeoffs in `DEVELOPER.md`
-- avoid relying on `ai-status.md` and `ai-changes.md` for public project documentation
+- avoid relying on `docs/internal/ai-status.md` and `docs/internal/ai-changes.md` for public project documentation
 - if user-facing release history is needed, prefer a curated `CHANGELOG.md`

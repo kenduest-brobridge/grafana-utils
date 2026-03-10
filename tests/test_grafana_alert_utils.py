@@ -8,7 +8,7 @@ from pathlib import Path
 from unittest import mock
 
 
-MODULE_PATH = Path(__file__).with_name("grafana-alert-utils.py")
+MODULE_PATH = Path(__file__).resolve().parents[1] / "grafana-alert-utils.py"
 SPEC = importlib.util.spec_from_file_location("grafana_alert_utils_script", MODULE_PATH)
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError(f"Cannot load module from {MODULE_PATH}")
