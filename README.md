@@ -122,24 +122,25 @@ python3 grafana-utils.py --verify-ssl
 - `dashboards/prompt/`: best for Grafana web import when you want datasource mapping prompts.
 - `--import-dir ./dashboards/raw`: best for API import of normal dashboard JSON.
 
-## Alert Rule Utility
+## Alerting Utility
 
-`grafana-alert-utils.py` is a separate CLI for Grafana alert rules. It exists to keep alerting logic out of `grafana-utils.py`.
+`grafana-alert-utils.py` is a separate CLI for Grafana alerting resources. It exists to keep alerting logic out of `grafana-utils.py`.
 
 Current scope:
 
-- alert rules only
+- alert rules
+- contact points
+- mute timings
+- notification policies
 - export to a tool-owned JSON format under `alerts/raw/`
 - import that same tool-owned format back through the Grafana alerting provisioning HTTP API
 
 Not in scope:
 
-- contact points
-- notification policies
-- mute timings
+- message templates
 - direct reuse of Grafana provisioning `/export` files for API import
 
-### Alert rule export
+### Alerting export
 
 Example:
 
@@ -152,13 +153,18 @@ python3 grafana-alert-utils.py \
 
 This writes:
 
-- `alerts/raw/`
+- `alerts/raw/rules/`
+- `alerts/raw/contact-points/`
+- `alerts/raw/mute-timings/`
+- `alerts/raw/policies/`
 - `alerts/index.json`
-- `alerts/raw/index.json`
 
-Files are stored by default under:
+Default paths:
 
-- `alerts/raw/<folderUID>/<ruleGroup>/<title>__<uid>.json`
+- rules: `alerts/raw/rules/<folderUID>/<ruleGroup>/<title>__<uid>.json`
+- contact points: `alerts/raw/contact-points/<name>/<name>__<uid>.json`
+- mute timings: `alerts/raw/mute-timings/<name>/<name>.json`
+- notification policies: `alerts/raw/policies/notification-policies.json`
 
 If you want a flat layout:
 
@@ -166,7 +172,7 @@ If you want a flat layout:
 python3 grafana-alert-utils.py --output-dir ./alerts --flat
 ```
 
-### Alert rule import
+### Alerting import
 
 Example:
 
@@ -179,8 +185,9 @@ python3 grafana-alert-utils.py \
 
 Behavior:
 
-- `--replace-existing` checks rule `uid` and uses update when the rule already exists
-- without `--replace-existing`, import always uses create and Grafana will reject conflicting UIDs
+- `--replace-existing` updates existing rules by `uid`, contact points by `uid`, and mute timings by `name`
+- notification policies are always applied with `PUT`, because Grafana exposes them as one policy tree
+- without `--replace-existing`, rule/contact-point/mute-timing import uses create and Grafana will reject conflicting identities
 - import expects files exported by `grafana-alert-utils.py`
 - do not point `--import-dir` at the combined `alerts/` root
 
@@ -188,6 +195,12 @@ Important limitation:
 
 - Grafana alert provisioning `/export` output is not accepted by this import path
 - Grafana documents that provisioning export format is for file/Terraform provisioning, not direct HTTP API round-trip updates
+
+Validation done in this workspace:
+
+- unit tests via `python3 -m unittest -v`
+- live Docker round-trip against Grafana `12.4.1`
+- verified export/import of one alert rule, one contact point, one mute timing, and one notification policy tree
 
 ## Validation
 
