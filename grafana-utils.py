@@ -485,6 +485,7 @@ def resolve_datasource_ref(
     datasources_by_uid: dict[str, dict[str, Any]],
     datasources_by_name: dict[str, dict[str, Any]],
 ) -> dict[str, str] | None:
+    """Normalize Grafana datasource references into stable keys for __inputs generation."""
     if ref is None or is_builtin_datasource_ref(ref):
         return None
 
@@ -688,6 +689,7 @@ def prepare_templating_for_external_import(
     datasources_by_uid: dict[str, dict[str, Any]],
     datasources_by_name: dict[str, dict[str, Any]],
 ) -> set[str]:
+    """Rewrite datasource template variables so exported dashboards prompt on import."""
     templating = dashboard.get("templating")
     if not isinstance(templating, dict):
         return set()
@@ -732,6 +734,8 @@ def prepare_templating_for_external_import(
 
         var_name = variable.get("name")
         if isinstance(var_name, str) and var_name:
+            # Track template variable names so downstream datasource selectors can
+            # be rewritten to point at the generated __inputs placeholders.
             datasource_var_types[var_name] = mapping["type"]
             datasource_var_placeholders.add(f"${var_name}")
             datasource_var_placeholders.add(f"${{{var_name}}}")
@@ -790,6 +794,7 @@ def build_external_export_document(
     payload: dict[str, Any],
     datasource_catalog: tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]],
 ) -> dict[str, Any]:
+    """Convert a fetched dashboard into Grafana's portable export/import format."""
     dashboard = build_preserved_web_import_document(payload)
 
     datasources_by_uid, datasources_by_name = datasource_catalog
@@ -834,6 +839,8 @@ def build_external_export_document(
 
     datasource_types = sorted({mapping["type"] for mapping in ref_mapping.values()})
     if len(datasource_types) == 1:
+        # When every datasource resolves to the same plugin type, Grafana's native
+        # $datasource variable keeps the imported dashboard easier for humans to edit.
         ensure_datasource_template_variable(dashboard, datasource_types[0])
         placeholder_names = {
             f"${{{mapping['input_name']}}}" for mapping in ref_mapping.values()
