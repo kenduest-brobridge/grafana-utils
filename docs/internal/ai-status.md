@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-11 - Task: Make Grafana HTTP Transport Replaceable
+- State: Done
+- Scope: `cmd/grafana_http_transport.py`, `cmd/grafana-utils.py`, `cmd/grafana-alert-utils.py`, `tests/test_dump_grafana_dashboards.py`, `tests/test_grafana_alert_utils.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Both CLI tools embed `urllib` request handling directly inside their Grafana client classes. That makes the HTTP implementation fixed, mixes transport concerns into the resource clients, and leaves no clean seam for swapping `requests`, `httpx`, or a test transport.
+- Current Update: Added a shared replaceable JSON transport module with `RequestsJsonHttpTransport` and `HttpxJsonHttpTransport`, changed both CLI clients to depend on an injected transport object, and kept `requests` as the default transport selected by the client constructors. Updated tests to load the shared transport module, verify both transport adapters build successfully, and exercise the new injected-transport seam directly.
+- Result: The Grafana dashboard and alerting clients now use a replaceable transport architecture instead of hard-wired `urllib` calls. Full unit tests pass, and both CLIs can now switch HTTP engines by swapping the transport implementation rather than rewriting client logic.
+
 ## 2026-03-11 - Task: Refactor Grafana CLI Readability
 - State: Done
 - Scope: `cmd/grafana-utils.py`, `cmd/grafana-alert-utils.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

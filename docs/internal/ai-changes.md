@@ -1,5 +1,14 @@
 # ai-changes.md
 
+## 2026-03-11 - Make Grafana HTTP Transport Replaceable
+- Summary: Replaced the hard-wired `urllib` transport in both CLI tools with a shared transport module, `cmd/grafana_http_transport.py`. The new architecture introduces `RequestsJsonHttpTransport` and `HttpxJsonHttpTransport`, a small transport factory, and constructor injection so `GrafanaClient` and `GrafanaAlertClient` can use any compatible JSON transport implementation.
+- Tests: Updated both test modules to load the shared transport module, verify Python 3.6 syntax parsing for it, verify both `requests` and `httpx` transport adapters build, and exercise the new injected-transport seam in the clients.
+- Test Run: `python3 -m unittest -v tests/test_dump_grafana_dashboards.py` (pass); `python3 -m unittest -v tests/test_grafana_alert_utils.py` (pass); `python3 -m unittest -v` (pass)
+- Validation: Local full-suite unit tests passed after removing the embedded `urllib` request logic from both clients. Transport-specific behavior is now isolated in the shared adapter module, while Grafana-specific error handling remains in the domain clients.
+- Impact: `cmd/grafana_http_transport.py`, `cmd/grafana-utils.py`, `cmd/grafana-alert-utils.py`, `tests/test_dump_grafana_dashboards.py`, `tests/test_grafana_alert_utils.py`, `docs/internal/ai-status.md`
+- Rollback/Risk: Moderate refactor risk because all network access now passes through the shared adapter layer. Existing tests passed, but any environment missing `requests` at runtime would now fail until the dependency is installed or an alternate transport is injected explicitly.
+- Follow-up: If operators need runtime selection later, expose the transport choice through CLI flags or environment variables instead of changing the client classes again.
+
 ## 2026-03-11 - Refactor Grafana CLI Readability
 - Summary: Refactored `cmd/grafana-utils.py` and `cmd/grafana-alert-utils.py` for human readability without changing behavior. The dashboard CLI now uses smaller helpers for dashboard object extraction, datasource lookup and normalization, template-variable rewrite steps, and export index construction. The alerting CLI now uses smaller helpers for linked-dashboard mapping, per-resource export handling, and per-kind import dispatch.
 - Tests: No new tests were needed because the refactor preserved behavior. Existing coverage was used to validate the structural changes.

@@ -2,11 +2,15 @@ import argparse
 import ast
 import base64
 import importlib.util
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 MODULE_PATH = Path(__file__).resolve().parents[1] / "cmd" / "grafana-utils.py"
+TRANSPORT_MODULE_PATH = MODULE_PATH.parent / "grafana_http_transport.py"
+if str(MODULE_PATH.parent) not in sys.path:
+    sys.path.insert(0, str(MODULE_PATH.parent))
 SPEC = importlib.util.spec_from_file_location("grafana_utils_script", MODULE_PATH)
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError(f"Cannot load module from {MODULE_PATH}")
@@ -32,6 +36,11 @@ class ExporterTests(unittest.TestCase):
         source = MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 6))
+
+    def test_transport_module_parses_as_python36_syntax(self):
+        source = TRANSPORT_MODULE_PATH.read_text(encoding="utf-8")
+
+        ast.parse(source, filename=str(TRANSPORT_MODULE_PATH), feature_version=(3, 6))
 
     def test_parse_args_requires_subcommand(self):
         with self.assertRaises(SystemExit):
@@ -69,6 +78,44 @@ class ExporterTests(unittest.TestCase):
         args = exporter.parse_args(["export", "--verify-ssl"])
 
         self.assertTrue(args.verify_ssl)
+
+    def test_build_json_http_transport_defaults_to_requests(self):
+        transport = exporter.build_json_http_transport(
+            base_url="http://127.0.0.1:3000",
+            headers={},
+            timeout=30,
+            verify_ssl=False,
+        )
+
+        self.assertEqual(type(transport).__name__, "RequestsJsonHttpTransport")
+
+    def test_build_json_http_transport_supports_httpx(self):
+        transport = exporter.build_json_http_transport(
+            base_url="http://127.0.0.1:3000",
+            headers={},
+            timeout=30,
+            verify_ssl=False,
+            transport_name="httpx",
+        )
+
+        self.assertEqual(type(transport).__name__, "HttpxJsonHttpTransport")
+
+    def test_client_accepts_injected_transport(self):
+        class FakeTransport:
+            def request_json(self, path, params=None, method="GET", payload=None):
+                return {"dashboard": {"uid": "abc"}}
+
+        client = exporter.GrafanaClient(
+            base_url="http://127.0.0.1:3000",
+            headers={},
+            timeout=30,
+            verify_ssl=False,
+            transport=FakeTransport(),
+        )
+
+        result = client.fetch_dashboard("abc")
+
+        self.assertEqual(result["dashboard"]["uid"], "abc")
 
     def test_resolve_auth_prefers_token(self):
         args = argparse.Namespace(

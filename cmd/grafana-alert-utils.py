@@ -6,11 +6,17 @@ import base64
 import copy
 import json
 import re
-import ssl
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from urllib import error, parse, request
+from urllib import parse
+
+from grafana_http_transport import (
+    JsonHttpTransport,
+    HttpTransportApiError,
+    HttpTransportError,
+    build_json_http_transport,
+)
 
 
 DEFAULT_URL = "http://127.0.0.1:3000"
@@ -194,12 +200,6 @@ def resolve_auth(args: argparse.Namespace) -> Dict[str, str]:
     )
 
 
-def build_ssl_context(verify_ssl: bool) -> ssl.SSLContext:
-    if verify_ssl:
-        return ssl.create_default_context()
-    return ssl._create_unverified_context()
-
-
 def sanitize_path_component(value: str) -> str:
     normalized = re.sub(r"[^\w.\- ]+", "_", value.strip(), flags=re.UNICODE)
     normalized = re.sub(r"\s+", "_", normalized)
@@ -324,11 +324,14 @@ class GrafanaAlertClient:
         headers: Dict[str, str],
         timeout: int,
         verify_ssl: bool,
+        transport: Optional[JsonHttpTransport] = None,
     ) -> None:
-        self.base_url = base_url.rstrip("/")
-        self.headers = {"Accept": "application/json", **headers}
-        self.timeout = timeout
-        self.ssl_context = build_ssl_context(verify_ssl)
+        self.transport = transport or build_json_http_transport(
+            base_url=base_url,
+            headers={"Accept": "application/json", **headers},
+            timeout=timeout,
+            verify_ssl=verify_ssl,
+        )
 
     def request_json(
         self,
@@ -338,37 +341,17 @@ class GrafanaAlertClient:
         payload: Optional[Dict[str, Any]] = None,
     ) -> Any:
         """Send one request to Grafana and decode the JSON response body."""
-        query = ""
-        if params:
-            query = "?" + parse.urlencode(params)
-        url = f"{self.base_url}{path}{query}"
-        headers = dict(self.headers)
-        data = None
-        if payload is not None:
-            # Provisioning create/update endpoints all consume JSON bodies.
-            data = json.dumps(payload).encode("utf-8")
-            headers["Content-Type"] = "application/json"
-        req = request.Request(url, headers=headers, data=data, method=method)
         try:
-            with request.urlopen(
-                req,
-                timeout=self.timeout,
-                context=self.ssl_context,
-            ) as response:
-                body = response.read().decode("utf-8")
-        except error.HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace")
-            raise GrafanaApiError(exc.code, url, body) from exc
-        except error.URLError as exc:
-            raise GrafanaError(f"Request failed for {url}: {exc.reason}") from exc
-
-        if not body.strip():
-            return None
-
-        try:
-            return json.loads(body)
-        except json.JSONDecodeError as exc:
-            raise GrafanaError(f"Invalid JSON response from {url}") from exc
+            return self.transport.request_json(
+                path=path,
+                params=params,
+                method=method,
+                payload=payload,
+            )
+        except HttpTransportApiError as exc:
+            raise GrafanaApiError(exc.status_code, exc.url, exc.body) from exc
+        except HttpTransportError as exc:
+            raise GrafanaError(str(exc)) from exc
 
     def list_alert_rules(self) -> List[Dict[str, Any]]:
         """List Grafana-managed alert rules."""
