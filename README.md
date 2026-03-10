@@ -6,8 +6,8 @@ This repository is for exporting, backing up, migrating, and re-importing Grafan
 
 It provides two command-line tools:
 
-- `grafana-utils.py`: export and import dashboards
-- `grafana-alert-utils.py`: export and import alerting resources such as alert rules, contact points, mute timings, notification policies, and templates
+- `cmd/grafana-utils.py`: export and import dashboards
+- `cmd/grafana-alert-utils.py`: export and import alerting resources such as alert rules, contact points, mute timings, notification policies, and templates
 
 Use this repo when you need to:
 
@@ -16,12 +16,12 @@ Use this repo when you need to:
 - keep Grafana JSON under version control
 - prepare dashboards either for API re-import or for Grafana web UI import with datasource prompts
 
-Dashboard workflow is handled by `grafana-utils.py`. Use explicit subcommands to avoid mixing export and import:
+Dashboard workflow is handled by `cmd/grafana-utils.py`. Use explicit subcommands to avoid mixing export and import:
 
-- `python3 grafana-utils.py export ...`
-- `python3 grafana-utils.py import ...`
+- `python3 cmd/grafana-utils.py export ...`
+- `python3 cmd/grafana-utils.py import ...`
 
-Alerting workflow is handled separately by `grafana-alert-utils.py` because Grafana alerting uses different APIs and file shapes than dashboards.
+Alerting workflow is handled separately by `cmd/grafana-alert-utils.py` because Grafana alerting uses different APIs and file shapes than dashboards.
 
 Compatibility:
 
@@ -67,7 +67,7 @@ You can suppress one side explicitly:
 Example:
 
 ```bash
-python3 grafana-utils.py export \
+python3 cmd/grafana-utils.py export \
   --url http://127.0.0.1:3000 \
   --export-dir ./dashboards \
   --overwrite
@@ -78,7 +78,7 @@ Use `dashboards/raw/` when you want minimal changes and want to re-import the da
 If you only want the prompt variant:
 
 ```bash
-python3 grafana-utils.py export --export-dir ./dashboards --without-raw
+python3 cmd/grafana-utils.py export --export-dir ./dashboards --without-raw
 ```
 
 ### `prompt/` export
@@ -88,7 +88,7 @@ python3 grafana-utils.py export --export-dir ./dashboards --without-raw
 Example:
 
 ```bash
-python3 grafana-utils.py export \
+python3 cmd/grafana-utils.py export \
   --url http://127.0.0.1:3000 \
   --export-dir ./dashboards \
   --overwrite
@@ -110,7 +110,7 @@ Notes:
 If you only want the raw variant:
 
 ```bash
-python3 grafana-utils.py export --export-dir ./dashboards --without-prompt
+python3 cmd/grafana-utils.py export --export-dir ./dashboards --without-prompt
 ```
 
 ### API import
@@ -120,7 +120,7 @@ python3 grafana-utils.py export --export-dir ./dashboards --without-prompt
 Example:
 
 ```bash
-python3 grafana-utils.py import \
+python3 cmd/grafana-utils.py import \
   --url http://127.0.0.1:3000 \
   --import-dir ./dashboards/raw \
   --replace-existing
@@ -138,7 +138,7 @@ API token:
 
 ```bash
 export GRAFANA_API_TOKEN='your-token'
-python3 grafana-utils.py export --export-dir ./dashboards
+python3 cmd/grafana-utils.py export --export-dir ./dashboards
 ```
 
 Username/password:
@@ -146,7 +146,7 @@ Username/password:
 ```bash
 export GRAFANA_USERNAME='your-user'
 export GRAFANA_PASSWORD='your-pass'
-python3 grafana-utils.py export --export-dir ./dashboards
+python3 cmd/grafana-utils.py export --export-dir ./dashboards
 ```
 
 ## SSL
@@ -156,18 +156,18 @@ SSL verification is disabled by default.
 If you want strict verification:
 
 ```bash
-python3 grafana-utils.py export --verify-ssl
+python3 cmd/grafana-utils.py export --verify-ssl
 ```
 
 ## Import behavior summary
 
 - `dashboards/raw/`: best for preserving the same dashboard `uid` with minimal changes.
 - `dashboards/prompt/`: best for Grafana web import when you want datasource mapping prompts.
-- `python3 grafana-utils.py import --import-dir ./dashboards/raw`: best for API import of normal dashboard JSON.
+- `python3 cmd/grafana-utils.py import --import-dir ./dashboards/raw`: best for API import of normal dashboard JSON.
 
 ## Alerting Utility
 
-`grafana-alert-utils.py` is a separate CLI for Grafana alerting resources. It exists to keep alerting logic out of `grafana-utils.py`.
+`cmd/grafana-alert-utils.py` is a separate CLI for Grafana alerting resources. It exists to keep alerting logic out of `cmd/grafana-utils.py`.
 
 Current scope:
 
@@ -188,7 +188,7 @@ Not in scope:
 Example:
 
 ```bash
-python3 grafana-alert-utils.py \
+python3 cmd/grafana-alert-utils.py \
   --url http://127.0.0.1:3000 \
   --output-dir ./alerts \
   --overwrite
@@ -206,7 +206,7 @@ This writes:
 If you want a flat layout:
 
 ```bash
-python3 grafana-alert-utils.py --output-dir ./alerts --flat
+python3 cmd/grafana-alert-utils.py --output-dir ./alerts --flat
 ```
 
 Common usage examples:
@@ -216,7 +216,7 @@ API token:
 ```bash
 export GRAFANA_API_TOKEN='your-token'
 
-python3 grafana-alert-utils.py \
+python3 cmd/grafana-alert-utils.py \
   --url https://grafana.example.com \
   --output-dir ./alerts \
   --overwrite
@@ -228,7 +228,7 @@ Username/password:
 export GRAFANA_USERNAME='admin'
 export GRAFANA_PASSWORD='secret'
 
-python3 grafana-alert-utils.py \
+python3 cmd/grafana-alert-utils.py \
   --url https://grafana.example.com \
   --output-dir ./alerts \
   --overwrite
@@ -239,7 +239,7 @@ python3 grafana-alert-utils.py \
 Example:
 
 ```bash
-python3 grafana-alert-utils.py \
+python3 cmd/grafana-alert-utils.py \
   --url http://127.0.0.1:3000 \
   --import-dir ./alerts/raw \
   --replace-existing
@@ -248,7 +248,7 @@ python3 grafana-alert-utils.py \
 Import with linked dashboard or panel remapping:
 
 ```bash
-python3 grafana-alert-utils.py \
+python3 cmd/grafana-alert-utils.py \
   --url https://grafana.example.com \
   --import-dir ./alerts/raw \
   --replace-existing \
@@ -281,7 +281,7 @@ Behavior:
 - notification templates are applied with `PUT`; with `--replace-existing` the tool first reads the current template version and sends it back on update
 - without `--replace-existing`, rule/contact-point/mute-timing import uses create and Grafana will reject conflicting identities
 - without `--replace-existing`, template import fails if the template name already exists
-- import expects files exported by `grafana-alert-utils.py`
+- import expects files exported by `cmd/grafana-alert-utils.py`
 - do not point `--import-dir` at the combined `alerts/` root
 - use `--dashboard-uid-map` and `--panel-id-map` when linked alert rules must be remapped during import
 - internal matching and mapping details are documented in `DEVELOPER.md`

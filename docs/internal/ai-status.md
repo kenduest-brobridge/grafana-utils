@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-11 - Task: Move Grafana CLIs Into cmd
+- State: Done
+- Scope: `cmd/grafana-utils.py`, `cmd/grafana-alert-utils.py`, `tests/test_dump_grafana_dashboards.py`, `tests/test_grafana_alert_utils.py`, `tests/__init__.py`, `README.md`, `README.zh-TW.md`, `DEVELOPER.md`, `AGENTS.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Both CLI entrypoints currently live at the repository root as `grafana-utils.py` and `grafana-alert-utils.py`. Unit tests import those scripts by direct filesystem path, and the public and maintainer docs still show root-level invocation examples.
+- Current Update: Moved both CLI entrypoints into `cmd/`, updated the path-sensitive test loaders and CLI help strings, refreshed the English and Traditional Chinese docs plus maintainer guidance to use `python3 cmd/...`, and added `tests/__init__.py` so the documented `python3 -m unittest -v` command discovers the suite.
+- Result: The repository now keeps both CLIs under `cmd/` without changing their behavior, unit tests load the new file locations correctly, and both targeted test runs plus the full unittest command pass from the repo root.
+
 ## 2026-03-10 - Task: Extend Grafana Alerting Resource Coverage
 - State: Done
 - Scope: `grafana-alert-utils.py`, `tests/test_grafana_alert_utils.py`, `README.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

@@ -1,5 +1,14 @@
 # ai-changes.md
 
+## 2026-03-11 - Move Grafana CLIs Into cmd
+- Summary: Moved the dashboard and alerting CLI entrypoints from the repository root into `cmd/`, updated the scripts' embedded help/output strings to reflect the new invocation paths, and refreshed public and maintainer docs to use `python3 cmd/grafana-utils.py ...` and `python3 cmd/grafana-alert-utils.py ...`.
+- Tests: Updated `tests/test_dump_grafana_dashboards.py` and `tests/test_grafana_alert_utils.py` to load the scripts from `cmd/`, and added `tests/__init__.py` so default `unittest` discovery reaches both modules.
+- Test Run: `python3 -m unittest -v tests/test_dump_grafana_dashboards.py` (pass); `python3 -m unittest -v tests/test_grafana_alert_utils.py` (pass); `python3 -m unittest -v` (pass)
+- Validation: Local unit tests passed after the move. `README.md`, `README.zh-TW.md`, `DEVELOPER.md`, and `AGENTS.md` now point at the new `cmd/` entrypoints, and the documented full-suite test command now discovers all tests.
+- Impact: `cmd/grafana-utils.py`, `cmd/grafana-alert-utils.py`, `tests/test_dump_grafana_dashboards.py`, `tests/test_grafana_alert_utils.py`, `tests/__init__.py`, `README.md`, `README.zh-TW.md`, `DEVELOPER.md`, `AGENTS.md`, `docs/internal/ai-status.md`
+- Rollback/Risk: Moderate path-change risk for anyone invoking the old root-level scripts directly. The docs and tests now consistently point at `cmd/`, but external automation will need the same path update.
+- Follow-up: If backward compatibility is required later, add thin root-level wrapper scripts instead of moving the implementation back out of `cmd/`.
+
 ## 2026-03-10 - Extend Grafana Alerting Resource Coverage
 - Summary: Extended `grafana-alert-utils.py` beyond rules, contact points, mute timings, and notification policies by adding notification template export/import support, explicit dashboard UID and panel ID mapping files for linked alert rules, and richer linked-dashboard metadata capture during export. Template import now uses the template name as the stable identity, fetches the current template version before `PUT` updates, and tolerates Grafana returning `null` from the template list endpoint when no templates exist.
 - Tests: Expanded `tests/test_grafana_alert_utils.py` to cover template export documents, template import payload validation, template create/update conflict handling, parser support for the new mapping flags, empty template list handling, and linked alert-rule rewrite behavior when dashboard and panel maps are provided.

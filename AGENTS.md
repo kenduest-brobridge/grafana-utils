@@ -2,20 +2,20 @@
 
 ## Project Structure & Module Organization
 
-- `grafana-utils.py`: dashboard export/import CLI.
-- `grafana-alert-utils.py`: alerting resource export/import CLI.
+- `cmd/grafana-utils.py`: dashboard export/import CLI.
+- `cmd/grafana-alert-utils.py`: alerting resource export/import CLI.
 - `tests/`: unit tests for both entrypoints.
 - `README.md`: GitHub-facing usage and operator examples.
 - `DEVELOPER.md`: maintainer notes, internal behavior, and implementation tradeoffs.
 - `docs/internal/ai-status.md` and `docs/internal/ai-changes.md`: internal change trace files for meaningful feature work.
 
-Keep new code in the existing top-level Python CLIs unless a new workflow clearly deserves its own script.
+Keep new code in the existing `cmd/` Python CLIs unless a new workflow clearly deserves its own script.
 
 ## Build, Test, and Development Commands
 
-- `python3 grafana-utils.py export -h`: show dashboard CLI help.
-- `python3 grafana-utils.py import -h`: show dashboard import help.
-- `python3 grafana-alert-utils.py -h`: show alerting CLI help and examples.
+- `python3 cmd/grafana-utils.py export -h`: show dashboard CLI help.
+- `python3 cmd/grafana-utils.py import -h`: show dashboard import help.
+- `python3 cmd/grafana-alert-utils.py -h`: show alerting CLI help and examples.
 - `python3 -m unittest -v`: run the full test suite.
 - `python3 -m unittest -v tests/test_grafana_alert_utils.py`: run alerting tests only.
 - `python3 -m unittest -v tests/test_dump_grafana_dashboards.py`: run dashboard tests only.

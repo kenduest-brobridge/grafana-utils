@@ -4,8 +4,8 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 
 ## Repository Scope
 
-- `grafana-utils.py`: dashboard export/import utility
-- `grafana-alert-utils.py`: alerting resource export/import utility
+- `cmd/grafana-utils.py`: dashboard export/import utility
+- `cmd/grafana-alert-utils.py`: alerting resource export/import utility
 - `tests/test_dump_grafana_dashboards.py`: dashboard utility unit tests
 - `tests/test_grafana_alert_utils.py`: alerting utility unit tests
 
@@ -21,8 +21,8 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 ### CLI shape
 
 - Mode selection is explicit.
-- Use `python3 grafana-utils.py export ...` for export.
-- Use `python3 grafana-utils.py import ...` for import.
+- Use `python3 cmd/grafana-utils.py export ...` for export.
+- Use `python3 cmd/grafana-utils.py import ...` for import.
 - The export subcommand intentionally uses `--export-dir` instead of `--output-dir` to avoid mixing export terminology with import behavior.
 
 ### Export variants
@@ -40,7 +40,7 @@ The two variants serve different consumers and should not be treated as intercha
 - Preserve `uid`.
 - Clear numeric `id`.
 - Keep datasource references unchanged.
-- Best input for `python3 grafana-utils.py import`.
+- Best input for `python3 cmd/grafana-utils.py import`.
 
 ### Prompt export intent
 
@@ -73,7 +73,7 @@ This is why prompt export needs live datasource metadata while raw export does n
 
 ### Supported resource kinds
 
-`grafana-alert-utils.py` currently supports:
+`cmd/grafana-alert-utils.py` currently supports:
 
 - alert rules
 - contact points
@@ -108,7 +108,7 @@ Template handling notes:
 
 ### Alerting import shape and rejection rules
 
-- Import accepts the tool-owned document format emitted by `grafana-alert-utils.py`
+- Import accepts the tool-owned document format emitted by `cmd/grafana-alert-utils.py`
 - `detect_document_kind(...)` also accepts plain resource-shaped JSON for rules/contact points/mute timings/policies/templates
 - Grafana provisioning `/export` payloads are intentionally rejected for API import
 - Reject the combined `alerts/` export root on import; require callers to point at `alerts/raw/`
@@ -196,10 +196,10 @@ python3 -m unittest -v
 Useful CLI help checks:
 
 ```bash
-python3 grafana-utils.py -h
-python3 grafana-utils.py export -h
-python3 grafana-utils.py import -h
-python3 grafana-alert-utils.py -h
+python3 cmd/grafana-utils.py -h
+python3 cmd/grafana-utils.py export -h
+python3 cmd/grafana-utils.py import -h
+python3 cmd/grafana-alert-utils.py -h
 ```
 
 ## Documentation split

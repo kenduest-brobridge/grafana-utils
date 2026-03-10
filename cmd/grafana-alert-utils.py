@@ -35,13 +35,13 @@ HELP_EPILOG = """Examples:
 
   Export alerting resources with an API token:
     export GRAFANA_API_TOKEN='your-token'
-    python3 grafana-alert-utils.py --url https://grafana.example.com --output-dir ./alerts --overwrite
+    python3 cmd/grafana-alert-utils.py --url https://grafana.example.com --output-dir ./alerts --overwrite
 
   Import back into Grafana and update existing resources:
-    python3 grafana-alert-utils.py --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing
+    python3 cmd/grafana-alert-utils.py --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing
 
   Import linked alert rules with dashboard and panel remapping:
-    python3 grafana-alert-utils.py --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json
+    python3 cmd/grafana-alert-utils.py --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json
 """
 
 RESOURCE_SUBDIR_BY_KIND = {
@@ -838,7 +838,7 @@ def reject_provisioning_export(document: Dict[str, Any]) -> None:
     ):
         raise GrafanaError(
             "Grafana provisioning export format is not supported for API import. "
-            "Use files exported by grafana-alert-utils.py."
+            "Use files exported by cmd/grafana-alert-utils.py."
         )
 
 

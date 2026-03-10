@@ -171,7 +171,7 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--import-message",
-        default="Imported by grafana-utils.py",
+        default="Imported by cmd/grafana-utils.py",
         help="Version history message to attach to imported dashboards.",
     )
 
