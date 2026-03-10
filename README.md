@@ -21,6 +21,13 @@ Dashboard workflow is handled by `grafana-utils.py`. Use explicit subcommands to
 
 Alerting workflow is handled separately by `grafana-alert-utils.py` because Grafana alerting uses different APIs and file shapes than dashboards.
 
+中文說明：
+
+- 這個 repo 用來匯出、備份、搬移、再匯入 Grafana 設定 JSON。
+- `grafana-utils.py` 處理 dashboard 的匯出與匯入。
+- `grafana-alert-utils.py` 處理 alert rule、contact point、mute timing、notification policy、template 等 alerting 資源。
+- 適合用在 Grafana 搬家、備份、版本控管，或將 dashboard JSON 準備成 API 匯入與 Web UI 匯入兩種格式。
+
 Compatibility:
 
 - supported on RHEL 8 and later
