@@ -21,6 +21,8 @@ RULES_SUBDIR = "rules"
 CONTACT_POINTS_SUBDIR = "contact-points"
 MUTE_TIMINGS_SUBDIR = "mute-timings"
 POLICIES_SUBDIR = "policies"
+LINKED_DASHBOARD_ANNOTATION_KEY = "__dashboardUid__"
+LINKED_PANEL_ANNOTATION_KEY = "__panelId__"
 
 RULE_KIND = "grafana-alert-rule"
 CONTACT_POINT_KIND = "grafana-contact-point"
@@ -168,6 +170,18 @@ def sanitize_path_component(value: str) -> str:
     return normalized or "untitled"
 
 
+def derive_dashboard_slug(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    match = re.search(r"/d/[^/]+/([^/?#]+)", text)
+    if match:
+        return match.group(1)
+    if text.startswith("/"):
+        text = text.rstrip("/").split("/")[-1]
+    return text.strip()
+
+
 def write_json(payload: Any, output_path: Path, overwrite: bool) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     if output_path.exists() and not overwrite:
@@ -309,6 +323,21 @@ class GrafanaAlertClient:
             raise GrafanaError("Unexpected alert-rule list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
+    def search_dashboards(self, query: str) -> List[Dict[str, Any]]:
+        data = self.request_json(
+            "/api/search",
+            params={"type": "dash-db", "query": query, "limit": 500},
+        )
+        if not isinstance(data, list):
+            raise GrafanaError("Unexpected dashboard search response from Grafana.")
+        return [item for item in data if isinstance(item, dict)]
+
+    def get_dashboard(self, uid: str) -> Dict[str, Any]:
+        data = self.request_json(f"/api/dashboards/uid/{parse.quote(uid, safe='')}")
+        if not isinstance(data, dict):
+            raise GrafanaError(f"Unexpected dashboard payload for UID {uid}.")
+        return data
+
     def get_alert_rule(self, uid: str) -> Dict[str, Any]:
         data = self.request_json(
             f"/api/v1/provisioning/alert-rules/{parse.quote(uid, safe='')}"
@@ -415,13 +444,166 @@ def strip_server_managed_fields(kind: str, payload: Dict[str, Any]) -> Dict[str,
     return normalized
 
 
-def build_rule_metadata(rule: Dict[str, Any]) -> Dict[str, str]:
-    return {
+def get_rule_linkage(rule: Dict[str, Any]) -> Optional[Dict[str, str]]:
+    annotations = rule.get("annotations")
+    if not isinstance(annotations, dict):
+        return None
+
+    dashboard_uid = str(
+        annotations.get(LINKED_DASHBOARD_ANNOTATION_KEY) or ""
+    ).strip()
+    if not dashboard_uid:
+        return None
+
+    panel_id = annotations.get(LINKED_PANEL_ANNOTATION_KEY)
+    linkage = {"dashboardUid": dashboard_uid}
+    if panel_id is not None:
+        linkage["panelId"] = str(panel_id)
+    return linkage
+
+
+def build_linked_dashboard_metadata(
+    client: GrafanaAlertClient,
+    rule: Dict[str, Any],
+) -> Optional[Dict[str, str]]:
+    linkage = get_rule_linkage(rule)
+    if not linkage:
+        return None
+
+    metadata = dict(linkage)
+    dashboard_uid = linkage["dashboardUid"]
+    try:
+        dashboard_payload = client.get_dashboard(dashboard_uid)
+    except GrafanaApiError as exc:
+        if exc.status_code != 404:
+            raise
+        return metadata
+
+    dashboard = dashboard_payload.get("dashboard")
+    meta = dashboard_payload.get("meta")
+    if isinstance(dashboard, dict):
+        metadata["dashboardTitle"] = str(dashboard.get("title") or "")
+    if isinstance(meta, dict):
+        metadata["folderTitle"] = str(meta.get("folderTitle") or "")
+        metadata["folderUid"] = str(meta.get("folderUid") or "")
+        metadata["dashboardSlug"] = derive_dashboard_slug(
+            meta.get("url") or meta.get("slug") or ""
+        )
+    return metadata
+
+
+def filter_dashboard_search_matches(
+    candidates: List[Dict[str, Any]],
+    linked_dashboard: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    dashboard_title = str(linked_dashboard.get("dashboardTitle") or "")
+    filtered = [
+        item for item in candidates if str(item.get("title") or "") == dashboard_title
+    ]
+
+    folder_title = str(linked_dashboard.get("folderTitle") or "")
+    if folder_title:
+        folder_matches = [
+            item for item in filtered if str(item.get("folderTitle") or "") == folder_title
+        ]
+        if folder_matches:
+            filtered = folder_matches
+
+    slug = derive_dashboard_slug(linked_dashboard.get("dashboardSlug") or "")
+    if slug:
+        slug_matches = [
+            item
+            for item in filtered
+            if derive_dashboard_slug(item.get("url") or item.get("slug") or "") == slug
+        ]
+        if slug_matches:
+            filtered = slug_matches
+
+    return filtered
+
+
+def resolve_dashboard_uid_fallback(
+    client: GrafanaAlertClient,
+    linked_dashboard: Dict[str, Any],
+) -> str:
+    dashboard_title = str(linked_dashboard.get("dashboardTitle") or "").strip()
+    if not dashboard_title:
+        raise GrafanaError(
+            "Alert rule references a dashboard UID that does not exist on the target "
+            "Grafana, and the export file does not include dashboard title metadata "
+            "for fallback matching. Re-export the alert rule with the current tool."
+        )
+
+    candidates = client.search_dashboards(dashboard_title)
+    filtered = filter_dashboard_search_matches(candidates, linked_dashboard)
+    if len(filtered) == 1:
+        resolved_uid = str(filtered[0].get("uid") or "")
+        if resolved_uid:
+            return resolved_uid
+
+    folder_title = str(linked_dashboard.get("folderTitle") or "")
+    slug = derive_dashboard_slug(linked_dashboard.get("dashboardSlug") or "")
+    if not filtered:
+        raise GrafanaError(
+            "Cannot resolve linked dashboard for alert rule. "
+            f"No dashboard matched title={dashboard_title!r}, "
+            f"folderTitle={folder_title!r}, slug={slug!r}."
+        )
+    raise GrafanaError(
+        "Cannot resolve linked dashboard for alert rule. "
+        f"Multiple dashboards matched title={dashboard_title!r}, "
+        f"folderTitle={folder_title!r}, slug={slug!r}."
+    )
+
+
+def rewrite_rule_dashboard_linkage(
+    client: GrafanaAlertClient,
+    payload: Dict[str, Any],
+    document: Dict[str, Any],
+) -> Dict[str, Any]:
+    linkage = get_rule_linkage(payload)
+    if not linkage:
+        return payload
+
+    dashboard_uid = linkage["dashboardUid"]
+    try:
+        client.get_dashboard(dashboard_uid)
+        return payload
+    except GrafanaApiError as exc:
+        if exc.status_code != 404:
+            raise
+
+    metadata = document.get("metadata")
+    linked_dashboard = metadata.get("linkedDashboard") if isinstance(metadata, dict) else None
+    if not isinstance(linked_dashboard, dict):
+        raise GrafanaError(
+            f"Alert rule references dashboard UID {dashboard_uid!r}, but that dashboard "
+            "does not exist on the target Grafana and the export file has no linked "
+            "dashboard metadata for fallback matching."
+        )
+
+    replacement_uid = resolve_dashboard_uid_fallback(client, linked_dashboard)
+    normalized = copy.deepcopy(payload)
+    annotations = normalized.setdefault("annotations", {})
+    if not isinstance(annotations, dict):
+        raise GrafanaError("Alert-rule annotations must be an object.")
+    annotations[LINKED_DASHBOARD_ANNOTATION_KEY] = replacement_uid
+    return normalized
+
+
+def build_rule_metadata(rule: Dict[str, Any]) -> Dict[str, Any]:
+    metadata = {
         "uid": str(rule.get("uid") or ""),
         "title": str(rule.get("title") or ""),
         "folderUID": str(rule.get("folderUID") or ""),
         "ruleGroup": str(rule.get("ruleGroup") or ""),
     }
+    linked_dashboard = rule.get("__linkedDashboardMetadata__")
+    if isinstance(linked_dashboard, dict):
+        metadata["linkedDashboard"] = {
+            key: str(value or "") for key, value in linked_dashboard.items()
+        }
+    return metadata
 
 
 def build_contact_point_metadata(contact_point: Dict[str, Any]) -> Dict[str, str]:
@@ -459,7 +641,14 @@ def build_tool_document(kind: str, spec: Dict[str, Any]) -> Dict[str, Any]:
 def build_rule_export_document(rule: Dict[str, Any]) -> Dict[str, Any]:
     if not isinstance(rule, dict):
         raise GrafanaError("Unexpected alert-rule payload from Grafana.")
-    return build_tool_document(RULE_KIND, strip_server_managed_fields(RULE_KIND, rule))
+    normalized_rule = strip_server_managed_fields(RULE_KIND, rule)
+    linked_dashboard = normalized_rule.pop("__linkedDashboardMetadata__", None)
+    document = build_tool_document(RULE_KIND, normalized_rule)
+    if isinstance(linked_dashboard, dict):
+        document["metadata"]["linkedDashboard"] = {
+            key: str(value or "") for key, value in linked_dashboard.items()
+        }
+    return document
 
 
 def build_contact_point_export_document(contact_point: Dict[str, Any]) -> Dict[str, Any]:
@@ -624,7 +813,11 @@ def export_alerting_resources(args: argparse.Namespace) -> int:
     }
 
     for rule in rules:
-        document = build_rule_export_document(rule)
+        normalized_rule = copy.deepcopy(rule)
+        linked_dashboard = build_linked_dashboard_metadata(client, rule)
+        if linked_dashboard:
+            normalized_rule["__linkedDashboardMetadata__"] = linked_dashboard
+        document = build_rule_export_document(normalized_rule)
         spec = document["spec"]
         output_path = build_rule_output_path(resource_dirs[RULE_KIND], spec, args.flat)
         write_json(document, output_path, args.overwrite)
@@ -725,6 +918,7 @@ def import_alerting_resources(args: argparse.Namespace) -> int:
                 )
 
         if kind == RULE_KIND:
+            payload = rewrite_rule_dashboard_linkage(client, payload, document)
             uid = str(payload.get("uid") or "")
             if args.replace_existing and uid:
                 try:

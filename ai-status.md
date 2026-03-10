@@ -25,8 +25,8 @@
 - State: Done
 - Scope: `grafana-utils.py`, `grafana-alert-utils.py`, `ai-status.md`, `ai-changes.md`
 - Baseline: Both utility scripts use `from __future__ import annotations`, PEP 585 built-in generics like `list[str]`, and PEP 604 unions like `str | None`, which Python 3.6 on RHEL 8 cannot parse.
-- Current Update: Replaced those annotations with `typing` module equivalents such as `List[...]`, `Dict[...]`, `Optional[...]`, and `Tuple[...]`, and removed the unsupported future import so both scripts remain parseable on Python 3.6 without changing behavior.
-- Result: The dashboard and alerting utilities now avoid Python 3.9+/3.10+ annotation syntax and are compatible with RHEL 8's default Python parser.
+- Current Update: Replaced those annotations with `typing` module equivalents such as `List[...]`, `Dict[...]`, `Optional[...]`, and `Tuple[...]`, removed the unsupported future import so both scripts remain parseable on Python 3.6 without changing behavior, added parser-level tests that validate both entrypoints against Python 3.6 grammar, and documented RHEL 8+ support in the README.
+- Result: The dashboard and alerting utilities now avoid Python 3.9+/3.10+ annotation syntax, explicitly document RHEL 8+ support, and have automated syntax checks that keep them compatible with RHEL 8's default Python parser.
 
 ## 2026-03-10 - Task: Add Grafana Alerting Utility
 - State: Done

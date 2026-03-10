@@ -1,4 +1,5 @@
 import argparse
+import ast
 import base64
 import importlib.util
 import tempfile
@@ -41,6 +42,18 @@ def sample_rule(**overrides):
         "provenance": "api",
         "isPaused": False,
     }
+    rule.update(overrides)
+    return rule
+
+
+def sample_linked_rule(**overrides):
+    rule = sample_rule(
+        annotations={
+            "__dashboardUid__": "source-dashboard-uid",
+            "__panelId__": "7",
+            "summary": "Linked to dashboard",
+        }
+    )
     rule.update(overrides)
     return rule
 
@@ -116,6 +129,8 @@ class FakeAlertClient:
         self.created_mute_timings = []
         self.updated_mute_timings = []
         self.updated_policies = []
+        self.dashboard_by_uid = {}
+        self.dashboard_search_results = []
 
     def list_alert_rules(self):
         return [dict(rule) for rule in self.rules]
@@ -164,8 +179,21 @@ class FakeAlertClient:
         self.policies = dict(payload)
         return {"message": "policies updated"}
 
+    def get_dashboard(self, uid):
+        if uid not in self.dashboard_by_uid:
+            raise alert_utils.GrafanaApiError(404, f"https://grafana/d/{uid}", "not found")
+        return dict(self.dashboard_by_uid[uid])
+
+    def search_dashboards(self, query):
+        return [dict(item) for item in self.dashboard_search_results]
+
 
 class AlertUtilsTests(unittest.TestCase):
+    def test_alert_script_parses_as_python36_syntax(self):
+        source = MODULE_PATH.read_text(encoding="utf-8")
+
+        ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 6))
+
     def test_parse_args_supports_import_mode(self):
         args = alert_utils.parse_args(["--import-dir", "alerts/raw"])
 
@@ -305,6 +333,25 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertNotIn("updated", document["spec"])
         self.assertNotIn("provenance", document["spec"])
 
+    def test_build_rule_export_document_keeps_linked_dashboard_metadata(self):
+        rule = sample_linked_rule(
+            __linkedDashboardMetadata__={
+                "dashboardUid": "source-dashboard-uid",
+                "panelId": "7",
+                "dashboardTitle": "Ops Overview",
+                "folderTitle": "Operations",
+                "dashboardSlug": "ops-overview",
+            }
+        )
+
+        document = alert_utils.build_rule_export_document(rule)
+
+        self.assertEqual(
+            document["metadata"]["linkedDashboard"]["dashboardUid"],
+            "source-dashboard-uid",
+        )
+        self.assertEqual(document["metadata"]["linkedDashboard"]["panelId"], "7")
+
     def test_build_contact_point_export_document_strips_server_managed_fields(self):
         document = alert_utils.build_contact_point_export_document(
             sample_contact_point()
@@ -372,6 +419,69 @@ class AlertUtilsTests(unittest.TestCase):
 
         self.assertEqual(kind, alert_utils.RULE_KIND)
         self.assertEqual(payload["uid"], "rule-uid")
+
+    def test_rewrite_rule_dashboard_linkage_uses_fallback_match(self):
+        fake_client = FakeAlertClient()
+        fake_client.dashboard_search_results = [
+            {
+                "uid": "target-dashboard-uid",
+                "title": "Ops Overview",
+                "folderTitle": "Operations",
+                "url": "/d/target-dashboard-uid/ops-overview",
+            }
+        ]
+        payload = alert_utils.build_rule_import_payload(sample_linked_rule())
+        document = {
+            "metadata": {
+                "linkedDashboard": {
+                    "dashboardUid": "source-dashboard-uid",
+                    "panelId": "7",
+                    "dashboardTitle": "Ops Overview",
+                    "folderTitle": "Operations",
+                    "dashboardSlug": "ops-overview",
+                }
+            }
+        }
+
+        rewritten = alert_utils.rewrite_rule_dashboard_linkage(
+            fake_client, payload, document
+        )
+
+        self.assertEqual(
+            rewritten["annotations"]["__dashboardUid__"], "target-dashboard-uid"
+        )
+        self.assertEqual(rewritten["annotations"]["__panelId__"], "7")
+
+    def test_rewrite_rule_dashboard_linkage_fails_without_unique_match(self):
+        fake_client = FakeAlertClient()
+        fake_client.dashboard_search_results = [
+            {
+                "uid": "target-dashboard-uid-a",
+                "title": "Ops Overview",
+                "folderTitle": "Operations",
+                "url": "/d/target-dashboard-uid-a/ops-overview",
+            },
+            {
+                "uid": "target-dashboard-uid-b",
+                "title": "Ops Overview",
+                "folderTitle": "Operations",
+                "url": "/d/target-dashboard-uid-b/ops-overview",
+            },
+        ]
+        payload = alert_utils.build_rule_import_payload(sample_linked_rule())
+        document = {
+            "metadata": {
+                "linkedDashboard": {
+                    "dashboardUid": "source-dashboard-uid",
+                    "panelId": "7",
+                    "dashboardTitle": "Ops Overview",
+                    "folderTitle": "Operations",
+                }
+            }
+        }
+
+        with self.assertRaises(alert_utils.GrafanaError):
+            alert_utils.rewrite_rule_dashboard_linkage(fake_client, payload, document)
 
     def test_build_import_operation_rejects_provisioning_export_format(self):
         with self.assertRaises(alert_utils.GrafanaError):

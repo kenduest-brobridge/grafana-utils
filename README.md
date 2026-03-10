@@ -6,6 +6,11 @@ Use explicit subcommands to avoid mixing the two workflows:
 - `python3 grafana-utils.py export ...`
 - `python3 grafana-utils.py import ...`
 
+Compatibility:
+
+- supported on RHEL 8 and later
+- both Python entrypoints are kept compatible with Python 3.6 syntax so they remain parseable on RHEL 8 environments
+
 The default export root is `dashboards/`. One export run now writes two variants automatically:
 
 - `dashboards/raw/`
@@ -17,6 +22,23 @@ You can suppress one side explicitly:
 - `--without-prompt`
 
 ## Modes
+
+### `export` parameters
+
+| Parameter | Purpose |
+| --- | --- |
+| `--url` | Grafana base URL. Default is `http://127.0.0.1:3000`. |
+| `--api-token` | Use a Grafana API token. Falls back to `GRAFANA_API_TOKEN`. |
+| `--username` | Grafana username. Falls back to `GRAFANA_USERNAME`. |
+| `--password` | Grafana password. Falls back to `GRAFANA_PASSWORD`. |
+| `--timeout` | HTTP timeout in seconds. Default is `30`. |
+| `--verify-ssl` | Enable TLS certificate verification. Disabled by default. |
+| `--export-dir` | Root directory for exported dashboards. Default is `dashboards/`. |
+| `--page-size` | Grafana dashboard search page size. Default is `500`. |
+| `--flat` | Write files directly under the export root instead of folder-based subdirectories. |
+| `--overwrite` | Overwrite existing exported files. |
+| `--without-raw` | Skip the `dashboards/raw/` export variant. |
+| `--without-prompt` | Skip the `dashboards/prompt/` export variant. |
 
 ### `raw/` export
 
@@ -55,7 +77,7 @@ python3 grafana-utils.py export \
   --overwrite
 ```
 
-This prompt variant now follows the working pattern from [`1-prompt.json`](/Users/kendlee/work/scsb/tmp/1-prompt.json):
+This prompt variant follows the expected Grafana web-import prompt shape:
 
 - creates non-empty `__inputs`
 - keeps `__elements`
@@ -204,12 +226,11 @@ Important limitation:
 - Grafana documents that provisioning export format is for file/Terraform provisioning, not direct HTTP API round-trip updates
 - dashboard linkage repair currently rewrites `__dashboardUid__` only; `__panelId__` is preserved as-is
 
-Validation done in this workspace:
+Validation approach:
 
 - unit tests via `python3 -m unittest -v`
-- live Docker round-trip against Grafana `12.4.1`
-- verified export/import of one alert rule, one contact point, one mute timing, and one notification policy tree
-- verified a dashboard-linked alert rule round-trip where the source dashboard UID was deleted, a same-title same-folder replacement dashboard with a new UID was created, and import rewrote the rule's `__dashboardUid__` to the replacement dashboard UID
+- container-based end-to-end validation during development
+- verified export/import of rules, contact points, mute timings, notification policies, and dashboard-linked alert rules
 
 ## Validation
 

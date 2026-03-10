@@ -1,4 +1,5 @@
 import argparse
+import ast
 import base64
 import importlib.util
 import tempfile
@@ -27,6 +28,11 @@ class FakeGrafanaClient(exporter.GrafanaClient):
 
 
 class ExporterTests(unittest.TestCase):
+    def test_dashboard_script_parses_as_python36_syntax(self):
+        source = MODULE_PATH.read_text(encoding="utf-8")
+
+        ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 6))
+
     def test_parse_args_requires_subcommand(self):
         with self.assertRaises(SystemExit):
             exporter.parse_args([])
