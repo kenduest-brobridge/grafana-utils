@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-11 - Task: Add Access Utility User List
+- State: Done
+- Scope: `grafana_utils/access_cli.py`, `tests/test_python_access_cli.py`, `pyproject.toml`, `cmd/grafana-access-utils.py`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The repo currently has dashboard and alerting CLIs only. `TODO.md` defines a future `grafana-access-utils` command shape, but there is no packaged script, wrapper, or public documentation for access-management workflows yet.
+- Current Update: Added `grafana_utils/access_cli.py` with an initial Python access-management surface that now covers `user list` plus `service-account list`, `service-account add`, and `service-account token add`. Packaging wiring, focused unit coverage, and public/maintainer docs now describe the access CLI as Python-only for this first cut. The auth split is explicit: org-scoped user listing may use token or Basic auth, global user listing requires Basic auth, and the service-account commands are org-scoped and may use token or Basic auth.
+- Result: The repo now ships a first Python access-management CLI surface for user listing and service-account creation flows, with focused tests plus a full Python suite pass confirming the new command does not regress the existing dashboard and alerting tools.
+
 ## 2026-03-11 - Task: Remove Python Dependency From Rust Live Smoke Test
 - State: Done
 - Scope: `scripts/test-rust-live-grafana.sh`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

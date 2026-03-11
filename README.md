@@ -4,10 +4,11 @@ Language / 語言: English | [繁體中文 README.zh-TW.md](README.zh-TW.md)
 
 Export, back up, migrate, and re-import Grafana dashboards and alerting resources as JSON.
 
-This repository provides two CLI tools in two implementations:
+This repository provides two primary CLI tools in two implementations, plus an access-management CLI that is starting as a Python-only workflow:
 
 - `grafana-utils`: dashboard export and import
 - `grafana-alert-utils`: alerting resource export and import
+- `grafana-access-utils`: access-management workflow, currently covering `user list` plus initial service-account commands
 - packaged Python implementation under [`grafana_utils/`](grafana_utils/)
 - Rust implementation under [`rust/`](rust/)
 
@@ -30,6 +31,7 @@ Compatibility:
 - [Quick Start](#quick-start)
 - [Dashboard Utility](#dashboard-utility)
 - [Alerting Utility](#alerting-utility)
+- [Access Utility](#access-utility)
 - [Build and Install](#build-and-install)
 - [Authentication and TLS](#authentication-and-tls)
 - [Output Directory Layout](#output-directory-layout)
@@ -45,6 +47,8 @@ The two command names are intentionally separate because dashboards and alerting
 - `grafana-utils import ...`
 - `grafana-utils diff ...`
 - `grafana-alert-utils ...`
+- `grafana-access-utils user list ...`
+- `grafana-access-utils service-account ...`
 
 The most important distinction in this repo is dashboard export format:
 
@@ -57,13 +61,14 @@ Use the path that matches how you want to operate the repo.
 
 | Option | When to use it | Commands |
 | --- | --- | --- |
-| Installed Python package | Best default for normal usage | `grafana-utils ...`, `grafana-alert-utils ...` |
-| Python from git checkout | Best when editing or testing the repo directly | `python3 cmd/grafana-utils.py ...`, `python3 cmd/grafana-alert-utils.py ...` |
+| Installed Python package | Best default for normal usage | `grafana-utils ...`, `grafana-alert-utils ...`, `grafana-access-utils ...` |
+| Python from git checkout | Best when editing or testing the repo directly | `python3 cmd/grafana-utils.py ...`, `python3 cmd/grafana-alert-utils.py ...`, `python3 cmd/grafana-access-utils.py ...` |
 | Rust from git checkout | Best when validating or developing the Rust implementation | `cargo run --bin grafana-utils -- ...`, `cargo run --bin grafana-alert-utils -- ...` |
 
 Notes:
 
 - the Python package is the normal install path from this repository
+- `grafana-access-utils` is currently Python-only; there is no Rust access-management CLI yet
 - the Rust binaries are built from [`rust/`](rust/) and are not installed by `python3 -m pip install .`
 - both implementations use the same command names and the same operator concepts
 
@@ -150,6 +155,59 @@ Alerting diff against the current Grafana state:
 python3 cmd/grafana-alert-utils.py \
   --url http://127.0.0.1:3000 \
   --diff-dir ./alerts/raw
+```
+
+Access-management user listing, org scope with token auth:
+
+```bash
+python3 cmd/grafana-access-utils.py user list \
+  --url http://127.0.0.1:3000 \
+  --scope org \
+  --token "$GRAFANA_API_TOKEN" \
+  --table
+```
+
+Access-management user listing, global scope with Basic auth:
+
+```bash
+python3 cmd/grafana-access-utils.py user list \
+  --url http://127.0.0.1:3000 \
+  --scope global \
+  --basic-user "$GRAFANA_USERNAME" \
+  --basic-password "$GRAFANA_PASSWORD" \
+  --json
+```
+
+Access-management service-account listing, org scope with token auth:
+
+```bash
+python3 cmd/grafana-access-utils.py service-account list \
+  --url http://127.0.0.1:3000 \
+  --token "$GRAFANA_API_TOKEN" \
+  --table
+```
+
+Access-management service-account creation:
+
+```bash
+python3 cmd/grafana-access-utils.py service-account add \
+  --url http://127.0.0.1:3000 \
+  --token "$GRAFANA_API_TOKEN" \
+  --name automation-bot \
+  --role Editor \
+  --json
+```
+
+Access-management service-account token creation:
+
+```bash
+python3 cmd/grafana-access-utils.py service-account token add \
+  --url http://127.0.0.1:3000 \
+  --token "$GRAFANA_API_TOKEN" \
+  --name automation-bot \
+  --token-name automation-bot-short-lived \
+  --seconds-to-live 3600 \
+  --json
 ```
 
 ## Dashboard Utility
@@ -373,6 +431,32 @@ For linked alert rules:
 - use `--dashboard-uid-map` and `--panel-id-map` when dashboard or panel identities changed
 - maintainer details about fallback matching and repair behavior are in [`DEVELOPER.md`](DEVELOPER.md)
 
+## Access Utility
+
+`grafana-access-utils` is the access-management CLI track.
+
+Current implementation scope:
+
+- Python implementation only
+- `user list`
+- `service-account list`
+- `service-account add`
+- `service-account token add`
+- no `user add`, `user modify`, `user delete`, `team`, or `group` commands yet
+
+Initial auth model:
+
+- `user list --scope org` may use token auth or Basic auth
+- `user list --scope global` requires Basic auth because Grafana global user APIs are Basic-auth-first admin workflows
+- service-account commands are org-scoped and may use token auth or Basic auth
+
+Output modes:
+
+- compact text by default
+- `--table`
+- `--csv`
+- `--json`
+
 ## Build and Install
 
 ### Python Package
@@ -461,6 +545,9 @@ Auth note:
 - prefer either token auth or Basic auth for one command, not both
 - the CLIs reject partial Basic auth input such as only `--basic-user` without `--basic-password`
 - `GRAFANA_API_TOKEN`, `GRAFANA_USERNAME`, and `GRAFANA_PASSWORD` still work as environment fallbacks
+- for `grafana-access-utils`, org-scoped `user list` can use token auth or Basic auth
+- for `grafana-access-utils`, global `user list` requires Basic auth
+- for `grafana-access-utils`, service-account commands are org-scoped and can use token auth or Basic auth
 
 API token example:
 
@@ -529,6 +616,11 @@ Common validation commands:
 ```bash
 make test
 python3 -m unittest -v
+python3 cmd/grafana-access-utils.py -h
+python3 cmd/grafana-access-utils.py user list -h
+python3 cmd/grafana-access-utils.py service-account list -h
+python3 cmd/grafana-access-utils.py service-account add -h
+python3 cmd/grafana-access-utils.py service-account token add -h
 cd rust && cargo test
 make test-rust-live
 ```

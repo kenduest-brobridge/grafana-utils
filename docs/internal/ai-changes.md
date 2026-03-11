@@ -1,5 +1,14 @@
 # ai-changes.md
 
+## 2026-03-11 - Add Access Utility User List
+- Summary: Added a new Python `grafana-access-utils` command with an initial access-management surface covering `user list`, `service-account list`, `service-account add`, and `service-account token add`. The first cut introduces `grafana_utils/access_cli.py`, the console-script entrypoint, a thin `cmd/grafana-access-utils.py` wrapper, packaging coverage, dedicated access-CLI unit tests, and public/maintainer docs that scope the feature to Python only for now.
+- Tests: Added `tests/test_python_access_cli.py` for parser coverage, auth validation, filtering, pagination, and rendering behavior, and extended packaging coverage for the new console script.
+- Test Run: `python3 -m unittest -v tests/test_python_access_cli.py tests/test_python_packaging.py` (pass); `python3 -m unittest -v` (pass)
+- Validation: `python3 cmd/grafana-access-utils.py user list -h` now documents org/global scope, auth options, and output modes, and the service-account subcommands are documented alongside it. The implementation enforces the intended auth split: org-scoped user listing may use token or Basic auth, global user listing and `--with-teams` require Basic auth, and the service-account commands are org-scoped and may use token or Basic auth.
+- Impact: `grafana_utils/access_cli.py`, `tests/test_python_access_cli.py`, `pyproject.toml`, `cmd/grafana-access-utils.py`, `tests/test_python_packaging.py`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Moderate scope risk. This is the first access-management surface in the repo and still covers only part of the planned user/team lifecycle; full user add/modify/delete and team/group operations remain future work.
+- Follow-up: Add `team list`, then extend user and service-account operations further once the remaining auth and permission boundaries are encoded explicitly.
+
 ## 2026-03-11 - Remove Python Dependency From Rust Live Smoke Test
 - Summary: Updated the Docker-backed Rust Grafana smoke script so its token bootstrap path parses JSON with `jq` instead of calling `python3`, and replaced the last Perl-based in-place JSON edit with a `jq` temp-file rewrite. The script no longer checks for Python or Perl at startup and now requires `jq` explicitly.
 - Tests: Reused the existing smoke script validation path after the helper change.

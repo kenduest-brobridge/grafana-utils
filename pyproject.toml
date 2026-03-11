@@ -22,6 +22,7 @@ http2 = [
 [project.scripts]
 grafana-utils = "grafana_utils.dashboard_cli:main"
 grafana-alert-utils = "grafana_utils.alert_cli:main"
+grafana-access-utils = "grafana_utils.access_cli:main"
 
 [tool.setuptools]
 include-package-data = false
