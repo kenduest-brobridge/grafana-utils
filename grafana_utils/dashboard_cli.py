@@ -106,19 +106,34 @@ def add_common_cli_args(parser: argparse.ArgumentParser) -> None:
         help=f"Grafana base URL (default: {DEFAULT_URL})",
     )
     parser.add_argument(
+        "--token",
         "--api-token",
+        dest="api_token",
         default=None,
-        help="Grafana API token. Falls back to GRAFANA_API_TOKEN.",
+        help=(
+            "Grafana API token. Preferred flag: --token. "
+            "Falls back to GRAFANA_API_TOKEN."
+        ),
     )
     parser.add_argument(
+        "--basic-user",
         "--username",
+        dest="username",
         default=None,
-        help="Grafana username. Falls back to GRAFANA_USERNAME.",
+        help=(
+            "Grafana Basic auth username. Preferred flag: --basic-user. "
+            "Falls back to GRAFANA_USERNAME."
+        ),
     )
     parser.add_argument(
+        "--basic-password",
         "--password",
+        dest="password",
         default=None,
-        help="Grafana password. Falls back to GRAFANA_PASSWORD.",
+        help=(
+            "Grafana Basic auth password. Preferred flag: --basic-password. "
+            "Falls back to GRAFANA_PASSWORD."
+        ),
     )
     parser.add_argument(
         "--timeout",
@@ -278,21 +293,46 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
 
 def resolve_auth(args: argparse.Namespace) -> Dict[str, str]:
-    token = args.api_token or env_value("GRAFANA_API_TOKEN")
+    cli_token = getattr(args, "api_token", None)
+    cli_username = getattr(args, "username", None)
+    cli_password = getattr(args, "password", None)
+
+    if cli_token and (cli_username or cli_password):
+        raise GrafanaError(
+            "Choose either token auth (--token / --api-token) or Basic auth "
+            "(--basic-user / --username with --basic-password / --password), not both."
+        )
+    if cli_username and not cli_password:
+        raise GrafanaError(
+            "Basic auth requires both --basic-user / --username and "
+            "--basic-password / --password."
+        )
+    if cli_password and not cli_username:
+        raise GrafanaError(
+            "Basic auth requires both --basic-user / --username and "
+            "--basic-password / --password."
+        )
+
+    token = cli_token or env_value("GRAFANA_API_TOKEN")
     if token:
         return {"Authorization": f"Bearer {token}"}
 
-    username = args.username or env_value("GRAFANA_USERNAME")
-    password = args.password or env_value("GRAFANA_PASSWORD")
+    username = cli_username or env_value("GRAFANA_USERNAME")
+    password = cli_password or env_value("GRAFANA_PASSWORD")
     if username and password:
         encoded = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode(
             "ascii"
         )
         return {"Authorization": f"Basic {encoded}"}
+    if username or password:
+        raise GrafanaError(
+            "Basic auth requires both --basic-user / --username and "
+            "--basic-password / --password."
+        )
 
     raise GrafanaError(
-        "Authentication required. Set --api-token / GRAFANA_API_TOKEN or "
-        "--username and --password / GRAFANA_USERNAME and GRAFANA_PASSWORD."
+        "Authentication required. Set --token / --api-token / GRAFANA_API_TOKEN "
+        "or --basic-user and --basic-password / GRAFANA_USERNAME and GRAFANA_PASSWORD."
     )
 
 

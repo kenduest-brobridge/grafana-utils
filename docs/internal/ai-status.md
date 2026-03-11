@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-11 - Task: Add Preferred Auth Flag Aliases
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/alert_cli.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `README.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The Python dashboard and alerting CLIs only advertise `--api-token`, `--username`, and `--password`, even though the auth TODO now prefers `--token`, `--basic-user`, and `--basic-password`. Mixed token and Basic-auth input also resolves implicitly instead of failing early.
+- Current Update: Added preferred CLI aliases for token and Basic auth in both Python CLIs while keeping the legacy flag names accepted, updated help text to advertise the preferred flags, and tightened `resolve_auth` so mixed token plus Basic input and partial Basic-auth input fail with clear operator-facing errors.
+- Result: Operators can now use `--token`, `--basic-user`, and `--basic-password` consistently across both Python CLIs, while older flag names still parse. `python3 -m unittest -v tests/test_python_dashboard_cli.py`, `python3 -m unittest -v tests/test_python_alert_cli.py`, and `python3 -m unittest -v` all pass after the auth validation change.
+
 ## 2026-03-11 - Task: Add Dashboard List Subcommand
 - State: Done
 - Scope: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `README.zh-TW.md`, `DEVELOPER.md`, `AGENTS.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

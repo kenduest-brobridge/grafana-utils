@@ -429,14 +429,20 @@ Notes:
 
 Authentication methods:
 
-- API token
-- username and password
+- API token with `--token` or legacy `--api-token`
+- Basic auth with `--basic-user` and `--basic-password` or legacy `--username` and `--password`
+
+Auth note:
+
+- prefer either token auth or Basic auth for one command, not both
+- the CLIs reject partial Basic auth input such as only `--basic-user` without `--basic-password`
+- `GRAFANA_API_TOKEN`, `GRAFANA_USERNAME`, and `GRAFANA_PASSWORD` still work as environment fallbacks
 
 API token example:
 
 ```bash
 export GRAFANA_API_TOKEN='your-token'
-python3 cmd/grafana-utils.py export --export-dir ./dashboards
+python3 cmd/grafana-utils.py export --token "$GRAFANA_API_TOKEN" --export-dir ./dashboards
 ```
 
 Username/password example:
@@ -444,7 +450,10 @@ Username/password example:
 ```bash
 export GRAFANA_USERNAME='your-user'
 export GRAFANA_PASSWORD='your-pass'
-python3 cmd/grafana-utils.py export --export-dir ./dashboards
+python3 cmd/grafana-utils.py export \
+  --basic-user "$GRAFANA_USERNAME" \
+  --basic-password "$GRAFANA_PASSWORD" \
+  --export-dir ./dashboards
 ```
 
 TLS note:

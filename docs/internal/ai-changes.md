@@ -1,5 +1,14 @@
 # ai-changes.md
 
+## 2026-03-11 - Add Preferred Auth Flag Aliases
+- Summary: Updated both Python CLIs to prefer `--token`, `--basic-user`, and `--basic-password` while still accepting the older `--api-token`, `--username`, and `--password` spellings. The auth resolver now fails early when operators mix token and Basic-auth flags or provide only one side of the Basic-auth pair, instead of silently preferring one mode.
+- Tests: Added parser and auth-validation coverage in both Python CLI suites for the preferred aliases, token-only auth, Basic-auth success, mixed-auth rejection, and partial Basic-auth rejection.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py` (pass); `python3 -m unittest -v tests/test_python_alert_cli.py` (pass); `python3 -m unittest -v` (pass)
+- Validation: README authentication examples now show the preferred flags and explicitly document the env-var fallback plus the rule that one command should use either token auth or Basic auth, not both.
+- Impact: `grafana_utils/dashboard_cli.py`, `grafana_utils/alert_cli.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `README.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate operator-facing risk. Legacy auth flags still work, but commands that previously passed both token and Basic-auth inputs together will now fail fast and must choose one auth mode explicitly.
+- Follow-up: Mirror the preferred auth flag names and validation rules in the Rust CLIs if cross-language parity becomes a requirement.
+
 ## 2026-03-11 - Add Dashboard List Subcommand
 - Summary: Added a new read-only `list` subcommand to both the Python and Rust dashboard CLIs so operators can inspect live dashboard summaries without writing export files. Both implementations now reuse the existing `/api/search` pagination helper and print each summary in compact `uid=<uid> folder=<folder> title=<title>` form, followed by a final count line.
 - Tests: Updated dashboard test coverage in both implementations to cover parser support for the new `list` mode, stable summary-line formatting, and list behavior against mocked `/api/search` results.
