@@ -1,5 +1,14 @@
 # ai-changes.md
 
+## 2026-03-11 - Rename Dashboard Export Variant Flags
+- Summary: Renamed the dashboard export suppression flags in both implementations from `--without-raw` and `--without-prompt` to `--without-dashboard-raw` and `--without-dashboard-prompt`. The Python parser fields and Rust `ExportArgs` fields now use the dashboard-specific names as well, and the error text for disabling both export variants was updated to match.
+- Tests: Updated the dashboard CLI unittest coverage to parse the renamed flags and to keep the invalid "disable both variants" path covered. Existing Rust dashboard tests continued to validate the export flow with the renamed `ExportArgs` fields.
+- Test Run: `python3 -m unittest -v tests/test_dump_grafana_dashboards.py` (pass); `cd rust && /opt/homebrew/bin/cargo test dashboard` (pass); `python3 -m unittest -v` (pass); `cd rust && /opt/homebrew/bin/cargo test` (pass)
+- Validation: README examples and option tables in both English and Traditional Chinese were updated to use the new flag names so the public documentation matches the Python and Rust CLI behavior.
+- Impact: `grafana_utils/dashboard_cli.py`, `rust/src/dashboard.rs`, `tests/test_dump_grafana_dashboards.py`, `README.md`, `README.zh-TW.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low operator-facing rename risk because the change is limited to CLI flag names and matching internal field names. Existing scripts that still pass the old shorter flags will stop parsing until they are updated.
+- Follow-up: None.
+
 ## 2026-03-11 - Port Grafana HTTP and API Flows Into Rust
 - Summary: Added a shared Rust JSON HTTP client in `rust/src/http.rs` and moved the Rust crate beyond helper-only scaffolding. The dashboard Rust path now performs real raw and prompt-style dashboard export/import against Grafana APIs, including datasource placeholder rewriting for prompt exports, and the alerting Rust path now performs real export/import for rules, contact points, mute timings, notification policies, and templates.
 - Tests: Expanded Rust module tests around the live-flow orchestration. The dashboard Rust tests now cover raw export/index writing, prompt-export datasource input generation from direct datasource refs and datasource template variables, dependent templating-variable datasource rewrites, and import request dispatch. The Rust crate test suite continues to cover helper-level alerting document normalization and path handling.

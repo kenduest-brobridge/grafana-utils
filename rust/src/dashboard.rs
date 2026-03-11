@@ -57,9 +57,9 @@ pub struct ExportArgs {
     #[arg(long, default_value_t = false)]
     pub overwrite: bool,
     #[arg(long, default_value_t = false)]
-    pub without_raw: bool,
+    pub without_dashboard_raw: bool,
     #[arg(long, default_value_t = false)]
-    pub without_prompt: bool,
+    pub without_dashboard_prompt: bool,
 }
 
 #[derive(Debug, Clone, Args)]
@@ -1168,20 +1168,20 @@ fn export_dashboards_with_request<F>(mut request_json: F, args: &ExportArgs) -> 
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    if args.without_raw && args.without_prompt {
+    if args.without_dashboard_raw && args.without_dashboard_prompt {
         return Err(message(
-            "Nothing to export. Remove one of --without-raw or --without-prompt.",
+            "Nothing to export. Remove one of --without-dashboard-raw or --without-dashboard-prompt.",
         ));
     }
     fs::create_dir_all(&args.export_dir)?;
     let (raw_dir, prompt_dir) = build_export_variant_dirs(&args.export_dir);
-    if !args.without_raw {
+    if !args.without_dashboard_raw {
         fs::create_dir_all(&raw_dir)?;
     }
-    if !args.without_prompt {
+    if !args.without_dashboard_prompt {
         fs::create_dir_all(&prompt_dir)?;
     }
-    let datasource_catalog = if args.without_prompt {
+    let datasource_catalog = if args.without_dashboard_prompt {
         None
     } else {
         Some(build_datasource_catalog(&list_datasources_with_request(&mut request_json)?))
@@ -1201,7 +1201,7 @@ where
         }
         let payload = fetch_dashboard_with_request(&mut request_json, &uid)?;
         let mut item = build_dashboard_index_item(&summary, &uid);
-        if !args.without_raw {
+        if !args.without_dashboard_raw {
             let raw_document = build_preserved_web_import_document(&payload)?;
             let raw_path = build_output_path(&raw_dir, &summary, args.flat);
             write_dashboard(&raw_document, &raw_path, args.overwrite)?;
@@ -1210,7 +1210,7 @@ where
                 Value::String(raw_path.display().to_string()),
             );
         }
-        if !args.without_prompt {
+        if !args.without_dashboard_prompt {
             let prompt_document = build_external_export_document(
                 &payload,
                 datasource_catalog
@@ -1228,7 +1228,7 @@ where
         index_items.push(item);
     }
 
-    if !args.without_raw {
+    if !args.without_dashboard_raw {
         write_json_document(
             &build_variant_index(
                 &index_items,
@@ -1238,7 +1238,7 @@ where
             &raw_dir.join("index.json"),
         )?;
     }
-    if !args.without_prompt {
+    if !args.without_dashboard_prompt {
         write_json_document(
             &build_variant_index(
                 &index_items,
@@ -1304,9 +1304,9 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
     match args.command {
         DashboardCommand::Export(export_args) => {
             let client = build_http_client(&export_args.common)?;
-            if export_args.without_raw && export_args.without_prompt {
+            if export_args.without_dashboard_raw && export_args.without_dashboard_prompt {
                 return Err(message(
-                    "At least one export variant must stay enabled. Remove --without-raw or --without-prompt.",
+                    "At least one export variant must stay enabled. Remove --without-dashboard-raw or --without-dashboard-prompt.",
                 ));
             }
             let _ = export_dashboards_with_client(&client, &export_args)?;
@@ -1410,8 +1410,8 @@ mod tests {
             page_size: 500,
             flat: false,
             overwrite: true,
-            without_raw: false,
-            without_prompt: true,
+            without_dashboard_raw: false,
+            without_dashboard_prompt: true,
         };
         let mut calls = Vec::new();
         let count = export_dashboards_with_request(
@@ -1544,8 +1544,8 @@ mod tests {
             page_size: 500,
             flat: false,
             overwrite: true,
-            without_raw: false,
-            without_prompt: false,
+            without_dashboard_raw: false,
+            without_dashboard_prompt: false,
         };
 
         let count = export_dashboards_with_request(

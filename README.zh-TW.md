@@ -69,8 +69,8 @@ python3 -m pip install '.[http2]'
 
 如果你想明確關掉其中一種輸出：
 
-- `--without-raw`
-- `--without-prompt`
+- `--without-dashboard-raw`
+- `--without-dashboard-prompt`
 
 ## 模式
 
@@ -88,8 +88,8 @@ python3 -m pip install '.[http2]'
 | `--page-size` | Grafana dashboard search page size。預設為 `500`。 |
 | `--flat` | 直接把檔案寫到匯出根目錄，不使用依 folder 分類的子目錄。 |
 | `--overwrite` | 若匯出檔已存在則覆寫。 |
-| `--without-raw` | 跳過 `dashboards/raw/` 匯出格式。 |
-| `--without-prompt` | 跳過 `dashboards/prompt/` 匯出格式。 |
+| `--without-dashboard-raw` | 跳過 `dashboards/raw/` 匯出格式。 |
+| `--without-dashboard-prompt` | 跳過 `dashboards/prompt/` 匯出格式。 |
 
 ### `raw/` 匯出
 
@@ -112,7 +112,7 @@ python3 cmd/grafana-utils.py export \
 如果你只想要 prompt 格式：
 
 ```bash
-python3 cmd/grafana-utils.py export --export-dir ./dashboards --without-raw
+python3 cmd/grafana-utils.py export --export-dir ./dashboards --without-dashboard-raw
 ```
 
 ### `prompt/` 匯出
@@ -144,7 +144,7 @@ python3 cmd/grafana-utils.py export \
 如果你只想要 raw 格式：
 
 ```bash
-python3 cmd/grafana-utils.py export --export-dir ./dashboards --without-prompt
+python3 cmd/grafana-utils.py export --export-dir ./dashboards --without-dashboard-prompt
 ```
 
 ### API 匯入

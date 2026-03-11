@@ -69,8 +69,8 @@ The default export root is `dashboards/`. One export run now writes two variants
 
 You can suppress one side explicitly:
 
-- `--without-raw`
-- `--without-prompt`
+- `--without-dashboard-raw`
+- `--without-dashboard-prompt`
 
 ## Modes
 
@@ -88,8 +88,8 @@ You can suppress one side explicitly:
 | `--page-size` | Grafana dashboard search page size. Default is `500`. |
 | `--flat` | Write files directly under the export root instead of folder-based subdirectories. |
 | `--overwrite` | Overwrite existing exported files. |
-| `--without-raw` | Skip the `dashboards/raw/` export variant. |
-| `--without-prompt` | Skip the `dashboards/prompt/` export variant. |
+| `--without-dashboard-raw` | Skip the `dashboards/raw/` export variant. |
+| `--without-dashboard-prompt` | Skip the `dashboards/prompt/` export variant. |
 
 ### `raw/` export
 
@@ -112,7 +112,7 @@ Use `dashboards/raw/` when you want minimal changes and want to re-import the da
 If you only want the prompt variant:
 
 ```bash
-python3 cmd/grafana-utils.py export --export-dir ./dashboards --without-raw
+python3 cmd/grafana-utils.py export --export-dir ./dashboards --without-dashboard-raw
 ```
 
 ### `prompt/` export
@@ -144,7 +144,7 @@ Notes:
 If you only want the raw variant:
 
 ```bash
-python3 cmd/grafana-utils.py export --export-dir ./dashboards --without-prompt
+python3 cmd/grafana-utils.py export --export-dir ./dashboards --without-dashboard-prompt
 ```
 
 ### API import

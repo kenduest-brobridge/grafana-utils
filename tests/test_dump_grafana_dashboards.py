@@ -68,10 +68,12 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(args.url, "http://127.0.0.1:3000")
 
     def test_parse_args_supports_variant_switches(self):
-        args = exporter.parse_args(["export", "--without-raw", "--without-prompt"])
+        args = exporter.parse_args(
+            ["export", "--without-dashboard-raw", "--without-dashboard-prompt"]
+        )
 
-        self.assertTrue(args.without_raw)
-        self.assertTrue(args.without_prompt)
+        self.assertTrue(args.without_dashboard_raw)
+        self.assertTrue(args.without_dashboard_prompt)
 
     def test_parse_args_disables_ssl_verification_by_default(self):
         args = exporter.parse_args(["export"])
@@ -221,7 +223,9 @@ class ExporterTests(unittest.TestCase):
                 exporter.discover_dashboard_files(root)
 
     def test_export_dashboards_rejects_disabling_all_variants(self):
-        args = exporter.parse_args(["export", "--without-raw", "--without-prompt"])
+        args = exporter.parse_args(
+            ["export", "--without-dashboard-raw", "--without-dashboard-prompt"]
+        )
 
         with self.assertRaises(exporter.GrafanaError):
             exporter.export_dashboards(args)

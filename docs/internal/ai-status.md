@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-11 - Task: Rename Dashboard Export Variant Flags
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `rust/src/dashboard.rs`, `tests/test_dump_grafana_dashboards.py`, `README.md`, `README.zh-TW.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Both the packaged Python dashboard CLI and the Rust dashboard CLI expose short export-suppression flags, `--without-raw` and `--without-prompt`, with matching internal field names. The current docs and tests also use those shorter names.
+- Current Update: Renamed the public export flags to `--without-dashboard-raw` and `--without-dashboard-prompt` in both implementations, renamed the corresponding Python namespace attributes and Rust struct fields, updated the rejection error text for disabling both variants, and refreshed the dashboard tests plus English and Traditional Chinese README examples.
+- Result: The Python and Rust dashboard CLIs now use the longer dashboard-specific variant flag names consistently, and the focused dashboard unittest suite plus the full Rust and Python test suites pass with the new flag names.
+
 ## 2026-03-11 - Task: Port Grafana HTTP and API Flows Into Rust
 - State: Done
 - Scope: `rust/Cargo.toml`, `rust/Cargo.lock`, `rust/src/lib.rs`, `rust/src/common.rs`, `rust/src/http.rs`, `rust/src/dashboard.rs`, `rust/src/alert.rs`, `rust/src/bin/grafana-utils.rs`, `rust/src/bin/grafana-alert-utils.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

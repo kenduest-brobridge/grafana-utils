@@ -145,12 +145,12 @@ def add_export_cli_args(parser: argparse.ArgumentParser) -> None:
         help="Overwrite existing dashboard files if they already exist.",
     )
     parser.add_argument(
-        "--without-raw",
+        "--without-dashboard-raw",
         action="store_true",
         help=f"Skip exporting the {RAW_EXPORT_SUBDIR}/ variant.",
     )
     parser.add_argument(
-        "--without-prompt",
+        "--without-dashboard-prompt",
         action="store_true",
         help=f"Skip exporting the {PROMPT_EXPORT_SUBDIR}/ variant.",
     )
@@ -1118,15 +1118,17 @@ def build_external_export_document(
 
 def export_dashboards(args: argparse.Namespace) -> int:
     """Export dashboards into raw JSON, prompt JSON, or both variants."""
-    if args.without_raw and args.without_prompt:
-        raise GrafanaError("Nothing to export. Remove one of --without-raw or --without-prompt.")
+    if args.without_dashboard_raw and args.without_dashboard_prompt:
+        raise GrafanaError(
+            "Nothing to export. Remove one of --without-dashboard-raw or --without-dashboard-prompt."
+        )
 
     client = build_client(args)
     output_dir = Path(args.export_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     raw_dir, prompt_dir = build_export_variant_dirs(output_dir)
-    export_raw = not args.without_raw
-    export_prompt = not args.without_prompt
+    export_raw = not args.without_dashboard_raw
+    export_prompt = not args.without_dashboard_prompt
     if export_raw:
         raw_dir.mkdir(parents=True, exist_ok=True)
     if export_prompt:
