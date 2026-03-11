@@ -4,6 +4,7 @@
 import argparse
 import base64
 import copy
+import difflib
 import json
 import re
 import sys
@@ -37,6 +38,8 @@ MUTE_TIMING_KIND = "grafana-mute-timing"
 POLICIES_KIND = "grafana-notification-policies"
 TEMPLATE_KIND = "grafana-notification-template"
 TOOL_API_VERSION = 1
+TOOL_SCHEMA_VERSION = 1
+ROOT_INDEX_KIND = "grafana-utils-alert-export-index"
 HELP_EPILOG = """Examples:
 
   Export alerting resources with an API token:
@@ -114,11 +117,20 @@ def build_parser() -> argparse.ArgumentParser:
             f"under {RAW_EXPORT_SUBDIR}/."
         ),
     )
-    parser.add_argument(
+    mode_group = parser.add_mutually_exclusive_group()
+    mode_group.add_argument(
         "--import-dir",
         default=None,
         help=(
             "Import alerting resource JSON from this directory instead of exporting. "
+            f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly."
+        ),
+    )
+    mode_group.add_argument(
+        "--diff-dir",
+        default=None,
+        help=(
+            "Compare alerting resource JSON from this directory against Grafana. "
             f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly."
         ),
     )
@@ -145,6 +157,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--replace-existing",
         action="store_true",
         help="Update existing resources with the same identity instead of failing on import.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show whether each import file would create or update resources without changing Grafana.",
     )
     parser.add_argument(
         "--dashboard-uid-map",
@@ -230,6 +247,40 @@ def write_json(payload: Any, output_path: Path, overwrite: bool) -> None:
         json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
+
+
+def render_compare_json(payload: Dict[str, Any]) -> str:
+    """Render compare payloads with stable ordering for readable diff output."""
+    return json.dumps(
+        payload,
+        indent=2,
+        sort_keys=True,
+        ensure_ascii=False,
+    ) + "\n"
+
+
+def print_unified_diff(
+    before_payload: Dict[str, Any],
+    after_payload: Dict[str, Any],
+    before_label: str,
+    after_label: str,
+) -> None:
+    """Print a unified diff for two compare payloads."""
+    before_text = render_compare_json(before_payload)
+    after_text = render_compare_json(after_payload)
+    if before_text == after_text:
+        return
+
+    diff_text = "".join(
+        difflib.unified_diff(
+            before_text.splitlines(True),
+            after_text.splitlines(True),
+            fromfile=before_label,
+            tofile=after_label,
+        )
+    )
+    if diff_text:
+        print(diff_text, end="")
 
 
 def load_json_file(path: Path) -> Any:
@@ -817,6 +868,7 @@ def build_tool_document(kind: str, spec: Dict[str, Any]) -> Dict[str, Any]:
     }
     metadata_builder = metadata_builders[kind]
     return {
+        "schemaVersion": TOOL_SCHEMA_VERSION,
         "apiVersion": TOOL_API_VERSION,
         "kind": kind,
         "metadata": metadata_builder(spec),
@@ -907,9 +959,15 @@ def detect_document_kind(document: Dict[str, Any]) -> str:
 
 def extract_tool_spec(document: Dict[str, Any], expected_kind: str) -> Dict[str, Any]:
     if document.get("kind") == expected_kind:
-        if document.get("apiVersion") != TOOL_API_VERSION:
+        api_version = document.get("apiVersion")
+        if api_version not in (None, TOOL_API_VERSION):
             raise GrafanaError(
-                f"Unsupported {expected_kind} export version: {document.get('apiVersion')}"
+                f"Unsupported {expected_kind} export version: {api_version}"
+            )
+        schema_version = document.get("schemaVersion")
+        if schema_version not in (None, TOOL_SCHEMA_VERSION):
+            raise GrafanaError(
+                f"Unsupported {expected_kind} schema version: {schema_version}"
             )
         spec = document.get("spec")
     else:
@@ -1010,9 +1068,226 @@ def build_import_operation(document: Dict[str, Any]) -> Tuple[str, Dict[str, Any
     return kind, builders[kind](document)
 
 
-def build_empty_root_index() -> Dict[str, List[Dict[str, str]]]:
+def prepare_rule_payload_for_target(
+    client: GrafanaAlertClient,
+    payload: Dict[str, Any],
+    document: Dict[str, Any],
+    dashboard_uid_map: Dict[str, str],
+    panel_id_map: Dict[str, Dict[str, str]],
+) -> Dict[str, Any]:
+    """Apply dashboard-link rewrite rules so import and diff use the same payload."""
+    return rewrite_rule_dashboard_linkage(
+        client,
+        payload,
+        document,
+        dashboard_uid_map,
+        panel_id_map,
+    )
+
+
+def prepare_import_payload_for_target(
+    client: GrafanaAlertClient,
+    kind: str,
+    payload: Dict[str, Any],
+    document: Dict[str, Any],
+    dashboard_uid_map: Dict[str, str],
+    panel_id_map: Dict[str, Dict[str, str]],
+) -> Dict[str, Any]:
+    """Normalize one local import payload into the exact target-side import shape."""
+    if kind == RULE_KIND:
+        return prepare_rule_payload_for_target(
+            client,
+            payload,
+            document,
+            dashboard_uid_map,
+            panel_id_map,
+        )
+    return payload
+
+
+def build_compare_document(kind: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Wrap normalized payload data in a stable compare shape."""
+    return {"kind": kind, "spec": payload}
+
+
+def serialize_compare_document(document: Dict[str, Any]) -> str:
+    """Serialize compare data with stable key ordering for diff checks."""
+    return json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def build_resource_identity(kind: str, payload: Dict[str, Any]) -> str:
+    """Return the stable identifier shown in dry-run and diff output."""
+    if kind == RULE_KIND:
+        return str(payload.get("uid") or "unknown")
+    if kind == CONTACT_POINT_KIND:
+        return str(payload.get("uid") or payload.get("name") or "unknown")
+    if kind == MUTE_TIMING_KIND:
+        return str(payload.get("name") or "unknown")
+    if kind == TEMPLATE_KIND:
+        return str(payload.get("name") or "unknown")
+    return str(payload.get("receiver") or "root")
+
+
+def build_diff_label(prefix: str, resource_file: Path, kind: str, identity: str) -> str:
+    """Build a readable diff label that identifies the compared resource."""
+    return f"{prefix}:{resource_file}:{kind}:{identity}"
+
+
+def determine_rule_import_action(
+    client: GrafanaAlertClient,
+    payload: Dict[str, Any],
+    replace_existing: bool,
+) -> str:
+    """Predict whether one alert rule import would create, update, or fail."""
+    uid = str(payload.get("uid") or "")
+    if not uid:
+        return "would-create"
+    try:
+        client.get_alert_rule(uid)
+    except GrafanaApiError as exc:
+        if exc.status_code == 404:
+            return "would-create"
+        raise
+    if replace_existing:
+        return "would-update"
+    return "would-fail-existing"
+
+
+def determine_contact_point_import_action(
+    client: GrafanaAlertClient,
+    payload: Dict[str, Any],
+    replace_existing: bool,
+) -> str:
+    """Predict whether one contact-point import would create, update, or fail."""
+    uid = str(payload.get("uid") or "")
+    existing = {str(item.get("uid") or "") for item in client.list_contact_points()}
+    if uid and uid in existing:
+        if replace_existing:
+            return "would-update"
+        return "would-fail-existing"
+    return "would-create"
+
+
+def determine_mute_timing_import_action(
+    client: GrafanaAlertClient,
+    payload: Dict[str, Any],
+    replace_existing: bool,
+) -> str:
+    """Predict whether one mute-timing import would create, update, or fail."""
+    name = str(payload.get("name") or "")
+    existing = {str(item.get("name") or "") for item in client.list_mute_timings()}
+    if name and name in existing:
+        if replace_existing:
+            return "would-update"
+        return "would-fail-existing"
+    return "would-create"
+
+
+def determine_template_import_action(
+    client: GrafanaAlertClient,
+    payload: Dict[str, Any],
+    replace_existing: bool,
+) -> str:
+    """Predict whether one template import would create, update, or fail."""
+    name = str(payload.get("name") or "")
+    existing = {str(item.get("name") or "") for item in client.list_templates()}
+    if name and name in existing:
+        if replace_existing:
+            return "would-update"
+        return "would-fail-existing"
+    return "would-create"
+
+
+def determine_import_action(
+    client: GrafanaAlertClient,
+    kind: str,
+    payload: Dict[str, Any],
+    replace_existing: bool,
+) -> str:
+    """Dispatch import action prediction to the kind-specific helper."""
+    if kind == RULE_KIND:
+        return determine_rule_import_action(client, payload, replace_existing)
+    if kind == CONTACT_POINT_KIND:
+        return determine_contact_point_import_action(client, payload, replace_existing)
+    if kind == MUTE_TIMING_KIND:
+        return determine_mute_timing_import_action(client, payload, replace_existing)
+    if kind == TEMPLATE_KIND:
+        return determine_template_import_action(client, payload, replace_existing)
+    return "would-update"
+
+
+def fetch_live_compare_document(
+    client: GrafanaAlertClient,
+    kind: str,
+    payload: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """Fetch the live Grafana resource and normalize it for diff comparison."""
+    if kind == RULE_KIND:
+        uid = str(payload.get("uid") or "")
+        if not uid:
+            return None
+        try:
+            remote_payload = client.get_alert_rule(uid)
+        except GrafanaApiError as exc:
+            if exc.status_code == 404:
+                return None
+            raise
+        return build_compare_document(
+            kind,
+            strip_server_managed_fields(kind, remote_payload),
+        )
+
+    if kind == CONTACT_POINT_KIND:
+        uid = str(payload.get("uid") or "")
+        if not uid:
+            return None
+        for item in client.list_contact_points():
+            if str(item.get("uid") or "") == uid:
+                return build_compare_document(
+                    kind,
+                    strip_server_managed_fields(kind, item),
+                )
+        return None
+
+    if kind == MUTE_TIMING_KIND:
+        name = str(payload.get("name") or "")
+        if not name:
+            return None
+        for item in client.list_mute_timings():
+            if str(item.get("name") or "") == name:
+                return build_compare_document(
+                    kind,
+                    strip_server_managed_fields(kind, item),
+                )
+        return None
+
+    if kind == TEMPLATE_KIND:
+        name = str(payload.get("name") or "")
+        if not name:
+            return None
+        try:
+            remote_payload = client.get_template(name)
+        except GrafanaApiError as exc:
+            if exc.status_code == 404:
+                return None
+            raise
+        return build_compare_document(
+            kind,
+            strip_server_managed_fields(kind, remote_payload),
+        )
+
+    return build_compare_document(
+        kind,
+        strip_server_managed_fields(kind, client.get_notification_policies()),
+    )
+
+
+def build_empty_root_index() -> Dict[str, Any]:
     """Create the root export index structure keyed by output subdirectory."""
     return {
+        "schemaVersion": TOOL_SCHEMA_VERSION,
+        "apiVersion": TOOL_API_VERSION,
+        "kind": ROOT_INDEX_KIND,
         RULES_SUBDIR: [],
         CONTACT_POINTS_SUBDIR: [],
         MUTE_TIMINGS_SUBDIR: [],
@@ -1257,19 +1532,9 @@ def count_policy_documents(kind: str, policies_seen: int) -> int:
 def import_rule_document(
     client: GrafanaAlertClient,
     payload: Dict[str, Any],
-    document: Dict[str, Any],
     replace_existing: bool,
-    dashboard_uid_map: Dict[str, str],
-    panel_id_map: Dict[str, Dict[str, str]],
 ) -> Tuple[str, str]:
     """Import one alert rule and return the action plus stable identity."""
-    payload = rewrite_rule_dashboard_linkage(
-        client,
-        payload,
-        document,
-        dashboard_uid_map,
-        panel_id_map,
-    )
     uid = str(payload.get("uid") or "")
     if replace_existing and uid:
         try:
@@ -1371,21 +1636,11 @@ def import_resource_document(
     client: GrafanaAlertClient,
     kind: str,
     payload: Dict[str, Any],
-    document: Dict[str, Any],
     args: argparse.Namespace,
-    dashboard_uid_map: Dict[str, str],
-    panel_id_map: Dict[str, Dict[str, str]],
 ) -> Tuple[str, str]:
     """Dispatch one import document to the correct per-kind import handler."""
     if kind == RULE_KIND:
-        return import_rule_document(
-            client,
-            payload,
-            document,
-            args.replace_existing,
-            dashboard_uid_map,
-            panel_id_map,
-        )
+        return import_rule_document(client, payload, args.replace_existing)
     if kind == CONTACT_POINT_KIND:
         return import_contact_point_document(client, payload, args.replace_existing)
     if kind == MUTE_TIMING_KIND:
@@ -1407,20 +1662,96 @@ def import_alerting_resources(args: argparse.Namespace) -> int:
     for resource_file in resource_files:
         document = load_json_file(resource_file)
         kind, payload = build_import_operation(document)
-        policies_seen = count_policy_documents(kind, policies_seen)
-        action, identity = import_resource_document(
+        payload = prepare_import_payload_for_target(
             client,
             kind,
             payload,
             document,
-            args,
             dashboard_uid_map,
             panel_id_map,
         )
+        policies_seen = count_policy_documents(kind, policies_seen)
+        identity = build_resource_identity(kind, payload)
+        if args.dry_run:
+            action = determine_import_action(
+                client,
+                kind,
+                payload,
+                args.replace_existing,
+            )
+            print(f"Dry-run {resource_file} -> kind={kind} id={identity} action={action}")
+            continue
+
+        action, identity = import_resource_document(client, kind, payload, args)
 
         print(f"Imported {resource_file} -> kind={kind} id={identity} action={action}")
 
-    print(f"Imported {len(resource_files)} alerting resource files from {import_dir}")
+    if args.dry_run:
+        print(f"Dry-run checked {len(resource_files)} alerting resource files from {import_dir}")
+    else:
+        print(f"Imported {len(resource_files)} alerting resource files from {import_dir}")
+    return 0
+
+
+def diff_alerting_resources(args: argparse.Namespace) -> int:
+    """Compare local alerting export files with the current Grafana state."""
+    client = build_client(args)
+    diff_dir = Path(args.diff_dir)
+    resource_files = discover_alert_resource_files(diff_dir)
+    policies_seen = 0
+    dashboard_uid_map = load_string_map(args.dashboard_uid_map, "Dashboard UID map")
+    panel_id_map = load_panel_id_map(args.panel_id_map)
+    differences = 0
+
+    for resource_file in resource_files:
+        document = load_json_file(resource_file)
+        kind, payload = build_import_operation(document)
+        payload = prepare_import_payload_for_target(
+            client,
+            kind,
+            payload,
+            document,
+            dashboard_uid_map,
+            panel_id_map,
+        )
+        policies_seen = count_policy_documents(kind, policies_seen)
+        identity = build_resource_identity(kind, payload)
+        local_compare = build_compare_document(kind, payload)
+        remote_compare = fetch_live_compare_document(client, kind, payload)
+        if remote_compare is None:
+            print(f"Diff missing-remote {resource_file} -> kind={kind} id={identity}")
+            print_unified_diff(
+                {},
+                local_compare,
+                build_diff_label("remote", resource_file, kind, identity),
+                build_diff_label("local", resource_file, kind, identity),
+            )
+            differences += 1
+            continue
+
+        if serialize_compare_document(local_compare) == serialize_compare_document(
+            remote_compare
+        ):
+            print(f"Diff same {resource_file} -> kind={kind} id={identity}")
+            continue
+
+        print(f"Diff different {resource_file} -> kind={kind} id={identity}")
+        print_unified_diff(
+            remote_compare,
+            local_compare,
+            build_diff_label("remote", resource_file, kind, identity),
+            build_diff_label("local", resource_file, kind, identity),
+        )
+        differences += 1
+
+    if differences:
+        print(
+            "Found "
+            f"{differences} alerting differences across {len(resource_files)} files."
+        )
+        return 1
+
+    print(f"No alerting differences across {len(resource_files)} files.")
     return 0
 
 
@@ -1440,6 +1771,8 @@ def main() -> int:
     try:
         if args.import_dir:
             return import_alerting_resources(args)
+        if args.diff_dir:
+            return diff_alerting_resources(args)
         return export_alerting_resources(args)
     except GrafanaError as exc:
         print(f"Error: {exc}", file=sys.stderr)

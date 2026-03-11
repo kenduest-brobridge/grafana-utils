@@ -32,6 +32,7 @@ Keep in mind:
 import argparse
 import base64
 import copy
+import difflib
 import json
 import re
 import sys
@@ -53,6 +54,9 @@ DEFAULT_PAGE_SIZE = 500
 DEFAULT_EXPORT_DIR = "dashboards"
 RAW_EXPORT_SUBDIR = "raw"
 PROMPT_EXPORT_SUBDIR = "prompt"
+EXPORT_METADATA_FILENAME = "export-metadata.json"
+TOOL_SCHEMA_VERSION = 1
+ROOT_INDEX_KIND = "grafana-utils-dashboard-export-index"
 BUILTIN_DATASOURCE_TYPES = {"__expr__", "grafana"}
 BUILTIN_DATASOURCE_NAMES = {
     "-- Dashboard --",
@@ -83,6 +87,16 @@ DATASOURCE_TYPE_ALIASES = {
 
 class GrafanaError(RuntimeError):
     """Raised when Grafana returns an unexpected response."""
+
+
+class GrafanaApiError(GrafanaError):
+    """Raised when Grafana returns an HTTP error response."""
+
+    def __init__(self, status_code: int, url: str, body: str) -> None:
+        self.status_code = status_code
+        self.url = url
+        self.body = body
+        super().__init__(f"Grafana API error {status_code} for {url}: {body}")
 
 
 def add_common_cli_args(parser: argparse.ArgumentParser) -> None:
@@ -154,6 +168,11 @@ def add_export_cli_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help=f"Skip exporting the {PROMPT_EXPORT_SUBDIR}/ variant.",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview the dashboard files and indexes that would be written without changing disk.",
+    )
 
 
 def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
@@ -180,6 +199,33 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
         default="Imported by grafana-utils",
         help="Version history message to attach to imported dashboards.",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show whether each dashboard would be created or updated without importing it.",
+    )
+
+
+def add_diff_cli_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--import-dir",
+        required=True,
+        help=(
+            "Compare dashboards from this directory against Grafana. "
+            f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly."
+        ),
+    )
+    parser.add_argument(
+        "--import-folder-uid",
+        default=None,
+        help="Override the destination Grafana folder UID when building the comparison payload.",
+    )
+    parser.add_argument(
+        "--context-lines",
+        type=int,
+        default=3,
+        help="Number of surrounding lines to include in unified diff output (default: 3).",
+    )
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
@@ -204,6 +250,13 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     )
     add_common_cli_args(import_parser)
     add_import_cli_args(import_parser)
+
+    diff_parser = subparsers.add_parser(
+        "diff",
+        help="Compare exported raw dashboards with the current Grafana state.",
+    )
+    add_common_cli_args(diff_parser)
+    add_diff_cli_args(diff_parser)
 
     return parser.parse_args(argv)
 
@@ -296,9 +349,7 @@ class GrafanaClient:
                 payload=payload,
             )
         except HttpTransportApiError as exc:
-            raise GrafanaError(
-                f"Grafana API error {exc.status_code} for {exc.url}: {exc.body}"
-            ) from exc
+            raise GrafanaApiError(exc.status_code, exc.url, exc.body) from exc
         except HttpTransportError as exc:
             raise GrafanaError(str(exc)) from exc
 
@@ -333,7 +384,26 @@ class GrafanaClient:
 
     def fetch_dashboard(self, uid: str) -> Dict[str, Any]:
         """Fetch the full dashboard wrapper for a single Grafana UID."""
-        data = self.request_json(f"/api/dashboards/uid/{parse.quote(uid, safe='')}")
+        data = self.fetch_dashboard_if_exists(uid)
+        if data is None:
+            raise GrafanaApiError(
+                404,
+                f"/api/dashboards/uid/{parse.quote(uid, safe='')}",
+                "Dashboard not found",
+            )
+        if not isinstance(data, dict) or "dashboard" not in data:
+            raise GrafanaError(f"Unexpected dashboard payload for UID {uid}.")
+        return data
+
+    def fetch_dashboard_if_exists(self, uid: str) -> Optional[Dict[str, Any]]:
+        """Fetch the full dashboard wrapper or return None when the UID is missing."""
+        data = None
+        try:
+            data = self.request_json(f"/api/dashboards/uid/{parse.quote(uid, safe='')}")
+        except GrafanaApiError as exc:
+            if exc.status_code == 404:
+                return None
+            raise
         if not isinstance(data, dict) or "dashboard" not in data:
             raise GrafanaError(f"Unexpected dashboard payload for UID {uid}.")
         return data
@@ -363,19 +433,30 @@ def write_dashboard(
     overwrite: bool,
 ) -> None:
     """Write one dashboard JSON file, creating parent directories as needed."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    if output_path.exists() and not overwrite:
-        raise GrafanaError(
-            f"Refusing to overwrite existing file: {output_path}. Use --overwrite."
-        )
+    ensure_dashboard_write_target(output_path, overwrite)
     output_path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
 
 
+def ensure_dashboard_write_target(
+    output_path: Path,
+    overwrite: bool,
+    create_parents: bool = True,
+) -> None:
+    """Create parent directories when needed and enforce the overwrite policy."""
+    if create_parents:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+    if output_path.exists() and not overwrite:
+        raise GrafanaError(
+            f"Refusing to overwrite existing file: {output_path}. Use --overwrite."
+        )
+
+
 def write_json_document(payload: Any, output_path: Path) -> None:
     """Write a JSON file with the formatting used by this repository."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
@@ -397,7 +478,7 @@ def discover_dashboard_files(import_dir: Path) -> List[Path]:
     files = [
         path
         for path in sorted(import_dir.rglob("*.json"))
-        if path.name != "index.json"
+        if path.name not in {"index.json", EXPORT_METADATA_FILENAME}
     ]
     if not files:
         raise GrafanaError(f"No dashboard JSON files found in {import_dir}")
@@ -1048,6 +1129,196 @@ def build_variant_index(
     ]
 
 
+def build_root_export_index(
+    index_items: List[Dict[str, str]],
+    raw_index_path: Optional[Path],
+    prompt_index_path: Optional[Path],
+) -> Dict[str, Any]:
+    """Build the versioned root manifest for one dashboard export run."""
+    return {
+        "schemaVersion": TOOL_SCHEMA_VERSION,
+        "kind": ROOT_INDEX_KIND,
+        "items": index_items,
+        "variants": {
+            "raw": str(raw_index_path) if raw_index_path is not None else None,
+            "prompt": str(prompt_index_path) if prompt_index_path is not None else None,
+        },
+    }
+
+
+def build_export_metadata(
+    variant: str,
+    dashboard_count: int,
+    format_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Describe one export directory in a small, versioned manifest."""
+    metadata = {
+        "schemaVersion": TOOL_SCHEMA_VERSION,
+        "kind": ROOT_INDEX_KIND,
+        "variant": variant,
+        "dashboardCount": dashboard_count,
+        "indexFile": "index.json",
+    }
+    if format_name:
+        metadata["format"] = format_name
+    return metadata
+
+
+def load_export_metadata(
+    import_dir: Path,
+    expected_variant: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Load the optional export manifest and validate its schema version when present."""
+    metadata_path = import_dir / EXPORT_METADATA_FILENAME
+    if not metadata_path.is_file():
+        return None
+    metadata = load_json_file(metadata_path)
+    validate_export_metadata(
+        metadata,
+        metadata_path=metadata_path,
+        expected_variant=expected_variant,
+    )
+    return metadata
+
+
+def validate_export_metadata(
+    metadata: Dict[str, Any],
+    metadata_path: Path,
+    expected_variant: Optional[str] = None,
+) -> None:
+    """Reject dashboard export manifests this implementation does not understand."""
+    if metadata.get("kind") != ROOT_INDEX_KIND:
+        raise GrafanaError(
+            f"Unexpected dashboard export manifest kind in {metadata_path}: "
+            f"{metadata.get('kind')!r}"
+        )
+
+    schema_version = metadata.get("schemaVersion")
+    if schema_version != TOOL_SCHEMA_VERSION:
+        raise GrafanaError(
+            f"Unsupported dashboard export schemaVersion {schema_version!r} in "
+            f"{metadata_path}. Expected {TOOL_SCHEMA_VERSION}."
+        )
+
+    if expected_variant is None:
+        return
+    variant = metadata.get("variant")
+    if variant != expected_variant:
+        raise GrafanaError(
+            f"Dashboard export manifest {metadata_path} describes variant {variant!r}. "
+            f"Point this command at the {expected_variant}/ directory."
+        )
+
+
+def build_compare_document(
+    dashboard: Dict[str, Any],
+    folder_uid: Optional[str],
+) -> Dict[str, Any]:
+    """Build the normalized comparison shape shared by import dry-run and diff."""
+    compare_document = {"dashboard": copy.deepcopy(dashboard)}
+    if folder_uid:
+        compare_document["folderUid"] = folder_uid
+    return compare_document
+
+
+def build_local_compare_document(
+    document: Dict[str, Any],
+    folder_uid_override: Optional[str],
+) -> Dict[str, Any]:
+    """Normalize one local raw export into the shape compared against Grafana."""
+    payload = build_import_payload(
+        document=document,
+        folder_uid_override=folder_uid_override,
+        replace_existing=False,
+        message="",
+    )
+    return build_compare_document(payload["dashboard"], payload.get("folderUid"))
+
+
+def build_remote_compare_document(
+    payload: Dict[str, Any],
+    folder_uid_override: Optional[str],
+) -> Dict[str, Any]:
+    """Normalize one live dashboard wrapper into the same diff shape as local files."""
+    dashboard = build_preserved_web_import_document(payload)
+    # Raw exports do not persist Grafana's meta.folderUid, so only compare folder
+    # placement when the operator explicitly requests an override.
+    return build_compare_document(dashboard, folder_uid_override)
+
+
+def serialize_compare_document(document: Dict[str, Any]) -> str:
+    """Serialize normalized compare data so nested JSON can be compared stably."""
+    return json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def build_compare_diff_lines(
+    remote_compare: Dict[str, Any],
+    local_compare: Dict[str, Any],
+    uid: str,
+    dashboard_file: Path,
+    context_lines: int,
+) -> List[str]:
+    """Render a unified diff for one dashboard comparison."""
+    remote_lines = json.dumps(
+        remote_compare,
+        indent=2,
+        sort_keys=True,
+        ensure_ascii=False,
+    ).splitlines()
+    local_lines = json.dumps(
+        local_compare,
+        indent=2,
+        sort_keys=True,
+        ensure_ascii=False,
+    ).splitlines()
+    return list(
+        difflib.unified_diff(
+            remote_lines,
+            local_lines,
+            fromfile=f"grafana:{uid}",
+            tofile=str(dashboard_file),
+            lineterm="",
+            n=max(context_lines, 0),
+        )
+    )
+
+
+def resolve_dashboard_uid_for_import(document: Dict[str, Any]) -> str:
+    """Return the stable dashboard UID used by dry-run and diff workflows."""
+    payload = build_import_payload(
+        document=document,
+        folder_uid_override=None,
+        replace_existing=False,
+        message="",
+    )
+    uid = str(payload["dashboard"].get("uid") or "")
+    if not uid:
+        raise GrafanaError("Dashboard import document is missing dashboard.uid.")
+    return uid
+
+
+def determine_dashboard_import_action(
+    client: "GrafanaClient",
+    payload: Dict[str, Any],
+    replace_existing: bool,
+) -> str:
+    """Predict whether one dashboard import would create, update, or fail."""
+    uid = str(payload["dashboard"].get("uid") or "")
+    if not uid:
+        return "would-create"
+
+    try:
+        client.fetch_dashboard(uid)
+    except GrafanaApiError as exc:
+        if exc.status_code == 404:
+            return "would-create"
+        raise
+
+    if replace_existing:
+        return "would-update"
+    return "would-fail-existing"
+
+
 def build_external_export_document(
     payload: Dict[str, Any],
     datasource_catalog: Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]]],
@@ -1125,14 +1396,9 @@ def export_dashboards(args: argparse.Namespace) -> int:
 
     client = build_client(args)
     output_dir = Path(args.export_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
     raw_dir, prompt_dir = build_export_variant_dirs(output_dir)
     export_raw = not args.without_dashboard_raw
     export_prompt = not args.without_dashboard_prompt
-    if export_raw:
-        raw_dir.mkdir(parents=True, exist_ok=True)
-    if export_prompt:
-        prompt_dir.mkdir(parents=True, exist_ok=True)
     datasource_catalog = None
     if export_prompt:
         # Prompt exports need datasource metadata up front so dashboard references
@@ -1152,48 +1418,92 @@ def export_dashboards(args: argparse.Namespace) -> int:
         if export_raw:
             raw_document = build_preserved_web_import_document(payload)
             raw_path = build_output_path(raw_dir, summary, args.flat)
-            write_dashboard(raw_document, raw_path, args.overwrite)
+            if args.dry_run:
+                ensure_dashboard_write_target(
+                    raw_path,
+                    args.overwrite,
+                    create_parents=False,
+                )
+                print(f"Would export raw    {uid} -> {raw_path}")
+            else:
+                write_dashboard(raw_document, raw_path, args.overwrite)
+                print(f"Exported raw    {uid} -> {raw_path}")
             item["raw_path"] = str(raw_path)
-            print(f"Exported raw    {uid} -> {raw_path}")
         if export_prompt:
             assert datasource_catalog is not None
             prompt_document = build_external_export_document(payload, datasource_catalog)
             prompt_path = build_output_path(prompt_dir, summary, args.flat)
-            write_dashboard(prompt_document, prompt_path, args.overwrite)
+            if args.dry_run:
+                ensure_dashboard_write_target(
+                    prompt_path,
+                    args.overwrite,
+                    create_parents=False,
+                )
+                print(f"Would export prompt {uid} -> {prompt_path}")
+            else:
+                write_dashboard(prompt_document, prompt_path, args.overwrite)
+                print(f"Exported prompt {uid} -> {prompt_path}")
             item["prompt_path"] = str(prompt_path)
-            print(f"Exported prompt {uid} -> {prompt_path}")
         index_items.append(item)
 
     raw_index_path = None
+    raw_metadata_path = None
     if export_raw:
         raw_index_path = raw_dir / "index.json"
-        write_json_document(
-            build_variant_index(
-                index_items,
-                "raw_path",
-                "grafana-web-import-preserve-uid",
-            ),
-            raw_index_path,
+        raw_metadata_path = raw_dir / EXPORT_METADATA_FILENAME
+        raw_index = build_variant_index(
+            index_items,
+            "raw_path",
+            "grafana-web-import-preserve-uid",
         )
+        raw_metadata = build_export_metadata(
+            variant=RAW_EXPORT_SUBDIR,
+            dashboard_count=len(raw_index),
+            format_name="grafana-web-import-preserve-uid",
+        )
+        if not args.dry_run:
+            write_json_document(raw_index, raw_index_path)
+            write_json_document(raw_metadata, raw_metadata_path)
     prompt_index_path = None
+    prompt_metadata_path = None
     if export_prompt:
         prompt_index_path = prompt_dir / "index.json"
-        write_json_document(
-            build_variant_index(
-                index_items,
-                "prompt_path",
-                "grafana-web-import-with-datasource-inputs",
-            ),
-            prompt_index_path,
+        prompt_metadata_path = prompt_dir / EXPORT_METADATA_FILENAME
+        prompt_index = build_variant_index(
+            index_items,
+            "prompt_path",
+            "grafana-web-import-with-datasource-inputs",
         )
+        prompt_metadata = build_export_metadata(
+            variant=PROMPT_EXPORT_SUBDIR,
+            dashboard_count=len(prompt_index),
+            format_name="grafana-web-import-with-datasource-inputs",
+        )
+        if not args.dry_run:
+            write_json_document(prompt_index, prompt_index_path)
+            write_json_document(prompt_metadata, prompt_metadata_path)
     index_path = output_dir / "index.json"
-    write_json_document(index_items, index_path)
-    summary_parts = [f"Exported {len(index_items)} dashboards."]
+    root_index = build_root_export_index(index_items, raw_index_path, prompt_index_path)
+    root_metadata_path = output_dir / EXPORT_METADATA_FILENAME
+    root_metadata = build_export_metadata(
+        variant="root",
+        dashboard_count=len(index_items),
+    )
+    if not args.dry_run:
+        write_json_document(root_index, index_path)
+        write_json_document(root_metadata, root_metadata_path)
+    summary_verb = "Would export" if args.dry_run else "Exported"
+    summary_parts = [f"{summary_verb} {len(index_items)} dashboards."]
     if raw_index_path is not None:
         summary_parts.append(f"Raw index: {raw_index_path}")
+    if raw_metadata_path is not None:
+        summary_parts.append(f"Raw manifest: {raw_metadata_path}")
     if prompt_index_path is not None:
         summary_parts.append(f"Prompt index: {prompt_index_path}")
+    if prompt_metadata_path is not None:
+        summary_parts.append(f"Prompt manifest: {prompt_metadata_path}")
     summary_parts.append(f"Root index: {index_path}")
+    summary_parts.append(f"Root manifest: {root_metadata_path}")
     print(" ".join(summary_parts))
     return 0
 
@@ -1202,6 +1512,7 @@ def import_dashboards(args: argparse.Namespace) -> int:
     """Import previously exported raw dashboard JSON files through Grafana's API."""
     client = build_client(args)
     import_dir = Path(args.import_dir)
+    load_export_metadata(import_dir, expected_variant=RAW_EXPORT_SUBDIR)
     dashboard_files = discover_dashboard_files(import_dir)
 
     for dashboard_file in dashboard_files:
@@ -1212,12 +1523,80 @@ def import_dashboards(args: argparse.Namespace) -> int:
             replace_existing=args.replace_existing,
             message=args.import_message,
         )
+        uid = payload["dashboard"].get("uid") or "unknown"
+        if args.dry_run:
+            action = determine_dashboard_import_action(
+                client,
+                payload,
+                args.replace_existing,
+            )
+            print(f"Dry-run {dashboard_file} -> uid={uid} action={action}")
+            continue
+
         result = client.import_dashboard(payload)
         status = result.get("status", "unknown")
-        uid = result.get("uid") or payload["dashboard"].get("uid") or "unknown"
+        uid = result.get("uid") or uid
         print(f"Imported {dashboard_file} -> uid={uid} status={status}")
 
-    print(f"Imported {len(dashboard_files)} dashboard files from {import_dir}")
+    if args.dry_run:
+        print(f"Dry-run checked {len(dashboard_files)} dashboard files from {import_dir}")
+    else:
+        print(f"Imported {len(dashboard_files)} dashboard files from {import_dir}")
+    return 0
+
+
+def diff_dashboards(args: argparse.Namespace) -> int:
+    """Compare local raw dashboard exports with the current Grafana state."""
+    client = build_client(args)
+    import_dir = Path(args.import_dir)
+    load_export_metadata(import_dir, expected_variant=RAW_EXPORT_SUBDIR)
+    dashboard_files = discover_dashboard_files(import_dir)
+    differences = 0
+
+    for dashboard_file in dashboard_files:
+        document = load_json_file(dashboard_file)
+        uid = resolve_dashboard_uid_for_import(document)
+        local_compare = build_local_compare_document(
+            document,
+            args.import_folder_uid,
+        )
+        remote_payload = client.fetch_dashboard_if_exists(uid)
+        if remote_payload is None:
+            print(f"Diff missing-remote {dashboard_file} -> uid={uid}")
+            differences += 1
+            continue
+
+        remote_compare = build_remote_compare_document(
+            remote_payload,
+            args.import_folder_uid,
+        )
+        if serialize_compare_document(local_compare) == serialize_compare_document(
+            remote_compare
+        ):
+            print(f"Diff same {dashboard_file} -> uid={uid}")
+            continue
+
+        print(f"Diff different {dashboard_file} -> uid={uid}")
+        print(
+            "\n".join(
+                build_compare_diff_lines(
+                    remote_compare,
+                    local_compare,
+                    uid,
+                    dashboard_file,
+                    args.context_lines,
+                )
+            )
+        )
+        differences += 1
+
+    if differences:
+        print(
+            f"Found {differences} dashboard differences across {len(dashboard_files)} files."
+        )
+        return 1
+
+    print(f"No dashboard differences across {len(dashboard_files)} files.")
     return 0
 
 
@@ -1237,6 +1616,8 @@ def main() -> int:
     try:
         if args.command == "import":
             return import_dashboards(args)
+        if args.command == "diff":
+            return diff_dashboards(args)
         return export_dashboards(args)
     except GrafanaError as exc:
         print(f"Error: {exc}", file=sys.stderr)

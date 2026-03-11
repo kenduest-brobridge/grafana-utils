@@ -42,6 +42,7 @@
 
 - `grafana-utils export ...`
 - `grafana-utils import ...`
+- `grafana-utils diff ...`
 - `grafana-alert-utils ...`
 
 這個 repo 最重要的差別是 dashboard 匯出格式分成兩種：
@@ -85,6 +86,14 @@ python3 cmd/grafana-utils.py import \
   --replace-existing
 ```
 
+將 dashboard 匯出檔與目前 Grafana 狀態做比對：
+
+```bash
+python3 cmd/grafana-utils.py diff \
+  --url http://127.0.0.1:3000 \
+  --import-dir ./dashboards/raw
+```
+
 Alerting 匯出：
 
 ```bash
@@ -103,12 +112,21 @@ python3 cmd/grafana-alert-utils.py \
   --replace-existing
 ```
 
+將 alerting 匯出檔與目前 Grafana 狀態做比對：
+
+```bash
+python3 cmd/grafana-alert-utils.py \
+  --url http://127.0.0.1:3000 \
+  --diff-dir ./alerts/raw
+```
+
 ## Dashboard 工具
 
 `grafana-utils` 使用明確的子命令：
 
 - `export`
 - `import`
+- `diff`
 
 ### 匯出格式
 
@@ -145,6 +163,7 @@ python3 cmd/grafana-alert-utils.py \
 | `--overwrite` | 覆寫既有匯出檔案 |
 | `--without-dashboard-raw` | 跳過 `raw/` 匯出 |
 | `--without-dashboard-prompt` | 跳過 `prompt/` 匯出 |
+| `--dry-run` | 預覽將會輸出的檔案，不真的寫入磁碟 |
 | `--verify-ssl` | 啟用 TLS 憑證驗證 |
 
 ### Raw 匯出
@@ -207,6 +226,10 @@ python3 cmd/grafana-utils.py import \
 - 含有 `__inputs` 的檔案應該改走 Grafana Web UI 匯入
 - `--import-folder-uid` 可覆寫所有匯入 dashboard 的目標 folder
 - `--import-message` 可設定 dashboard version-history message
+- `--dry-run` 只顯示每個 dashboard 會 create、update 或 fail，不真的呼叫匯入 API
+- `diff` 會把本地 raw 檔與目前 Grafana dashboard payload 做比較；若有差異，exit code 會是 `1`
+
+Dashboard 匯出時也會在根目錄與各 variant 目錄額外寫入 `export-metadata.json`。它描述匯出 schema version，讓 `import` 與 `diff` 可以驗證目錄是否真的是預期的 `raw/` 匯出格式。
 
 ## Alerting 工具
 
@@ -288,6 +311,8 @@ python3 cmd/grafana-alert-utils.py \
 - 未使用 `--replace-existing` 時，若 template 名稱已存在，template 匯入會失敗
 - 匯入只接受由本工具匯出的檔案
 - 不要把 `--import-dir` 指到整個 `alerts/` 根目錄
+- `--dry-run` 會先預測每個檔案是會 create、update，還是因衝突而 fail，但不真的改 Grafana
+- `--diff-dir` 會把本地匯出檔與 Grafana 目前 alerting 資源做比較；若有差異，exit code 會是 `1`
 
 重要限制：
 
@@ -406,10 +431,13 @@ Dashboard 匯出目錄：
 ```text
 dashboards/
   index.json
+  export-metadata.json
   raw/
+    export-metadata.json
     index.json
     ...
   prompt/
+    export-metadata.json
     index.json
     ...
 ```

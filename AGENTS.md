@@ -27,9 +27,11 @@ Keep implementation code in `grafana_utils/` and keep `cmd/` wrappers thin unles
 - `make test`: run both the Python and Rust test suites.
 - `grafana-utils export -h`: show installed dashboard CLI help.
 - `grafana-utils import -h`: show installed dashboard import help.
+- `grafana-utils diff -h`: show dashboard diff help.
 - `grafana-alert-utils -h`: show installed alerting CLI help and examples.
 - `python3 cmd/grafana-utils.py export -h`: show dashboard CLI help.
 - `python3 cmd/grafana-utils.py import -h`: show dashboard import help.
+- `python3 cmd/grafana-utils.py diff -h`: show dashboard diff help.
 - `python3 cmd/grafana-alert-utils.py -h`: show alerting CLI help and examples.
 - `python3 -m unittest -v`: run the full test suite.
 - `python3 -m unittest -v tests/test_python_alert_cli.py`: run alerting Python tests only.

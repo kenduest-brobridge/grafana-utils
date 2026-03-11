@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-11 - Task: Add Versioned Export Schema, Dry-Run, and Diff Workflows
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/alert_cli.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `README.md`, `README.zh-TW.md`, `DEVELOPER.md`, `AGENTS.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The Python CLIs can export and import Grafana dashboards and alerting resources, but there is no versioned export schema marker for dashboards, no dry-run path to preview import behavior safely, and no built-in diff workflow to compare local exports against live Grafana state.
+- Current Update: Added versioned export metadata for dashboard exports and extended alerting tool documents/root indexes with `schemaVersion`, while keeping older alerting `apiVersion`-only tool docs importable. Added non-mutating import `--dry-run` behavior for both CLIs, added dashboard `diff` as an explicit subcommand, and added alerting `--diff-dir` to compare exported files with live Grafana resources. Both diff paths now print unified diffs for changed documents.
+- Result: Operators can validate export shape compatibility, preview create/update behavior safely, and compare local exports against Grafana before applying changes. The focused Python dashboard and alerting suites plus the full Python suite pass with the new workflows.
+
 ## 2026-03-11 - Task: Distinguish Python and Rust Test File Names
 - State: Done
 - Scope: `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `tests/test_python_packaging.py`, `rust/src/common.rs`, `rust/src/http.rs`, `rust/src/alert.rs`, `rust/src/dashboard.rs`, `rust/src/common_rust_tests.rs`, `rust/src/http_rust_tests.rs`, `rust/src/alert_rust_tests.rs`, `rust/src/dashboard_rust_tests.rs`, `DEVELOPER.md`, `AGENTS.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

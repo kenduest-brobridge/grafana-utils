@@ -1,11 +1,15 @@
 import argparse
 import ast
 import base64
+import io
 import importlib
+import json
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = REPO_ROOT / "grafana_utils" / "dashboard_cli.py"
@@ -28,6 +32,32 @@ class FakeGrafanaClient(exporter.GrafanaClient):
             page = params["page"]
             return self.pages.get(page, [])
         raise AssertionError(f"Unexpected path {path}")
+
+
+class FakeDashboardWorkflowClient:
+    def __init__(self, summaries=None, dashboards=None, datasources=None):
+        self.summaries = summaries or []
+        self.dashboards = dashboards or {}
+        self.datasources = datasources or []
+        self.imported_payloads = []
+
+    def iter_dashboard_summaries(self, page_size):
+        return list(self.summaries)
+
+    def fetch_dashboard(self, uid):
+        if uid not in self.dashboards:
+            raise exporter.GrafanaApiError(404, f"/api/dashboards/uid/{uid}", "not found")
+        return self.dashboards[uid]
+
+    def fetch_dashboard_if_exists(self, uid):
+        return self.dashboards.get(uid)
+
+    def list_datasources(self):
+        return list(self.datasources)
+
+    def import_dashboard(self, payload):
+        self.imported_payloads.append(payload)
+        return {"status": "success", "uid": payload["dashboard"].get("uid")}
 
 
 class ExporterTests(unittest.TestCase):
@@ -56,6 +86,13 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(args.import_dir, "dashboards")
         self.assertEqual(args.command, "import")
 
+    def test_parse_args_supports_diff_mode(self):
+        args = exporter.parse_args(["diff", "--import-dir", "dashboards/raw"])
+
+        self.assertEqual(args.import_dir, "dashboards/raw")
+        self.assertEqual(args.command, "diff")
+        self.assertEqual(args.context_lines, 3)
+
     def test_parse_args_defaults_export_dir_to_dashboards(self):
         args = exporter.parse_args(["export"])
 
@@ -74,6 +111,16 @@ class ExporterTests(unittest.TestCase):
 
         self.assertTrue(args.without_dashboard_raw)
         self.assertTrue(args.without_dashboard_prompt)
+
+    def test_parse_args_supports_export_dry_run(self):
+        args = exporter.parse_args(["export", "--dry-run"])
+
+        self.assertTrue(args.dry_run)
+
+    def test_parse_args_supports_import_dry_run(self):
+        args = exporter.parse_args(["import", "--import-dir", "dashboards/raw", "--dry-run"])
+
+        self.assertTrue(args.dry_run)
 
     def test_parse_args_disables_ssl_verification_by_default(self):
         args = exporter.parse_args(["export"])
@@ -213,6 +260,18 @@ class ExporterTests(unittest.TestCase):
 
             self.assertEqual(files, [dashboard_path])
 
+    def test_discover_dashboard_files_ignores_export_metadata(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / exporter.EXPORT_METADATA_FILENAME).write_text("{}", encoding="utf-8")
+            dashboard_path = root / "team" / "dash.json"
+            dashboard_path.parent.mkdir(parents=True, exist_ok=True)
+            dashboard_path.write_text('{"dashboard": {"uid": "x"}}', encoding="utf-8")
+
+            files = exporter.discover_dashboard_files(root)
+
+            self.assertEqual(files, [dashboard_path])
+
     def test_discover_dashboard_files_rejects_combined_export_root(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -229,6 +288,20 @@ class ExporterTests(unittest.TestCase):
 
         with self.assertRaises(exporter.GrafanaError):
             exporter.export_dashboards(args)
+
+    def test_validate_export_metadata_rejects_unsupported_schema_version(self):
+        metadata = exporter.build_export_metadata(
+            variant=exporter.RAW_EXPORT_SUBDIR,
+            dashboard_count=1,
+        )
+        metadata["schemaVersion"] = exporter.TOOL_SCHEMA_VERSION + 1
+
+        with self.assertRaises(exporter.GrafanaError):
+            exporter.validate_export_metadata(
+                metadata,
+                metadata_path=Path("/tmp/export-metadata.json"),
+                expected_variant=exporter.RAW_EXPORT_SUBDIR,
+            )
 
     def test_build_import_payload_uses_export_wrapper_and_override(self):
         payload = exporter.build_import_payload(
@@ -258,6 +331,195 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(payload["dashboard"]["id"], None)
         self.assertEqual(payload["dashboard"]["uid"], "abc")
         self.assertEqual(payload["dashboard"]["title"], "CPU")
+
+    def test_export_dashboards_writes_versioned_manifest_files(self):
+        summary = {"uid": "abc", "title": "CPU", "folderTitle": "Infra"}
+        dashboard = {
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+            "meta": {"folderUid": "infra"},
+        }
+        client = FakeDashboardWorkflowClient(
+            summaries=[summary],
+            dashboards={"abc": dashboard},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args = exporter.parse_args(
+                [
+                    "export",
+                    "--export-dir",
+                    tmpdir,
+                    "--without-dashboard-prompt",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                result = exporter.export_dashboards(args)
+
+            self.assertEqual(result, 0)
+            root_metadata = json.loads(
+                (Path(tmpdir) / exporter.EXPORT_METADATA_FILENAME).read_text(
+                    encoding="utf-8"
+                )
+            )
+            raw_metadata = json.loads(
+                (
+                    Path(tmpdir)
+                    / exporter.RAW_EXPORT_SUBDIR
+                    / exporter.EXPORT_METADATA_FILENAME
+                ).read_text(encoding="utf-8")
+            )
+            self.assertEqual(root_metadata["schemaVersion"], exporter.TOOL_SCHEMA_VERSION)
+            self.assertEqual(root_metadata["variant"], "root")
+            self.assertEqual(raw_metadata["variant"], exporter.RAW_EXPORT_SUBDIR)
+            self.assertEqual(raw_metadata["dashboardCount"], 1)
+
+    def test_export_dashboards_dry_run_keeps_directory_empty(self):
+        summary = {"uid": "abc", "title": "CPU", "folderTitle": "Infra"}
+        dashboard = {
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+            "meta": {"folderUid": "infra"},
+        }
+        client = FakeDashboardWorkflowClient(
+            summaries=[summary],
+            dashboards={"abc": dashboard},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args = exporter.parse_args(
+                [
+                    "export",
+                    "--export-dir",
+                    tmpdir,
+                    "--without-dashboard-prompt",
+                    "--dry-run",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                result = exporter.export_dashboards(args)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(list(Path(tmpdir).rglob("*.json")), [])
+
+    def test_import_dashboards_dry_run_skips_api_write(self):
+        client = FakeDashboardWorkflowClient(
+            dashboards={
+                "abc": {
+                    "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "infra"},
+                }
+            }
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []}},
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                ["import", "--import-dir", str(import_dir), "--dry-run"]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(client.imported_payloads, [])
+
+    def test_import_dashboards_rejects_unsupported_manifest_schema(self):
+        client = FakeDashboardWorkflowClient()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                {
+                    "schemaVersion": exporter.TOOL_SCHEMA_VERSION + 1,
+                    "kind": exporter.ROOT_INDEX_KIND,
+                    "variant": exporter.RAW_EXPORT_SUBDIR,
+                    "dashboardCount": 1,
+                    "indexFile": "index.json",
+                },
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []}},
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(["import", "--import-dir", str(import_dir)])
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                with self.assertRaises(exporter.GrafanaError):
+                    exporter.import_dashboards(args)
+
+    def test_diff_dashboards_returns_zero_when_dashboard_matches(self):
+        remote_payload = {
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+            "meta": {"folderUid": "infra"},
+        }
+        client = FakeDashboardWorkflowClient(dashboards={"abc": remote_payload})
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []}},
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(["diff", "--import-dir", str(import_dir)])
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                result = exporter.diff_dashboards(args)
+
+            self.assertEqual(result, 0)
+
+    def test_diff_dashboards_prints_unified_diff_when_dashboard_changes(self):
+        remote_payload = {
+            "dashboard": {"id": 7, "uid": "abc", "title": "Memory", "panels": []},
+            "meta": {"folderUid": "infra"},
+        }
+        client = FakeDashboardWorkflowClient(dashboards={"abc": remote_payload})
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []}},
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                ["diff", "--import-dir", str(import_dir), "--context-lines", "1"]
+            )
+            stdout = io.StringIO()
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                with redirect_stdout(stdout):
+                    result = exporter.diff_dashboards(args)
+
+            self.assertEqual(result, 1)
+            self.assertIn("--- grafana:abc", stdout.getvalue())
+            self.assertIn("+++ ", stdout.getvalue())
 
     def test_build_preserved_web_import_document_keeps_uid_and_title(self):
         document = exporter.build_preserved_web_import_document(

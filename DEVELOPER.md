@@ -30,6 +30,7 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 - Installed commands are `grafana-utils` and `grafana-alert-utils`.
 - Use `python3 cmd/grafana-utils.py export ...` for export.
 - Use `python3 cmd/grafana-utils.py import ...` for import.
+- Use `python3 cmd/grafana-utils.py diff ...` for live-vs-local comparison.
 - The export subcommand intentionally uses `--export-dir` instead of `--output-dir` to avoid mixing export terminology with import behavior.
 
 ### Packaging layout
@@ -53,6 +54,14 @@ Current export suppression flags:
 - `--without-dashboard-prompt`
 
 The two variants serve different consumers and should not be treated as interchangeable.
+
+Dashboard export also writes versioned `export-metadata.json` files at:
+
+- the combined export root
+- `raw/`
+- `prompt/`
+
+Those manifests use `schemaVersion` and `variant` markers so `import` and `diff` can reject directories that are not the expected raw export layout.
 
 ### Raw export intent
 
@@ -88,6 +97,8 @@ This is why prompt export needs live datasource metadata while raw export does n
 - Files containing `__inputs` should be imported through Grafana web UI.
 - Import can override folder destination with `--import-folder-uid`.
 - Import can set the dashboard version-history message with `--import-message`.
+- Import `--dry-run` predicts `would-create`, `would-update`, or `would-fail-existing` by checking the live Grafana UID first.
+- `diff` compares normalized local raw payloads against live Grafana dashboard wrappers and prints a unified diff when they differ.
 
 ## Alerting Utility
 
@@ -111,6 +122,11 @@ Default layout:
 - `alerts/raw/policies/notification-policies.json`
 - `alerts/raw/templates/<name>/<name>.json`
 
+Alerting export documents and the root `index.json` carry both:
+
+- `apiVersion`: the older tool document version marker kept for compatibility
+- `schemaVersion`: the current export schema marker used by newer import and diff flows
+
 ### Import behavior by resource kind
 
 - rules: create by default, update by `uid` when `--replace-existing` is set
@@ -118,6 +134,8 @@ Default layout:
 - mute timings: create by default, update by `name` when `--replace-existing` is set
 - notification policies: always applied as one policy tree with `PUT`
 - notification templates: applied with `PUT`; when `--replace-existing` is set, fetch the current template version first and send it back with the update payload
+- import `--dry-run` predicts `would-create`, `would-update`, or `would-fail-existing` without mutating Grafana
+- `--diff-dir` compares normalized import payloads with live provisioning resources and prints a unified diff when they differ
 
 Template handling notes:
 
@@ -129,6 +147,7 @@ Template handling notes:
 ### Alerting import shape and rejection rules
 
 - Import accepts the tool-owned document format emitted by `cmd/grafana-alert-utils.py`
+- Import accepts both current tool documents with `schemaVersion` and older tool documents that only carry `apiVersion`
 - `detect_document_kind(...)` also accepts plain resource-shaped JSON for rules/contact points/mute timings/policies/templates
 - Grafana official provisioning `/export` payloads are intentionally rejected for API import
 - Round-trip import is only guaranteed for the tool-owned export format emitted by `cmd/grafana-alert-utils.py`

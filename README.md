@@ -42,6 +42,7 @@ The two command names are intentionally separate because dashboards and alerting
 
 - `grafana-utils export ...`
 - `grafana-utils import ...`
+- `grafana-utils diff ...`
 - `grafana-alert-utils ...`
 
 The most important distinction in this repo is dashboard export format:
@@ -85,6 +86,14 @@ python3 cmd/grafana-utils.py import \
   --replace-existing
 ```
 
+Dashboard diff against the current Grafana state:
+
+```bash
+python3 cmd/grafana-utils.py diff \
+  --url http://127.0.0.1:3000 \
+  --import-dir ./dashboards/raw
+```
+
 Alerting export:
 
 ```bash
@@ -103,12 +112,21 @@ python3 cmd/grafana-alert-utils.py \
   --replace-existing
 ```
 
+Alerting diff against the current Grafana state:
+
+```bash
+python3 cmd/grafana-alert-utils.py \
+  --url http://127.0.0.1:3000 \
+  --diff-dir ./alerts/raw
+```
+
 ## Dashboard Utility
 
 `grafana-utils` has explicit subcommands:
 
 - `export`
 - `import`
+- `diff`
 
 ### Export Variants
 
@@ -145,6 +163,7 @@ Use `prompt/` when you want:
 | `--overwrite` | Replace existing exported files |
 | `--without-dashboard-raw` | Skip the `raw/` export variant |
 | `--without-dashboard-prompt` | Skip the `prompt/` export variant |
+| `--dry-run` | Preview export output without writing files |
 | `--verify-ssl` | Enable TLS certificate verification |
 
 ### Raw Export
@@ -207,6 +226,10 @@ Important rules:
 - files containing `__inputs` should be imported through Grafana web UI
 - `--import-folder-uid` overrides the target folder for all imported dashboards
 - `--import-message` sets the dashboard version-history message
+- `--dry-run` shows whether each dashboard would create or update without calling Grafana import APIs
+- `diff` compares local raw files with the live Grafana dashboard payload and returns exit code `1` when differences are found
+
+Dashboard export also writes small versioned manifest files named `export-metadata.json` at the root and per-variant directories. They describe the export schema version and help `import` and `diff` validate that a directory really contains the expected `raw/` format.
 
 ## Alerting Utility
 
@@ -259,6 +282,16 @@ python3 cmd/grafana-alert-utils.py \
   --panel-id-map ./panel-map.json
 ```
 
+Alerting diff:
+
+```bash
+python3 cmd/grafana-alert-utils.py \
+  --url https://grafana.example.com \
+  --diff-dir ./alerts/raw \
+  --dashboard-uid-map ./dashboard-map.json \
+  --panel-id-map ./panel-map.json
+```
+
 Example `dashboard-map.json`:
 
 ```json
@@ -288,6 +321,8 @@ Example `panel-map.json`:
 - without `--replace-existing`, template import fails if the template name already exists
 - import expects files exported by this tool
 - do not point `--import-dir` at the combined `alerts/` root
+- `--dry-run` predicts whether each file would create, update, or fail without changing Grafana
+- `--diff-dir` compares local exported files with live alerting resources and returns exit code `1` when differences are found
 
 Important limitation:
 
@@ -406,10 +441,13 @@ Dashboard export layout:
 ```text
 dashboards/
   index.json
+  export-metadata.json
   raw/
+    export-metadata.json
     index.json
     ...
   prompt/
+    export-metadata.json
     index.json
     ...
 ```

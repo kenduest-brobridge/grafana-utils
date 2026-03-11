@@ -1,5 +1,14 @@
 # ai-changes.md
 
+## 2026-03-11 - Add Versioned Export Schema, Dry-Run, and Diff Workflows
+- Summary: Extended the Python dashboard and alerting CLIs so they can validate export schema versioning, preview import behavior safely, and compare local exports against live Grafana state before writing changes. Dashboard exports now write `export-metadata.json` manifests for the root and variant directories, the dashboard CLI now exposes `diff` as a first-class subcommand, and both Python CLIs now support non-mutating import `--dry-run`. The alerting tool-owned format now carries `schemaVersion` alongside the older `apiVersion`, import still accepts legacy tool documents without `schemaVersion`, and alerting diff now prints unified diffs for changed resources.
+- Tests: Expanded Python CLI coverage around parser support for new dry-run and diff flags, schema-version validation, export manifest/index markers, dry-run non-mutation behavior, and unified diff output for changed dashboard and alert-rule payloads.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py` (pass); `python3 -m unittest -v tests/test_python_alert_cli.py` (pass); `python3 -m unittest -v` (pass)
+- Validation: README, Traditional Chinese README, maintainer notes, and repo instructions were updated so operators can discover the new `diff` / `--diff-dir` workflows, understand the role of `export-metadata.json`, and know that nonzero exit status now signals drift when diff finds differences.
+- Impact: `grafana_utils/dashboard_cli.py`, `grafana_utils/alert_cli.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `README.md`, `README.zh-TW.md`, `DEVELOPER.md`, `AGENTS.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Moderate operator-facing risk because the new checks intentionally reject unsupported export schema versions and diff returns exit code `1` when drift exists. Existing legacy alerting exports remain importable, which reduces migration risk.
+- Follow-up: Port the same schema-version, dry-run, and diff operator workflows into the Rust CLIs so the two implementations stay aligned.
+
 ## 2026-03-11 - Distinguish Python and Rust Test File Names
 - Summary: Renamed the Python test modules so their filenames explicitly carry the implementation marker, and moved the Rust unit tests into dedicated `*_rust_tests.rs` files instead of keeping them inline inside production modules. The Python test files are now `test_python_dashboard_cli.py`, `test_python_alert_cli.py`, and `test_python_packaging.py`.
 - Tests: No new behavior tests were added. Validation focused on test discovery and compile-time wiring after the file moves.

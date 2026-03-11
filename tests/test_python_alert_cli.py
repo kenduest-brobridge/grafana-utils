@@ -1,10 +1,12 @@
 import argparse
 import ast
 import base64
+import io
 import importlib
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -239,6 +241,16 @@ class AlertUtilsTests(unittest.TestCase):
 
         self.assertEqual(args.import_dir, "alerts/raw")
 
+    def test_parse_args_supports_diff_mode(self):
+        args = alert_utils.parse_args(["--diff-dir", "alerts/raw"])
+
+        self.assertEqual(args.diff_dir, "alerts/raw")
+
+    def test_parse_args_supports_dry_run(self):
+        args = alert_utils.parse_args(["--import-dir", "alerts/raw", "--dry-run"])
+
+        self.assertTrue(args.dry_run)
+
     def test_parse_args_accepts_mapping_files(self):
         args = alert_utils.parse_args(
             [
@@ -438,6 +450,7 @@ class AlertUtilsTests(unittest.TestCase):
 
         self.assertEqual(document["kind"], alert_utils.RULE_KIND)
         self.assertEqual(document["apiVersion"], alert_utils.TOOL_API_VERSION)
+        self.assertEqual(document["schemaVersion"], alert_utils.TOOL_SCHEMA_VERSION)
         self.assertEqual(document["metadata"]["uid"], "rule-uid")
         self.assertNotIn("id", document["spec"])
         self.assertNotIn("updated", document["spec"])
@@ -502,6 +515,22 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(payload["uid"], "rule-uid")
         self.assertEqual(payload["folderUID"], "infra-folder")
         self.assertNotIn("id", payload)
+
+    def test_build_import_operation_accepts_legacy_tool_document_without_schema_version(self):
+        document = alert_utils.build_rule_export_document(sample_rule())
+        document.pop("schemaVersion")
+
+        kind, payload = alert_utils.build_import_operation(document)
+
+        self.assertEqual(kind, alert_utils.RULE_KIND)
+        self.assertEqual(payload["uid"], "rule-uid")
+
+    def test_build_import_operation_rejects_unsupported_schema_version(self):
+        document = alert_utils.build_rule_export_document(sample_rule())
+        document["schemaVersion"] = alert_utils.TOOL_SCHEMA_VERSION + 1
+
+        with self.assertRaises(alert_utils.GrafanaError):
+            alert_utils.build_import_operation(document)
 
     def test_build_import_operation_accepts_contact_point_tool_document(self):
         document = alert_utils.build_contact_point_export_document(
@@ -699,11 +728,84 @@ class AlertUtilsTests(unittest.TestCase):
                 (raw_dir / "templates" / "codex.message" / "codex.message.json").exists()
             )
             root_index = alert_utils.load_json_file(Path(tmpdir) / "index.json")
+            self.assertEqual(root_index["schemaVersion"], alert_utils.TOOL_SCHEMA_VERSION)
+            self.assertEqual(root_index["kind"], alert_utils.ROOT_INDEX_KIND)
             self.assertEqual(len(root_index["rules"]), 1)
             self.assertEqual(len(root_index["contact-points"]), 1)
             self.assertEqual(len(root_index["mute-timings"]), 1)
             self.assertEqual(len(root_index["policies"]), 1)
             self.assertEqual(len(root_index["templates"]), 1)
+
+    def test_import_alerting_resources_dry_run_skips_api_write(self):
+        args = alert_utils.parse_args(
+            ["--import-dir", "unused", "--replace-existing", "--dry-run"]
+        )
+        fake_client = FakeAlertClient(existing_rules={"rule-uid": sample_rule()})
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args.import_dir = tmpdir
+            rule_path = Path(tmpdir) / "rule.json"
+            alert_utils.write_json(
+                alert_utils.build_rule_export_document(sample_rule()),
+                rule_path,
+                overwrite=True,
+            )
+            stdout = io.StringIO()
+            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+                with redirect_stdout(stdout):
+                    result = alert_utils.import_alerting_resources(args)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(fake_client.created_rules, [])
+            self.assertEqual(fake_client.updated_rules, [])
+            self.assertIn("would-update", stdout.getvalue())
+
+    def test_diff_alerting_resources_returns_zero_when_rule_matches(self):
+        args = alert_utils.parse_args(["--diff-dir", "unused"])
+        fake_client = FakeAlertClient(existing_rules={"rule-uid": sample_rule()})
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args.diff_dir = tmpdir
+            rule_path = Path(tmpdir) / "rule.json"
+            alert_utils.write_json(
+                alert_utils.build_rule_export_document(sample_rule()),
+                rule_path,
+                overwrite=True,
+            )
+            stdout = io.StringIO()
+            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+                with redirect_stdout(stdout):
+                    result = alert_utils.diff_alerting_resources(args)
+
+            self.assertEqual(result, 0)
+            self.assertIn("Diff same", stdout.getvalue())
+
+    def test_diff_alerting_resources_returns_one_when_rule_differs(self):
+        args = alert_utils.parse_args(["--diff-dir", "unused"])
+        fake_client = FakeAlertClient(
+            existing_rules={"rule-uid": sample_rule(title="CPU Critical")}
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args.diff_dir = tmpdir
+            rule_path = Path(tmpdir) / "rule.json"
+            alert_utils.write_json(
+                alert_utils.build_rule_export_document(sample_rule()),
+                rule_path,
+                overwrite=True,
+            )
+            stdout = io.StringIO()
+            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+                with redirect_stdout(stdout):
+                    result = alert_utils.diff_alerting_resources(args)
+
+            self.assertEqual(result, 1)
+            output = stdout.getvalue()
+            self.assertIn("Diff different", output)
+            self.assertIn("--- remote:", output)
+            self.assertIn("+++ local:", output)
+            self.assertIn('"title": "CPU Critical"', output)
+            self.assertIn('"title": "CPU High"', output)
 
     def test_import_alerting_resources_updates_existing_rule_when_requested(self):
         args = alert_utils.parse_args(["--import-dir", "unused", "--replace-existing"])
