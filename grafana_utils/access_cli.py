@@ -370,7 +370,26 @@ def add_service_account_token_add_cli_args(parser: argparse.ArgumentParser) -> N
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
-    return build_parser().parse_args(argv)
+    parser = build_parser()
+    argv = list(sys.argv[1:] if argv is None else argv)
+
+    if not argv:
+        parser.print_help()
+        raise SystemExit(0)
+
+    if argv == ["user"]:
+        parser._subparsers._group_actions[0].choices["user"].print_help()
+        raise SystemExit(0)
+
+    if argv == ["service-account"]:
+        parser._subparsers._group_actions[0].choices["service-account"].print_help()
+        raise SystemExit(0)
+
+    if argv == ["service-account", "token"]:
+        parser._subparsers._group_actions[0].choices["service-account"]._subparsers._group_actions[0].choices["token"].print_help()
+        raise SystemExit(0)
+
+    return parser.parse_args(argv)
 
 
 def env_value(name: str) -> Optional[str]:

@@ -85,6 +85,33 @@ class AccessCliTests(unittest.TestCase):
         source = WRAPPER_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(WRAPPER_PATH), feature_version=(3, 6))
 
+    def test_parse_args_without_command_prints_top_level_help(self):
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            with self.assertRaises(SystemExit) as exc:
+                access_utils.parse_args([])
+
+        self.assertEqual(exc.exception.code, 0)
+        self.assertIn("{user,service-account}", stdout.getvalue())
+
+    def test_parse_args_user_without_subcommand_prints_user_help(self):
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            with self.assertRaises(SystemExit) as exc:
+                access_utils.parse_args(["user"])
+
+        self.assertEqual(exc.exception.code, 0)
+        self.assertIn("list", stdout.getvalue())
+
+    def test_parse_args_service_account_token_without_subcommand_prints_token_help(self):
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            with self.assertRaises(SystemExit) as exc:
+                access_utils.parse_args(["service-account", "token"])
+
+        self.assertEqual(exc.exception.code, 0)
+        self.assertIn("add", stdout.getvalue())
+
     def test_parse_args_supports_user_list_mode(self):
         args = access_utils.parse_args(
             [
