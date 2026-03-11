@@ -32,6 +32,7 @@ Keep in mind:
 import argparse
 import base64
 import copy
+import csv
 import difflib
 import json
 import re
@@ -196,6 +197,22 @@ def add_list_cli_args(parser: argparse.ArgumentParser) -> None:
         type=int,
         default=DEFAULT_PAGE_SIZE,
         help=f"Dashboard search page size (default: {DEFAULT_PAGE_SIZE}).",
+    )
+    output_group = parser.add_mutually_exclusive_group()
+    output_group.add_argument(
+        "--table",
+        action="store_true",
+        help="Render dashboard summaries as a table.",
+    )
+    output_group.add_argument(
+        "--csv",
+        action="store_true",
+        help="Render dashboard summaries as CSV.",
+    )
+    output_group.add_argument(
+        "--json",
+        action="store_true",
+        help="Render dashboard summaries as JSON.",
     )
 
 
@@ -437,6 +454,18 @@ class GrafanaClient:
             page += 1
 
         return dashboards
+
+    def fetch_folder_if_exists(self, uid: str) -> Optional[Dict[str, Any]]:
+        """Fetch one folder payload or return None when the folder UID is missing."""
+        try:
+            data = self.request_json(f"/api/folders/{parse.quote(uid, safe='')}")
+        except GrafanaApiError as exc:
+            if exc.status_code == 404:
+                return None
+            raise
+        if not isinstance(data, dict):
+            raise GrafanaError(f"Unexpected folder payload for UID {uid}.")
+        return data
 
     def fetch_dashboard(self, uid: str) -> Dict[str, Any]:
         """Fetch the full dashboard wrapper for a single Grafana UID."""
@@ -1566,18 +1595,132 @@ def export_dashboards(args: argparse.Namespace) -> int:
 
 def format_dashboard_summary_line(summary: Dict[str, Any]) -> str:
     """Render one live dashboard summary in a compact operator-readable form."""
-    uid = str(summary.get("uid") or "unknown")
+    record = build_dashboard_summary_record(summary)
+    return (
+        f"uid={record['uid']} name={record['name']} folder={record['folder']} "
+        f"folderUid={record['folderUid']} path={record['path']}"
+    )
+
+
+def build_dashboard_summary_record(summary: Dict[str, Any]) -> Dict[str, str]:
+    """Normalize a dashboard summary into a stable output record."""
     folder = str(summary.get("folderTitle") or "General")
-    title = str(summary.get("title") or "dashboard")
-    return f"uid={uid} folder={folder} title={title}"
+    return {
+        "uid": str(summary.get("uid") or "unknown"),
+        "name": str(summary.get("title") or "dashboard"),
+        "folder": folder,
+        "folderUid": str(summary.get("folderUid") or "general"),
+        "path": str(summary.get("folderPath") or folder),
+    }
+
+
+def build_folder_path(folder: Dict[str, Any], fallback_title: str) -> str:
+    """Build a readable folder tree path from Grafana folder metadata."""
+    parents = folder.get("parents")
+    titles: List[str] = []
+    if isinstance(parents, list):
+        for parent in parents:
+            if isinstance(parent, dict):
+                title = str(parent.get("title") or "").strip()
+                if title:
+                    titles.append(title)
+    title = str(folder.get("title") or fallback_title or "General").strip() or "General"
+    titles.append(title)
+    return " / ".join(titles)
+
+
+def attach_dashboard_folder_paths(
+    client: GrafanaClient,
+    summaries: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Attach a resolved folder tree path to each dashboard summary when possible."""
+    folder_paths: Dict[str, str] = {}
+    for summary in summaries:
+        folder_uid = str(summary.get("folderUid") or "").strip()
+        folder_title = str(summary.get("folderTitle") or "General")
+        if not folder_uid:
+            continue
+        if folder_uid in folder_paths:
+            continue
+        folder = client.fetch_folder_if_exists(folder_uid)
+        if folder is None:
+            folder_paths[folder_uid] = folder_title
+            continue
+        folder_paths[folder_uid] = build_folder_path(folder, folder_title)
+
+    enriched: List[Dict[str, Any]] = []
+    for summary in summaries:
+        item = dict(summary)
+        folder_uid = str(item.get("folderUid") or "").strip()
+        folder_title = str(item.get("folderTitle") or "General")
+        item["folderPath"] = folder_paths.get(folder_uid, folder_title)
+        enriched.append(item)
+    return enriched
+
+
+def render_dashboard_summary_table(summaries: List[Dict[str, Any]]) -> List[str]:
+    """Render dashboard summaries as a fixed-width table."""
+    headers = ["UID", "NAME", "FOLDER", "FOLDER_UID", "FOLDER_PATH"]
+    rows = [
+        [
+            record["uid"],
+            record["name"],
+            record["folder"],
+            record["folderUid"],
+            record["path"],
+        ]
+        for record in [build_dashboard_summary_record(summary) for summary in summaries]
+    ]
+    widths = [len(header) for header in headers]
+    for row in rows:
+        for index, value in enumerate(row):
+            widths[index] = max(widths[index], len(value))
+
+    def format_row(values: List[str]) -> str:
+        return "  ".join(
+            value.ljust(widths[index]) for index, value in enumerate(values)
+        )
+
+    lines = [format_row(headers), format_row(["-" * width for width in widths])]
+    lines.extend(format_row(row) for row in rows)
+    return lines
+
+
+def render_dashboard_summary_csv(summaries: List[Dict[str, Any]]) -> None:
+    """Render dashboard summaries as CSV records."""
+    fieldnames = ["uid", "name", "folder", "folderUid", "path"]
+    writer = csv.DictWriter(sys.stdout, fieldnames=fieldnames, lineterminator="\n")
+    writer.writeheader()
+    for summary in summaries:
+        writer.writerow(build_dashboard_summary_record(summary))
+
+
+def render_dashboard_summary_json(summaries: List[Dict[str, Any]]) -> str:
+    """Render dashboard summaries as JSON."""
+    records = [build_dashboard_summary_record(summary) for summary in summaries]
+    return json.dumps(records, indent=2, sort_keys=False)
 
 
 def list_dashboards(args: argparse.Namespace) -> int:
     """List live dashboard summaries without exporting dashboard JSON."""
     client = build_client(args)
-    summaries = client.iter_dashboard_summaries(args.page_size)
-    for summary in summaries:
-        print(format_dashboard_summary_line(summary))
+    summaries = attach_dashboard_folder_paths(
+        client,
+        client.iter_dashboard_summaries(args.page_size),
+    )
+    if args.csv:
+        render_dashboard_summary_csv(summaries)
+        return 0
+    if args.json:
+        print(render_dashboard_summary_json(summaries))
+        return 0
+    if args.table:
+        for line in render_dashboard_summary_table(summaries):
+            print(line)
+    else:
+        for summary in summaries:
+            print(format_dashboard_summary_line(summary))
+    print("")
     print(f"Listed {len(summaries)} dashboard summaries from {args.url}")
     return 0
 

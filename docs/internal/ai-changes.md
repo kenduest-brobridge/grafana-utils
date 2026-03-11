@@ -10,13 +10,13 @@
 - Follow-up: Mirror the preferred auth flag names and validation rules in the Rust CLIs if cross-language parity becomes a requirement.
 
 ## 2026-03-11 - Add Dashboard List Subcommand
-- Summary: Added a new read-only `list` subcommand to both the Python and Rust dashboard CLIs so operators can inspect live dashboard summaries without writing export files. Both implementations now reuse the existing `/api/search` pagination helper and print each summary in compact `uid=<uid> folder=<folder> title=<title>` form, followed by a final count line.
+- Summary: Added a new read-only `list` subcommand to both the Python and Rust dashboard CLIs so operators can inspect live dashboard summaries without writing export files. Both implementations reuse the existing `/api/search` pagination helper, resolve folder tree path from `GET /api/folders/{uid}` when `folderUid` is present, and support compact text output plus `--table`, `--csv`, and `--json` rendering with `uid`, `name`, `folder`, `folderUid`, and `path`.
 - Tests: Updated dashboard test coverage in both implementations to cover parser support for the new `list` mode, stable summary-line formatting, and list behavior against mocked `/api/search` results.
 - Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py` (pass); `cd rust && cargo test dashboard` (pass); `python3 -m unittest -v` (pass); `cd rust && cargo test` (pass)
-- Validation: README, Traditional Chinese README, maintainer notes, and repo instructions now include the new `grafana-utils list` / `python3 cmd/grafana-utils.py list` entrypoints. The command is read-only and does not change existing export/import/diff behavior.
+- Validation: README, Traditional Chinese README, maintainer notes, and repo instructions now include the new `grafana-utils list` / `python3 cmd/grafana-utils.py list` entrypoints plus the available `--table`, `--csv`, and `--json` output modes. The command is read-only and does not change existing export/import/diff behavior.
 - Impact: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `README.zh-TW.md`, `DEVELOPER.md`, `AGENTS.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
 - Rollback/Risk: Low operator-facing risk. The new mode only exposes an internal listing capability already used by export, and it does not alter any import/export payload handling.
-- Follow-up: If operators later need machine-readable listing output, add an optional JSON mode rather than changing the current default text format.
+- Follow-up: None.
 
 ## 2026-03-11 - Add Docker-Backed Rust Grafana Smoke Test
 - Summary: Added a repeatable Docker-backed live validation path for the Rust CLIs with `scripts/test-rust-live-grafana.sh` and the root `make test-rust-live` shortcut. The script builds the Rust binaries, starts a temporary Grafana container, seeds a Prometheus datasource, a dashboard, and a webhook contact point, then validates dashboard export/import/diff/dry-run and alerting export/import/diff/dry-run against the live instance.

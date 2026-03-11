@@ -85,6 +85,30 @@ python3 cmd/grafana-utils.py list \
   --url http://127.0.0.1:3000
 ```
 
+用 table 顯示 dashboard，並帶出 folder tree path：
+
+```bash
+python3 cmd/grafana-utils.py list \
+  --table \
+  --url http://127.0.0.1:3000
+```
+
+用 CSV 輸出 dashboard summary：
+
+```bash
+python3 cmd/grafana-utils.py list \
+  --csv \
+  --url http://127.0.0.1:3000
+```
+
+用 JSON 輸出 dashboard summary：
+
+```bash
+python3 cmd/grafana-utils.py list \
+  --json \
+  --url http://127.0.0.1:3000
+```
+
 從 raw 匯出結果做 dashboard API 匯入：
 
 ```bash

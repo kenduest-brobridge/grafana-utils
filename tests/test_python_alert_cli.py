@@ -295,6 +295,22 @@ class AlertUtilsTests(unittest.TestCase):
 
         self.assertTrue(args.verify_ssl)
 
+    def test_parse_args_supports_preferred_auth_aliases(self):
+        args = alert_utils.parse_args(
+            [
+                "--token",
+                "abc123",
+                "--basic-user",
+                "user",
+                "--basic-password",
+                "pass",
+            ]
+        )
+
+        self.assertEqual(args.api_token, "abc123")
+        self.assertEqual(args.username, "user")
+        self.assertEqual(args.password, "pass")
+
     def test_build_json_http_transport_defaults_to_requests(self):
         transport = alert_utils.build_json_http_transport(
             base_url="http://127.0.0.1:3000",
@@ -324,11 +340,11 @@ class AlertUtilsTests(unittest.TestCase):
     def test_http2_capability_helper_returns_boolean(self):
         self.assertIsInstance(transport_module.http2_is_available(), bool)
 
-    def test_resolve_auth_prefers_token(self):
+    def test_resolve_auth_supports_token_auth(self):
         args = argparse.Namespace(
             api_token="abc123",
-            username="user",
-            password="pass",
+            username=None,
+            password=None,
         )
 
         headers = alert_utils.resolve_auth(args)
@@ -346,6 +362,42 @@ class AlertUtilsTests(unittest.TestCase):
 
         expected = base64.b64encode(b"user:pass").decode("ascii")
         self.assertEqual(headers["Authorization"], f"Basic {expected}")
+
+    def test_resolve_auth_rejects_mixed_token_and_basic_auth(self):
+        args = argparse.Namespace(
+            api_token="abc123",
+            username="user",
+            password="pass",
+        )
+
+        with self.assertRaisesRegex(alert_utils.GrafanaError, "Choose either token auth"):
+            alert_utils.resolve_auth(args)
+
+    def test_resolve_auth_rejects_user_without_password(self):
+        args = argparse.Namespace(
+            api_token=None,
+            username="user",
+            password=None,
+        )
+
+        with self.assertRaisesRegex(
+            alert_utils.GrafanaError,
+            "Basic auth requires both --basic-user / --username and --basic-password / --password.",
+        ):
+            alert_utils.resolve_auth(args)
+
+    def test_resolve_auth_rejects_password_without_user(self):
+        args = argparse.Namespace(
+            api_token=None,
+            username=None,
+            password="pass",
+        )
+
+        with self.assertRaisesRegex(
+            alert_utils.GrafanaError,
+            "Basic auth requires both --basic-user / --username and --basic-password / --password.",
+        ):
+            alert_utils.resolve_auth(args)
 
     def test_build_rule_output_path_keeps_folder_and_rule_group_structure(self):
         path = alert_utils.build_rule_output_path(

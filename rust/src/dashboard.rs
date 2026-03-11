@@ -74,6 +74,12 @@ pub struct ListArgs {
     pub common: CommonCliArgs,
     #[arg(long, default_value_t = DEFAULT_PAGE_SIZE)]
     pub page_size: usize,
+    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"])]
+    pub table: bool,
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"])]
+    pub csv: bool,
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"])]
+    pub json: bool,
 }
 
 #[derive(Debug, Clone, Args)]
@@ -1229,22 +1235,202 @@ pub fn list_dashboard_summaries(client: &JsonHttpClient, page_size: usize) -> Re
     )
 }
 
+fn fetch_folder_if_exists_with_request<F>(mut request_json: F, uid: &str) -> Result<Option<Map<String, Value>>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    match request_json(Method::GET, &format!("/api/folders/{uid}"), &[], None)? {
+        Some(value) => {
+            let object = value_as_object(&value, &format!("Unexpected folder payload for UID {uid}."))?;
+            Ok(Some(object.clone()))
+        }
+        None => Ok(None),
+    }
+}
+
+fn build_folder_path(folder: &Map<String, Value>, fallback_title: &str) -> String {
+    let mut titles = Vec::new();
+    if let Some(parents) = folder.get("parents").and_then(Value::as_array) {
+        for parent in parents {
+            if let Some(parent_object) = parent.as_object() {
+                let title = string_field(parent_object, "title", "");
+                if !title.is_empty() {
+                    titles.push(title);
+                }
+            }
+        }
+    }
+    let title = string_field(folder, "title", fallback_title);
+    if !title.is_empty() {
+        titles.push(title);
+    }
+    if titles.is_empty() {
+        fallback_title.to_string()
+    } else {
+        titles.join(" / ")
+    }
+}
+
+fn attach_dashboard_folder_paths_with_request<F>(
+    mut request_json: F,
+    summaries: &[Map<String, Value>],
+) -> Result<Vec<Map<String, Value>>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let mut folder_paths = BTreeMap::new();
+    for summary in summaries {
+        let folder_uid = string_field(summary, "folderUid", "");
+        let folder_title = string_field(summary, "folderTitle", "General");
+        if folder_uid.is_empty() || folder_paths.contains_key(&folder_uid) {
+            continue;
+        }
+        let folder = fetch_folder_if_exists_with_request(&mut request_json, &folder_uid)?;
+        let folder_path = match folder {
+            Some(folder) => build_folder_path(&folder, &folder_title),
+            None => folder_title,
+        };
+        folder_paths.insert(folder_uid, folder_path);
+    }
+
+    Ok(summaries
+        .iter()
+        .map(|summary| {
+            let mut item = summary.clone();
+            let folder_uid = string_field(summary, "folderUid", "");
+            let folder_title = string_field(summary, "folderTitle", "General");
+            item.insert(
+                "folderPath".to_string(),
+                Value::String(
+                    folder_paths
+                        .get(&folder_uid)
+                        .cloned()
+                        .unwrap_or(folder_title),
+                ),
+            );
+            item
+        })
+        .collect())
+}
+
 fn format_dashboard_summary_line(summary: &Map<String, Value>) -> String {
     let uid = string_field(summary, "uid", "unknown");
     let folder_title = string_field(summary, "folderTitle", "General");
+    let folder_uid = string_field(summary, "folderUid", "general");
+    let folder_path = string_field(summary, "folderPath", &folder_title);
     let title = string_field(summary, "title", "dashboard");
-    format!("uid={uid} folder={folder_title} title={title}")
+    format!("uid={uid} name={title} folder={folder_title} folderUid={folder_uid} path={folder_path}")
+}
+
+fn build_dashboard_summary_row(summary: &Map<String, Value>) -> Vec<String> {
+    vec![
+        string_field(summary, "uid", "unknown"),
+        string_field(summary, "title", "dashboard"),
+        string_field(summary, "folderTitle", "General"),
+        string_field(summary, "folderUid", "general"),
+        string_field(
+            summary,
+            "folderPath",
+            &string_field(summary, "folderTitle", "General"),
+        ),
+    ]
+}
+
+fn render_dashboard_summary_table(summaries: &[Map<String, Value>]) -> Vec<String> {
+    let headers = vec![
+        "UID".to_string(),
+        "NAME".to_string(),
+        "FOLDER".to_string(),
+        "FOLDER_UID".to_string(),
+        "FOLDER_PATH".to_string(),
+    ];
+    let rows: Vec<Vec<String>> = summaries
+        .iter()
+        .map(build_dashboard_summary_row)
+        .collect();
+    let mut widths: Vec<usize> = headers.iter().map(|header| header.len()).collect();
+    for row in &rows {
+        for (index, value) in row.iter().enumerate() {
+            widths[index] = widths[index].max(value.len());
+        }
+    }
+
+    let format_row = |values: &[String]| -> String {
+        values
+            .iter()
+            .enumerate()
+            .map(|(index, value)| format!("{:<width$}", value, width = widths[index]))
+            .collect::<Vec<String>>()
+            .join("  ")
+    };
+
+    let separator: Vec<String> = widths.iter().map(|width| "-".repeat(*width)).collect();
+    let mut lines = vec![format_row(&headers), format_row(&separator)];
+    lines.extend(rows.iter().map(|row| format_row(row)));
+    lines
+}
+
+fn render_dashboard_summary_csv(summaries: &[Map<String, Value>]) -> Vec<String> {
+    let mut lines = vec!["uid,name,folder,folderUid,path".to_string()];
+    lines.extend(summaries.iter().map(|summary| {
+        build_dashboard_summary_row(summary)
+            .into_iter()
+            .map(|value| {
+                if value.contains(',') || value.contains('"') || value.contains('\n') {
+                    format!("\"{}\"", value.replace('"', "\"\""))
+                } else {
+                    value
+                }
+            })
+            .collect::<Vec<String>>()
+            .join(",")
+    }));
+    lines
+}
+
+fn render_dashboard_summary_json(summaries: &[Map<String, Value>]) -> Value {
+    Value::Array(
+        summaries
+            .iter()
+            .map(|summary| {
+                let row = build_dashboard_summary_row(summary);
+                Value::Object(Map::from_iter(vec![
+                    ("uid".to_string(), Value::String(row[0].clone())),
+                    ("name".to_string(), Value::String(row[1].clone())),
+                    ("folder".to_string(), Value::String(row[2].clone())),
+                    ("folderUid".to_string(), Value::String(row[3].clone())),
+                    ("path".to_string(), Value::String(row[4].clone())),
+                ]))
+            })
+            .collect(),
+    )
 }
 
 fn list_dashboards_with_request<F>(mut request_json: F, args: &ListArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    let summaries = list_dashboard_summaries_with_request(&mut request_json, args.page_size)?;
-    for summary in &summaries {
-        println!("{}", format_dashboard_summary_line(summary));
+    let dashboard_summaries = list_dashboard_summaries_with_request(&mut request_json, args.page_size)?;
+    let summaries = attach_dashboard_folder_paths_with_request(&mut request_json, &dashboard_summaries)?;
+    if args.json {
+        println!("{}", serde_json::to_string_pretty(&render_dashboard_summary_json(&summaries))?);
+    } else if args.csv {
+        for line in render_dashboard_summary_csv(&summaries) {
+            println!("{line}");
+        }
+    } else if args.table {
+        for line in render_dashboard_summary_table(&summaries) {
+            println!("{line}");
+        }
+    } else {
+        for summary in &summaries {
+            println!("{}", format_dashboard_summary_line(summary));
+        }
     }
-    println!("Listed {} dashboard(s).", summaries.len());
+    if !args.csv && !args.json {
+        println!();
+        println!("Listed {} dashboard(s).", summaries.len());
+    }
     Ok(summaries.len())
 }
 

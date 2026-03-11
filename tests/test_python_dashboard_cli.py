@@ -35,10 +35,11 @@ class FakeGrafanaClient(exporter.GrafanaClient):
 
 
 class FakeDashboardWorkflowClient:
-    def __init__(self, summaries=None, dashboards=None, datasources=None):
+    def __init__(self, summaries=None, dashboards=None, datasources=None, folders=None):
         self.summaries = summaries or []
         self.dashboards = dashboards or {}
         self.datasources = datasources or []
+        self.folders = folders or {}
         self.imported_payloads = []
 
     def iter_dashboard_summaries(self, page_size):
@@ -51,6 +52,9 @@ class FakeDashboardWorkflowClient:
 
     def fetch_dashboard_if_exists(self, uid):
         return self.dashboards.get(uid)
+
+    def fetch_folder_if_exists(self, uid):
+        return self.folders.get(uid)
 
     def list_datasources(self):
         return list(self.datasources)
@@ -86,11 +90,52 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(args.import_dir, "dashboards")
         self.assertEqual(args.command, "import")
 
+    def test_parse_args_supports_preferred_auth_aliases(self):
+        args = exporter.parse_args(
+            [
+                "export",
+                "--token",
+                "abc123",
+                "--basic-user",
+                "user",
+                "--basic-password",
+                "pass",
+            ]
+        )
+
+        self.assertEqual(args.api_token, "abc123")
+        self.assertEqual(args.username, "user")
+        self.assertEqual(args.password, "pass")
+
     def test_parse_args_supports_list_mode(self):
-        args = exporter.parse_args(["list", "--page-size", "25"])
+        args = exporter.parse_args(["list", "--page-size", "25", "--table"])
 
         self.assertEqual(args.command, "list")
         self.assertEqual(args.page_size, 25)
+        self.assertTrue(args.table)
+        self.assertFalse(args.csv)
+        self.assertFalse(args.json)
+
+    def test_parse_args_supports_list_csv_and_json_modes(self):
+        csv_args = exporter.parse_args(["list", "--csv"])
+        json_args = exporter.parse_args(["list", "--json"])
+
+        self.assertTrue(csv_args.csv)
+        self.assertFalse(csv_args.table)
+        self.assertFalse(csv_args.json)
+        self.assertTrue(json_args.json)
+        self.assertFalse(json_args.table)
+        self.assertFalse(json_args.csv)
+
+    def test_parse_args_rejects_multiple_list_output_modes(self):
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(["list", "--table", "--csv"])
+
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(["list", "--table", "--json"])
+
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(["list", "--csv", "--json"])
 
     def test_parse_args_supports_diff_mode(self):
         args = exporter.parse_args(["diff", "--import-dir", "dashboards/raw"])
@@ -184,11 +229,11 @@ class ExporterTests(unittest.TestCase):
 
         self.assertEqual(result["dashboard"]["uid"], "abc")
 
-    def test_resolve_auth_prefers_token(self):
+    def test_resolve_auth_supports_token_auth(self):
         args = argparse.Namespace(
             api_token="abc123",
-            username="user",
-            password="pass",
+            username=None,
+            password=None,
         )
 
         headers = exporter.resolve_auth(args)
@@ -206,6 +251,42 @@ class ExporterTests(unittest.TestCase):
 
         expected = base64.b64encode(b"user:pass").decode("ascii")
         self.assertEqual(headers["Authorization"], f"Basic {expected}")
+
+    def test_resolve_auth_rejects_mixed_token_and_basic_auth(self):
+        args = argparse.Namespace(
+            api_token="abc123",
+            username="user",
+            password="pass",
+        )
+
+        with self.assertRaisesRegex(exporter.GrafanaError, "Choose either token auth"):
+            exporter.resolve_auth(args)
+
+    def test_resolve_auth_rejects_user_without_password(self):
+        args = argparse.Namespace(
+            api_token=None,
+            username="user",
+            password=None,
+        )
+
+        with self.assertRaisesRegex(
+            exporter.GrafanaError,
+            "Basic auth requires both --basic-user / --username and --basic-password / --password.",
+        ):
+            exporter.resolve_auth(args)
+
+    def test_resolve_auth_rejects_password_without_user(self):
+        args = argparse.Namespace(
+            api_token=None,
+            username=None,
+            password="pass",
+        )
+
+        with self.assertRaisesRegex(
+            exporter.GrafanaError,
+            "Basic auth requires both --basic-user / --username and --basic-password / --password.",
+        ):
+            exporter.resolve_auth(args)
 
     def test_sanitize_path_component(self):
         self.assertEqual(exporter.sanitize_path_component(" Ops / CPU % "), "Ops_CPU")
@@ -250,7 +331,86 @@ class ExporterTests(unittest.TestCase):
     def test_format_dashboard_summary_line_uses_defaults(self):
         line = exporter.format_dashboard_summary_line({"uid": "abc"})
 
-        self.assertEqual(line, "uid=abc folder=General title=dashboard")
+        self.assertEqual(
+            line,
+            "uid=abc name=dashboard folder=General folderUid=general path=General",
+        )
+
+    def test_build_folder_path_joins_parents_and_title(self):
+        path = exporter.build_folder_path(
+            {
+                "title": "Child",
+                "parents": [{"title": "Root"}, {"title": "Team"}],
+            },
+            fallback_title="Child",
+        )
+
+        self.assertEqual(path, "Root / Team / Child")
+
+    def test_attach_dashboard_folder_paths_uses_folder_hierarchy(self):
+        client = FakeDashboardWorkflowClient(
+            folders={
+                "child": {
+                    "title": "Child",
+                    "parents": [{"title": "Root"}],
+                }
+            }
+        )
+
+        summaries = exporter.attach_dashboard_folder_paths(
+            client,
+            [
+                {"uid": "abc", "folderTitle": "Child", "folderUid": "child", "title": "CPU"},
+                {"uid": "xyz", "title": "Overview"},
+            ],
+        )
+
+        self.assertEqual(summaries[0]["folderPath"], "Root / Child")
+        self.assertEqual(summaries[1]["folderPath"], "General")
+
+    def test_render_dashboard_summary_table_uses_headers_and_defaults(self):
+        lines = exporter.render_dashboard_summary_table(
+            [
+                {
+                    "uid": "abc",
+                    "folderTitle": "Infra",
+                    "folderUid": "infra",
+                    "folderPath": "Platform / Infra",
+                    "title": "CPU",
+                },
+                {"uid": "xyz", "title": "Overview"},
+            ]
+        )
+
+        self.assertEqual(lines[0], "UID  NAME      FOLDER   FOLDER_UID  FOLDER_PATH     ")
+        self.assertEqual(lines[2], "abc  CPU       Infra    infra       Platform / Infra")
+        self.assertEqual(lines[3], "xyz  Overview  General  general     General         ")
+
+    def test_render_dashboard_summary_json_uses_expected_fields(self):
+        document = exporter.render_dashboard_summary_json(
+            [
+                {
+                    "uid": "abc",
+                    "folderTitle": "Infra",
+                    "folderUid": "infra",
+                    "folderPath": "Platform / Infra",
+                    "title": "CPU",
+                }
+            ]
+        )
+
+        self.assertEqual(
+            json.loads(document),
+            [
+                {
+                    "uid": "abc",
+                    "name": "CPU",
+                    "folder": "Infra",
+                    "folderUid": "infra",
+                    "path": "Platform / Infra",
+                }
+            ],
+        )
 
     def test_list_dashboards_prints_live_summaries(self):
         args = argparse.Namespace(
@@ -262,12 +422,18 @@ class ExporterTests(unittest.TestCase):
             timeout=30,
             verify_ssl=False,
             page_size=50,
+            table=False,
+            csv=False,
+            json=False,
         )
         client = FakeDashboardWorkflowClient(
             summaries=[
-                {"uid": "abc", "folderTitle": "Infra", "title": "CPU"},
+                {"uid": "abc", "folderTitle": "Infra", "folderUid": "infra", "title": "CPU"},
                 {"uid": "xyz", "title": "Overview"},
-            ]
+            ],
+            folders={
+                "infra": {"title": "Infra", "parents": [{"title": "Platform"}]},
+            },
         )
 
         with mock.patch.object(exporter, "build_client", return_value=client):
@@ -279,9 +445,141 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(
             stdout.getvalue().splitlines(),
             [
-                "uid=abc folder=Infra title=CPU",
-                "uid=xyz folder=General title=Overview",
+                "uid=abc name=CPU folder=Infra folderUid=infra path=Platform / Infra",
+                "uid=xyz name=Overview folder=General folderUid=general path=General",
+                "",
                 "Listed 2 dashboard summaries from http://127.0.0.1:3000",
+            ],
+        )
+
+    def test_list_dashboards_prints_table_when_requested(self):
+        args = argparse.Namespace(
+            command="list",
+            url="http://127.0.0.1:3000",
+            api_token=None,
+            username=None,
+            password=None,
+            timeout=30,
+            verify_ssl=False,
+            page_size=50,
+            table=True,
+            csv=False,
+            json=False,
+        )
+        client = FakeDashboardWorkflowClient(
+            summaries=[
+                {"uid": "abc", "folderTitle": "Infra", "folderUid": "infra", "title": "CPU"},
+                {"uid": "xyz", "title": "Overview"},
+            ],
+            folders={
+                "infra": {"title": "Infra", "parents": [{"title": "Platform"}]},
+            },
+        )
+
+        with mock.patch.object(exporter, "build_client", return_value=client):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = exporter.list_dashboards(args)
+
+        self.assertEqual(result, 0)
+        self.assertEqual(
+            stdout.getvalue().splitlines(),
+            [
+                "UID  NAME      FOLDER   FOLDER_UID  FOLDER_PATH     ",
+                "---  --------  -------  ----------  ----------------",
+                "abc  CPU       Infra    infra       Platform / Infra",
+                "xyz  Overview  General  general     General         ",
+                "",
+                "Listed 2 dashboard summaries from http://127.0.0.1:3000",
+            ],
+        )
+
+    def test_list_dashboards_prints_csv_when_requested(self):
+        args = argparse.Namespace(
+            command="list",
+            url="http://127.0.0.1:3000",
+            api_token=None,
+            username=None,
+            password=None,
+            timeout=30,
+            verify_ssl=False,
+            page_size=50,
+            table=False,
+            csv=True,
+            json=False,
+        )
+        client = FakeDashboardWorkflowClient(
+            summaries=[
+                {"uid": "abc", "folderTitle": "Infra", "folderUid": "infra", "title": "CPU"},
+                {"uid": "xyz", "title": "Overview"},
+            ],
+            folders={
+                "infra": {"title": "Infra", "parents": [{"title": "Platform"}]},
+            },
+        )
+
+        with mock.patch.object(exporter, "build_client", return_value=client):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = exporter.list_dashboards(args)
+
+        self.assertEqual(result, 0)
+        self.assertEqual(
+            stdout.getvalue().splitlines(),
+            [
+                "uid,name,folder,folderUid,path",
+                "abc,CPU,Infra,infra,Platform / Infra",
+                "xyz,Overview,General,general,General",
+            ],
+        )
+
+    def test_list_dashboards_prints_json_when_requested(self):
+        args = argparse.Namespace(
+            command="list",
+            url="http://127.0.0.1:3000",
+            api_token=None,
+            username=None,
+            password=None,
+            timeout=30,
+            verify_ssl=False,
+            page_size=50,
+            table=False,
+            csv=False,
+            json=True,
+        )
+        client = FakeDashboardWorkflowClient(
+            summaries=[
+                {"uid": "abc", "folderTitle": "Infra", "folderUid": "infra", "title": "CPU"},
+                {"uid": "xyz", "title": "Overview"},
+            ],
+            folders={
+                "infra": {"title": "Infra", "parents": [{"title": "Platform"}]},
+            },
+        )
+
+        with mock.patch.object(exporter, "build_client", return_value=client):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = exporter.list_dashboards(args)
+
+        self.assertEqual(result, 0)
+        self.assertEqual(
+            json.loads(stdout.getvalue()),
+            [
+                {
+                    "uid": "abc",
+                    "name": "CPU",
+                    "folder": "Infra",
+                    "folderUid": "infra",
+                    "path": "Platform / Infra",
+                },
+                {
+                    "uid": "xyz",
+                    "name": "Overview",
+                    "folder": "General",
+                    "folderUid": "general",
+                    "path": "General",
+                },
             ],
         )
 

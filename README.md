@@ -85,6 +85,30 @@ python3 cmd/grafana-utils.py list \
   --url http://127.0.0.1:3000
 ```
 
+List live dashboards as a table with folder tree path:
+
+```bash
+python3 cmd/grafana-utils.py list \
+  --table \
+  --url http://127.0.0.1:3000
+```
+
+List live dashboards as CSV:
+
+```bash
+python3 cmd/grafana-utils.py list \
+  --csv \
+  --url http://127.0.0.1:3000
+```
+
+List live dashboards as JSON:
+
+```bash
+python3 cmd/grafana-utils.py list \
+  --json \
+  --url http://127.0.0.1:3000
+```
+
 Dashboard API import from the raw export:
 
 ```bash

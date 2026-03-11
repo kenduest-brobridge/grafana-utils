@@ -1,10 +1,13 @@
 use super::{
-    build_export_variant_dirs, build_external_export_document, build_import_payload, build_output_path,
-    build_preserved_web_import_document, diff_dashboards_with_request, discover_dashboard_files,
-    export_dashboards_with_request, format_dashboard_summary_line, import_dashboards_with_request,
-    list_dashboards_with_request, parse_cli_from, CommonCliArgs, DiffArgs, ExportArgs, ImportArgs,
+    attach_dashboard_folder_paths_with_request, build_export_variant_dirs, build_external_export_document,
+    build_import_payload, build_output_path, build_preserved_web_import_document,
+    build_folder_path, diff_dashboards_with_request, discover_dashboard_files, export_dashboards_with_request,
+    format_dashboard_summary_line, import_dashboards_with_request, list_dashboards_with_request,
+    parse_cli_from, render_dashboard_summary_csv, render_dashboard_summary_json,
+    render_dashboard_summary_table, CommonCliArgs, DashboardCliArgs, DiffArgs, ExportArgs, ImportArgs,
     ListArgs, DashboardCommand, EXPORT_METADATA_FILENAME, TOOL_SCHEMA_VERSION,
 };
+use clap::Parser;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::fs;
@@ -37,9 +40,68 @@ fn parse_cli_supports_list_mode() {
         DashboardCommand::List(list_args) => {
             assert_eq!(list_args.common.url, "https://grafana.example.com");
             assert_eq!(list_args.page_size, 25);
+            assert!(!list_args.table);
+            assert!(!list_args.csv);
+            assert!(!list_args.json);
         }
         _ => panic!("expected list command"),
     }
+}
+
+#[test]
+fn parse_cli_supports_list_csv_mode() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "list",
+        "--url",
+        "https://grafana.example.com",
+        "--csv",
+    ]);
+
+    match args.command {
+        DashboardCommand::List(list_args) => {
+            assert!(!list_args.table);
+            assert!(list_args.csv);
+            assert!(!list_args.json);
+        }
+        _ => panic!("expected list command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_list_json_mode() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "list",
+        "--url",
+        "https://grafana.example.com",
+        "--json",
+    ]);
+
+    match args.command {
+        DashboardCommand::List(list_args) => {
+            assert!(!list_args.table);
+            assert!(!list_args.csv);
+            assert!(list_args.json);
+        }
+        _ => panic!("expected list command"),
+    }
+}
+
+#[test]
+fn parse_cli_rejects_conflicting_list_output_modes() {
+    let error = DashboardCliArgs::try_parse_from([
+        "grafana-utils",
+        "list",
+        "--url",
+        "https://grafana.example.com",
+        "--table",
+        "--json",
+    ])
+    .unwrap_err();
+
+    assert!(error.to_string().contains("--table"));
+    assert!(error.to_string().contains("--json"));
 }
 
 #[test]
@@ -127,15 +189,167 @@ fn build_preserved_web_import_document_clears_numeric_id() {
 }
 
 #[test]
-fn format_dashboard_summary_line_uses_uid_folder_and_title() {
+fn format_dashboard_summary_line_uses_uid_name_and_folder_details() {
     let summary = json!({
         "uid": "abc",
+        "folderUid": "infra",
+        "folderPath": "Platform / Infra",
         "folderTitle": "Infra",
         "title": "CPU"
     });
 
     let line = format_dashboard_summary_line(summary.as_object().unwrap());
-    assert_eq!(line, "uid=abc folder=Infra title=CPU");
+    assert_eq!(line, "uid=abc name=CPU folder=Infra folderUid=infra path=Platform / Infra");
+}
+
+#[test]
+fn render_dashboard_summary_table_uses_headers_and_defaults() {
+    let summaries = vec![
+        json!({
+            "uid": "abc",
+            "folderUid": "infra",
+            "folderPath": "Platform / Infra",
+            "folderTitle": "Infra",
+            "title": "CPU"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+        json!({
+            "uid": "xyz",
+            "title": "Overview"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+    ];
+
+    let lines = render_dashboard_summary_table(&summaries);
+    assert_eq!(lines[0], "UID  NAME      FOLDER   FOLDER_UID  FOLDER_PATH     ");
+    assert_eq!(lines[2], "abc  CPU       Infra    infra       Platform / Infra");
+    assert_eq!(lines[3], "xyz  Overview  General  general     General         ");
+}
+
+#[test]
+fn render_dashboard_summary_csv_uses_headers_and_escaping() {
+    let summaries = vec![
+        json!({
+            "uid": "abc",
+            "folderUid": "infra",
+            "folderPath": "Platform / Infra",
+            "folderTitle": "Infra",
+            "title": "CPU"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+        json!({
+            "uid": "xyz",
+            "folderUid": "ops",
+            "folderPath": "Root / Ops",
+            "folderTitle": "Ops",
+            "title": "CPU, \"critical\""
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+    ];
+
+    let lines = render_dashboard_summary_csv(&summaries);
+    assert_eq!(lines[0], "uid,name,folder,folderUid,path");
+    assert_eq!(lines[1], "abc,CPU,Infra,infra,Platform / Infra");
+    assert_eq!(lines[2], "xyz,\"CPU, \"\"critical\"\"\",Ops,ops,Root / Ops");
+}
+
+#[test]
+fn render_dashboard_summary_json_returns_objects() {
+    let summaries = vec![
+        json!({
+            "uid": "abc",
+            "folderUid": "infra",
+            "folderPath": "Platform / Infra",
+            "folderTitle": "Infra",
+            "title": "CPU"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+        json!({
+            "uid": "xyz",
+            "title": "Overview"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+    ];
+
+    let value = render_dashboard_summary_json(&summaries);
+    assert_eq!(
+        value,
+        json!([
+            {
+                "uid": "abc",
+                "name": "CPU",
+                "folder": "Infra",
+                "folderUid": "infra",
+                "path": "Platform / Infra"
+            },
+            {
+                "uid": "xyz",
+                "name": "Overview",
+                "folder": "General",
+                "folderUid": "general",
+                "path": "General"
+            }
+        ])
+    );
+}
+
+#[test]
+fn build_folder_path_joins_parents_and_title() {
+    let folder = json!({
+        "title": "Child",
+        "parents": [{"title": "Root"}, {"title": "Team"}]
+    });
+    let path = build_folder_path(folder.as_object().unwrap(), "Child");
+    assert_eq!(path, "Root / Team / Child");
+}
+
+#[test]
+fn attach_dashboard_folder_paths_with_request_uses_folder_hierarchy() {
+    let summaries = vec![
+        json!({
+            "uid": "abc",
+            "folderUid": "child",
+            "folderTitle": "Child",
+            "title": "CPU"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+        json!({
+            "uid": "xyz",
+            "title": "Overview"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+    ];
+
+    let enriched = attach_dashboard_folder_paths_with_request(
+        |_method, path, _params, _payload| match path {
+            "/api/folders/child" => Ok(Some(json!({
+                "title": "Child",
+                "parents": [{"title": "Root"}]
+            }))),
+            _ => Err(super::message(format!("unexpected path {path}"))),
+        },
+        &summaries,
+    )
+    .unwrap();
+
+    assert_eq!(enriched[0]["folderPath"], json!("Root / Child"));
+    assert_eq!(enriched[1]["folderPath"], json!("General"));
 }
 
 #[test]
@@ -143,14 +357,21 @@ fn list_dashboards_with_request_returns_dashboard_count() {
     let args = ListArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         page_size: 500,
+        table: false,
+        csv: false,
+        json: false,
     };
 
     let count = list_dashboards_with_request(
         |_method, path, _params, _payload| match path {
             "/api/search" => Ok(Some(json!([
-                {"uid": "abc", "title": "CPU", "folderTitle": "Infra"},
+                {"uid": "abc", "title": "CPU", "folderTitle": "Infra", "folderUid": "infra"},
                 {"uid": "def", "title": "Memory", "folderTitle": "Infra"},
             ]))),
+            "/api/folders/infra" => Ok(Some(json!({
+                "title": "Infra",
+                "parents": [{"title": "Platform"}]
+            }))),
             _ => Err(super::message(format!("unexpected path {path}"))),
         },
         &args,

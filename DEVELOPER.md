@@ -34,7 +34,11 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 - Use `python3 cmd/grafana-utils.py import ...` for import.
 - Use `python3 cmd/grafana-utils.py diff ...` for live-vs-local comparison.
 - The export subcommand intentionally uses `--export-dir` instead of `--output-dir` to avoid mixing export terminology with import behavior.
-- The `list` subcommand is read-only and prints compact live dashboard summaries in `uid=<uid> folder=<folder> title=<title>` format.
+- The `list` subcommand is read-only and defaults to compact `uid=<uid> name=<title> folder=<folder> folderUid=<folderUid> path=<folderTreePath>` output.
+- `list --table` renders the same fields in columns and adds a `FOLDER_PATH` column.
+- `list --csv` emits header `uid,name,folder,folderUid,path` with CSV escaping.
+- `list --json` emits an array of objects with keys `uid`, `name`, `folder`, `folderUid`, and `path`.
+- Folder tree path is resolved from `GET /api/folders/{uid}` using the folder `parents[]` chain when `folderUid` is present.
 
 ### Packaging layout
 
