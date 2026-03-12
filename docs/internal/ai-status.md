@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-12 - Task: Add Access Utility Team Add
+- State: Done
+- Scope: `grafana_utils/access_cli.py`, `tests/test_python_access_cli.py`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`, `TODO.md`
+- Baseline: The Python access CLI already covered `team list` and `team modify`, but `TODO.md` still listed `team add` as one of the remaining team-lifecycle gaps.
+- Current Update: Added `grafana-access-utils team add` with parser/help wiring, Grafana team creation through the org-scoped team API, optional initial `--member` and `--admin` seeding, and aligned public and maintainer docs. The command creates the team first, then reuses the existing exact org-user resolution and safe membership/admin update flow.
+- Result: The Python access CLI now covers `team add` alongside the existing user, team-list, team-modify, and service-account workflows, leaving only `team delete` plus the `group` alias in the team/group backlog.
+
 ## 2026-03-11 - Task: Add Access Utility User List
 - State: Done
 - Scope: `grafana_utils/access_cli.py`, `tests/test_python_access_cli.py`, `pyproject.toml`, `cmd/grafana-access-utils.py`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

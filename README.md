@@ -8,7 +8,7 @@ This repository provides two primary CLI tools in two implementations, plus an a
 
 - `grafana-utils`: dashboard export and import
 - `grafana-alert-utils`: alerting resource export and import
-- `grafana-access-utils`: access-management workflow, currently covering `user list`, `user add`, `user modify`, `user delete`, `team list`, `team modify`, and initial service-account commands
+- `grafana-access-utils`: access-management workflow, currently covering `user list`, `user add`, `user modify`, `user delete`, `team list`, `team add`, `team modify`, and initial service-account commands
 - packaged Python implementation under [`grafana_utils/`](grafana_utils/)
 - Rust implementation under [`rust/`](rust/)
 
@@ -52,6 +52,7 @@ The two command names are intentionally separate because dashboards and alerting
 - `grafana-access-utils user modify ...`
 - `grafana-access-utils user delete ...`
 - `grafana-access-utils team list ...`
+- `grafana-access-utils team add ...`
 - `grafana-access-utils team modify ...`
 - `grafana-access-utils service-account ...`
 
@@ -244,6 +245,18 @@ python3 cmd/grafana-access-utils.py team modify \
   --add-member alice@example.com \
   --add-admin bob@example.com \
   --json
+```
+
+Access-management team creation, org scope with token auth:
+
+```bash
+python3 cmd/grafana-access-utils.py team add \
+  --url http://127.0.0.1:3000 \
+  --token "$GRAFANA_API_TOKEN" \
+  --name platform-operators \
+  --email platform-operators@example.com \
+  --member alice@example.com \
+  --admin bob@example.com
 ```
 
 Access-management service-account listing, org scope with token auth:
@@ -512,10 +525,11 @@ Current implementation scope:
 - `user delete`
 - `team list`
 - `team modify`
+- `team add`
 - `service-account list`
 - `service-account add`
 - `service-account token add`
-- no `team add`, `team delete`, or `group` alias commands yet
+- no `team delete` or `group` alias commands yet
 
 Initial auth model:
 
@@ -527,6 +541,7 @@ Initial auth model:
 - `user delete --scope org` may use token auth or Basic auth
 - `team list` is org-scoped and may use token auth or Basic auth
 - `team modify` is org-scoped and may use token auth or Basic auth
+- `team add` is org-scoped and may use token auth or Basic auth
 - service-account commands are org-scoped and may use token auth or Basic auth
 
 Output modes:
@@ -631,6 +646,7 @@ Auth note:
 - for `grafana-access-utils`, `user delete --scope global` requires Basic auth
 - for `grafana-access-utils`, `user delete --scope org` can use token auth or Basic auth
 - for `grafana-access-utils`, `team list` is org-scoped and can use token auth or Basic auth
+- for `grafana-access-utils`, `team add` is org-scoped and can use token auth or Basic auth
 - for `grafana-access-utils`, `team modify` is org-scoped and can use token auth or Basic auth
 - for `grafana-access-utils`, service-account commands are org-scoped and can use token auth or Basic auth
 
@@ -707,6 +723,7 @@ python3 cmd/grafana-access-utils.py user add -h
 python3 cmd/grafana-access-utils.py user modify -h
 python3 cmd/grafana-access-utils.py user delete -h
 python3 cmd/grafana-access-utils.py team list -h
+python3 cmd/grafana-access-utils.py team add -h
 python3 cmd/grafana-access-utils.py team modify -h
 python3 cmd/grafana-access-utils.py service-account list -h
 python3 cmd/grafana-access-utils.py service-account add -h

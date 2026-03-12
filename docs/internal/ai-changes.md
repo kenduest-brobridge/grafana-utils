@@ -1,5 +1,15 @@
 # ai-changes.md
 
+## 2026-03-12 - Add Access Utility Team Add
+- Summary: Added Python `grafana-access-utils team add` support, including parser/help wiring, Grafana team creation through the org-scoped API, optional initial member/admin seeding, and aligned public/maintainer docs. The command creates the team first, then reuses the existing exact org-user resolution and guarded membership/admin update flow so initial admins are applied consistently with `team modify`.
+- Tests: Extended `tests/test_python_access_cli.py` with parser/help coverage plus create-flow tests for initial members/admins and the failure path when an initial user cannot be resolved.
+- Test Run: `python3 -m unittest -v tests/test_python_access_cli.py`; `python3 -m unittest -v`; `python3 cmd/grafana-access-utils.py team -h`; `python3 cmd/grafana-access-utils.py team add -h`
+- Reason: `TODO.md` kept `team add` as the next unfinished team lifecycle command after `user delete`, and the access CLI needed a real create path before only `team delete` and the `group` alias remained.
+- Validation: Verified Python 3.6 syntax compatibility and parser behavior, confirmed `team add -h` exposes the expected auth and argument surface, and exercised the create flow in unit tests including seeded member/admin updates.
+- Impact: `grafana_utils/access_cli.py`, `tests/test_python_access_cli.py`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`, `TODO.md`
+- Rollback/Risk: Low to moderate. The new command is additive, but seeded admin assignment still depends on the same org-user identity resolution and team-member update semantics as `team modify`, so Grafana version differences in those APIs remain the main compatibility risk.
+- Follow-up: Continue with the remaining access-management plan: `team delete` and the `group` alias.
+
 ## 2026-03-12 - Add Access Utility User Delete
 - Summary: Added Python `grafana-access-utils user delete` support, including parser/help wiring, explicit confirmation with `--yes`, exact target selection by id/login/email, and aligned public/maintainer docs. The command supports global deletion through the admin API and org-scoped removal through the org user API, with auth rules that match those two paths.
 - Tests: Extended `tests/test_python_access_cli.py` with parser coverage, help coverage, confirmation/auth validation, and behavior tests for both global delete and org-scoped removal.

@@ -178,6 +178,13 @@ def build_parser() -> argparse.ArgumentParser:
     add_common_cli_args(team_list_parser)
     add_team_list_cli_args(team_list_parser)
 
+    team_add_parser = team_subparsers.add_parser(
+        "add",
+        help="Create a Grafana team and optionally seed members and admins.",
+    )
+    add_common_cli_args(team_add_parser)
+    add_team_add_cli_args(team_add_parser)
+
     team_modify_parser = team_subparsers.add_parser(
         "modify",
         help="Modify Grafana team members and team admins.",
@@ -618,6 +625,38 @@ def add_team_modify_cli_args(parser: argparse.ArgumentParser) -> None:
         "--json",
         action="store_true",
         help="Render the team modification result as JSON.",
+    )
+
+
+def add_team_add_cli_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--name",
+        required=True,
+        help="Team name to create.",
+    )
+    parser.add_argument(
+        "--email",
+        default=None,
+        help="Optional team email address to store in Grafana.",
+    )
+    parser.add_argument(
+        "--member",
+        action="append",
+        default=[],
+        metavar="LOGIN_OR_EMAIL",
+        help="Add one initial team member by exact login or exact email. Repeat as needed.",
+    )
+    parser.add_argument(
+        "--admin",
+        action="append",
+        default=[],
+        metavar="LOGIN_OR_EMAIL",
+        help="Add one initial team admin by exact login or exact email. Repeat as needed.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Render the created team as JSON.",
     )
 
 
@@ -1101,6 +1140,16 @@ class GrafanaAccessClient:
             )
         return data
 
+    def create_team(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        data = self.request_json(
+            "/api/teams",
+            method="POST",
+            payload=payload,
+        )
+        if not isinstance(data, dict):
+            raise GrafanaError("Unexpected team create response from Grafana.")
+        return data
+
     def add_team_member(self, team_id: Any, user_id: Any) -> Dict[str, Any]:
         data = self.request_json(
             "/api/teams/%s/members" % parse.quote(str(team_id), safe=""),
@@ -1571,6 +1620,21 @@ def format_team_modify_summary_line(payload: Dict[str, Any]) -> str:
         "addedAdmins",
         "removedAdmins",
     ):
+        values = payload.get(field) or []
+        if values:
+            parts.append("%s=%s" % (field, ",".join(values)))
+    return " ".join(parts)
+
+
+def format_team_add_summary_line(payload: Dict[str, Any]) -> str:
+    parts = [
+        "teamId=%s" % (payload.get("teamId") or ""),
+        "name=%s" % (payload.get("name") or ""),
+    ]
+    email = payload.get("email") or ""
+    if email:
+        parts.append("email=%s" % email)
+    for field in ("addedMembers", "addedAdmins"):
         values = payload.get(field) or []
         if values:
             parts.append("%s=%s" % (field, ",".join(values)))
@@ -2192,10 +2256,47 @@ def modify_team_with_client(
 ) -> int:
     validate_team_modify_args(args)
 
-    add_member_targets = normalize_identity_list(args.add_member)
-    remove_member_targets = normalize_identity_list(args.remove_member)
-    add_admin_targets = normalize_identity_list(args.add_admin)
-    remove_admin_targets = normalize_identity_list(args.remove_admin)
+    if args.team_id:
+        team_payload = client.get_team(args.team_id)
+    else:
+        team_payload = lookup_team_by_name(client, args.name)
+
+    team_id = str(team_payload.get("id") or args.team_id or "")
+    if not team_id:
+        raise GrafanaError("Team lookup did not return an id.")
+    team_name = str(team_payload.get("name") or args.name or "")
+
+    payload = apply_team_membership_changes(
+        client,
+        team_id,
+        team_name,
+        add_member=getattr(args, "add_member", []),
+        remove_member=getattr(args, "remove_member", []),
+        add_admin=getattr(args, "add_admin", []),
+        remove_admin=getattr(args, "remove_admin", []),
+        fetch_existing_members=True,
+    )
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+    else:
+        print(format_team_modify_summary_line(payload))
+    return 0
+
+
+def apply_team_membership_changes(
+    client: GrafanaAccessClient,
+    team_id: str,
+    team_name: str,
+    add_member: List[str],
+    remove_member: List[str],
+    add_admin: List[str],
+    remove_admin: List[str],
+    fetch_existing_members: bool,
+) -> Dict[str, Any]:
+    add_member_targets = normalize_identity_list(add_member)
+    remove_member_targets = normalize_identity_list(remove_member)
+    add_admin_targets = normalize_identity_list(add_admin)
+    remove_admin_targets = normalize_identity_list(remove_admin)
 
     validate_conflicting_identity_sets(
         add_member_targets,
@@ -2210,17 +2311,9 @@ def modify_team_with_client(
         "--remove-admin",
     )
 
-    if args.team_id:
-        team_payload = client.get_team(args.team_id)
-    else:
-        team_payload = lookup_team_by_name(client, args.name)
-
-    team_id = str(team_payload.get("id") or args.team_id or "")
-    if not team_id:
-        raise GrafanaError("Team lookup did not return an id.")
-    team_name = str(team_payload.get("name") or args.name or "")
-
-    raw_members = client.list_team_members(team_id)
+    raw_members = []
+    if fetch_existing_members:
+        raw_members = client.list_team_members(team_id)
     members_by_identity = {}
     member_user_ids = {}
     admin_identities = set()
@@ -2316,7 +2409,7 @@ def modify_team_with_client(
             {"members": regular_members, "admins": admin_members},
         )
 
-    payload = {
+    return {
         "teamId": team_id,
         "name": team_name,
         "addedMembers": added_members,
@@ -2324,10 +2417,41 @@ def modify_team_with_client(
         "addedAdmins": added_admins,
         "removedAdmins": removed_admins,
     }
+
+
+def add_team_with_client(
+    args: argparse.Namespace,
+    client: GrafanaAccessClient,
+) -> int:
+    payload = {"name": args.name}
+    if args.email:
+        payload["email"] = args.email
+
+    created_payload = client.create_team(payload)
+    team_id = created_payload.get("teamId") or created_payload.get("id")
+    if not team_id:
+        raise GrafanaError("Grafana team create response did not include a team id.")
+
+    team_payload = client.get_team(team_id)
+    team_name = str(team_payload.get("name") or args.name or "")
+    team_email = str(team_payload.get("email") or args.email or "")
+
+    membership_payload = apply_team_membership_changes(
+        client,
+        str(team_id),
+        team_name,
+        add_member=getattr(args, "member", []),
+        remove_member=[],
+        add_admin=getattr(args, "admin", []),
+        remove_admin=[],
+        fetch_existing_members=False,
+    )
+    membership_payload["email"] = team_email
+
     if args.json:
-        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        print(json.dumps(membership_payload, indent=2, ensure_ascii=False))
     else:
-        print(format_team_modify_summary_line(payload))
+        print(format_team_add_summary_line(membership_payload))
     return 0
 
 
@@ -2381,6 +2505,8 @@ def run(args: argparse.Namespace) -> int:
         return delete_user_with_client(args, client)
     if args.resource == "team" and args.command == "list":
         return list_teams_with_client(args, client)
+    if args.resource == "team" and args.command == "add":
+        return add_team_with_client(args, client)
     if args.resource == "team" and args.command == "modify":
         return modify_team_with_client(args, client)
     if args.resource == "service-account" and args.command == "list":

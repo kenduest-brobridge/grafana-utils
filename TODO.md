@@ -10,6 +10,7 @@
 - implemented `user modify`
 - implemented `user delete`
 - implemented `team list`
+- implemented `team add`
 - implemented `team modify`
 - implemented `service-account list`
 - implemented `service-account add`
@@ -24,7 +25,6 @@
 
 ### Next
 
-- `team add`
 - `team delete`
 - `group` alias for `team`
 
@@ -58,11 +58,12 @@ Current implementation status:
 - `user modify`: done
 - `user delete`: done
 - `team list`: done
+- `team add`: done
 - `team modify`: done
 - `service-account list`: done
 - `service-account add`: done
 - `service-account token add`: done
-- remaining `team` commands: not started
+- remaining `team` commands: `team delete` only
 - `group` alias: not started
 
 #### User commands
@@ -105,6 +106,7 @@ grafana-access-utils user add
 grafana-access-utils user modify
 grafana-access-utils user delete
 grafana-access-utils team list
+grafana-access-utils team add
 grafana-access-utils team modify
 grafana-access-utils service-account list
 grafana-access-utils service-account add
@@ -250,6 +252,12 @@ grafana-access-utils team add
   [--member LOGIN_OR_EMAIL ...]
   [--admin LOGIN_OR_EMAIL ...]
 ```
+
+Current status:
+
+- implemented
+- org-scoped
+- auth: token or Basic auth
 
 #### `team modify`
 

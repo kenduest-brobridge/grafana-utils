@@ -6,7 +6,7 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 
 - `grafana_utils/dashboard_cli.py`: packaged dashboard export/import utility
 - `grafana_utils/alert_cli.py`: packaged alerting resource export/import utility
-- `grafana_utils/access_cli.py`: packaged access-management utility, currently covering `user list`, `user add`, `user modify`, `user delete`, `team list`, `team modify`, and initial service-account commands
+- `grafana_utils/access_cli.py`: packaged access-management utility, currently covering `user list`, `user add`, `user modify`, `user delete`, `team list`, `team add`, `team modify`, and initial service-account commands
 - `grafana_utils/http_transport.py`: shared HTTP transport adapters and transport selection
 - `cmd/grafana-utils.py`: thin source-tree wrapper for the packaged dashboard CLI
 - `cmd/grafana-alert-utils.py`: thin source-tree wrapper for the packaged alerting CLI
@@ -40,6 +40,7 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 - Use `python3 cmd/grafana-access-utils.py user modify ...` to update Grafana users through the global and admin user APIs.
 - Use `python3 cmd/grafana-access-utils.py user delete ...` to remove Grafana users from the org or globally with explicit confirmation.
 - Use `python3 cmd/grafana-access-utils.py team list ...` to inspect Grafana teams.
+- Use `python3 cmd/grafana-access-utils.py team add ...` to create an org-scoped Grafana team with optional initial members and admins.
 - Use `python3 cmd/grafana-access-utils.py team modify ...` to change Grafana team membership and admin assignments.
 - Use `python3 cmd/grafana-access-utils.py service-account ...` for org-scoped service-account operations.
 - The export subcommand intentionally uses `--export-dir` instead of `--output-dir` to avoid mixing export terminology with import behavior.
@@ -294,15 +295,27 @@ Alerting import format notes:
 - `user delete`
 - `team list`
 - `team modify`
+- `team add`
 - `service-account list`
 - `service-account add`
 - `service-account token add`
 
 Not implemented yet:
 
-- `team add`
 - `team delete`
 - any `group` alias commands
+
+Current team creation command shape:
+
+```bash
+python3 cmd/grafana-access-utils.py team add \
+  --url http://127.0.0.1:3000 \
+  --token "$GRAFANA_API_TOKEN" \
+  --name platform-operators \
+  --email platform-operators@example.com \
+  --member alice@example.com \
+  --admin bob@example.com
+```
 
 ### Auth constraints
 
@@ -314,6 +327,7 @@ Not implemented yet:
 - `user delete --scope org` may use token auth or Basic auth
 - `team list` is org-scoped and may use token auth or Basic auth
 - `team modify` is org-scoped and may use token auth or Basic auth
+- `team add` is org-scoped and may use token auth or Basic auth
 - service-account commands are org-scoped and may use token auth or Basic auth
 - do not silently fall back from a token-only global request into a weaker behavior; fail early with a clear error instead
 
@@ -365,6 +379,7 @@ grafana-access-utils user add -h
 grafana-access-utils user modify -h
 grafana-access-utils user delete -h
 grafana-access-utils team list -h
+grafana-access-utils team add -h
 grafana-access-utils team modify -h
 grafana-access-utils service-account list -h
 grafana-access-utils service-account add -h
@@ -380,6 +395,7 @@ python3 cmd/grafana-access-utils.py user add -h
 python3 cmd/grafana-access-utils.py user modify -h
 python3 cmd/grafana-access-utils.py user delete -h
 python3 cmd/grafana-access-utils.py team list -h
+python3 cmd/grafana-access-utils.py team add -h
 python3 cmd/grafana-access-utils.py team modify -h
 python3 cmd/grafana-access-utils.py service-account list -h
 python3 cmd/grafana-access-utils.py service-account add -h

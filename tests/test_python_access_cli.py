@@ -54,6 +54,7 @@ class FakeAccessClient:
         self.updated_user_org_roles = []
         self.updated_user_permissions = []
         self.team_gets = []
+        self.created_teams = []
         self.added_team_members = []
         self.removed_team_members = []
         self.updated_team_memberships = []
@@ -90,6 +91,19 @@ class FakeAccessClient:
             if str(item.get("id")) == str(team_id):
                 return dict(item)
         return {"id": team_id, "name": ""}
+
+    def create_team(self, payload):
+        self.created_teams.append(dict(payload))
+        team_id = str(len(self.teams) + 40)
+        team = {
+            "id": team_id,
+            "name": payload.get("name"),
+            "email": payload.get("email", ""),
+            "memberCount": 0,
+        }
+        self.teams.append(dict(team))
+        self.team_members_by_team_id.setdefault(team_id, [])
+        return {"teamId": team_id, "message": "Team created"}
 
     def add_team_member(self, team_id, user_id):
         self.added_team_members.append((str(team_id), str(user_id)))
@@ -400,6 +414,43 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.with_members)
         self.assertEqual(args.page, 2)
         self.assertEqual(args.per_page, 5)
+        self.assertTrue(args.json)
+
+    def test_team_add_help_describes_initial_members_and_admins(self):
+        parser = access_utils.build_parser()
+        team_add_parser = parser._subparsers._group_actions[0].choices["team"]._subparsers._group_actions[0].choices["add"]
+        help_text = team_add_parser.format_help()
+
+        self.assertIn("--name NAME", help_text)
+        self.assertIn("--email EMAIL", help_text)
+        self.assertIn("--member LOGIN_OR_EMAIL", help_text)
+        self.assertIn("--admin LOGIN_OR_EMAIL", help_text)
+
+    def test_parse_args_supports_team_add_mode(self):
+        args = access_utils.parse_args(
+            [
+                "team",
+                "add",
+                "--name",
+                "Ops",
+                "--email",
+                "ops@example.com",
+                "--member",
+                "alice",
+                "--member",
+                "bob@example.com",
+                "--admin",
+                "carol",
+                "--json",
+            ]
+        )
+
+        self.assertEqual(args.resource, "team")
+        self.assertEqual(args.command, "add")
+        self.assertEqual(args.name, "Ops")
+        self.assertEqual(args.email, "ops@example.com")
+        self.assertEqual(args.member, ["alice", "bob@example.com"])
+        self.assertEqual(args.admin, ["carol"])
         self.assertTrue(args.json)
 
     def test_parse_args_supports_team_modify_mode(self):
@@ -817,6 +868,85 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(client.updated_team_memberships, [])
         self.assertIn('"addedMembers": [', output.getvalue())
         self.assertIn('"removedMembers": [', output.getvalue())
+
+    def test_add_team_with_client_creates_team_and_initial_memberships(self):
+        client = FakeAccessClient(
+            org_users=[
+                {"userId": 11, "login": "alice", "email": "alice@example.com"},
+                {"userId": 12, "login": "owner", "email": "owner@example.com"},
+            ]
+        )
+        args = argparse.Namespace(
+            name="Ops",
+            email="ops@example.com",
+            member=["alice"],
+            admin=["owner@example.com"],
+            json=True,
+        )
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            result = access_utils.add_team_with_client(args, client)
+
+        self.assertEqual(result, 0)
+        self.assertEqual(
+            client.created_teams,
+            [{"name": "Ops", "email": "ops@example.com"}],
+        )
+        self.assertEqual(client.team_gets, ["40"])
+        self.assertEqual(client.team_member_lookups, [])
+        self.assertEqual(client.added_team_members, [("40", "11")])
+        self.assertEqual(
+            client.updated_team_memberships,
+            [
+                (
+                    "40",
+                    {
+                        "members": ["alice@example.com"],
+                        "admins": ["owner@example.com"],
+                    },
+                )
+            ],
+        )
+        self.assertIn('"teamId": "40"', output.getvalue())
+        self.assertIn('"addedAdmins": [', output.getvalue())
+
+    def test_add_team_with_client_prints_text_summary_by_default(self):
+        client = FakeAccessClient(
+            org_users=[
+                {"userId": 11, "login": "alice", "email": "alice@example.com"},
+            ]
+        )
+        args = argparse.Namespace(
+            name="Ops",
+            email="ops@example.com",
+            member=["alice"],
+            admin=[],
+            json=False,
+        )
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            result = access_utils.add_team_with_client(args, client)
+
+        self.assertEqual(result, 0)
+        self.assertIn("teamId=40", output.getvalue())
+        self.assertIn("name=Ops", output.getvalue())
+        self.assertIn("email=ops@example.com", output.getvalue())
+        self.assertIn("addedMembers=alice@example.com", output.getvalue())
+
+    def test_add_team_with_client_requires_resolvable_initial_users(self):
+        client = FakeAccessClient()
+        args = argparse.Namespace(
+            name="Ops",
+            email=None,
+            member=["missing-user"],
+            admin=[],
+            json=False,
+        )
+
+        with self.assertRaisesRegex(access_utils.GrafanaError, "User not found by login or email"):
+            access_utils.add_team_with_client(args, client)
 
     def test_modify_team_with_client_updates_admins_with_bulk_payload(self):
         client = FakeAccessClient(
