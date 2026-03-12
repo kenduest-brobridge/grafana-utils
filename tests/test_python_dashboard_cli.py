@@ -14,6 +14,8 @@ from unittest import mock
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = REPO_ROOT / "grafana_utils" / "dashboard_cli.py"
 TRANSPORT_MODULE_PATH = REPO_ROOT / "grafana_utils" / "http_transport.py"
+CLIENT_MODULE_PATH = REPO_ROOT / "grafana_utils" / "clients" / "dashboard_client.py"
+TRANSFORMER_MODULE_PATH = REPO_ROOT / "grafana_utils" / "dashboards" / "transformer.py"
 WRAPPER_PATH = REPO_ROOT / "python" / "grafana-utils.py"
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -100,6 +102,16 @@ class ExporterTests(unittest.TestCase):
         source = TRANSPORT_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(source, filename=str(TRANSPORT_MODULE_PATH), feature_version=(3, 6))
+
+    def test_dashboard_client_module_parses_as_python36_syntax(self):
+        source = CLIENT_MODULE_PATH.read_text(encoding="utf-8")
+
+        ast.parse(source, filename=str(CLIENT_MODULE_PATH), feature_version=(3, 6))
+
+    def test_dashboard_transformer_module_parses_as_python36_syntax(self):
+        source = TRANSFORMER_MODULE_PATH.read_text(encoding="utf-8")
+
+        ast.parse(source, filename=str(TRANSFORMER_MODULE_PATH), feature_version=(3, 6))
 
     def test_dashboard_wrapper_script_parses_as_python36_syntax(self):
         source = WRAPPER_PATH.read_text(encoding="utf-8")
@@ -1882,26 +1894,187 @@ class ExporterTests(unittest.TestCase):
         self.assertIsNone(document["id"])
         self.assertEqual(
             document["panels"][0]["datasource"]["uid"],
-            "${DS_PROMETHEUS_1}",
+            "${DS_PROM_MAIN}",
         )
         self.assertEqual(
             document["panels"][0]["targets"][0]["datasource"]["uid"],
-            "${DS_PROMETHEUS_1}",
+            "${DS_PROM_MAIN}",
         )
-        self.assertEqual(document["panels"][1]["datasource"], "${DS_LOKI_1}")
+        self.assertEqual(document["panels"][1]["datasource"], "${DS_LOKI_LOGS}")
         self.assertEqual(
             [item["name"] for item in document["__inputs"]],
-            ["DS_LOKI_1", "DS_PROMETHEUS_1"],
+            ["DS_LOKI_LOGS", "DS_PROM_MAIN"],
         )
         self.assertEqual(
             [item["label"] for item in document["__inputs"]],
-            ["Loki datasource", "Prometheus datasource"],
+            ["Loki Logs", "Prom Main"],
+        )
+        self.assertEqual(
+            [item["pluginName"] for item in document["__inputs"]],
+            ["Loki", "Prometheus"],
         )
         self.assertEqual(
             {item["id"] for item in document["__requires"] if item["type"] == "datasource"},
             {"loki", "prometheus"},
         )
         self.assertEqual(document["__elements"], {})
+
+    def test_build_preserved_web_import_document_keeps_mixed_panel_query_datasources(self):
+        payload = {
+            "dashboard": {
+                "id": 16,
+                "uid": "mixed-query-smoke",
+                "title": "Mixed Query Dashboard",
+                "panels": [
+                    {
+                        "id": 1,
+                        "type": "timeseries",
+                        "title": "Mixed Panel",
+                        "datasource": {"type": "datasource", "uid": "-- Mixed --"},
+                        "targets": [
+                            {
+                                "refId": "A",
+                                "datasource": {"type": "prometheus", "uid": "prom_uid"},
+                                "expr": "up",
+                            },
+                            {
+                                "refId": "B",
+                                "datasource": {"type": "loki", "uid": "loki_uid"},
+                                "expr": '{job="grafana"}',
+                            },
+                        ],
+                    }
+                ],
+            }
+        }
+
+        document = exporter.build_preserved_web_import_document(payload)
+
+        self.assertIsNone(document["id"])
+        self.assertEqual(document["panels"][0]["datasource"]["uid"], "-- Mixed --")
+        self.assertEqual(
+            document["panels"][0]["targets"][0]["datasource"],
+            {"type": "prometheus", "uid": "prom_uid"},
+        )
+        self.assertEqual(
+            document["panels"][0]["targets"][1]["datasource"],
+            {"type": "loki", "uid": "loki_uid"},
+        )
+
+    def test_build_external_export_document_rewrites_mixed_panel_query_datasources(self):
+        payload = {
+            "dashboard": {
+                "id": 17,
+                "title": "Mixed Query Dashboard",
+                "panels": [
+                    {
+                        "id": 1,
+                        "type": "timeseries",
+                        "title": "Mixed Panel",
+                        "datasource": {"type": "datasource", "uid": "-- Mixed --"},
+                        "targets": [
+                            {
+                                "refId": "A",
+                                "datasource": {"type": "prometheus", "uid": "prom_uid"},
+                                "expr": "up",
+                            },
+                            {
+                                "refId": "B",
+                                "datasource": {"type": "loki", "uid": "loki_uid"},
+                                "expr": '{job="grafana"}',
+                            },
+                        ],
+                    }
+                ],
+            }
+        }
+        catalog = exporter.build_datasource_catalog(
+            [
+                {"uid": "prom_uid", "name": "Smoke Prometheus", "type": "prometheus"},
+                {"uid": "loki_uid", "name": "Smoke Loki", "type": "loki"},
+            ]
+        )
+
+        document = exporter.build_external_export_document(payload, catalog)
+
+        self.assertEqual(
+            document["panels"][0]["datasource"],
+            {"type": "datasource", "uid": "-- Mixed --"},
+        )
+        self.assertEqual(
+            document["panels"][0]["targets"][0]["datasource"],
+            {"type": "prometheus", "uid": "${DS_SMOKE_PROMETHEUS}"},
+        )
+        self.assertEqual(
+            document["panels"][0]["targets"][1]["datasource"],
+            {"type": "loki", "uid": "${DS_SMOKE_LOKI}"},
+        )
+        self.assertEqual(
+            [item["name"] for item in document["__inputs"]],
+            ["DS_SMOKE_LOKI", "DS_SMOKE_PROMETHEUS"],
+        )
+        self.assertEqual(
+            [item["label"] for item in document["__inputs"]],
+            ["Smoke Loki", "Smoke Prometheus"],
+        )
+        self.assertEqual(
+            {item["id"] for item in document["__requires"] if item["type"] == "datasource"},
+            {"loki", "prometheus"},
+        )
+
+    def test_build_external_export_document_keeps_distinct_same_type_datasources_separate(self):
+        payload = {
+            "dashboard": {
+                "id": 18,
+                "title": "Two Prometheus Query Dashboard",
+                "panels": [
+                    {
+                        "id": 1,
+                        "type": "timeseries",
+                        "title": "Two Prometheus Panel",
+                        "datasource": {"type": "datasource", "uid": "-- Mixed --"},
+                        "targets": [
+                            {
+                                "refId": "A",
+                                "datasource": {"type": "prometheus", "uid": "prom_uid_1"},
+                                "expr": "up",
+                            },
+                            {
+                                "refId": "B",
+                                "datasource": {"type": "prometheus", "uid": "prom_uid_2"},
+                                "expr": "up",
+                            },
+                        ],
+                    }
+                ],
+            }
+        }
+        catalog = exporter.build_datasource_catalog(
+            [
+                {"uid": "prom_uid_1", "name": "Smoke Prometheus", "type": "prometheus"},
+                {"uid": "prom_uid_2", "name": "Smoke Prometheus 2", "type": "prometheus"},
+            ]
+        )
+
+        document = exporter.build_external_export_document(payload, catalog)
+
+        self.assertEqual(
+            document["panels"][0]["datasource"],
+            {"type": "datasource", "uid": "-- Mixed --"},
+        )
+        self.assertEqual(
+            document["panels"][0]["targets"][0]["datasource"],
+            {"type": "prometheus", "uid": "${DS_SMOKE_PROMETHEUS}"},
+        )
+        self.assertEqual(
+            document["panels"][0]["targets"][1]["datasource"],
+            {"type": "prometheus", "uid": "${DS_SMOKE_PROMETHEUS_2}"},
+        )
+        self.assertEqual(
+            [item["name"] for item in document["__inputs"]],
+            ["DS_SMOKE_PROMETHEUS", "DS_SMOKE_PROMETHEUS_2"],
+        )
+        self.assertNotIn("templating", document)
 
     def test_build_external_export_document_resolves_string_datasource_uid(self):
         payload = {
@@ -1931,7 +2104,7 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(document["panels"][0]["datasource"]["uid"], "$datasource")
         self.assertEqual(
             [item["name"] for item in document["__inputs"]],
-            ["DS_PROMETHEUS_1"],
+            ["DS_PROD_PROMETHEUS"],
         )
         self.assertEqual(document["templating"]["list"][0]["type"], "datasource")
         self.assertEqual(document["templating"]["list"][0]["query"], "prometheus")
@@ -1955,7 +2128,7 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(document["panels"][0]["datasource"]["uid"], "$datasource")
         self.assertEqual(
             [item["name"] for item in document["__inputs"]],
-            ["DS_PROMETHEUS_1"],
+            ["DS_PROMETHEUS"],
         )
 
     def test_build_external_export_document_converts_existing_datasource_variable(self):
@@ -1977,7 +2150,7 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(document["panels"][0]["datasource"]["uid"], "$datasource")
         self.assertEqual(
             [item["name"] for item in document["__inputs"]],
-            ["DS_PROMETHEUS_1"],
+            ["DS_PROMETHEUS"],
         )
 
     def test_build_external_export_document_preserves_untyped_datasource_variable(self):
@@ -2048,13 +2221,13 @@ class ExporterTests(unittest.TestCase):
 
         self.assertEqual(
             [item["name"] for item in document["__inputs"]],
-            ["DS_PROMETHEUS_1"],
+            ["DS_PROMETHEUS"],
         )
         self.assertEqual(document["templating"]["list"][0]["current"], {})
         self.assertEqual(document["templating"]["list"][0]["query"], "prometheus")
         self.assertEqual(
             document["templating"]["list"][1]["datasource"]["uid"],
-            "${DS_PROMETHEUS_1}",
+            "${DS_PROMETHEUS}",
         )
         self.assertEqual(document["panels"][0]["datasource"]["uid"], "$datasource")
 

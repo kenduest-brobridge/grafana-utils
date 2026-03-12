@@ -40,6 +40,8 @@
 - `service-account delete`
 - `service-account token delete`
 - dashboard `prompt` export should surface the original datasource name in Grafana web-import prompts, not only the datasource type label
+- dashboard `prompt` export should align `__requires` names and versions with Grafana external export where possible
+- dashboard `prompt` export should add broader mixed-type and same-type datasource validation coverage beyond the current Prometheus/Loki cases
 - split oversized Rust `access.rs`
 - split oversized Rust `alert.rs`
 

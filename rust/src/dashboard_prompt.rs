@@ -32,6 +32,7 @@ pub(crate) fn datasource_type_alias(value: &str) -> &str {
 #[derive(Clone, Debug)]
 struct ResolvedDatasource {
     key: String,
+    input_label: String,
     ds_type: String,
 }
 
@@ -39,6 +40,7 @@ struct ResolvedDatasource {
 struct InputMapping {
     input_name: String,
     label: String,
+    plugin_name: String,
     ds_type: String,
 }
 
@@ -89,6 +91,8 @@ pub(crate) fn is_builtin_datasource_ref(value: &Value) -> bool {
             let ds_type = object.get("type").and_then(Value::as_str).unwrap_or_default();
             is_generated_input_placeholder(uid)
                 || is_generated_input_placeholder(name)
+                || BUILTIN_DATASOURCE_NAMES.contains(&uid)
+                || BUILTIN_DATASOURCE_NAMES.contains(&name)
                 || BUILTIN_DATASOURCE_TYPES.contains(&uid)
                 || BUILTIN_DATASOURCE_TYPES.contains(&ds_type)
         }
@@ -131,12 +135,8 @@ fn make_input_name(label: &str) -> String {
     format!("DS_{}", if normalized.is_empty() { "DATASOURCE" } else { &normalized })
 }
 
-fn make_type_input_base(datasource_type: &str) -> String {
-    make_input_name(datasource_type_alias(datasource_type))
-}
-
-fn make_input_label(datasource_type: &str, index: usize) -> String {
-    let title = datasource_type_alias(datasource_type)
+fn format_plugin_name(datasource_type: &str) -> String {
+    datasource_type_alias(datasource_type)
         .replace('-', " ")
         .replace('_', " ")
         .split_whitespace()
@@ -148,7 +148,11 @@ fn make_input_label(datasource_type: &str, index: usize) -> String {
             }
         })
         .collect::<Vec<String>>()
-        .join(" ");
+        .join(" ")
+}
+
+fn make_input_label(datasource_type: &str, index: usize) -> String {
+    let title = format_plugin_name(datasource_type);
     if index == 1 {
         format!("{title} datasource")
     } else {
@@ -156,8 +160,12 @@ fn make_input_label(datasource_type: &str, index: usize) -> String {
     }
 }
 
-fn build_resolved_datasource(key: String, ds_type: String) -> ResolvedDatasource {
-    ResolvedDatasource { key, ds_type }
+fn build_resolved_datasource(key: String, ds_type: String, input_label: String) -> ResolvedDatasource {
+    ResolvedDatasource {
+        key,
+        input_label,
+        ds_type,
+    }
 }
 
 pub(crate) fn lookup_datasource(
@@ -209,13 +217,15 @@ fn resolve_string_datasource_ref(
                 "Datasource {reference:?} does not have a usable type."
             )));
         }
-        return Ok(build_resolved_datasource(format!("uid:{uid}"), ds_type));
+        let label = string_field(&datasource, "name", reference);
+        return Ok(build_resolved_datasource(format!("uid:{uid}"), ds_type, label));
     }
 
     if let Some(datasource_type) = resolve_datasource_type_alias(reference, datasources_by_uid) {
         return Ok(build_resolved_datasource(
             format!("type:{datasource_type}"),
-            datasource_type,
+            datasource_type.clone(),
+            format_plugin_name(&datasource_type),
         ));
     }
 
@@ -241,6 +251,7 @@ fn resolve_placeholder_object_ref(
     Some(build_resolved_datasource(
         format!("var:{ds_type}:{token}"),
         ds_type.to_string(),
+        format_plugin_name(ds_type),
     ))
 }
 
@@ -263,10 +274,15 @@ fn resolve_object_datasource_ref(
 
     let datasource = lookup_datasource(datasources_by_uid, datasources_by_name, uid, name);
     let mut resolved_type = ds_type.unwrap_or_default().to_string();
+    let mut resolved_label = name.unwrap_or(uid.unwrap_or_default()).to_string();
     let mut resolved_uid = uid.unwrap_or(name.unwrap_or_default()).to_string();
     if let Some(datasource) = datasource {
         if resolved_type.is_empty() {
             resolved_type = string_field(&datasource, "type", "");
+        }
+        let datasource_name = string_field(&datasource, "name", "");
+        if !datasource_name.is_empty() {
+            resolved_label = datasource_name;
         }
         if resolved_uid.is_empty() {
             resolved_uid = string_field(&datasource, "uid", "");
@@ -282,10 +298,14 @@ fn resolve_object_datasource_ref(
     if resolved_uid.is_empty() {
         resolved_uid = resolved_type.clone();
     }
+    if resolved_label.is_empty() {
+        resolved_label = resolved_type.clone();
+    }
 
     Ok(Some(build_resolved_datasource(
         format!("uid:{resolved_uid}"),
         resolved_type,
+        resolved_label,
     )))
 }
 
@@ -320,11 +340,26 @@ fn allocate_input_mapping(
     if let Some(mapping) = ref_mapping.get(&mapping_key) {
         return mapping.clone();
     }
-    let count = type_counts.get(&resolved.ds_type).copied().unwrap_or(0) + 1;
-    type_counts.insert(resolved.ds_type.clone(), count);
+    let input_label = if resolved.input_label.is_empty() {
+        format_plugin_name(&resolved.ds_type)
+    } else {
+        resolved.input_label.clone()
+    };
+    let input_base = make_input_name(&input_label);
+    let count = type_counts.get(&input_base).copied().unwrap_or(0) + 1;
+    type_counts.insert(input_base.clone(), count);
     let mapping = InputMapping {
-        input_name: format!("{}_{}", make_type_input_base(&resolved.ds_type), count),
-        label: make_input_label(&resolved.ds_type, count),
+        input_name: if count == 1 {
+            input_base
+        } else {
+            format!("{input_base}_{count}")
+        },
+        label: if resolved.input_label.is_empty() {
+            make_input_label(&resolved.ds_type, count)
+        } else {
+            resolved.input_label.clone()
+        },
+        plugin_name: format_plugin_name(&resolved.ds_type),
         ds_type: resolved.ds_type.clone(),
     };
     ref_mapping.insert(mapping_key, mapping.clone());
@@ -608,7 +643,7 @@ fn build_input_definitions(ref_mapping: &BTreeMap<String, InputMapping>) -> Valu
                     "description": "",
                     "type": "datasource",
                     "pluginId": mapping.ds_type,
-                    "pluginName": mapping.ds_type,
+                    "pluginName": mapping.plugin_name,
                 })
             })
             .collect(),
@@ -691,7 +726,7 @@ pub fn build_external_export_document(
         .values()
         .map(|mapping| mapping.ds_type.clone())
         .collect::<BTreeSet<String>>();
-    if datasource_types.len() == 1 {
+    if datasource_types.len() == 1 && ref_mapping.len() == 1 {
         let datasource_type = datasource_types.iter().next().cloned().unwrap_or_default();
         let dashboard_object = dashboard
             .as_object_mut()

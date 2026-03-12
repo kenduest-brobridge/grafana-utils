@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-12 - Task: Align Prompt Export Labels With Grafana External Export
+- State: Done
+- Scope: `grafana_utils/dashboards/transformer.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard_prompt.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Dashboard prompt export used Grafana-style `__inputs`, but the human-facing fields still drifted from Grafana external export behavior. Input `name` used stable internal placeholders such as `DS_PROMETHEUS_1`, while `label` and `pluginName` were generated from datasource type strings like `Prometheus datasource` and `prometheus` instead of preserving the original datasource name and a human-readable plugin title.
+- Current Update: Changed both Python and Rust prompt-export rewrite paths to carry datasource display names through resolution, keep `DS_*` internal placeholder keys stable, emit `__inputs.label` from the original datasource name when known, and emit human-readable `pluginName` values such as `Prometheus` instead of raw type ids.
+- Result: Prompt exports now stay closer to Grafana external export shape for human-facing datasource prompts while preserving the existing placeholder mapping strategy and prompt rewrite flow.
+
 ## 2026-03-12 - Task: Split Python Access Client And Models
 - State: Done
 - Scope: `grafana_utils/access_cli.py`, `grafana_utils/clients/access_client.py`, `grafana_utils/access/common.py`, `grafana_utils/access/models.py`, `tests/test_python_access_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

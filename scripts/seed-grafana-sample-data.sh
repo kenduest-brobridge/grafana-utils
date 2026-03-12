@@ -41,9 +41,9 @@ The script is idempotent:
 
 Seeded sample layout:
 - Org 1 Main Org.
-  - Datasources: Smoke Prometheus, Smoke Loki
+  - Datasources: Smoke Prometheus, Smoke Prometheus 2, Smoke Loki
   - Folders: Platform, Platform / Infra
-  - Dashboards: smoke-main, smoke-prom-only, query-smoke, subfolder-main
+  - Dashboards: smoke-main, smoke-prom-only, query-smoke, mixed-query-smoke, two-prom-query-smoke, subfolder-main
 - Org 2 Org Two
   - Dashboard: org-two-main
 - Org 3 QA Org
@@ -502,6 +502,62 @@ dashboard_query_smoke() {
 EOF
 }
 
+dashboard_mixed_query_smoke() {
+  cat <<'EOF'
+{
+  "id": null,
+  "uid": "mixed-query-smoke",
+  "title": "Mixed Query Dashboard",
+  "tags": ["sample", "mixed-datasource"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 0,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Mixed Panel",
+      "type": "timeseries",
+      "datasource": {"type": "datasource", "uid": "-- Mixed --"},
+      "targets": [
+        {"refId": "A", "datasource": {"type": "prometheus", "uid": "smoke-prom"}, "expr": "up", "legendFormat": "prom"},
+        {"refId": "B", "datasource": {"type": "loki", "uid": "smoke-loki"}, "expr": "{job=\"grafana\"}", "queryType": "range", "legendFormat": "loki"}
+      ],
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 0}
+    }
+  ]
+}
+EOF
+}
+
+dashboard_two_prom_query_smoke() {
+  cat <<'EOF'
+{
+  "id": null,
+  "uid": "two-prom-query-smoke",
+  "title": "Two Prometheus Query Dashboard",
+  "tags": ["sample", "two-prometheus"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 0,
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Two Prometheus Panel",
+      "type": "timeseries",
+      "datasource": {"type": "datasource", "uid": "-- Mixed --"},
+      "targets": [
+        {"refId": "A", "datasource": {"type": "prometheus", "uid": "smoke-prom"}, "expr": "up", "legendFormat": "prom-1"},
+        {"refId": "B", "datasource": {"type": "prometheus", "uid": "smoke-prom-2"}, "expr": "up", "legendFormat": "prom-2"}
+      ],
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 0}
+    }
+  ]
+}
+EOF
+}
+
 dashboard_subfolder_main() {
   cat <<'EOF'
 {
@@ -609,24 +665,30 @@ EOF
 seed_main_org() {
   local org_id="$1"
   ensure_datasource "${org_id}" "smoke-prom" "Smoke Prometheus" "prometheus" "http://prometheus:9090" true
+  ensure_datasource "${org_id}" "smoke-prom-2" "Smoke Prometheus 2" "prometheus" "http://prometheus-two:9090" false
   ensure_datasource "${org_id}" "smoke-loki" "Smoke Loki" "loki" "http://loki:3100" false
   ensure_folder "${org_id}" "platform" "Platform"
   ensure_folder "${org_id}" "infra" "Infra" "platform"
   upsert_dashboard "${org_id}" "" "$(dashboard_smoke_main)"
   upsert_dashboard "${org_id}" "" "$(dashboard_prom_only)"
   upsert_dashboard "${org_id}" "" "$(dashboard_query_smoke)"
+  upsert_dashboard "${org_id}" "" "$(dashboard_mixed_query_smoke)"
+  upsert_dashboard "${org_id}" "" "$(dashboard_two_prom_query_smoke)"
   upsert_dashboard "${org_id}" "infra" "$(dashboard_subfolder_main)"
 }
 
 destroy_main_org() {
   local org_id="$1"
   delete_dashboard "${org_id}" "subfolder-main"
+  delete_dashboard "${org_id}" "two-prom-query-smoke"
+  delete_dashboard "${org_id}" "mixed-query-smoke"
   delete_dashboard "${org_id}" "query-smoke"
   delete_dashboard "${org_id}" "smoke-prom-only"
   delete_dashboard "${org_id}" "smoke-main"
   delete_folder "${org_id}" "infra" "Infra"
   delete_folder "${org_id}" "platform" "Platform"
   delete_datasource "${org_id}" "smoke-loki" "Smoke Loki"
+  delete_datasource "${org_id}" "smoke-prom-2" "Smoke Prometheus 2"
   delete_datasource "${org_id}" "smoke-prom" "Smoke Prometheus"
 }
 

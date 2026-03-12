@@ -1366,11 +1366,15 @@ fn build_external_export_document_adds_datasource_inputs() {
 
     let document = build_external_export_document(&payload, &catalog).unwrap();
 
-    assert_eq!(document["panels"][0]["datasource"]["uid"], "${DS_PROMETHEUS_1}");
-    assert_eq!(document["panels"][0]["targets"][0]["datasource"]["uid"], "${DS_PROMETHEUS_1}");
-    assert_eq!(document["panels"][1]["datasource"], "${DS_LOKI_1}");
-    assert_eq!(document["__inputs"][0]["name"], "DS_LOKI_1");
-    assert_eq!(document["__inputs"][1]["name"], "DS_PROMETHEUS_1");
+    assert_eq!(document["panels"][0]["datasource"]["uid"], "${DS_PROM_MAIN}");
+    assert_eq!(document["panels"][0]["targets"][0]["datasource"]["uid"], "${DS_PROM_MAIN}");
+    assert_eq!(document["panels"][1]["datasource"], "${DS_LOKI_LOGS}");
+    assert_eq!(document["__inputs"][0]["name"], "DS_LOKI_LOGS");
+    assert_eq!(document["__inputs"][1]["name"], "DS_PROM_MAIN");
+    assert_eq!(document["__inputs"][0]["label"], "Loki Logs");
+    assert_eq!(document["__inputs"][1]["label"], "Prom Main");
+    assert_eq!(document["__inputs"][0]["pluginName"], "Loki");
+    assert_eq!(document["__inputs"][1]["pluginName"], "Prometheus");
     assert_eq!(document["__elements"], json!({}));
 }
 
@@ -1421,10 +1425,10 @@ fn build_external_export_document_creates_input_from_datasource_template_variabl
     });
 
     let document = build_external_export_document(&payload, &(BTreeMap::new(), BTreeMap::new())).unwrap();
-    assert_eq!(document["__inputs"][0]["name"], "DS_PROMETHEUS_1");
+    assert_eq!(document["__inputs"][0]["name"], "DS_PROMETHEUS");
     assert_eq!(document["templating"]["list"][0]["current"], json!({}));
     assert_eq!(document["templating"]["list"][0]["query"], "prometheus");
-    assert_eq!(document["templating"]["list"][1]["datasource"]["uid"], "${DS_PROMETHEUS_1}");
+    assert_eq!(document["templating"]["list"][1]["datasource"]["uid"], "${DS_PROMETHEUS}");
     assert_eq!(document["panels"][0]["datasource"]["uid"], "$datasource");
 }
 
