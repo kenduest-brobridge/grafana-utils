@@ -1,5 +1,14 @@
 # ai-changes.md
 
+## 2026-03-12 - Type Rust Dashboard Export Metadata And Index Models
+- Summary: Replaced the Rust dashboard export helpers for `export-metadata.json`, root `index.json`, and variant index entries with typed `serde` models instead of building those fixed-schema documents through generic JSON maps. The change keeps field names and JSON shapes stable through explicit `serde` renames while making validation and serialization paths more Rust-native.
+- Tests: Added focused Rust tests that serialize the export metadata and root index models back to JSON and assert the exact existing field layout.
+- Test Run: `cd rust && cargo test dashboard --quiet`; `cd rust && cargo test --quiet`
+- Reason: These export manifest documents are stable tool-owned schemas, so they are a good low-risk place to improve type safety without touching the much more dynamic dashboard payload model.
+- Validation: Verified the focused dashboard suite and the full Rust suite still pass, and that the new typed models preserve the same `schemaVersion`, `kind`, `variant`, `dashboardCount`, `indexFile`, `items`, and `variants` output shapes as before.
+- Impact: `rust/src/dashboard.rs`, `rust/src/dashboard_export.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. The change is internal to the Rust dashboard manifest/index path, and the added serialization tests guard the existing JSON shape against accidental drift.
+
 ## 2026-03-12 - Move Python Source-Tree Wrapper To python/ And Remove Python Access Shim
 - Summary: Moved the repo-local Python wrapper from `cmd/grafana-utils.py` to `python/grafana-utils.py` and removed the separate Python `grafana-access-utils` shim from both the source tree and `pyproject.toml`. Python source-tree and installed usage now both center on one command family: `grafana-utils ...`, with access workflows entering through `grafana-utils access ...`.
 - Tests: Updated Python packaging, unified CLI, access CLI, and dashboard CLI tests to load the new wrapper path and to stop expecting a separate Python access console script.

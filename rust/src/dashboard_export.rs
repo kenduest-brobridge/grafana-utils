@@ -128,10 +128,7 @@ where
                     raw_path.display()
                 );
             }
-            item.insert(
-                "raw_path".to_string(),
-                Value::String(raw_path.display().to_string()),
-            );
+            item.raw_path = Some(raw_path.display().to_string());
         }
         if !args.without_dashboard_prompt {
             let prompt_document = build_external_export_document(
@@ -152,10 +149,7 @@ where
                     prompt_path.display()
                 );
             }
-            item.insert(
-                "prompt_path".to_string(),
-                Value::String(prompt_path.display().to_string()),
-            );
+            item.prompt_path = Some(prompt_path.display().to_string());
         }
         exported_count += 1;
         index_items.push(item);
@@ -174,7 +168,7 @@ where
             write_json_document(
                 &build_variant_index(
                     &index_items,
-                    "raw_path",
+                    |item| item.raw_path.as_deref(),
                     "grafana-web-import-preserve-uid",
                 ),
                 &index_path,
@@ -182,7 +176,7 @@ where
             write_json_document(
                 &build_export_metadata(
                     RAW_EXPORT_SUBDIR,
-                    index_items.iter().filter(|item| item.contains_key("raw_path")).count(),
+                    index_items.iter().filter(|item| item.raw_path.is_some()).count(),
                     Some("grafana-web-import-preserve-uid"),
                 ),
                 &metadata_path,
@@ -203,7 +197,7 @@ where
             write_json_document(
                 &build_variant_index(
                     &index_items,
-                    "prompt_path",
+                    |item| item.prompt_path.as_deref(),
                     "grafana-web-import-with-datasource-inputs",
                 ),
                 &index_path,
@@ -213,7 +207,7 @@ where
                     PROMPT_EXPORT_SUBDIR,
                     index_items
                         .iter()
-                        .filter(|item| item.contains_key("prompt_path"))
+                        .filter(|item| item.prompt_path.is_some())
                         .count(),
                     Some("grafana-web-import-with-datasource-inputs"),
                 ),

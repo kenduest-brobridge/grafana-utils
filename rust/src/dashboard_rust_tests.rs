@@ -1,12 +1,14 @@
 use super::{
     attach_dashboard_folder_paths_with_request, build_export_variant_dirs, build_external_export_document,
-    build_import_payload, build_output_path, build_preserved_web_import_document,
-    build_folder_path, diff_dashboards_with_request, discover_dashboard_files, export_dashboards_with_request,
-    format_dashboard_summary_line, import_dashboards_with_request, list_dashboards_with_request,
-    list_data_sources_with_request, parse_cli_from, render_dashboard_summary_csv, render_dashboard_summary_json,
-    render_dashboard_summary_table, CommonCliArgs, DashboardCliArgs, DiffArgs, ExportArgs, ImportArgs,
-    ListArgs, ListDataSourcesArgs, DashboardCommand, EXPORT_METADATA_FILENAME, TOOL_SCHEMA_VERSION,
-    format_data_source_line, render_data_source_csv, render_data_source_json, render_data_source_table,
+    build_export_metadata, build_folder_path, build_import_payload, build_output_path,
+    build_preserved_web_import_document, build_root_export_index, diff_dashboards_with_request,
+    discover_dashboard_files, export_dashboards_with_request, format_dashboard_summary_line,
+    format_data_source_line, import_dashboards_with_request, list_dashboards_with_request,
+    list_data_sources_with_request, parse_cli_from, render_dashboard_summary_csv,
+    render_dashboard_summary_json, render_dashboard_summary_table, render_data_source_csv,
+    render_data_source_json, render_data_source_table, CommonCliArgs, DashboardCliArgs, DiffArgs,
+    ExportArgs, ImportArgs, ListArgs, ListDataSourcesArgs, DashboardCommand, EXPORT_METADATA_FILENAME,
+    TOOL_SCHEMA_VERSION,
 };
 use clap::{CommandFactory, Parser};
 use serde_json::{json, Value};
@@ -42,6 +44,67 @@ fn render_dashboard_help() -> String {
     let mut output = Vec::new();
     command.write_long_help(&mut output).unwrap();
     String::from_utf8(output).unwrap()
+}
+
+#[test]
+fn build_export_metadata_serializes_expected_shape() {
+    let value = serde_json::to_value(build_export_metadata("raw", 2, Some("grafana-web-import-preserve-uid")))
+        .unwrap();
+
+    assert_eq!(
+        value,
+        json!({
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "kind": "grafana-utils-dashboard-export-index",
+            "variant": "raw",
+            "dashboardCount": 2,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid"
+        })
+    );
+}
+
+#[test]
+fn build_root_export_index_serializes_expected_shape() {
+    let summary = serde_json::from_value(json!({
+        "uid": "cpu-main",
+        "title": "CPU Overview",
+        "folderTitle": "Infra",
+        "orgName": "Main Org.",
+        "orgId": 1
+    }))
+    .unwrap();
+    let mut item = super::build_dashboard_index_item(&summary, "cpu-main");
+    item.raw_path = Some("/tmp/raw/cpu-main.json".to_string());
+
+    let value = serde_json::to_value(build_root_export_index(
+        &[item],
+        Some(Path::new("/tmp/raw/index.json")),
+        None,
+    ))
+    .unwrap();
+
+    assert_eq!(
+        value,
+        json!({
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "kind": "grafana-utils-dashboard-export-index",
+            "items": [
+                {
+                    "uid": "cpu-main",
+                    "title": "CPU Overview",
+                    "folderTitle": "Infra",
+                    "org": "Main Org.",
+                    "orgId": "1",
+                    "raw_path": "/tmp/raw/cpu-main.json"
+                }
+            ],
+            "variants": {
+                "raw": "/tmp/raw/index.json",
+                "prompt": null
+            }
+        })
+    );
 }
 
 #[test]

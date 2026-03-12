@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-12 - Task: Type Rust Dashboard Export Metadata And Index Models
+- State: Done
+- Scope: `rust/src/dashboard.rs`, `rust/src/dashboard_export.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The Rust dashboard export flow already validated fixed-schema files like `export-metadata.json` and `index.json`, but it still built and re-read those documents through ad hoc `Map<String, Value>` objects.
+- Current Update: Replaced the fixed-schema dashboard export metadata and index helpers with typed Rust structs using `serde` derives, kept JSON field names stable through `serde` renames, and added focused serialization tests for the root index and export metadata shapes.
+- Result: The dashboard export manifest path now gets stronger compile-time structure without changing the on-disk JSON format or the existing import/export CLI behavior.
+
 ## 2026-03-12 - Task: Move Python Source-Tree Wrapper To python/ And Remove Python Access Shim
 - State: Done
 - Scope: `python/grafana-utils.py`, `grafana_utils/unified_cli.py`, `grafana_utils/access_cli.py`, `pyproject.toml`, `scripts/test-python-access-live-grafana.sh`, `tests/test_python_packaging.py`, `tests/test_python_unified_cli.py`, `tests/test_python_access_cli.py`, `tests/test_python_dashboard_cli.py`, `README.md`, `DEVELOPER.md`, `AGENTS.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

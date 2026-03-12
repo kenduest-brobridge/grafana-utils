@@ -1,4 +1,5 @@
 use reqwest::Method;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::fmt::Write as _;
 use std::fs;
@@ -65,6 +66,61 @@ const BUILTIN_DATASOURCE_NAMES: &[&str] = &[
     "__expr__",
 ];
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+struct ExportMetadata {
+    #[serde(rename = "schemaVersion")]
+    schema_version: i64,
+    kind: String,
+    variant: String,
+    #[serde(rename = "dashboardCount")]
+    dashboard_count: u64,
+    #[serde(rename = "indexFile")]
+    index_file: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    format: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+struct DashboardIndexItem {
+    uid: String,
+    title: String,
+    #[serde(rename = "folderTitle")]
+    folder_title: String,
+    org: String,
+    #[serde(rename = "orgId")]
+    org_id: String,
+    #[serde(rename = "raw_path", skip_serializing_if = "Option::is_none")]
+    raw_path: Option<String>,
+    #[serde(rename = "prompt_path", skip_serializing_if = "Option::is_none")]
+    prompt_path: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+struct VariantIndexEntry {
+    uid: String,
+    title: String,
+    path: String,
+    format: String,
+    org: String,
+    #[serde(rename = "orgId")]
+    org_id: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+struct RootExportVariants {
+    raw: Option<String>,
+    prompt: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+struct RootExportIndex {
+    #[serde(rename = "schemaVersion")]
+    schema_version: i64,
+    kind: String,
+    items: Vec<DashboardIndexItem>,
+    variants: RootExportVariants,
+}
+
 pub fn discover_dashboard_files(import_dir: &Path) -> Result<Vec<PathBuf>> {
     if !import_dir.exists() {
         return Err(message(format!(
@@ -104,65 +160,58 @@ pub fn discover_dashboard_files(import_dir: &Path) -> Result<Vec<PathBuf>> {
     Ok(files)
 }
 
-fn build_export_metadata(variant: &str, dashboard_count: usize, format_name: Option<&str>) -> Value {
-    let mut metadata = Map::new();
-    metadata.insert(
-        "schemaVersion".to_string(),
-        Value::Number(TOOL_SCHEMA_VERSION.into()),
-    );
-    metadata.insert("kind".to_string(), Value::String(ROOT_INDEX_KIND.to_string()));
-    metadata.insert("variant".to_string(), Value::String(variant.to_string()));
-    metadata.insert(
-        "dashboardCount".to_string(),
-        Value::Number((dashboard_count as u64).into()),
-    );
-    metadata.insert("indexFile".to_string(), Value::String("index.json".to_string()));
-    if let Some(format_name) = format_name {
-        metadata.insert("format".to_string(), Value::String(format_name.to_string()));
+fn build_export_metadata(variant: &str, dashboard_count: usize, format_name: Option<&str>) -> ExportMetadata {
+    ExportMetadata {
+        schema_version: TOOL_SCHEMA_VERSION,
+        kind: ROOT_INDEX_KIND.to_string(),
+        variant: variant.to_string(),
+        dashboard_count: dashboard_count as u64,
+        index_file: "index.json".to_string(),
+        format: format_name.map(str::to_owned),
     }
-    Value::Object(metadata)
 }
 
 fn validate_export_metadata(
-    metadata: &Map<String, Value>,
+    metadata: &ExportMetadata,
     metadata_path: &Path,
     expected_variant: Option<&str>,
 ) -> Result<()> {
-    if metadata.get("kind").and_then(Value::as_str) != Some(ROOT_INDEX_KIND) {
+    if metadata.kind != ROOT_INDEX_KIND {
         return Err(message(format!(
             "Unexpected dashboard export manifest kind in {}: {:?}",
             metadata_path.display(),
-            metadata.get("kind")
+            metadata.kind
         )));
     }
-    if metadata.get("schemaVersion").and_then(Value::as_i64) != Some(TOOL_SCHEMA_VERSION) {
+    if metadata.schema_version != TOOL_SCHEMA_VERSION {
         return Err(message(format!(
             "Unsupported dashboard export schemaVersion {:?} in {}. Expected {}.",
-            metadata.get("schemaVersion"),
+            metadata.schema_version,
             metadata_path.display(),
             TOOL_SCHEMA_VERSION
         )));
     }
     if let Some(expected_variant) = expected_variant {
-        let variant = metadata.get("variant").and_then(Value::as_str).unwrap_or_default();
-        if variant != expected_variant {
+        if metadata.variant != expected_variant {
             return Err(message(format!(
                 "Dashboard export manifest {} describes variant {:?}. Point this command at the {expected_variant}/ directory.",
                 metadata_path.display(),
-                metadata.get("variant")
+                metadata.variant
             )));
         }
     }
     Ok(())
 }
 
-fn load_export_metadata(import_dir: &Path, expected_variant: Option<&str>) -> Result<Option<Map<String, Value>>> {
+fn load_export_metadata(import_dir: &Path, expected_variant: Option<&str>) -> Result<Option<ExportMetadata>> {
     let metadata_path = import_dir.join(EXPORT_METADATA_FILENAME);
     if !metadata_path.is_file() {
         return Ok(None);
     }
     let value = load_json_file(&metadata_path)?;
-    let metadata = value_as_object(&value, "Dashboard export metadata must be a JSON object.")?.clone();
+    value_as_object(&value, "Dashboard export metadata must be a JSON object.")?;
+    let metadata: ExportMetadata = serde_json::from_value(value)
+        .map_err(|error| message(format!("Invalid dashboard export metadata in {}: {error}", metadata_path.display())))?;
     validate_export_metadata(&metadata, &metadata_path, expected_variant)?;
     Ok(Some(metadata))
 }
@@ -258,7 +307,7 @@ fn write_dashboard(payload: &Value, output_path: &Path, overwrite: bool) -> Resu
     Ok(())
 }
 
-fn write_json_document(payload: &Value, output_path: &Path) -> Result<()> {
+fn write_json_document<T: Serialize>(payload: &T, output_path: &Path) -> Result<()> {
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -266,108 +315,58 @@ fn write_json_document(payload: &Value, output_path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn build_dashboard_index_item(summary: &Map<String, Value>, uid: &str) -> Map<String, Value> {
-    let mut item = Map::new();
-    item.insert("uid".to_string(), Value::String(uid.to_string()));
-    item.insert(
-        "title".to_string(),
-        Value::String(string_field(summary, "title", "dashboard")),
-    );
-    item.insert(
-        "folderTitle".to_string(),
-        Value::String(string_field(summary, "folderTitle", "General")),
-    );
-    item.insert(
-        "org".to_string(),
-        Value::String(string_field(summary, "orgName", "Main Org.")),
-    );
-    item.insert(
-        "orgId".to_string(),
-        Value::String(
-            summary
-                .get("orgId")
-                .map(|value| match value {
-                    Value::String(text) => text.clone(),
-                    _ => value.to_string(),
-                })
-                .unwrap_or_else(|| "1".to_string()),
-        ),
-    );
-    item
+fn build_dashboard_index_item(summary: &Map<String, Value>, uid: &str) -> DashboardIndexItem {
+    DashboardIndexItem {
+        uid: uid.to_string(),
+        title: string_field(summary, "title", "dashboard"),
+        folder_title: string_field(summary, "folderTitle", "General"),
+        org: string_field(summary, "orgName", "Main Org."),
+        org_id: summary
+            .get("orgId")
+            .map(|value| match value {
+                Value::String(text) => text.clone(),
+                _ => value.to_string(),
+            })
+            .unwrap_or_else(|| "1".to_string()),
+        raw_path: None,
+        prompt_path: None,
+    }
 }
 
 fn build_variant_index(
-    items: &[Map<String, Value>],
-    path_key: &str,
+    items: &[DashboardIndexItem],
+    path_selector: impl Fn(&DashboardIndexItem) -> Option<&str>,
     export_format: &str,
-) -> Value {
-    Value::Array(
-        items
-            .iter()
-            .filter_map(|item| {
-                item.get(path_key).map(|path| {
-                    Value::Object(Map::from_iter([
-                        (
-                            "uid".to_string(),
-                            Value::String(string_field(item, "uid", "unknown")),
-                        ),
-                        (
-                            "title".to_string(),
-                            Value::String(string_field(item, "title", "dashboard")),
-                        ),
-                        ("path".to_string(), path.clone()),
-                        (
-                            "format".to_string(),
-                            Value::String(export_format.to_string()),
-                        ),
-                        (
-                            "org".to_string(),
-                            Value::String(string_field(item, "org", "Main Org.")),
-                        ),
-                        (
-                            "orgId".to_string(),
-                            Value::String(string_field(item, "orgId", "1")),
-                        ),
-                    ]))
-                })
+) -> Vec<VariantIndexEntry> {
+    items
+        .iter()
+        .filter_map(|item| {
+            path_selector(item).map(|path| VariantIndexEntry {
+                uid: item.uid.clone(),
+                title: item.title.clone(),
+                path: path.to_string(),
+                format: export_format.to_string(),
+                org: item.org.clone(),
+                org_id: item.org_id.clone(),
             })
-            .collect(),
-    )
+        })
+        .collect()
 }
 
 fn build_root_export_index(
-    items: &[Map<String, Value>],
+    items: &[DashboardIndexItem],
     raw_index_path: Option<&Path>,
     prompt_index_path: Option<&Path>,
-) -> Value {
-    let mut root_index = Map::new();
-    root_index.insert(
-        "schemaVersion".to_string(),
-        Value::Number(TOOL_SCHEMA_VERSION.into()),
-    );
-    root_index.insert("kind".to_string(), Value::String(ROOT_INDEX_KIND.to_string()));
-    root_index.insert(
-        "items".to_string(),
-        Value::Array(items.iter().cloned().map(Value::Object).collect()),
-    );
-    root_index.insert(
-        "variants".to_string(),
-        Value::Object(Map::from_iter([
-            (
-                "raw".to_string(),
-                raw_index_path
-                    .map(|path| Value::String(path.display().to_string()))
-                    .unwrap_or(Value::Null),
-            ),
-            (
-                "prompt".to_string(),
-                prompt_index_path
-                    .map(|path| Value::String(path.display().to_string()))
-                    .unwrap_or(Value::Null),
-            ),
-        ])),
-    );
-    Value::Object(root_index)
+) -> RootExportIndex {
+    RootExportIndex {
+        schema_version: TOOL_SCHEMA_VERSION,
+        kind: ROOT_INDEX_KIND.to_string(),
+        items: items.to_vec(),
+        variants: RootExportVariants {
+            raw: raw_index_path.map(|path| path.display().to_string()),
+            prompt: prompt_index_path.map(|path| path.display().to_string()),
+        },
+    }
 }
 
 fn list_dashboard_summaries_with_request<F>(mut request_json: F, page_size: usize) -> Result<Vec<Map<String, Value>>>
