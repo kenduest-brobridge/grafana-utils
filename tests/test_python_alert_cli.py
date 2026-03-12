@@ -310,6 +310,14 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(args.api_token, "abc123")
         self.assertEqual(args.username, "user")
         self.assertEqual(args.password, "pass")
+        self.assertFalse(args.prompt_password)
+
+    def test_parse_args_supports_prompt_password(self):
+        args = alert_utils.parse_args(["--basic-user", "user", "--prompt-password"])
+
+        self.assertEqual(args.username, "user")
+        self.assertIsNone(args.password)
+        self.assertTrue(args.prompt_password)
 
     def test_build_json_http_transport_defaults_to_requests(self):
         transport = alert_utils.build_json_http_transport(
@@ -356,6 +364,7 @@ class AlertUtilsTests(unittest.TestCase):
             api_token=None,
             username="user",
             password="pass",
+            prompt_password=False,
         )
 
         headers = alert_utils.resolve_auth(args)
@@ -368,6 +377,7 @@ class AlertUtilsTests(unittest.TestCase):
             api_token="abc123",
             username="user",
             password="pass",
+            prompt_password=False,
         )
 
         with self.assertRaisesRegex(alert_utils.GrafanaError, "Choose either token auth"):
@@ -378,11 +388,12 @@ class AlertUtilsTests(unittest.TestCase):
             api_token=None,
             username="user",
             password=None,
+            prompt_password=False,
         )
 
         with self.assertRaisesRegex(
             alert_utils.GrafanaError,
-            "Basic auth requires both --basic-user / --username and --basic-password / --password.",
+            "Basic auth requires both --basic-user / --username and --basic-password / --password or --prompt-password.",
         ):
             alert_utils.resolve_auth(args)
 
@@ -391,11 +402,55 @@ class AlertUtilsTests(unittest.TestCase):
             api_token=None,
             username=None,
             password="pass",
+            prompt_password=False,
         )
 
         with self.assertRaisesRegex(
             alert_utils.GrafanaError,
-            "Basic auth requires both --basic-user / --username and --basic-password / --password.",
+            "Basic auth requires both --basic-user / --username and --basic-password / --password or --prompt-password.",
+        ):
+            alert_utils.resolve_auth(args)
+
+    def test_resolve_auth_supports_prompt_password(self):
+        args = argparse.Namespace(
+            api_token=None,
+            username="user",
+            password=None,
+            prompt_password=True,
+        )
+
+        with mock.patch("grafana_utils.alert_cli.getpass.getpass", return_value="secret") as prompt:
+            headers = alert_utils.resolve_auth(args)
+
+        expected = base64.b64encode(b"user:secret").decode("ascii")
+        self.assertEqual(headers["Authorization"], f"Basic {expected}")
+        prompt.assert_called_once_with("Grafana Basic auth password: ")
+
+    def test_resolve_auth_rejects_prompt_without_username(self):
+        args = argparse.Namespace(
+            api_token=None,
+            username=None,
+            password=None,
+            prompt_password=True,
+        )
+
+        with self.assertRaisesRegex(
+            alert_utils.GrafanaError,
+            "--prompt-password requires --basic-user / --username.",
+        ):
+            alert_utils.resolve_auth(args)
+
+    def test_resolve_auth_rejects_prompt_with_explicit_password(self):
+        args = argparse.Namespace(
+            api_token=None,
+            username="user",
+            password="pass",
+            prompt_password=True,
+        )
+
+        with self.assertRaisesRegex(
+            alert_utils.GrafanaError,
+            "Choose either --basic-password / --password or --prompt-password, not both.",
         ):
             alert_utils.resolve_auth(args)
 

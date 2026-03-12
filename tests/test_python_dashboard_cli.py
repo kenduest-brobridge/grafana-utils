@@ -157,6 +157,21 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(args.api_token, "abc123")
         self.assertEqual(args.username, "user")
         self.assertEqual(args.password, "pass")
+        self.assertFalse(args.prompt_password)
+
+    def test_parse_args_supports_prompt_password(self):
+        args = exporter.parse_args(
+            [
+                "export-dashboard",
+                "--basic-user",
+                "user",
+                "--prompt-password",
+            ]
+        )
+
+        self.assertEqual(args.username, "user")
+        self.assertIsNone(args.password)
+        self.assertTrue(args.prompt_password)
 
     def test_parse_args_supports_list_mode(self):
         args = exporter.parse_args(["list-dashboard", "--page-size", "25", "--table"])
@@ -343,6 +358,7 @@ class ExporterTests(unittest.TestCase):
             api_token=None,
             username="user",
             password="pass",
+            prompt_password=False,
         )
 
         headers = exporter.resolve_auth(args)
@@ -355,6 +371,7 @@ class ExporterTests(unittest.TestCase):
             api_token="abc123",
             username="user",
             password="pass",
+            prompt_password=False,
         )
 
         with self.assertRaisesRegex(exporter.GrafanaError, "Choose either token auth"):
@@ -365,11 +382,12 @@ class ExporterTests(unittest.TestCase):
             api_token=None,
             username="user",
             password=None,
+            prompt_password=False,
         )
 
         with self.assertRaisesRegex(
             exporter.GrafanaError,
-            "Basic auth requires both --basic-user / --username and --basic-password / --password.",
+            "Basic auth requires both --basic-user / --username and --basic-password / --password or --prompt-password.",
         ):
             exporter.resolve_auth(args)
 
@@ -378,11 +396,55 @@ class ExporterTests(unittest.TestCase):
             api_token=None,
             username=None,
             password="pass",
+            prompt_password=False,
         )
 
         with self.assertRaisesRegex(
             exporter.GrafanaError,
-            "Basic auth requires both --basic-user / --username and --basic-password / --password.",
+            "Basic auth requires both --basic-user / --username and --basic-password / --password or --prompt-password.",
+        ):
+            exporter.resolve_auth(args)
+
+    def test_resolve_auth_supports_prompt_password(self):
+        args = argparse.Namespace(
+            api_token=None,
+            username="user",
+            password=None,
+            prompt_password=True,
+        )
+
+        with mock.patch("grafana_utils.dashboard_cli.getpass.getpass", return_value="secret") as prompt:
+            headers = exporter.resolve_auth(args)
+
+        expected = base64.b64encode(b"user:secret").decode("ascii")
+        self.assertEqual(headers["Authorization"], f"Basic {expected}")
+        prompt.assert_called_once_with("Grafana Basic auth password: ")
+
+    def test_resolve_auth_rejects_prompt_without_username(self):
+        args = argparse.Namespace(
+            api_token=None,
+            username=None,
+            password=None,
+            prompt_password=True,
+        )
+
+        with self.assertRaisesRegex(
+            exporter.GrafanaError,
+            "--prompt-password requires --basic-user / --username.",
+        ):
+            exporter.resolve_auth(args)
+
+    def test_resolve_auth_rejects_prompt_with_explicit_password(self):
+        args = argparse.Namespace(
+            api_token=None,
+            username="user",
+            password="pass",
+            prompt_password=True,
+        )
+
+        with self.assertRaisesRegex(
+            exporter.GrafanaError,
+            "Choose either --basic-password / --password or --prompt-password, not both.",
         ):
             exporter.resolve_auth(args)
 

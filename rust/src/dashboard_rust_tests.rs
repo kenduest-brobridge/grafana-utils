@@ -21,6 +21,7 @@ fn make_common_args(base_url: String) -> CommonCliArgs {
         api_token: Some("token".to_string()),
         username: None,
         password: None,
+        prompt_password: false,
         timeout: 30,
         verify_ssl: false,
     }
@@ -132,6 +133,27 @@ fn parse_cli_supports_preferred_auth_aliases() {
             assert_eq!(export_args.common.api_token.as_deref(), Some("abc123"));
             assert_eq!(export_args.common.username.as_deref(), Some("user"));
             assert_eq!(export_args.common.password.as_deref(), Some("pass"));
+            assert!(!export_args.common.prompt_password);
+        }
+        _ => panic!("expected export command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_prompt_password() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "export-dashboard",
+        "--basic-user",
+        "user",
+        "--prompt-password",
+    ]);
+
+    match args.command {
+        DashboardCommand::Export(export_args) => {
+            assert_eq!(export_args.common.username.as_deref(), Some("user"));
+            assert_eq!(export_args.common.password.as_deref(), None);
+            assert!(export_args.common.prompt_password);
         }
         _ => panic!("expected export command"),
     }

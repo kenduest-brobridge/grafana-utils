@@ -58,6 +58,12 @@ pub struct AlertCliArgs {
     pub password: Option<String>,
     #[arg(
         long,
+        default_value_t = false,
+        help = "Prompt for the Grafana Basic auth password without echo instead of passing --basic-password on the command line."
+    )]
+    pub prompt_password: bool,
+    #[arg(
+        long,
         default_value = DEFAULT_OUTPUT_DIR,
         help = "Directory to write exported alerting resources into. Export writes files under raw/."
     )]
@@ -129,6 +135,7 @@ pub fn build_auth_context(args: &AlertCliArgs) -> Result<AlertAuthContext> {
             args.api_token.as_deref(),
             args.username.as_deref(),
             args.password.as_deref(),
+            args.prompt_password,
         )?,
     })
 }

@@ -54,6 +54,12 @@ pub struct CommonCliArgs {
         help = "Grafana Basic auth password. Preferred flag: --basic-password. Falls back to GRAFANA_PASSWORD."
     )]
     pub password: Option<String>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Prompt for the Grafana Basic auth password without echo instead of passing --basic-password on the command line."
+    )]
+    pub prompt_password: bool,
     #[arg(long, default_value_t = DEFAULT_TIMEOUT, help = "HTTP timeout in seconds.")]
     pub timeout: u64,
     #[arg(
@@ -219,6 +225,7 @@ pub fn build_auth_context(common: &CommonCliArgs) -> Result<DashboardAuthContext
             common.api_token.as_deref(),
             common.username.as_deref(),
             common.password.as_deref(),
+            common.prompt_password,
         )?,
     })
 }

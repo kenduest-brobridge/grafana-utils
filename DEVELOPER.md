@@ -19,6 +19,7 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 - `scripts/build-rust-macos-arm64.sh`: native Apple Silicon Rust release build helper that copies binaries into `dist/macos-arm64/`
 - `scripts/build-rust-linux-amd64.sh`: Docker-based Linux `amd64` Rust build helper for macOS or other non-Linux hosts
 - `scripts/build-rust-linux-amd64-zig.sh`: non-Docker Linux `amd64` Rust build helper using local `zig` and `cargo-zigbuild`
+- `scripts/seed-grafana-sample-data.sh`: idempotent developer seed helper for sample orgs, datasources, folders, and dashboards in a running Grafana
 - `scripts/test-rust-live-grafana.sh`: Docker-backed Grafana smoke test for the Rust CLIs
 
 ## Python Baseline
@@ -405,6 +406,20 @@ Python access live smoke test notes:
 - service-account coverage: add, token add, list
 - useful overrides: `GRAFANA_IMAGE`, `GRAFANA_PORT`, `GRAFANA_USER`, `GRAFANA_PASSWORD`, `PYTHON_BIN`
 
+Developer sample-data seed notes:
+
+- `make seed-grafana-sample-data` runs `scripts/seed-grafana-sample-data.sh`
+- `make destroy-grafana-sample-data` runs `scripts/seed-grafana-sample-data.sh --destroy`
+- defaults to `http://localhost:3000` with `admin/admin`
+- the script is idempotent and reuses existing orgs, datasources, and folders when possible
+- destroy mode removes only the known sample resources; it does not wipe arbitrary Grafana content
+- current seeded layout covers:
+  - org `1` with `Smoke Prometheus`, `Smoke Loki`, `Platform`, `Platform / Infra`, and dashboards `smoke-main`, `smoke-prom-only`, `query-smoke`, `subfolder-main`
+  - org `2` `Org Two` with dashboard `org-two-main`
+  - org `3` `QA Org` with dashboard `qa-overview`
+  - org `4` `Audit Org` with dashboard `audit-home`
+- useful overrides: `GRAFANA_URL`, `GRAFANA_USER`, `GRAFANA_PASSWORD`
+
 Useful CLI help checks:
 
 ```bash
@@ -449,6 +464,13 @@ python3 cmd/grafana-access-utils.py service-account token add -h
 - `README.md`: public usage and high-level behavior
 - `DEVELOPER.md`: maintenance notes, internal architecture, compatibility rules, and implementation tradeoffs
 - `docs/internal/ai-status.md` / `docs/internal/ai-changes.md`: internal working notes only; do not treat them as public GitHub-facing documentation
+
+## Auth Notes
+
+- Shared CLI auth now supports `--prompt-password` for Basic auth without echo.
+- Reject `--prompt-password` when `--token` is also set.
+- Reject `--prompt-password` when `--basic-password` is also set.
+- Require `--basic-user` with `--prompt-password`.
 
 ## GitHub metadata updates
 

@@ -1,4 +1,4 @@
-.PHONY: help build build-python build-rust build-rust-macos-arm64 build-rust-linux-amd64 build-rust-linux-amd64-zig test test-python test-rust test-rust-live test-access-live
+.PHONY: help build build-python build-rust build-rust-macos-arm64 build-rust-linux-amd64 build-rust-linux-amd64-zig seed-grafana-sample-data destroy-grafana-sample-data test test-python test-rust test-rust-live test-access-live
 
 PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
@@ -15,6 +15,8 @@ help:
 		'  make build-rust-macos-arm64  Build native macOS Apple Silicon (M1/M2/M3) Rust release binaries into dist/macos-arm64/' \
 		'  make build-rust-linux-amd64  Build Linux amd64 Rust release binaries with Docker into dist/linux-amd64/ (containerized Linux build)' \
 		'  make build-rust-linux-amd64-zig  Build Linux amd64 Rust release binaries with local zig into dist/linux-amd64/ (no Docker)' \
+		'  make seed-grafana-sample-data  Seed a local Grafana with reusable developer sample orgs, datasources, folders, and dashboards' \
+		'  make destroy-grafana-sample-data  Remove the developer sample orgs, datasources, folders, and dashboards seeded by the repo script' \
 		'  make test          Run both Python and Rust test suites' \
 		'  make test-python   Run the Python unittest suite' \
 		'  make test-rust     Run the Rust cargo test suite' \
@@ -37,6 +39,12 @@ build-rust-linux-amd64:
 
 build-rust-linux-amd64-zig:
 	bash ./scripts/build-rust-linux-amd64-zig.sh
+
+seed-grafana-sample-data:
+	bash ./scripts/seed-grafana-sample-data.sh
+
+destroy-grafana-sample-data:
+	bash ./scripts/seed-grafana-sample-data.sh --destroy
 
 test: test-python test-rust
 

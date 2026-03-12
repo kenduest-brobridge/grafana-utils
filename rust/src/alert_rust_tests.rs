@@ -146,6 +146,20 @@ fn parse_cli_supports_preferred_auth_aliases() {
     assert_eq!(args.api_token.as_deref(), Some("abc123"));
     assert_eq!(args.username.as_deref(), Some("user"));
     assert_eq!(args.password.as_deref(), Some("pass"));
+    assert!(!args.prompt_password);
+}
+
+#[test]
+fn parse_cli_supports_prompt_password() {
+    let args: AlertCliArgs = parse_cli_from([
+        "grafana-alert-utils",
+        "--basic-user",
+        "user",
+        "--prompt-password",
+    ]);
+    assert_eq!(args.username.as_deref(), Some("user"));
+    assert_eq!(args.password.as_deref(), None);
+    assert!(args.prompt_password);
 }
 
 #[test]

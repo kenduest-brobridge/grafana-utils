@@ -1,5 +1,23 @@
 # ai-changes.md
 
+## 2026-03-12 - Add Developer Grafana Sample-Data Seed Script
+- Summary: Added `scripts/seed-grafana-sample-data.sh` plus `make seed-grafana-sample-data` and `make destroy-grafana-sample-data` so developers can seed and clean up a running Grafana with a stable manual-testing dataset instead of recreating sample orgs and dashboards ad hoc during interactive sessions. The script seeds fixed datasource, folder, and dashboard uids and uses overwrite or lookup flows so it can be rerun safely, while destroy mode removes only the known sample resources.
+- Tests: Added shell-level validation for the new script and Make help output.
+- Test Run: `bash -n scripts/seed-grafana-sample-data.sh`; `bash ./scripts/seed-grafana-sample-data.sh --help`; `make help`
+- Reason: Repeated live testing was depending on hand-created sample orgs, subfolders, and dashboards, which made manual verification slower and less reproducible.
+- Validation: Verified the script help text documents both seed and destroy behavior and that the repo exposes both workflows through dedicated Make targets.
+- Impact: `scripts/seed-grafana-sample-data.sh`, `Makefile`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. The feature is additive and opt-in, though it assumes admin Basic auth to seed orgs and dashboards into a running Grafana.
+
+## 2026-03-12 - Add Prompted Basic-Auth Password Support
+- Summary: Added `--prompt-password` to the Python dashboard, alerting, and access CLIs plus the Rust dashboard and alerting binaries. The new flag reads the Grafana Basic-auth password from a non-echoed terminal prompt instead of requiring `--basic-password` on the command line.
+- Tests: Extended the Python dashboard, alert, and access suites plus the Rust auth and parser tests to cover parser support, prompted password resolution, and rejection of unsafe flag combinations.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py tests/test_python_alert_cli.py tests/test_python_access_cli.py`; `cd rust && cargo test --quiet`
+- Reason: Operators wanted a safer Basic-auth workflow that avoids leaking Grafana passwords into shell history and process listings.
+- Validation: Verified the prompt-aware auth paths in Python and Rust accept `--basic-user ... --prompt-password`, reject mixing prompt mode with token auth or explicit `--basic-password`, and keep the existing environment fallback behavior for non-prompted auth.
+- Impact: `grafana_utils/dashboard_cli.py`, `grafana_utils/alert_cli.py`, `grafana_utils/access_cli.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `tests/test_python_access_cli.py`, `rust/Cargo.toml`, `rust/src/common.rs`, `rust/src/common_rust_tests.rs`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `rust/src/alert.rs`, `rust/src/alert_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. The change is additive, but interactive prompting assumes a terminal is available when operators opt into `--prompt-password`.
+
 ## 2026-03-12 - Add Platform-Specific Rust Build Paths
 - Summary: Added explicit Make and script entrypoints for macOS Apple Silicon and Linux `amd64` Rust release builds. `make build-rust-macos-arm64` copies native Apple Silicon binaries into `dist/macos-arm64/`, `make build-rust-linux-amd64` uses Docker to build `x86_64-unknown-linux-gnu` binaries into `dist/linux-amd64/`, and `make build-rust-linux-amd64-zig` uses local `zig` and `cargo-zigbuild` for the same Linux target without Docker.
 - Tests: Added shell-level validation for all build scripts, checked `make help`, live-ran the Docker-backed Linux `amd64` build, and live-ran the non-Docker zig-based Linux `amd64` build.

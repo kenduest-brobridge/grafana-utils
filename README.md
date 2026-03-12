@@ -692,6 +692,8 @@ The repo root includes a [`Makefile`](Makefile):
 - `make build-rust-macos-arm64`
 - `make build-rust-linux-amd64`
 - `make build-rust-linux-amd64-zig`
+- `make seed-grafana-sample-data`
+- `make destroy-grafana-sample-data`
 - `make build`
 - `make test-python`
 - `make test-rust`
@@ -801,6 +803,18 @@ Run the Docker-backed Python access live smoke test:
 make test-access-live
 ```
 
+Seed reusable developer sample data into a running local Grafana:
+
+```bash
+make seed-grafana-sample-data
+```
+
+Destroy the same developer sample data from a running local Grafana:
+
+```bash
+make destroy-grafana-sample-data
+```
+
 Notes:
 
 - requires Docker plus local access to the Docker daemon
@@ -816,17 +830,28 @@ Python access live smoke test notes:
 - it bootstraps an API token, then validates `user add`, `user modify`, `user delete`, `team add`, `team modify`, `team list`, `service-account add`, `service-account token add`, and `service-account list`
 - useful overrides: `GRAFANA_IMAGE`, `GRAFANA_PORT`, `GRAFANA_USER`, `GRAFANA_PASSWORD`, `PYTHON_BIN`
 
+Developer sample-data seed notes:
+
+- `make seed-grafana-sample-data` runs `scripts/seed-grafana-sample-data.sh`
+- `make destroy-grafana-sample-data` runs `scripts/seed-grafana-sample-data.sh --destroy`
+- defaults to `http://localhost:3000` with `admin/admin`
+- seeds idempotent sample orgs, datasources, folders, and dashboards for manual CLI testing
+- destroy mode removes only the known sample dashboards, folders, datasources, and extra sample orgs
+- useful overrides: `GRAFANA_URL`, `GRAFANA_USER`, `GRAFANA_PASSWORD`
+
 ## Authentication and TLS
 
 Authentication methods:
 
 - API token with `--token` or legacy `--api-token`
 - Basic auth with `--basic-user` and `--basic-password` or legacy `--username` and `--password`
+- Prompted Basic auth with `--basic-user` and `--prompt-password`
 
 Auth note:
 
 - prefer either token auth or Basic auth for one command, not both
-- the CLIs reject partial Basic auth input such as only `--basic-user` without `--basic-password`
+- the CLIs reject partial Basic auth input such as only `--basic-user` without `--basic-password` or `--prompt-password`
+- `--prompt-password` hides the password input instead of putting it in shell history or process arguments
 - `GRAFANA_API_TOKEN`, `GRAFANA_USERNAME`, and `GRAFANA_PASSWORD` still work as environment fallbacks
 - for `grafana-access-utils`, org-scoped `user list` can use token auth or Basic auth
 - for `grafana-access-utils`, global `user list` requires Basic auth
@@ -848,6 +873,16 @@ python3 cmd/grafana-utils.py export-dashboard \
   --url http://localhost:3000 \
   --basic-user "$GRAFANA_USERNAME" \
   --basic-password "$GRAFANA_PASSWORD" \
+  --export-dir ./dashboards
+```
+
+Prompted password example:
+
+```bash
+python3 cmd/grafana-utils.py export-dashboard \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --prompt-password \
   --export-dir ./dashboards
 ```
 

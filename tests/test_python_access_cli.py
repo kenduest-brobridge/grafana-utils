@@ -6,6 +6,7 @@ import sys
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -498,6 +499,16 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.api_token, "abc123")
         self.assertEqual(args.username, "admin")
         self.assertEqual(args.password, "secret")
+        self.assertFalse(args.prompt_password)
+
+    def test_parse_args_supports_prompt_password(self):
+        args = access_utils.parse_args(
+            ["user", "list", "--basic-user", "admin", "--prompt-password"]
+        )
+
+        self.assertEqual(args.username, "admin")
+        self.assertIsNone(args.password)
+        self.assertTrue(args.prompt_password)
 
     def test_parse_args_supports_service_account_token_add(self):
         args = access_utils.parse_args(
@@ -542,6 +553,7 @@ class AccessCliTests(unittest.TestCase):
             api_token=None,
             username="admin",
             password="secret",
+            prompt_password=False,
         )
 
         headers, auth_mode = access_utils.resolve_auth(args)
@@ -556,6 +568,7 @@ class AccessCliTests(unittest.TestCase):
             api_token=None,
             username=None,
             password=None,
+            prompt_password=False,
             auth_username="admin",
             auth_password="secret",
         )
@@ -577,9 +590,53 @@ class AccessCliTests(unittest.TestCase):
             api_token="abc123",
             username="admin",
             password="secret",
+            prompt_password=False,
         )
 
         with self.assertRaisesRegex(access_utils.GrafanaError, "Choose either token auth"):
+            access_utils.resolve_auth(args)
+
+    def test_resolve_auth_supports_prompt_password(self):
+        args = argparse.Namespace(
+            api_token=None,
+            username="admin",
+            password=None,
+            prompt_password=True,
+        )
+
+        with mock.patch("grafana_utils.access_cli.getpass.getpass", return_value="secret") as prompt:
+            headers, auth_mode = access_utils.resolve_auth(args)
+
+        self.assertEqual(auth_mode, "basic")
+        self.assertTrue(headers["Authorization"].startswith("Basic "))
+        prompt.assert_called_once_with("Grafana Basic auth password: ")
+
+    def test_resolve_auth_rejects_prompt_without_username(self):
+        args = argparse.Namespace(
+            api_token=None,
+            username=None,
+            password=None,
+            prompt_password=True,
+        )
+
+        with self.assertRaisesRegex(
+            access_utils.GrafanaError,
+            "--prompt-password requires --basic-user / --username.",
+        ):
+            access_utils.resolve_auth(args)
+
+    def test_resolve_auth_rejects_prompt_with_explicit_password(self):
+        args = argparse.Namespace(
+            api_token=None,
+            username="admin",
+            password="secret",
+            prompt_password=True,
+        )
+
+        with self.assertRaisesRegex(
+            access_utils.GrafanaError,
+            "Choose either --basic-password / --password or --prompt-password, not both.",
+        ):
             access_utils.resolve_auth(args)
 
     def test_validate_user_list_auth_rejects_global_token_auth(self):

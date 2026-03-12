@@ -1,0 +1,564 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+GRAFANA_URL="${GRAFANA_URL:-http://localhost:3000}"
+GRAFANA_USER="${GRAFANA_USER:-admin}"
+GRAFANA_PASSWORD="${GRAFANA_PASSWORD:-admin}"
+DESTROY_MODE=false
+
+fail() {
+  printf 'ERROR: %s\n' "$*" >&2
+  exit 1
+}
+
+usage() {
+  cat <<'EOF'
+Usage: seed-grafana-sample-data.sh [OPTIONS]
+
+Seed or destroy reusable developer sample data in a Grafana instance.
+
+Options:
+  --url URL           Grafana base URL (default: http://localhost:3000)
+  --basic-user USER   Grafana admin username (default: admin)
+  --basic-password PW Grafana admin password (default: admin)
+  --destroy           Delete the sample data created by this script
+  -h, --help          Show this help text
+
+Environment overrides:
+  GRAFANA_URL
+  GRAFANA_USER
+  GRAFANA_PASSWORD
+
+The script is idempotent:
+- reuses existing orgs, folders, and datasources by fixed uid or name
+- upserts dashboards with overwrite=true
+- `--destroy` removes only the known sample resources and extra sample orgs
+
+Seeded sample layout:
+- Org 1 Main Org.
+  - Datasources: Smoke Prometheus, Smoke Loki
+  - Folders: Platform, Platform / Infra
+  - Dashboards: smoke-main, smoke-prom-only, query-smoke, subfolder-main
+- Org 2 Org Two
+  - Dashboard: org-two-main
+- Org 3 QA Org
+  - Dashboard: qa-overview
+- Org 4 Audit Org
+  - Dashboard: audit-home
+EOF
+}
+
+require_tool() {
+  command -v "$1" >/dev/null 2>&1 || fail "missing required tool: $1"
+}
+
+urlencode() {
+  jq -rn --arg value "$1" '$value|@uri'
+}
+
+request_raw() {
+  local method="$1"
+  local path="$2"
+  local payload="${3:-}"
+  local org_id="${4:-}"
+  local response
+  local headers=(-u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" -X "${method}")
+
+  if [[ -n "${org_id}" ]]; then
+    headers+=(-H "X-Grafana-Org-Id: ${org_id}")
+  fi
+  if [[ -n "${payload}" ]]; then
+    headers+=(-H 'Content-Type: application/json' --data-binary "${payload}")
+  fi
+
+  response="$(
+    curl --silent --show-error \
+      "${headers[@]}" \
+      "${GRAFANA_URL}${path}" \
+      -w $'\n%{http_code}'
+  )"
+  HTTP_STATUS="${response##*$'\n'}"
+  HTTP_BODY="${response%$'\n'*}"
+}
+
+request_json() {
+  request_raw "$@"
+  if [[ "${HTTP_STATUS}" != 2* ]]; then
+    fail "request failed: $1 $2 -> HTTP ${HTTP_STATUS} ${HTTP_BODY}"
+  fi
+}
+
+request_optional() {
+  request_raw "$@"
+  if [[ "${HTTP_STATUS}" == "404" ]]; then
+    return 1
+  fi
+  if [[ "${HTTP_STATUS}" != 2* ]]; then
+    fail "request failed: $1 $2 -> HTTP ${HTTP_STATUS} ${HTTP_BODY}"
+  fi
+  return 0
+}
+
+ensure_health() {
+  request_json GET "/api/health"
+}
+
+lookup_org_id_by_name() {
+  request_json GET "/api/orgs"
+  printf '%s' "${HTTP_BODY}" | jq -r --arg name "$1" '.[] | select(.name == $name) | .id' | head -n 1
+}
+
+ensure_org() {
+  local name="$1"
+  local org_id
+
+  org_id="$(lookup_org_id_by_name "${name}")"
+  if [[ -n "${org_id}" ]]; then
+    printf '%s\n' "${org_id}"
+    return
+  fi
+
+  request_json POST "/api/orgs" "$(jq -cn --arg name "${name}" '{name: $name}')"
+  org_id="$(printf '%s' "${HTTP_BODY}" | jq -r '.orgId // .id // empty')"
+  [[ -n "${org_id}" ]] || fail "failed to create org ${name}"
+  printf '%s\n' "${org_id}"
+}
+
+lookup_datasource_uid() {
+  local org_id="$1"
+  local uid="$2"
+  local name="$3"
+  request_json GET "/api/datasources" "" "${org_id}"
+  printf '%s' "${HTTP_BODY}" |
+    jq -r --arg uid "${uid}" --arg name "${name}" \
+      '.[] | select(.uid == $uid or .name == $name) | .uid' | head -n 1
+}
+
+ensure_datasource() {
+  local org_id="$1"
+  local uid="$2"
+  local name="$3"
+  local ds_type="$4"
+  local url="$5"
+  local is_default="$6"
+  local existing_uid
+
+  request_json GET "/api/datasources" "" "${org_id}"
+  existing_uid="$(
+    printf '%s' "${HTTP_BODY}" |
+      jq -r --arg uid "${uid}" --arg name "${name}" \
+        '.[] | select(.uid == $uid or .name == $name) | .uid' | head -n 1
+  )"
+  if [[ -n "${existing_uid}" ]]; then
+    printf 'Reused datasource %s (org %s)\n' "${name}" "${org_id}"
+    return
+  fi
+
+  request_json POST "/api/datasources" "$(
+    jq -cn \
+      --arg uid "${uid}" \
+      --arg name "${name}" \
+      --arg type "${ds_type}" \
+      --arg url "${url}" \
+      --argjson isDefault "${is_default}" \
+      '{
+        uid: $uid,
+        name: $name,
+        type: $type,
+        access: "proxy",
+        url: $url,
+        isDefault: $isDefault
+      }'
+  )" "${org_id}"
+  printf 'Created datasource %s (org %s)\n' "${name}" "${org_id}"
+}
+
+delete_datasource() {
+  local org_id="$1"
+  local uid="$2"
+  local name="$3"
+  local existing_uid
+
+  existing_uid="$(lookup_datasource_uid "${org_id}" "${uid}" "${name}")"
+  if [[ -z "${existing_uid}" ]]; then
+    printf 'Skipped datasource %s (org %s): not found\n' "${name}" "${org_id}"
+    return
+  fi
+
+  request_json DELETE "/api/datasources/uid/${existing_uid}" "" "${org_id}"
+  printf 'Deleted datasource %s (org %s)\n' "${name}" "${org_id}"
+}
+
+lookup_folder_uid() {
+  local org_id="$1"
+  local uid="$2"
+  request_raw GET "/api/folders/${uid}" "" "${org_id}"
+  if [[ "${HTTP_STATUS}" == "200" ]]; then
+    printf '%s\n' "${uid}"
+  fi
+}
+
+ensure_folder() {
+  local org_id="$1"
+  local uid="$2"
+  local title="$3"
+  local parent_uid="${4:-}"
+  local existing_uid
+  local payload
+
+  existing_uid="$(lookup_folder_uid "${org_id}" "${uid}")"
+  if [[ -n "${existing_uid}" ]]; then
+    printf 'Reused folder %s (org %s)\n' "${title}" "${org_id}"
+    return
+  fi
+
+  if [[ -n "${parent_uid}" ]]; then
+    payload="$(jq -cn --arg uid "${uid}" --arg title "${title}" --arg parentUid "${parent_uid}" \
+      '{uid: $uid, title: $title, parentUid: $parentUid}')"
+  else
+    payload="$(jq -cn --arg uid "${uid}" --arg title "${title}" '{uid: $uid, title: $title}')"
+  fi
+  request_json POST "/api/folders" "${payload}" "${org_id}"
+  printf 'Created folder %s (org %s)\n' "${title}" "${org_id}"
+}
+
+delete_folder() {
+  local org_id="$1"
+  local uid="$2"
+  local title="$3"
+
+  if ! request_optional DELETE "/api/folders/${uid}" "" "${org_id}"; then
+    printf 'Skipped folder %s (org %s): not found\n' "${title}" "${org_id}"
+    return
+  fi
+  printf 'Deleted folder %s (org %s)\n' "${title}" "${org_id}"
+}
+
+upsert_dashboard() {
+  local org_id="$1"
+  local folder_uid="$2"
+  local dashboard_json="$3"
+  local uid
+  local title
+  local payload
+
+  uid="$(printf '%s' "${dashboard_json}" | jq -r '.uid')"
+  title="$(printf '%s' "${dashboard_json}" | jq -r '.title')"
+  payload="$(jq -cn \
+    --arg folderUid "${folder_uid}" \
+    --argjson dashboard "${dashboard_json}" \
+    '{dashboard: $dashboard, folderUid: $folderUid, overwrite: true, message: "developer sample seed"}'
+  )"
+  request_json POST "/api/dashboards/db" "${payload}" "${org_id}"
+  printf 'Upserted dashboard %s (%s) in org %s\n' "${title}" "${uid}" "${org_id}"
+}
+
+delete_dashboard() {
+  local org_id="$1"
+  local uid="$2"
+
+  if ! request_optional DELETE "/api/dashboards/uid/${uid}" "" "${org_id}"; then
+    printf 'Skipped dashboard %s (org %s): not found\n' "${uid}" "${org_id}"
+    return
+  fi
+  printf 'Deleted dashboard %s (org %s)\n' "${uid}" "${org_id}"
+}
+
+dashboard_smoke_main() {
+  cat <<'EOF'
+{
+  "id": null,
+  "uid": "smoke-main",
+  "title": "Smoke Dashboard",
+  "tags": ["sample", "smoke"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 0,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Up Query",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "smoke-prom"},
+      "targets": [
+        {"refId": "A", "expr": "up"}
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+    },
+    {
+      "id": 2,
+      "title": "Recent Logs",
+      "type": "logs",
+      "datasource": {"type": "loki", "uid": "smoke-loki"},
+      "targets": [
+        {"refId": "A", "expr": "{job=\"smoke\"}"}
+      ],
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+    }
+  ]
+}
+EOF
+}
+
+dashboard_prom_only() {
+  cat <<'EOF'
+{
+  "id": null,
+  "uid": "smoke-prom-only",
+  "title": "Prometheus Only",
+  "tags": ["sample", "prometheus"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 0,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Only Prometheus",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "smoke-prom"},
+      "targets": [
+        {"refId": "A", "expr": "sum(up)"}
+      ],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+    }
+  ]
+}
+EOF
+}
+
+dashboard_query_smoke() {
+  cat <<'EOF'
+{
+  "id": null,
+  "uid": "query-smoke",
+  "title": "Query Smoke Dashboard",
+  "tags": ["sample", "query"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 0,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Up Query",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "smoke-prom"},
+      "targets": [
+        {"refId": "A", "expr": "up{a=\"100\"}"}
+      ],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+    }
+  ]
+}
+EOF
+}
+
+dashboard_subfolder_main() {
+  cat <<'EOF'
+{
+  "id": null,
+  "uid": "subfolder-main",
+  "title": "Subfolder Dashboard",
+  "tags": ["sample", "folder"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 0,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Folder Query",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "smoke-prom"},
+      "targets": [
+        {"refId": "A", "expr": "rate(up[5m])"}
+      ],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+    }
+  ]
+}
+EOF
+}
+
+dashboard_org_two() {
+  cat <<'EOF'
+{
+  "id": null,
+  "uid": "org-two-main",
+  "title": "Org Two Dashboard",
+  "tags": ["sample", "org-two"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 0,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Org Two Query",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "org-two-prom"},
+      "targets": [
+        {"refId": "A", "expr": "up"}
+      ],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+    }
+  ]
+}
+EOF
+}
+
+dashboard_qa_overview() {
+  cat <<'EOF'
+{
+  "id": null,
+  "uid": "qa-overview",
+  "title": "QA Overview",
+  "tags": ["sample", "qa"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 0,
+  "panels": [
+    {
+      "id": 1,
+      "title": "QA Up",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "qa-prom"},
+      "targets": [
+        {"refId": "A", "expr": "up"}
+      ],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+    }
+  ]
+}
+EOF
+}
+
+dashboard_audit_home() {
+  cat <<'EOF'
+{
+  "id": null,
+  "uid": "audit-home",
+  "title": "Audit Home",
+  "tags": ["sample", "audit"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 0,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Audit Up",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "audit-prom"},
+      "targets": [
+        {"refId": "A", "expr": "up"}
+      ],
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+    }
+  ]
+}
+EOF
+}
+
+seed_main_org() {
+  local org_id="$1"
+  ensure_datasource "${org_id}" "smoke-prom" "Smoke Prometheus" "prometheus" "http://prometheus:9090" true
+  ensure_datasource "${org_id}" "smoke-loki" "Smoke Loki" "loki" "http://loki:3100" false
+  ensure_folder "${org_id}" "platform" "Platform"
+  ensure_folder "${org_id}" "infra" "Infra" "platform"
+  upsert_dashboard "${org_id}" "" "$(dashboard_smoke_main)"
+  upsert_dashboard "${org_id}" "" "$(dashboard_prom_only)"
+  upsert_dashboard "${org_id}" "" "$(dashboard_query_smoke)"
+  upsert_dashboard "${org_id}" "infra" "$(dashboard_subfolder_main)"
+}
+
+destroy_main_org() {
+  local org_id="$1"
+  delete_dashboard "${org_id}" "subfolder-main"
+  delete_dashboard "${org_id}" "query-smoke"
+  delete_dashboard "${org_id}" "smoke-prom-only"
+  delete_dashboard "${org_id}" "smoke-main"
+  delete_folder "${org_id}" "infra" "Infra"
+  delete_folder "${org_id}" "platform" "Platform"
+  delete_datasource "${org_id}" "smoke-loki" "Smoke Loki"
+  delete_datasource "${org_id}" "smoke-prom" "Smoke Prometheus"
+}
+
+seed_extra_org() {
+  local org_name="$1"
+  local datasource_uid="$2"
+  local datasource_name="$3"
+  local dashboard_json="$4"
+  local org_id
+
+  org_id="$(ensure_org "${org_name}")"
+  ensure_datasource "${org_id}" "${datasource_uid}" "${datasource_name}" "prometheus" "http://prometheus:9090" true
+  upsert_dashboard "${org_id}" "" "${dashboard_json}"
+}
+
+destroy_extra_org() {
+  local org_name="$1"
+  local datasource_uid="$2"
+  local datasource_name="$3"
+  local dashboard_uid="$4"
+  local org_id
+
+  org_id="$(lookup_org_id_by_name "${org_name}")"
+  if [[ -z "${org_id}" ]]; then
+    printf 'Skipped org %s: not found\n' "${org_name}"
+    return
+  fi
+
+  delete_dashboard "${org_id}" "${dashboard_uid}"
+  delete_datasource "${org_id}" "${datasource_uid}" "${datasource_name}"
+  request_json DELETE "/api/orgs/${org_id}"
+  printf 'Deleted org %s (%s)\n' "${org_name}" "${org_id}"
+}
+
+main() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --url)
+        GRAFANA_URL="$2"
+        shift 2
+        ;;
+      --basic-user)
+        GRAFANA_USER="$2"
+        shift 2
+        ;;
+      --basic-password)
+        GRAFANA_PASSWORD="$2"
+        shift 2
+        ;;
+      --destroy)
+        DESTROY_MODE=true
+        shift
+        ;;
+      -h|--help)
+        usage
+        exit 0
+        ;;
+      *)
+        fail "unknown argument: $1"
+        ;;
+    esac
+  done
+
+  require_tool curl
+  require_tool jq
+  ensure_health
+
+  if [[ "${DESTROY_MODE}" == "true" ]]; then
+    destroy_extra_org "Audit Org" "audit-prom" "Audit Prometheus" "audit-home"
+    destroy_extra_org "QA Org" "qa-prom" "QA Prometheus" "qa-overview"
+    destroy_extra_org "Org Two" "org-two-prom" "Org Two Prometheus" "org-two-main"
+    destroy_main_org "1"
+    printf 'Destroyed sample Grafana data at %s\n' "${GRAFANA_URL}"
+    return
+  fi
+
+  seed_main_org "1"
+  seed_extra_org "Org Two" "org-two-prom" "Org Two Prometheus" "$(dashboard_org_two)"
+  seed_extra_org "QA Org" "qa-prom" "QA Prometheus" "$(dashboard_qa_overview)"
+  seed_extra_org "Audit Org" "audit-prom" "Audit Prometheus" "$(dashboard_audit_home)"
+
+  printf 'Seeded sample Grafana data at %s\n' "${GRAFANA_URL}"
+}
+
+main "$@"

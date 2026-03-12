@@ -1,5 +1,6 @@
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use regex::Regex;
+use rpassword::prompt_password;
 use serde_json::{Map, Value};
 use std::env;
 use std::fs;
@@ -62,33 +63,64 @@ pub fn resolve_auth_headers(
     api_token: Option<&str>,
     username: Option<&str>,
     password: Option<&str>,
+    prompt_for_password: bool,
 ) -> Result<Vec<(String, String)>> {
+    resolve_auth_headers_with_prompt(api_token, username, password, prompt_for_password, || {
+        prompt_password("Grafana Basic auth password: ").map_err(GrafanaCliError::from)
+    })
+}
+
+fn resolve_auth_headers_with_prompt<F>(
+    api_token: Option<&str>,
+    username: Option<&str>,
+    password: Option<&str>,
+    prompt_for_password: bool,
+    prompt: F,
+) -> Result<Vec<(String, String)>>
+where
+    F: FnOnce() -> Result<String>,
+{
     let cli_token = api_token.map(str::to_owned).filter(|value| !value.is_empty());
     let cli_username = username.map(str::to_owned).filter(|value| !value.is_empty());
-    let cli_password = password.map(str::to_owned).filter(|value| !value.is_empty());
+    let mut cli_password = password.map(str::to_owned).filter(|value| !value.is_empty());
 
-    if cli_token.is_some() && (cli_username.is_some() || cli_password.is_some()) {
+    if cli_token.is_some() && (cli_username.is_some() || cli_password.is_some() || prompt_for_password)
+    {
         return Err(message(
             "Choose either token auth (--token / --api-token) or Basic auth \
-(--basic-user / --username with --basic-password / --password), not both.",
+(--basic-user / --username with --basic-password / --password / --prompt-password), not both.",
         ));
     }
-    if cli_username.is_some() && cli_password.is_none() {
+    if prompt_for_password && cli_password.is_some() {
+        return Err(message(
+            "Choose either --basic-password / --password or --prompt-password, not both.",
+        ));
+    }
+    if cli_username.is_some() && cli_password.is_none() && !prompt_for_password {
         return Err(message(
             "Basic auth requires both --basic-user / --username and \
---basic-password / --password.",
+--basic-password / --password or --prompt-password.",
         ));
     }
     if cli_password.is_some() && cli_username.is_none() {
         return Err(message(
             "Basic auth requires both --basic-user / --username and \
---basic-password / --password.",
+--basic-password / --password or --prompt-password.",
+        ));
+    }
+    if prompt_for_password && cli_username.is_none() {
+        return Err(message(
+            "--prompt-password requires --basic-user / --username.",
         ));
     }
 
     let token = cli_token.or_else(|| env_value("GRAFANA_API_TOKEN"));
     if let Some(token) = token {
         return Ok(vec![("Authorization".to_string(), format!("Bearer {token}"))]);
+    }
+
+    if prompt_for_password && cli_username.is_some() {
+        cli_password = Some(prompt()?);
     }
 
     let username = cli_username.or_else(|| env_value("GRAFANA_USERNAME"));
@@ -100,13 +132,13 @@ pub fn resolve_auth_headers(
     if username.is_some() || password.is_some() {
         return Err(message(
             "Basic auth requires both --basic-user / --username and \
---basic-password / --password.",
+--basic-password / --password or --prompt-password.",
         ));
     }
 
     Err(message(
         "Authentication required. Set --token / --api-token / GRAFANA_API_TOKEN \
-or --basic-user and --basic-password / --username and --password / \
+or --basic-user and --basic-password / --prompt-password / --username and --password / \
 GRAFANA_USERNAME and GRAFANA_PASSWORD.",
     ))
 }

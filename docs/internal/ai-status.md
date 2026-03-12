@@ -1,5 +1,19 @@
 # ai-status.md
 
+## 2026-03-12 - Task: Add Developer Grafana Sample-Data Seed Script
+- State: Done
+- Scope: `scripts/seed-grafana-sample-data.sh`, `Makefile`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Developer live testing was relying on one-off manual API calls to create sample datasources, folders, dashboards, and extra orgs. That made repeated verification of `list-dashboard`, `export-dashboard`, and `list-data-sources` less reproducible.
+- Current Update: Added `make seed-grafana-sample-data`, `make destroy-grafana-sample-data`, and a dedicated shell script that seeds or removes a running Grafana test dataset with stable sample orgs, datasources, folders, and dashboards using fixed ids and overwrite-friendly upserts.
+- Result: Developers now have repo-owned setup and cleanup commands for rebuilding the same manual test dataset instead of repeating ad hoc setup steps during local Grafana testing.
+
+## 2026-03-12 - Task: Add Prompted Basic-Auth Password Support
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/alert_cli.py`, `grafana_utils/access_cli.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `tests/test_python_access_cli.py`, `rust/Cargo.toml`, `rust/src/common.rs`, `rust/src/common_rust_tests.rs`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `rust/src/alert.rs`, `rust/src/alert_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The CLIs only supported token auth, explicit `--basic-password`, or environment fallback password input. Operators who wanted Basic auth had to expose the password through shell history, process arguments, or environment variables.
+- Current Update: Added `--prompt-password` everywhere Basic auth is supported, wired it into the shared Python and Rust auth resolvers, and added validation that rejects mixing prompt mode with token auth or explicit `--basic-password`.
+- Result: Operators can now run Basic-auth commands with `--basic-user ... --prompt-password` and enter the password securely without echo while keeping the existing token and environment-based auth paths.
+
 ## 2026-03-12 - Task: Add Platform-Specific Rust Build Paths
 - State: Done
 - Scope: `Makefile`, `scripts/build-rust-macos-arm64.sh`, `scripts/build-rust-linux-amd64.sh`, `scripts/build-rust-linux-amd64-zig.sh`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
