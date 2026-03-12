@@ -1,5 +1,14 @@
 # ai-changes.md
 
+## 2026-03-12 - Split Rust Dashboard Prompt Rewrite Module
+- Summary: Moved the Rust dashboard prompt-export datasource resolution and template-rewrite logic into a dedicated `dashboard_prompt.rs` internal module. The extracted module now owns datasource-catalog helpers, datasource reference discovery, datasource placeholder handling, template-variable rewrite logic, and `build_external_export_document`, while `dashboard.rs` keeps the public facade and the remaining shared IO/import/diff flows.
+- Tests: Kept the existing dashboard Rust tests and preserved test imports through targeted `dashboard.rs` re-exports where needed.
+- Test Run: `cd rust && cargo test dashboard --quiet`; `cd rust && cargo test --quiet`
+- Reason: After the first internal split, the prompt-export rewrite block was still the largest isolated responsibility left in `dashboard.rs` and was a clean candidate for extraction.
+- Validation: Verified that the focused dashboard Rust suite and the full Rust suite still pass after the move, with no CLI behavior changes and no public API rename.
+- Impact: `rust/src/dashboard.rs`, `rust/src/dashboard_prompt.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is another internal refactor with preserved public entrypoints, but later refactors should keep prompt helpers in the dedicated module instead of drifting back into `dashboard.rs`.
+
 ## 2026-03-12 - Split Rust Dashboard Module Internals
 - Summary: Split the oversized Rust dashboard module into smaller internal files without changing the public `crate::dashboard` API or dashboard CLI behavior. The new `dashboard_cli_defs.rs` contains clap/auth/client setup, `dashboard_list.rs` contains dashboard and datasource list rendering plus multi-org list logic, and `dashboard_export.rs` contains export pathing plus multi-org export logic. `dashboard.rs` now acts as the dashboard orchestration root and keeps the remaining prompt rewrite, import, diff, and shared helper flows.
 - Tests: Kept the existing dashboard Rust tests unchanged and preserved their current imports through targeted re-exports from `dashboard.rs`.

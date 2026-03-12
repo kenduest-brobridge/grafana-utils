@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-12 - Task: Split Rust Dashboard Prompt Rewrite Module
+- State: Done
+- Scope: `rust/src/dashboard.rs`, `rust/src/dashboard_prompt.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: After the first dashboard module split, `rust/src/dashboard.rs` still carried the largest remaining pure-transformation block: datasource resolution, prompt-export templating rewrites, and `build_external_export_document`.
+- Current Update: Moved the dashboard prompt-export datasource resolution and template-rewrite pipeline into `rust/src/dashboard_prompt.rs`, then kept the existing `crate::dashboard` API stable through re-exports needed by sibling modules and tests.
+- Result: The remaining `dashboard.rs` now reads more like orchestration plus shared IO/import/diff logic, while the prompt-export transformation logic lives in its own focused internal module.
+
 ## 2026-03-12 - Task: Split Rust Dashboard Module Internals
 - State: Done
 - Scope: `rust/src/dashboard.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_list.rs`, `rust/src/dashboard_export.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
