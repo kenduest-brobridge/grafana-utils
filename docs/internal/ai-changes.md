@@ -1,5 +1,23 @@
 # ai-changes.md
 
+## 2026-03-12 - Split Python Dashboard Client And Prompt Transformer
+- Summary: Split the Python dashboard implementation along the same broad lines as the existing Rust dashboard modules without changing the public Python CLI entrypoints. `grafana_utils/clients/dashboard_client.py` now owns the Grafana dashboard HTTP wrapper, `grafana_utils/dashboards/transformer.py` owns prompt-export datasource rewrite and datasource-resolution helpers, and `grafana_utils/dashboards/common.py` holds shared dashboard constants and exceptions. `grafana_utils/dashboard_cli.py` remains the CLI/orchestration facade and re-exports the moved pieces so current tests and callers keep working.
+- Tests: Extended `tests/test_python_dashboard_cli.py` with Python 3.6 syntax coverage for the new extracted modules and kept the existing dashboard behavior tests exercising the facade exports.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py`
+- Reason: `grafana_utils/dashboard_cli.py` had grown into a 2400+ line mixed module. The Grafana client and prompt-export datasource rewrite pipeline were the clearest low-risk extraction points and already had a matching architectural precedent in the Rust codebase.
+- Validation: Verified the new modules compile, the existing dashboard tests still exercise the stable `grafana_utils.dashboard_cli` facade, and datasource resolution for prompt export and dashboard source listing still flows through the extracted helpers.
+- Impact: `grafana_utils/dashboard_cli.py`, `grafana_utils/clients/dashboard_client.py`, `grafana_utils/dashboards/common.py`, `grafana_utils/dashboards/transformer.py`, `tests/test_python_dashboard_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. The change is intended to be behavior-preserving, but future Python dashboard work should continue adding prompt-transform code under `grafana_utils/dashboards/transformer.py` and API behavior under `grafana_utils/clients/dashboard_client.py` instead of growing `dashboard_cli.py` again.
+
+## 2026-03-12 - Split Rust Access Module Internals
+- Summary: Split the Rust access-management implementation into smaller internal files without changing the public `crate::access` API or the existing access CLI behavior. The new `access_cli_defs.rs` contains clap/auth/client setup, `access_render.rs` contains row normalization and table/CSV/JSON renderers, `access_user.rs` contains user flows, `access_team.rs` contains team flows, and `access_service_account.rs` contains service-account flows. `access.rs` now acts as the access orchestration root and keeps the shared request wrappers plus top-level dispatch.
+- Tests: Kept the existing access Rust tests and preserved their current imports through targeted re-exports from `access.rs`.
+- Test Run: `cd rust && cargo test access --quiet`; `cd rust && cargo test --quiet`
+- Reason: `rust/src/access.rs` had reached the same maintenance threshold that previously triggered the dashboard split: it was correct, but too many distinct responsibilities were living in one file.
+- Validation: Verified the focused access Rust suite and the full Rust suite still pass after the split, with no CLI behavior changes and no test API churn.
+- Impact: `rust/src/access.rs`, `rust/src/access_cli_defs.rs`, `rust/src/access_render.rs`, `rust/src/access_user.rs`, `rust/src/access_team.rs`, `rust/src/access_service_account.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is an internal refactor only, but future access work should continue using the split module boundaries instead of moving unrelated logic back into `access.rs`.
+
 ## 2026-03-12 - Type Rust Dashboard Export Metadata And Index Models
 - Summary: Replaced the Rust dashboard export helpers for `export-metadata.json`, root `index.json`, and variant index entries with typed `serde` models instead of building those fixed-schema documents through generic JSON maps. The change keeps field names and JSON shapes stable through explicit `serde` renames while making validation and serialization paths more Rust-native.
 - Tests: Added focused Rust tests that serialize the export metadata and root index models back to JSON and assert the exact existing field layout.

@@ -14,7 +14,12 @@ Commit message default for this repo:
 - `grafana_utils/dashboard_cli.py`: packaged dashboard export/import utility
 - `grafana_utils/alert_cli.py`: packaged alerting resource export/import utility
 - `grafana_utils/access_cli.py`: packaged access-management utility, currently covering `user list`, `user add`, `user modify`, `user delete`, `team list`, `team add`, `team modify`, and initial service-account commands
-- `rust/src/access.rs`: Rust access-management utility with the same user, team, and service-account command surface
+- `rust/src/access.rs`: Rust access-management orchestration entrypoint and shared request helpers
+- `rust/src/access_cli_defs.rs`: Rust access CLI arg definitions and auth/client builders
+- `rust/src/access_render.rs`: Rust access table/CSV/JSON renderers and row normalization helpers
+- `rust/src/access_user.rs`: Rust access user list/add/modify/delete flows
+- `rust/src/access_team.rs`: Rust access team list/add/modify flows
+- `rust/src/access_service_account.rs`: Rust access service-account list/add/token-add flows
 - `rust/src/dashboard.rs`: Rust dashboard orchestration entrypoint and shared dashboard helpers that are still used across import, diff, and prompt-export flows
 - `rust/src/dashboard_cli_defs.rs`: Rust dashboard CLI arg definitions and auth/client builders
 - `rust/src/dashboard_list.rs`: Rust dashboard and datasource list rendering plus multi-org list orchestration
@@ -89,6 +94,7 @@ Commit message default for this repo:
 - `list-data-sources --csv` emits header `uid,name,type,url,isDefault`.
 - `list-data-sources --json` emits an array of objects with keys `uid`, `name`, `type`, `url`, and `isDefault`.
 - The Rust dashboard implementation is intentionally split by responsibility: `dashboard_cli_defs.rs` owns clap/auth/client setup, `dashboard_list.rs` owns list/datasource renderers and org-aware list orchestration, `dashboard_export.rs` owns export pathing and multi-org export orchestration, `dashboard_prompt.rs` owns datasource resolution plus prompt-export template rewrites, and `dashboard.rs` keeps the remaining shared helpers, import, diff, and top-level orchestration flows.
+- The Rust access implementation is intentionally split by responsibility: `access_cli_defs.rs` owns clap/auth/client setup, `access_render.rs` owns output formatting and row normalization, `access_user.rs` owns user flows, `access_team.rs` owns team flows, `access_service_account.rs` owns service-account flows, and `access.rs` keeps shared request wrappers plus top-level dispatch.
 
 ### Packaging layout
 

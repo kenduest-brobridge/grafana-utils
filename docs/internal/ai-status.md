@@ -1,5 +1,19 @@
 # ai-status.md
 
+## 2026-03-12 - Task: Split Python Dashboard Client And Prompt Transformer
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/clients/dashboard_client.py`, `grafana_utils/dashboards/common.py`, `grafana_utils/dashboards/transformer.py`, `tests/test_python_dashboard_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `grafana_utils/dashboard_cli.py` still mixed CLI parsing, Grafana HTTP transport behavior, prompt-export datasource rewrite helpers, and dashboard list/export/import orchestration in one 2400+ line Python module.
+- Current Update: Extracted the dashboard HTTP wrapper into `grafana_utils/clients/dashboard_client.py`, moved prompt-export datasource rewrite and datasource-resolution helpers into `grafana_utils/dashboards/transformer.py`, added `grafana_utils/dashboards/common.py` for shared dashboard constants and exceptions, and kept `grafana_utils/dashboard_cli.py` as the stable facade by importing and re-exporting the moved pieces.
+- Result: The Python dashboard implementation now follows the same split direction as the Rust dashboard modules: the CLI module stays focused on orchestration, while the client and prompt-transform code live in dedicated Python modules that are easier to test and reuse.
+
+## 2026-03-12 - Task: Split Rust Access Module Internals
+- State: Done
+- Scope: `rust/src/access.rs`, `rust/src/access_cli_defs.rs`, `rust/src/access_render.rs`, `rust/src/access_user.rs`, `rust/src/access_team.rs`, `rust/src/access_service_account.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `rust/src/access.rs` had grown into an 1800-line mixed module that combined clap definitions, auth/client setup, output rendering, request helpers, user flows, team flows, service-account flows, and top-level dispatch.
+- Current Update: Split the Rust access implementation into internal modules without changing the public access CLI API or test entrypoints. `access_cli_defs.rs` now owns clap/auth/client setup, `access_render.rs` owns formatting and normalization helpers, `access_user.rs` owns user flows, `access_team.rs` owns team flows, and `access_service_account.rs` owns service-account flows. `access.rs` now keeps shared request wrappers, re-exports, and top-level dispatch.
+- Result: The Rust access implementation is materially easier to navigate and evolve while preserving the existing `crate::access` API, CLI behavior, and focused test imports.
+
 ## 2026-03-12 - Task: Type Rust Dashboard Export Metadata And Index Models
 - State: Done
 - Scope: `rust/src/dashboard.rs`, `rust/src/dashboard_export.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
