@@ -16,6 +16,9 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 - `tests/test_python_alert_cli.py`: alerting Python unit tests
 - `tests/test_python_packaging.py`: Python package metadata and console-script tests
 - `Makefile`: shared developer shortcuts for Python wheel builds, Rust release builds, and test runs
+- `scripts/build-rust-macos-arm64.sh`: native Apple Silicon Rust release build helper that copies binaries into `dist/macos-arm64/`
+- `scripts/build-rust-linux-amd64.sh`: Docker-based Linux `amd64` Rust build helper for macOS or other non-Linux hosts
+- `scripts/build-rust-linux-amd64-zig.sh`: non-Docker Linux `amd64` Rust build helper using local `zig` and `cargo-zigbuild`
 - `scripts/test-rust-live-grafana.sh`: Docker-backed Grafana smoke test for the Rust CLIs
 
 ## Python Baseline
@@ -45,6 +48,10 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 - Use `python3 cmd/grafana-access-utils.py team modify ...` to change Grafana team membership and admin assignments.
 - Use `python3 cmd/grafana-access-utils.py service-account ...` for org-scoped service-account operations.
 - The export subcommand intentionally uses `--export-dir` instead of `--output-dir` to avoid mixing export terminology with import behavior.
+- `export-dashboard --org-id <ID>` rebuilds the dashboard client with `X-Grafana-Org-Id` and is Basic-auth-only because org switching is a server-admin-style workflow rather than a token-bound current-org workflow.
+- `export-dashboard --all-orgs` lists `/api/orgs`, rebuilds one scoped export client per org, and exports each org into an `org_<id>_<name>/` subtree to avoid cross-org file collisions on disk.
+- Multi-org export still writes aggregate root-level `raw/index.json` and `prompt/index.json` files under the chosen export root so the top-level manifest points at one coherent variant index.
+- Top-level dashboard help and `export-dashboard -h` now include both a local Basic-auth example and a token example so operators can see both auth styles directly from the CLI.
 - The `list-dashboard` subcommand is read-only and defaults to compact `uid=<uid> name=<title> folder=<folder> folderUid=<folderUid> path=<folderTreePath> org=<orgName> orgId=<orgId>` output.
 - `list-dashboard --table` renders the same fields in columns and adds `FOLDER_PATH`, `ORG`, and `ORG_ID` columns.
 - `list-dashboard --csv` emits header `uid,name,folder,folderUid,path,org,orgId` with CSV escaping.
@@ -69,6 +76,17 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 - `pyproject.toml` exposes `grafana-utils`, `grafana-alert-utils`, and `grafana-access-utils` as console scripts.
 - Base installation depends on `requests`.
 - Optional extra `.[http2]` adds `httpx[http2]` for Python 3.8+ environments.
+
+### Rust cross-build notes
+
+- `make build-rust-macos-arm64` runs `scripts/build-rust-macos-arm64.sh`.
+- That script is the explicit native release path for Apple Silicon Macs and copies binaries into `dist/macos-arm64/`.
+- `make build-rust-linux-amd64` runs `scripts/build-rust-linux-amd64.sh`.
+- The script uses Docker plus the official Rust image to build `x86_64-unknown-linux-gnu` binaries from macOS.
+- `make build-rust-linux-amd64-zig` runs `scripts/build-rust-linux-amd64-zig.sh`.
+- The zig path expects local `zig`, `cargo-zigbuild`, and a rustup-managed `x86_64-unknown-linux-gnu` target.
+- Output is copied into `dist/linux-amd64/` as `grafana-utils` and `grafana-alert-utils`.
+- This is the preferred Linux `amd64` build path on macOS because it avoids managing a local Linux cross-linker toolchain.
 
 ### Export variants
 
@@ -321,7 +339,7 @@ Current team creation command shape:
 
 ```bash
 python3 cmd/grafana-access-utils.py team add \
-  --url http://127.0.0.1:3000 \
+  --url http://localhost:3000 \
   --token "$GRAFANA_API_TOKEN" \
   --name platform-operators \
   --email platform-operators@example.com \

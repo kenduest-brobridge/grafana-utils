@@ -1,5 +1,35 @@
 # ai-changes.md
 
+## 2026-03-12 - Add Platform-Specific Rust Build Paths
+- Summary: Added explicit Make and script entrypoints for macOS Apple Silicon and Linux `amd64` Rust release builds. `make build-rust-macos-arm64` copies native Apple Silicon binaries into `dist/macos-arm64/`, `make build-rust-linux-amd64` uses Docker to build `x86_64-unknown-linux-gnu` binaries into `dist/linux-amd64/`, and `make build-rust-linux-amd64-zig` uses local `zig` and `cargo-zigbuild` for the same Linux target without Docker.
+- Tests: Added shell-level validation for all build scripts, checked `make help`, live-ran the Docker-backed Linux `amd64` build, and live-ran the non-Docker zig-based Linux `amd64` build.
+- Test Run: `bash -n scripts/build-rust-macos-arm64.sh`; `bash -n scripts/build-rust-linux-amd64.sh`; `bash -n scripts/build-rust-linux-amd64-zig.sh`; `make help`; `RUST_IMAGE=rust:bookworm make build-rust-linux-amd64`; `. \"$HOME/.cargo/env\" && cd rust && cargo zigbuild --release --target x86_64-unknown-linux-gnu`
+- Reason: Operators needed one obvious Makefile surface for producing both native Mac M1 binaries and Linux `amd64` release artifacts from the same repo.
+- Validation: Verified the Linux Docker build completed successfully and produced ELF `x86-64` binaries in `dist/linux-amd64/`. Verified the non-Docker zig path also produced Linux `x86-64` ELF binaries under `rust/target/x86_64-unknown-linux-gnu/release/`. The macOS Apple Silicon path is a thin native wrapper around `cargo build --release` that copies the host-built binaries into `dist/macos-arm64/`.
+- Impact: `Makefile`, `scripts/build-rust-macos-arm64.sh`, `scripts/build-rust-linux-amd64.sh`, `scripts/build-rust-linux-amd64-zig.sh`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. The new paths are additive, but the Linux build depends on Docker and the chosen Rust image, while the macOS path intentionally only supports Apple Silicon hosts.
+- Follow-up: If we need Intel macOS artifacts later, add a separate `build-rust-macos-amd64` path instead of overloading the Apple Silicon target.
+
+## 2026-03-12 - Update Dashboard Help Examples And Local Default URL
+- Summary: Changed the Python and Rust dashboard CLI default URL from `http://127.0.0.1:3000` to `http://localhost:3000`, added local Basic-auth examples plus token examples to the real `-h` output, and refreshed the public and maintainer docs to match the local-first operator flow.
+- Tests: Extended `tests/test_python_dashboard_cli.py` and `rust/src/dashboard_rust_tests.rs` to assert the updated top-level and export help examples, then rechecked the actual help output for both implementations.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py`; `cd rust && cargo test dashboard --quiet`; `python3 cmd/grafana-utils.py -h`; `python3 cmd/grafana-utils.py export-dashboard -h`; `./rust/target/release/grafana-utils -h`
+- Reason: Operators asked for the actual shipped help output to show username/password usage and a local URL by default instead of only token-based remote examples.
+- Validation: Verified the Python top-level help, Python `export-dashboard -h`, Rust source-tree help, and the rebuilt Rust release binary help all show `http://localhost:3000` plus `--basic-user` and `--basic-password` examples.
+- Impact: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. The change is operator-facing documentation and default-url polish, though any tests or wrappers that hardcoded the old default URL string needed to be updated.
+- Follow-up: Consider normalizing the alerting and access README examples to `http://localhost:3000` too if we want one local-first documentation style across the repo.
+
+## 2026-03-12 - Add Dashboard Multi-Org Export
+- Summary: Extended both the Python and Rust `export-dashboard` commands with `--org-id` and `--all-orgs`. `--org-id` exports one explicit Grafana org, while `--all-orgs` enumerates visible orgs and exports each org into its own `org_<id>_<name>/` subtree. Both paths are Basic-auth-only and keep aggregate root-level variant indexes for the overall export root.
+- Tests: Extended the focused Python and Rust dashboard suites with parser coverage, auth validation, explicit-org export tests, and multi-org export tests that verify scoped requests and org-separated output paths.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py`; `cd rust && cargo test dashboard --quiet`
+- Reason: Operators asked for export-side org selection after `list-dashboard` gained `--org-id` and `--all-orgs`, because current-org-only export was too limiting in multi-org Grafana setups.
+- Validation: Live-checked both CLIs against Docker Grafana `12.4.1`. `export-dashboard --org-id 2` exported only `org-two-main`, and `export-dashboard --all-orgs` wrote separate `org_1_Main_Org/...` and `org_2_Org_Two/...` trees plus a root `raw/index.json` that referenced the aggregate export.
+- Impact: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Moderate. The feature is additive, but it depends on server-admin-style org enumeration and org switching, so token-auth exports remain current-org-only. Multi-org export also changes on-disk layout intentionally to avoid collisions, which downstream tooling should understand.
+- Follow-up: Decide whether `import-dashboard` or `diff` should ever grow matching multi-org options, or whether multi-org export should remain archival and inspection focused.
+
 ## 2026-03-12 - Add Dashboard Multi-Org Listing
 - Summary: Extended both the Python and Rust `list-dashboard` commands with `--org-id` and `--all-orgs`. `--org-id` switches listing to one explicit Grafana org, while `--all-orgs` enumerates visible orgs and aggregates dashboard output across them. Both paths keep the existing per-dashboard `org` and `orgId` metadata and are intentionally Basic-auth-only.
 - Tests: Extended the focused Python and Rust dashboard suites with parser coverage, auth validation, and request-scoping tests for explicit-org and all-org listing.
@@ -8,7 +38,7 @@
 - Validation: Live-checked the Python CLI against Docker Grafana `12.4.1` by creating org `2`, seeding dashboard `org-two-main`, and verifying `list-dashboard --all-orgs --json` returned dashboards from both org `1` and org `2`.
 - Impact: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
 - Rollback/Risk: Moderate. The feature is additive, but it depends on Grafana org-enumeration and org-switch behavior that are server-admin/Basic-auth workflows. Operators using token auth remain limited to the current org context.
-- Follow-up: Decide whether `export-dashboard` should eventually gain the same `--org-id` and `--all-orgs` options or stay current-org-only.
+- Follow-up: Completed in the next dashboard export change; `export-dashboard` now supports `--org-id` and `--all-orgs`.
 
 ## 2026-03-12 - Add Dashboard Datasource Listing Command
 - Summary: Added `list-data-sources` to both the Python and Rust dashboard CLIs so operators can inspect the live Grafana datasource catalog directly. The new command reuses the existing `/api/datasources` client path and supports compact text output plus `--table`, `--csv`, and `--json` for datasource fields `uid`, `name`, `type`, `url`, and `isDefault`.
@@ -43,7 +73,7 @@
 ## 2026-03-12 - Add Dashboard List Datasource Display
 - Summary: Extended both the Python and Rust dashboard `list-dashboard` subcommands with `--with-sources`, an opt-in mode that fetches each dashboard payload and resolves datasource references into datasource names for display. The extra data now appears in compact text output and in table, CSV, and JSON output as a `sources` field or column. CSV output also includes best-effort datasource UID collection in a `sourceUids` column.
 - Tests: Added parser/help coverage plus Python and Rust list rendering tests for the new `sources` field and datasource-resolution helpers.
-- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py`; `python3 -m unittest -v`; `python3 cmd/grafana-utils.py list -h`; `cd rust && cargo test dashboard --quiet`; `cd rust && cargo run --quiet --bin grafana-utils -- list -h`
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py`; `python3 -m unittest -v`; `python3 cmd/grafana-utils.py list-dashboard -h`; `cd rust && cargo test dashboard --quiet`; `cd rust && cargo run --quiet --bin grafana-utils -- list-dashboard -h`
 - Validation: Verified that plain `list` output stays unchanged unless `--with-sources` is passed, and that `--with-sources` shows resolved datasource names consistently across Python and Rust.
 - Impact: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
 - Rollback/Risk: Low to moderate. The new behavior is opt-in, but it adds extra API calls and best-effort datasource resolution for dashboards that use aliases, UIDs, or unusual placeholder patterns.

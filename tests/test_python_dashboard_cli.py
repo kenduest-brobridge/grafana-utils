@@ -110,6 +110,31 @@ class ExporterTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             exporter.parse_args([])
 
+    def test_top_level_help_includes_basic_and_token_examples(self):
+        stream = io.StringIO()
+
+        with redirect_stdout(stream):
+            with self.assertRaises(SystemExit):
+                exporter.parse_args(["-h"])
+
+        help_text = stream.getvalue()
+        self.assertIn("Export dashboards from local Grafana with Basic auth", help_text)
+        self.assertIn("Export dashboards with an API token", help_text)
+        self.assertIn("http://localhost:3000", help_text)
+
+    def test_export_help_includes_basic_and_token_examples(self):
+        stream = io.StringIO()
+
+        with redirect_stdout(stream):
+            with self.assertRaises(SystemExit):
+                exporter.parse_args(["export-dashboard", "-h"])
+
+        help_text = stream.getvalue()
+        self.assertIn("Export dashboards from local Grafana with Basic auth", help_text)
+        self.assertIn("Export dashboards with an API token", help_text)
+        self.assertIn("--basic-user admin --basic-password admin", help_text)
+
+
     def test_parse_args_supports_import_mode(self):
         args = exporter.parse_args(["import-dashboard", "--import-dir", "dashboards"])
 
@@ -207,11 +232,22 @@ class ExporterTests(unittest.TestCase):
 
         self.assertEqual(args.export_dir, "dashboards")
         self.assertEqual(args.command, "export-dashboard")
+        self.assertIsNone(args.org_id)
+        self.assertFalse(args.all_orgs)
+
+    def test_parse_args_supports_export_org_selection(self):
+        org_args = exporter.parse_args(["export-dashboard", "--org-id", "2"])
+        all_args = exporter.parse_args(["export-dashboard", "--all-orgs"])
+
+        self.assertEqual(org_args.org_id, "2")
+        self.assertFalse(org_args.all_orgs)
+        self.assertTrue(all_args.all_orgs)
+        self.assertIsNone(all_args.org_id)
 
     def test_parse_args_defaults_url_to_local_grafana(self):
         args = exporter.parse_args(["export-dashboard"])
 
-        self.assertEqual(args.url, "http://127.0.0.1:3000")
+        self.assertEqual(args.url, "http://localhost:3000")
 
     def test_parse_args_supports_variant_switches(self):
         args = exporter.parse_args(
@@ -362,6 +398,14 @@ class ExporterTests(unittest.TestCase):
         )
 
         self.assertEqual(path, Path("out/Infra_Team/Cluster_Health__abc.json"))
+
+    def test_build_all_orgs_output_dir_uses_org_id_and_name(self):
+        path = exporter.build_all_orgs_output_dir(
+            Path("out"),
+            {"id": 2, "name": "Ops Org"},
+        )
+
+        self.assertEqual(path, Path("out/org_2_Ops_Org"))
 
     def test_build_export_variant_dirs(self):
         raw_dir, prompt_dir = exporter.build_export_variant_dirs(Path("dashboards"))
@@ -1288,6 +1332,127 @@ class ExporterTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             self.assertEqual(list(Path(tmpdir).rglob("*.json")), [])
+
+    def test_export_dashboards_with_org_id_uses_scoped_client(self):
+        summary = {"uid": "abc", "title": "CPU", "folderTitle": "Infra"}
+        dashboard = {
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+            "meta": {"folderUid": "infra"},
+        }
+        scoped_client = FakeDashboardWorkflowClient(
+            summaries=[summary],
+            dashboards={"abc": dashboard},
+            org={"id": 2, "name": "Org Two"},
+        )
+        client = FakeDashboardWorkflowClient(org_clients={"2": scoped_client})
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args = exporter.parse_args(
+                [
+                    "export-dashboard",
+                    "--export-dir",
+                    tmpdir,
+                    "--without-dashboard-prompt",
+                    "--org-id",
+                    "2",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                result = exporter.export_dashboards(args)
+
+            self.assertEqual(result, 0)
+            self.assertTrue((Path(tmpdir) / "raw/Infra/CPU__abc.json").is_file())
+            root_index = json.loads((Path(tmpdir) / "index.json").read_text(encoding="utf-8"))
+            self.assertEqual(root_index["items"][0]["org"], "Org Two")
+            self.assertEqual(root_index["items"][0]["orgId"], "2")
+
+    def test_export_dashboards_with_all_orgs_uses_org_prefix_dirs(self):
+        org_one_summary = {"uid": "abc", "title": "CPU", "folderTitle": "Infra"}
+        org_two_summary = {"uid": "abc", "title": "CPU", "folderTitle": "Infra"}
+        org_one_dashboard = {
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+            "meta": {"folderUid": "infra"},
+        }
+        org_two_dashboard = {
+            "dashboard": {"id": 8, "uid": "abc", "title": "CPU", "panels": []},
+            "meta": {"folderUid": "infra"},
+        }
+        org_one_client = FakeDashboardWorkflowClient(
+            summaries=[org_one_summary],
+            dashboards={"abc": org_one_dashboard},
+            org={"id": 1, "name": "Main Org."},
+        )
+        org_two_client = FakeDashboardWorkflowClient(
+            summaries=[org_two_summary],
+            dashboards={"abc": org_two_dashboard},
+            org={"id": 2, "name": "Org Two"},
+        )
+        client = FakeDashboardWorkflowClient(
+            orgs=[{"id": 1, "name": "Main Org."}, {"id": 2, "name": "Org Two"}],
+            org_clients={"1": org_one_client, "2": org_two_client},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args = exporter.parse_args(
+                [
+                    "export-dashboard",
+                    "--export-dir",
+                    tmpdir,
+                    "--without-dashboard-prompt",
+                    "--all-orgs",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                result = exporter.export_dashboards(args)
+
+            self.assertEqual(result, 0)
+            self.assertTrue(
+                (Path(tmpdir) / "org_1_Main_Org/raw/Infra/CPU__abc.json").is_file()
+            )
+            self.assertTrue(
+                (Path(tmpdir) / "org_2_Org_Two/raw/Infra/CPU__abc.json").is_file()
+            )
+            self.assertTrue((Path(tmpdir) / "raw/index.json").is_file())
+            root_index = json.loads((Path(tmpdir) / "index.json").read_text(encoding="utf-8"))
+            self.assertEqual(len(root_index["items"]), 2)
+            self.assertEqual(
+                sorted(item["orgId"] for item in root_index["items"]),
+                ["1", "2"],
+            )
+            self.assertTrue(str(root_index["variants"]["raw"]).endswith("/raw/index.json"))
+
+    def test_export_dashboards_rejects_all_orgs_with_org_id(self):
+        client = FakeDashboardWorkflowClient()
+        args = exporter.parse_args(
+            [
+                "export-dashboard",
+                "--without-dashboard-prompt",
+                "--org-id",
+                "2",
+                "--all-orgs",
+            ]
+        )
+
+        with mock.patch.object(exporter, "build_client", return_value=client):
+            with self.assertRaises(exporter.GrafanaError):
+                exporter.export_dashboards(args)
+
+    def test_export_dashboards_rejects_org_switch_with_token_auth(self):
+        client = FakeDashboardWorkflowClient(headers={"Authorization": "Bearer token"})
+        args = exporter.parse_args(
+            [
+                "export-dashboard",
+                "--without-dashboard-prompt",
+                "--org-id",
+                "2",
+            ]
+        )
+
+        with mock.patch.object(exporter, "build_client", return_value=client):
+            with self.assertRaisesRegex(exporter.GrafanaError, "Basic auth"):
+                exporter.export_dashboards(args)
 
     def test_import_dashboards_dry_run_skips_api_write(self):
         client = FakeDashboardWorkflowClient(

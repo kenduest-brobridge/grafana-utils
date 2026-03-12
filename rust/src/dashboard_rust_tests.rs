@@ -138,6 +138,52 @@ fn parse_cli_supports_preferred_auth_aliases() {
 }
 
 #[test]
+fn parse_cli_supports_export_org_scope_flags() {
+    let org_args = parse_cli_from([
+        "grafana-utils",
+        "export-dashboard",
+        "--org-id",
+        "7",
+    ]);
+    let all_orgs_args = parse_cli_from([
+        "grafana-utils",
+        "export-dashboard",
+        "--all-orgs",
+    ]);
+
+    match org_args.command {
+        DashboardCommand::Export(export_args) => {
+            assert_eq!(export_args.org_id, Some(7));
+            assert!(!export_args.all_orgs);
+        }
+        _ => panic!("expected export command"),
+    }
+
+    match all_orgs_args.command {
+        DashboardCommand::Export(export_args) => {
+            assert_eq!(export_args.org_id, None);
+            assert!(export_args.all_orgs);
+        }
+        _ => panic!("expected export command"),
+    }
+}
+
+#[test]
+fn parse_cli_rejects_conflicting_export_org_scope_flags() {
+    let error = DashboardCliArgs::try_parse_from([
+        "grafana-utils",
+        "export-dashboard",
+        "--org-id",
+        "7",
+        "--all-orgs",
+    ])
+    .unwrap_err();
+
+    assert!(error.to_string().contains("--org-id"));
+    assert!(error.to_string().contains("--all-orgs"));
+}
+
+#[test]
 fn export_help_explains_flat_layout() {
     let help = render_dashboard_subcommand_help("export-dashboard");
     assert!(help.contains("Write dashboard files directly into the export variant directory"));
@@ -147,6 +193,7 @@ fn export_help_explains_flat_layout() {
 #[test]
 fn top_level_help_includes_examples() {
     let help = render_dashboard_help();
+    assert!(help.contains("Export dashboards from local Grafana with Basic auth"));
     assert!(help.contains("Export dashboards with an API token"));
     assert!(help.contains("grafana-utils export-dashboard"));
     assert!(help.contains("grafana-utils diff"));
@@ -1055,6 +1102,8 @@ fn export_dashboards_with_client_writes_raw_variant_and_indexes() {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         export_dir: temp.path().join("dashboards"),
         page_size: 500,
+        org_id: None,
+        all_orgs: false,
         flat: false,
         overwrite: true,
         without_dashboard_raw: false,
@@ -1065,6 +1114,9 @@ fn export_dashboards_with_client_writes_raw_variant_and_indexes() {
     let count = export_dashboards_with_request(
         |method, path, params, payload| {
             calls.push((method.to_string(), path.to_string(), params.to_vec(), payload.cloned()));
+            if path == "/api/org" {
+                return Ok(Some(json!({"id": 1, "name": "Main Org."})));
+            }
             if path == "/api/search" {
                 return Ok(Some(json!([{ "uid": "abc", "title": "CPU", "folderTitle": "Infra" }])));
             }
@@ -1083,7 +1135,60 @@ fn export_dashboards_with_client_writes_raw_variant_and_indexes() {
     assert!(args.export_dir.join("raw/export-metadata.json").is_file());
     assert!(args.export_dir.join("index.json").is_file());
     assert!(args.export_dir.join("export-metadata.json").is_file());
-    assert_eq!(calls.len(), 2);
+    assert_eq!(calls.len(), 3);
+}
+
+#[test]
+fn export_dashboards_with_request_with_org_id_scopes_requests() {
+    let temp = tempdir().unwrap();
+    let args = ExportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        export_dir: temp.path().join("dashboards"),
+        page_size: 500,
+        org_id: Some(7),
+        all_orgs: false,
+        flat: false,
+        overwrite: true,
+        without_dashboard_raw: false,
+        without_dashboard_prompt: true,
+        dry_run: false,
+    };
+    let mut calls = Vec::new();
+
+    let count = export_dashboards_with_request(
+        |method, path, params, payload| {
+            calls.push((method.to_string(), path.to_string(), params.to_vec(), payload.cloned()));
+            let scoped_org = params
+                .iter()
+                .find(|(key, _)| key == "orgId")
+                .map(|(_, value)| value.as_str());
+            match (path, scoped_org) {
+                ("/api/org", Some("7")) => {
+                    Ok(Some(json!({"id": 7, "name": "Scoped Org"})))
+                }
+                ("/api/search", Some("7")) => {
+                    Ok(Some(json!([{ "uid": "abc", "title": "CPU", "folderTitle": "Infra" }])))
+                }
+                ("/api/dashboards/uid/abc", Some("7")) => {
+                    Ok(Some(json!({"dashboard": {"id": 7, "uid": "abc", "title": "CPU"}})))
+                }
+                _ => Err(super::message(format!("unexpected path {path}"))),
+            }
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 1);
+    assert!(args.export_dir.join("raw/Infra/CPU__abc.json").is_file());
+    assert_eq!(
+        calls
+            .iter()
+            .filter(|(_, path, params, _)| path == "/api/search"
+                && params.iter().any(|(key, value)| key == "orgId" && value == "7"))
+            .count(),
+        1
+    );
 }
 
 #[test]
@@ -1192,6 +1297,8 @@ fn export_dashboards_with_client_writes_prompt_variant_and_indexes() {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         export_dir: temp.path().join("dashboards"),
         page_size: 500,
+        org_id: None,
+        all_orgs: false,
         flat: false,
         overwrite: true,
         without_dashboard_raw: false,
@@ -1204,6 +1311,7 @@ fn export_dashboards_with_client_writes_prompt_variant_and_indexes() {
             "/api/datasources" => Ok(Some(json!([
                 {"uid": "prom_uid", "name": "Prom Main", "type": "prometheus"}
             ]))),
+            "/api/org" => Ok(Some(json!({"id": 1, "name": "Main Org."}))),
             "/api/search" => Ok(Some(json!([{ "uid": "abc", "title": "CPU", "folderTitle": "Infra" }]))),
             "/api/dashboards/uid/abc" => Ok(Some(json!({
                 "dashboard": {
@@ -1228,12 +1336,90 @@ fn export_dashboards_with_client_writes_prompt_variant_and_indexes() {
 }
 
 #[test]
+fn export_dashboards_with_request_all_orgs_aggregates_results() {
+    let temp = tempdir().unwrap();
+    let args = ExportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        export_dir: temp.path().join("dashboards"),
+        page_size: 500,
+        org_id: None,
+        all_orgs: true,
+        flat: false,
+        overwrite: true,
+        without_dashboard_raw: false,
+        without_dashboard_prompt: true,
+        dry_run: false,
+    };
+    let mut calls = Vec::new();
+
+    let count = export_dashboards_with_request(
+        |method, path, params, payload| {
+            calls.push((method.to_string(), path.to_string(), params.to_vec(), payload.cloned()));
+            let scoped_org = params
+                .iter()
+                .find(|(key, _)| key == "orgId")
+                .map(|(_, value)| value.as_str());
+            match (path, scoped_org) {
+                ("/api/orgs", None) => Ok(Some(json!([
+                    {"id": 1, "name": "Main Org"},
+                    {"id": 2, "name": "Ops Org"}
+                ]))),
+                ("/api/org", Some("1")) => Ok(Some(json!({"id": 1, "name": "Main Org"}))),
+                ("/api/org", Some("2")) => Ok(Some(json!({"id": 2, "name": "Ops Org"}))),
+                ("/api/search", Some("1")) => {
+                    Ok(Some(json!([{ "uid": "abc", "title": "CPU", "folderTitle": "Infra" }])))
+                }
+                ("/api/search", Some("2")) => {
+                    Ok(Some(json!([{ "uid": "xyz", "title": "Logs", "folderTitle": "Ops" }])))
+                }
+                ("/api/dashboards/uid/abc", Some("1")) => {
+                    Ok(Some(json!({"dashboard": {"id": 7, "uid": "abc", "title": "CPU"}})))
+                }
+                ("/api/dashboards/uid/xyz", Some("2")) => {
+                    Ok(Some(json!({"dashboard": {"id": 8, "uid": "xyz", "title": "Logs"}})))
+                }
+                _ => Err(super::message(format!("unexpected path {path}"))),
+            }
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 2);
+    assert!(args.export_dir.join("org_1_Main_Org/raw/Infra/CPU__abc.json").is_file());
+    assert!(args.export_dir.join("org_2_Ops_Org/raw/Ops/Logs__xyz.json").is_file());
+    assert!(args.export_dir.join("raw/index.json").is_file());
+    assert_eq!(
+        calls.iter().filter(|(_, path, _, _)| path == "/api/orgs").count(),
+        1
+    );
+    assert_eq!(
+        calls
+            .iter()
+            .filter(|(_, path, params, _)| path == "/api/search"
+                && params.iter().any(|(key, value)| key == "orgId" && value == "1"))
+            .count(),
+        1
+    );
+    assert_eq!(
+        calls
+            .iter()
+            .filter(|(_, path, params, _)| path == "/api/search"
+                && params.iter().any(|(key, value)| key == "orgId" && value == "2"))
+            .count(),
+        1
+    );
+}
+
+#[test]
 fn export_dashboards_with_dry_run_keeps_output_dir_empty() {
     let temp = tempdir().unwrap();
     let args = ExportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         export_dir: temp.path().join("dashboards"),
         page_size: 500,
+        org_id: None,
+        all_orgs: false,
         flat: false,
         overwrite: true,
         without_dashboard_raw: false,
@@ -1243,6 +1429,7 @@ fn export_dashboards_with_dry_run_keeps_output_dir_empty() {
 
     let count = export_dashboards_with_request(
         |_method, path, _params, _payload| match path {
+            "/api/org" => Ok(Some(json!({"id": 1, "name": "Main Org."}))),
             "/api/search" => Ok(Some(json!([{ "uid": "abc", "title": "CPU", "folderTitle": "Infra" }]))),
             "/api/dashboards/uid/abc" => {
                 Ok(Some(json!({"dashboard": {"id": 7, "uid": "abc", "title": "CPU"}})))

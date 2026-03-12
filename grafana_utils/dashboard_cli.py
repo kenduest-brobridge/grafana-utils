@@ -49,7 +49,7 @@ from .http_transport import (
 )
 
 
-DEFAULT_URL = "http://127.0.0.1:3000"
+DEFAULT_URL = "http://localhost:3000"
 DEFAULT_TIMEOUT = 30
 DEFAULT_PAGE_SIZE = 500
 DEFAULT_EXPORT_DIR = "dashboards"
@@ -163,6 +163,16 @@ def add_export_cli_args(parser: argparse.ArgumentParser) -> None:
         type=int,
         default=DEFAULT_PAGE_SIZE,
         help=f"Dashboard search page size (default: {DEFAULT_PAGE_SIZE}).",
+    )
+    parser.add_argument(
+        "--org-id",
+        default=None,
+        help="Export dashboards from this Grafana organization ID instead of the current org context.",
+    )
+    parser.add_argument(
+        "--all-orgs",
+        action="store_true",
+        help="Export dashboards from every Grafana organization. Requires Basic auth.",
     )
     parser.add_argument(
         "--flat",
@@ -308,7 +318,21 @@ def add_diff_cli_args(parser: argparse.ArgumentParser) -> None:
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Export or import Grafana dashboards."
+        description="Export or import Grafana dashboards.",
+        epilog=(
+            "Examples:\n\n"
+            "  Export dashboards from local Grafana with Basic auth:\n"
+            "    grafana-utils export-dashboard --url http://localhost:3000 "
+            "--basic-user admin --basic-password admin --export-dir ./dashboards --overwrite\n\n"
+            "  Export dashboards with an API token:\n"
+            "    export GRAFANA_API_TOKEN='your-token'\n"
+            "    grafana-utils export-dashboard --url http://localhost:3000 "
+            "--token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n"
+            "  Compare raw dashboard exports against local Grafana:\n"
+            "    grafana-utils diff --url http://localhost:3000 "
+            "--basic-user admin --basic-password admin --import-dir ./dashboards/raw"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     # Keep export-only and import-only flags on separate subcommands so the
     # operator must choose the intended mode explicitly at the CLI boundary.
@@ -318,6 +342,20 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     export_parser = subparsers.add_parser(
         "export-dashboard",
         help="Export dashboards into raw/ and prompt/ variants.",
+        epilog=(
+            "Examples:\n\n"
+            "  Export dashboards from local Grafana with Basic auth:\n"
+            "    grafana-utils export-dashboard --url http://localhost:3000 "
+            "--basic-user admin --basic-password admin --export-dir ./dashboards --overwrite\n\n"
+            "  Export dashboards with an API token:\n"
+            "    export GRAFANA_API_TOKEN='your-token'\n"
+            "    grafana-utils export-dashboard --url http://localhost:3000 "
+            "--token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n"
+            "  Export into a flat directory layout instead of per-folder subdirectories:\n"
+            "    grafana-utils export-dashboard --url http://localhost:3000 "
+            "--basic-user admin --basic-password admin --export-dir ./dashboards --flat"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_common_cli_args(export_parser)
     add_export_cli_args(export_parser)
@@ -425,6 +463,16 @@ def build_output_path(
     if flat:
         return output_dir / filename
     return output_dir / folder_name / filename
+
+
+def build_all_orgs_output_dir(
+    output_dir: Path,
+    org: Dict[str, Any],
+) -> Path:
+    """Return one org-prefixed export directory for multi-org dashboard exports."""
+    org_id = sanitize_path_component(str(org.get("id") or "unknown"))
+    org_name = sanitize_path_component(str(org.get("name") or "org"))
+    return output_dir / ("org_%s_%s" % (org_id, org_name))
 
 
 def build_export_variant_dirs(output_dir: Path) -> Tuple[Path, Path]:
@@ -1265,6 +1313,8 @@ def build_dashboard_index_item(summary: Dict[str, Any], uid: str) -> Dict[str, s
         "uid": uid,
         "title": str(summary.get("title") or ""),
         "folder": str(summary.get("folderTitle") or ""),
+        "org": str(summary.get("orgName") or "Main Org."),
+        "orgId": str(summary.get("orgId") or "1"),
     }
 
 
@@ -1279,6 +1329,8 @@ def build_variant_index(
             "uid": item["uid"],
             "title": item["title"],
             "folder": item["folder"],
+            "org": item["org"],
+            "orgId": item["orgId"],
             "path": item[path_key],
             "format": format_name,
         }
@@ -1552,63 +1604,97 @@ def export_dashboards(args: argparse.Namespace) -> int:
             "Nothing to export. Remove one of --without-dashboard-raw or --without-dashboard-prompt."
         )
 
-    client = build_client(args)
     output_dir = Path(args.export_dir)
-    raw_dir, prompt_dir = build_export_variant_dirs(output_dir)
     export_raw = not args.without_dashboard_raw
     export_prompt = not args.without_dashboard_prompt
-    datasource_catalog = None
-    if export_prompt:
-        # Prompt exports need datasource metadata up front so dashboard references
-        # can be rewritten into Grafana's __inputs import format.
-        datasource_catalog = build_datasource_catalog(client.list_datasources())
+    client = build_client(args)
+    all_orgs = bool(getattr(args, "all_orgs", False))
+    org_id = getattr(args, "org_id", None)
+    if all_orgs and org_id:
+        raise GrafanaError("Choose either --org-id or --all-orgs, not both.")
+    auth_header = client.headers.get("Authorization", "")
+    if (all_orgs or org_id) and not auth_header.startswith("Basic "):
+        raise GrafanaError(
+            "Dashboard org switching requires Basic auth. Use --basic-user and --basic-password."
+        )
 
-    summaries = client.iter_dashboard_summaries(args.page_size)
-    if not summaries:
-        print("No dashboards found.", file=sys.stderr)
-        return 0
+    clients = [client]
+    if all_orgs:
+        clients = []
+        for org in client.list_orgs():
+            scoped_org_id = str(org.get("id") or "").strip()
+            if scoped_org_id:
+                clients.append((org, client.with_org_id(scoped_org_id)))
+    elif org_id:
+        scoped_client = client.with_org_id(str(org_id))
+        clients = [(scoped_client.fetch_current_org(), scoped_client)]
+    else:
+        clients = [(client.fetch_current_org(), client)]
 
     index_items: List[Dict[str, str]] = []
-    for summary in summaries:
-        uid = str(summary["uid"])
-        payload = client.fetch_dashboard(uid)
-        item = build_dashboard_index_item(summary, uid)
-        if export_raw:
-            raw_document = build_preserved_web_import_document(payload)
-            raw_path = build_output_path(raw_dir, summary, args.flat)
-            if args.dry_run:
-                ensure_dashboard_write_target(
-                    raw_path,
-                    args.overwrite,
-                    create_parents=False,
-                )
-                print(f"Would export raw    {uid} -> {raw_path}")
-            else:
-                write_dashboard(raw_document, raw_path, args.overwrite)
-                print(f"Exported raw    {uid} -> {raw_path}")
-            item["raw_path"] = str(raw_path)
+    for org, scoped_client in clients:
+        scoped_output_dir = output_dir
+        if all_orgs:
+            scoped_output_dir = build_all_orgs_output_dir(output_dir, org)
+        raw_dir, prompt_dir = build_export_variant_dirs(scoped_output_dir)
+        datasource_catalog = None
         if export_prompt:
-            assert datasource_catalog is not None
-            prompt_document = build_external_export_document(payload, datasource_catalog)
-            prompt_path = build_output_path(prompt_dir, summary, args.flat)
-            if args.dry_run:
-                ensure_dashboard_write_target(
-                    prompt_path,
-                    args.overwrite,
-                    create_parents=False,
-                )
-                print(f"Would export prompt {uid} -> {prompt_path}")
-            else:
-                write_dashboard(prompt_document, prompt_path, args.overwrite)
-                print(f"Exported prompt {uid} -> {prompt_path}")
-            item["prompt_path"] = str(prompt_path)
-        index_items.append(item)
+            # Prompt exports need datasource metadata up front so dashboard references
+            # can be rewritten into Grafana's __inputs import format.
+            datasource_catalog = build_datasource_catalog(scoped_client.list_datasources())
+
+        summaries = attach_dashboard_org(
+            scoped_client,
+            scoped_client.iter_dashboard_summaries(args.page_size),
+        )
+        if not summaries:
+            continue
+
+        for summary in summaries:
+            uid = str(summary["uid"])
+            payload = scoped_client.fetch_dashboard(uid)
+            item = build_dashboard_index_item(summary, uid)
+            if export_raw:
+                raw_document = build_preserved_web_import_document(payload)
+                raw_path = build_output_path(raw_dir, summary, args.flat)
+                if args.dry_run:
+                    ensure_dashboard_write_target(
+                        raw_path,
+                        args.overwrite,
+                        create_parents=False,
+                    )
+                    print(f"Would export raw    {uid} -> {raw_path}")
+                else:
+                    write_dashboard(raw_document, raw_path, args.overwrite)
+                    print(f"Exported raw    {uid} -> {raw_path}")
+                item["raw_path"] = str(raw_path)
+            if export_prompt:
+                assert datasource_catalog is not None
+                prompt_document = build_external_export_document(payload, datasource_catalog)
+                prompt_path = build_output_path(prompt_dir, summary, args.flat)
+                if args.dry_run:
+                    ensure_dashboard_write_target(
+                        prompt_path,
+                        args.overwrite,
+                        create_parents=False,
+                    )
+                    print(f"Would export prompt {uid} -> {prompt_path}")
+                else:
+                    write_dashboard(prompt_document, prompt_path, args.overwrite)
+                    print(f"Exported prompt {uid} -> {prompt_path}")
+                item["prompt_path"] = str(prompt_path)
+            index_items.append(item)
+
+    if not index_items:
+        print("No dashboards found.", file=sys.stderr)
+        return 0
 
     raw_index_path = None
     raw_metadata_path = None
     if export_raw:
-        raw_index_path = raw_dir / "index.json"
-        raw_metadata_path = raw_dir / EXPORT_METADATA_FILENAME
+        raw_variant_dir = output_dir / RAW_EXPORT_SUBDIR if all_orgs else raw_dir
+        raw_index_path = raw_variant_dir / "index.json"
+        raw_metadata_path = raw_variant_dir / EXPORT_METADATA_FILENAME
         raw_index = build_variant_index(
             index_items,
             "raw_path",
@@ -1625,8 +1711,9 @@ def export_dashboards(args: argparse.Namespace) -> int:
     prompt_index_path = None
     prompt_metadata_path = None
     if export_prompt:
-        prompt_index_path = prompt_dir / "index.json"
-        prompt_metadata_path = prompt_dir / EXPORT_METADATA_FILENAME
+        prompt_variant_dir = output_dir / PROMPT_EXPORT_SUBDIR if all_orgs else prompt_dir
+        prompt_index_path = prompt_variant_dir / "index.json"
+        prompt_metadata_path = prompt_variant_dir / EXPORT_METADATA_FILENAME
         prompt_index = build_variant_index(
             index_items,
             "prompt_path",

@@ -12,7 +12,7 @@ use crate::common::{
 };
 use crate::http::{JsonHttpClient, JsonHttpClientConfig};
 
-pub const DEFAULT_URL: &str = "http://127.0.0.1:3000";
+pub const DEFAULT_URL: &str = "http://localhost:3000";
 pub const DEFAULT_TIMEOUT: u64 = 30;
 pub const DEFAULT_PAGE_SIZE: usize = 500;
 pub const DEFAULT_EXPORT_DIR: &str = "dashboards";
@@ -76,6 +76,10 @@ pub struct ExportArgs {
     pub export_dir: PathBuf,
     #[arg(long, default_value_t = DEFAULT_PAGE_SIZE, help = "Dashboard search page size.")]
     pub page_size: usize,
+    #[arg(long, conflicts_with = "all_orgs", help = "Export dashboards from this Grafana org ID.")]
+    pub org_id: Option<i64>,
+    #[arg(long, default_value_t = false, conflicts_with = "org_id", help = "Enumerate all visible Grafana orgs and export dashboards from each org.")]
+    pub all_orgs: bool,
     #[arg(
         long,
         default_value_t = false,
@@ -183,7 +187,7 @@ pub enum DashboardCommand {
 #[derive(Debug, Clone, Parser)]
 #[command(
     about = "Export or import Grafana dashboards.",
-    after_help = "Examples:\n\n  Export dashboards with an API token:\n    export GRAFANA_API_TOKEN='your-token'\n    grafana-utils export-dashboard --url https://grafana.example.com --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n  Export into a flat directory layout instead of per-folder subdirectories:\n    grafana-utils export-dashboard --url https://grafana.example.com --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --flat\n\n  Compare raw dashboard exports against live Grafana:\n    grafana-utils diff --url https://grafana.example.com --token \"$GRAFANA_API_TOKEN\" --import-dir ./dashboards/raw"
+    after_help = "Examples:\n\n  Export dashboards from local Grafana with Basic auth:\n    grafana-utils export-dashboard --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite\n\n  Export dashboards with an API token:\n    export GRAFANA_API_TOKEN='your-token'\n    grafana-utils export-dashboard --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n  Export into a flat directory layout instead of per-folder subdirectories:\n    grafana-utils export-dashboard --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --flat\n\n  Compare raw dashboard exports against local Grafana:\n    grafana-utils diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw"
 )]
 pub struct DashboardCliArgs {
     #[command(subcommand)]
@@ -259,6 +263,15 @@ pub fn build_output_path(output_dir: &Path, summary: &Map<String, Value>, flat: 
             .join(sanitize_path_component(&folder_title))
             .join(file_name)
     }
+}
+
+fn build_all_orgs_output_dir(output_dir: &Path, org: &Map<String, Value>) -> PathBuf {
+    let org_id = org
+        .get("id")
+        .map(|value| sanitize_path_component(&value.to_string()))
+        .unwrap_or_else(|| "unknown".to_string());
+    let org_name = sanitize_path_component(&string_field(org, "name", "org"));
+    output_dir.join(format!("org_{org_id}_{org_name}"))
 }
 
 pub fn build_export_variant_dirs(output_dir: &Path) -> (PathBuf, PathBuf) {
@@ -1192,6 +1205,22 @@ fn build_dashboard_index_item(summary: &Map<String, Value>, uid: &str) -> Map<St
         "folderTitle".to_string(),
         Value::String(string_field(summary, "folderTitle", "General")),
     );
+    item.insert(
+        "org".to_string(),
+        Value::String(string_field(summary, "orgName", "Main Org.")),
+    );
+    item.insert(
+        "orgId".to_string(),
+        Value::String(
+            summary
+                .get("orgId")
+                .map(|value| match value {
+                    Value::String(text) => text.clone(),
+                    _ => value.to_string(),
+                })
+                .unwrap_or_else(|| "1".to_string()),
+        ),
+    );
     item
 }
 
@@ -1218,6 +1247,14 @@ fn build_variant_index(
                         (
                             "format".to_string(),
                             Value::String(export_format.to_string()),
+                        ),
+                        (
+                            "org".to_string(),
+                            Value::String(string_field(item, "org", "Main Org.")),
+                        ),
+                        (
+                            "orgId".to_string(),
+                            Value::String(string_field(item, "orgId", "1")),
                         ),
                     ]))
                 })
@@ -2270,7 +2307,12 @@ pub fn list_datasources(client: &JsonHttpClient) -> Result<Vec<Map<String, Value
     )
 }
 
-fn export_dashboards_with_request<F>(mut request_json: F, args: &ExportArgs) -> Result<usize>
+fn export_dashboards_in_scope_with_request<F>(
+    request_json: &mut F,
+    args: &ExportArgs,
+    org: Option<&Map<String, Value>>,
+    org_id_override: Option<i64>,
+) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
@@ -2279,7 +2321,27 @@ where
             "Nothing to export. Remove one of --without-dashboard-raw or --without-dashboard-prompt.",
         ));
     }
-    let (raw_dir, prompt_dir) = build_export_variant_dirs(&args.export_dir);
+    let mut scoped_request = |method: Method,
+                              path: &str,
+                              params: &[(String, String)],
+                              payload: Option<&Value>|
+     -> Result<Option<Value>> {
+        let mut scoped_params = params.to_vec();
+        if let Some(org_id) = org_id_override {
+            scoped_params.push(("orgId".to_string(), org_id.to_string()));
+        }
+        request_json(method, path, &scoped_params, payload)
+    };
+    let current_org = match org {
+        Some(org) => org.clone(),
+        None => fetch_current_org_with_request(&mut scoped_request)?,
+    };
+    let scope_output_dir = if args.all_orgs {
+        build_all_orgs_output_dir(&args.export_dir, &current_org)
+    } else {
+        args.export_dir.clone()
+    };
+    let (raw_dir, prompt_dir) = build_export_variant_dirs(&scope_output_dir);
     if !args.dry_run && !args.without_dashboard_raw {
         fs::create_dir_all(&raw_dir)?;
     }
@@ -2289,13 +2351,14 @@ where
     let datasource_catalog = if args.without_dashboard_prompt {
         None
     } else {
-        Some(build_datasource_catalog(&list_datasources_with_request(&mut request_json)?))
+        Some(build_datasource_catalog(&list_datasources_with_request(&mut scoped_request)?))
     };
 
-    let summaries = list_dashboard_summaries_with_request(&mut request_json, args.page_size)?;
+    let summaries = list_dashboard_summaries_with_request(&mut scoped_request, args.page_size)?;
     if summaries.is_empty() {
         return Ok(0);
     }
+    let summaries = attach_dashboard_org_metadata(&summaries, &current_org);
 
     let mut exported_count = 0;
     let mut index_items = Vec::new();
@@ -2304,7 +2367,7 @@ where
         if uid.is_empty() {
             continue;
         }
-        let payload = fetch_dashboard_with_request(&mut request_json, &uid)?;
+        let payload = fetch_dashboard_with_request(&mut scoped_request, &uid)?;
         let mut item = build_dashboard_index_item(&summary, &uid);
         if !args.without_dashboard_raw {
             let raw_document = build_preserved_web_import_document(&payload)?;
@@ -2339,8 +2402,13 @@ where
 
     let mut raw_index_path = None;
     if !args.without_dashboard_raw {
-        let index_path = raw_dir.join("index.json");
-        let metadata_path = raw_dir.join(EXPORT_METADATA_FILENAME);
+        let variant_dir = if args.all_orgs {
+            args.export_dir.join(RAW_EXPORT_SUBDIR)
+        } else {
+            raw_dir.clone()
+        };
+        let index_path = variant_dir.join("index.json");
+        let metadata_path = variant_dir.join(EXPORT_METADATA_FILENAME);
         if !args.dry_run {
             write_json_document(
                 &build_variant_index(
@@ -2363,8 +2431,13 @@ where
     }
     let mut prompt_index_path = None;
     if !args.without_dashboard_prompt {
-        let index_path = prompt_dir.join("index.json");
-        let metadata_path = prompt_dir.join(EXPORT_METADATA_FILENAME);
+        let variant_dir = if args.all_orgs {
+            args.export_dir.join(PROMPT_EXPORT_SUBDIR)
+        } else {
+            prompt_dir.clone()
+        };
+        let index_path = variant_dir.join("index.json");
+        let metadata_path = variant_dir.join(EXPORT_METADATA_FILENAME);
         if !args.dry_run {
             write_json_document(
                 &build_variant_index(
@@ -2401,11 +2474,63 @@ where
     Ok(exported_count)
 }
 
+fn export_dashboards_with_request<F>(mut request_json: F, args: &ExportArgs) -> Result<usize>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    if args.all_orgs {
+        let mut total = 0usize;
+        for org in list_orgs_with_request(&mut request_json)? {
+            let org_id = org_id_value(&org)?;
+            total += export_dashboards_in_scope_with_request(&mut request_json, args, Some(&org), Some(org_id))?;
+        }
+        Ok(total)
+    } else {
+        export_dashboards_in_scope_with_request(&mut request_json, args, None, args.org_id)
+    }
+}
+
 pub fn export_dashboards_with_client(client: &JsonHttpClient, args: &ExportArgs) -> Result<usize> {
     export_dashboards_with_request(
         |method, path, params, payload| client.request_json(method, path, params, payload),
         args,
     )
+}
+
+fn export_dashboards_with_org_clients(args: &ExportArgs) -> Result<usize> {
+    if args.all_orgs {
+        let admin_client = build_http_client(&args.common)?;
+        let mut total = 0usize;
+        for org in list_orgs_with_request(|method, path, params, payload| {
+            admin_client.request_json(method, path, params, payload)
+        })? {
+            let org_id = org_id_value(&org)?;
+            let org_client = build_http_client_for_org(&args.common, org_id)?;
+            total += export_dashboards_in_scope_with_request(
+                &mut |method, path, params, payload| org_client.request_json(method, path, params, payload),
+                args,
+                Some(&org),
+                None,
+            )?;
+        }
+        Ok(total)
+    } else if let Some(org_id) = args.org_id {
+        let org_client = build_http_client_for_org(&args.common, org_id)?;
+        export_dashboards_in_scope_with_request(
+            &mut |method, path, params, payload| org_client.request_json(method, path, params, payload),
+            args,
+            None,
+            None,
+        )
+    } else {
+        let client = build_http_client(&args.common)?;
+        export_dashboards_in_scope_with_request(
+            &mut |method, path, params, payload| client.request_json(method, path, params, payload),
+            args,
+            None,
+            None,
+        )
+    }
 }
 
 fn import_dashboards_with_request<F>(mut request_json: F, args: &ImportArgs) -> Result<usize>
@@ -2553,13 +2678,12 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
             Ok(())
         }
         DashboardCommand::Export(export_args) => {
-            let client = build_http_client(&export_args.common)?;
             if export_args.without_dashboard_raw && export_args.without_dashboard_prompt {
                 return Err(message(
                     "At least one export variant must stay enabled. Remove --without-dashboard-raw or --without-dashboard-prompt.",
                 ));
             }
-            let _ = export_dashboards_with_client(&client, &export_args)?;
+            let _ = export_dashboards_with_org_clients(&export_args)?;
             Ok(())
         }
         DashboardCommand::Import(import_args) => {

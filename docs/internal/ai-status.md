@@ -1,5 +1,26 @@
 # ai-status.md
 
+## 2026-03-12 - Task: Add Platform-Specific Rust Build Paths
+- State: Done
+- Scope: `Makefile`, `scripts/build-rust-macos-arm64.sh`, `scripts/build-rust-linux-amd64.sh`, `scripts/build-rust-linux-amd64-zig.sh`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The repo could build native Rust release binaries on the current host only, but there was no explicit platform-targeted release workflow. In particular, macOS Apple Silicon and Linux `amd64` outputs did not have named Make targets or stable artifact directories.
+- Current Update: Added `make build-rust-macos-arm64` for native Apple Silicon builds into `dist/macos-arm64/`, `make build-rust-linux-amd64` for Docker-based Linux `amd64` builds into `dist/linux-amd64/`, and `make build-rust-linux-amd64-zig` for non-Docker Linux `amd64` builds using local `zig`.
+- Result: Operators on macOS now have explicit repo-owned release paths for native Apple Silicon binaries plus Linux `amd64` binaries through either Docker or local zig.
+
+## 2026-03-12 - Task: Update Dashboard Help Examples And Local Default URL
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The dashboard CLI still defaulted to `http://127.0.0.1:3000`, and the real `-h` output either lacked examples entirely or only showed token-based remote examples. That made first-run local usage harder, especially for operators using Basic auth.
+- Current Update: Changed the dashboard CLI default URL to `http://localhost:3000`, updated Python and Rust help output to show local Basic-auth examples plus token examples, and refreshed the public and maintainer docs to match the new local-first help text.
+- Result: The shipped Python and Rust dashboard CLIs now guide operators toward a working local Grafana flow directly from `-h`, while still documenting token auth when needed.
+
+## 2026-03-12 - Task: Add Dashboard Multi-Org Export
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `export-dashboard` only operated in the current Grafana org context. Operators could not export one explicit org or aggregate exports across all visible orgs, even after `list-dashboard` gained org selection support.
+- Current Update: Added `--org-id` and `--all-orgs` to Python and Rust `export-dashboard`. Both paths are Basic-auth-only. Explicit-org export reuses the existing layout, while multi-org export writes `org_<id>_<name>/raw/...` and `org_<id>_<name>/prompt/...` trees plus aggregate root-level variant indexes so cross-org dashboards do not overwrite each other.
+- Result: Operators can now export dashboards from one chosen org or every visible org without manually switching Grafana org context first.
+
 ## 2026-03-12 - Task: Add Dashboard Multi-Org Listing
 - State: Done
 - Scope: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
@@ -103,7 +124,7 @@
 - Scope: `rust/src/dashboard.rs`, `rust/src/alert.rs`, `rust/src/dashboard_rust_tests.rs`, `rust/src/alert_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
 - Baseline: The Rust `-h` and `--help` output listed many flags without operator-facing explanations, so switches like `--flat` were hard to understand from the CLI alone.
 - Current Update: Added explicit clap help text for common auth/TLS flags plus dashboard and alerting mode flags, and added help-output tests that assert the Rust help explains flat export layout and includes examples.
-- Result: `grafana-utils export -h` and `grafana-alert-utils -h` now explain what options do instead of only showing their names, reducing the need to cross-reference README or Python help for common workflows.
+- Result: `grafana-utils export-dashboard -h` and `grafana-alert-utils -h` now explain what options do instead of only showing their names, reducing the need to cross-reference README or Python help for common workflows.
 
 ## 2026-03-11 - Task: Add Preferred Auth Flag Aliases
 - State: Done

@@ -1,4 +1,4 @@
-.PHONY: help build build-python build-rust test test-python test-rust test-rust-live test-access-live
+.PHONY: help build build-python build-rust build-rust-macos-arm64 build-rust-linux-amd64 build-rust-linux-amd64-zig test test-python test-rust test-rust-live test-access-live
 
 PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
@@ -12,6 +12,9 @@ help:
 		'  make build         Build both Python and Rust artifacts' \
 		'  make build-python  Build the Python wheel into dist/' \
 		'  make build-rust    Build Rust release binaries in rust/target/release/' \
+		'  make build-rust-macos-arm64  Build native macOS Apple Silicon (M1/M2/M3) Rust release binaries into dist/macos-arm64/' \
+		'  make build-rust-linux-amd64  Build Linux amd64 Rust release binaries with Docker into dist/linux-amd64/ (containerized Linux build)' \
+		'  make build-rust-linux-amd64-zig  Build Linux amd64 Rust release binaries with local zig into dist/linux-amd64/ (no Docker)' \
 		'  make test          Run both Python and Rust test suites' \
 		'  make test-python   Run the Python unittest suite' \
 		'  make test-rust     Run the Rust cargo test suite' \
@@ -25,6 +28,15 @@ build-python:
 
 build-rust:
 	cd $(RUST_DIR) && $(CARGO) build --release
+
+build-rust-macos-arm64:
+	bash ./scripts/build-rust-macos-arm64.sh
+
+build-rust-linux-amd64:
+	bash ./scripts/build-rust-linux-amd64.sh
+
+build-rust-linux-amd64-zig:
+	bash ./scripts/build-rust-linux-amd64-zig.sh
 
 test: test-python test-rust
 

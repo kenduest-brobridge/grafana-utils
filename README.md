@@ -85,7 +85,33 @@ Dashboard export, writing both `raw/` and `prompt/` variants:
 
 ```bash
 python3 cmd/grafana-utils.py export-dashboard \
-  --url http://127.0.0.1:3000 \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
+  --export-dir ./dashboards \
+  --overwrite
+```
+
+Dashboard export from one explicit Grafana org:
+
+```bash
+python3 cmd/grafana-utils.py export-dashboard \
+  --url http://localhost:3000 \
+  --basic-user "$GRAFANA_USERNAME" \
+  --basic-password "$GRAFANA_PASSWORD" \
+  --org-id 2 \
+  --export-dir ./dashboards \
+  --overwrite
+```
+
+Dashboard export across every visible Grafana org:
+
+```bash
+python3 cmd/grafana-utils.py export-dashboard \
+  --url http://localhost:3000 \
+  --basic-user "$GRAFANA_USERNAME" \
+  --basic-password "$GRAFANA_PASSWORD" \
+  --all-orgs \
   --export-dir ./dashboards \
   --overwrite
 ```
@@ -94,7 +120,9 @@ Dashboard list, including resolved datasource names per dashboard:
 
 ```bash
 python3 cmd/grafana-utils.py list-dashboard \
-  --url http://127.0.0.1:3000 \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
   --with-sources \
   --table
 ```
@@ -103,7 +131,7 @@ List dashboards from one explicit Grafana org:
 
 ```bash
 python3 cmd/grafana-utils.py list-dashboard \
-  --url http://127.0.0.1:3000 \
+  --url http://localhost:3000 \
   --basic-user "$GRAFANA_USERNAME" \
   --basic-password "$GRAFANA_PASSWORD" \
   --org-id 2 \
@@ -114,7 +142,7 @@ List dashboards across every visible Grafana org:
 
 ```bash
 python3 cmd/grafana-utils.py list-dashboard \
-  --url http://127.0.0.1:3000 \
+  --url http://localhost:3000 \
   --basic-user "$GRAFANA_USERNAME" \
   --basic-password "$GRAFANA_PASSWORD" \
   --all-orgs \
@@ -125,7 +153,9 @@ List live dashboards without writing export files:
 
 ```bash
 python3 cmd/grafana-utils.py list-dashboard \
-  --url http://127.0.0.1:3000
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin
 ```
 
 List live dashboards as a table with folder tree path:
@@ -133,7 +163,9 @@ List live dashboards as a table with folder tree path:
 ```bash
 python3 cmd/grafana-utils.py list-dashboard \
   --table \
-  --url http://127.0.0.1:3000
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin
 ```
 
 List live dashboards as CSV:
@@ -141,7 +173,9 @@ List live dashboards as CSV:
 ```bash
 python3 cmd/grafana-utils.py list-dashboard \
   --csv \
-  --url http://127.0.0.1:3000
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin
 ```
 
 List live dashboards as JSON:
@@ -149,7 +183,9 @@ List live dashboards as JSON:
 ```bash
 python3 cmd/grafana-utils.py list-dashboard \
   --json \
-  --url http://127.0.0.1:3000
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin
 ```
 
 List live Grafana data sources as a table:
@@ -157,14 +193,18 @@ List live Grafana data sources as a table:
 ```bash
 python3 cmd/grafana-utils.py list-data-sources \
   --table \
-  --url http://127.0.0.1:3000
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin
 ```
 
 Dashboard API import from the raw export:
 
 ```bash
 python3 cmd/grafana-utils.py import-dashboard \
-  --url http://127.0.0.1:3000 \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
   --import-dir ./dashboards/raw \
   --replace-existing
 ```
@@ -173,7 +213,9 @@ Dashboard diff against the current Grafana state:
 
 ```bash
 python3 cmd/grafana-utils.py diff \
-  --url http://127.0.0.1:3000 \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
   --import-dir ./dashboards/raw
 ```
 
@@ -368,11 +410,11 @@ Use `prompt/` when you want:
 
 | Option | Purpose |
 | --- | --- |
-| `--url` | Grafana base URL. Default: `http://127.0.0.1:3000` |
+| `--url` | Grafana base URL. Default: `http://localhost:3000` |
 | `--export-dir` | Root export directory. Default: `dashboards/` |
 | `--page-size` | Dashboard search page size. Default: `500` |
-| `--org-id ORG_ID` | For `list-dashboard`, switch the read context to one explicit Grafana org ID; requires Basic auth |
-| `--all-orgs` | For `list-dashboard`, enumerate visible Grafana orgs and aggregate dashboard output across them; requires Basic auth |
+| `--org-id ORG_ID` | For `list-dashboard` or `export-dashboard`, switch to one explicit Grafana org ID; requires Basic auth |
+| `--all-orgs` | For `list-dashboard` or `export-dashboard`, enumerate visible Grafana orgs and aggregate list output or export each org; requires Basic auth |
 | `--with-sources` | For `list-dashboard`, fetch each dashboard payload and include datasource names used by that dashboard; CSV and JSON also add datasource UIDs |
 | `list-data-sources --table|--csv|--json` | List live Grafana data sources in human-readable or machine-readable output |
 | `--flat` | Do not create per-folder subdirectories |
@@ -391,6 +433,12 @@ For dashboard listing:
 - `list-dashboard --with-sources --csv` also adds a `sourceUids` column with best-effort datasource UIDs
 - `list-dashboard --with-sources --json` also adds a `sourceUids` array with best-effort datasource UIDs
 - `list-dashboard --with-sources` is slower than plain `list-dashboard` because it fetches each dashboard payload and the datasource catalog
+
+For dashboard export:
+
+- `export-dashboard --org-id <ID>` exports dashboards from that explicit org instead of the current auth context and requires Basic auth
+- `export-dashboard --all-orgs` exports dashboards from every visible org and requires Basic auth
+- `export-dashboard --all-orgs` writes per-org trees such as `org_2_Org_Two/raw/...` and `org_2_Org_Two/prompt/...` to avoid cross-org file collisions
 
 For datasource listing:
 
@@ -641,6 +689,9 @@ The repo root includes a [`Makefile`](Makefile):
 - `make help`
 - `make build-python`
 - `make build-rust`
+- `make build-rust-macos-arm64`
+- `make build-rust-linux-amd64`
+- `make build-rust-linux-amd64-zig`
 - `make build`
 - `make test-python`
 - `make test-rust`
@@ -652,6 +703,9 @@ Artifact locations:
 
 - `make build-python` writes the wheel into `dist/`
 - `make build-rust` writes release binaries into `rust/target/release/`
+- `make build-rust-macos-arm64` writes native Apple Silicon Rust binaries into `dist/macos-arm64/`
+- `make build-rust-linux-amd64` writes Linux `amd64` Rust binaries into `dist/linux-amd64/`
+- `make build-rust-linux-amd64-zig` writes Linux `amd64` Rust binaries into `dist/linux-amd64/` without Docker
 
 ### Rust Build and Run
 
@@ -661,12 +715,72 @@ Build Rust release binaries:
 make build-rust
 ```
 
-Run the Rust dashboard CLI from the repo:
+Build native macOS Apple Silicon Rust release binaries into a platform output directory:
+
+```bash
+make build-rust-macos-arm64
+```
+
+Build Linux `amd64` Rust release binaries from macOS or another non-Linux host with Docker:
+
+```bash
+make build-rust-linux-amd64
+```
+
+Build Linux `amd64` Rust release binaries from macOS without Docker, using `zig`:
+
+```bash
+make build-rust-linux-amd64-zig
+```
+
+Run the Rust dashboard CLI from the repo and export dashboards from local Grafana:
 
 ```bash
 cd rust
-cargo run --bin grafana-utils -- export-dashboard -h
+cargo run --bin grafana-utils -- export-dashboard \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
+  --export-dir ./dashboards
 ```
+
+List dashboards from local Grafana with the Rust CLI:
+
+```bash
+cd rust
+cargo run --bin grafana-utils -- list-dashboard \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
+  --table
+```
+
+Compare raw dashboard exports with local Grafana using the Rust CLI:
+
+```bash
+cd rust
+cargo run --bin grafana-utils -- diff \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
+  --import-dir ./dashboards/raw
+```
+
+Show Rust dashboard CLI help:
+
+```bash
+cd rust
+cargo run --bin grafana-utils -- -h
+```
+
+Linux `amd64` build notes:
+
+- `make build-rust-macos-arm64` is the explicit native Apple Silicon release path and copies binaries into `dist/macos-arm64/`
+- `make build-rust-linux-amd64` uses Docker with the official Rust image
+- `make build-rust-linux-amd64-zig` uses local `zig`, `cargo-zigbuild`, and a `rustup` target instead of Docker
+- output binaries are written to `dist/linux-amd64/`
+- current output names are `dist/linux-amd64/grafana-utils` and `dist/linux-amd64/grafana-alert-utils`
+- this path is intended for macOS hosts that need Linux release artifacts without installing a local cross-linker
 
 Run the Rust alerting CLI from the repo:
 
@@ -725,19 +839,13 @@ Auth note:
 - for `grafana-access-utils`, `team modify` is org-scoped and can use token auth or Basic auth
 - for `grafana-access-utils`, service-account commands are org-scoped and can use token auth or Basic auth
 
-API token example:
-
-```bash
-export GRAFANA_API_TOKEN='your-token'
-python3 cmd/grafana-utils.py export-dashboard --token "$GRAFANA_API_TOKEN" --export-dir ./dashboards
-```
-
 Username/password example:
 
 ```bash
-export GRAFANA_USERNAME='your-user'
-export GRAFANA_PASSWORD='your-pass'
+export GRAFANA_USERNAME='admin'
+export GRAFANA_PASSWORD='admin'
 python3 cmd/grafana-utils.py export-dashboard \
+  --url http://localhost:3000 \
   --basic-user "$GRAFANA_USERNAME" \
   --basic-password "$GRAFANA_PASSWORD" \
   --export-dir ./dashboards
