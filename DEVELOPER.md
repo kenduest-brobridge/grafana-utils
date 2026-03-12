@@ -8,6 +8,10 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 - `grafana_utils/alert_cli.py`: packaged alerting resource export/import utility
 - `grafana_utils/access_cli.py`: packaged access-management utility, currently covering `user list`, `user add`, `user modify`, `user delete`, `team list`, `team add`, `team modify`, and initial service-account commands
 - `rust/src/access.rs`: Rust access-management utility with the same user, team, and service-account command surface
+- `rust/src/dashboard.rs`: Rust dashboard orchestration entrypoint and shared dashboard helpers that are still used across import, diff, and prompt-export flows
+- `rust/src/dashboard_cli_defs.rs`: Rust dashboard CLI arg definitions and auth/client builders
+- `rust/src/dashboard_list.rs`: Rust dashboard and datasource list rendering plus multi-org list orchestration
+- `rust/src/dashboard_export.rs`: Rust dashboard export pathing and multi-org export orchestration
 - `grafana_utils/http_transport.py`: shared HTTP transport adapters and transport selection
 - `grafana_utils/unified_cli.py`: unified Python entrypoint that dispatches dashboard, alert, and access workflows
 - `cmd/grafana-utils.py`: thin source-tree wrapper for the packaged unified CLI
@@ -75,6 +79,7 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 - `list-data-sources --no-header` suppresses the table header line while keeping the same column layout.
 - `list-data-sources --csv` emits header `uid,name,type,url,isDefault`.
 - `list-data-sources --json` emits an array of objects with keys `uid`, `name`, `type`, `url`, and `isDefault`.
+- The Rust dashboard implementation is intentionally split by responsibility: `dashboard_cli_defs.rs` owns clap/auth/client setup, `dashboard_list.rs` owns list/datasource renderers and org-aware list orchestration, `dashboard_export.rs` owns export pathing and multi-org export orchestration, and `dashboard.rs` keeps the remaining prompt-rewrite, import, diff, and shared JSON helper flows.
 
 ### Packaging layout
 

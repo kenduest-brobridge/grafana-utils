@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-12 - Task: Split Rust Dashboard Module Internals
+- State: Done
+- Scope: `rust/src/dashboard.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_list.rs`, `rust/src/dashboard_export.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `rust/src/dashboard.rs` had grown into a 2700+ line module that mixed clap definitions, auth/client setup, dashboard and datasource list rendering, multi-org list/export orchestration, prompt-export rewrite logic, import flow, diff flow, and shared file helpers in one file.
+- Current Update: Split the Rust dashboard implementation into internal modules without changing the public dashboard API or CLI behavior. `dashboard_cli_defs.rs` now owns clap/auth/client setup, `dashboard_list.rs` owns dashboard and datasource listing plus renderers, and `dashboard_export.rs` owns export pathing plus multi-org export orchestration. `dashboard.rs` now re-exports the same public entrypoints and keeps the remaining shared helpers, prompt rewrite, import, and diff flows.
+- Result: The Rust dashboard implementation is materially smaller and easier to navigate while preserving the existing CLI surface and test entrypoints.
+
 ## 2026-03-12 - Task: Remove grafana-alert-utils Compatibility Shim
 - State: Done
 - Scope: `pyproject.toml`, `grafana_utils/unified_cli.py`, `grafana_utils/alert_cli.py`, `tests/test_python_alert_cli.py`, `tests/test_python_packaging.py`, `rust/src/alert.rs`, `rust/src/cli.rs`, `rust/src/alert_rust_tests.rs`, `rust/src/cli_rust_tests.rs`, `scripts/build-rust-macos-arm64.sh`, `scripts/build-rust-linux-amd64.sh`, `scripts/build-rust-linux-amd64-zig.sh`, `scripts/test-rust-live-grafana.sh`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

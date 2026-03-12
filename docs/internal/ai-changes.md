@@ -1,5 +1,14 @@
 # ai-changes.md
 
+## 2026-03-12 - Split Rust Dashboard Module Internals
+- Summary: Split the oversized Rust dashboard module into smaller internal files without changing the public `crate::dashboard` API or dashboard CLI behavior. The new `dashboard_cli_defs.rs` contains clap/auth/client setup, `dashboard_list.rs` contains dashboard and datasource list rendering plus multi-org list logic, and `dashboard_export.rs` contains export pathing plus multi-org export logic. `dashboard.rs` now acts as the dashboard orchestration root and keeps the remaining prompt rewrite, import, diff, and shared helper flows.
+- Tests: Kept the existing dashboard Rust tests unchanged and preserved their current imports through targeted re-exports from `dashboard.rs`.
+- Test Run: `cd rust && cargo test dashboard --quiet`; `cd rust && cargo test --quiet`
+- Reason: `rust/src/dashboard.rs` had grown large enough that navigation and maintenance cost were increasing, even though the external behavior was still correct. Splitting by responsibility reduces review friction and makes future dashboard work less risky.
+- Validation: Verified the focused dashboard Rust suite and the full Rust suite still pass after the split, with no CLI behavior changes and no test API churn.
+- Impact: `rust/src/dashboard.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_list.rs`, `rust/src/dashboard_export.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is an internal refactor only, but future moves should keep the same re-export discipline so tests and sibling modules do not drift into unnecessary public-API changes.
+
 ## 2026-03-12 - Remove grafana-alert-utils Compatibility Shim
 - Summary: Removed the standalone `grafana-alert-utils` compatibility shim from Python packaging, source-tree wrappers, Rust binaries, build artifacts, and current docs. Alert workflows now use `grafana-utils alert ...` exclusively, while the legacy alert parser behavior remains available behind that single entrypoint.
 - Tests: Updated Python packaging and alert-help tests plus Rust alert parser and unified-help tests so they no longer expect the standalone alert wrapper or binary.
