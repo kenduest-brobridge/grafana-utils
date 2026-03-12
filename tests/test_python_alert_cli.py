@@ -15,6 +15,8 @@ from unittest import mock
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = REPO_ROOT / "grafana_utils" / "alert_cli.py"
 TRANSPORT_MODULE_PATH = REPO_ROOT / "grafana_utils" / "http_transport.py"
+CLIENT_MODULE_PATH = REPO_ROOT / "grafana_utils" / "clients" / "alert_client.py"
+PROVISIONING_MODULE_PATH = REPO_ROOT / "grafana_utils" / "alerts" / "provisioning.py"
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 transport_module = importlib.import_module("grafana_utils.http_transport")
@@ -230,6 +232,16 @@ class AlertUtilsTests(unittest.TestCase):
         source = TRANSPORT_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(source, filename=str(TRANSPORT_MODULE_PATH), feature_version=(3, 6))
+
+    def test_alert_client_module_parses_as_python36_syntax(self):
+        source = CLIENT_MODULE_PATH.read_text(encoding="utf-8")
+
+        ast.parse(source, filename=str(CLIENT_MODULE_PATH), feature_version=(3, 6))
+
+    def test_alert_provisioning_module_parses_as_python36_syntax(self):
+        source = PROVISIONING_MODULE_PATH.read_text(encoding="utf-8")
+
+        ast.parse(source, filename=str(PROVISIONING_MODULE_PATH), feature_version=(3, 6))
 
     def test_parse_args_supports_import_mode(self):
         args = alert_utils.parse_args(["--import-dir", "alerts/raw"])
