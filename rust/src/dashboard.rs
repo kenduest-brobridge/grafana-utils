@@ -152,11 +152,11 @@ pub struct DiffArgs {
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum DashboardCommand {
-    #[command(about = "List dashboard summaries without writing export files.")]
+    #[command(name = "list-dashboard", about = "List dashboard summaries without writing export files.")]
     List(ListArgs),
-    #[command(about = "Export dashboards to raw/ and prompt/ JSON files.")]
+    #[command(name = "export-dashboard", about = "Export dashboards to raw/ and prompt/ JSON files.")]
     Export(ExportArgs),
-    #[command(about = "Import dashboard JSON files through the Grafana API.")]
+    #[command(name = "import-dashboard", about = "Import dashboard JSON files through the Grafana API.")]
     Import(ImportArgs),
     #[command(about = "Compare local raw dashboard files against live Grafana dashboards.")]
     Diff(DiffArgs),
@@ -165,7 +165,7 @@ pub enum DashboardCommand {
 #[derive(Debug, Clone, Parser)]
 #[command(
     about = "Export or import Grafana dashboards.",
-    after_help = "Examples:\n\n  Export dashboards with an API token:\n    export GRAFANA_API_TOKEN='your-token'\n    grafana-utils export --url https://grafana.example.com --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n  Export into a flat directory layout instead of per-folder subdirectories:\n    grafana-utils export --url https://grafana.example.com --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --flat\n\n  Compare raw dashboard exports against live Grafana:\n    grafana-utils diff --url https://grafana.example.com --token \"$GRAFANA_API_TOKEN\" --import-dir ./dashboards/raw"
+    after_help = "Examples:\n\n  Export dashboards with an API token:\n    export GRAFANA_API_TOKEN='your-token'\n    grafana-utils export-dashboard --url https://grafana.example.com --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n  Export into a flat directory layout instead of per-folder subdirectories:\n    grafana-utils export-dashboard --url https://grafana.example.com --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --flat\n\n  Compare raw dashboard exports against live Grafana:\n    grafana-utils diff --url https://grafana.example.com --token \"$GRAFANA_API_TOKEN\" --import-dir ./dashboards/raw"
 )]
 pub struct DashboardCliArgs {
     #[command(subcommand)]
@@ -1360,6 +1360,44 @@ where
         .collect())
 }
 
+fn fetch_current_org_with_request<F>(mut request_json: F) -> Result<Map<String, Value>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    match request_json(Method::GET, "/api/org", &[], None)? {
+        Some(value) => {
+            let object = value_as_object(&value, "Unexpected current-org payload from Grafana.")?;
+            Ok(object.clone())
+        }
+        None => Err(message("Grafana did not return current-org metadata.")),
+    }
+}
+
+fn attach_dashboard_org_metadata(
+    summaries: &[Map<String, Value>],
+    org: &Map<String, Value>,
+) -> Vec<Map<String, Value>> {
+    let org_name = string_field(org, "name", "");
+    let org_id = org.get("id").cloned().unwrap_or(Value::Null);
+    summaries
+        .iter()
+        .map(|summary| {
+            let mut item = summary.clone();
+            item.insert("orgName".to_string(), Value::String(org_name.clone()));
+            item.insert("orgId".to_string(), org_id.clone());
+            item
+        })
+        .collect()
+}
+
+fn dashboard_org_id_cell(summary: &Map<String, Value>) -> Option<String> {
+    summary.get("orgId").and_then(|value| match value {
+        Value::Number(number) => Some(number.to_string()),
+        Value::String(text) => Some(text.clone()),
+        _ => None,
+    })
+}
+
 fn format_dashboard_summary_line(summary: &Map<String, Value>) -> String {
     let uid = string_field(summary, "uid", "unknown");
     let folder_title = string_field(summary, "folderTitle", "General");
@@ -1368,13 +1406,22 @@ fn format_dashboard_summary_line(summary: &Map<String, Value>) -> String {
     let title = string_field(summary, "title", "dashboard");
     let mut line =
         format!("uid={uid} name={title} folder={folder_title} folderUid={folder_uid} path={folder_path}");
+    if summary.contains_key("orgName") || summary.contains_key("orgId") {
+        let org_name = string_field(summary, "orgName", "");
+        let org_id = dashboard_org_id_cell(summary).unwrap_or_default();
+        let _ = write!(&mut line, " org={org_name} orgId={org_id}");
+    }
     if let Some(sources) = dashboard_sources_cell(summary) {
         let _ = write!(&mut line, " sources={sources}");
     }
     line
 }
 
-fn build_dashboard_summary_row(summary: &Map<String, Value>, include_sources: bool) -> Vec<String> {
+fn build_dashboard_summary_row(
+    summary: &Map<String, Value>,
+    include_org: bool,
+    include_sources: bool,
+) -> Vec<String> {
     let mut row = vec![
         string_field(summary, "uid", "unknown"),
         string_field(summary, "title", "dashboard"),
@@ -1386,6 +1433,10 @@ fn build_dashboard_summary_row(summary: &Map<String, Value>, include_sources: bo
             &string_field(summary, "folderTitle", "General"),
         ),
     ];
+    if include_org {
+        row.push(string_field(summary, "orgName", ""));
+        row.push(dashboard_org_id_cell(summary).unwrap_or_default());
+    }
     if include_sources {
         row.push(dashboard_sources_cell(summary).unwrap_or_default());
     }
@@ -1427,11 +1478,18 @@ fn summaries_include_sources(summaries: &[Map<String, Value>]) -> bool {
     summaries.iter().any(|summary| summary.contains_key("sources"))
 }
 
+fn summaries_include_org_metadata(summaries: &[Map<String, Value>]) -> bool {
+    summaries
+        .iter()
+        .any(|summary| summary.contains_key("orgName") || summary.contains_key("orgId"))
+}
+
 fn summaries_include_source_uids(summaries: &[Map<String, Value>]) -> bool {
     summaries.iter().any(|summary| summary.contains_key("sourceUids"))
 }
 
 fn render_dashboard_summary_table(summaries: &[Map<String, Value>]) -> Vec<String> {
+    let include_org = summaries_include_org_metadata(summaries);
     let include_sources = summaries_include_sources(summaries);
     let mut headers = vec![
         "UID".to_string(),
@@ -1440,12 +1498,16 @@ fn render_dashboard_summary_table(summaries: &[Map<String, Value>]) -> Vec<Strin
         "FOLDER_UID".to_string(),
         "FOLDER_PATH".to_string(),
     ];
+    if include_org {
+        headers.push("ORG".to_string());
+        headers.push("ORG_ID".to_string());
+    }
     if include_sources {
         headers.push("SOURCES".to_string());
     }
     let rows: Vec<Vec<String>> = summaries
         .iter()
-        .map(|summary| build_dashboard_summary_row(summary, include_sources))
+        .map(|summary| build_dashboard_summary_row(summary, include_org, include_sources))
         .collect();
     let mut widths: Vec<usize> = headers.iter().map(|header| header.len()).collect();
     for row in &rows {
@@ -1470,6 +1532,7 @@ fn render_dashboard_summary_table(summaries: &[Map<String, Value>]) -> Vec<Strin
 }
 
 fn render_dashboard_summary_csv(summaries: &[Map<String, Value>]) -> Vec<String> {
+    let include_org = summaries_include_org_metadata(summaries);
     let include_sources = summaries_include_sources(summaries);
     let include_source_uids = summaries_include_source_uids(summaries);
     let mut header = vec![
@@ -1479,6 +1542,10 @@ fn render_dashboard_summary_csv(summaries: &[Map<String, Value>]) -> Vec<String>
         "folderUid".to_string(),
         "path".to_string(),
     ];
+    if include_org {
+        header.push("org".to_string());
+        header.push("orgId".to_string());
+    }
     if include_sources {
         header.push("sources".to_string());
     }
@@ -1487,7 +1554,7 @@ fn render_dashboard_summary_csv(summaries: &[Map<String, Value>]) -> Vec<String>
     }
     let mut lines = vec![header.join(",")];
     lines.extend(summaries.iter().map(|summary| {
-        let mut row = build_dashboard_summary_row(summary, include_sources);
+        let mut row = build_dashboard_summary_row(summary, include_org, include_sources);
         if include_source_uids {
             row.push(dashboard_source_uids(summary).unwrap_or_default().join(","));
         }
@@ -1506,12 +1573,13 @@ fn render_dashboard_summary_csv(summaries: &[Map<String, Value>]) -> Vec<String>
 }
 
 fn render_dashboard_summary_json(summaries: &[Map<String, Value>]) -> Value {
+    let include_org = summaries_include_org_metadata(summaries);
     let include_sources = summaries_include_sources(summaries);
     Value::Array(
         summaries
             .iter()
             .map(|summary| {
-                let row = build_dashboard_summary_row(summary, include_sources);
+                let row = build_dashboard_summary_row(summary, include_org, include_sources);
                 let mut object = Map::from_iter(vec![
                     ("uid".to_string(), Value::String(row[0].clone())),
                     ("name".to_string(), Value::String(row[1].clone())),
@@ -1519,11 +1587,28 @@ fn render_dashboard_summary_json(summaries: &[Map<String, Value>]) -> Value {
                     ("folderUid".to_string(), Value::String(row[3].clone())),
                     ("path".to_string(), Value::String(row[4].clone())),
                 ]);
+                if include_org {
+                    object.insert("org".to_string(), Value::String(row[5].clone()));
+                    object.insert(
+                        "orgId".to_string(),
+                        Value::String(dashboard_org_id_cell(summary).unwrap_or_default()),
+                    );
+                }
                 if include_sources {
                     object.insert(
                         "sources".to_string(),
                         Value::Array(
                             dashboard_sources(summary)
+                                .unwrap_or_default()
+                                .into_iter()
+                                .map(Value::String)
+                                .collect(),
+                        ),
+                    );
+                    object.insert(
+                        "sourceUids".to_string(),
+                        Value::Array(
+                            dashboard_source_uids(summary)
                                 .unwrap_or_default()
                                 .into_iter()
                                 .map(Value::String)
@@ -1717,7 +1802,9 @@ where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
     let dashboard_summaries = list_dashboard_summaries_with_request(&mut request_json, args.page_size)?;
+    let current_org = fetch_current_org_with_request(&mut request_json)?;
     let summaries = attach_dashboard_folder_paths_with_request(&mut request_json, &dashboard_summaries)?;
+    let summaries = attach_dashboard_org_metadata(&summaries, &current_org);
     let summaries = if args.with_sources && !summaries.is_empty() {
         attach_dashboard_sources_with_request(&mut request_json, &summaries)?
     } else {

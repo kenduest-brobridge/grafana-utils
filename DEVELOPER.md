@@ -31,9 +31,9 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 
 - Mode selection is explicit.
 - Installed commands are `grafana-utils`, `grafana-alert-utils`, and `grafana-access-utils`.
-- Use `python3 cmd/grafana-utils.py list ...` to inspect live dashboard summaries.
-- Use `python3 cmd/grafana-utils.py export ...` for export.
-- Use `python3 cmd/grafana-utils.py import ...` for import.
+- Use `python3 cmd/grafana-utils.py list-dashboard ...` to inspect live dashboard summaries.
+- Use `python3 cmd/grafana-utils.py export-dashboard ...` for export.
+- Use `python3 cmd/grafana-utils.py import-dashboard ...` for import.
 - Use `python3 cmd/grafana-utils.py diff ...` for live-vs-local comparison.
 - Use `python3 cmd/grafana-access-utils.py user list ...` to inspect Grafana users.
 - Use `python3 cmd/grafana-access-utils.py user add ...` to create Grafana users through the server-admin API.
@@ -44,12 +44,14 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 - Use `python3 cmd/grafana-access-utils.py team modify ...` to change Grafana team membership and admin assignments.
 - Use `python3 cmd/grafana-access-utils.py service-account ...` for org-scoped service-account operations.
 - The export subcommand intentionally uses `--export-dir` instead of `--output-dir` to avoid mixing export terminology with import behavior.
-- The `list` subcommand is read-only and defaults to compact `uid=<uid> name=<title> folder=<folder> folderUid=<folderUid> path=<folderTreePath>` output.
-- `list --table` renders the same fields in columns and adds a `FOLDER_PATH` column.
-- `list --csv` emits header `uid,name,folder,folderUid,path` with CSV escaping.
-- `list --json` emits an array of objects with keys `uid`, `name`, `folder`, `folderUid`, and `path`.
+- The `list` subcommand is read-only and defaults to compact `uid=<uid> name=<title> folder=<folder> folderUid=<folderUid> path=<folderTreePath> org=<orgName> orgId=<orgId>` output.
+- `list --table` renders the same fields in columns and adds `FOLDER_PATH`, `ORG`, and `ORG_ID` columns.
+- `list --csv` emits header `uid,name,folder,folderUid,path,org,orgId` with CSV escaping.
+- `list --json` emits an array of objects with keys `uid`, `name`, `folder`, `folderUid`, `path`, `org`, and `orgId`.
 - `list --with-sources` fetches each dashboard payload plus the datasource catalog, then appends resolved datasource names to text, table, CSV, and JSON output.
+- `list` fetches the current org from `GET /api/org` once and attaches that `org` and `orgId` metadata to every listed dashboard summary.
 - `list --with-sources --csv` also appends `sourceUids` so spreadsheet or script consumers can correlate dashboards back to concrete datasource UIDs when Grafana exposed them.
+- `list --with-sources --json` also appends `sourceUids` as an array.
 - `list --with-sources` should stay opt-in because it turns one search-oriented list call into a per-dashboard inspection workflow.
 - Folder tree path is resolved from `GET /api/folders/{uid}` using the folder `parents[]` chain when `folderUid` is present.
 
@@ -89,7 +91,7 @@ Those manifests use `schemaVersion` and `variant` markers so `import` and `diff`
 - Preserve `uid`.
 - Clear numeric `id`.
 - Keep datasource references unchanged.
-- Best input for `python3 cmd/grafana-utils.py import`.
+- Best input for `python3 cmd/grafana-utils.py import-dashboard`.
 
 ### Prompt export intent
 
@@ -351,6 +353,7 @@ make build-python
 make build-rust
 make test
 make test-rust-live
+make test-access-live
 python3 -m pip install --no-deps --target /tmp/grafana-utils-install .
 python3 -m unittest tests.test_python_dashboard_cli
 python3 -m unittest tests.test_python_alert_cli
@@ -368,13 +371,22 @@ Rust live smoke test notes:
 - alerting coverage: export, diff same, diff changed, dry-run import, update import
 - useful overrides: `GRAFANA_IMAGE`, `GRAFANA_PORT`, `GRAFANA_USER`, `GRAFANA_PASSWORD`, `CARGO_BIN`
 
+Python access live smoke test notes:
+
+- `make test-access-live` runs `scripts/test-python-access-live-grafana.sh`
+- the script defaults to `grafana/grafana:12.4.1` and binds Grafana to a random localhost port unless `GRAFANA_PORT` is set explicitly
+- user coverage: add, modify, global delete, org delete, global list, org list
+- team coverage: add, list, modify
+- service-account coverage: add, token add, list
+- useful overrides: `GRAFANA_IMAGE`, `GRAFANA_PORT`, `GRAFANA_USER`, `GRAFANA_PASSWORD`, `PYTHON_BIN`
+
 Useful CLI help checks:
 
 ```bash
 grafana-utils -h
-grafana-utils list -h
-grafana-utils export -h
-grafana-utils import -h
+grafana-utils list-dashboard -h
+grafana-utils export-dashboard -h
+grafana-utils import-dashboard -h
 grafana-alert-utils -h
 grafana-access-utils -h
 grafana-access-utils user list -h
@@ -388,9 +400,9 @@ grafana-access-utils service-account list -h
 grafana-access-utils service-account add -h
 grafana-access-utils service-account token add -h
 python3 cmd/grafana-utils.py -h
-python3 cmd/grafana-utils.py list -h
-python3 cmd/grafana-utils.py export -h
-python3 cmd/grafana-utils.py import -h
+python3 cmd/grafana-utils.py list-dashboard -h
+python3 cmd/grafana-utils.py export-dashboard -h
+python3 cmd/grafana-utils.py import-dashboard -h
 python3 cmd/grafana-alert-utils.py -h
 python3 cmd/grafana-access-utils.py -h
 python3 cmd/grafana-access-utils.py user list -h

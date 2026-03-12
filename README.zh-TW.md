@@ -40,9 +40,9 @@
 
 兩個命令分開是刻意設計，因為 dashboards 與 alerting 使用不同的 Grafana API，也有不同的檔案格式。
 
-- `grafana-utils export ...`
-- `grafana-utils list ...`
-- `grafana-utils import ...`
+- `grafana-utils export-dashboard ...`
+- `grafana-utils list-dashboard ...`
+- `grafana-utils import-dashboard ...`
 - `grafana-utils diff ...`
 - `grafana-alert-utils ...`
 
@@ -72,7 +72,7 @@
 Dashboard 匯出，同時產生 `raw/` 與 `prompt/`：
 
 ```bash
-python3 cmd/grafana-utils.py export \
+python3 cmd/grafana-utils.py export-dashboard \
   --url http://127.0.0.1:3000 \
   --export-dir ./dashboards \
   --overwrite
@@ -81,14 +81,14 @@ python3 cmd/grafana-utils.py export \
 列出目前 Grafana 上的 dashboard，不寫出匯出檔：
 
 ```bash
-python3 cmd/grafana-utils.py list \
+python3 cmd/grafana-utils.py list-dashboard \
   --url http://127.0.0.1:3000
 ```
 
 用 table 顯示 dashboard，並帶出 folder tree path：
 
 ```bash
-python3 cmd/grafana-utils.py list \
+python3 cmd/grafana-utils.py list-dashboard \
   --table \
   --url http://127.0.0.1:3000
 ```
@@ -96,7 +96,7 @@ python3 cmd/grafana-utils.py list \
 用 CSV 輸出 dashboard summary：
 
 ```bash
-python3 cmd/grafana-utils.py list \
+python3 cmd/grafana-utils.py list-dashboard \
   --csv \
   --url http://127.0.0.1:3000
 ```
@@ -104,7 +104,7 @@ python3 cmd/grafana-utils.py list \
 用 JSON 輸出 dashboard summary：
 
 ```bash
-python3 cmd/grafana-utils.py list \
+python3 cmd/grafana-utils.py list-dashboard \
   --json \
   --url http://127.0.0.1:3000
 ```
@@ -112,7 +112,7 @@ python3 cmd/grafana-utils.py list \
 從 raw 匯出結果做 dashboard API 匯入：
 
 ```bash
-python3 cmd/grafana-utils.py import \
+python3 cmd/grafana-utils.py import-dashboard \
   --url http://127.0.0.1:3000 \
   --import-dir ./dashboards/raw \
   --replace-existing
@@ -211,7 +211,7 @@ Raw 匯出會盡量保留 Grafana dashboard identity：
 如果你只要 prompt 格式：
 
 ```bash
-python3 cmd/grafana-utils.py export \
+python3 cmd/grafana-utils.py export-dashboard \
   --export-dir ./dashboards \
   --without-dashboard-raw
 ```
@@ -234,7 +234,7 @@ Prompt 匯出會把 dashboard 改寫成 Grafana Web import 比較能直接理解
 如果你只要 raw 格式：
 
 ```bash
-python3 cmd/grafana-utils.py export \
+python3 cmd/grafana-utils.py export-dashboard \
   --export-dir ./dashboards \
   --without-dashboard-prompt
 ```
@@ -246,7 +246,7 @@ Dashboard 匯入會透過 Grafana API 讀取一般 dashboard JSON。
 範例：
 
 ```bash
-python3 cmd/grafana-utils.py import \
+python3 cmd/grafana-utils.py import-dashboard \
   --url http://127.0.0.1:3000 \
   --import-dir ./dashboards/raw \
   --replace-existing
@@ -415,7 +415,7 @@ make build-rust
 
 ```bash
 cd rust
-cargo run --bin grafana-utils -- export -h
+cargo run --bin grafana-utils -- export-dashboard -h
 ```
 
 直接從 repo 執行 Rust alerting CLI：
@@ -450,7 +450,7 @@ API token 範例：
 
 ```bash
 export GRAFANA_API_TOKEN='your-token'
-python3 cmd/grafana-utils.py export --export-dir ./dashboards
+python3 cmd/grafana-utils.py export-dashboard --export-dir ./dashboards
 ```
 
 使用者名稱與密碼範例：
@@ -458,7 +458,7 @@ python3 cmd/grafana-utils.py export --export-dir ./dashboards
 ```bash
 export GRAFANA_USERNAME='your-user'
 export GRAFANA_PASSWORD='your-pass'
-python3 cmd/grafana-utils.py export --export-dir ./dashboards
+python3 cmd/grafana-utils.py export-dashboard --export-dir ./dashboards
 ```
 
 TLS 說明：
@@ -469,7 +469,7 @@ TLS 說明：
 範例：
 
 ```bash
-python3 cmd/grafana-utils.py export --verify-ssl
+python3 cmd/grafana-utils.py export-dashboard --verify-ssl
 ```
 
 ## 輸出目錄結構

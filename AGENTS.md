@@ -26,14 +26,14 @@ Keep implementation code in `grafana_utils/` and keep `cmd/` wrappers thin unles
 - `make build`: build both the Python wheel and the Rust release binaries.
 - `make test`: run both the Python and Rust test suites.
 - `make test-rust-live`: start Docker Grafana and run the Rust live smoke test script.
-- `grafana-utils export -h`: show installed dashboard CLI help.
-- `grafana-utils list -h`: show installed dashboard list help.
-- `grafana-utils import -h`: show installed dashboard import help.
+- `grafana-utils export-dashboard -h`: show installed dashboard CLI help.
+- `grafana-utils list-dashboard -h`: show installed dashboard list help.
+- `grafana-utils import-dashboard -h`: show installed dashboard import help.
 - `grafana-utils diff -h`: show dashboard diff help.
 - `grafana-alert-utils -h`: show installed alerting CLI help and examples.
-- `python3 cmd/grafana-utils.py export -h`: show dashboard CLI help.
-- `python3 cmd/grafana-utils.py list -h`: show dashboard list help.
-- `python3 cmd/grafana-utils.py import -h`: show dashboard import help.
+- `python3 cmd/grafana-utils.py export-dashboard -h`: show dashboard CLI help.
+- `python3 cmd/grafana-utils.py list-dashboard -h`: show dashboard list help.
+- `python3 cmd/grafana-utils.py import-dashboard -h`: show dashboard import help.
 - `python3 cmd/grafana-utils.py diff -h`: show dashboard diff help.
 - `python3 cmd/grafana-alert-utils.py -h`: show alerting CLI help and examples.
 - `python3 -m unittest -v`: run the full test suite.

@@ -1,11 +1,32 @@
 # ai-status.md
 
+## 2026-03-12 - Task: Rename Dashboard CLI Subcommands
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The dashboard CLI exposed short subcommand names `export`, `list`, and `import`, while the repo now also contains separate alerting and access CLIs. The shorter names made the dashboard actions look inconsistent next to the more explicit access subcommands and left room for ambiguity when reading docs quickly.
+- Current Update: Renamed the dashboard CLI subcommands to `export-dashboard`, `list-dashboard`, and `import-dashboard` in both Python and Rust, updated focused parser/help coverage, and refreshed public and maintainer docs to use the new names consistently.
+- Result: Dashboard operations now read explicitly at the CLI boundary, and both Python and Rust `grafana-utils` help/output surfaces match the renamed operator workflow.
+
+## 2026-03-12 - Task: Add Dashboard List Org Metadata
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The dashboard `list` subcommand already showed folder and datasource context, but operators still could not see which Grafana organization the current authenticated view belonged to in text, table, CSV, or JSON output.
+- Current Update: Added one current-org fetch through `GET /api/org` in both Python and Rust dashboard list paths, attached `org` and `orgId` to every listed dashboard summary, and extended the renderer/tests so compact text, table, CSV, and JSON output all include those fields alongside the existing folder and optional datasource metadata.
+- Result: Operators can now tell which Grafana org produced a given dashboard list result without guessing from the base URL or credentials, and machine-readable list consumers now receive stable `org` and `orgId` fields in both Python and Rust.
+
 ## 2026-03-12 - Task: Add Dashboard List Datasource Display
 - State: Done
 - Scope: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
 - Baseline: The dashboard `list` subcommand already showed `uid`, `name`, `folder`, `folderUid`, and resolved folder path, but it could not show which datasource names each dashboard used.
 - Current Update: Added an opt-in `--with-sources` flag to both Python and Rust dashboard list paths. When enabled, the command fetches the datasource catalog and each dashboard payload, resolves datasource references into display names, and appends those names to text, table, CSV, and JSON output. CSV output also carries a best-effort `sourceUids` column.
 - Result: Operators can now inspect dashboard datasource usage directly from `grafana-utils list --with-sources` without exporting dashboard files, while plain `list` remains unchanged and cheaper. CSV consumers can also capture concrete datasource UIDs when Grafana exposed them.
+
+## 2026-03-12 - Task: Add Python Access Live Smoke Test
+- State: Done
+- Scope: `scripts/test-python-access-live-grafana.sh`, `Makefile`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The Python access CLI had live Docker validation recorded in docs, but there was no checked-in script to reproduce those user, team, and service-account workflows end to end.
+- Current Update: Added a Docker-backed smoke script for the Python access CLI and a `make test-access-live` target. The script starts Grafana, bootstraps a token, then validates user add/modify/delete, team add/list/modify, and service-account add/token/list flows with the auth modes each command expects.
+- Result: The repo now has a repeatable live validation path for the Python access CLI instead of relying only on ad hoc one-off Docker checks.
 
 ## 2026-03-12 - Task: Add Access Utility Team Add
 - State: Done

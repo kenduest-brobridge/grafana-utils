@@ -46,7 +46,7 @@ fn render_dashboard_help() -> String {
 fn parse_cli_supports_list_mode() {
     let args = parse_cli_from([
         "grafana-utils",
-        "list",
+        "list-dashboard",
         "--url",
         "https://grafana.example.com",
         "--page-size",
@@ -70,7 +70,7 @@ fn parse_cli_supports_list_mode() {
 fn parse_cli_supports_list_with_sources() {
     let args = parse_cli_from([
         "grafana-utils",
-        "list",
+        "list-dashboard",
         "--url",
         "https://grafana.example.com",
         "--with-sources",
@@ -92,7 +92,7 @@ fn parse_cli_supports_list_with_sources() {
 fn parse_cli_supports_preferred_auth_aliases() {
     let args = parse_cli_from([
         "grafana-utils",
-        "export",
+        "export-dashboard",
         "--token",
         "abc123",
         "--basic-user",
@@ -113,7 +113,7 @@ fn parse_cli_supports_preferred_auth_aliases() {
 
 #[test]
 fn export_help_explains_flat_layout() {
-    let help = render_dashboard_subcommand_help("export");
+    let help = render_dashboard_subcommand_help("export-dashboard");
     assert!(help.contains("Write dashboard files directly into the export variant directory"));
     assert!(help.contains("instead of per-folder subdirectories"));
 }
@@ -122,6 +122,7 @@ fn export_help_explains_flat_layout() {
 fn top_level_help_includes_examples() {
     let help = render_dashboard_help();
     assert!(help.contains("Export dashboards with an API token"));
+    assert!(help.contains("grafana-utils export-dashboard"));
     assert!(help.contains("grafana-utils diff"));
 }
 
@@ -129,7 +130,7 @@ fn top_level_help_includes_examples() {
 fn parse_cli_supports_list_csv_mode() {
     let args = parse_cli_from([
         "grafana-utils",
-        "list",
+        "list-dashboard",
         "--url",
         "https://grafana.example.com",
         "--csv",
@@ -149,7 +150,7 @@ fn parse_cli_supports_list_csv_mode() {
 fn parse_cli_supports_list_json_mode() {
     let args = parse_cli_from([
         "grafana-utils",
-        "list",
+        "list-dashboard",
         "--url",
         "https://grafana.example.com",
         "--json",
@@ -169,7 +170,7 @@ fn parse_cli_supports_list_json_mode() {
 fn parse_cli_rejects_conflicting_list_output_modes() {
     let error = DashboardCliArgs::try_parse_from([
         "grafana-utils",
-        "list",
+        "list-dashboard",
         "--url",
         "https://grafana.example.com",
         "--table",
@@ -179,6 +180,14 @@ fn parse_cli_rejects_conflicting_list_output_modes() {
 
     assert!(error.to_string().contains("--table"));
     assert!(error.to_string().contains("--json"));
+}
+
+#[test]
+fn parse_cli_rejects_old_list_subcommand_name() {
+    let error = DashboardCliArgs::try_parse_from(["grafana-utils", "list", "--json"]).unwrap_err();
+    let rendered = error.to_string();
+    assert!(rendered.contains("unrecognized subcommand"));
+    assert!(rendered.contains("list"));
 }
 
 #[test]
@@ -272,11 +281,16 @@ fn format_dashboard_summary_line_uses_uid_name_and_folder_details() {
         "folderUid": "infra",
         "folderPath": "Platform / Infra",
         "folderTitle": "Infra",
+        "orgId": 1,
+        "orgName": "Main Org",
         "title": "CPU"
     });
 
     let line = format_dashboard_summary_line(summary.as_object().unwrap());
-    assert_eq!(line, "uid=abc name=CPU folder=Infra folderUid=infra path=Platform / Infra");
+    assert_eq!(
+        line,
+        "uid=abc name=CPU folder=Infra folderUid=infra path=Platform / Infra org=Main Org orgId=1"
+    );
 }
 
 #[test]
@@ -286,6 +300,8 @@ fn format_dashboard_summary_line_appends_sources_when_present() {
         "folderUid": "infra",
         "folderPath": "Platform / Infra",
         "folderTitle": "Infra",
+        "orgId": 1,
+        "orgName": "Main Org",
         "title": "CPU",
         "sources": ["Loki Logs", "Prom Main"]
     });
@@ -293,7 +309,7 @@ fn format_dashboard_summary_line_appends_sources_when_present() {
     let line = format_dashboard_summary_line(summary.as_object().unwrap());
     assert_eq!(
         line,
-        "uid=abc name=CPU folder=Infra folderUid=infra path=Platform / Infra sources=Loki Logs,Prom Main"
+        "uid=abc name=CPU folder=Infra folderUid=infra path=Platform / Infra org=Main Org orgId=1 sources=Loki Logs,Prom Main"
     );
 }
 
@@ -305,12 +321,16 @@ fn render_dashboard_summary_table_uses_headers_and_defaults() {
             "folderUid": "infra",
             "folderPath": "Platform / Infra",
             "folderTitle": "Infra",
+            "orgId": 1,
+            "orgName": "Main Org",
             "title": "CPU"
         })
         .as_object()
         .unwrap()
         .clone(),
         json!({
+            "orgId": 1,
+            "orgName": "Main Org",
             "uid": "xyz",
             "title": "Overview"
         })
@@ -320,9 +340,11 @@ fn render_dashboard_summary_table_uses_headers_and_defaults() {
     ];
 
     let lines = render_dashboard_summary_table(&summaries);
-    assert_eq!(lines[0], "UID  NAME      FOLDER   FOLDER_UID  FOLDER_PATH     ");
-    assert_eq!(lines[2], "abc  CPU       Infra    infra       Platform / Infra");
-    assert_eq!(lines[3], "xyz  Overview  General  general     General         ");
+    assert!(lines[0].contains("ORG"));
+    assert!(lines[0].contains("ORG_ID"));
+    assert!(lines[2].contains("Main Org"));
+    assert!(lines[2].contains("  1"));
+    assert!(lines[3].contains("Main Org"));
 }
 
 #[test]
@@ -333,6 +355,8 @@ fn render_dashboard_summary_table_includes_sources_column_when_present() {
             "folderUid": "infra",
             "folderPath": "Platform / Infra",
             "folderTitle": "Infra",
+            "orgId": 1,
+            "orgName": "Main Org",
             "title": "CPU",
             "sources": ["Prom Main", "Loki Logs"]
         })
@@ -342,8 +366,10 @@ fn render_dashboard_summary_table_includes_sources_column_when_present() {
     ];
 
     let lines = render_dashboard_summary_table(&summaries);
+    assert!(lines[0].contains("ORG"));
     assert!(lines[0].contains("SOURCES"));
     assert!(lines[2].starts_with("abc  CPU   Infra   infra"));
+    assert!(lines[2].contains("Main Org"));
     assert!(lines[2].ends_with("Prom Main,Loki Logs"));
 }
 
@@ -355,6 +381,8 @@ fn render_dashboard_summary_csv_uses_headers_and_escaping() {
             "folderUid": "infra",
             "folderPath": "Platform / Infra",
             "folderTitle": "Infra",
+            "orgId": 1,
+            "orgName": "Main Org",
             "title": "CPU"
         })
         .as_object()
@@ -365,6 +393,8 @@ fn render_dashboard_summary_csv_uses_headers_and_escaping() {
             "folderUid": "ops",
             "folderPath": "Root / Ops",
             "folderTitle": "Ops",
+            "orgId": 1,
+            "orgName": "Main Org",
             "title": "CPU, \"critical\""
         })
         .as_object()
@@ -373,9 +403,9 @@ fn render_dashboard_summary_csv_uses_headers_and_escaping() {
     ];
 
     let lines = render_dashboard_summary_csv(&summaries);
-    assert_eq!(lines[0], "uid,name,folder,folderUid,path");
-    assert_eq!(lines[1], "abc,CPU,Infra,infra,Platform / Infra");
-    assert_eq!(lines[2], "xyz,\"CPU, \"\"critical\"\"\",Ops,ops,Root / Ops");
+    assert_eq!(lines[0], "uid,name,folder,folderUid,path,org,orgId");
+    assert_eq!(lines[1], "abc,CPU,Infra,infra,Platform / Infra,Main Org,1");
+    assert_eq!(lines[2], "xyz,\"CPU, \"\"critical\"\"\",Ops,ops,Root / Ops,Main Org,1");
 }
 
 #[test]
@@ -386,6 +416,8 @@ fn render_dashboard_summary_csv_includes_sources_column_when_present() {
             "folderUid": "infra",
             "folderPath": "Platform / Infra",
             "folderTitle": "Infra",
+            "orgId": 1,
+            "orgName": "Main Org",
             "title": "CPU",
             "sources": ["Prom Main", "Loki Logs"],
             "sourceUids": ["loki_uid", "prom_uid"]
@@ -396,8 +428,11 @@ fn render_dashboard_summary_csv_includes_sources_column_when_present() {
     ];
 
     let lines = render_dashboard_summary_csv(&summaries);
-    assert_eq!(lines[0], "uid,name,folder,folderUid,path,sources,sourceUids");
-    assert_eq!(lines[1], "abc,CPU,Infra,infra,Platform / Infra,\"Prom Main,Loki Logs\",\"loki_uid,prom_uid\"");
+    assert_eq!(lines[0], "uid,name,folder,folderUid,path,org,orgId,sources,sourceUids");
+    assert_eq!(
+        lines[1],
+        "abc,CPU,Infra,infra,Platform / Infra,Main Org,1,\"Prom Main,Loki Logs\",\"loki_uid,prom_uid\""
+    );
 }
 
 #[test]
@@ -408,52 +443,18 @@ fn render_dashboard_summary_json_returns_objects() {
             "folderUid": "infra",
             "folderPath": "Platform / Infra",
             "folderTitle": "Infra",
+            "orgId": 1,
+            "orgName": "Main Org",
             "title": "CPU"
         })
         .as_object()
         .unwrap()
         .clone(),
         json!({
+            "orgId": 1,
+            "orgName": "Main Org",
             "uid": "xyz",
             "title": "Overview"
-        })
-        .as_object()
-        .unwrap()
-        .clone(),
-    ];
-
-    let value = render_dashboard_summary_json(&summaries);
-    assert_eq!(
-        value,
-        json!([
-            {
-                "uid": "abc",
-                "name": "CPU",
-                "folder": "Infra",
-                "folderUid": "infra",
-                "path": "Platform / Infra"
-            },
-            {
-                "uid": "xyz",
-                "name": "Overview",
-                "folder": "General",
-                "folderUid": "general",
-                "path": "General"
-            }
-        ])
-    );
-}
-
-#[test]
-fn render_dashboard_summary_json_includes_sources_when_present() {
-    let summaries = vec![
-        json!({
-            "uid": "abc",
-            "folderUid": "infra",
-            "folderPath": "Platform / Infra",
-            "folderTitle": "Infra",
-            "title": "CPU",
-            "sources": ["Loki Logs", "Prom Main"]
         })
         .as_object()
         .unwrap()
@@ -470,7 +471,55 @@ fn render_dashboard_summary_json_includes_sources_when_present() {
                 "folder": "Infra",
                 "folderUid": "infra",
                 "path": "Platform / Infra",
-                "sources": ["Loki Logs", "Prom Main"]
+                "org": "Main Org",
+                "orgId": "1"
+            },
+            {
+                "uid": "xyz",
+                "name": "Overview",
+                "folder": "General",
+                "folderUid": "general",
+                "path": "General",
+                "org": "Main Org",
+                "orgId": "1"
+            }
+        ])
+    );
+}
+
+#[test]
+fn render_dashboard_summary_json_includes_sources_when_present() {
+    let summaries = vec![
+        json!({
+            "uid": "abc",
+            "folderUid": "infra",
+            "folderPath": "Platform / Infra",
+            "folderTitle": "Infra",
+            "orgId": 1,
+            "orgName": "Main Org",
+            "title": "CPU",
+            "sources": ["Loki Logs", "Prom Main"],
+            "sourceUids": ["loki_uid", "prom_uid"]
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+    ];
+
+    let value = render_dashboard_summary_json(&summaries);
+    assert_eq!(
+        value,
+        json!([
+            {
+                "uid": "abc",
+                "name": "CPU",
+                "folder": "Infra",
+                "folderUid": "infra",
+                "path": "Platform / Infra",
+                "org": "Main Org",
+                "orgId": "1",
+                "sources": ["Loki Logs", "Prom Main"],
+                "sourceUids": ["loki_uid", "prom_uid"]
             }
         ])
     );
@@ -534,23 +583,35 @@ fn list_dashboards_with_request_returns_dashboard_count() {
         json: false,
     };
 
+    let mut calls = Vec::new();
     let count = list_dashboards_with_request(
-        |_method, path, _params, _payload| match path {
+        |method, path, _params, _payload| {
+            calls.push((method.to_string(), path.to_string()));
+            match path {
             "/api/search" => Ok(Some(json!([
                 {"uid": "abc", "title": "CPU", "folderTitle": "Infra", "folderUid": "infra"},
                 {"uid": "def", "title": "Memory", "folderTitle": "Infra"},
             ]))),
+            "/api/org" => Ok(Some(json!({
+                "id": 1,
+                "name": "Main Org"
+            }))),
             "/api/folders/infra" => Ok(Some(json!({
                 "title": "Infra",
                 "parents": [{"title": "Platform"}]
             }))),
             _ => Err(super::message(format!("unexpected path {path}"))),
+        }
         },
         &args,
     )
     .unwrap();
 
     assert_eq!(count, 2);
+    assert_eq!(
+        calls.iter().filter(|(_, path)| path == "/api/org").count(),
+        1
+    );
 }
 
 #[test]
@@ -602,6 +663,10 @@ fn list_dashboards_with_request_with_sources_fetches_dashboards_and_datasources(
                 "/api/search" => Ok(Some(json!([
                     {"uid": "abc", "title": "CPU", "folderTitle": "Infra", "folderUid": "infra"}
                 ]))),
+                "/api/org" => Ok(Some(json!({
+                    "id": 1,
+                    "name": "Main Org"
+                }))),
                 "/api/folders/infra" => Ok(Some(json!({
                     "title": "Infra",
                     "parents": [{"title": "Platform"}]
@@ -626,6 +691,10 @@ fn list_dashboards_with_request_with_sources_fetches_dashboards_and_datasources(
     .unwrap();
 
     assert_eq!(count, 1);
+    assert_eq!(
+        calls.iter().filter(|(_, path)| path == "/api/org").count(),
+        1
+    );
     assert!(calls.iter().any(|(_, path)| path == "/api/datasources"));
     assert!(calls.iter().any(|(_, path)| path == "/api/dashboards/uid/abc"));
 }

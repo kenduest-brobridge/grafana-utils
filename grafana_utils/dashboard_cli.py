@@ -287,21 +287,21 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     subparsers.required = True
 
     export_parser = subparsers.add_parser(
-        "export",
+        "export-dashboard",
         help="Export dashboards into raw/ and prompt/ variants.",
     )
     add_common_cli_args(export_parser)
     add_export_cli_args(export_parser)
 
     list_parser = subparsers.add_parser(
-        "list",
+        "list-dashboard",
         help="List live dashboard summaries from Grafana.",
     )
     add_common_cli_args(list_parser)
     add_list_cli_args(list_parser)
 
     import_parser = subparsers.add_parser(
-        "import",
+        "import-dashboard",
         help="Import dashboards from exported raw JSON files.",
     )
     add_common_cli_args(import_parser)
@@ -518,6 +518,13 @@ class GrafanaClient:
         if not isinstance(data, list):
             raise GrafanaError("Unexpected datasource list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
+
+    def fetch_current_org(self) -> Dict[str, Any]:
+        """Fetch the current Grafana organization for the authenticated caller."""
+        data = self.request_json("/api/org")
+        if not isinstance(data, dict):
+            raise GrafanaError("Unexpected current org response from Grafana.")
+        return data
 
 
 def write_dashboard(
@@ -1606,7 +1613,8 @@ def format_dashboard_summary_line(summary: Dict[str, Any]) -> str:
     record = build_dashboard_summary_record(summary)
     line = (
         f"uid={record['uid']} name={record['name']} folder={record['folder']} "
-        f"folderUid={record['folderUid']} path={record['path']}"
+        f"folderUid={record['folderUid']} path={record['path']} "
+        f"org={record['org']} orgId={record['orgId']}"
     )
     if record.get("sources"):
         line += f" sources={record['sources']}"
@@ -1622,6 +1630,8 @@ def build_dashboard_summary_record(summary: Dict[str, Any]) -> Dict[str, str]:
         "folder": folder,
         "folderUid": str(summary.get("folderUid") or "general"),
         "path": str(summary.get("folderPath") or folder),
+        "org": str(summary.get("orgName") or "Main Org."),
+        "orgId": str(summary.get("orgId") or "1"),
     }
     if "sources" in summary:
         record["sources"] = ",".join(summary.get("sources") or [])
@@ -1853,9 +1863,26 @@ def attach_dashboard_sources(
     return enriched
 
 
+def attach_dashboard_org(
+    client: GrafanaClient,
+    summaries: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Attach the current Grafana organization to each dashboard summary."""
+    org = client.fetch_current_org()
+    org_name = str(org.get("name") or "Main Org.")
+    org_id = str(org.get("id") or "1")
+    enriched: List[Dict[str, Any]] = []
+    for summary in summaries:
+        item = dict(summary)
+        item["orgName"] = org_name
+        item["orgId"] = org_id
+        enriched.append(item)
+    return enriched
+
+
 def render_dashboard_summary_table(summaries: List[Dict[str, Any]]) -> List[str]:
     """Render dashboard summaries as a fixed-width table."""
-    headers = ["UID", "NAME", "FOLDER", "FOLDER_UID", "FOLDER_PATH"]
+    headers = ["UID", "NAME", "FOLDER", "FOLDER_UID", "FOLDER_PATH", "ORG", "ORG_ID"]
     if summaries and "sources" in summaries[0]:
         headers.append("SOURCES")
     rows = []
@@ -1866,6 +1893,8 @@ def render_dashboard_summary_table(summaries: List[Dict[str, Any]]) -> List[str]
             record["folder"],
             record["folderUid"],
             record["path"],
+            record["org"],
+            record["orgId"],
         ]
         if "sources" in record:
             row.append(record["sources"])
@@ -1887,7 +1916,7 @@ def render_dashboard_summary_table(summaries: List[Dict[str, Any]]) -> List[str]
 
 def render_dashboard_summary_csv(summaries: List[Dict[str, Any]]) -> None:
     """Render dashboard summaries as CSV records."""
-    fieldnames = ["uid", "name", "folder", "folderUid", "path"]
+    fieldnames = ["uid", "name", "folder", "folderUid", "path", "org", "orgId"]
     if summaries and "sources" in summaries[0]:
         fieldnames.append("sources")
     if summaries and "sourceUids" in summaries[0]:
@@ -1905,6 +1934,8 @@ def render_dashboard_summary_json(summaries: List[Dict[str, Any]]) -> str:
         record = build_dashboard_summary_record(summary)
         if "sources" in summary:
             record["sources"] = list(summary.get("sources") or [])
+        if "sourceUids" in summary:
+            record["sourceUids"] = list(summary.get("sourceUids") or [])
         records.append(record)
     return json.dumps(records, indent=2, sort_keys=False)
 
@@ -1916,6 +1947,7 @@ def list_dashboards(args: argparse.Namespace) -> int:
         client,
         client.iter_dashboard_summaries(args.page_size),
     )
+    summaries = attach_dashboard_org(client, summaries)
     if getattr(args, "with_sources", False):
         summaries = attach_dashboard_sources(client, summaries)
     if args.csv:
@@ -2041,9 +2073,9 @@ def build_client(args: argparse.Namespace) -> GrafanaClient:
 def main() -> int:
     args = parse_args()
     try:
-        if args.command == "list":
+        if args.command == "list-dashboard":
             return list_dashboards(args)
-        if args.command == "import":
+        if args.command == "import-dashboard":
             return import_dashboards(args)
         if args.command == "diff":
             return diff_dashboards(args)

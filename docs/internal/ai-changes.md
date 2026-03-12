@@ -1,5 +1,25 @@
 # ai-changes.md
 
+## 2026-03-12 - Rename Dashboard CLI Subcommands
+- Summary: Renamed the dashboard CLI subcommands from `export`, `list`, and `import` to `export-dashboard`, `list-dashboard`, and `import-dashboard` in both the Python and Rust implementations. The CLI help, parser tests, and public/maintainer docs now use the explicit dashboard-prefixed names consistently, while `diff` remains unchanged.
+- Tests: Extended focused Python and Rust dashboard parser/help coverage to assert the new subcommand names and to reject the old `list` name.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py`; `cd rust && cargo test dashboard --quiet`
+- Reason: Operators asked for more explicit dashboard command names so the main `grafana-utils` surface reads clearly next to the alerting and access-management CLIs.
+- Validation: Verified the renamed subcommands parse correctly in both implementations, updated the help examples to advertise the new names, and confirmed the focused dashboard suites still pass after the rename.
+- Impact: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Moderate. The behavior is straightforward, but it is a breaking CLI rename for operators or automation that still invoke the old `export`, `list`, or `import` dashboard subcommands.
+- Follow-up: Decide whether to add temporary aliases for backward compatibility or keep the rename strict.
+
+## 2026-03-12 - Add Dashboard List Org Metadata
+- Summary: Extended both the Python and Rust dashboard `list` subcommands to fetch the current Grafana organization once from `GET /api/org` and include `org` and `orgId` in compact text output plus table, CSV, and JSON renderers. The change applies to plain `list` and `list --with-sources`, so source metadata now sits alongside explicit org metadata in all list formats.
+- Tests: Extended `tests/test_python_dashboard_cli.py` and `rust/src/dashboard_rust_tests.rs` with current-org attachment coverage plus text, table, CSV, and JSON output assertions that include `org` and `orgId`.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py`; `cd rust && cargo test dashboard --quiet`
+- Reason: Operators asked for dashboard list output to show the Grafana organization explicitly because the same host can expose multiple org contexts and the previous list output had no direct org identifier.
+- Validation: Verified the Python renderer and CLI path locally, then live-checked the new list output against Docker Grafana `12.4.1` after seeding nested folders, dashboards, and datasources. The live output now shows the expected `org` and `orgId` fields alongside folder path and optional datasource metadata.
+- Impact: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. The change is additive and fetches `GET /api/org` once per list run, but list consumers that assumed an exact older CSV or JSON schema will need to tolerate the new `org` and `orgId` fields.
+- Follow-up: Add a checked-in live smoke script for dashboard `list --with-sources` if we want repeatable end-to-end coverage for the datasource and org metadata together.
+
 ## 2026-03-12 - Add Dashboard List Datasource Display
 - Summary: Extended both the Python and Rust dashboard `list` subcommands with `--with-sources`, an opt-in mode that fetches each dashboard payload and resolves datasource references into datasource names for display. The extra data now appears in compact text output and in table, CSV, and JSON output as a `sources` field or column. CSV output also includes best-effort datasource UID collection in a `sourceUids` column.
 - Tests: Added parser/help coverage plus Python and Rust list rendering tests for the new `sources` field and datasource-resolution helpers.
@@ -8,6 +28,15 @@
 - Impact: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
 - Rollback/Risk: Low to moderate. The new behavior is opt-in, but it adds extra API calls and best-effort datasource resolution for dashboards that use aliases, UIDs, or unusual placeholder patterns.
 - Follow-up: Optional live Docker validation for `list --with-sources` if we want end-to-end confirmation against a real Grafana datasource catalog.
+
+## 2026-03-12 - Add Python Access Live Smoke Test
+- Summary: Added `scripts/test-python-access-live-grafana.sh`, a Docker-backed smoke test for the Python access CLI, plus a `make test-access-live` target. The script starts Grafana, bootstraps an API token, and exercises the current Python access-management surface across user, team, and service-account workflows.
+- Tests: Added shell-script coverage via `bash -n` and wired the script into the documented validation surface.
+- Test Run: `bash -n scripts/test-python-access-live-grafana.sh`
+- Validation: The script is designed to validate `user add`, `user modify`, `user delete` in both supported scopes, `team add`, `team list`, `team modify`, `service-account add`, `service-account token add`, and `service-account list` against Docker Grafana `12.4.1`.
+- Impact: `scripts/test-python-access-live-grafana.sh`, `Makefile`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. The new script is opt-in and isolated to local Docker validation, but like the Rust smoke test it depends on Docker daemon access and current Grafana API behavior.
+- Follow-up: Run the script live on this machine when Docker access is available and, if it stays stable, consider adding one make target that runs both Rust and access live smoke tests together.
 
 ## 2026-03-12 - Add Access Utility Team Add
 - Summary: Added Python `grafana-access-utils team add` support, including parser/help wiring, Grafana team creation through the org-scoped API, optional initial member/admin seeding, and aligned public/maintainer docs. The command creates the team first, then reuses the existing exact org-user resolution and guarded membership/admin update flow so initial admins are applied consistently with `team modify`.

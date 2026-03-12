@@ -35,11 +35,12 @@ class FakeGrafanaClient(exporter.GrafanaClient):
 
 
 class FakeDashboardWorkflowClient:
-    def __init__(self, summaries=None, dashboards=None, datasources=None, folders=None):
+    def __init__(self, summaries=None, dashboards=None, datasources=None, folders=None, org=None):
         self.summaries = summaries or []
         self.dashboards = dashboards or {}
         self.datasources = datasources or []
         self.folders = folders or {}
+        self.org = org or {"id": 1, "name": "Main Org."}
         self.imported_payloads = []
 
     def iter_dashboard_summaries(self, page_size):
@@ -58,6 +59,9 @@ class FakeDashboardWorkflowClient:
 
     def list_datasources(self):
         return list(self.datasources)
+
+    def fetch_current_org(self):
+        return dict(self.org)
 
     def import_dashboard(self, payload):
         self.imported_payloads.append(payload)
@@ -85,15 +89,15 @@ class ExporterTests(unittest.TestCase):
             exporter.parse_args([])
 
     def test_parse_args_supports_import_mode(self):
-        args = exporter.parse_args(["import", "--import-dir", "dashboards"])
+        args = exporter.parse_args(["import-dashboard", "--import-dir", "dashboards"])
 
         self.assertEqual(args.import_dir, "dashboards")
-        self.assertEqual(args.command, "import")
+        self.assertEqual(args.command, "import-dashboard")
 
     def test_parse_args_supports_preferred_auth_aliases(self):
         args = exporter.parse_args(
             [
-                "export",
+                "export-dashboard",
                 "--token",
                 "abc123",
                 "--basic-user",
@@ -108,9 +112,9 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(args.password, "pass")
 
     def test_parse_args_supports_list_mode(self):
-        args = exporter.parse_args(["list", "--page-size", "25", "--table"])
+        args = exporter.parse_args(["list-dashboard", "--page-size", "25", "--table"])
 
-        self.assertEqual(args.command, "list")
+        self.assertEqual(args.command, "list-dashboard")
         self.assertEqual(args.page_size, 25)
         self.assertTrue(args.table)
         self.assertFalse(args.with_sources)
@@ -118,9 +122,9 @@ class ExporterTests(unittest.TestCase):
         self.assertFalse(args.json)
 
     def test_parse_args_supports_list_csv_and_json_modes(self):
-        csv_args = exporter.parse_args(["list", "--csv"])
-        json_args = exporter.parse_args(["list", "--json"])
-        source_args = exporter.parse_args(["list", "--with-sources"])
+        csv_args = exporter.parse_args(["list-dashboard", "--csv"])
+        json_args = exporter.parse_args(["list-dashboard", "--json"])
+        source_args = exporter.parse_args(["list-dashboard", "--with-sources"])
 
         self.assertTrue(csv_args.csv)
         self.assertFalse(csv_args.table)
@@ -132,13 +136,13 @@ class ExporterTests(unittest.TestCase):
 
     def test_parse_args_rejects_multiple_list_output_modes(self):
         with self.assertRaises(SystemExit):
-            exporter.parse_args(["list", "--table", "--csv"])
+            exporter.parse_args(["list-dashboard", "--table", "--csv"])
 
         with self.assertRaises(SystemExit):
-            exporter.parse_args(["list", "--table", "--json"])
+            exporter.parse_args(["list-dashboard", "--table", "--json"])
 
         with self.assertRaises(SystemExit):
-            exporter.parse_args(["list", "--csv", "--json"])
+            exporter.parse_args(["list-dashboard", "--csv", "--json"])
 
     def test_parse_args_supports_diff_mode(self):
         args = exporter.parse_args(["diff", "--import-dir", "dashboards/raw"])
@@ -148,43 +152,47 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(args.context_lines, 3)
 
     def test_parse_args_defaults_export_dir_to_dashboards(self):
-        args = exporter.parse_args(["export"])
+        args = exporter.parse_args(["export-dashboard"])
 
         self.assertEqual(args.export_dir, "dashboards")
-        self.assertEqual(args.command, "export")
+        self.assertEqual(args.command, "export-dashboard")
 
     def test_parse_args_defaults_url_to_local_grafana(self):
-        args = exporter.parse_args(["export"])
+        args = exporter.parse_args(["export-dashboard"])
 
         self.assertEqual(args.url, "http://127.0.0.1:3000")
 
     def test_parse_args_supports_variant_switches(self):
         args = exporter.parse_args(
-            ["export", "--without-dashboard-raw", "--without-dashboard-prompt"]
+            ["export-dashboard", "--without-dashboard-raw", "--without-dashboard-prompt"]
         )
 
         self.assertTrue(args.without_dashboard_raw)
         self.assertTrue(args.without_dashboard_prompt)
 
     def test_parse_args_supports_export_dry_run(self):
-        args = exporter.parse_args(["export", "--dry-run"])
+        args = exporter.parse_args(["export-dashboard", "--dry-run"])
 
         self.assertTrue(args.dry_run)
 
     def test_parse_args_supports_import_dry_run(self):
-        args = exporter.parse_args(["import", "--import-dir", "dashboards/raw", "--dry-run"])
+        args = exporter.parse_args(["import-dashboard", "--import-dir", "dashboards/raw", "--dry-run"])
 
         self.assertTrue(args.dry_run)
 
     def test_parse_args_disables_ssl_verification_by_default(self):
-        args = exporter.parse_args(["export"])
+        args = exporter.parse_args(["export-dashboard"])
 
         self.assertFalse(args.verify_ssl)
 
     def test_parse_args_can_enable_ssl_verification(self):
-        args = exporter.parse_args(["export", "--verify-ssl"])
+        args = exporter.parse_args(["export-dashboard", "--verify-ssl"])
 
         self.assertTrue(args.verify_ssl)
+
+    def test_parse_args_rejects_old_list_subcommand_name(self):
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(["list", "--json"])
 
     def test_build_json_http_transport_defaults_to_requests(self):
         transport = exporter.build_json_http_transport(
@@ -336,7 +344,7 @@ class ExporterTests(unittest.TestCase):
 
         self.assertEqual(
             line,
-            "uid=abc name=dashboard folder=General folderUid=general path=General",
+            "uid=abc name=dashboard folder=General folderUid=general path=General org=Main Org. orgId=1",
         )
 
     def test_format_dashboard_summary_line_includes_sources_when_present(self):
@@ -352,7 +360,7 @@ class ExporterTests(unittest.TestCase):
             line,
             (
                 "uid=abc name=CPU folder=General folderUid=general path=General "
-                "sources=Loki Logs,Prometheus Main"
+                "org=Main Org. orgId=1 sources=Loki Logs,Prometheus Main"
             ),
         )
 
@@ -388,6 +396,17 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(summaries[0]["folderPath"], "Root / Child")
         self.assertEqual(summaries[1]["folderPath"], "General")
 
+    def test_attach_dashboard_org_uses_current_org(self):
+        client = FakeDashboardWorkflowClient(org={"id": 7, "name": "Ops Org"})
+
+        summaries = exporter.attach_dashboard_org(
+            client,
+            [{"uid": "abc", "title": "CPU"}],
+        )
+
+        self.assertEqual(summaries[0]["orgName"], "Ops Org")
+        self.assertEqual(summaries[0]["orgId"], "7")
+
     def test_render_dashboard_summary_table_uses_headers_and_defaults(self):
         lines = exporter.render_dashboard_summary_table(
             [
@@ -397,14 +416,16 @@ class ExporterTests(unittest.TestCase):
                     "folderUid": "infra",
                     "folderPath": "Platform / Infra",
                     "title": "CPU",
+                    "orgName": "Main Org.",
+                    "orgId": "1",
                 },
-                {"uid": "xyz", "title": "Overview"},
+                {"uid": "xyz", "title": "Overview", "orgName": "Main Org.", "orgId": "1"},
             ]
         )
 
-        self.assertEqual(lines[0], "UID  NAME      FOLDER   FOLDER_UID  FOLDER_PATH     ")
-        self.assertEqual(lines[2], "abc  CPU       Infra    infra       Platform / Infra")
-        self.assertEqual(lines[3], "xyz  Overview  General  general     General         ")
+        self.assertEqual(lines[0], "UID  NAME      FOLDER   FOLDER_UID  FOLDER_PATH       ORG        ORG_ID")
+        self.assertEqual(lines[2], "abc  CPU       Infra    infra       Platform / Infra  Main Org.  1     ")
+        self.assertEqual(lines[3], "xyz  Overview  General  general     General           Main Org.  1     ")
 
     def test_render_dashboard_summary_table_includes_sources_column(self):
         lines = exporter.render_dashboard_summary_table(
@@ -416,6 +437,8 @@ class ExporterTests(unittest.TestCase):
                     "folderPath": "Platform / Infra",
                     "title": "CPU",
                     "sources": ["Loki Logs", "Prometheus Main"],
+                    "orgName": "Main Org.",
+                    "orgId": "1",
                 }
             ]
         )
@@ -433,6 +456,8 @@ class ExporterTests(unittest.TestCase):
                     "folderUid": "infra",
                     "folderPath": "Platform / Infra",
                     "title": "CPU",
+                    "orgName": "Main Org.",
+                    "orgId": "1",
                 }
             ]
         )
@@ -446,6 +471,8 @@ class ExporterTests(unittest.TestCase):
                     "folder": "Infra",
                     "folderUid": "infra",
                     "path": "Platform / Infra",
+                    "org": "Main Org.",
+                    "orgId": "1",
                 }
             ],
         )
@@ -460,6 +487,9 @@ class ExporterTests(unittest.TestCase):
                     "folderPath": "Platform / Infra",
                     "title": "CPU",
                     "sources": ["Loki Logs", "Prometheus Main"],
+                    "sourceUids": ["loki_uid", "prom_uid"],
+                    "orgName": "Main Org.",
+                    "orgId": "1",
                 }
             ]
         )
@@ -473,7 +503,10 @@ class ExporterTests(unittest.TestCase):
                     "folder": "Infra",
                     "folderUid": "infra",
                     "path": "Platform / Infra",
+                    "org": "Main Org.",
+                    "orgId": "1",
                     "sources": ["Loki Logs", "Prometheus Main"],
+                    "sourceUids": ["loki_uid", "prom_uid"],
                 }
             ],
         )
@@ -491,6 +524,8 @@ class ExporterTests(unittest.TestCase):
                         "title": "CPU",
                         "sources": ["Loki Logs", "Prometheus Main"],
                         "sourceUids": ["loki_uid", "prom_uid"],
+                        "orgName": "Main Org.",
+                        "orgId": "1",
                     }
                 ]
             )
@@ -498,8 +533,8 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(
             stdout.getvalue().splitlines(),
             [
-                "uid,name,folder,folderUid,path,sources,sourceUids",
-                "abc,CPU,Infra,infra,Platform / Infra,\"Loki Logs,Prometheus Main\",\"loki_uid,prom_uid\"",
+                "uid,name,folder,folderUid,path,org,orgId,sources,sourceUids",
+                "abc,CPU,Infra,infra,Platform / Infra,Main Org.,1,\"Loki Logs,Prometheus Main\",\"loki_uid,prom_uid\"",
             ],
         )
 
@@ -567,8 +602,8 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(
             stdout.getvalue().splitlines(),
             [
-                "uid=abc name=CPU folder=Infra folderUid=infra path=Platform / Infra",
-                "uid=xyz name=Overview folder=General folderUid=general path=General",
+                "uid=abc name=CPU folder=Infra folderUid=infra path=Platform / Infra org=Main Org. orgId=1",
+                "uid=xyz name=Overview folder=General folderUid=general path=General org=Main Org. orgId=1",
                 "",
                 "Listed 2 dashboard summaries from http://127.0.0.1:3000",
             ],
@@ -608,10 +643,10 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(
             stdout.getvalue().splitlines(),
             [
-                "UID  NAME      FOLDER   FOLDER_UID  FOLDER_PATH     ",
-                "---  --------  -------  ----------  ----------------",
-                "abc  CPU       Infra    infra       Platform / Infra",
-                "xyz  Overview  General  general     General         ",
+                "UID  NAME      FOLDER   FOLDER_UID  FOLDER_PATH       ORG        ORG_ID",
+                "---  --------  -------  ----------  ----------------  ---------  ------",
+                "abc  CPU       Infra    infra       Platform / Infra  Main Org.  1     ",
+                "xyz  Overview  General  general     General           Main Org.  1     ",
                 "",
                 "Listed 2 dashboard summaries from http://127.0.0.1:3000",
             ],
@@ -651,9 +686,9 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(
             stdout.getvalue().splitlines(),
             [
-                "uid,name,folder,folderUid,path",
-                "abc,CPU,Infra,infra,Platform / Infra",
-                "xyz,Overview,General,general,General",
+                "uid,name,folder,folderUid,path,org,orgId",
+                "abc,CPU,Infra,infra,Platform / Infra,Main Org.,1",
+                "xyz,Overview,General,general,General,Main Org.,1",
             ],
         )
 
@@ -697,6 +732,8 @@ class ExporterTests(unittest.TestCase):
                     "folder": "Infra",
                     "folderUid": "infra",
                     "path": "Platform / Infra",
+                    "org": "Main Org.",
+                    "orgId": "1",
                 },
                 {
                     "uid": "xyz",
@@ -704,6 +741,8 @@ class ExporterTests(unittest.TestCase):
                     "folder": "General",
                     "folderUid": "general",
                     "path": "General",
+                    "org": "Main Org.",
+                    "orgId": "1",
                 },
             ],
         )
@@ -757,7 +796,7 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(
             stdout.getvalue().splitlines(),
             [
-                "uid=abc name=CPU folder=Infra folderUid=infra path=Platform / Infra sources=Loki Logs,Prometheus Main",
+                "uid=abc name=CPU folder=Infra folderUid=infra path=Platform / Infra org=Main Org. orgId=1 sources=Loki Logs,Prometheus Main",
                 "",
                 "Listed 1 dashboard summaries from http://127.0.0.1:3000",
             ],
@@ -805,7 +844,7 @@ class ExporterTests(unittest.TestCase):
 
     def test_export_dashboards_rejects_disabling_all_variants(self):
         args = exporter.parse_args(
-            ["export", "--without-dashboard-raw", "--without-dashboard-prompt"]
+            ["export-dashboard", "--without-dashboard-raw", "--without-dashboard-prompt"]
         )
 
         with self.assertRaises(exporter.GrafanaError):
@@ -868,7 +907,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             args = exporter.parse_args(
                 [
-                    "export",
+                    "export-dashboard",
                     "--export-dir",
                     tmpdir,
                     "--without-dashboard-prompt",
@@ -910,7 +949,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             args = exporter.parse_args(
                 [
-                    "export",
+                    "export-dashboard",
                     "--export-dir",
                     tmpdir,
                     "--without-dashboard-prompt",
@@ -949,7 +988,7 @@ class ExporterTests(unittest.TestCase):
                 import_dir / "cpu__abc.json",
             )
             args = exporter.parse_args(
-                ["import", "--import-dir", str(import_dir), "--dry-run"]
+                ["import-dashboard", "--import-dir", str(import_dir), "--dry-run"]
             )
 
             with mock.patch.object(exporter, "build_client", return_value=client):
@@ -977,7 +1016,7 @@ class ExporterTests(unittest.TestCase):
                 {"dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []}},
                 import_dir / "cpu__abc.json",
             )
-            args = exporter.parse_args(["import", "--import-dir", str(import_dir)])
+            args = exporter.parse_args(["import-dashboard", "--import-dir", str(import_dir)])
 
             with mock.patch.object(exporter, "build_client", return_value=client):
                 with self.assertRaises(exporter.GrafanaError):

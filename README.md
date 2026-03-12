@@ -42,9 +42,9 @@ Compatibility:
 
 The two command names are intentionally separate because dashboards and alerting use different Grafana APIs and different file shapes.
 
-- `grafana-utils export ...`
-- `grafana-utils list ...`
-- `grafana-utils import ...`
+- `grafana-utils export-dashboard ...`
+- `grafana-utils list-dashboard ...`
+- `grafana-utils import-dashboard ...`
 - `grafana-utils diff ...`
 - `grafana-alert-utils ...`
 - `grafana-access-utils user list ...`
@@ -83,7 +83,7 @@ Notes:
 Dashboard export, writing both `raw/` and `prompt/` variants:
 
 ```bash
-python3 cmd/grafana-utils.py export \
+python3 cmd/grafana-utils.py export-dashboard \
   --url http://127.0.0.1:3000 \
   --export-dir ./dashboards \
   --overwrite
@@ -92,7 +92,7 @@ python3 cmd/grafana-utils.py export \
 Dashboard list, including resolved datasource names per dashboard:
 
 ```bash
-python3 cmd/grafana-utils.py list \
+python3 cmd/grafana-utils.py list-dashboard \
   --url http://127.0.0.1:3000 \
   --with-sources \
   --table
@@ -101,14 +101,14 @@ python3 cmd/grafana-utils.py list \
 List live dashboards without writing export files:
 
 ```bash
-python3 cmd/grafana-utils.py list \
+python3 cmd/grafana-utils.py list-dashboard \
   --url http://127.0.0.1:3000
 ```
 
 List live dashboards as a table with folder tree path:
 
 ```bash
-python3 cmd/grafana-utils.py list \
+python3 cmd/grafana-utils.py list-dashboard \
   --table \
   --url http://127.0.0.1:3000
 ```
@@ -116,7 +116,7 @@ python3 cmd/grafana-utils.py list \
 List live dashboards as CSV:
 
 ```bash
-python3 cmd/grafana-utils.py list \
+python3 cmd/grafana-utils.py list-dashboard \
   --csv \
   --url http://127.0.0.1:3000
 ```
@@ -124,7 +124,7 @@ python3 cmd/grafana-utils.py list \
 List live dashboards as JSON:
 
 ```bash
-python3 cmd/grafana-utils.py list \
+python3 cmd/grafana-utils.py list-dashboard \
   --json \
   --url http://127.0.0.1:3000
 ```
@@ -132,7 +132,7 @@ python3 cmd/grafana-utils.py list \
 Dashboard API import from the raw export:
 
 ```bash
-python3 cmd/grafana-utils.py import \
+python3 cmd/grafana-utils.py import-dashboard \
   --url http://127.0.0.1:3000 \
   --import-dir ./dashboards/raw \
   --replace-existing
@@ -325,7 +325,7 @@ Use `raw/` when you want:
 
 - the same dashboard `uid`
 - minimal transformation
-- API re-import through `grafana-utils import`
+- API re-import through `grafana-utils import-dashboard`
 
 Use `prompt/` when you want:
 
@@ -340,7 +340,7 @@ Use `prompt/` when you want:
 | `--url` | Grafana base URL. Default: `http://127.0.0.1:3000` |
 | `--export-dir` | Root export directory. Default: `dashboards/` |
 | `--page-size` | Dashboard search page size. Default: `500` |
-| `--with-sources` | For `list`, fetch each dashboard payload and include datasource names used by that dashboard; CSV also adds datasource UIDs |
+| `--with-sources` | For `list`, fetch each dashboard payload and include datasource names used by that dashboard; CSV and JSON also add datasource UIDs |
 | `--flat` | Do not create per-folder subdirectories |
 | `--overwrite` | Replace existing exported files |
 | `--without-dashboard-raw` | Skip the `raw/` export variant |
@@ -350,9 +350,10 @@ Use `prompt/` when you want:
 
 For dashboard listing:
 
-- default `list` output shows `uid`, `name`, `folder`, `folderUid`, and resolved folder tree path
+- default `list` output shows `uid`, `name`, `folder`, `folderUid`, resolved folder tree path, `org`, and `orgId`
 - `list --with-sources` adds datasource names per dashboard to text, table, CSV, and JSON output
 - `list --with-sources --csv` also adds a `sourceUids` column with best-effort datasource UIDs
+- `list --with-sources --json` also adds a `sourceUids` array with best-effort datasource UIDs
 - `list --with-sources` is slower than plain `list` because it fetches each dashboard payload and the datasource catalog
 
 ### Raw Export
@@ -367,7 +368,7 @@ Raw export preserves the Grafana dashboard identity as much as possible:
 If you only want the prompt variant:
 
 ```bash
-python3 cmd/grafana-utils.py export \
+python3 cmd/grafana-utils.py export-dashboard \
   --export-dir ./dashboards \
   --without-dashboard-raw
 ```
@@ -390,7 +391,7 @@ Important notes:
 If you only want the raw variant:
 
 ```bash
-python3 cmd/grafana-utils.py export \
+python3 cmd/grafana-utils.py export-dashboard \
   --export-dir ./dashboards \
   --without-dashboard-prompt
 ```
@@ -402,7 +403,7 @@ Dashboard import reads normal dashboard JSON through the Grafana API.
 Example:
 
 ```bash
-python3 cmd/grafana-utils.py import \
+python3 cmd/grafana-utils.py import-dashboard \
   --url http://127.0.0.1:3000 \
   --import-dir ./dashboards/raw \
   --replace-existing
@@ -601,6 +602,7 @@ The repo root includes a [`Makefile`](Makefile):
 - `make test-python`
 - `make test-rust`
 - `make test-rust-live`
+- `make test-access-live`
 - `make test`
 
 Artifact locations:
@@ -620,7 +622,7 @@ Run the Rust dashboard CLI from the repo:
 
 ```bash
 cd rust
-cargo run --bin grafana-utils -- export -h
+cargo run --bin grafana-utils -- export-dashboard -h
 ```
 
 Run the Rust alerting CLI from the repo:
@@ -636,6 +638,12 @@ Run the Docker-backed Rust live smoke test:
 make test-rust-live
 ```
 
+Run the Docker-backed Python access live smoke test:
+
+```bash
+make test-access-live
+```
+
 Notes:
 
 - requires Docker plus local access to the Docker daemon
@@ -643,6 +651,13 @@ Notes:
 - uses a random localhost port by default; set `GRAFANA_PORT=43000` if you want a fixed port
 - starts a temporary Grafana container, seeds one dashboard, one datasource, and one contact point
 - validates Rust dashboard export/import/diff/dry-run and Rust alerting export/import/diff/dry-run
+
+Python access live smoke test notes:
+
+- `make test-access-live` runs `scripts/test-python-access-live-grafana.sh`
+- the script defaults to `grafana/grafana:12.4.1` and binds Grafana to a random localhost port unless `GRAFANA_PORT` is set explicitly
+- it bootstraps an API token, then validates `user add`, `user modify`, `user delete`, `team add`, `team modify`, `team list`, `service-account add`, `service-account token add`, and `service-account list`
+- useful overrides: `GRAFANA_IMAGE`, `GRAFANA_PORT`, `GRAFANA_USER`, `GRAFANA_PASSWORD`, `PYTHON_BIN`
 
 ## Authentication and TLS
 
@@ -671,7 +686,7 @@ API token example:
 
 ```bash
 export GRAFANA_API_TOKEN='your-token'
-python3 cmd/grafana-utils.py export --token "$GRAFANA_API_TOKEN" --export-dir ./dashboards
+python3 cmd/grafana-utils.py export-dashboard --token "$GRAFANA_API_TOKEN" --export-dir ./dashboards
 ```
 
 Username/password example:
@@ -679,7 +694,7 @@ Username/password example:
 ```bash
 export GRAFANA_USERNAME='your-user'
 export GRAFANA_PASSWORD='your-pass'
-python3 cmd/grafana-utils.py export \
+python3 cmd/grafana-utils.py export-dashboard \
   --basic-user "$GRAFANA_USERNAME" \
   --basic-password "$GRAFANA_PASSWORD" \
   --export-dir ./dashboards
@@ -693,7 +708,7 @@ TLS note:
 Example:
 
 ```bash
-python3 cmd/grafana-utils.py export --verify-ssl
+python3 cmd/grafana-utils.py export-dashboard --verify-ssl
 ```
 
 ## Output Directory Layout
@@ -747,6 +762,7 @@ python3 cmd/grafana-access-utils.py service-account add -h
 python3 cmd/grafana-access-utils.py service-account token add -h
 cd rust && cargo test
 make test-rust-live
+make test-access-live
 ```
 
 ## Documentation
