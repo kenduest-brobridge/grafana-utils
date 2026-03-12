@@ -5,6 +5,8 @@ GRAFANA_URL="${GRAFANA_URL:-http://localhost:3000}"
 GRAFANA_USER="${GRAFANA_USER:-admin}"
 GRAFANA_PASSWORD="${GRAFANA_PASSWORD:-admin}"
 DESTROY_MODE=false
+RESET_ALL_DATA_MODE=false
+CONFIRMED_RESET=false
 
 fail() {
   printf 'ERROR: %s\n' "$*" >&2
@@ -22,6 +24,8 @@ Options:
   --basic-user USER   Grafana admin username (default: admin)
   --basic-password PW Grafana admin password (default: admin)
   --destroy           Delete the sample data created by this script
+  --reset-all-data    Delete all repo-relevant developer test data from Grafana
+  --yes               Required with --reset-all-data
   -h, --help          Show this help text
 
 Environment overrides:
@@ -33,6 +37,7 @@ The script is idempotent:
 - reuses existing orgs, folders, and datasources by fixed uid or name
 - upserts dashboards with overwrite=true
 - `--destroy` removes only the known sample resources and extra sample orgs
+- `--reset-all-data --yes` is a destructive developer reset for disposable Grafana instances
 
 Seeded sample layout:
 - Org 1 Main Org.
@@ -45,6 +50,11 @@ Seeded sample layout:
   - Dashboard: qa-overview
 - Org 4 Audit Org
   - Dashboard: audit-home
+
+Reset-all-data scope:
+- deletes all non-default orgs
+- clears dashboards, folders, datasources, teams, service accounts, and alert rules in org 1
+- deletes non-admin global users except the current login user
 EOF
 }
 
@@ -99,6 +109,11 @@ request_optional() {
   return 0
 }
 
+current_admin_login() {
+  request_json GET "/api/user"
+  printf '%s' "${HTTP_BODY}" | jq -r '.login // empty'
+}
+
 ensure_health() {
   request_json GET "/api/health"
 }
@@ -106,6 +121,11 @@ ensure_health() {
 lookup_org_id_by_name() {
   request_json GET "/api/orgs"
   printf '%s' "${HTTP_BODY}" | jq -r --arg name "$1" '.[] | select(.name == $name) | .id' | head -n 1
+}
+
+list_org_ids() {
+  request_json GET "/api/orgs"
+  printf '%s' "${HTTP_BODY}" | jq -r '.[].id'
 }
 
 ensure_org() {
@@ -262,6 +282,136 @@ delete_dashboard() {
     return
   fi
   printf 'Deleted dashboard %s (org %s)\n' "${uid}" "${org_id}"
+}
+
+list_dashboard_uids() {
+  local org_id="$1"
+  local page=1
+  local page_data
+
+  while true; do
+    request_json GET "/api/search?type=dash-db&limit=500&page=${page}" "" "${org_id}"
+    page_data="$(printf '%s' "${HTTP_BODY}" | jq -r '.[].uid')"
+    if [[ -z "${page_data}" ]]; then
+      break
+    fi
+    printf '%s\n' "${page_data}"
+    if [[ "$(printf '%s' "${HTTP_BODY}" | jq 'length')" -lt 500 ]]; then
+      break
+    fi
+    page=$((page + 1))
+  done
+}
+
+list_folder_uids() {
+  local org_id="$1"
+  request_json GET "/api/folders" "" "${org_id}"
+  printf '%s' "${HTTP_BODY}" | jq -r '.[].uid'
+}
+
+delete_all_dashboards_in_org() {
+  local org_id="$1"
+  local uid
+  while IFS= read -r uid; do
+    [[ -n "${uid}" ]] || continue
+    delete_dashboard "${org_id}" "${uid}"
+  done < <(list_dashboard_uids "${org_id}")
+}
+
+delete_all_folders_in_org() {
+  local org_id="$1"
+  local uid
+  while IFS= read -r uid; do
+    [[ -n "${uid}" ]] || continue
+    delete_folder "${org_id}" "${uid}" "${uid}"
+  done < <(list_folder_uids "${org_id}")
+}
+
+delete_all_datasources_in_org() {
+  local org_id="$1"
+  local uid name
+  request_json GET "/api/datasources" "" "${org_id}"
+  while IFS=$'\t' read -r uid name; do
+    [[ -n "${uid}" ]] || continue
+    delete_datasource "${org_id}" "${uid}" "${name}"
+  done < <(printf '%s' "${HTTP_BODY}" | jq -r '.[] | [.uid, .name] | @tsv')
+}
+
+delete_all_alert_rules_in_org() {
+  local org_id="$1"
+  local uid
+  request_json GET "/api/v1/provisioning/alert-rules" "" "${org_id}"
+  while IFS= read -r uid; do
+    [[ -n "${uid}" ]] || continue
+    request_json DELETE "/api/v1/provisioning/alert-rules/${uid}" "" "${org_id}"
+    printf 'Deleted alert rule %s (org %s)\n' "${uid}" "${org_id}"
+  done < <(printf '%s' "${HTTP_BODY}" | jq -r '.[]?.uid // empty')
+}
+
+delete_all_teams_in_org() {
+  local org_id="$1"
+  local team_id name
+  request_json GET "/api/teams/search?perpage=1000&page=1" "" "${org_id}"
+  while IFS=$'\t' read -r team_id name; do
+    [[ -n "${team_id}" ]] || continue
+    request_json DELETE "/api/teams/${team_id}" "" "${org_id}"
+    printf 'Deleted team %s (org %s)\n' "${name}" "${org_id}"
+  done < <(printf '%s' "${HTTP_BODY}" | jq -r '.teams[]? | [.id, .name] | @tsv')
+}
+
+delete_all_service_accounts_in_org() {
+  local org_id="$1"
+  local sa_id name
+  request_json GET "/api/serviceaccounts/search?perpage=1000&page=1" "" "${org_id}"
+  while IFS=$'\t' read -r sa_id name; do
+    [[ -n "${sa_id}" ]] || continue
+    request_json DELETE "/api/serviceaccounts/${sa_id}" "" "${org_id}"
+    printf 'Deleted service account %s (org %s)\n' "${name}" "${org_id}"
+  done < <(printf '%s' "${HTTP_BODY}" | jq -r '.serviceAccounts[]? | [.id, .name] | @tsv')
+}
+
+delete_non_admin_users() {
+  local keep_login="$1"
+  local user_id login is_admin
+  request_json GET "/api/users?perpage=1000&page=1"
+  while IFS=$'\t' read -r user_id login is_admin; do
+    [[ -n "${user_id}" ]] || continue
+    if [[ "${login}" == "${keep_login}" ]]; then
+      continue
+    fi
+    if [[ "${is_admin}" == "true" ]]; then
+      continue
+    fi
+    request_json DELETE "/api/admin/users/${user_id}"
+    printf 'Deleted user %s\n' "${login}"
+  done < <(printf '%s' "${HTTP_BODY}" | jq -r '.[]? | [.id, .login, (.isGrafanaAdmin // false)] | @tsv')
+}
+
+delete_non_default_orgs() {
+  local org_id
+  while IFS= read -r org_id; do
+    [[ -n "${org_id}" ]] || continue
+    if [[ "${org_id}" == "1" ]]; then
+      continue
+    fi
+    request_json DELETE "/api/orgs/${org_id}"
+    printf 'Deleted org %s\n' "${org_id}"
+  done < <(list_org_ids)
+}
+
+reset_all_data() {
+  local keep_login
+  keep_login="$(current_admin_login)"
+  [[ -n "${keep_login}" ]] || fail "failed to detect current Grafana login"
+
+  delete_non_default_orgs
+  delete_all_alert_rules_in_org "1"
+  delete_all_dashboards_in_org "1"
+  delete_all_folders_in_org "1"
+  delete_all_datasources_in_org "1"
+  delete_all_teams_in_org "1"
+  delete_all_service_accounts_in_org "1"
+  delete_non_admin_users "${keep_login}"
 }
 
 dashboard_smoke_main() {
@@ -530,6 +680,14 @@ main() {
         DESTROY_MODE=true
         shift
         ;;
+      --reset-all-data)
+        RESET_ALL_DATA_MODE=true
+        shift
+        ;;
+      --yes)
+        CONFIRMED_RESET=true
+        shift
+        ;;
       -h|--help)
         usage
         exit 0
@@ -543,6 +701,18 @@ main() {
   require_tool curl
   require_tool jq
   ensure_health
+
+  if [[ "${RESET_ALL_DATA_MODE}" == "true" ]]; then
+    if [[ "${CONFIRMED_RESET}" != "true" ]]; then
+      fail "--reset-all-data requires --yes"
+    fi
+    if [[ "${DESTROY_MODE}" == "true" ]]; then
+      fail "choose either --destroy or --reset-all-data"
+    fi
+    reset_all_data
+    printf 'Reset repo-relevant Grafana test data at %s\n' "${GRAFANA_URL}"
+    return
+  fi
 
   if [[ "${DESTROY_MODE}" == "true" ]]; then
     destroy_extra_org "Audit Org" "audit-prom" "Audit Prometheus" "audit-home"

@@ -694,6 +694,7 @@ The repo root includes a [`Makefile`](Makefile):
 - `make build-rust-linux-amd64-zig`
 - `make seed-grafana-sample-data`
 - `make destroy-grafana-sample-data`
+- `make reset-grafana-all-data`
 - `make build`
 - `make test-python`
 - `make test-rust`
@@ -815,6 +816,12 @@ Destroy the same developer sample data from a running local Grafana:
 make destroy-grafana-sample-data
 ```
 
+Dangerous developer reset for a disposable local Grafana:
+
+```bash
+make reset-grafana-all-data
+```
+
 Notes:
 
 - requires Docker plus local access to the Docker daemon
@@ -834,9 +841,11 @@ Developer sample-data seed notes:
 
 - `make seed-grafana-sample-data` runs `scripts/seed-grafana-sample-data.sh`
 - `make destroy-grafana-sample-data` runs `scripts/seed-grafana-sample-data.sh --destroy`
+- `make reset-grafana-all-data` runs `scripts/seed-grafana-sample-data.sh --reset-all-data --yes`
 - defaults to `http://localhost:3000` with `admin/admin`
 - seeds idempotent sample orgs, datasources, folders, and dashboards for manual CLI testing
 - destroy mode removes only the known sample dashboards, folders, datasources, and extra sample orgs
+- reset-all-data mode is for disposable developer Grafana instances and deletes repo-relevant test data such as extra orgs, dashboards, folders, datasources, teams, service accounts, alert rules, and non-admin users
 - useful overrides: `GRAFANA_URL`, `GRAFANA_USER`, `GRAFANA_PASSWORD`
 
 ## Authentication and TLS

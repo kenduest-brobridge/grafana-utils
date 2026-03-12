@@ -410,9 +410,11 @@ Developer sample-data seed notes:
 
 - `make seed-grafana-sample-data` runs `scripts/seed-grafana-sample-data.sh`
 - `make destroy-grafana-sample-data` runs `scripts/seed-grafana-sample-data.sh --destroy`
+- `make reset-grafana-all-data` runs `scripts/seed-grafana-sample-data.sh --reset-all-data --yes`
 - defaults to `http://localhost:3000` with `admin/admin`
 - the script is idempotent and reuses existing orgs, datasources, and folders when possible
 - destroy mode removes only the known sample resources; it does not wipe arbitrary Grafana content
+- reset-all-data mode is intentionally destructive and is only for disposable local Grafana instances used during developer testing
 - current seeded layout covers:
   - org `1` with `Smoke Prometheus`, `Smoke Loki`, `Platform`, `Platform / Infra`, and dashboards `smoke-main`, `smoke-prom-only`, `query-smoke`, `subfolder-main`
   - org `2` `Org Two` with dashboard `org-two-main`

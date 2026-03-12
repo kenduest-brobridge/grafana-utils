@@ -1,11 +1,11 @@
 # ai-changes.md
 
 ## 2026-03-12 - Add Developer Grafana Sample-Data Seed Script
-- Summary: Added `scripts/seed-grafana-sample-data.sh` plus `make seed-grafana-sample-data` and `make destroy-grafana-sample-data` so developers can seed and clean up a running Grafana with a stable manual-testing dataset instead of recreating sample orgs and dashboards ad hoc during interactive sessions. The script seeds fixed datasource, folder, and dashboard uids and uses overwrite or lookup flows so it can be rerun safely, while destroy mode removes only the known sample resources.
+- Summary: Added `scripts/seed-grafana-sample-data.sh` plus `make seed-grafana-sample-data`, `make destroy-grafana-sample-data`, and `make reset-grafana-all-data` so developers can seed, clean up, or aggressively reset a running Grafana with a stable manual-testing dataset instead of recreating sample orgs and dashboards ad hoc during interactive sessions. The script seeds fixed datasource, folder, and dashboard uids and uses overwrite or lookup flows so it can be rerun safely, while destroy mode removes only the known sample resources and reset mode clears the broader repo-relevant test surface in a disposable instance.
 - Tests: Added shell-level validation for the new script and Make help output.
 - Test Run: `bash -n scripts/seed-grafana-sample-data.sh`; `bash ./scripts/seed-grafana-sample-data.sh --help`; `make help`
 - Reason: Repeated live testing was depending on hand-created sample orgs, subfolders, and dashboards, which made manual verification slower and less reproducible.
-- Validation: Verified the script help text documents both seed and destroy behavior and that the repo exposes both workflows through dedicated Make targets.
+- Validation: Verified the script help text documents seed, destroy, and reset behavior and that the repo exposes all three workflows through dedicated Make targets.
 - Impact: `scripts/seed-grafana-sample-data.sh`, `Makefile`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
 - Rollback/Risk: Low. The feature is additive and opt-in, though it assumes admin Basic auth to seed orgs and dashboards into a running Grafana.
 

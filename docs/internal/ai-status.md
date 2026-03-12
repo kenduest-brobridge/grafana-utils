@@ -4,8 +4,8 @@
 - State: Done
 - Scope: `scripts/seed-grafana-sample-data.sh`, `Makefile`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
 - Baseline: Developer live testing was relying on one-off manual API calls to create sample datasources, folders, dashboards, and extra orgs. That made repeated verification of `list-dashboard`, `export-dashboard`, and `list-data-sources` less reproducible.
-- Current Update: Added `make seed-grafana-sample-data`, `make destroy-grafana-sample-data`, and a dedicated shell script that seeds or removes a running Grafana test dataset with stable sample orgs, datasources, folders, and dashboards using fixed ids and overwrite-friendly upserts.
-- Result: Developers now have repo-owned setup and cleanup commands for rebuilding the same manual test dataset instead of repeating ad hoc setup steps during local Grafana testing.
+- Current Update: Added `make seed-grafana-sample-data`, `make destroy-grafana-sample-data`, `make reset-grafana-all-data`, and a dedicated shell script that seeds, removes, or aggressively resets a running Grafana test dataset with stable sample orgs, datasources, folders, and dashboards using fixed ids and overwrite-friendly upserts.
+- Result: Developers now have repo-owned setup, cleanup, and disposable-instance reset commands for rebuilding the same manual test dataset instead of repeating ad hoc setup steps during local Grafana testing.
 
 ## 2026-03-12 - Task: Add Prompted Basic-Auth Password Support
 - State: Done
