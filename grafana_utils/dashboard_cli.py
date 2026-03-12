@@ -65,6 +65,7 @@ RAW_EXPORT_SUBDIR = "raw"
 PROMPT_EXPORT_SUBDIR = "prompt"
 EXPORT_METADATA_FILENAME = "export-metadata.json"
 FOLDER_INVENTORY_FILENAME = "folders.json"
+DATASOURCE_INVENTORY_FILENAME = "datasources.json"
 TOOL_SCHEMA_VERSION = 1
 ROOT_INDEX_KIND = "grafana-utils-dashboard-export-index"
 
@@ -612,7 +613,13 @@ def discover_dashboard_files(import_dir: Path) -> List[Path]:
     files = [
         path
         for path in sorted(import_dir.rglob("*.json"))
-        if path.name not in {"index.json", EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME}
+        if path.name
+        not in {
+            "index.json",
+            EXPORT_METADATA_FILENAME,
+            FOLDER_INVENTORY_FILENAME,
+            DATASOURCE_INVENTORY_FILENAME,
+        }
     ]
     if not files:
         raise GrafanaError(f"No dashboard JSON files found in {import_dir}")
@@ -737,6 +744,7 @@ def build_export_metadata(
     dashboard_count: int,
     format_name: Optional[str] = None,
     folders_file: Optional[str] = None,
+    datasources_file: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Describe one export directory in a small, versioned manifest."""
     metadata = {
@@ -750,6 +758,8 @@ def build_export_metadata(
         metadata["format"] = format_name
     if folders_file:
         metadata["foldersFile"] = folders_file
+    if datasources_file:
+        metadata["datasourcesFile"] = datasources_file
     return metadata
 
 
@@ -841,6 +851,45 @@ def load_folder_inventory(
                 "title": str(item.get("title") or ""),
                 "parentUid": str(item.get("parentUid") or ""),
                 "path": str(item.get("path") or ""),
+                "org": str(item.get("org") or ""),
+                "orgId": str(item.get("orgId") or ""),
+            }
+        )
+    return records
+
+
+def load_datasource_inventory(
+    import_dir: Path,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, str]]:
+    datasources_file = DATASOURCE_INVENTORY_FILENAME
+    if isinstance(metadata, dict):
+        datasources_file = str(
+            metadata.get("datasourcesFile") or DATASOURCE_INVENTORY_FILENAME
+        )
+    path = import_dir / datasources_file
+    if not path.is_file():
+        return []
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise GrafanaError("Failed to read %s: %s" % (path, exc)) from exc
+    except json.JSONDecodeError as exc:
+        raise GrafanaError("Invalid JSON in %s: %s" % (path, exc)) from exc
+    if not isinstance(raw, list):
+        raise GrafanaError("Datasource inventory file must contain a JSON array: %s" % path)
+    records: List[Dict[str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            raise GrafanaError("Datasource inventory entry must be a JSON object: %s" % path)
+        records.append(
+            {
+                "uid": str(item.get("uid") or ""),
+                "name": str(item.get("name") or ""),
+                "type": str(item.get("type") or ""),
+                "access": str(item.get("access") or ""),
+                "url": str(item.get("url") or ""),
+                "isDefault": str(item.get("isDefault") or "false"),
                 "org": str(item.get("org") or ""),
                 "orgId": str(item.get("orgId") or ""),
             }
@@ -1422,11 +1471,15 @@ def export_dashboards(args: argparse.Namespace) -> int:
         if all_orgs:
             scoped_output_dir = build_all_orgs_output_dir(output_dir, org)
         raw_dir, prompt_dir = build_export_variant_dirs(scoped_output_dir)
+        datasource_inventory = [
+            build_datasource_inventory_record(item, org)
+            for item in scoped_client.list_datasources()
+        ]
         datasource_catalog = None
         if export_prompt:
             # Prompt exports need datasource metadata up front so dashboard references
             # can be rewritten into Grafana's __inputs import format.
-            datasource_catalog = build_datasource_catalog(scoped_client.list_datasources())
+            datasource_catalog = build_datasource_catalog(datasource_inventory)
 
         summaries = attach_dashboard_org(
             scoped_client,
@@ -1444,6 +1497,7 @@ def export_dashboards(args: argparse.Namespace) -> int:
                 raw_dir,
                 prompt_dir,
                 datasource_catalog,
+                datasource_inventory,
                 summaries,
                 folder_inventory,
             )
@@ -1452,6 +1506,7 @@ def export_dashboards(args: argparse.Namespace) -> int:
     index_items: List[Dict[str, str]] = []
     processed_dashboards = 0
     folder_inventory = []
+    datasource_inventory = []
     for (
         _,
         scoped_client,
@@ -1459,10 +1514,12 @@ def export_dashboards(args: argparse.Namespace) -> int:
         raw_dir,
         prompt_dir,
         datasource_catalog,
+        scoped_datasource_inventory,
         summaries,
         scoped_folder_inventory,
     ) in org_exports:
         folder_inventory.extend(scoped_folder_inventory)
+        datasource_inventory.extend(scoped_datasource_inventory)
         for summary in summaries:
             processed_dashboards += 1
             uid = str(summary["uid"])
@@ -1545,11 +1602,13 @@ def export_dashboards(args: argparse.Namespace) -> int:
     raw_index_path = None
     raw_metadata_path = None
     raw_folders_path = None
+    raw_datasources_path = None
     if export_raw:
         raw_variant_dir = output_dir / RAW_EXPORT_SUBDIR if all_orgs else raw_dir
         raw_index_path = raw_variant_dir / "index.json"
         raw_metadata_path = raw_variant_dir / EXPORT_METADATA_FILENAME
         raw_folders_path = raw_variant_dir / FOLDER_INVENTORY_FILENAME
+        raw_datasources_path = raw_variant_dir / DATASOURCE_INVENTORY_FILENAME
         raw_index = build_variant_index(
             index_items,
             "raw_path",
@@ -1560,11 +1619,13 @@ def export_dashboards(args: argparse.Namespace) -> int:
             dashboard_count=len(raw_index),
             format_name="grafana-web-import-preserve-uid",
             folders_file=FOLDER_INVENTORY_FILENAME,
+            datasources_file=DATASOURCE_INVENTORY_FILENAME,
         )
         if not args.dry_run:
             write_json_document(raw_index, raw_index_path)
             write_json_document(raw_metadata, raw_metadata_path)
             write_json_document(folder_inventory, raw_folders_path)
+            write_json_document(datasource_inventory, raw_datasources_path)
     prompt_index_path = None
     prompt_metadata_path = None
     if export_prompt:
@@ -1600,6 +1661,8 @@ def export_dashboards(args: argparse.Namespace) -> int:
         summary_parts.append(f"Raw index: {raw_index_path}")
     if raw_metadata_path is not None:
         summary_parts.append(f"Raw manifest: {raw_metadata_path}")
+    if raw_datasources_path is not None:
+        summary_parts.append(f"Raw datasources: {raw_datasources_path}")
     if prompt_index_path is not None:
         summary_parts.append(f"Prompt index: {prompt_index_path}")
     if prompt_metadata_path is not None:
@@ -2017,6 +2080,17 @@ def build_data_source_record(datasource: Dict[str, Any]) -> Dict[str, str]:
     }
 
 
+def build_datasource_inventory_record(
+    datasource: Dict[str, Any],
+    org: Dict[str, Any],
+) -> Dict[str, str]:
+    record = build_data_source_record(datasource)
+    record["access"] = str(datasource.get("access") or "")
+    record["org"] = str(org.get("name") or "Main Org.")
+    record["orgId"] = str(org.get("id") or "1")
+    return record
+
+
 def render_data_source_table(
     datasources: List[Dict[str, Any]],
     include_header: bool = True,
@@ -2263,11 +2337,35 @@ def describe_export_datasource_ref(ref: Any) -> Optional[str]:
     return None
 
 
+def summarize_datasource_inventory_usage(
+    datasource: Dict[str, str],
+    usage_by_label: Dict[str, Dict[str, Any]],
+) -> Dict[str, int]:
+    labels = []
+    uid = str(datasource.get("uid") or "").strip()
+    name = str(datasource.get("name") or "").strip()
+    if uid:
+        labels.append(uid)
+    if name and name not in labels:
+        labels.append(name)
+    reference_count = 0
+    dashboards = set()
+    for label in labels:
+        usage = usage_by_label.get(label) or {}
+        reference_count += int(usage.get("referenceCount") or 0)
+        dashboards.update(usage.get("dashboards") or set())
+    return {
+        "referenceCount": reference_count,
+        "dashboardCount": len(dashboards),
+    }
+
+
 def build_export_inspection_document(import_dir: Path) -> Dict[str, Any]:
     """Analyze one raw export directory and summarize dashboard structure."""
     metadata = load_export_metadata(import_dir, expected_variant=RAW_EXPORT_SUBDIR)
     dashboard_files = discover_dashboard_files(import_dir)
     folder_inventory = load_folder_inventory(import_dir, metadata)
+    datasource_inventory = load_datasource_inventory(import_dir, metadata)
     folder_lookup = build_folder_inventory_lookup(folder_inventory)
     folder_paths = OrderedDict()
     datasource_usage: Dict[str, Dict[str, Any]] = {}
@@ -2363,6 +2461,31 @@ def build_export_inspection_document(import_dir: Path) -> Dict[str, Any]:
             }
         )
 
+    datasource_inventory_records = []
+    for datasource in sorted(
+        datasource_inventory,
+        key=lambda item: (
+            str(item.get("orgId") or ""),
+            str(item.get("name") or ""),
+            str(item.get("uid") or ""),
+        ),
+    ):
+        usage = summarize_datasource_inventory_usage(datasource, datasource_usage)
+        datasource_inventory_records.append(
+            {
+                "uid": str(datasource.get("uid") or ""),
+                "name": str(datasource.get("name") or ""),
+                "type": str(datasource.get("type") or ""),
+                "access": str(datasource.get("access") or ""),
+                "url": str(datasource.get("url") or ""),
+                "isDefault": str(datasource.get("isDefault") or "false"),
+                "org": str(datasource.get("org") or ""),
+                "orgId": str(datasource.get("orgId") or ""),
+                "referenceCount": usage["referenceCount"],
+                "dashboardCount": usage["dashboardCount"],
+            }
+        )
+
     folder_records = [
         {"path": path, "dashboardCount": count}
         for path, count in folder_paths.items()
@@ -2376,9 +2499,11 @@ def build_export_inspection_document(import_dir: Path) -> Dict[str, Any]:
             "panelCount": total_panels,
             "queryCount": total_queries,
             "mixedDatasourceDashboardCount": len(mixed_dashboards),
+            "datasourceInventoryCount": len(datasource_inventory_records),
         },
         "folders": folder_records,
         "datasources": datasource_records,
+        "datasourceInventory": datasource_inventory_records,
         "mixedDatasourceDashboards": mixed_dashboards,
         "dashboards": dashboards,
     }
@@ -2389,6 +2514,7 @@ def render_export_inspection_summary(document: Dict[str, Any], import_dir: Path)
     summary = document.get("summary") or {}
     folder_records = list(document.get("folders") or [])
     datasource_records = list(document.get("datasources") or [])
+    datasource_inventory = list(document.get("datasourceInventory") or [])
     mixed_dashboards = list(document.get("mixedDatasourceDashboards") or [])
     lines = [
         "Export inspection: %s" % import_dir,
@@ -2396,6 +2522,8 @@ def render_export_inspection_summary(document: Dict[str, Any], import_dir: Path)
         "Folders: %s" % int(summary.get("folderCount") or 0),
         "Panels: %s" % int(summary.get("panelCount") or 0),
         "Queries: %s" % int(summary.get("queryCount") or 0),
+        "Datasource inventory: %s"
+        % int(summary.get("datasourceInventoryCount") or 0),
         "Mixed datasource dashboards: %s"
         % int(summary.get("mixedDatasourceDashboardCount") or 0),
     ]
@@ -2418,6 +2546,24 @@ def render_export_inspection_summary(document: Dict[str, Any], import_dir: Path)
                 "- %s (%s refs across %s dashboards)"
                 % (
                     str(record.get("name") or ""),
+                    int(record.get("referenceCount") or 0),
+                    int(record.get("dashboardCount") or 0),
+                )
+            )
+    if datasource_inventory:
+        lines.append("")
+        lines.append("Datasource inventory:")
+        for record in datasource_inventory:
+            lines.append(
+                "- [%s] %s uid=%s type=%s access=%s url=%s isDefault=%s refs=%s dashboards=%s"
+                % (
+                    str(record.get("orgId") or ""),
+                    str(record.get("name") or ""),
+                    str(record.get("uid") or ""),
+                    str(record.get("type") or ""),
+                    str(record.get("access") or ""),
+                    str(record.get("url") or ""),
+                    str(record.get("isDefault") or "false"),
                     int(record.get("referenceCount") or 0),
                     int(record.get("dashboardCount") or 0),
                 )
@@ -2471,10 +2617,11 @@ def render_export_inspection_tables(
     summary = document.get("summary") or {}
     folder_records = list(document.get("folders") or [])
     datasource_records = list(document.get("datasources") or [])
+    datasource_inventory = list(document.get("datasourceInventory") or [])
     mixed_dashboards = list(document.get("mixedDatasourceDashboards") or [])
     lines = ["Export inspection: %s" % import_dir, ""]
 
-    lines.append("Summary:")
+    lines.append("# Summary")
     lines.extend(
         render_export_inspection_table_section(
             ["METRIC", "VALUE"],
@@ -2483,6 +2630,10 @@ def render_export_inspection_tables(
                 ["folder_count", str(int(summary.get("folderCount") or 0))],
                 ["panel_count", str(int(summary.get("panelCount") or 0))],
                 ["query_count", str(int(summary.get("queryCount") or 0))],
+                [
+                    "datasource_inventory_count",
+                    str(int(summary.get("datasourceInventoryCount") or 0)),
+                ],
                 [
                     "mixed_datasource_dashboard_count",
                     str(int(summary.get("mixedDatasourceDashboardCount") or 0)),
@@ -2494,7 +2645,7 @@ def render_export_inspection_tables(
 
     if folder_records:
         lines.append("")
-        lines.append("Folder paths:")
+        lines.append("# Folder paths")
         lines.extend(
             render_export_inspection_table_section(
                 ["FOLDER_PATH", "DASHBOARDS"],
@@ -2511,7 +2662,7 @@ def render_export_inspection_tables(
 
     if datasource_records:
         lines.append("")
-        lines.append("Datasource usage:")
+        lines.append("# Datasource usage")
         lines.extend(
             render_export_inspection_table_section(
                 ["DATASOURCE", "REFS", "DASHBOARDS"],
@@ -2527,9 +2678,43 @@ def render_export_inspection_tables(
             )
         )
 
+    if datasource_inventory:
+        lines.append("")
+        lines.append("# Datasource inventory")
+        lines.extend(
+            render_export_inspection_table_section(
+                [
+                    "ORG_ID",
+                    "UID",
+                    "NAME",
+                    "TYPE",
+                    "ACCESS",
+                    "URL",
+                    "IS_DEFAULT",
+                    "REFS",
+                    "DASHBOARDS",
+                ],
+                [
+                    [
+                        str(record.get("orgId") or ""),
+                        str(record.get("uid") or ""),
+                        str(record.get("name") or ""),
+                        str(record.get("type") or ""),
+                        str(record.get("access") or ""),
+                        str(record.get("url") or ""),
+                        str(record.get("isDefault") or "false"),
+                        str(int(record.get("referenceCount") or 0)),
+                        str(int(record.get("dashboardCount") or 0)),
+                    ]
+                    for record in datasource_inventory
+                ],
+                include_header=include_header,
+            )
+        )
+
     if mixed_dashboards:
         lines.append("")
-        lines.append("Mixed datasource dashboards:")
+        lines.append("# Mixed datasource dashboards")
         lines.extend(
             render_export_inspection_table_section(
                 ["UID", "TITLE", "FOLDER_PATH", "DATASOURCES"],

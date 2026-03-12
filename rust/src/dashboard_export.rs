@@ -12,11 +12,12 @@ use super::dashboard_list::{
 };
 use super::{
     build_datasource_catalog, build_export_metadata, build_external_export_document,
-    build_http_client, build_http_client_for_org, build_preserved_web_import_document,
+    build_datasource_inventory_record, build_http_client, build_http_client_for_org,
+    build_preserved_web_import_document,
     build_root_export_index, build_variant_index, fetch_dashboard_with_request,
     list_dashboard_summaries_with_request, list_datasources_with_request, write_dashboard,
-    write_json_document, ExportArgs, EXPORT_METADATA_FILENAME, PROMPT_EXPORT_SUBDIR,
-    RAW_EXPORT_SUBDIR,
+    write_json_document, DATASOURCE_INVENTORY_FILENAME, ExportArgs,
+    EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME, PROMPT_EXPORT_SUBDIR, RAW_EXPORT_SUBDIR,
 };
 
 pub fn build_output_path(output_dir: &Path, summary: &Map<String, Value>, flat: bool) -> PathBuf {
@@ -120,12 +121,15 @@ where
     if !args.dry_run && !args.without_dashboard_prompt {
         fs::create_dir_all(&prompt_dir)?;
     }
+    let datasource_list = list_datasources_with_request(&mut scoped_request)?;
+    let datasource_inventory = datasource_list
+        .iter()
+        .map(|datasource| build_datasource_inventory_record(datasource, &current_org))
+        .collect::<Vec<_>>();
     let datasource_catalog = if args.without_dashboard_prompt {
         None
     } else {
-        Some(build_datasource_catalog(&list_datasources_with_request(
-            &mut scoped_request,
-        )?))
+        Some(build_datasource_catalog(&datasource_list))
     };
 
     let summaries = list_dashboard_summaries_with_request(&mut scoped_request, args.page_size)?;
@@ -133,6 +137,8 @@ where
         return Ok(0);
     }
     let summaries = attach_dashboard_org_metadata(&summaries, &current_org);
+    let folder_inventory =
+        super::collect_folder_inventory_with_request(&mut scoped_request, &summaries)?;
 
     let mut exported_count = 0;
     let mut index_items = Vec::new();
@@ -198,6 +204,8 @@ where
         };
         let index_path = variant_dir.join("index.json");
         let metadata_path = variant_dir.join(EXPORT_METADATA_FILENAME);
+        let folder_inventory_path = variant_dir.join(FOLDER_INVENTORY_FILENAME);
+        let datasource_inventory_path = variant_dir.join(DATASOURCE_INVENTORY_FILENAME);
         if !args.dry_run {
             write_json_document(
                 &build_variant_index(
@@ -215,9 +223,13 @@ where
                         .filter(|item| item.raw_path.is_some())
                         .count(),
                     Some("grafana-web-import-preserve-uid"),
+                    Some(FOLDER_INVENTORY_FILENAME),
+                    Some(DATASOURCE_INVENTORY_FILENAME),
                 ),
                 &metadata_path,
             )?;
+            write_json_document(&folder_inventory, &folder_inventory_path)?;
+            write_json_document(&datasource_inventory, &datasource_inventory_path)?;
         }
         raw_index_path = Some(index_path);
     }
@@ -247,6 +259,8 @@ where
                         .filter(|item| item.prompt_path.is_some())
                         .count(),
                     Some("grafana-web-import-with-datasource-inputs"),
+                    None,
+                    None,
                 ),
                 &metadata_path,
             )?;
@@ -259,11 +273,12 @@ where
                 &index_items,
                 raw_index_path.as_deref(),
                 prompt_index_path.as_deref(),
+                &folder_inventory,
             ),
             &args.export_dir.join("index.json"),
         )?;
         write_json_document(
-            &build_export_metadata("root", index_items.len(), None),
+            &build_export_metadata("root", index_items.len(), None, None, None),
             &args.export_dir.join(EXPORT_METADATA_FILENAME),
         )?;
     }

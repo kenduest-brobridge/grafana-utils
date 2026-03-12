@@ -482,8 +482,8 @@ Use `prompt/` when you want:
 | `--progress` | For `export-dashboard` or `import-dashboard`, print concise per-dashboard `current/total` progress lines while the command runs |
 | `-v, --verbose` | For `export-dashboard` or `import-dashboard`, print detailed per-item output including variants, paths, and import results; overrides `--progress` |
 | `import-dashboard --dry-run --table` | Render dry-run import predictions as a table showing `uid`, destination state, action, destination folder path, and file |
-| `inspect-export --json` | Analyze a raw export directory and emit machine-readable structure summary including folder paths, panels, queries, datasource usage, and mixed dashboards |
-| `inspect-export --table` | Analyze a raw export directory and render multi-section tables for summary, folder paths, datasource usage, and mixed dashboards |
+| `inspect-export --json` | Analyze a raw export directory and emit machine-readable structure summary including folder paths, panels, queries, datasource usage, datasource inventory, and mixed dashboards |
+| `inspect-export --table` | Analyze a raw export directory and render multi-section tables for summary, folder paths, datasource usage, datasource inventory, and mixed dashboards |
 | `--update-existing-only` | For `import-dashboard`, update only dashboards whose UID already exists in Grafana and skip missing dashboards instead of creating them |
 | `--ensure-folders` | For `import-dashboard`, read `raw/folders.json` and create any missing destination folder chain before importing dashboards |
 | `list-data-sources --table|--csv|--json` | List live Grafana data sources in human-readable or machine-readable output |
@@ -522,9 +522,9 @@ For dashboard export:
 - `import-dashboard --dry-run --table --no-header` omits the dry-run table header row
 - `import-dashboard --update-existing-only` updates only existing dashboard UIDs, skips missing dashboards, and implies `--replace-existing`
 - `import-dashboard` now prints an `Import mode: ...` line up front so you can see whether the run is `create-only`, `create-or-update`, or `update-or-skip-missing`
-- `inspect-export` analyzes a raw export directory offline and summarizes dashboard count, folder paths, panels, queries, datasource usage, and mixed-datasource dashboards
+- `inspect-export` analyzes a raw export directory offline and summarizes dashboard count, folder paths, panels, queries, datasource usage, datasource inventory, and mixed-datasource dashboards
 - `inspect-export --json` emits the same analysis as one JSON document for scripts or CI checks
-- `inspect-export --table` renders the same analysis as multiple tables for summary, folder paths, datasource usage, and mixed dashboards
+- `inspect-export --table` renders the same analysis as multiple tables for summary, folder paths, datasource usage, datasource inventory, and mixed dashboards
 - `inspect-export --table --no-header` suppresses each section's header row when you need compact copy/paste output
 
 For datasource listing:
@@ -632,7 +632,7 @@ Important rules:
 - when updating an existing dashboard by `uid`, import preserves the destination Grafana folder by default unless you explicitly pass `--import-folder-uid`
 - `diff` compares local raw files with the live Grafana dashboard payload and returns exit code `1` when differences are found
 
-Dashboard export also writes small versioned manifest files named `export-metadata.json` at the root and per-variant directories. The raw export additionally writes `raw/folders.json` with folder `uid`, `title`, `parentUid`, `path`, `org`, and `orgId` records so later imports can recreate the destination folder chain when needed.
+Dashboard export also writes small versioned manifest files named `export-metadata.json` at the root and per-variant directories. The raw export additionally writes `raw/folders.json` with folder `uid`, `title`, `parentUid`, `path`, `org`, and `orgId` records plus `raw/datasources.json` with datasource `uid`, `name`, `type`, `access`, `url`, `isDefault`, `org`, and `orgId` records so later offline inspection can compare usage against the exported Grafana datasource inventory.
 
 ## Alerting Utility
 

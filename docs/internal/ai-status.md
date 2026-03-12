@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-13 - Task: Export Datasource Inventory With Raw Dashboard Exports
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_export.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Raw dashboard export already wrote `folders.json`, but it did not persist the live Grafana datasource catalog anywhere. `inspect-export` could summarize datasource references seen inside dashboard JSON, but it could not report the exported datasource inventory or compare unused datasources against dashboard usage offline.
+- Current Update: Added `raw/datasources.json` plus `export-metadata.json::datasourcesFile`, wrote datasource inventory records during Python and Rust raw exports, and extended `inspect-export` human, table, and JSON outputs to include datasource inventory records with usage counts derived from dashboard references.
+- Result: Raw exports now carry both folder and datasource inventories, and offline inspection can show which exported datasources are used, unused, or only partially referenced across the exported dashboards.
+
 ## 2026-03-12 - Task: Align Prompt Export Labels With Grafana External Export
 - State: Done
 - Scope: `grafana_utils/dashboards/transformer.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard_prompt.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
@@ -118,6 +125,13 @@
 - Baseline: Dashboard import either created missing dashboards or failed on existing ones unless `--replace-existing` was set, but there was no mode for large local batches that should update only existing dashboard UIDs and ignore everything else.
 - Current Update: Added `--update-existing-only` in Python and Rust dashboard import flows so matching UIDs update, missing UIDs are skipped, dry-run predicts `skip-missing`, and the summary/output modes report skipped counts clearly.
 - Result: Operators can now point a large local raw export set at Grafana and safely reconcile only the dashboards that already exist there without accidentally creating the rest.
+
+## 2026-03-13 - Task: Add Folder Inventory Export And Ensure-Folders Import
+- State: Done
+- Scope: `grafana_utils/clients/dashboard_client.py`, `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_export.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Raw dashboard export preserved each dashboard's `folderUid`, but there was no exported folder inventory for rebuilding missing destination folders, so cross-environment imports still required manual folder setup.
+- Current Update: Raw dashboard export now writes `raw/folders.json` and records `foldersFile` in the raw export manifest. Dashboard import gained `--ensure-folders`, which uses that inventory to create missing parent/child folders before importing dashboards, and `--dry-run --ensure-folders` now reports folder missing/match/mismatch state so operators can spot folder drift before a real run.
+- Result: Operators can export one environment, move the raw payloads, let the importer recreate the referenced folder chain automatically, and validate folder path parity in dry-run mode instead of pre-creating every folder UID by hand.
 
 ## 2026-03-12 - Task: Consolidate Python And Rust CLIs Under grafana-utils
 - State: Done

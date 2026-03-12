@@ -144,7 +144,7 @@ Dashboard export also writes versioned `export-metadata.json` files at:
 
 Those manifests use `schemaVersion` and `variant` markers so `import` and `diff` can reject directories that are not the expected raw export layout.
 
-The Python CLI also has `inspect-export` for offline raw-export analysis. It reads the raw `export-metadata.json`, `index.json`, `folders.json`, and dashboard files, then summarizes dashboard count, folder paths, panel/query totals, datasource usage, and mixed-datasource dashboards. `inspect-export --json` emits the same analysis as one machine-readable document, while `inspect-export --table` renders the analysis as separate summary, folder-path, datasource-usage, and mixed-dashboard tables.
+The Python CLI also has `inspect-export` for offline raw-export analysis. It reads the raw `export-metadata.json`, `index.json`, `folders.json`, `datasources.json`, and dashboard files, then summarizes dashboard count, folder paths, panel/query totals, datasource usage, datasource inventory, and mixed-datasource dashboards. `inspect-export --json` emits the same analysis as one machine-readable document, while `inspect-export --table` renders the analysis as separate summary, folder-path, datasource-usage, datasource-inventory, and mixed-dashboard tables.
 
 ### Raw export intent
 
@@ -180,6 +180,7 @@ This is why prompt export needs live datasource metadata while raw export does n
 - Files containing `__inputs` should be imported through Grafana web UI.
 - Import can override folder destination with `--import-folder-uid`.
 - Raw export writes `raw/folders.json` plus `raw/export-metadata.json::foldersFile` so later imports can reconstruct folder `uid`, `title`, `parentUid`, `path`, `org`, and `orgId` inventory.
+- Raw export also writes `raw/datasources.json` plus `raw/export-metadata.json::datasourcesFile` so offline inspection can reconcile datasource `uid`, `name`, `type`, `access`, `url`, `isDefault`, `org`, and `orgId` inventory against dashboard usage.
 - Import `--ensure-folders` reads that raw folder inventory, creates missing parent folders through Grafana's folder API, and rejects the run when the inventory manifest is missing.
 - Import `--dry-run --ensure-folders` inspects the destination folder inventory first and reports missing versus mismatched exported folders so operators can catch path or parent drift before running a real import.
 - Import can set the dashboard version-history message with `--import-message`.
@@ -188,7 +189,7 @@ This is why prompt export needs live datasource metadata while raw export does n
 - Import `--dry-run --json` renders one JSON document with `mode`, `folders`, `dashboards`, and `summary`, and suppresses the normal human-readable progress/summary lines so scripts can parse it safely.
 - Import `--update-existing-only` switches the workflow to `update-or-skip-missing` by dashboard `uid`, implies overwrite-on-existing behavior, and never creates missing dashboards.
 - When import updates an existing dashboard by `uid`, it preserves the destination Grafana folder by default; only an explicit `--import-folder-uid` overrides that folder placement.
-- `inspect-export` is a local raw-export analysis workflow; it does not call Grafana APIs and instead reads `raw/export-metadata.json`, `raw/folders.json`, and dashboard JSON files to summarize folder paths, panels, queries, datasource references, and mixed-datasource dashboards.
+- `inspect-export` is a local raw-export analysis workflow; it does not call Grafana APIs and instead reads `raw/export-metadata.json`, `raw/folders.json`, `raw/datasources.json`, and dashboard JSON files to summarize folder paths, panels, queries, datasource references, datasource inventory, and mixed-datasource dashboards.
 - `inspect-export --table --no-header` suppresses the header row for each rendered section table when operators need compact terminal output.
 - Import now prints an `Import mode: ...` line before processing files so operators can confirm the active create/update/skip strategy immediately.
 - `diff` compares normalized local raw payloads against live Grafana dashboard wrappers and prints a unified diff when they differ.

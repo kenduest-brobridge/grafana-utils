@@ -10,8 +10,8 @@ use super::{
     render_dashboard_summary_csv, render_dashboard_summary_json, render_dashboard_summary_table,
     render_data_source_csv, render_data_source_json, render_data_source_table, CommonCliArgs,
     DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs, FolderInventoryStatusKind,
-    ImportArgs, ListArgs, ListDataSourcesArgs, EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME,
-    TOOL_SCHEMA_VERSION,
+    ImportArgs, ListArgs, ListDataSourcesArgs, DATASOURCE_INVENTORY_FILENAME,
+    EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME, TOOL_SCHEMA_VERSION,
 };
 use crate::common::api_response;
 use clap::{CommandFactory, Parser};
@@ -57,6 +57,7 @@ fn build_export_metadata_serializes_expected_shape() {
         2,
         Some("grafana-web-import-preserve-uid"),
         Some(FOLDER_INVENTORY_FILENAME),
+        Some(DATASOURCE_INVENTORY_FILENAME),
     ))
     .unwrap();
 
@@ -69,7 +70,8 @@ fn build_export_metadata_serializes_expected_shape() {
             "dashboardCount": 2,
             "indexFile": "index.json",
             "format": "grafana-web-import-preserve-uid",
-            "foldersFile": "folders.json"
+            "foldersFile": "folders.json",
+            "datasourcesFile": "datasources.json"
         })
     );
 }
@@ -1722,6 +1724,11 @@ fn export_dashboards_with_client_writes_raw_variant_and_indexes() {
                     json!([{ "uid": "abc", "title": "CPU", "folderTitle": "Infra" }]),
                 ));
             }
+            if path == "/api/datasources" {
+                return Ok(Some(json!([
+                    {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus", "url": "http://prometheus:9090", "access": "proxy", "isDefault": true}
+                ])));
+            }
             if path == "/api/dashboards/uid/abc" {
                 return Ok(Some(
                     json!({"dashboard": {"id": 7, "uid": "abc", "title": "CPU"}}),
@@ -1739,7 +1746,7 @@ fn export_dashboards_with_client_writes_raw_variant_and_indexes() {
     assert!(args.export_dir.join("raw/export-metadata.json").is_file());
     assert!(args.export_dir.join("index.json").is_file());
     assert!(args.export_dir.join("export-metadata.json").is_file());
-    assert_eq!(calls.len(), 3);
+    assert_eq!(calls.len(), 4);
 }
 
 #[test]
@@ -1778,6 +1785,9 @@ fn export_dashboards_with_request_with_org_id_scopes_requests() {
                 ("/api/search", Some("7")) => Ok(Some(
                     json!([{ "uid": "abc", "title": "CPU", "folderTitle": "Infra" }]),
                 )),
+                ("/api/datasources", Some("7")) => Ok(Some(json!([
+                    {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus", "url": "http://prometheus:9090", "access": "proxy", "isDefault": true}
+                ]))),
                 ("/api/dashboards/uid/abc", Some("7")) => Ok(Some(
                     json!({"dashboard": {"id": 7, "uid": "abc", "title": "CPU"}}),
                 )),
@@ -2006,9 +2016,15 @@ fn export_dashboards_with_request_all_orgs_aggregates_results() {
                 ("/api/search", Some("1")) => Ok(Some(
                     json!([{ "uid": "abc", "title": "CPU", "folderTitle": "Infra" }]),
                 )),
+                ("/api/datasources", Some("1")) => Ok(Some(json!([
+                    {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus", "url": "http://prometheus:9090", "access": "proxy", "isDefault": true}
+                ]))),
                 ("/api/search", Some("2")) => Ok(Some(
                     json!([{ "uid": "xyz", "title": "Logs", "folderTitle": "Ops" }]),
                 )),
+                ("/api/datasources", Some("2")) => Ok(Some(json!([
+                    {"uid": "logs-main", "name": "Logs Main", "type": "loki", "url": "http://loki:3100", "access": "proxy", "isDefault": false}
+                ]))),
                 ("/api/dashboards/uid/abc", Some("1")) => Ok(Some(
                     json!({"dashboard": {"id": 7, "uid": "abc", "title": "CPU"}}),
                 )),
@@ -2085,6 +2101,9 @@ fn export_dashboards_with_dry_run_keeps_output_dir_empty() {
             "/api/search" => Ok(Some(
                 json!([{ "uid": "abc", "title": "CPU", "folderTitle": "Infra" }]),
             )),
+            "/api/datasources" => Ok(Some(json!([
+                {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus", "url": "http://prometheus:9090", "access": "proxy", "isDefault": true}
+            ]))),
             "/api/dashboards/uid/abc" => Ok(Some(
                 json!({"dashboard": {"id": 7, "uid": "abc", "title": "CPU"}}),
             )),
@@ -2113,7 +2132,8 @@ fn build_export_inspection_summary_reports_structure_and_datasources() {
             "dashboardCount": 2,
             "indexFile": "index.json",
             "format": "grafana-web-import-preserve-uid",
-            "foldersFile": FOLDER_INVENTORY_FILENAME
+            "foldersFile": FOLDER_INVENTORY_FILENAME,
+            "datasourcesFile": DATASOURCE_INVENTORY_FILENAME
         }))
         .unwrap(),
     )
@@ -2126,6 +2146,33 @@ fn build_export_inspection_summary_reports_structure_and_datasources() {
                 "title": "Prod",
                 "parentUid": "apps",
                 "path": "Platform / Team / Apps / Prod",
+                "org": "Main Org.",
+                "orgId": "1"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join(DATASOURCE_INVENTORY_FILENAME),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "loki-a",
+                "name": "Logs Main",
+                "type": "loki",
+                "access": "proxy",
+                "url": "http://loki:3100",
+                "isDefault": "false",
+                "org": "Main Org.",
+                "orgId": "1"
+            },
+            {
+                "uid": "prom-a",
+                "name": "Prometheus Main",
+                "type": "prometheus",
+                "access": "proxy",
+                "url": "http://prometheus:9090",
+                "isDefault": "true",
                 "org": "Main Org.",
                 "orgId": "1"
             }
@@ -2183,6 +2230,7 @@ fn build_export_inspection_summary_reports_structure_and_datasources() {
     assert_eq!(summary.folder_count, 2);
     assert_eq!(summary.panel_count, 2);
     assert_eq!(summary.query_count, 3);
+    assert_eq!(summary.datasource_inventory_count, 2);
     assert_eq!(summary.mixed_dashboard_count, 1);
     assert!(summary
         .folder_paths
@@ -2199,6 +2247,8 @@ fn build_export_inspection_summary_reports_structure_and_datasources() {
         .unwrap();
     assert_eq!(prom_usage.reference_count, 3);
     assert_eq!(prom_usage.dashboard_count, 2);
+    assert_eq!(summary.datasource_inventory[0].dashboard_count, 1);
+    assert_eq!(summary.datasource_inventory[1].reference_count, 3);
     assert_eq!(summary.mixed_dashboards[0].uid, "mixed");
 }
 

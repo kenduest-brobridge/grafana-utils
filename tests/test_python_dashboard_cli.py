@@ -802,6 +802,7 @@ class ExporterTests(unittest.TestCase):
                     dashboard_count=2,
                     format_name="grafana-web-import-preserve-uid",
                     folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                    datasources_file=exporter.DATASOURCE_INVENTORY_FILENAME,
                 ),
                 import_dir / exporter.EXPORT_METADATA_FILENAME,
             )
@@ -821,6 +822,31 @@ class ExporterTests(unittest.TestCase):
                     }
                 ],
                 import_dir / exporter.FOLDER_INVENTORY_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "logs-main",
+                        "name": "Logs Main",
+                        "type": "loki",
+                        "access": "proxy",
+                        "url": "http://loki:3100",
+                        "isDefault": "false",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                    {
+                        "uid": "prom-main",
+                        "name": "Prometheus Main",
+                        "type": "prometheus",
+                        "access": "proxy",
+                        "url": "http://prometheus:9090",
+                        "isDefault": "true",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                ],
+                import_dir / exporter.DATASOURCE_INVENTORY_FILENAME,
             )
             exporter.write_json_document(
                 {
@@ -879,6 +905,8 @@ class ExporterTests(unittest.TestCase):
             self.assertIn("Platform / Infra (1 dashboards)", output)
             self.assertIn("prom-main (2 refs across 2 dashboards)", output)
             self.assertIn("logs-main (1 refs across 1 dashboards)", output)
+            self.assertIn("Datasource inventory: 2", output)
+            self.assertIn("Prometheus Main uid=prom-main", output)
             self.assertIn("Mixed Main (mixed-main) path=Platform / Infra", output)
 
     def test_inspect_export_renders_json(self):
@@ -890,10 +918,26 @@ class ExporterTests(unittest.TestCase):
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
                     folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                    datasources_file=exporter.DATASOURCE_INVENTORY_FILENAME,
                 ),
                 import_dir / exporter.EXPORT_METADATA_FILENAME,
             )
             exporter.write_json_document([], import_dir / exporter.FOLDER_INVENTORY_FILENAME)
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "prom-main",
+                        "name": "Prometheus Main",
+                        "type": "prometheus",
+                        "access": "proxy",
+                        "url": "http://prometheus:9090",
+                        "isDefault": "true",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    }
+                ],
+                import_dir / exporter.DATASOURCE_INVENTORY_FILENAME,
+            )
             exporter.write_json_document(
                 {
                     "dashboard": {
@@ -926,8 +970,11 @@ class ExporterTests(unittest.TestCase):
             self.assertEqual(payload["summary"]["dashboardCount"], 1)
             self.assertEqual(payload["summary"]["panelCount"], 1)
             self.assertEqual(payload["summary"]["queryCount"], 2)
+            self.assertEqual(payload["summary"]["datasourceInventoryCount"], 1)
             self.assertEqual(payload["folders"][0]["path"], "General")
             self.assertEqual(payload["datasources"][0]["name"], "prom-main")
+            self.assertEqual(payload["datasourceInventory"][0]["name"], "Prometheus Main")
+            self.assertEqual(payload["datasourceInventory"][0]["referenceCount"], 1)
             self.assertEqual(payload["dashboards"][0]["folderPath"], "General")
             self.assertFalse(payload["dashboards"][0]["mixedDatasource"])
 
@@ -940,6 +987,7 @@ class ExporterTests(unittest.TestCase):
                     dashboard_count=2,
                     format_name="grafana-web-import-preserve-uid",
                     folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                    datasources_file=exporter.DATASOURCE_INVENTORY_FILENAME,
                 ),
                 import_dir / exporter.EXPORT_METADATA_FILENAME,
             )
@@ -955,6 +1003,31 @@ class ExporterTests(unittest.TestCase):
                     }
                 ],
                 import_dir / exporter.FOLDER_INVENTORY_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "logs-main",
+                        "name": "Logs Main",
+                        "type": "loki",
+                        "access": "proxy",
+                        "url": "http://loki:3100",
+                        "isDefault": "false",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                    {
+                        "uid": "prom-main",
+                        "name": "Prometheus Main",
+                        "type": "prometheus",
+                        "access": "proxy",
+                        "url": "http://prometheus:9090",
+                        "isDefault": "true",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                ],
+                import_dir / exporter.DATASOURCE_INVENTORY_FILENAME,
             )
             exporter.write_json_document(
                 {
@@ -1007,13 +1080,15 @@ class ExporterTests(unittest.TestCase):
 
             output = stdout.getvalue()
             self.assertEqual(result, 0)
-            self.assertIn("Summary:", output)
+            self.assertIn("# Summary", output)
             self.assertIn("METRIC", output)
             self.assertIn("FOLDER_PATH", output)
             self.assertIn("DATASOURCE", output)
             self.assertIn("UID", output)
             self.assertIn("Platform / Infra", output)
             self.assertIn("prom-main", output)
+            self.assertIn("# Datasource inventory", output)
+            self.assertIn("Prometheus Main", output)
             self.assertIn("mixed-main", output)
 
     def test_inspect_export_table_can_omit_header(self):
@@ -1046,7 +1121,7 @@ class ExporterTests(unittest.TestCase):
 
             output = stdout.getvalue()
             self.assertEqual(result, 0)
-            self.assertIn("Summary:", output)
+            self.assertIn("# Summary", output)
             self.assertNotIn("METRIC", output)
 
     def test_inspect_export_rejects_no_header_without_table(self):
@@ -1893,6 +1968,30 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(records[0]["uid"], "child")
         self.assertEqual(records[0]["parentUid"], "parent")
 
+    def test_load_datasource_inventory_reads_exported_manifest(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "prom",
+                        "name": "Prometheus Main",
+                        "type": "prometheus",
+                        "access": "proxy",
+                        "url": "http://prometheus:9090",
+                        "isDefault": "true",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    }
+                ],
+                import_dir / exporter.DATASOURCE_INVENTORY_FILENAME,
+            )
+
+            records = exporter.load_datasource_inventory(import_dir)
+
+        self.assertEqual(records[0]["uid"], "prom")
+        self.assertEqual(records[0]["access"], "proxy")
+
     def test_ensure_folder_inventory_creates_missing_folders_in_order(self):
         client = FakeDashboardWorkflowClient(
             folders={
@@ -2085,6 +2184,16 @@ class ExporterTests(unittest.TestCase):
         client = FakeDashboardWorkflowClient(
             summaries=[summary],
             dashboards={"abc": dashboard},
+            datasources=[
+                {
+                    "uid": "prom-main",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                    "url": "http://prometheus:9090",
+                    "access": "proxy",
+                    "isDefault": True,
+                }
+            ],
             folders={
                 "infra": {
                     "uid": "infra",
@@ -2130,6 +2239,9 @@ class ExporterTests(unittest.TestCase):
             self.assertEqual(raw_metadata["variant"], exporter.RAW_EXPORT_SUBDIR)
             self.assertEqual(raw_metadata["dashboardCount"], 1)
             self.assertEqual(raw_metadata["foldersFile"], exporter.FOLDER_INVENTORY_FILENAME)
+            self.assertEqual(
+                raw_metadata["datasourcesFile"], exporter.DATASOURCE_INVENTORY_FILENAME
+            )
             folder_inventory = json.loads(
                 (
                     Path(tmpdir)
@@ -2139,6 +2251,15 @@ class ExporterTests(unittest.TestCase):
             )
             self.assertEqual(folder_inventory[0]["uid"], "platform")
             self.assertEqual(folder_inventory[1]["uid"], "infra")
+            datasource_inventory = json.loads(
+                (
+                    Path(tmpdir)
+                    / exporter.RAW_EXPORT_SUBDIR
+                    / exporter.DATASOURCE_INVENTORY_FILENAME
+                ).read_text(encoding="utf-8")
+            )
+            self.assertEqual(datasource_inventory[0]["uid"], "prom-main")
+            self.assertEqual(datasource_inventory[0]["type"], "prometheus")
 
     def test_export_dashboards_progress_is_opt_in(self):
         summary = {"uid": "abc", "title": "CPU", "folderTitle": "Infra"}
@@ -2172,10 +2293,11 @@ class ExporterTests(unittest.TestCase):
                 stdout.getvalue().splitlines(),
                 [
                     "Exporting dashboard 1/1: abc",
-                    "Exported 1 dashboards. Raw index: %s Raw manifest: %s Root index: %s Root manifest: %s"
+                    "Exported 1 dashboards. Raw index: %s Raw manifest: %s Raw datasources: %s Root index: %s Root manifest: %s"
                     % (
                         Path(tmpdir) / exporter.RAW_EXPORT_SUBDIR / "index.json",
                         Path(tmpdir) / exporter.RAW_EXPORT_SUBDIR / exporter.EXPORT_METADATA_FILENAME,
+                        Path(tmpdir) / exporter.RAW_EXPORT_SUBDIR / exporter.DATASOURCE_INVENTORY_FILENAME,
                         Path(tmpdir) / "index.json",
                         Path(tmpdir) / exporter.EXPORT_METADATA_FILENAME,
                     ),
@@ -2215,10 +2337,11 @@ class ExporterTests(unittest.TestCase):
                 [
                     "Exported raw    abc -> %s"
                     % (Path(tmpdir) / exporter.RAW_EXPORT_SUBDIR / "Infra" / "CPU__abc.json"),
-                    "Exported 1 dashboards. Raw index: %s Raw manifest: %s Root index: %s Root manifest: %s"
+                    "Exported 1 dashboards. Raw index: %s Raw manifest: %s Raw datasources: %s Root index: %s Root manifest: %s"
                     % (
                         Path(tmpdir) / exporter.RAW_EXPORT_SUBDIR / "index.json",
                         Path(tmpdir) / exporter.RAW_EXPORT_SUBDIR / exporter.EXPORT_METADATA_FILENAME,
+                        Path(tmpdir) / exporter.RAW_EXPORT_SUBDIR / exporter.DATASOURCE_INVENTORY_FILENAME,
                         Path(tmpdir) / "index.json",
                         Path(tmpdir) / exporter.EXPORT_METADATA_FILENAME,
                     ),
@@ -2259,10 +2382,11 @@ class ExporterTests(unittest.TestCase):
                 [
                     "Exported raw    abc -> %s"
                     % (Path(tmpdir) / exporter.RAW_EXPORT_SUBDIR / "Infra" / "CPU__abc.json"),
-                    "Exported 1 dashboards. Raw index: %s Raw manifest: %s Root index: %s Root manifest: %s"
+                    "Exported 1 dashboards. Raw index: %s Raw manifest: %s Raw datasources: %s Root index: %s Root manifest: %s"
                     % (
                         Path(tmpdir) / exporter.RAW_EXPORT_SUBDIR / "index.json",
                         Path(tmpdir) / exporter.RAW_EXPORT_SUBDIR / exporter.EXPORT_METADATA_FILENAME,
+                        Path(tmpdir) / exporter.RAW_EXPORT_SUBDIR / exporter.DATASOURCE_INVENTORY_FILENAME,
                         Path(tmpdir) / "index.json",
                         Path(tmpdir) / exporter.EXPORT_METADATA_FILENAME,
                     ),
