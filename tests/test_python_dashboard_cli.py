@@ -57,6 +57,7 @@ class FakeDashboardWorkflowClient:
         self.org_clients = org_clients or {}
         self.headers = headers or {"Authorization": "Basic test"}
         self.imported_payloads = []
+        self.created_folders = []
 
     def iter_dashboard_summaries(self, page_size):
         return list(self.summaries)
@@ -71,6 +72,14 @@ class FakeDashboardWorkflowClient:
 
     def fetch_folder_if_exists(self, uid):
         return self.folders.get(uid)
+
+    def create_folder(self, uid, title, parent_uid=None):
+        record = {"uid": uid, "title": title}
+        if parent_uid:
+            record["parentUid"] = parent_uid
+        self.created_folders.append(record)
+        self.folders[uid] = dict(record)
+        return {"status": "success", "uid": uid, "title": title}
 
     def list_datasources(self):
         return list(self.datasources)
@@ -145,6 +154,20 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("Export dashboards from local Grafana with Basic auth", help_text)
         self.assertIn("Export dashboards with an API token", help_text)
         self.assertIn("--basic-user admin --basic-password admin", help_text)
+
+    def test_import_help_explains_common_operator_flags(self):
+        stream = io.StringIO()
+
+        with redirect_stdout(stream):
+            with self.assertRaises(SystemExit):
+                exporter.parse_args(["import-dashboard", "-h"])
+
+        help_text = stream.getvalue()
+        self.assertIn("combined", help_text)
+        self.assertIn("export root", help_text)
+        self.assertIn("missing/match/mismatch", help_text)
+        self.assertIn("skipped/blocked", help_text)
+        self.assertIn("table form", help_text)
 
 
     def test_parse_args_supports_import_mode(self):
@@ -318,12 +341,27 @@ class ExporterTests(unittest.TestCase):
         self.assertTrue(args.table)
         self.assertTrue(args.no_header)
 
+    def test_parse_args_supports_import_dry_run_json(self):
+        args = exporter.parse_args(
+            ["import-dashboard", "--import-dir", "dashboards/raw", "--dry-run", "--json"]
+        )
+
+        self.assertTrue(args.dry_run)
+        self.assertTrue(args.json)
+
     def test_parse_args_supports_update_existing_only(self):
         args = exporter.parse_args(
             ["import-dashboard", "--import-dir", "dashboards/raw", "--update-existing-only"]
         )
 
         self.assertTrue(args.update_existing_only)
+
+    def test_parse_args_supports_ensure_folders(self):
+        args = exporter.parse_args(
+            ["import-dashboard", "--import-dir", "dashboards/raw", "--ensure-folders"]
+        )
+
+        self.assertTrue(args.ensure_folders)
 
     def test_describe_dashboard_import_mode(self):
         self.assertEqual(
@@ -1416,6 +1454,18 @@ class ExporterTests(unittest.TestCase):
 
             self.assertEqual(files, [dashboard_path])
 
+    def test_discover_dashboard_files_ignores_folder_inventory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / exporter.FOLDER_INVENTORY_FILENAME).write_text("[]", encoding="utf-8")
+            dashboard_path = root / "team" / "dash.json"
+            dashboard_path.parent.mkdir(parents=True, exist_ok=True)
+            dashboard_path.write_text('{"dashboard": {"uid": "x"}}', encoding="utf-8")
+
+            files = exporter.discover_dashboard_files(root)
+
+            self.assertEqual(files, [dashboard_path])
+
     def test_discover_dashboard_files_rejects_combined_export_root(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -1476,8 +1526,257 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(payload["dashboard"]["uid"], "abc")
         self.assertEqual(payload["dashboard"]["title"], "CPU")
 
+    def test_collect_folder_inventory_includes_parent_chain(self):
+        client = FakeDashboardWorkflowClient(
+            folders={
+                "child": {
+                    "uid": "child",
+                    "title": "Infra",
+                    "parents": [{"uid": "parent", "title": "Platform"}],
+                },
+                "parent": {
+                    "uid": "parent",
+                    "title": "Platform",
+                    "parents": [],
+                },
+            }
+        )
+
+        records = exporter.collect_folder_inventory(
+            client,
+            {"id": 1, "name": "Main Org."},
+            [{"uid": "abc", "folderUid": "child", "folderTitle": "Infra"}],
+        )
+
+        self.assertEqual(
+            records,
+            [
+                {
+                    "uid": "parent",
+                    "title": "Platform",
+                    "parentUid": "",
+                    "path": "Platform",
+                    "org": "Main Org.",
+                    "orgId": "1",
+                },
+                {
+                    "uid": "child",
+                    "title": "Infra",
+                    "parentUid": "parent",
+                    "path": "Platform / Infra",
+                    "org": "Main Org.",
+                    "orgId": "1",
+                },
+            ],
+        )
+
+    def test_load_folder_inventory_reads_exported_manifest(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "child",
+                        "title": "Infra",
+                        "parentUid": "parent",
+                        "path": "Platform / Infra",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    }
+                ],
+                import_dir / exporter.FOLDER_INVENTORY_FILENAME,
+            )
+
+            records = exporter.load_folder_inventory(import_dir)
+
+        self.assertEqual(records[0]["uid"], "child")
+        self.assertEqual(records[0]["parentUid"], "parent")
+
+    def test_ensure_folder_inventory_creates_missing_folders_in_order(self):
+        client = FakeDashboardWorkflowClient(
+            folders={
+                "existing": {"uid": "existing", "title": "Existing", "parents": []},
+            }
+        )
+
+        created = exporter.ensure_folder_inventory(
+            client,
+            [
+                {
+                    "uid": "child",
+                    "title": "Infra",
+                    "parentUid": "parent",
+                    "path": "Platform / Infra",
+                    "org": "Main Org.",
+                    "orgId": "1",
+                },
+                {
+                    "uid": "parent",
+                    "title": "Platform",
+                    "parentUid": "",
+                    "path": "Platform",
+                    "org": "Main Org.",
+                    "orgId": "1",
+                },
+            ],
+        )
+
+        self.assertEqual(created, 2)
+        self.assertIn("parent", client.folders)
+        self.assertIn("child", client.folders)
+
+    def test_inspect_folder_inventory_reports_missing_and_mismatch(self):
+        client = FakeDashboardWorkflowClient(
+            folders={
+                "parent": {"uid": "parent", "title": "Platform", "parents": []},
+                "child": {
+                    "uid": "child",
+                    "title": "Legacy Infra",
+                    "parents": [{"uid": "parent", "title": "Platform"}],
+                },
+            }
+        )
+
+        records = exporter.inspect_folder_inventory(
+            client,
+            [
+                {
+                    "uid": "parent",
+                    "title": "Platform",
+                    "parentUid": "",
+                    "path": "Platform",
+                    "org": "Main Org.",
+                    "orgId": "1",
+                },
+                {
+                    "uid": "child",
+                    "title": "Infra",
+                    "parentUid": "parent",
+                    "path": "Platform / Infra",
+                    "org": "Main Org.",
+                    "orgId": "1",
+                },
+                {
+                    "uid": "missing",
+                    "title": "Missing",
+                    "parentUid": "",
+                    "path": "Missing",
+                    "org": "Main Org.",
+                    "orgId": "1",
+                },
+            ],
+        )
+
+        records_by_uid = dict((record["uid"], record) for record in records)
+        self.assertEqual(records_by_uid["parent"]["status"], "match")
+        self.assertEqual(records_by_uid["child"]["status"], "mismatch")
+        self.assertEqual(records_by_uid["child"]["reason"], "title,path")
+        self.assertEqual(records_by_uid["missing"]["status"], "missing")
+
+    def test_resolve_folder_inventory_record_for_dashboard_uses_relative_path_without_meta(self):
+        folder_lookup = exporter.build_folder_inventory_lookup(
+            [
+                {
+                    "uid": "child",
+                    "title": "Infra",
+                    "parentUid": "parent",
+                    "path": "Platform / Infra",
+                    "org": "Main Org.",
+                    "orgId": "1",
+                }
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            dashboard_file = import_dir / "Platform" / "Infra" / "CPU__abc.json"
+            dashboard_file.parent.mkdir(parents=True, exist_ok=True)
+            dashboard_file.write_text("{}", encoding="utf-8")
+
+            record = exporter.resolve_folder_inventory_record_for_dashboard(
+                {},
+                dashboard_file,
+                import_dir,
+                folder_lookup,
+            )
+
+        self.assertEqual(record["uid"], "child")
+        self.assertEqual(record["path"], "Platform / Infra")
+
+    def test_resolve_folder_inventory_record_for_dashboard_marks_general_as_builtin(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            dashboard_file = import_dir / "General" / "CPU__abc.json"
+            dashboard_file.parent.mkdir(parents=True, exist_ok=True)
+            dashboard_file.write_text("{}", encoding="utf-8")
+
+            record = exporter.resolve_folder_inventory_record_for_dashboard(
+                {},
+                dashboard_file,
+                import_dir,
+                {},
+            )
+
+        self.assertEqual(record["uid"], "general")
+        self.assertEqual(record["path"], "General")
+        self.assertEqual(record["builtin"], "true")
+
+    def test_resolve_folder_inventory_record_for_dashboard_uses_unique_folder_title_fallback(self):
+        folder_lookup = exporter.build_folder_inventory_lookup(
+            [
+                {
+                    "uid": "infra",
+                    "title": "Infra",
+                    "parentUid": "platform",
+                    "path": "Platform / Infra",
+                    "org": "Main Org.",
+                    "orgId": "1",
+                }
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            dashboard_file = import_dir / "Infra" / "CPU__abc.json"
+            dashboard_file.parent.mkdir(parents=True, exist_ok=True)
+            dashboard_file.write_text("{}", encoding="utf-8")
+
+            record = exporter.resolve_folder_inventory_record_for_dashboard(
+                {},
+                dashboard_file,
+                import_dir,
+                folder_lookup,
+            )
+
+        self.assertEqual(record["uid"], "infra")
+        self.assertEqual(record["path"], "Platform / Infra")
+
+    def test_render_folder_inventory_dry_run_table_renders_rows(self):
+        lines = exporter.render_folder_inventory_dry_run_table(
+            [
+                {
+                    "uid": "child",
+                    "destination": "exists",
+                    "status": "mismatch",
+                    "reason": "path",
+                    "expected_path": "Platform / Infra",
+                    "actual_path": "Legacy / Infra",
+                }
+            ]
+        )
+
+        self.assertIn("UID", lines[0])
+        self.assertIn("EXPECTED_PATH", lines[0])
+        self.assertIn("child", lines[2])
+        self.assertIn("Legacy / Infra", lines[2])
+
     def test_export_dashboards_writes_versioned_manifest_files(self):
-        summary = {"uid": "abc", "title": "CPU", "folderTitle": "Infra"}
+        summary = {
+            "uid": "abc",
+            "title": "CPU",
+            "folderTitle": "Infra",
+            "folderUid": "infra",
+        }
         dashboard = {
             "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
             "meta": {"folderUid": "infra"},
@@ -1485,6 +1784,18 @@ class ExporterTests(unittest.TestCase):
         client = FakeDashboardWorkflowClient(
             summaries=[summary],
             dashboards={"abc": dashboard},
+            folders={
+                "infra": {
+                    "uid": "infra",
+                    "title": "Infra",
+                    "parents": [{"uid": "platform", "title": "Platform"}],
+                },
+                "platform": {
+                    "uid": "platform",
+                    "title": "Platform",
+                    "parents": [],
+                },
+            },
         )
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1517,6 +1828,16 @@ class ExporterTests(unittest.TestCase):
             self.assertEqual(root_metadata["variant"], "root")
             self.assertEqual(raw_metadata["variant"], exporter.RAW_EXPORT_SUBDIR)
             self.assertEqual(raw_metadata["dashboardCount"], 1)
+            self.assertEqual(raw_metadata["foldersFile"], exporter.FOLDER_INVENTORY_FILENAME)
+            folder_inventory = json.loads(
+                (
+                    Path(tmpdir)
+                    / exporter.RAW_EXPORT_SUBDIR
+                    / exporter.FOLDER_INVENTORY_FILENAME
+                ).read_text(encoding="utf-8")
+            )
+            self.assertEqual(folder_inventory[0]["uid"], "platform")
+            self.assertEqual(folder_inventory[1]["uid"], "infra")
 
     def test_export_dashboards_progress_is_opt_in(self):
         summary = {"uid": "abc", "title": "CPU", "folderTitle": "Infra"}
@@ -1868,7 +2189,7 @@ class ExporterTests(unittest.TestCase):
                 stdout.getvalue().splitlines(),
                 [
                     "Import mode: create-only",
-                    "Dry-run import uid=abc dest=exists action=blocked-existing file=%s"
+                    "Dry-run import uid=abc dest=exists action=blocked-existing folderPath=General file=%s"
                     % (import_dir / "cpu__abc.json"),
                     "Dry-run checked 1 dashboard files from %s" % import_dir,
                 ],
@@ -1905,9 +2226,154 @@ class ExporterTests(unittest.TestCase):
                 stdout.getvalue().splitlines(),
                 [
                     "Import mode: create-only",
-                    "Dry-run dashboard 1/1: abc dest=missing action=create",
+                    "Dry-run dashboard 1/1: abc dest=missing action=create folderPath=General",
                     "Dry-run checked 1 dashboard files from %s" % import_dir,
                 ],
+            )
+
+    def test_import_dashboards_dry_run_ensure_folders_verbose_reports_folder_status(self):
+        client = FakeDashboardWorkflowClient(
+            folders={
+                "parent": {"uid": "parent", "title": "Platform", "parents": []},
+                "child": {
+                    "uid": "child",
+                    "title": "Legacy Infra",
+                    "parents": [{"uid": "parent", "title": "Platform"}],
+                },
+            }
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                    folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "parent",
+                        "title": "Platform",
+                        "parentUid": "",
+                        "path": "Platform",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                    {
+                        "uid": "child",
+                        "title": "Infra",
+                        "parentUid": "parent",
+                        "path": "Platform / Infra",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                ],
+                import_dir / exporter.FOLDER_INVENTORY_FILENAME,
+            )
+            exporter.write_json_document(
+                {
+                    "dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "child"},
+                },
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(import_dir),
+                    "--dry-run",
+                    "--ensure-folders",
+                    "--verbose",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(client.created_folders, [])
+            self.assertEqual(
+                stdout.getvalue().splitlines(),
+                [
+                    "Import mode: create-only",
+                    "Dry-run folder uid=parent dest=exists status=match reason=- expected=Platform actual=Platform",
+                    "Dry-run folder uid=child dest=exists status=mismatch reason=title,path expected=Platform / Infra actual=Platform / Legacy Infra",
+                    "Dry-run checked 2 folder(s) from %s; 0 missing, 1 mismatched"
+                    % (import_dir / exporter.FOLDER_INVENTORY_FILENAME),
+                    "Dry-run import uid=abc dest=missing action=create folderPath=Platform / Legacy Infra file=%s"
+                    % (import_dir / "cpu__abc.json"),
+                    "Dry-run checked 1 dashboard files from %s" % import_dir,
+                ],
+            )
+
+    def test_import_dashboards_dry_run_table_ensure_folders_includes_folder_status(self):
+        client = FakeDashboardWorkflowClient()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                    folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "child",
+                        "title": "Infra",
+                        "parentUid": "",
+                        "path": "Infra",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    }
+                ],
+                import_dir / exporter.FOLDER_INVENTORY_FILENAME,
+            )
+            exporter.write_json_document(
+                {
+                    "dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "child"},
+                },
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(import_dir),
+                    "--dry-run",
+                    "--ensure-folders",
+                    "--table",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            lines = stdout.getvalue().splitlines()
+            self.assertTrue(any("FOLDER_PATH" in line for line in lines))
+            self.assertTrue(
+                any(
+                    "cpu__abc.json" in line
+                    and "missing" in line
+                    and "Infra" in line
+                    for line in lines
+                )
             )
 
     def test_import_dashboards_dry_run_table_renders_rows(self):
@@ -1954,14 +2420,17 @@ class ExporterTests(unittest.TestCase):
             self.assertIn("UID", lines[1])
             self.assertIn("DESTINATION", lines[1])
             self.assertIn("ACTION", lines[1])
+            self.assertIn("FOLDER_PATH", lines[1])
             self.assertIn("FILE", lines[1])
             self.assertIn("abc", lines[3])
             self.assertIn("exists", lines[3])
             self.assertIn("blocked-existing", lines[3])
+            self.assertIn("General", lines[3])
             self.assertIn(str(import_dir / "cpu__abc.json"), lines[3])
             self.assertIn("xyz", lines[4])
             self.assertIn("missing", lines[4])
             self.assertIn("create", lines[4])
+            self.assertIn("General", lines[4])
             self.assertIn(str(import_dir / "memory__xyz.json"), lines[4])
 
     def test_import_dashboards_dry_run_table_can_omit_header(self):
@@ -1995,7 +2464,7 @@ class ExporterTests(unittest.TestCase):
                 stdout.getvalue().splitlines(),
                 [
                     "Import mode: create-only",
-                    "xyz  missing      create  %s" % (import_dir / "memory__xyz.json"),
+                    "xyz  missing      create  General      %s" % (import_dir / "memory__xyz.json"),
                     "Dry-run checked 1 dashboard files from %s" % import_dir,
                 ],
             )
@@ -2049,8 +2518,10 @@ class ExporterTests(unittest.TestCase):
             self.assertEqual(lines[0], "Import mode: update-or-skip-missing")
             self.assertIn("abc", lines[3])
             self.assertIn("update", lines[3])
+            self.assertIn("infra", lines[3])
             self.assertIn("xyz", lines[4])
             self.assertIn("skip-missing", lines[4])
+            self.assertIn("General", lines[4])
             self.assertEqual(
                 lines[-1],
                 "Dry-run checked 2 dashboard files from %s; would skip 1 missing dashboards"
@@ -2207,12 +2678,84 @@ class ExporterTests(unittest.TestCase):
             self.assertEqual(client.imported_payloads[0]["folderUid"], "dest-folder")
             self.assertTrue(client.imported_payloads[0]["overwrite"])
 
+    def test_import_dashboards_dry_run_table_uses_destination_folder_path_for_updates(self):
+        client = FakeDashboardWorkflowClient(
+            dashboards={
+                "abc": {
+                    "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "dest-folder"},
+                }
+            },
+            folders={
+                "dest-folder": {
+                    "uid": "dest-folder",
+                    "title": "Ops",
+                    "parents": [{"uid": "platform", "title": "Platform"}],
+                }
+            },
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                {
+                    "dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "source-folder"},
+                },
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(import_dir),
+                    "--dry-run",
+                    "--replace-existing",
+                    "--table",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            output = stdout.getvalue()
+            self.assertIn("Platform / Ops", output)
+
     def test_import_dashboards_rejects_table_without_dry_run(self):
         client = FakeDashboardWorkflowClient()
         args = exporter.parse_args(["import-dashboard", "--import-dir", "dashboards/raw", "--table"])
 
         with mock.patch.object(exporter, "build_client", return_value=client):
             with self.assertRaisesRegex(exporter.GrafanaError, "--table is only supported with --dry-run"):
+                exporter.import_dashboards(args)
+
+    def test_import_dashboards_rejects_json_without_dry_run(self):
+        client = FakeDashboardWorkflowClient()
+        args = exporter.parse_args(["import-dashboard", "--import-dir", "dashboards/raw", "--json"])
+
+        with mock.patch.object(exporter, "build_client", return_value=client):
+            with self.assertRaisesRegex(exporter.GrafanaError, "--json is only supported with --dry-run"):
+                exporter.import_dashboards(args)
+
+    def test_import_dashboards_rejects_table_with_json(self):
+        client = FakeDashboardWorkflowClient()
+        args = exporter.parse_args(
+            ["import-dashboard", "--import-dir", "dashboards/raw", "--dry-run", "--table", "--json"]
+        )
+
+        with mock.patch.object(exporter, "build_client", return_value=client):
+            with self.assertRaisesRegex(exporter.GrafanaError, "--table and --json are mutually exclusive"):
                 exporter.import_dashboards(args)
 
     def test_import_dashboards_rejects_no_header_without_table(self):
@@ -2222,6 +2765,359 @@ class ExporterTests(unittest.TestCase):
         with mock.patch.object(exporter, "build_client", return_value=client):
             with self.assertRaisesRegex(exporter.GrafanaError, "--no-header is only supported with --dry-run --table"):
                 exporter.import_dashboards(args)
+
+    def test_import_dashboards_ensure_folders_creates_missing_folders_from_inventory(self):
+        client = FakeDashboardWorkflowClient()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                    folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "parent",
+                        "title": "Platform",
+                        "parentUid": "",
+                        "path": "Platform",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                    {
+                        "uid": "child",
+                        "title": "Infra",
+                        "parentUid": "parent",
+                        "path": "Platform / Infra",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                ],
+                import_dir / exporter.FOLDER_INVENTORY_FILENAME,
+            )
+            exporter.write_json_document(
+                {
+                    "dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "child"},
+                },
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                ["import-dashboard", "--import-dir", str(import_dir), "--ensure-folders"]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            self.assertIn("Ensured 2 folder(s)", stdout.getvalue())
+            self.assertIn("parent", client.folders)
+            self.assertIn("child", client.folders)
+
+    def test_import_dashboards_ensure_folders_requires_inventory_manifest(self):
+        client = FakeDashboardWorkflowClient()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                    folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                {
+                    "dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "child"},
+                },
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                ["import-dashboard", "--import-dir", str(import_dir), "--ensure-folders"]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                with self.assertRaisesRegex(
+                    exporter.GrafanaError,
+                    "Folder inventory file not found for --ensure-folders",
+                ):
+                    exporter.import_dashboards(args)
+
+    def test_import_dashboards_dry_run_ensure_folders_reports_folder_status(self):
+        client = FakeDashboardWorkflowClient(
+            folders={
+                "parent": {"uid": "parent", "title": "Platform", "parents": []},
+                "child": {
+                    "uid": "child",
+                    "title": "Legacy Infra",
+                    "parents": [{"uid": "parent", "title": "Platform"}],
+                },
+            }
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                    folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "parent",
+                        "title": "Platform",
+                        "parentUid": "",
+                        "path": "Platform",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                    {
+                        "uid": "child",
+                        "title": "Infra",
+                        "parentUid": "parent",
+                        "path": "Platform / Infra",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                    {
+                        "uid": "missing",
+                        "title": "Missing",
+                        "parentUid": "",
+                        "path": "Missing",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                ],
+                import_dir / exporter.FOLDER_INVENTORY_FILENAME,
+            )
+            exporter.write_json_document(
+                {
+                    "dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "child"},
+                },
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                ["import-dashboard", "--import-dir", str(import_dir), "--dry-run", "--ensure-folders"]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            output = stdout.getvalue()
+            self.assertEqual(result, 0)
+            self.assertIn("Dry-run folder uid=parent dest=exists status=match", output)
+            self.assertIn("Dry-run folder uid=child dest=exists status=mismatch", output)
+            self.assertIn("actual=Platform / Legacy Infra", output)
+            self.assertIn("Dry-run folder uid=missing dest=missing status=missing", output)
+            self.assertIn("Dry-run checked 3 folder(s)", output)
+
+    def test_import_dashboards_dry_run_ensure_folders_table_renders_folder_table(self):
+        client = FakeDashboardWorkflowClient(
+            folders={
+                "parent": {"uid": "parent", "title": "Platform", "parents": []},
+            }
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                    folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "parent",
+                        "title": "Platform",
+                        "parentUid": "",
+                        "path": "Platform",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                    {
+                        "uid": "child",
+                        "title": "Infra",
+                        "parentUid": "parent",
+                        "path": "Platform / Infra",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                ],
+                import_dir / exporter.FOLDER_INVENTORY_FILENAME,
+            )
+            exporter.write_json_document(
+                {
+                    "dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "child"},
+                },
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                ["import-dashboard", "--import-dir", str(import_dir), "--dry-run", "--ensure-folders", "--table"]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            output = stdout.getvalue()
+            self.assertEqual(result, 0)
+            self.assertIn("EXPECTED_PATH", output)
+            self.assertIn("ACTUAL_PATH", output)
+            self.assertIn("FOLDER_PATH", output)
+            self.assertIn("Platform / Infra", output)
+            self.assertIn("UID", output)
+            self.assertIn("DESTINATION", output)
+
+    def test_import_dashboards_dry_run_table_marks_general_folder_as_default(self):
+        client = FakeDashboardWorkflowClient()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                    folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "infra",
+                        "title": "Infra",
+                        "parentUid": "",
+                        "path": "Infra",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    }
+                ],
+                import_dir / exporter.FOLDER_INVENTORY_FILENAME,
+            )
+            exporter.write_json_document(
+                {
+                    "dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {},
+                },
+                import_dir / "General" / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                ["import-dashboard", "--import-dir", str(import_dir), "--dry-run", "--ensure-folders", "--table"]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            output = stdout.getvalue()
+            self.assertEqual(result, 0)
+            self.assertIn("General", output)
+
+    def test_import_dashboards_dry_run_json_renders_structured_output(self):
+        client = FakeDashboardWorkflowClient(
+            dashboards={
+                "abc": {
+                    "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "infra"},
+                }
+            },
+            folders={
+                "infra": {
+                    "uid": "infra",
+                    "title": "Infra",
+                    "parents": [{"uid": "platform", "title": "Platform"}],
+                }
+            },
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=2,
+                    format_name="grafana-web-import-preserve-uid",
+                    folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "infra",
+                        "title": "Infra",
+                        "parentUid": "platform",
+                        "path": "Platform / Infra",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    }
+                ],
+                import_dir / exporter.FOLDER_INVENTORY_FILENAME,
+            )
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []}},
+                import_dir / "cpu__abc.json",
+            )
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "xyz", "title": "Memory", "panels": []}},
+                import_dir / "memory__xyz.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(import_dir),
+                    "--dry-run",
+                    "--replace-existing",
+                    "--ensure-folders",
+                    "--json",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["mode"], "create-or-update")
+            self.assertEqual(payload["summary"]["folderCount"], 1)
+            self.assertEqual(payload["summary"]["dashboardCount"], 2)
+            self.assertEqual(payload["summary"]["missingDashboards"], 1)
+            self.assertEqual(payload["dashboards"][0]["uid"], "abc")
+            self.assertEqual(payload["dashboards"][0]["action"], "update")
+            self.assertEqual(payload["dashboards"][0]["folderPath"], "Platform / Infra")
+            self.assertEqual(payload["dashboards"][1]["uid"], "xyz")
+            self.assertEqual(payload["dashboards"][1]["action"], "create")
 
     def test_import_dashboards_progress_is_opt_in(self):
         client = FakeDashboardWorkflowClient()

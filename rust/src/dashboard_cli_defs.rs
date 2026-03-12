@@ -61,38 +61,38 @@ pub struct ExportArgs {
     #[arg(
         long,
         conflicts_with = "all_orgs",
-        help = "Export dashboards from this Grafana org ID."
+        help = "Export dashboards from one explicit Grafana org ID instead of the current org. Use this when the same credentials can see multiple orgs."
     )]
     pub org_id: Option<i64>,
     #[arg(
         long,
         default_value_t = false,
         conflicts_with = "org_id",
-        help = "Enumerate all visible Grafana orgs and export dashboards from each org."
+        help = "Enumerate all visible Grafana orgs and export dashboards from each org into per-org subdirectories under the export root."
     )]
     pub all_orgs: bool,
     #[arg(
         long,
         default_value_t = false,
-        help = "Write dashboard files directly into the export variant directory instead of per-folder subdirectories."
+        help = "Write dashboard files directly into each export variant directory instead of recreating Grafana folder-based subdirectories on disk."
     )]
     pub flat: bool,
     #[arg(
         long,
         default_value_t = false,
-        help = "Overwrite existing dashboard files."
+        help = "Replace existing local export files in the target directory instead of failing when a file already exists."
     )]
     pub overwrite: bool,
     #[arg(
         long,
         default_value_t = false,
-        help = "Skip exporting the raw/ variant."
+        help = "Skip the API-safe raw/ export variant. Use this only when you do not need later API import or diff workflows."
     )]
     pub without_dashboard_raw: bool,
     #[arg(
         long,
         default_value_t = false,
-        help = "Skip exporting the prompt/ variant."
+        help = "Skip the web-import prompt/ export variant. Use this only when you do not need Grafana UI import with datasource prompts."
     )]
     pub without_dashboard_prompt: bool,
     #[arg(
@@ -138,7 +138,7 @@ pub struct ListArgs {
     #[arg(
         long,
         default_value_t = false,
-        help = "Fetch each dashboard payload and include resolved datasource names in the list output."
+        help = "Fetch each dashboard payload and include resolved datasource names in the list output. This is slower because it makes extra API calls per dashboard."
     )]
     pub with_sources: bool,
     #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render dashboard summaries as a table.")]
@@ -179,40 +179,52 @@ pub struct ImportArgs {
     pub common: CommonCliArgs,
     #[arg(
         long,
-        help = "Import dashboards from this directory. Point this to the raw/ export directory explicitly."
+        help = "Import dashboards from this directory. Point this to the raw/ export directory explicitly, not the combined export root."
     )]
     pub import_dir: PathBuf,
     #[arg(
         long,
-        help = "Override the destination Grafana folder UID for all imported dashboards."
+        help = "Force every imported dashboard into one destination Grafana folder UID. This overrides any folder UID carried by the exported dashboard files."
     )]
     pub import_folder_uid: Option<String>,
     #[arg(
         long,
         default_value_t = false,
-        help = "Allow imports to replace existing dashboards with the same UID."
+        help = "Use the exported raw folder inventory to create any missing destination folders before import. In dry-run mode, also report folder missing/match/mismatch state first."
+    )]
+    pub ensure_folders: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Update an existing destination dashboard when the imported dashboard UID already exists. Without this flag, existing UIDs are blocked."
     )]
     pub replace_existing: bool,
     #[arg(
         long,
         default_value_t = false,
-        help = "Only update dashboards whose UID already exists in Grafana, and skip files whose UID is missing on the destination."
+        help = "Reconcile only dashboards whose UID already exists in Grafana. Missing destination UIDs are skipped instead of created."
     )]
     pub update_existing_only: bool,
-    #[arg(long, default_value = DEFAULT_IMPORT_MESSAGE, help = "Version history message to attach to imported dashboards.")]
+    #[arg(long, default_value = DEFAULT_IMPORT_MESSAGE, help = "Version-history message to attach to each imported dashboard revision in Grafana.")]
     pub import_message: String,
     #[arg(
         long,
         default_value_t = false,
-        help = "Show whether each dashboard would be created or updated without importing it."
+        help = "Preview what import would do without changing Grafana. This reports whether each dashboard would create, update, or be skipped/blocked."
     )]
     pub dry_run: bool,
     #[arg(
         long,
         default_value_t = false,
-        help = "For --dry-run only, render import predictions as a table instead of per-dashboard log lines."
+        help = "For --dry-run only, render a compact table instead of per-dashboard log lines. With --ensure-folders, the folder check is also shown in table form."
     )]
     pub table: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "For --dry-run only, render one JSON document with mode, folder checks, dashboard actions, and summary counts."
+    )]
+    pub json: bool,
     #[arg(
         long,
         default_value_t = false,
@@ -222,14 +234,14 @@ pub struct ImportArgs {
     #[arg(
         long,
         default_value_t = false,
-        help = "Show concise per-dashboard import progress in <current>/<total> form while processing files."
+        help = "Show concise per-dashboard import progress in <current>/<total> form while processing files. Use this for long-running batch imports."
     )]
     pub progress: bool,
     #[arg(
         short = 'v',
         long,
         default_value_t = false,
-        help = "Show detailed per-item import output, including target paths and dry-run actions. Overrides --progress output."
+        help = "Show detailed per-item import output, including target paths, dry-run actions, and folder status details. Overrides --progress output."
     )]
     pub verbose: bool,
 }

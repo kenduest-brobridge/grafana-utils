@@ -63,6 +63,7 @@ DEFAULT_EXPORT_DIR = "dashboards"
 RAW_EXPORT_SUBDIR = "raw"
 PROMPT_EXPORT_SUBDIR = "prompt"
 EXPORT_METADATA_FILENAME = "export-metadata.json"
+FOLDER_INVENTORY_FILENAME = "folders.json"
 TOOL_SCHEMA_VERSION = 1
 ROOT_INDEX_KIND = "grafana-utils-dashboard-export-index"
 
@@ -142,32 +143,32 @@ def add_export_cli_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--org-id",
         default=None,
-        help="Export dashboards from this Grafana organization ID instead of the current org context.",
+        help="Export dashboards from one explicit Grafana organization ID instead of the current org. Use this when the same credentials can see multiple orgs.",
     )
     parser.add_argument(
         "--all-orgs",
         action="store_true",
-        help="Export dashboards from every Grafana organization. Requires Basic auth.",
+        help="Export dashboards from every visible Grafana organization and write per-org subdirectories under the export root. Requires Basic auth.",
     )
     parser.add_argument(
         "--flat",
         action="store_true",
-        help="Write all dashboards into the export root instead of per-folder directories.",
+        help="Write dashboard JSON files directly into each export variant directory instead of recreating Grafana folder-based subdirectories on disk.",
     )
     parser.add_argument(
         "--overwrite",
         action="store_true",
-        help="Overwrite existing dashboard files if they already exist.",
+        help="Replace existing local export files in the target directory instead of failing when a file already exists.",
     )
     parser.add_argument(
         "--without-dashboard-raw",
         action="store_true",
-        help=f"Skip exporting the {RAW_EXPORT_SUBDIR}/ variant.",
+        help=f"Skip the API-safe {RAW_EXPORT_SUBDIR}/ export variant. Use this only when you do not need later API import or diff workflows.",
     )
     parser.add_argument(
         "--without-dashboard-prompt",
         action="store_true",
-        help=f"Skip exporting the {PROMPT_EXPORT_SUBDIR}/ variant.",
+        help=f"Skip the web-import {PROMPT_EXPORT_SUBDIR}/ export variant. Use this only when you do not need Grafana UI import with datasource prompts.",
     )
     parser.add_argument(
         "--dry-run",
@@ -208,8 +209,8 @@ def add_list_cli_args(parser: argparse.ArgumentParser) -> None:
         "--with-sources",
         action="store_true",
         help=(
-            "Fetch each dashboard payload and include resolved datasource names. "
-            "This makes extra API calls."
+            "Fetch each dashboard payload and include resolved datasource names in the list output. "
+            "This is slower because it makes extra API calls per dashboard."
         ),
     )
     output_group = parser.add_mutually_exclusive_group()
@@ -265,38 +266,48 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
         required=True,
         help=(
             "Import dashboards from this directory. "
-            f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly."
+            f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly, not the combined export root."
         ),
     )
     parser.add_argument(
         "--replace-existing",
         action="store_true",
-        help="Allow imports to replace existing dashboards with the same UID.",
+        help="Update an existing destination dashboard when the imported dashboard UID already exists. Without this flag, existing UIDs are blocked.",
     )
     parser.add_argument(
         "--update-existing-only",
         action="store_true",
-        help="Update only dashboards whose UID already exists in Grafana and skip missing dashboards instead of creating them.",
+        help="Reconcile only dashboards whose UID already exists in Grafana. Missing destination UIDs are skipped instead of created.",
     )
     parser.add_argument(
         "--import-folder-uid",
         default=None,
-        help="Override the destination Grafana folder UID for all imported dashboards.",
+        help="Force every imported dashboard into one destination Grafana folder UID. This overrides any folder UID carried by the exported dashboard files.",
+    )
+    parser.add_argument(
+        "--ensure-folders",
+        action="store_true",
+        help="Use the exported raw folder inventory to create any missing destination folders before import. In dry-run mode, also report folder missing/match/mismatch state first.",
     )
     parser.add_argument(
         "--import-message",
         default="Imported by grafana-utils",
-        help="Version history message to attach to imported dashboards.",
+        help="Version-history message to attach to each imported dashboard revision in Grafana.",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Show whether each dashboard would be created or updated without importing it.",
+        help="Preview what import would do without changing Grafana. This reports whether each dashboard would create, update, or be skipped/blocked.",
     )
     parser.add_argument(
         "--table",
         action="store_true",
-        help="For --dry-run only, render import predictions as a table instead of per-dashboard log lines.",
+        help="For --dry-run only, render a compact table instead of per-dashboard log lines. With --ensure-folders, the folder check is also shown in table form.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="For --dry-run only, render one JSON document with mode, folder checks, dashboard actions, and summary counts.",
     )
     parser.add_argument(
         "--no-header",
@@ -306,13 +317,13 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--progress",
         action="store_true",
-        help="Show concise per-dashboard import progress as current/total while processing files.",
+        help="Show concise per-dashboard import progress as current/total while processing files. Use this for long-running batch imports.",
     )
     parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
-        help="Show detailed per-dashboard import output, including file paths and results. Supersedes --progress.",
+        help="Show detailed per-dashboard import output, including file paths, dry-run actions, and folder status details. Supersedes --progress.",
     )
 
 
@@ -568,7 +579,7 @@ def discover_dashboard_files(import_dir: Path) -> List[Path]:
     files = [
         path
         for path in sorted(import_dir.rglob("*.json"))
-        if path.name not in {"index.json", EXPORT_METADATA_FILENAME}
+        if path.name not in {"index.json", EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME}
     ]
     if not files:
         raise GrafanaError(f"No dashboard JSON files found in {import_dir}")
@@ -692,6 +703,7 @@ def build_export_metadata(
     variant: str,
     dashboard_count: int,
     format_name: Optional[str] = None,
+    folders_file: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Describe one export directory in a small, versioned manifest."""
     metadata = {
@@ -703,7 +715,360 @@ def build_export_metadata(
     }
     if format_name:
         metadata["format"] = format_name
+    if folders_file:
+        metadata["foldersFile"] = folders_file
     return metadata
+
+
+def build_folder_inventory_record(
+    folder: Dict[str, Any],
+    org: Dict[str, Any],
+    fallback_title: str,
+) -> Dict[str, str]:
+    uid = str(folder.get("uid") or "")
+    title = str(folder.get("title") or fallback_title or uid or "General")
+    parents = folder.get("parents")
+    parent_uid = ""
+    if isinstance(parents, list) and parents:
+        last_parent = parents[-1]
+        if isinstance(last_parent, dict):
+            parent_uid = str(last_parent.get("uid") or "")
+    return {
+        "uid": uid,
+        "title": title,
+        "parentUid": parent_uid,
+        "path": build_folder_path(folder, title),
+        "org": str(org.get("name") or "Main Org."),
+        "orgId": str(org.get("id") or "1"),
+    }
+
+
+def collect_folder_inventory(
+    client: "GrafanaClient",
+    org: Dict[str, Any],
+    summaries: List[Dict[str, Any]],
+) -> List[Dict[str, str]]:
+    folders_by_uid: Dict[str, Dict[str, str]] = {}
+    pending: List[Dict[str, str]] = []
+    for summary in summaries:
+        folder_uid = str(summary.get("folderUid") or "").strip()
+        folder_title = str(summary.get("folderTitle") or "General")
+        if folder_uid:
+            pending.append({"uid": folder_uid, "title": folder_title})
+
+    while pending:
+        item = pending.pop()
+        folder_uid = item["uid"]
+        if not folder_uid or folder_uid in folders_by_uid:
+            continue
+        folder = client.fetch_folder_if_exists(folder_uid)
+        if not folder:
+            continue
+        folders_by_uid[folder_uid] = build_folder_inventory_record(folder, org, item["title"])
+        parents = folder.get("parents")
+        if isinstance(parents, list):
+            for parent in parents:
+                if isinstance(parent, dict):
+                    parent_uid = str(parent.get("uid") or "").strip()
+                    parent_title = str(parent.get("title") or parent_uid or "folder")
+                    if parent_uid and parent_uid not in folders_by_uid:
+                        pending.append({"uid": parent_uid, "title": parent_title})
+
+    return sorted(
+        folders_by_uid.values(),
+        key=lambda item: (item["orgId"], item["path"], item["uid"]),
+    )
+
+
+def load_folder_inventory(
+    import_dir: Path,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> List[Dict[str, str]]:
+    folders_file = FOLDER_INVENTORY_FILENAME
+    if isinstance(metadata, dict):
+        folders_file = str(metadata.get("foldersFile") or FOLDER_INVENTORY_FILENAME)
+    path = import_dir / folders_file
+    if not path.is_file():
+        return []
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise GrafanaError("Failed to read %s: %s" % (path, exc)) from exc
+    except json.JSONDecodeError as exc:
+        raise GrafanaError("Invalid JSON in %s: %s" % (path, exc)) from exc
+    if not isinstance(raw, list):
+        raise GrafanaError("Folder inventory file must contain a JSON array: %s" % path)
+    records: List[Dict[str, str]] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            raise GrafanaError("Folder inventory entry must be a JSON object: %s" % path)
+        records.append(
+            {
+                "uid": str(item.get("uid") or ""),
+                "title": str(item.get("title") or ""),
+                "parentUid": str(item.get("parentUid") or ""),
+                "path": str(item.get("path") or ""),
+                "org": str(item.get("org") or ""),
+                "orgId": str(item.get("orgId") or ""),
+            }
+        )
+    return records
+
+
+def ensure_folder_inventory(
+    client: "GrafanaClient",
+    folders: List[Dict[str, str]],
+) -> int:
+    created_count = 0
+    sorted_folders = sorted(
+        folders,
+        key=lambda item: (item.get("path", "").count(" / "), item.get("path", ""), item.get("uid", "")),
+    )
+    for folder in sorted_folders:
+        uid = folder.get("uid") or ""
+        title = folder.get("title") or uid
+        parent_uid = folder.get("parentUid") or None
+        if not uid:
+            continue
+        if client.fetch_folder_if_exists(uid) is not None:
+            continue
+        client.create_folder(uid=uid, title=title, parent_uid=parent_uid)
+        created_count += 1
+    return created_count
+
+
+def inspect_folder_inventory(
+    client: "GrafanaClient",
+    folders: List[Dict[str, str]],
+) -> List[Dict[str, str]]:
+    records = []
+    sorted_folders = sorted(
+        folders,
+        key=lambda item: (
+            item.get("path", "").count(" / "),
+            item.get("path", ""),
+            item.get("uid", ""),
+        ),
+    )
+    for folder in sorted_folders:
+        uid = str(folder.get("uid") or "")
+        if not uid:
+            continue
+        expected_path = str(folder.get("path") or "")
+        status = determine_folder_inventory_status(client, folder)
+        live_folder = build_live_folder_inventory_record(client, uid)
+        if live_folder is None:
+            records.append(
+                {
+                    "uid": uid,
+                    "destination": "missing",
+                    "status": "missing",
+                    "reason": "would-create",
+                    "expected_path": expected_path,
+                    "actual_path": "",
+                }
+            )
+            continue
+        records.append(
+            {
+                "uid": uid,
+                "destination": "exists",
+                "status": status.get("status") or "unknown",
+                "reason": status.get("details") or "",
+                "expected_path": expected_path,
+                "actual_path": str(live_folder.get("path") or ""),
+            }
+        )
+    return records
+
+
+def resolve_folder_inventory_requirements(
+    args: argparse.Namespace,
+    import_dir: Path,
+    metadata: Optional[Dict[str, Any]],
+) -> List[Dict[str, str]]:
+    """Load the optional folder inventory and enforce explicit operator intent."""
+    folder_inventory = load_folder_inventory(import_dir, metadata=metadata)
+    if getattr(args, "import_folder_uid", None) is not None:
+        return folder_inventory
+    if getattr(args, "ensure_folders", False) and not folder_inventory:
+        folders_file = FOLDER_INVENTORY_FILENAME
+        if isinstance(metadata, dict):
+            folders_file = str(metadata.get("foldersFile") or FOLDER_INVENTORY_FILENAME)
+        raise GrafanaError(
+            "Folder inventory file not found for --ensure-folders: %s. "
+            "Re-export dashboards with raw folder inventory or omit --ensure-folders."
+            % (import_dir / folders_file)
+        )
+    return folder_inventory
+
+
+def build_folder_inventory_lookup(
+    folders: List[Dict[str, str]],
+) -> Dict[str, Dict[str, str]]:
+    lookup: Dict[str, Dict[str, str]] = {}
+    for folder in folders:
+        uid = str(folder.get("uid") or "")
+        if uid:
+            lookup[uid] = dict(folder)
+    return lookup
+
+
+def build_import_dashboard_folder_path(dashboard_file: Path, import_dir: Path) -> str:
+    relative_path = dashboard_file.relative_to(import_dir)
+    parts = list(relative_path.parts[:-1])
+    return " / ".join(parts)
+
+
+def resolve_folder_inventory_record_for_dashboard(
+    document: Dict[str, Any],
+    dashboard_file: Path,
+    import_dir: Path,
+    folder_lookup: Dict[str, Dict[str, str]],
+) -> Optional[Dict[str, str]]:
+    def build_general_record() -> Dict[str, str]:
+        return {
+            "uid": "general",
+            "title": "General",
+            "parentUid": "",
+            "path": "General",
+            "builtin": "true",
+        }
+
+    meta = document.get("meta")
+    if isinstance(meta, dict):
+        folder_uid = str(meta.get("folderUid") or "")
+        if folder_uid and folder_uid in folder_lookup:
+            return dict(folder_lookup[folder_uid])
+        if folder_uid == "general":
+            return build_general_record()
+
+    folder_path = build_import_dashboard_folder_path(dashboard_file, import_dir)
+    if not folder_path:
+        return None
+    if folder_path == "General":
+        return build_general_record()
+    if " / " not in folder_path:
+        title_matches = []
+        for record in folder_lookup.values():
+            if str(record.get("title") or "") == folder_path:
+                title_matches.append(dict(record))
+        if len(title_matches) == 1:
+            return title_matches[0]
+    for record in folder_lookup.values():
+        if str(record.get("path") or "") == folder_path:
+            return dict(record)
+    return None
+
+
+def build_live_folder_inventory_record(
+    client: "GrafanaClient",
+    uid: str,
+) -> Optional[Dict[str, str]]:
+    if not uid:
+        return None
+    folder = client.fetch_folder_if_exists(uid)
+    if folder is None:
+        return None
+    title = str(folder.get("title") or uid)
+    parents = folder.get("parents")
+    if isinstance(parents, list):
+        parent_uid = ""
+        if parents:
+            last_parent = parents[-1]
+            if isinstance(last_parent, dict):
+                parent_uid = str(last_parent.get("uid") or "")
+        return {
+            "uid": uid,
+            "title": title,
+            "parentUid": parent_uid,
+            "path": build_folder_path(folder, title),
+        }
+
+    parent_uid = str(folder.get("parentUid") or "")
+    path_titles = [title]
+    seen = set([uid])
+    current_parent_uid = parent_uid
+    while current_parent_uid:
+        if current_parent_uid in seen:
+            break
+        seen.add(current_parent_uid)
+        parent = client.fetch_folder_if_exists(current_parent_uid)
+        if parent is None:
+            break
+        parent_title = str(parent.get("title") or current_parent_uid)
+        path_titles.append(parent_title)
+        current_parent_uid = str(parent.get("parentUid") or "")
+    path_titles.reverse()
+    return {
+        "uid": uid,
+        "title": title,
+        "parentUid": parent_uid,
+        "path": " / ".join(path_titles),
+    }
+
+
+def determine_folder_inventory_status(
+    client: "GrafanaClient",
+    expected_folder: Optional[Dict[str, str]],
+) -> Dict[str, str]:
+    if expected_folder is None:
+        return {"status": "unknown", "details": ""}
+    if str(expected_folder.get("builtin") or "") == "true":
+        return {"status": "general", "details": "default-grafana"}
+
+    uid = str(expected_folder.get("uid") or "")
+    live_folder = build_live_folder_inventory_record(client, uid)
+    if live_folder is None:
+        return {"status": "missing", "details": ""}
+
+    mismatch_fields = []
+    for field in ("title", "parentUid", "path"):
+        if str(expected_folder.get(field) or "") != str(live_folder.get(field) or ""):
+            mismatch_fields.append(field)
+    if mismatch_fields:
+        return {"status": "mismatch", "details": ",".join(mismatch_fields)}
+    return {"status": "match", "details": ""}
+
+
+def resolve_dashboard_import_folder_path(
+    client: "GrafanaClient",
+    payload: Dict[str, Any],
+    document: Dict[str, Any],
+    dashboard_file: Path,
+    import_dir: Path,
+    folder_inventory_lookup: Dict[str, Dict[str, str]],
+) -> str:
+    """Resolve the effective destination folder path for one dashboard import."""
+    folder_uid = str(payload.get("folderUid") or "").strip()
+    if not folder_uid or folder_uid == "general":
+        return "General"
+
+    live_folder = client.fetch_folder_if_exists(folder_uid)
+    if isinstance(live_folder, dict):
+        return build_folder_path(live_folder, str(live_folder.get("title") or folder_uid))
+
+    inventory_record = folder_inventory_lookup.get(folder_uid)
+    if inventory_record is None:
+        inventory_record = resolve_folder_inventory_record_for_dashboard(
+            document,
+            dashboard_file,
+            import_dir,
+            folder_inventory_lookup,
+        )
+        if (
+            inventory_record is None
+            or str(inventory_record.get("uid") or "").strip() != folder_uid
+        ):
+            inventory_record = None
+    if inventory_record is not None:
+        path = str(inventory_record.get("path") or "").strip()
+        if path:
+            return path
+        title = str(inventory_record.get("title") or folder_uid).strip()
+        if title:
+            return title
+    return folder_uid
 
 
 def print_dashboard_export_progress(
@@ -748,6 +1113,9 @@ def print_dashboard_import_progress(
     uid: str,
     action: Optional[str] = None,
     status: Optional[str] = None,
+    folder_status: Optional[str] = None,
+    folder_details: Optional[str] = None,
+    folder_path: Optional[str] = None,
     dry_run: bool = False,
 ) -> None:
     """Render one import progress update in concise or verbose form."""
@@ -768,11 +1136,14 @@ def print_dashboard_import_progress(
                 action_label = "blocked-existing"
         else:
             destination = "unknown"
+    folder_segment = ""
+    if dry_run and folder_path:
+        folder_segment = " folderPath=%s" % folder_path
     if getattr(args, "verbose", False):
         if dry_run:
             print(
-                "Dry-run import uid=%s dest=%s action=%s file=%s"
-                % (uid, destination or "unknown", action_label, dashboard_file)
+                "Dry-run import uid=%s dest=%s action=%s%s file=%s"
+                % (uid, destination or "unknown", action_label, folder_segment, dashboard_file)
             )
         else:
             print("Imported %s -> uid=%s status=%s" % (dashboard_file, uid, status or "unknown"))
@@ -780,8 +1151,8 @@ def print_dashboard_import_progress(
     if getattr(args, "progress", False):
         if dry_run:
             print(
-                "Dry-run dashboard %s/%s: %s dest=%s action=%s"
-                % (index, total, uid, destination or "unknown", action_label)
+                "Dry-run dashboard %s/%s: %s dest=%s action=%s%s"
+                % (index, total, uid, destination or "unknown", action_label, folder_segment)
             )
         else:
             print("Importing dashboard %s/%s: %s" % (index, total, uid))
@@ -1031,13 +1402,34 @@ def export_dashboards(args: argparse.Namespace) -> int:
         if not summaries:
             continue
         total_dashboards += len(summaries)
+        folder_inventory = collect_folder_inventory(scoped_client, org, summaries)
         org_exports.append(
-            (org, scoped_client, scoped_output_dir, raw_dir, prompt_dir, datasource_catalog, summaries)
+            (
+                org,
+                scoped_client,
+                scoped_output_dir,
+                raw_dir,
+                prompt_dir,
+                datasource_catalog,
+                summaries,
+                folder_inventory,
+            )
         )
 
     index_items: List[Dict[str, str]] = []
     processed_dashboards = 0
-    for _, scoped_client, _, raw_dir, prompt_dir, datasource_catalog, summaries in org_exports:
+    folder_inventory = []
+    for (
+        _,
+        scoped_client,
+        _,
+        raw_dir,
+        prompt_dir,
+        datasource_catalog,
+        summaries,
+        scoped_folder_inventory,
+    ) in org_exports:
+        folder_inventory.extend(scoped_folder_inventory)
         for summary in summaries:
             processed_dashboards += 1
             uid = str(summary["uid"])
@@ -1119,10 +1511,12 @@ def export_dashboards(args: argparse.Namespace) -> int:
 
     raw_index_path = None
     raw_metadata_path = None
+    raw_folders_path = None
     if export_raw:
         raw_variant_dir = output_dir / RAW_EXPORT_SUBDIR if all_orgs else raw_dir
         raw_index_path = raw_variant_dir / "index.json"
         raw_metadata_path = raw_variant_dir / EXPORT_METADATA_FILENAME
+        raw_folders_path = raw_variant_dir / FOLDER_INVENTORY_FILENAME
         raw_index = build_variant_index(
             index_items,
             "raw_path",
@@ -1132,10 +1526,12 @@ def export_dashboards(args: argparse.Namespace) -> int:
             variant=RAW_EXPORT_SUBDIR,
             dashboard_count=len(raw_index),
             format_name="grafana-web-import-preserve-uid",
+            folders_file=FOLDER_INVENTORY_FILENAME,
         )
         if not args.dry_run:
             write_json_document(raw_index, raw_index_path)
             write_json_document(raw_metadata, raw_metadata_path)
+            write_json_document(folder_inventory, raw_folders_path)
     prompt_index_path = None
     prompt_metadata_path = None
     if export_prompt:
@@ -1625,6 +2021,7 @@ def build_dashboard_import_dry_run_record(
     dashboard_file: Path,
     uid: str,
     action: str,
+    folder_path: Optional[str] = None,
 ) -> Dict[str, str]:
     destination = "unknown"
     action_label = action or "unknown"
@@ -1644,6 +2041,7 @@ def build_dashboard_import_dry_run_record(
         "uid": uid,
         "destination": destination,
         "action": action_label,
+        "folderPath": str(folder_path or ""),
         "file": str(dashboard_file),
     }
 
@@ -1652,15 +2050,100 @@ def render_dashboard_import_dry_run_table(
     records: List[Dict[str, str]],
     include_header: bool = True,
 ) -> List[str]:
-    headers = ["UID", "DESTINATION", "ACTION", "FILE"]
+    include_folder = any(record.get("folderPath") for record in records)
+    headers = ["UID", "DESTINATION", "ACTION"]
+    if include_folder:
+        headers.append("FOLDER_PATH")
+    headers.append("FILE")
+    rows = []
+    for record in records:
+        row = [record["uid"], record["destination"], record["action"]]
+        if include_folder:
+            row.append(record.get("folderPath") or "")
+        row.append(record["file"])
+        rows.append(row)
+    widths = [len(header) for header in headers]
+    for row in rows:
+        for index, value in enumerate(row):
+            widths[index] = max(widths[index], len(value))
+
+    def format_row(values: List[str]) -> str:
+        return "  ".join(
+            value.ljust(widths[index]) for index, value in enumerate(values)
+        )
+
+    lines = []
+    if include_header:
+        lines.extend([format_row(headers), format_row(["-" * width for width in widths])])
+    lines.extend(format_row(row) for row in rows)
+    return lines
+
+
+def render_dashboard_import_dry_run_json(
+    mode: str,
+    folder_records: List[Dict[str, str]],
+    dashboard_records: List[Dict[str, str]],
+    import_dir: Path,
+    skipped_missing_count: int,
+) -> str:
+    """Render one JSON document for dry-run import output."""
+    payload = {
+        "mode": mode,
+        "folders": [
+            {
+                "uid": record.get("uid") or "",
+                "destination": record.get("destination") or "",
+                "status": record.get("status") or "",
+                "reason": record.get("reason") or "",
+                "expectedPath": record.get("expected_path") or "",
+                "actualPath": record.get("actual_path") or "",
+            }
+            for record in folder_records
+        ],
+        "dashboards": [
+            {
+                "uid": record.get("uid") or "",
+                "destination": record.get("destination") or "",
+                "action": record.get("action") or "",
+                "folderPath": record.get("folderPath") or "",
+                "file": record.get("file") or "",
+            }
+            for record in dashboard_records
+        ],
+        "summary": {
+            "importDir": str(import_dir),
+            "folderCount": len(folder_records),
+            "missingFolders": len(
+                [record for record in folder_records if record.get("status") == "missing"]
+            ),
+            "mismatchedFolders": len(
+                [record for record in folder_records if record.get("status") == "mismatch"]
+            ),
+            "dashboardCount": len(dashboard_records),
+            "missingDashboards": len(
+                [record for record in dashboard_records if record.get("destination") == "missing"]
+            ),
+            "skippedMissingDashboards": skipped_missing_count,
+        },
+    }
+    return json.dumps(payload, indent=2, sort_keys=False, ensure_ascii=False)
+
+
+def render_folder_inventory_dry_run_table(
+    records: List[Dict[str, str]],
+    include_header: bool = True,
+) -> List[str]:
+    headers = ["UID", "DESTINATION", "STATUS", "REASON", "EXPECTED_PATH", "ACTUAL_PATH"]
     rows = []
     for record in records:
         rows.append(
             [
                 record["uid"],
                 record["destination"],
-                record["action"],
-                record["file"],
+                record["status"],
+                record["reason"],
+                record["expected_path"],
+                record["actual_path"],
             ]
         )
     widths = [len(header) for header in headers]
@@ -1722,12 +2205,18 @@ def import_dashboards(args: argparse.Namespace) -> int:
     """Import previously exported raw dashboard JSON files through Grafana's API."""
     if getattr(args, "table", False) and not args.dry_run:
         raise GrafanaError("--table is only supported with --dry-run for import-dashboard.")
+    if getattr(args, "json", False) and not args.dry_run:
+        raise GrafanaError("--json is only supported with --dry-run for import-dashboard.")
+    if getattr(args, "table", False) and getattr(args, "json", False):
+        raise GrafanaError("--table and --json are mutually exclusive for import-dashboard.")
     if getattr(args, "no_header", False) and not getattr(args, "table", False):
         raise GrafanaError("--no-header is only supported with --dry-run --table for import-dashboard.")
     client = build_client(args)
     import_dir = Path(args.import_dir)
-    load_export_metadata(import_dir, expected_variant=RAW_EXPORT_SUBDIR)
+    metadata = load_export_metadata(import_dir, expected_variant=RAW_EXPORT_SUBDIR)
     dashboard_files = discover_dashboard_files(import_dir)
+    folder_inventory = resolve_folder_inventory_requirements(args, import_dir, metadata)
+    folder_inventory_lookup = build_folder_inventory_lookup(folder_inventory)
 
     dry_run_records = []
     imported_count = 0
@@ -1736,13 +2225,73 @@ def import_dashboards(args: argparse.Namespace) -> int:
         getattr(args, "replace_existing", False)
         or getattr(args, "update_existing_only", False)
     )
-    print(
-        "Import mode: %s"
-        % describe_dashboard_import_mode(
-            bool(getattr(args, "replace_existing", False)),
-            bool(getattr(args, "update_existing_only", False)),
-        )
+    mode = describe_dashboard_import_mode(
+        bool(getattr(args, "replace_existing", False)),
+        bool(getattr(args, "update_existing_only", False)),
     )
+    json_output = bool(getattr(args, "json", False))
+    if not json_output:
+        print("Import mode: %s" % mode)
+    folder_dry_run_records = []
+    if getattr(args, "dry_run", False) and getattr(args, "ensure_folders", False):
+        folder_dry_run_records = inspect_folder_inventory(client, folder_inventory)
+        if json_output:
+            pass
+        elif getattr(args, "table", False):
+            for line in render_folder_inventory_dry_run_table(
+                folder_dry_run_records,
+                include_header=not bool(getattr(args, "no_header", False)),
+            ):
+                print(line)
+        else:
+            for record in folder_dry_run_records:
+                print(
+                    "Dry-run folder uid=%s dest=%s status=%s reason=%s expected=%s actual=%s"
+                    % (
+                        record["uid"],
+                        record["destination"],
+                        record["status"],
+                        record["reason"] or "-",
+                        record["expected_path"] or "-",
+                        record["actual_path"] or "-",
+                    )
+                )
+        if folder_dry_run_records and not json_output:
+            missing_folder_count = len(
+                [record for record in folder_dry_run_records if record.get("status") == "missing"]
+            )
+            mismatched_folder_count = len(
+                [record for record in folder_dry_run_records if record.get("status") == "mismatch"]
+            )
+            print(
+                "Dry-run checked %s folder(s) from %s; %s missing, %s mismatched"
+                % (
+                    len(folder_dry_run_records),
+                    import_dir
+                    / str(
+                        (metadata or {}).get("foldersFile") or FOLDER_INVENTORY_FILENAME
+                    ),
+                    missing_folder_count,
+                    mismatched_folder_count,
+                )
+            )
+    if (
+        getattr(args, "ensure_folders", False)
+        and folder_inventory
+        and args.import_folder_uid is None
+        and not getattr(args, "dry_run", False)
+    ):
+        created_folders = ensure_folder_inventory(client, folder_inventory)
+        print(
+            "Ensured %s folder(s) from %s"
+            % (
+                created_folders,
+                import_dir
+                / str(
+                    (metadata or {}).get("foldersFile") or FOLDER_INVENTORY_FILENAME
+                ),
+            )
+        )
     total_dashboards = len(dashboard_files)
     for index, dashboard_file in enumerate(dashboard_files, 1):
         document = load_json_file(dashboard_file)
@@ -1762,6 +2311,14 @@ def import_dashboards(args: argparse.Namespace) -> int:
             replace_existing=effective_replace_existing,
             message=args.import_message,
         )
+        folder_path = resolve_dashboard_import_folder_path(
+            client,
+            payload,
+            document,
+            dashboard_file,
+            import_dir,
+            folder_inventory_lookup,
+        )
         uid = payload["dashboard"].get("uid") or "unknown"
         if args.dry_run:
             action = determine_dashboard_import_action(
@@ -1770,9 +2327,14 @@ def import_dashboards(args: argparse.Namespace) -> int:
                 effective_replace_existing,
                 update_existing_only=bool(getattr(args, "update_existing_only", False)),
             )
-            if getattr(args, "table", False):
+            if getattr(args, "table", False) or json_output:
                 dry_run_records.append(
-                    build_dashboard_import_dry_run_record(dashboard_file, str(uid), action)
+                    build_dashboard_import_dry_run_record(
+                        dashboard_file,
+                        str(uid),
+                        action,
+                        folder_path=folder_path,
+                    )
                 )
                 continue
             print_dashboard_import_progress(
@@ -1782,6 +2344,7 @@ def import_dashboards(args: argparse.Namespace) -> int:
                 dashboard_file,
                 str(uid),
                 action=action,
+                folder_path=folder_path,
                 dry_run=True,
             )
             continue
@@ -1826,13 +2389,25 @@ def import_dashboards(args: argparse.Namespace) -> int:
             skipped_missing_count = len(
                 [record for record in dry_run_records if record.get("action") == "skip-missing"]
             )
-        if getattr(args, "table", False):
+        if json_output:
+            print(
+                render_dashboard_import_dry_run_json(
+                    mode,
+                    folder_dry_run_records,
+                    dry_run_records,
+                    import_dir,
+                    skipped_missing_count,
+                )
+            )
+        elif getattr(args, "table", False):
             for line in render_dashboard_import_dry_run_table(
                 dry_run_records,
                 include_header=not bool(getattr(args, "no_header", False)),
             ):
                 print(line)
-        if getattr(args, "update_existing_only", False) and skipped_missing_count:
+        if json_output:
+            pass
+        elif getattr(args, "update_existing_only", False) and skipped_missing_count:
             print(
                 "Dry-run checked %s dashboard files from %s; would skip %s missing dashboards"
                 % (len(dashboard_files), import_dir, skipped_missing_count)

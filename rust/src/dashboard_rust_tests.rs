@@ -1,23 +1,25 @@
 use super::{
     attach_dashboard_folder_paths_with_request, build_export_metadata, build_export_variant_dirs,
-    build_external_export_document, build_folder_path, build_import_payload, build_output_path,
-    build_preserved_web_import_document, build_root_export_index, diff_dashboards_with_request,
-    discover_dashboard_files, export_dashboards_with_request, format_dashboard_summary_line,
-    format_data_source_line, format_export_progress_line, format_export_verbose_line,
+    build_external_export_document, build_folder_inventory_status, build_folder_path,
+    build_import_payload, build_output_path, build_preserved_web_import_document,
+    build_root_export_index, diff_dashboards_with_request, discover_dashboard_files,
+    export_dashboards_with_request, format_dashboard_summary_line, format_data_source_line,
+    format_export_progress_line, format_export_verbose_line, format_folder_inventory_status_line,
     format_import_progress_line, format_import_verbose_line, import_dashboards_with_request,
     list_dashboards_with_request, list_data_sources_with_request, parse_cli_from,
     render_dashboard_summary_csv, render_dashboard_summary_json, render_dashboard_summary_table,
     render_data_source_csv, render_data_source_json, render_data_source_table, CommonCliArgs,
-    DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs, ImportArgs, ListArgs,
-    ListDataSourcesArgs, EXPORT_METADATA_FILENAME, TOOL_SCHEMA_VERSION,
+    DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs, FolderInventoryStatusKind,
+    ImportArgs, ListArgs, ListDataSourcesArgs, EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME,
+    TOOL_SCHEMA_VERSION,
 };
+use crate::common::api_response;
 use clap::{CommandFactory, Parser};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 use tempfile::tempdir;
-use crate::common::api_response;
 
 fn make_common_args(base_url: String) -> CommonCliArgs {
     CommonCliArgs {
@@ -54,6 +56,7 @@ fn build_export_metadata_serializes_expected_shape() {
         "raw",
         2,
         Some("grafana-web-import-preserve-uid"),
+        Some(FOLDER_INVENTORY_FILENAME),
     ))
     .unwrap();
 
@@ -65,7 +68,8 @@ fn build_export_metadata_serializes_expected_shape() {
             "variant": "raw",
             "dashboardCount": 2,
             "indexFile": "index.json",
-            "format": "grafana-web-import-preserve-uid"
+            "format": "grafana-web-import-preserve-uid",
+            "foldersFile": "folders.json"
         })
     );
 }
@@ -87,6 +91,7 @@ fn build_root_export_index_serializes_expected_shape() {
         &[item],
         Some(Path::new("/tmp/raw/index.json")),
         None,
+        &[],
     ))
     .unwrap();
 
@@ -108,8 +113,69 @@ fn build_root_export_index_serializes_expected_shape() {
             "variants": {
                 "raw": "/tmp/raw/index.json",
                 "prompt": null
-            }
+            },
+            "folders": []
         })
+    );
+}
+
+#[test]
+fn collect_folder_inventory_with_request_records_parent_chain() {
+    let summaries = vec![json!({
+        "uid": "cpu-main",
+        "title": "CPU Overview",
+        "folderTitle": "Infra",
+        "folderUid": "infra",
+        "orgName": "Main Org.",
+        "orgId": 1
+    })
+    .as_object()
+    .unwrap()
+    .clone()];
+
+    let folders = super::collect_folder_inventory_with_request(
+        |_method, path, _params, _payload| match path {
+            "/api/folders/infra" => Ok(Some(json!({
+                "uid": "infra",
+                "title": "Infra",
+                "parents": [
+                    {"uid": "platform", "title": "Platform"},
+                    {"uid": "team", "title": "Team"}
+                ]
+            }))),
+            _ => Err(super::message(format!("unexpected path {path}"))),
+        },
+        &summaries,
+    )
+    .unwrap();
+
+    assert_eq!(
+        serde_json::to_value(folders).unwrap(),
+        json!([
+            {
+                "uid": "platform",
+                "title": "Platform",
+                "path": "Platform",
+                "org": "Main Org.",
+                "orgId": "1"
+            },
+            {
+                "uid": "team",
+                "title": "Team",
+                "path": "Platform / Team",
+                "parentUid": "platform",
+                "org": "Main Org.",
+                "orgId": "1"
+            },
+            {
+                "uid": "infra",
+                "title": "Infra",
+                "path": "Platform / Team / Infra",
+                "parentUid": "team",
+                "org": "Main Org.",
+                "orgId": "1"
+            }
+        ])
     );
 }
 
@@ -270,8 +336,8 @@ fn parse_cli_rejects_conflicting_export_org_scope_flags() {
 #[test]
 fn export_help_explains_flat_layout() {
     let help = render_dashboard_subcommand_help("export");
-    assert!(help.contains("Write dashboard files directly into the export variant directory"));
-    assert!(help.contains("instead of per-folder subdirectories"));
+    assert!(help.contains("Write dashboard files directly into each export variant directory"));
+    assert!(help.contains("folder-based subdirectories on disk"));
 }
 
 #[test]
@@ -281,6 +347,15 @@ fn export_help_describes_progress_and_verbose_modes() {
     assert!(help.contains("<current>/<total>"));
     assert!(help.contains("-v, --verbose"));
     assert!(help.contains("Overrides --progress output"));
+}
+
+#[test]
+fn import_help_explains_common_operator_flags() {
+    let help = render_dashboard_subcommand_help("import");
+    assert!(help.contains("not the combined export root"));
+    assert!(help.contains("folder missing/match/mismatch state"));
+    assert!(help.contains("skipped/blocked"));
+    assert!(help.contains("folder check is also shown in table form"));
 }
 
 #[test]
@@ -342,6 +417,26 @@ fn parse_cli_supports_import_progress_and_verbose_flags() {
         DashboardCommand::Import(import_args) => {
             assert!(import_args.progress);
             assert!(import_args.verbose);
+        }
+        _ => panic!("expected import command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_import_dry_run_json_flag() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "import",
+        "--import-dir",
+        "./dashboards/raw",
+        "--dry-run",
+        "--json",
+    ]);
+
+    match args.command {
+        DashboardCommand::Import(import_args) => {
+            assert!(import_args.dry_run);
+            assert!(import_args.json);
         }
         _ => panic!("expected import command"),
     }
@@ -472,6 +567,100 @@ fn build_output_path_keeps_folder_structure() {
 }
 
 #[test]
+fn build_folder_inventory_status_reports_missing_folder() {
+    let folder = super::FolderInventoryItem {
+        uid: "child".to_string(),
+        title: "Child".to_string(),
+        path: "Platform / Child".to_string(),
+        parent_uid: Some("platform".to_string()),
+        org: "Main Org.".to_string(),
+        org_id: "1".to_string(),
+    };
+
+    let status = build_folder_inventory_status(&folder, None);
+
+    assert_eq!(status.kind, FolderInventoryStatusKind::Missing);
+    assert_eq!(
+        format_folder_inventory_status_line(&status),
+        "Folder inventory missing uid=child title=Child parentUid=platform path=Platform / Child"
+    );
+}
+
+#[test]
+fn build_folder_inventory_status_reports_matching_folder() {
+    let folder = super::FolderInventoryItem {
+        uid: "child".to_string(),
+        title: "Child".to_string(),
+        path: "Platform / Child".to_string(),
+        parent_uid: Some("platform".to_string()),
+        org: "Main Org.".to_string(),
+        org_id: "1".to_string(),
+    };
+    let destination_folder = json!({
+        "uid": "child",
+        "title": "Child",
+        "parents": [{"uid": "platform", "title": "Platform"}]
+    })
+    .as_object()
+    .unwrap()
+    .clone();
+
+    let status = build_folder_inventory_status(&folder, Some(&destination_folder));
+
+    assert_eq!(status.kind, FolderInventoryStatusKind::Matches);
+    assert_eq!(
+        format_folder_inventory_status_line(&status),
+        "Folder inventory matches uid=child title=Child parentUid=platform path=Platform / Child"
+    );
+}
+
+#[test]
+fn build_folder_inventory_status_reports_mismatch_details() {
+    let folder = super::FolderInventoryItem {
+        uid: "child".to_string(),
+        title: "Child".to_string(),
+        path: "Platform / Child".to_string(),
+        parent_uid: Some("platform".to_string()),
+        org: "Main Org.".to_string(),
+        org_id: "1".to_string(),
+    };
+    let destination_folder = json!({
+        "uid": "child",
+        "title": "Ops Child",
+        "parents": [{"uid": "ops", "title": "Ops"}]
+    })
+    .as_object()
+    .unwrap()
+    .clone();
+
+    let status = build_folder_inventory_status(&folder, Some(&destination_folder));
+
+    assert_eq!(status.kind, FolderInventoryStatusKind::Mismatch);
+    assert_eq!(
+        format_folder_inventory_status_line(&status),
+        "Folder inventory mismatch uid=child expected(title=Child, parentUid=platform, path=Platform / Child) actual(title=Ops Child, parentUid=ops, path=Ops / Ops Child)"
+    );
+}
+
+#[test]
+fn render_folder_inventory_dry_run_table_supports_expected_columns() {
+    let rows = vec![[
+        "child".to_string(),
+        "exists".to_string(),
+        "mismatch".to_string(),
+        "path".to_string(),
+        "Platform / Child".to_string(),
+        "Legacy / Child".to_string(),
+    ]];
+
+    let with_header = super::render_folder_inventory_dry_run_table(&rows, true);
+
+    assert!(with_header[0].contains("EXPECTED_PATH"));
+    assert!(with_header[0].contains("ACTUAL_PATH"));
+    assert!(with_header[2].contains("Legacy / Child"));
+}
+
+#[test]
 fn export_progress_line_uses_concise_counter_format() {
     assert_eq!(
         format_export_progress_line(2, 5, "cpu-main", false),
@@ -498,16 +687,16 @@ fn export_verbose_line_includes_variant_and_path() {
 #[test]
 fn import_progress_line_uses_concise_counter_format() {
     assert_eq!(
-        format_import_progress_line(3, 7, "/tmp/raw/cpu.json", false, None),
+        format_import_progress_line(3, 7, "/tmp/raw/cpu.json", false, None, None),
         "Importing dashboard 3/7: /tmp/raw/cpu.json"
     );
     assert_eq!(
-        format_import_progress_line(3, 7, "cpu-main", true, Some("would-update")),
-        "Dry-run dashboard 3/7: cpu-main dest=exists action=update"
+        format_import_progress_line(3, 7, "cpu-main", true, Some("would-update"), Some("General")),
+        "Dry-run dashboard 3/7: cpu-main dest=exists action=update folderPath=General"
     );
     assert_eq!(
-        format_import_progress_line(3, 7, "cpu-main", true, Some("would-skip-missing")),
-        "Dry-run dashboard 3/7: cpu-main dest=missing action=skip-missing"
+        format_import_progress_line(3, 7, "cpu-main", true, Some("would-skip-missing"), Some("Platform / Infra")),
+        "Dry-run dashboard 3/7: cpu-main dest=missing action=skip-missing folderPath=Platform / Infra"
     );
 }
 
@@ -518,12 +707,14 @@ fn render_import_dry_run_table_supports_optional_header() {
             "abc".to_string(),
             "exists".to_string(),
             "update".to_string(),
+            "General".to_string(),
             "/tmp/a.json".to_string(),
         ],
         [
             "xyz".to_string(),
             "missing".to_string(),
             "create".to_string(),
+            "Platform / Infra".to_string(),
             "/tmp/b.json".to_string(),
         ],
     ];
@@ -531,23 +722,70 @@ fn render_import_dry_run_table_supports_optional_header() {
     assert!(with_header[0].contains("UID"));
     assert!(with_header[0].contains("DESTINATION"));
     assert!(with_header[0].contains("ACTION"));
+    assert!(with_header[0].contains("FOLDER_PATH"));
     assert!(with_header[0].contains("FILE"));
     assert!(with_header[2].contains("abc"));
     assert!(with_header[2].contains("exists"));
     assert!(with_header[2].contains("update"));
+    assert!(with_header[2].contains("General"));
     assert!(with_header[2].contains("/tmp/a.json"));
     let without_header = super::render_import_dry_run_table(&rows, false);
     assert_eq!(without_header.len(), 2);
     assert!(without_header[0].contains("abc"));
     assert!(without_header[0].contains("exists"));
     assert!(without_header[0].contains("update"));
+    assert!(without_header[0].contains("General"));
     assert!(without_header[0].contains("/tmp/a.json"));
 }
 
 #[test]
+fn render_import_dry_run_json_returns_structured_document() {
+    let folder_status = super::FolderInventoryStatus {
+        uid: "infra".to_string(),
+        expected_title: "Infra".to_string(),
+        expected_parent_uid: Some("platform".to_string()),
+        expected_path: "Platform / Infra".to_string(),
+        actual_title: Some("Infra".to_string()),
+        actual_parent_uid: Some("platform".to_string()),
+        actual_path: Some("Platform / Infra".to_string()),
+        kind: FolderInventoryStatusKind::Matches,
+    };
+    let rows = vec![[
+        "abc".to_string(),
+        "exists".to_string(),
+        "update".to_string(),
+        "Platform / Infra".to_string(),
+        "/tmp/a.json".to_string(),
+    ]];
+
+    let value: Value = serde_json::from_str(
+        &super::render_import_dry_run_json(
+            "create-or-update",
+            &[folder_status],
+            &rows,
+            Path::new("/tmp/raw"),
+            0,
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(value["mode"], "create-or-update");
+    assert_eq!(value["folders"][0]["uid"], "infra");
+    assert_eq!(value["dashboards"][0]["folderPath"], "Platform / Infra");
+    assert_eq!(value["summary"]["dashboardCount"], 1);
+}
+
+#[test]
 fn describe_dashboard_import_mode_uses_expected_labels() {
-    assert_eq!(super::describe_dashboard_import_mode(false, false), "create-only");
-    assert_eq!(super::describe_dashboard_import_mode(true, false), "create-or-update");
+    assert_eq!(
+        super::describe_dashboard_import_mode(false, false),
+        "create-only"
+    );
+    assert_eq!(
+        super::describe_dashboard_import_mode(true, false),
+        "create-or-update"
+    );
     assert_eq!(
         super::describe_dashboard_import_mode(false, true),
         "update-or-skip-missing"
@@ -557,7 +795,7 @@ fn describe_dashboard_import_mode_uses_expected_labels() {
 #[test]
 fn import_verbose_line_includes_dry_run_action() {
     assert_eq!(
-        format_import_verbose_line(Path::new("/tmp/raw/cpu.json"), false, None, None),
+        format_import_verbose_line(Path::new("/tmp/raw/cpu.json"), false, None, None, None),
         "Imported /tmp/raw/cpu.json"
     );
     assert_eq!(
@@ -565,18 +803,20 @@ fn import_verbose_line_includes_dry_run_action() {
             Path::new("/tmp/raw/cpu.json"),
             true,
             Some("cpu-main"),
-            Some("would-update")
+            Some("would-update"),
+            Some("General")
         ),
-        "Dry-run import uid=cpu-main dest=exists action=update file=/tmp/raw/cpu.json"
+        "Dry-run import uid=cpu-main dest=exists action=update folderPath=General file=/tmp/raw/cpu.json"
     );
     assert_eq!(
         format_import_verbose_line(
             Path::new("/tmp/raw/cpu.json"),
             true,
             Some("cpu-main"),
-            Some("would-skip-missing")
+            Some("would-skip-missing"),
+            Some("Platform / Infra")
         ),
-        "Dry-run import uid=cpu-main dest=missing action=skip-missing file=/tmp/raw/cpu.json"
+        "Dry-run import uid=cpu-main dest=missing action=skip-missing folderPath=Platform / Infra file=/tmp/raw/cpu.json"
     );
 }
 
@@ -615,6 +855,28 @@ fn discover_dashboard_files_ignores_export_metadata() {
             "indexFile": "index.json",
             "format": "grafana-web-import-preserve-uid"
         }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let files = discover_dashboard_files(&temp.path().join("raw")).unwrap();
+    assert_eq!(files, vec![temp.path().join("raw/subdir/dashboard.json")]);
+}
+
+#[test]
+fn discover_dashboard_files_ignores_folder_inventory() {
+    let temp = tempdir().unwrap();
+    fs::create_dir_all(temp.path().join("raw/subdir")).unwrap();
+    fs::write(
+        temp.path().join("raw/subdir/dashboard.json"),
+        serde_json::to_string_pretty(&json!({"uid": "abc", "title": "CPU"})).unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        temp.path().join("raw").join(FOLDER_INVENTORY_FILENAME),
+        serde_json::to_string_pretty(&json!([
+            {"uid": "infra", "title": "Infra", "path": "Infra", "org": "Main Org.", "orgId": "1"}
+        ]))
         .unwrap(),
     )
     .unwrap();
@@ -1847,11 +2109,13 @@ fn import_dashboards_with_client_imports_discovered_files() {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         import_dir: raw_dir,
         import_folder_uid: Some("new-folder".to_string()),
+        ensure_folders: false,
         replace_existing: true,
         update_existing_only: false,
         import_message: "sync dashboards".to_string(),
         dry_run: false,
         table: false,
+        json: false,
         no_header: false,
         progress: false,
         verbose: false,
@@ -1903,11 +2167,13 @@ fn import_dashboards_with_dry_run_skips_post_requests() {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         import_dir: raw_dir,
         import_folder_uid: None,
+        ensure_folders: false,
         replace_existing: true,
         update_existing_only: false,
         import_message: "sync dashboards".to_string(),
         dry_run: true,
         table: false,
+        json: false,
         no_header: false,
         progress: false,
         verbose: false,
@@ -1919,6 +2185,7 @@ fn import_dashboards_with_dry_run_skips_post_requests() {
                 "dashboard": {"id": 7, "uid": "abc", "title": "CPU"},
                 "meta": {"folderUid": "old-folder"}
             }))),
+            "/api/folders/old-folder" => Ok(None),
             "/api/dashboards/db" => Err(super::message("dry-run must not post dashboards")),
             _ => Err(super::message(format!("unexpected path {path}"))),
         },
@@ -1950,11 +2217,13 @@ fn import_dashboards_rejects_unsupported_export_schema_version() {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         import_dir: raw_dir,
         import_folder_uid: None,
+        ensure_folders: false,
         replace_existing: false,
         update_existing_only: false,
         import_message: "sync dashboards".to_string(),
         dry_run: false,
         table: false,
+        json: false,
         no_header: false,
         progress: false,
         verbose: false,
@@ -2006,11 +2275,13 @@ fn import_dashboards_with_update_existing_only_skips_missing_dashboards() {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         import_dir: raw_dir,
         import_folder_uid: None,
+        ensure_folders: false,
         replace_existing: false,
         update_existing_only: true,
         import_message: "sync dashboards".to_string(),
         dry_run: false,
         table: false,
+        json: false,
         no_header: false,
         progress: false,
         verbose: false,
@@ -2072,11 +2343,13 @@ fn import_dashboards_with_update_existing_only_table_marks_missing_dashboards_as
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         import_dir: raw_dir,
         import_folder_uid: None,
+        ensure_folders: false,
         replace_existing: false,
         update_existing_only: true,
         import_message: "sync dashboards".to_string(),
         dry_run: true,
         table: true,
+        json: false,
         no_header: true,
         progress: false,
         verbose: false,
@@ -2130,11 +2403,13 @@ fn import_dashboards_replace_existing_preserves_destination_folder() {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         import_dir: raw_dir,
         import_folder_uid: None,
+        ensure_folders: false,
         replace_existing: true,
         update_existing_only: false,
         import_message: "sync dashboards".to_string(),
         dry_run: false,
         table: false,
+        json: false,
         no_header: false,
         progress: false,
         verbose: false,
@@ -2160,6 +2435,435 @@ fn import_dashboards_replace_existing_preserves_destination_folder() {
     assert_eq!(posted_payloads.len(), 1);
     assert_eq!(posted_payloads[0]["folderUid"], "dest-folder");
     assert_eq!(posted_payloads[0]["overwrite"], true);
+}
+
+#[test]
+fn import_dashboards_rejects_ensure_folders_with_import_folder_override() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(&raw_dir).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("dash.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU"},
+            "meta": {"folderUid": "child"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let args = ImportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        import_dir: raw_dir,
+        import_folder_uid: Some("override-folder".to_string()),
+        ensure_folders: true,
+        replace_existing: false,
+        update_existing_only: false,
+        import_message: "sync dashboards".to_string(),
+        dry_run: false,
+        table: false,
+        json: false,
+        no_header: false,
+        progress: false,
+        verbose: false,
+    };
+
+    let error = import_dashboards_with_request(|_method, _path, _params, _payload| Ok(None), &args)
+        .unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("--ensure-folders cannot be combined with --import-folder-uid"));
+}
+
+#[test]
+fn import_dashboards_rejects_json_without_dry_run() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(&raw_dir).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let args = ImportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        import_dir: raw_dir,
+        import_folder_uid: None,
+        ensure_folders: false,
+        replace_existing: false,
+        update_existing_only: false,
+        import_message: "sync dashboards".to_string(),
+        dry_run: false,
+        table: false,
+        json: true,
+        no_header: false,
+        progress: false,
+        verbose: false,
+    };
+
+    let error = import_dashboards_with_request(|_method, _path, _params, _payload| Ok(None), &args)
+        .unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("--json is only supported with --dry-run"));
+}
+
+#[test]
+fn import_dashboards_with_ensure_folders_creates_missing_folder_chain_from_raw_inventory() {
+    let temp = tempdir().unwrap();
+    let root_dir = temp.path();
+    let raw_dir = root_dir.join("raw");
+    fs::create_dir_all(&raw_dir).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid",
+            "foldersFile": "folders.json"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join(FOLDER_INVENTORY_FILENAME),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "platform",
+                "title": "Platform",
+                "path": "Platform",
+                "org": "Main Org.",
+                "orgId": "1"
+            },
+            {
+                "uid": "child",
+                "title": "Child",
+                "path": "Platform / Child",
+                "parentUid": "platform",
+                "org": "Main Org.",
+                "orgId": "1"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("dash.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU"},
+            "meta": {"folderUid": "child"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let args = ImportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        import_dir: raw_dir,
+        import_folder_uid: None,
+        ensure_folders: true,
+        replace_existing: false,
+        update_existing_only: false,
+        import_message: "sync dashboards".to_string(),
+        dry_run: false,
+        table: false,
+        json: false,
+        no_header: false,
+        progress: false,
+        verbose: false,
+    };
+    let mut calls = Vec::new();
+    let mut posted_payloads = Vec::new();
+
+    let count = import_dashboards_with_request(
+        |method, path, _params, payload| {
+            calls.push(format!("{} {}", method.as_str(), path));
+            match (method, path) {
+                (reqwest::Method::GET, "/api/dashboards/uid/abc") => Err(api_response(
+                    404,
+                    "http://127.0.0.1:3000/api/dashboards/uid/abc",
+                    "{\"message\":\"not found\"}",
+                )),
+                (reqwest::Method::GET, "/api/folders/child") => Ok(None),
+                (reqwest::Method::GET, "/api/folders/platform") => Ok(None),
+                (reqwest::Method::POST, "/api/folders") => {
+                    posted_payloads.push(payload.cloned().unwrap());
+                    Ok(Some(json!({"status": "success"})))
+                }
+                (reqwest::Method::POST, "/api/dashboards/db") => {
+                    posted_payloads.push(payload.cloned().unwrap());
+                    Ok(Some(json!({"status": "success"})))
+                }
+                _ => Err(super::message(format!("unexpected path {path}"))),
+            }
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 1);
+    assert_eq!(
+        posted_payloads,
+        vec![
+            json!({"uid": "platform", "title": "Platform"}),
+            json!({"uid": "child", "title": "Child", "parentUid": "platform"}),
+            json!({
+                "dashboard": {"id": null, "uid": "abc", "title": "CPU"},
+                "overwrite": false,
+                "message": "sync dashboards",
+                "folderUid": "child"
+            })
+        ]
+    );
+    assert_eq!(
+        calls,
+        vec![
+            "GET /api/dashboards/uid/abc",
+            "GET /api/folders/child",
+            "GET /api/folders/platform",
+            "GET /api/folders/platform",
+            "POST /api/folders",
+            "GET /api/folders/child",
+            "POST /api/folders",
+            "POST /api/dashboards/db"
+        ]
+    );
+}
+
+#[test]
+fn import_dashboards_with_dry_run_and_ensure_folders_checks_folder_inventory() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(&raw_dir).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid",
+            "foldersFile": "folders.json"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join(FOLDER_INVENTORY_FILENAME),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "platform",
+                "title": "Platform",
+                "path": "Platform",
+                "org": "Main Org.",
+                "orgId": "1"
+            },
+            {
+                "uid": "child",
+                "title": "Child",
+                "path": "Platform / Child",
+                "parentUid": "platform",
+                "org": "Main Org.",
+                "orgId": "1"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("dash.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU"},
+            "meta": {"folderUid": "child"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let args = ImportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        import_dir: raw_dir,
+        import_folder_uid: None,
+        ensure_folders: true,
+        replace_existing: false,
+        update_existing_only: false,
+        import_message: "sync dashboards".to_string(),
+        dry_run: true,
+        table: false,
+        json: false,
+        no_header: false,
+        progress: false,
+        verbose: false,
+    };
+    let mut calls = Vec::new();
+
+    let count = import_dashboards_with_request(
+        |method, path, _params, _payload| {
+            calls.push(format!("{} {}", method.as_str(), path));
+            match (method, path) {
+                (reqwest::Method::GET, "/api/folders/platform") => Ok(Some(json!({
+                    "uid": "platform",
+                    "title": "Platform",
+                    "parents": []
+                }))),
+                (reqwest::Method::GET, "/api/folders/child") => Ok(None),
+                (reqwest::Method::GET, "/api/dashboards/uid/abc") => Err(api_response(
+                    404,
+                    "http://127.0.0.1:3000/api/dashboards/uid/abc",
+                    "{\"message\":\"not found\"}",
+                )),
+                (reqwest::Method::POST, "/api/folders") => {
+                    Err(super::message("dry-run must not create folders"))
+                }
+                (reqwest::Method::POST, "/api/dashboards/db") => {
+                    Err(super::message("dry-run must not post dashboards"))
+                }
+                _ => Err(super::message(format!("unexpected path {path}"))),
+            }
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 1);
+    assert_eq!(
+        calls,
+        vec![
+            "GET /api/folders/platform",
+            "GET /api/folders/child",
+            "GET /api/dashboards/uid/abc",
+            "GET /api/folders/child"
+        ]
+    );
+}
+
+#[test]
+fn import_dashboards_with_ensure_folders_requires_inventory_manifest() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(&raw_dir).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid",
+            "foldersFile": "folders.json"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("dash.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU"},
+            "meta": {"folderUid": "child"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let args = ImportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        import_dir: raw_dir,
+        import_folder_uid: None,
+        ensure_folders: true,
+        replace_existing: false,
+        update_existing_only: false,
+        import_message: "sync dashboards".to_string(),
+        dry_run: false,
+        table: false,
+        json: false,
+        no_header: false,
+        progress: false,
+        verbose: false,
+    };
+
+    let error = import_dashboards_with_request(|_method, _path, _params, _payload| Ok(None), &args)
+        .unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("Folder inventory file not found for --ensure-folders"));
+}
+
+#[test]
+fn collect_folder_inventory_statuses_with_request_reports_match_mismatch_and_missing() {
+    let folders = vec![
+        super::FolderInventoryItem {
+            uid: "platform".to_string(),
+            title: "Platform".to_string(),
+            path: "Platform".to_string(),
+            parent_uid: None,
+            org: "Main Org.".to_string(),
+            org_id: "1".to_string(),
+        },
+        super::FolderInventoryItem {
+            uid: "child".to_string(),
+            title: "Child".to_string(),
+            path: "Platform / Child".to_string(),
+            parent_uid: Some("platform".to_string()),
+            org: "Main Org.".to_string(),
+            org_id: "1".to_string(),
+        },
+        super::FolderInventoryItem {
+            uid: "missing".to_string(),
+            title: "Missing".to_string(),
+            path: "Missing".to_string(),
+            parent_uid: None,
+            org: "Main Org.".to_string(),
+            org_id: "1".to_string(),
+        },
+    ];
+
+    let statuses = super::collect_folder_inventory_statuses_with_request(
+        &mut |method, path, _params, _payload| match (method, path) {
+            (reqwest::Method::GET, "/api/folders/platform") => Ok(Some(json!({
+                "uid": "platform",
+                "title": "Platform",
+                "parents": []
+            }))),
+            (reqwest::Method::GET, "/api/folders/child") => Ok(Some(json!({
+                "uid": "child",
+                "title": "Legacy Child",
+                "parents": [{"uid": "platform", "title": "Platform"}]
+            }))),
+            (reqwest::Method::GET, "/api/folders/missing") => Ok(None),
+            _ => Err(super::message(format!("unexpected path {path}"))),
+        },
+        &folders,
+    )
+    .unwrap();
+
+    assert_eq!(statuses[0].kind, FolderInventoryStatusKind::Matches);
+    assert_eq!(statuses[1].kind, FolderInventoryStatusKind::Mismatch);
+    assert_eq!(statuses[2].kind, FolderInventoryStatusKind::Missing);
 }
 
 #[test]

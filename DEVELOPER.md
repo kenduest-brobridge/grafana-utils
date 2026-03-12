@@ -177,9 +177,13 @@ This is why prompt export needs live datasource metadata while raw export does n
 - Import expects raw dashboard JSON, not prompt JSON.
 - Files containing `__inputs` should be imported through Grafana web UI.
 - Import can override folder destination with `--import-folder-uid`.
+- Raw export writes `raw/folders.json` plus `raw/export-metadata.json::foldersFile` so later imports can reconstruct folder `uid`, `title`, `parentUid`, `path`, `org`, and `orgId` inventory.
+- Import `--ensure-folders` reads that raw folder inventory, creates missing parent folders through Grafana's folder API, and rejects the run when the inventory manifest is missing.
+- Import `--dry-run --ensure-folders` inspects the destination folder inventory first and reports missing versus mismatched exported folders so operators can catch path or parent drift before running a real import.
 - Import can set the dashboard version-history message with `--import-message`.
 - Import `--dry-run` predicts `would-create`, `would-update`, or `would-fail-existing` by checking the live Grafana UID first.
-- Import `--dry-run --table` renders those predictions as `UID`, `DESTINATION`, `ACTION`, and `FILE`, and `--no-header` can suppress the header row only in that mode.
+- Import `--dry-run --table` renders those predictions as `UID`, `DESTINATION`, `ACTION`, `FOLDER_PATH`, and `FILE`, and `--no-header` can suppress the header row only in that mode.
+- Import `--dry-run --json` renders one JSON document with `mode`, `folders`, `dashboards`, and `summary`, and suppresses the normal human-readable progress/summary lines so scripts can parse it safely.
 - Import `--update-existing-only` switches the workflow to `update-or-skip-missing` by dashboard `uid`, implies overwrite-on-existing behavior, and never creates missing dashboards.
 - When import updates an existing dashboard by `uid`, it preserves the destination Grafana folder by default; only an explicit `--import-folder-uid` overrides that folder placement.
 - Import now prints an `Import mode: ...` line before processing files so operators can confirm the active create/update/skip strategy immediately.
@@ -335,11 +339,13 @@ This section lists the Grafana HTTP API paths used by this project. It is intend
 | `GET` | `/api/search` | Search Grafana objects. In this project it is always called with `type=dash-db` plus pagination params. | List dashboards for export and search dashboards by title when repairing linked alert-rule dashboard references. |
 | `GET` | `/api/dashboards/uid/{uid}` | Fetch one dashboard plus Grafana `meta` fields by dashboard UID. | Export a dashboard by UID, and inspect dashboard metadata during alert-rule linked-dashboard repair. |
 | `POST` | `/api/dashboards/db` | Create or update a dashboard from the standard dashboard import payload. Grafana expects a wrapped payload such as `{dashboard, folderUid, overwrite, message}`. | Import dashboards from the tool's raw dashboard files. |
+| `GET` | `/api/folders/{uid}` | Fetch one Grafana folder plus its parent chain metadata. | Resolve folder tree paths during export and detect whether a folder UID already exists before `--ensure-folders` import runs. |
+| `POST` | `/api/folders` | Create one Grafana folder, optionally nested under `parentUid`. | Recreate missing folder chains from `raw/folders.json` when operators opt into `--ensure-folders`. |
 | `GET` | `/api/datasources` | List datasource definitions known to Grafana. | Build the datasource catalog used by dashboard prompt export so datasource references can be rewritten into Grafana import placeholders. |
 
 Notes:
 
-- No dashboard folder-management endpoint is used. Folder destination is carried through `folderUid` inside the dashboard import payload.
+- Normal dashboard placement still flows through `folderUid` inside the dashboard import payload. The dedicated folder API is only used when `--ensure-folders` explicitly asks the tool to recreate missing destination folders first.
 - The alerting utility reuses `/api/search` and `/api/dashboards/uid/{uid}` only for linked-dashboard metadata lookup and repair, not for dashboard export/import.
 
 ### Alerting provisioning APIs
