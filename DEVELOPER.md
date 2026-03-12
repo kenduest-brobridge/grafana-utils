@@ -2,6 +2,13 @@
 
 This document is for maintainers. Keep `README.md` GitHub-facing and task-oriented; put implementation detail, internal tradeoffs, and maintenance notes here.
 
+Commit message default for this repo:
+
+- first line: short imperative title
+- blank line
+- then 2-4 flat `- ...` detail bullets
+- keep the bullets concrete about code, tests, docs, or migration impact
+
 ## Repository Scope
 
 - `grafana_utils/dashboard_cli.py`: packaged dashboard export/import utility
