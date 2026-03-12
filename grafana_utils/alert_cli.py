@@ -3,6 +3,7 @@
 
 import argparse
 import base64
+import csv
 import copy
 import difflib
 import getpass
@@ -45,13 +46,13 @@ HELP_EPILOG = """Examples:
 
   Export alerting resources with an API token:
     export GRAFANA_API_TOKEN='your-token'
-    grafana-alert-utils --url https://grafana.example.com --output-dir ./alerts --overwrite
+    grafana-utils alert export --url https://grafana.example.com --output-dir ./alerts --overwrite
 
   Import back into Grafana and update existing resources:
-    grafana-alert-utils --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing
+    grafana-utils alert import --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing
 
   Import linked alert rules with dashboard and panel remapping:
-    grafana-alert-utils --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json
+    grafana-utils alert import --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json
 """
 
 RESOURCE_SUBDIR_BY_KIND = {
@@ -84,13 +85,7 @@ class GrafanaApiError(GrafanaError):
         super().__init__(f"Grafana API error {status_code} for {url}: {body}")
 
 
-def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog=prog,
-        description="Export or import Grafana alerting resources.",
-        epilog=HELP_EPILOG,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+def add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--url",
         default=DEFAULT_URL,
@@ -135,6 +130,20 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--timeout",
+        type=int,
+        default=DEFAULT_TIMEOUT,
+        help=f"HTTP timeout in seconds (default: {DEFAULT_TIMEOUT}).",
+    )
+    parser.add_argument(
+        "--verify-ssl",
+        action="store_true",
+        help="Enable TLS certificate verification. Verification is disabled by default.",
+    )
+
+
+def add_export_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
         "--output-dir",
         default=DEFAULT_OUTPUT_DIR,
         help=(
@@ -142,6 +151,100 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
             f"under {RAW_EXPORT_SUBDIR}/."
         ),
     )
+    parser.add_argument(
+        "--flat",
+        action="store_true",
+        help=(
+            "Write rule, contact-point, and mute-timing files directly into their "
+            "resource directories instead of nested folder/group directories."
+        ),
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing exported files if they already exist.",
+    )
+
+
+def add_list_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--table",
+        action="store_true",
+        help="Render list output as a table. This is the default.",
+    )
+    parser.add_argument(
+        "--csv",
+        action="store_true",
+        help="Render list output as CSV.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Render list output as JSON.",
+    )
+    parser.add_argument(
+        "--no-header",
+        action="store_true",
+        help="Omit the table header row.",
+    )
+
+
+def add_import_args(parser: argparse.ArgumentParser, diff_mode: bool = False) -> None:
+    dir_flag = "--diff-dir" if diff_mode else "--import-dir"
+    verb = "Compare" if diff_mode else "Import"
+    parser.add_argument(
+        dir_flag,
+        dest="diff_dir" if diff_mode else "import_dir",
+        required=True,
+        help=(
+            f"{verb} alerting resource JSON from this directory against Grafana. "
+            if diff_mode
+            else "Import alerting resource JSON from this directory instead of exporting. "
+        )
+        + f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly.",
+    )
+    if not diff_mode:
+        parser.add_argument(
+            "--replace-existing",
+            action="store_true",
+            help="Update existing resources with the same identity instead of failing on import.",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help="Show whether each import file would create or update resources without changing Grafana.",
+        )
+    parser.add_argument(
+        "--dashboard-uid-map",
+        default=None,
+        help=(
+            "JSON file that maps source dashboard UIDs to target dashboard UIDs "
+            "for linked alert-rule repair during import."
+        ),
+    )
+    parser.add_argument(
+        "--panel-id-map",
+        default=None,
+        help=(
+            "JSON file that maps source dashboard UID and source panel ID to a "
+            "target panel ID for linked alert-rule repair during import."
+        ),
+    )
+    if diff_mode:
+        parser.set_defaults(replace_existing=False, dry_run=False, output_dir=DEFAULT_OUTPUT_DIR, flat=False, overwrite=False)
+    else:
+        parser.set_defaults(diff_dir=None, output_dir=DEFAULT_OUTPUT_DIR, flat=False, overwrite=False)
+
+
+def build_legacy_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog=prog,
+        description="Export, import, or diff Grafana alerting resources.",
+        epilog=HELP_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_common_args(parser)
+    add_export_args(parser)
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument(
         "--import-dir",
@@ -158,25 +261,6 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
             "Compare alerting resource JSON from this directory against Grafana. "
             f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly."
         ),
-    )
-    parser.add_argument(
-        "--timeout",
-        type=int,
-        default=DEFAULT_TIMEOUT,
-        help=f"HTTP timeout in seconds (default: {DEFAULT_TIMEOUT}).",
-    )
-    parser.add_argument(
-        "--flat",
-        action="store_true",
-        help=(
-            "Write rule, contact-point, and mute-timing files directly into their "
-            "resource directories instead of nested folder/group directories."
-        ),
-    )
-    parser.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="Overwrite existing exported files if they already exist.",
     )
     parser.add_argument(
         "--replace-existing",
@@ -204,16 +288,95 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
             "target panel ID for linked alert-rule repair during import."
         ),
     )
-    parser.add_argument(
-        "--verify-ssl",
-        action="store_true",
-        help="Enable TLS certificate verification. Verification is disabled by default.",
+    parser.set_defaults(alert_command=None)
+    return parser
+
+
+def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog=prog,
+        description="Export, import, or diff Grafana alerting resources.",
+        epilog=HELP_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    subparsers = parser.add_subparsers(dest="alert_command")
+
+    export_parser = subparsers.add_parser(
+        "export",
+        help="Export alerting resources into raw/ JSON files.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_common_args(export_parser)
+    add_export_args(export_parser)
+    export_parser.set_defaults(
+        alert_command="export",
+        import_dir=None,
+        diff_dir=None,
+        replace_existing=False,
+        dry_run=False,
+        dashboard_uid_map=None,
+        panel_id_map=None,
+    )
+
+    import_parser = subparsers.add_parser(
+        "import",
+        help="Import alerting resource JSON files through the Grafana API.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_common_args(import_parser)
+    add_import_args(import_parser, diff_mode=False)
+    import_parser.set_defaults(alert_command="import")
+
+    diff_parser = subparsers.add_parser(
+        "diff",
+        help="Compare local alerting export files against live Grafana resources.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_common_args(diff_parser)
+    add_import_args(diff_parser, diff_mode=True)
+    diff_parser.set_defaults(alert_command="diff")
+
+    for command_name, help_text in (
+        ("list-rules", "List live Grafana alert rules."),
+        ("list-contact-points", "List live Grafana alert contact points."),
+        ("list-mute-timings", "List live Grafana mute timings."),
+        ("list-templates", "List live Grafana notification templates."),
+    ):
+        list_parser = subparsers.add_parser(
+            command_name,
+            help=help_text,
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+        add_common_args(list_parser)
+        add_list_args(list_parser)
+        list_parser.set_defaults(alert_command=command_name)
+
     return parser
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
-    return build_parser().parse_args(argv)
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv in (["-h"], ["--help"]):
+        return build_parser().parse_args(argv)
+    if argv and argv[0] in (
+        "export",
+        "import",
+        "diff",
+        "list-rules",
+        "list-contact-points",
+        "list-mute-timings",
+        "list-templates",
+    ):
+        return build_parser().parse_args(argv)
+
+    args = build_legacy_parser().parse_args(argv)
+    if getattr(args, "import_dir", None):
+        args.alert_command = "import"
+    elif getattr(args, "diff_dir", None):
+        args.alert_command = "diff"
+    else:
+        args.alert_command = "export"
+    return args
 
 
 def env_value(name: str) -> Optional[str]:
@@ -634,6 +797,99 @@ class GrafanaAlertClient:
         return data
 
 
+ALERT_RULE_LIST_FIELDS = ["uid", "title", "folderUID", "ruleGroup"]
+CONTACT_POINT_LIST_FIELDS = ["uid", "name", "type"]
+MUTE_TIMING_LIST_FIELDS = ["name", "intervals"]
+TEMPLATE_LIST_FIELDS = ["name"]
+
+
+def build_alert_list_table(
+    rows: List[Dict[str, Any]],
+    fields: List[str],
+    headers: Dict[str, str],
+    include_header: bool = True,
+) -> List[str]:
+    widths = {}
+    for field in fields:
+        widths[field] = len(headers[field])
+        for row in rows:
+            widths[field] = max(widths[field], len(str(row.get(field) or "")))
+
+    def build_row(values: Dict[str, Any]) -> str:
+        return "  ".join(
+            str(values.get(field) or "").ljust(widths[field]) for field in fields
+        )
+
+    lines = []
+    if include_header:
+        lines.append(build_row(headers))
+        lines.append("  ".join("-" * widths[field] for field in fields))
+    for row in rows:
+        lines.append(build_row(row))
+    return lines
+
+
+def render_alert_list_csv(rows: List[Dict[str, Any]], fields: List[str]) -> None:
+    writer = csv.DictWriter(sys.stdout, fieldnames=fields)
+    writer.writeheader()
+    for row in rows:
+        writer.writerow(row)
+
+
+def render_alert_list_json(rows: List[Dict[str, Any]]) -> str:
+    return json.dumps(rows, indent=2, ensure_ascii=False)
+
+
+def serialize_rule_list_rows(rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    rows = []
+    for rule in rules:
+        rows.append(
+            {
+                "uid": str(rule.get("uid") or ""),
+                "title": str(rule.get("title") or ""),
+                "folderUID": str(rule.get("folderUID") or ""),
+                "ruleGroup": str(rule.get("ruleGroup") or ""),
+            }
+        )
+    return rows
+
+
+def serialize_contact_point_list_rows(
+    contact_points: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    rows = []
+    for item in contact_points:
+        rows.append(
+            {
+                "uid": str(item.get("uid") or ""),
+                "name": str(item.get("name") or ""),
+                "type": str(item.get("type") or ""),
+            }
+        )
+    return rows
+
+
+def serialize_mute_timing_list_rows(
+    mute_timings: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    rows = []
+    for item in mute_timings:
+        intervals = item.get("time_intervals") or []
+        rows.append(
+            {
+                "name": str(item.get("name") or ""),
+                "intervals": str(len(intervals)),
+            }
+        )
+    return rows
+
+
+def serialize_template_list_rows(
+    templates: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    return [{"name": str(item.get("name") or "")} for item in templates]
+
+
 def strip_server_managed_fields(kind: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     """Remove Grafana-owned fields so exports are safe for later import."""
     normalized = copy.deepcopy(payload)
@@ -1000,7 +1256,7 @@ def reject_provisioning_export(document: Dict[str, Any]) -> None:
     ):
         raise GrafanaError(
             "Grafana provisioning export format is not supported for API import. "
-            "Use files exported by grafana-alert-utils."
+            "Use files exported by grafana-utils alert export."
         )
 
 
@@ -1831,12 +2087,52 @@ def build_client(args: argparse.Namespace) -> GrafanaAlertClient:
     )
 
 
+def list_alert_resources(args: argparse.Namespace) -> int:
+    client = build_client(args)
+    command = getattr(args, "alert_command", "")
+    if command == "list-rules":
+        rows = serialize_rule_list_rows(client.list_alert_rules())
+        fields = ALERT_RULE_LIST_FIELDS
+        headers = {
+            "uid": "UID",
+            "title": "Title",
+            "folderUID": "Folder UID",
+            "ruleGroup": "Rule Group",
+        }
+    elif command == "list-contact-points":
+        rows = serialize_contact_point_list_rows(client.list_contact_points())
+        fields = CONTACT_POINT_LIST_FIELDS
+        headers = {"uid": "UID", "name": "Name", "type": "Type"}
+    elif command == "list-mute-timings":
+        rows = serialize_mute_timing_list_rows(client.list_mute_timings())
+        fields = MUTE_TIMING_LIST_FIELDS
+        headers = {"name": "Name", "intervals": "Intervals"}
+    elif command == "list-templates":
+        rows = serialize_template_list_rows(client.list_templates())
+        fields = TEMPLATE_LIST_FIELDS
+        headers = {"name": "Name"}
+    else:
+        raise GrafanaError("Unsupported alert list command.")
+
+    if args.json:
+        print(render_alert_list_json(rows))
+        return 0
+    if args.csv:
+        render_alert_list_csv(rows, fields)
+        return 0
+    for line in build_alert_list_table(rows, fields, headers, include_header=not args.no_header):
+        print(line)
+    return 0
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     args = parse_args(argv)
     try:
-        if args.import_dir:
+        if getattr(args, "alert_command", "").startswith("list-"):
+            return list_alert_resources(args)
+        if getattr(args, "alert_command", None) == "import":
             return import_alerting_resources(args)
-        if args.diff_dir:
+        if getattr(args, "alert_command", None) == "diff":
             return diff_alerting_resources(args)
         return export_alerting_resources(args)
     except GrafanaError as exc:

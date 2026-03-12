@@ -1,14 +1,17 @@
 use clap::{Parser, Subcommand};
 
 use crate::access::{run_access_cli, AccessCliArgs};
-use crate::alert::{run_alert_cli, AlertCliArgs};
+use crate::alert::{
+    normalize_alert_group_command, normalize_alert_namespace_args, run_alert_cli, AlertCliArgs, AlertDiffArgs, AlertExportArgs,
+    AlertImportArgs, AlertListArgs, AlertListKind, AlertNamespaceArgs,
+};
 use crate::common::Result;
 use crate::dashboard::{
     run_dashboard_cli, DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs, ImportArgs, ListArgs,
     ListDataSourcesArgs,
 };
 
-const UNIFIED_HELP_TEXT: &str = "Examples:\n\n  Export dashboards:\n    grafana-utils export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n  Export alerting resources through the unified binary:\n    grafana-utils alert --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n\n  List org users through the unified binary:\n    grafana-utils access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n\nCompatibility shims remain available:\n  grafana-alert-utils ...\n  grafana-access-utils ...";
+const UNIFIED_HELP_TEXT: &str = "Examples:\n\n  Export dashboards:\n    grafana-utils export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n  Export alerting resources through the unified binary:\n    grafana-utils alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n\n  List org users through the unified binary:\n    grafana-utils access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n\nCompatibility shim remains available:\n  grafana-access-utils ...";
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum DashboardGroupCommand {
@@ -41,8 +44,22 @@ pub enum UnifiedCommand {
     Import(ImportArgs),
     #[command(about = "Compare local raw dashboard files against live Grafana dashboards.")]
     Diff(DiffArgs),
-    #[command(about = "Export or import Grafana alerting resources.")]
-    Alert(AlertCliArgs),
+    #[command(about = "Export, import, or diff Grafana alerting resources.")]
+    Alert(AlertNamespaceArgs),
+    #[command(name = "export-alert", about = "Export alerting resources into raw/ JSON files.")]
+    ExportAlert(AlertExportArgs),
+    #[command(name = "import-alert", about = "Import alerting resource JSON files through the Grafana API.")]
+    ImportAlert(AlertImportArgs),
+    #[command(name = "diff-alert", about = "Compare local alerting export files against live Grafana resources.")]
+    DiffAlert(AlertDiffArgs),
+    #[command(name = "list-alert-rules", about = "List live Grafana alert rules.")]
+    ListAlertRules(AlertListArgs),
+    #[command(name = "list-alert-contact-points", about = "List live Grafana alert contact points.")]
+    ListAlertContactPoints(AlertListArgs),
+    #[command(name = "list-alert-mute-timings", about = "List live Grafana mute timings.")]
+    ListAlertMuteTimings(AlertListArgs),
+    #[command(name = "list-alert-templates", about = "List live Grafana notification templates.")]
+    ListAlertTemplates(AlertListArgs),
     #[command(about = "List and manage Grafana users, teams, and service accounts.")]
     Access(AccessCliArgs),
 }
@@ -102,7 +119,46 @@ where
         UnifiedCommand::Export(inner) => run_dashboard(wrap_dashboard(DashboardCommand::Export(inner))),
         UnifiedCommand::Import(inner) => run_dashboard(wrap_dashboard(DashboardCommand::Import(inner))),
         UnifiedCommand::Diff(inner) => run_dashboard(wrap_dashboard(DashboardCommand::Diff(inner))),
-        UnifiedCommand::Alert(inner) => run_alert(inner),
+        UnifiedCommand::Alert(inner) => run_alert(normalize_alert_namespace_args(inner)),
+        UnifiedCommand::ExportAlert(inner) => run_alert(normalize_alert_group_command(crate::alert::AlertGroupCommand::Export(inner))),
+        UnifiedCommand::ImportAlert(inner) => run_alert(normalize_alert_group_command(crate::alert::AlertGroupCommand::Import(inner))),
+        UnifiedCommand::DiffAlert(inner) => run_alert(normalize_alert_group_command(crate::alert::AlertGroupCommand::Diff(inner))),
+        UnifiedCommand::ListAlertRules(inner) => {
+            let mut args = crate::alert::cli_args_from_common(inner.common);
+            args.list_kind = Some(AlertListKind::Rules);
+            args.table = inner.table;
+            args.csv = inner.csv;
+            args.json = inner.json;
+            args.no_header = inner.no_header;
+            run_alert(args)
+        }
+        UnifiedCommand::ListAlertContactPoints(inner) => {
+            let mut args = crate::alert::cli_args_from_common(inner.common);
+            args.list_kind = Some(AlertListKind::ContactPoints);
+            args.table = inner.table;
+            args.csv = inner.csv;
+            args.json = inner.json;
+            args.no_header = inner.no_header;
+            run_alert(args)
+        }
+        UnifiedCommand::ListAlertMuteTimings(inner) => {
+            let mut args = crate::alert::cli_args_from_common(inner.common);
+            args.list_kind = Some(AlertListKind::MuteTimings);
+            args.table = inner.table;
+            args.csv = inner.csv;
+            args.json = inner.json;
+            args.no_header = inner.no_header;
+            run_alert(args)
+        }
+        UnifiedCommand::ListAlertTemplates(inner) => {
+            let mut args = crate::alert::cli_args_from_common(inner.common);
+            args.list_kind = Some(AlertListKind::Templates);
+            args.table = inner.table;
+            args.csv = inner.csv;
+            args.json = inner.json;
+            args.no_header = inner.no_header;
+            run_alert(args)
+        }
         UnifiedCommand::Access(inner) => run_access(inner),
     }
 }

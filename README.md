@@ -4,10 +4,9 @@ Language / 語言: English | [繁體中文 README.zh-TW.md](README.zh-TW.md)
 
 Export, back up, migrate, and re-import Grafana dashboards and alerting resources as JSON.
 
-This repository provides one primary unified CLI in two implementations, plus compatibility shims for the older split command names:
+This repository provides one primary unified CLI in two implementations, plus a compatibility shim for the older access command name:
 
 - `grafana-utils`: unified dashboard, alerting, and access-management CLI
-- `grafana-alert-utils`: compatibility shim for `grafana-utils alert ...`
 - `grafana-access-utils`: compatibility shim for `grafana-utils access ...`
 - packaged Python implementation under [`grafana_utils/`](grafana_utils/)
 - Rust implementation under [`rust/`](rust/)
@@ -47,7 +46,13 @@ The repo now uses one primary command name with explicit areas underneath it.
 - `grafana-utils dashboard list-data-sources ...`
 - `grafana-utils dashboard import ...`
 - `grafana-utils dashboard diff ...`
-- `grafana-utils alert ...`
+- `grafana-utils alert export ...`
+- `grafana-utils alert import ...`
+- `grafana-utils alert diff ...`
+- `grafana-utils alert list-rules ...`
+- `grafana-utils alert list-contact-points ...`
+- `grafana-utils alert list-mute-timings ...`
+- `grafana-utils alert list-templates ...`
 - `grafana-utils access user list ...`
 - `grafana-utils access user add ...`
 - `grafana-utils access user modify ...`
@@ -60,7 +65,7 @@ The repo now uses one primary command name with explicit areas underneath it.
 Compatibility notes:
 
 - old dashboard direct forms such as `grafana-utils export-dashboard ...` and `grafana-utils list-dashboard ...` still work
-- `grafana-alert-utils ...` still works as a shim for `grafana-utils alert ...`
+- alert direct forms such as `grafana-utils export-alert ...` and `grafana-utils list-alert-rules ...` still work
 - `grafana-access-utils ...` still works as a shim for `grafana-utils access ...`
 
 The most important distinction in this repo is dashboard export format:
@@ -227,8 +232,8 @@ python3 cmd/grafana-utils.py diff \
 Alerting export:
 
 ```bash
-python3 cmd/grafana-alert-utils.py \
-  --url http://127.0.0.1:3000 \
+python3 cmd/grafana-alert-utils.py export \
+  --url http://localhost:3000 \
   --output-dir ./alerts \
   --overwrite
 ```
@@ -236,8 +241,8 @@ python3 cmd/grafana-alert-utils.py \
 Alerting import:
 
 ```bash
-python3 cmd/grafana-alert-utils.py \
-  --url http://127.0.0.1:3000 \
+python3 cmd/grafana-alert-utils.py import \
+  --url http://localhost:3000 \
   --import-dir ./alerts/raw \
   --replace-existing
 ```
@@ -245,8 +250,8 @@ python3 cmd/grafana-alert-utils.py \
 Alerting diff against the current Grafana state:
 
 ```bash
-python3 cmd/grafana-alert-utils.py \
-  --url http://127.0.0.1:3000 \
+python3 cmd/grafana-alert-utils.py diff \
+  --url http://localhost:3000 \
   --diff-dir ./alerts/raw
 ```
 
@@ -445,6 +450,8 @@ Use `prompt/` when you want:
 | `--org-id ORG_ID` | For `list-dashboard` or `export-dashboard`, switch to one explicit Grafana org ID; requires Basic auth |
 | `--all-orgs` | For `list-dashboard` or `export-dashboard`, enumerate visible Grafana orgs and aggregate list output or export each org; requires Basic auth |
 | `--with-sources` | For `list-dashboard`, fetch each dashboard payload and include datasource names used by that dashboard; CSV and JSON also add datasource UIDs |
+| `--no-header` | For `list-dashboard` or `list-data-sources`, omit the table header row |
+| `--progress` | For `export-dashboard` or `import-dashboard`, print per-dashboard progress lines while the command runs |
 | `list-data-sources --table|--csv|--json` | List live Grafana data sources in human-readable or machine-readable output |
 | `--flat` | Do not create per-folder subdirectories |
 | `--overwrite` | Replace existing exported files |
@@ -455,10 +462,11 @@ Use `prompt/` when you want:
 
 For dashboard listing:
 
-- default `list-dashboard` output shows `uid`, `name`, `folder`, `folderUid`, resolved folder tree path, `org`, and `orgId`
+- default `list-dashboard` output is a table showing `uid`, `name`, `folder`, `folderUid`, resolved folder tree path, `org`, and `orgId`
+- `list-dashboard --no-header` omits the table header row
 - `list-dashboard --org-id <ID>` reads dashboards from that explicit org instead of the current auth context and requires Basic auth
 - `list-dashboard --all-orgs` aggregates dashboards across every visible org and requires Basic auth
-- `list-dashboard --with-sources` adds datasource names per dashboard to text, table, CSV, and JSON output
+- `list-dashboard --with-sources` adds datasource names per dashboard to table, CSV, and JSON output
 - `list-dashboard --with-sources --csv` also adds a `sourceUids` column with best-effort datasource UIDs
 - `list-dashboard --with-sources --json` also adds a `sourceUids` array with best-effort datasource UIDs
 - `list-dashboard --with-sources` is slower than plain `list-dashboard` because it fetches each dashboard payload and the datasource catalog
@@ -468,11 +476,12 @@ For dashboard export:
 - `export-dashboard --org-id <ID>` exports dashboards from that explicit org instead of the current auth context and requires Basic auth
 - `export-dashboard --all-orgs` exports dashboards from every visible org and requires Basic auth
 - `export-dashboard --all-orgs` writes per-org trees such as `org_2_Org_Two/raw/...` and `org_2_Org_Two/prompt/...` to avoid cross-org file collisions
+- `export-dashboard --progress` prints one progress line per exported dashboard in addition to the final summary
 
 For datasource listing:
 
-- `list-data-sources` shows `uid`, `name`, `type`, `url`, and `isDefault`
-- `list-data-sources --table` renders fixed-width columns
+- `list-data-sources` defaults to a table showing `uid`, `name`, `type`, `url`, and `isDefault`
+- `list-data-sources --no-header` omits the table header row
 - `list-data-sources --csv` emits `uid,name,type,url,isDefault`
 - `list-data-sources --json` emits an array of datasource objects
 
@@ -543,7 +552,7 @@ Dashboard export also writes small versioned manifest files named `export-metada
 
 ## Alerting Utility
 
-`grafana-alert-utils` handles Grafana alerting resources separately from dashboards.
+`grafana-utils alert` handles Grafana alerting resources separately from dashboards.
 
 Supported resources:
 
@@ -553,13 +562,30 @@ Supported resources:
 - notification policies
 - notification message templates
 
+Read-only alert listing:
+
+- `grafana-utils alert list-rules`
+- `grafana-utils alert list-contact-points`
+- `grafana-utils alert list-mute-timings`
+- `grafana-utils alert list-templates`
+
+Direct alert aliases:
+
+- `grafana-utils export-alert`
+- `grafana-utils import-alert`
+- `grafana-utils diff-alert`
+- `grafana-utils list-alert-rules`
+- `grafana-utils list-alert-contact-points`
+- `grafana-utils list-alert-mute-timings`
+- `grafana-utils list-alert-templates`
+
 ### Alerting Export
 
 Example:
 
 ```bash
-python3 cmd/grafana-alert-utils.py \
-  --url http://127.0.0.1:3000 \
+python3 cmd/grafana-utils.py alert export \
+  --url http://localhost:3000 \
   --output-dir ./alerts \
   --overwrite
 ```
@@ -567,7 +593,7 @@ python3 cmd/grafana-alert-utils.py \
 Use `--flat` if you want a flatter directory layout:
 
 ```bash
-python3 cmd/grafana-alert-utils.py --output-dir ./alerts --flat
+python3 cmd/grafana-utils.py alert export --output-dir ./alerts --flat
 ```
 
 ### Alerting Import
@@ -575,8 +601,8 @@ python3 cmd/grafana-alert-utils.py --output-dir ./alerts --flat
 Example:
 
 ```bash
-python3 cmd/grafana-alert-utils.py \
-  --url http://127.0.0.1:3000 \
+python3 cmd/grafana-utils.py alert import \
+  --url http://localhost:3000 \
   --import-dir ./alerts/raw \
   --replace-existing
 ```
@@ -584,7 +610,7 @@ python3 cmd/grafana-alert-utils.py \
 Import with linked dashboard or panel remapping:
 
 ```bash
-python3 cmd/grafana-alert-utils.py \
+python3 cmd/grafana-utils.py alert import \
   --url https://grafana.example.com \
   --import-dir ./alerts/raw \
   --replace-existing \
@@ -595,7 +621,7 @@ python3 cmd/grafana-alert-utils.py \
 Alerting diff:
 
 ```bash
-python3 cmd/grafana-alert-utils.py \
+python3 cmd/grafana-utils.py alert diff \
   --url https://grafana.example.com \
   --diff-dir ./alerts/raw \
   --dashboard-uid-map ./dashboard-map.json \
@@ -637,7 +663,7 @@ Example `panel-map.json`:
 Important limitation:
 
 - Grafana official alert provisioning `/export` output is not a supported import format for this tool
-- this tool only guarantees round-trip import for files exported by `grafana-alert-utils`
+- this tool only guarantees round-trip import for files exported by `grafana-utils alert export`
 
 Why this happens:
 
@@ -657,7 +683,6 @@ For linked alert rules:
 Compatibility shims:
 
 - `grafana-access-utils ...` remains available and maps to the same access workflows
-- `grafana-alert-utils ...` remains available and maps to `grafana-utils alert ...`
 
 Current implementation scope:
 
@@ -817,14 +842,14 @@ Linux `amd64` build notes:
 - `make build-rust-linux-amd64` uses Docker with the official Rust image
 - `make build-rust-linux-amd64-zig` uses local `zig`, `cargo-zigbuild`, and a `rustup` target instead of Docker
 - output binaries are written to `dist/linux-amd64/`
-- current output names are `dist/linux-amd64/grafana-utils` and `dist/linux-amd64/grafana-alert-utils`
+- current output name is `dist/linux-amd64/grafana-utils`
 - this path is intended for macOS hosts that need Linux release artifacts without installing a local cross-linker
 
 Run the Rust alerting CLI from the repo:
 
 ```bash
 cd rust
-cargo run --bin grafana-alert-utils -- -h
+cargo run --bin grafana-utils -- alert -h
 ```
 
 Run the Docker-backed Rust live smoke test:

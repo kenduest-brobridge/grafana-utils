@@ -27,8 +27,5 @@ mkdir -p "${OUTPUT_DIR}"
 )
 
 cp "${RUST_DIR}/target/${TARGET_TRIPLE}/release/grafana-utils" "${OUTPUT_DIR}/grafana-utils"
-cp "${RUST_DIR}/target/${TARGET_TRIPLE}/release/grafana-alert-utils" "${OUTPUT_DIR}/grafana-alert-utils"
-
 echo "Built Linux amd64 Rust binaries with zig:"
 echo "  ${OUTPUT_DIR}/grafana-utils"
-echo "  ${OUTPUT_DIR}/grafana-alert-utils"

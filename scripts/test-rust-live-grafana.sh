@@ -139,7 +139,7 @@ build_rust_bins() {
   "${CARGO_BIN}" build --quiet \
     --manifest-path "${RUST_DIR}/Cargo.toml" \
     --bin grafana-utils \
-    --bin grafana-alert-utils
+    --bin grafana-utils
 }
 
 seed_datasource() {
@@ -216,7 +216,7 @@ dashboard_bin() {
 }
 
 alert_bin() {
-  printf '%s\n' "${RUST_DIR}/target/debug/grafana-alert-utils"
+  printf '%s\n' "${RUST_DIR}/target/debug/grafana-utils"
 }
 
 run_dashboard_smoke() {

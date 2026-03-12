@@ -16,7 +16,6 @@ class PackagingTests(unittest.TestCase):
 
         self.assertRegex(content, r'(?m)^\[project\.scripts\]$')
         self.assertRegex(content, r'(?m)^grafana-utils = "grafana_utils\.unified_cli:main"$')
-        self.assertRegex(content, r'(?m)^grafana-alert-utils = "grafana_utils\.unified_cli:alert_main"$')
         self.assertRegex(content, r'(?m)^grafana-access-utils = "grafana_utils\.unified_cli:access_main"$')
 
     def test_pyproject_declares_base_requests_dependency(self):

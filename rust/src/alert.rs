@@ -1,4 +1,4 @@
-use clap::{Args, Command, CommandFactory, Parser};
+use clap::{Args, Command, CommandFactory, Parser, Subcommand};
 use reqwest::Method;
 use serde_json::{json, Map, Value};
 use std::collections::BTreeMap;
@@ -30,21 +30,21 @@ pub const TOOL_API_VERSION: i64 = 1;
 pub const TOOL_SCHEMA_VERSION: i64 = 1;
 pub const ROOT_INDEX_KIND: &str = "grafana-utils-alert-export-index";
 
-pub const ALERT_HELP_TEXT: &str = "Examples:\n\n  Export alerting resources with an API token:\n    export GRAFANA_API_TOKEN='your-token'\n    grafana-alert-utils --url https://grafana.example.com --output-dir ./alerts --overwrite\n\n  Import back into Grafana and update existing resources:\n    grafana-alert-utils --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing\n\n  Import linked alert rules with dashboard and panel remapping:\n    grafana-alert-utils --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json";
+pub const ALERT_HELP_TEXT: &str = "Examples:\n\n  Export alerting resources with an API token:\n    export GRAFANA_API_TOKEN='your-token'\n    grafana-utils alert export --url https://grafana.example.com --output-dir ./alerts --overwrite\n\n  Import back into Grafana and update existing resources:\n    grafana-utils alert import --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing\n\n  Import linked alert rules with dashboard and panel remapping:\n    grafana-utils alert import --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json";
 
 #[derive(Debug, Clone, Parser)]
 #[command(
-    name = "grafana-alert-utils",
-    about = "Export or import Grafana alerting resources.",
+    name = "grafana-utils alert",
+    about = "Export, import, or diff Grafana alerting resources.",
     after_help = ALERT_HELP_TEXT
 )]
 struct AlertCliRoot {
     #[command(flatten)]
-    args: AlertCliArgs,
+    args: AlertNamespaceArgs,
 }
 
 #[derive(Debug, Clone, Args)]
-pub struct AlertCliArgs {
+pub struct AlertCommonArgs {
     #[arg(long, default_value = DEFAULT_URL, help = "Grafana base URL.")]
     pub url: String,
     #[arg(
@@ -71,6 +71,20 @@ pub struct AlertCliArgs {
         help = "Prompt for the Grafana Basic auth password without echo instead of passing --basic-password on the command line."
     )]
     pub prompt_password: bool,
+    #[arg(long, default_value_t = DEFAULT_TIMEOUT, help = "HTTP timeout in seconds.")]
+    pub timeout: u64,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Enable TLS certificate verification. Verification is disabled by default."
+    )]
+    pub verify_ssl: bool,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct AlertLegacyArgs {
+    #[command(flatten)]
+    pub common: AlertCommonArgs,
     #[arg(
         long,
         default_value = DEFAULT_OUTPUT_DIR,
@@ -89,8 +103,6 @@ pub struct AlertCliArgs {
         help = "Compare alerting resource JSON from this directory against Grafana. Point this to the raw/ export directory explicitly."
     )]
     pub diff_dir: Option<PathBuf>,
-    #[arg(long, default_value_t = DEFAULT_TIMEOUT, help = "HTTP timeout in seconds.")]
-    pub timeout: u64,
     #[arg(
         long,
         default_value_t = false,
@@ -107,12 +119,183 @@ pub struct AlertCliArgs {
     pub dashboard_uid_map: Option<PathBuf>,
     #[arg(long, help = "JSON file that maps source dashboard UID and source panel ID to a target panel ID for linked alert-rule repair during import.")]
     pub panel_id_map: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct AlertExportArgs {
+    #[command(flatten)]
+    pub common: AlertCommonArgs,
+    #[arg(
+        long,
+        default_value = DEFAULT_OUTPUT_DIR,
+        help = "Directory to write exported alerting resources into. Export writes files under raw/."
+    )]
+    pub output_dir: PathBuf,
     #[arg(
         long,
         default_value_t = false,
-        help = "Enable TLS certificate verification. Verification is disabled by default."
+        help = "Write rule, contact-point, mute-timing, and template files directly into their resource directories instead of nested subdirectories."
     )]
+    pub flat: bool,
+    #[arg(long, default_value_t = false, help = "Overwrite existing exported files.")]
+    pub overwrite: bool,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct AlertImportArgs {
+    #[command(flatten)]
+    pub common: AlertCommonArgs,
+    #[arg(
+        long,
+        help = "Import alerting resource JSON from this directory instead of exporting. Point this to the raw/ export directory explicitly."
+    )]
+    pub import_dir: PathBuf,
+    #[arg(long, default_value_t = false, help = "Update existing resources with the same identity instead of failing on import.")]
+    pub replace_existing: bool,
+    #[arg(long, default_value_t = false, help = "Show whether each import file would create or update resources without changing Grafana.")]
+    pub dry_run: bool,
+    #[arg(long, help = "JSON file that maps source dashboard UIDs to target dashboard UIDs for linked alert-rule repair during import.")]
+    pub dashboard_uid_map: Option<PathBuf>,
+    #[arg(long, help = "JSON file that maps source dashboard UID and source panel ID to a target panel ID for linked alert-rule repair during import.")]
+    pub panel_id_map: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct AlertDiffArgs {
+    #[command(flatten)]
+    pub common: AlertCommonArgs,
+    #[arg(
+        long,
+        help = "Compare alerting resource JSON from this directory against Grafana. Point this to the raw/ export directory explicitly."
+    )]
+    pub diff_dir: PathBuf,
+    #[arg(long, help = "JSON file that maps source dashboard UIDs to target dashboard UIDs for linked alert-rule repair during import.")]
+    pub dashboard_uid_map: Option<PathBuf>,
+    #[arg(long, help = "JSON file that maps source dashboard UID and source panel ID to a target panel ID for linked alert-rule repair during import.")]
+    pub panel_id_map: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AlertListKind {
+    Rules,
+    ContactPoints,
+    MuteTimings,
+    Templates,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct AlertListArgs {
+    #[command(flatten)]
+    pub common: AlertCommonArgs,
+    #[arg(long, default_value_t = false, help = "Render list output as a table. This is the default.")]
+    pub table: bool,
+    #[arg(long, default_value_t = false, help = "Render list output as CSV.")]
+    pub csv: bool,
+    #[arg(long, default_value_t = false, help = "Render list output as JSON.")]
+    pub json: bool,
+    #[arg(long, default_value_t = false, help = "Omit the table header row.")]
+    pub no_header: bool,
+}
+
+#[derive(Debug, Clone, Subcommand)]
+pub enum AlertGroupCommand {
+    #[command(about = "Export alerting resources into raw/ JSON files.")]
+    Export(AlertExportArgs),
+    #[command(about = "Import alerting resource JSON files through the Grafana API.")]
+    Import(AlertImportArgs),
+    #[command(about = "Compare local alerting export files against live Grafana resources.")]
+    Diff(AlertDiffArgs),
+    #[command(name = "list-rules", about = "List live Grafana alert rules.")]
+    ListRules(AlertListArgs),
+    #[command(name = "list-contact-points", about = "List live Grafana alert contact points.")]
+    ListContactPoints(AlertListArgs),
+    #[command(name = "list-mute-timings", about = "List live Grafana mute timings.")]
+    ListMuteTimings(AlertListArgs),
+    #[command(name = "list-templates", about = "List live Grafana notification templates.")]
+    ListTemplates(AlertListArgs),
+}
+
+#[derive(Debug, Clone, Args)]
+#[command(args_conflicts_with_subcommands = true)]
+pub struct AlertNamespaceArgs {
+    #[command(subcommand)]
+    pub command: Option<AlertGroupCommand>,
+    #[command(flatten)]
+    pub legacy: AlertLegacyArgs,
+}
+
+#[derive(Debug, Clone)]
+pub struct AlertCliArgs {
+    pub url: String,
+    pub api_token: Option<String>,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub prompt_password: bool,
+    pub output_dir: PathBuf,
+    pub import_dir: Option<PathBuf>,
+    pub diff_dir: Option<PathBuf>,
+    pub timeout: u64,
+    pub flat: bool,
+    pub overwrite: bool,
+    pub replace_existing: bool,
+    pub dry_run: bool,
+    pub dashboard_uid_map: Option<PathBuf>,
+    pub panel_id_map: Option<PathBuf>,
     pub verify_ssl: bool,
+    pub list_kind: Option<AlertListKind>,
+    pub table: bool,
+    pub csv: bool,
+    pub json: bool,
+    pub no_header: bool,
+}
+
+pub fn cli_args_from_common(common: AlertCommonArgs) -> AlertCliArgs {
+    AlertCliArgs {
+        url: common.url,
+        api_token: common.api_token,
+        username: common.username,
+        password: common.password,
+        prompt_password: common.prompt_password,
+        output_dir: PathBuf::from(DEFAULT_OUTPUT_DIR),
+        import_dir: None,
+        diff_dir: None,
+        timeout: common.timeout,
+        flat: false,
+        overwrite: false,
+        replace_existing: false,
+        dry_run: false,
+        dashboard_uid_map: None,
+        panel_id_map: None,
+        verify_ssl: common.verify_ssl,
+        list_kind: None,
+        table: false,
+        csv: false,
+        json: false,
+        no_header: false,
+    }
+}
+
+fn empty_legacy_args() -> AlertLegacyArgs {
+    AlertLegacyArgs {
+        common: AlertCommonArgs {
+            url: String::new(),
+            api_token: None,
+            username: None,
+            password: None,
+            prompt_password: false,
+            timeout: 0,
+            verify_ssl: false,
+        },
+        output_dir: PathBuf::new(),
+        import_dir: None,
+        diff_dir: None,
+        flat: false,
+        overwrite: false,
+        replace_existing: false,
+        dry_run: false,
+        dashboard_uid_map: None,
+        panel_id_map: None,
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -132,11 +315,108 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
-    AlertCliRoot::parse_from(iter).args
+    normalize_alert_namespace_args(AlertCliRoot::parse_from(iter).args)
 }
 
 pub fn root_command() -> Command {
     AlertCliRoot::command()
+}
+
+pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs {
+    match args.command {
+        Some(AlertGroupCommand::Export(inner)) => {
+            let mut args = cli_args_from_common(inner.common);
+            args.output_dir = inner.output_dir;
+            args.flat = inner.flat;
+            args.overwrite = inner.overwrite;
+            args
+        }
+        Some(AlertGroupCommand::Import(inner)) => {
+            let mut args = cli_args_from_common(inner.common);
+            args.import_dir = Some(inner.import_dir);
+            args.replace_existing = inner.replace_existing;
+            args.dry_run = inner.dry_run;
+            args.dashboard_uid_map = inner.dashboard_uid_map;
+            args.panel_id_map = inner.panel_id_map;
+            args
+        }
+        Some(AlertGroupCommand::Diff(inner)) => {
+            let mut args = cli_args_from_common(inner.common);
+            args.diff_dir = Some(inner.diff_dir);
+            args.dashboard_uid_map = inner.dashboard_uid_map;
+            args.panel_id_map = inner.panel_id_map;
+            args
+        }
+        Some(AlertGroupCommand::ListRules(inner)) => {
+            let mut args = cli_args_from_common(inner.common);
+            args.list_kind = Some(AlertListKind::Rules);
+            args.table = inner.table;
+            args.csv = inner.csv;
+            args.json = inner.json;
+            args.no_header = inner.no_header;
+            args
+        }
+        Some(AlertGroupCommand::ListContactPoints(inner)) => {
+            let mut args = cli_args_from_common(inner.common);
+            args.list_kind = Some(AlertListKind::ContactPoints);
+            args.table = inner.table;
+            args.csv = inner.csv;
+            args.json = inner.json;
+            args.no_header = inner.no_header;
+            args
+        }
+        Some(AlertGroupCommand::ListMuteTimings(inner)) => {
+            let mut args = cli_args_from_common(inner.common);
+            args.list_kind = Some(AlertListKind::MuteTimings);
+            args.table = inner.table;
+            args.csv = inner.csv;
+            args.json = inner.json;
+            args.no_header = inner.no_header;
+            args
+        }
+        Some(AlertGroupCommand::ListTemplates(inner)) => {
+            let mut args = cli_args_from_common(inner.common);
+            args.list_kind = Some(AlertListKind::Templates);
+            args.table = inner.table;
+            args.csv = inner.csv;
+            args.json = inner.json;
+            args.no_header = inner.no_header;
+            args
+        }
+        None => {
+            let legacy = args.legacy;
+            AlertCliArgs {
+                url: legacy.common.url,
+                api_token: legacy.common.api_token,
+                username: legacy.common.username,
+                password: legacy.common.password,
+                prompt_password: legacy.common.prompt_password,
+                output_dir: legacy.output_dir,
+                import_dir: legacy.import_dir,
+                diff_dir: legacy.diff_dir,
+                timeout: legacy.common.timeout,
+                flat: legacy.flat,
+                overwrite: legacy.overwrite,
+                replace_existing: legacy.replace_existing,
+                dry_run: legacy.dry_run,
+                dashboard_uid_map: legacy.dashboard_uid_map,
+                panel_id_map: legacy.panel_id_map,
+                verify_ssl: legacy.common.verify_ssl,
+                list_kind: None,
+                table: false,
+                csv: false,
+                json: false,
+                no_header: false,
+            }
+        }
+    }
+}
+
+pub fn normalize_alert_group_command(command: AlertGroupCommand) -> AlertCliArgs {
+    normalize_alert_namespace_args(AlertNamespaceArgs {
+        command: Some(command),
+        legacy: empty_legacy_args(),
+    })
 }
 
 pub fn build_auth_context(args: &AlertCliArgs) -> Result<AlertAuthContext> {
@@ -368,6 +648,131 @@ impl GrafanaAlertClient {
             "Unexpected template update response from Grafana.",
         )
     }
+}
+
+const ALERT_RULE_LIST_FIELDS: [&str; 4] = ["uid", "title", "folderUID", "ruleGroup"];
+const CONTACT_POINT_LIST_FIELDS: [&str; 3] = ["uid", "name", "type"];
+const MUTE_TIMING_LIST_FIELDS: [&str; 2] = ["name", "intervals"];
+const TEMPLATE_LIST_FIELDS: [&str; 1] = ["name"];
+
+fn csv_escape(value: &str) -> String {
+    if value.contains(',') || value.contains('"') || value.contains('\n') {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_string()
+    }
+}
+
+fn render_alert_table(
+    rows: &[BTreeMap<&str, String>],
+    fields: &[&str],
+    headers: &[(&str, &str)],
+    include_header: bool,
+) -> String {
+    let mut widths = BTreeMap::new();
+    for (field, header) in headers {
+        let mut width = header.len();
+        for row in rows {
+            width = width.max(row.get(field).map(|item| item.len()).unwrap_or(0));
+        }
+        widths.insert(*field, width);
+    }
+
+    let build_row = |values: &BTreeMap<&str, String>| -> String {
+        fields
+            .iter()
+            .map(|field| {
+                let width = *widths.get(field).unwrap_or(&0);
+                format!("{:width$}", values.get(field).map(String::as_str).unwrap_or(""), width = width)
+            })
+            .collect::<Vec<_>>()
+            .join("  ")
+    };
+
+    let mut lines = Vec::new();
+    if include_header {
+        let header_map = headers
+            .iter()
+            .map(|(field, header)| (*field, header.to_string()))
+            .collect::<BTreeMap<_, _>>();
+        lines.push(build_row(&header_map));
+        lines.push(
+            fields
+                .iter()
+                .map(|field| "-".repeat(*widths.get(field).unwrap_or(&0)))
+                .collect::<Vec<_>>()
+                .join("  "),
+        );
+    }
+    for row in rows {
+        lines.push(build_row(row));
+    }
+    lines.join("\n")
+}
+
+fn render_alert_csv(rows: &[BTreeMap<&str, String>], fields: &[&str]) -> String {
+    let mut output = String::new();
+    let _ = writeln!(&mut output, "{}", fields.join(","));
+    for row in rows {
+        let line = fields
+            .iter()
+            .map(|field| csv_escape(row.get(field).map(String::as_str).unwrap_or("")))
+            .collect::<Vec<_>>()
+            .join(",");
+        let _ = writeln!(&mut output, "{line}");
+    }
+    output
+}
+
+fn serialize_rule_list_rows(items: &[Map<String, Value>]) -> Vec<BTreeMap<&'static str, String>> {
+    items
+        .iter()
+        .map(|item| {
+            BTreeMap::from([
+                ("uid", string_field(item, "uid", "")),
+                ("title", string_field(item, "title", "")),
+                ("folderUID", string_field(item, "folderUID", "")),
+                ("ruleGroup", string_field(item, "ruleGroup", "")),
+            ])
+        })
+        .collect()
+}
+
+fn serialize_contact_point_list_rows(items: &[Map<String, Value>]) -> Vec<BTreeMap<&'static str, String>> {
+    items
+        .iter()
+        .map(|item| {
+            BTreeMap::from([
+                ("uid", string_field(item, "uid", "")),
+                ("name", string_field(item, "name", "")),
+                ("type", string_field(item, "type", "")),
+            ])
+        })
+        .collect()
+}
+
+fn serialize_mute_timing_list_rows(items: &[Map<String, Value>]) -> Vec<BTreeMap<&'static str, String>> {
+    items
+        .iter()
+        .map(|item| {
+            let intervals = item
+                .get("time_intervals")
+                .and_then(Value::as_array)
+                .map(|value| value.len())
+                .unwrap_or(0);
+            BTreeMap::from([
+                ("name", string_field(item, "name", "")),
+                ("intervals", intervals.to_string()),
+            ])
+        })
+        .collect()
+}
+
+fn serialize_template_list_rows(items: &[Map<String, Value>]) -> Vec<BTreeMap<&'static str, String>> {
+    items
+        .iter()
+        .map(|item| BTreeMap::from([("name", string_field(item, "name", ""))]))
+        .collect()
 }
 
 fn expect_object(value: Option<Value>, error_message: &str) -> Result<Map<String, Value>> {
@@ -696,7 +1101,7 @@ pub fn reject_provisioning_export(document: &Map<String, Value>) -> Result<()> {
         || document.contains_key("templates")
     {
         return Err(message(
-            "Grafana provisioning export format is not supported for API import. Use files exported by grafana-alert-utils.",
+            "Grafana provisioning export format is not supported for API import. Use files exported by grafana-utils alert export.",
         ));
     }
     Ok(())
@@ -1781,7 +2186,90 @@ fn diff_alerting_resources(args: &AlertCliArgs) -> Result<()> {
     Ok(())
 }
 
+fn list_alert_resources(args: &AlertCliArgs) -> Result<()> {
+    let client = GrafanaAlertClient::new(&build_auth_context(args)?)?;
+    match args.list_kind {
+        Some(AlertListKind::Rules) => {
+            let rows = serialize_rule_list_rows(&client.list_alert_rules()?);
+            if args.json {
+                println!("{}", serde_json::to_string_pretty(&rows)?);
+            } else if args.csv {
+                print!("{}", render_alert_csv(&rows, &ALERT_RULE_LIST_FIELDS));
+            } else {
+                println!(
+                    "{}",
+                    render_alert_table(
+                        &rows,
+                        &ALERT_RULE_LIST_FIELDS,
+                        &[("uid", "UID"), ("title", "TITLE"), ("folderUID", "FOLDER_UID"), ("ruleGroup", "RULE_GROUP")],
+                        !args.no_header,
+                    )
+                );
+            }
+        }
+        Some(AlertListKind::ContactPoints) => {
+            let rows = serialize_contact_point_list_rows(&client.list_contact_points()?);
+            if args.json {
+                println!("{}", serde_json::to_string_pretty(&rows)?);
+            } else if args.csv {
+                print!("{}", render_alert_csv(&rows, &CONTACT_POINT_LIST_FIELDS));
+            } else {
+                println!(
+                    "{}",
+                    render_alert_table(
+                        &rows,
+                        &CONTACT_POINT_LIST_FIELDS,
+                        &[("uid", "UID"), ("name", "NAME"), ("type", "TYPE")],
+                        !args.no_header,
+                    )
+                );
+            }
+        }
+        Some(AlertListKind::MuteTimings) => {
+            let rows = serialize_mute_timing_list_rows(&client.list_mute_timings()?);
+            if args.json {
+                println!("{}", serde_json::to_string_pretty(&rows)?);
+            } else if args.csv {
+                print!("{}", render_alert_csv(&rows, &MUTE_TIMING_LIST_FIELDS));
+            } else {
+                println!(
+                    "{}",
+                    render_alert_table(
+                        &rows,
+                        &MUTE_TIMING_LIST_FIELDS,
+                        &[("name", "NAME"), ("intervals", "INTERVALS")],
+                        !args.no_header,
+                    )
+                );
+            }
+        }
+        Some(AlertListKind::Templates) => {
+            let rows = serialize_template_list_rows(&client.list_templates()?);
+            if args.json {
+                println!("{}", serde_json::to_string_pretty(&rows)?);
+            } else if args.csv {
+                print!("{}", render_alert_csv(&rows, &TEMPLATE_LIST_FIELDS));
+            } else {
+                println!(
+                    "{}",
+                    render_alert_table(
+                        &rows,
+                        &TEMPLATE_LIST_FIELDS,
+                        &[("name", "NAME")],
+                        !args.no_header,
+                    )
+                );
+            }
+        }
+        None => return Err(message("Alert list command is required.")),
+    }
+    Ok(())
+}
+
 pub fn run_alert_cli(args: AlertCliArgs) -> Result<()> {
+    if args.list_kind.is_some() {
+        return list_alert_resources(&args);
+    }
     if args.import_dir.is_some() {
         return import_alerting_resources(&args);
     }

@@ -41,14 +41,29 @@ fn parse_cli_supports_legacy_dashboard_command() {
 #[test]
 fn parse_cli_supports_alert_group() {
     let args: CliArgs =
-        parse_cli_from(["grafana-utils", "alert", "--output-dir", "./alerts", "--overwrite"]);
+        parse_cli_from(["grafana-utils", "alert", "export", "--output-dir", "./alerts", "--overwrite"]);
 
     match args.command {
-        UnifiedCommand::Alert(inner) => {
-            assert_eq!(inner.output_dir, Path::new("./alerts"));
-            assert!(inner.overwrite);
+        UnifiedCommand::Alert(inner) => match inner.command {
+            Some(crate::alert::AlertGroupCommand::Export(export_args)) => {
+                assert_eq!(export_args.output_dir, Path::new("./alerts"));
+                assert!(export_args.overwrite);
+            }
+            _ => panic!("expected alert export"),
         }
         _ => panic!("expected alert group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_legacy_alert_alias() {
+    let args: CliArgs = parse_cli_from(["grafana-utils", "list-alert-rules", "--json"]);
+
+    match args.command {
+        UnifiedCommand::ListAlertRules(inner) => {
+            assert!(inner.json);
+        }
+        _ => panic!("expected list-alert-rules"),
     }
 }
 
@@ -76,7 +91,6 @@ fn parse_cli_supports_access_group() {
 fn unified_help_mentions_alert_access_and_shims() {
     let help = render_unified_help();
     assert!(help.contains("grafana-utils access user list"));
-    assert!(help.contains("grafana-alert-utils"));
     assert!(help.contains("grafana-access-utils"));
 }
 

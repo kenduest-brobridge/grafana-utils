@@ -1,5 +1,33 @@
 # ai-status.md
 
+## 2026-03-12 - Task: Remove grafana-alert-utils Compatibility Shim
+- State: Done
+- Scope: `pyproject.toml`, `grafana_utils/unified_cli.py`, `grafana_utils/alert_cli.py`, `tests/test_python_alert_cli.py`, `tests/test_python_packaging.py`, `rust/src/alert.rs`, `rust/src/cli.rs`, `rust/src/alert_rust_tests.rs`, `rust/src/cli_rust_tests.rs`, `scripts/build-rust-macos-arm64.sh`, `scripts/build-rust-linux-amd64.sh`, `scripts/build-rust-linux-amd64-zig.sh`, `scripts/test-rust-live-grafana.sh`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The repo had already consolidated alert workflows under `grafana-utils alert ...`, but still shipped a separate `grafana-alert-utils` Python wrapper, console script, Rust binary, and build artifacts as a compatibility shim.
+- Current Update: Removed the Python wrapper, Python console-script entry, Rust standalone alert binary, and build-script artifact copies for `grafana-alert-utils`. Current docs, help text, smoke scripts, and tests now use `grafana-utils alert ...` as the only alert entrypoint.
+- Result: The repo now exposes one primary alert command surface instead of keeping a second standalone alert executable alive after the unified CLI migration.
+
+## 2026-03-12 - Task: Add Alert List Commands And Direct Alert Aliases
+- State: Done
+- Scope: `grafana_utils/alert_cli.py`, `grafana_utils/unified_cli.py`, `tests/test_python_alert_cli.py`, `tests/test_python_unified_cli.py`, `tests/test_python_packaging.py`, `rust/src/alert.rs`, `rust/src/cli.rs`, `rust/src/alert_rust_tests.rs`, `rust/src/cli_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Alert workflows already had explicit `export`, `import`, and `diff`, but there was still no read-only alert listing surface and no direct-form aliases such as `export-alert` or `list-alert-rules`.
+- Current Update: Added `grafana-utils alert list-rules`, `list-contact-points`, `list-mute-timings`, and `list-templates` in Python and Rust, with default table output plus `--csv`, `--json`, and `--no-header`. Also added top-level direct aliases `export-alert`, `import-alert`, `diff-alert`, and `list-alert-*`.
+- Result: Alert workflows now match the dashboard command family more closely: there is an explicit read-only surface for common alert resource types, and operators can use either the canonical namespace form or the shorter direct alert aliases.
+
+## 2026-03-12 - Task: Split Alert CLI Into Export Import Diff Subcommands
+- State: Done
+- Scope: `grafana_utils/alert_cli.py`, `grafana_utils/unified_cli.py`, `tests/test_python_alert_cli.py`, `tests/test_python_unified_cli.py`, `rust/src/alert.rs`, `rust/src/cli.rs`, `rust/src/alert_rust_tests.rs`, `rust/src/cli_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Alerting workflows still used one flat CLI surface driven by `--output-dir`, `--import-dir`, or `--diff-dir`. That made `grafana-utils alert` inconsistent with the dashboard namespace and hid the available alert modes from command help.
+- Current Update: Added explicit `export`, `import`, and `diff` alert subcommands in both Python and Rust. The unified command now supports `grafana-utils alert export|import|diff ...`, while the standalone compatibility shim also supports `grafana-alert-utils export|import|diff ...`. Legacy flag-only invocation still works for compatibility.
+- Result: The alert CLI now advertises its three modes directly in help output and matches the namespace style already used by `grafana-utils dashboard ...` and `grafana-utils access ...`.
+
+## 2026-03-12 - Task: Make Dashboard List Default To Tables And Add Progress Flags
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The dashboard list commands still defaulted to compact single-line text output, table headers could not be suppressed, and dashboard export/import printed per-dashboard progress lines by default instead of only when explicitly requested.
+- Current Update: Changed Python and Rust `list-dashboard` plus `list-data-sources` to default to table output, added `--no-header` for those table-oriented list commands, and added `--progress` to `export-dashboard` and `import-dashboard` so per-dashboard progress lines are opt-in.
+- Result: Operators now get a more readable default listing format, can remove table headers for scripts or copy/paste workflows, and can choose whether dashboard export/import should stay quiet or show item-by-item progress.
+
 ## 2026-03-12 - Task: Consolidate Python And Rust CLIs Under grafana-utils
 - State: Done
 - Scope: `grafana_utils/unified_cli.py`, `grafana_utils/dashboard_cli.py`, `grafana_utils/alert_cli.py`, `cmd/grafana-utils.py`, `cmd/grafana-alert-utils.py`, `cmd/grafana-access-utils.py`, `pyproject.toml`, `tests/test_python_unified_cli.py`, `tests/test_python_packaging.py`, `rust/src/cli.rs`, `rust/src/cli_rust_tests.rs`, `rust/src/bin/grafana-utils.rs`, `rust/src/dashboard.rs`, `rust/src/alert.rs`, `rust/src/lib.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

@@ -29,6 +29,24 @@ UNIFIED_DASHBOARD_COMMAND_MAP = {
     "diff": "diff",
     "list-data-sources": "list-data-sources",
 }
+ALERT_COMMAND_HELP = {
+    "export-alert": "Export alerting resources into raw/ JSON files.",
+    "import-alert": "Import alerting resource JSON files through the Grafana API.",
+    "diff-alert": "Compare local alerting export files against live Grafana resources.",
+    "list-alert-rules": "List live Grafana alert rules.",
+    "list-alert-contact-points": "List live Grafana alert contact points.",
+    "list-alert-mute-timings": "List live Grafana mute timings.",
+    "list-alert-templates": "List live Grafana notification templates.",
+}
+LEGACY_ALERT_COMMAND_MAP = {
+    "export-alert": "export",
+    "import-alert": "import",
+    "diff-alert": "diff",
+    "list-alert-rules": "list-rules",
+    "list-alert-contact-points": "list-contact-points",
+    "list-alert-mute-timings": "list-mute-timings",
+    "list-alert-templates": "list-templates",
+}
 
 
 def _print_dashboard_group_help() -> None:
@@ -53,7 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "Examples:\n\n"
             "  grafana-utils dashboard export --url http://localhost:3000 --export-dir ./dashboards\n"
-            "  grafana-utils alert --url http://localhost:3000 --output-dir ./alerts\n"
+            "  grafana-utils alert export --url http://localhost:3000 --output-dir ./alerts\n"
             "  grafana-utils access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\""
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -79,6 +97,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run the alerting resource CLI under grafana-utils alert ...",
         add_help=False,
     )
+    for command, help_text in ALERT_COMMAND_HELP.items():
+        subparsers.add_parser(command, help="%s (legacy direct form)." % help_text, add_help=False)
     subparsers.add_parser(
         "access",
         help="Run the access-management CLI under grafana-utils access ...",
@@ -126,6 +146,10 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     if mapped:
         return argparse.Namespace(entrypoint="dashboard", forwarded_argv=[mapped] + argv[1:])
 
+    mapped = LEGACY_ALERT_COMMAND_MAP.get(command)
+    if mapped:
+        return argparse.Namespace(entrypoint="alert", forwarded_argv=[mapped] + argv[1:])
+
     parser.parse_args(argv)
     raise AssertionError("argparse should have exited for unsupported command")
 
@@ -139,10 +163,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.entrypoint == "access":
         return access_cli.main(args.forwarded_argv)
     raise RuntimeError("Unsupported unified CLI entrypoint.")
-
-
-def alert_main(argv: Optional[List[str]] = None) -> int:
-    return alert_cli.main(argv)
 
 
 def access_main(argv: Optional[List[str]] = None) -> int:

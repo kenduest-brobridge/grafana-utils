@@ -58,7 +58,9 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(exc.exception.code, 0)
         help_text = stdout.getvalue()
         self.assertIn("grafana-utils alert", help_text)
-        self.assertIn("--output-dir", help_text)
+        self.assertIn("export", help_text)
+        self.assertIn("import", help_text)
+        self.assertIn("diff", help_text)
 
     def test_parse_args_access_without_subcommand_prints_access_help(self):
         stdout = io.StringIO()
@@ -91,6 +93,23 @@ class UnifiedCliTests(unittest.TestCase):
 
         self.assertEqual(args.entrypoint, "alert")
         self.assertEqual(args.forwarded_argv, ["--url", "http://127.0.0.1:3000"])
+
+    def test_parse_args_supports_alert_export_namespace(self):
+        args = unified_cli.parse_args(
+            ["alert", "export", "--output-dir", "./alerts", "--overwrite"]
+        )
+
+        self.assertEqual(args.entrypoint, "alert")
+        self.assertEqual(
+            args.forwarded_argv,
+            ["export", "--output-dir", "./alerts", "--overwrite"],
+        )
+
+    def test_parse_args_supports_legacy_alert_alias(self):
+        args = unified_cli.parse_args(["list-alert-rules", "--json"])
+
+        self.assertEqual(args.entrypoint, "alert")
+        self.assertEqual(args.forwarded_argv, ["list-rules", "--json"])
 
     def test_parse_args_supports_access_namespace(self):
         args = unified_cli.parse_args(

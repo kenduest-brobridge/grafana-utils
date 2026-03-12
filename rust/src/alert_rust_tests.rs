@@ -119,16 +119,16 @@ fn build_contact_point_export_document_wraps_tool_document() {
 fn parse_cli_supports_diff_dir_and_dry_run() {
     let args: AlertCliArgs = parse_cli_from([
         "grafana-alert-utils",
+        "diff",
         "--url",
         "https://grafana.example.com",
         "--diff-dir",
         "./alerts/raw",
-        "--dry-run",
     ]);
     assert_eq!(args.url, "https://grafana.example.com");
     assert_eq!(args.diff_dir.as_deref(), Some(Path::new("./alerts/raw")));
     assert!(args.import_dir.is_none());
-    assert!(args.dry_run);
+    assert!(!args.dry_run);
 }
 
 #[test]
@@ -164,8 +164,39 @@ fn parse_cli_supports_prompt_password() {
 #[test]
 fn help_explains_flat_layout() {
     let help = render_alert_help();
+    assert!(help.contains("export"));
+    assert!(help.contains("import"));
+    assert!(help.contains("diff"));
     assert!(help.contains("Write rule, contact-point, mute-timing, and template files directly"));
     assert!(help.contains("instead of nested subdirectories"));
+}
+
+#[test]
+fn parse_cli_supports_import_subcommand() {
+    let args: AlertCliArgs = parse_cli_from([
+        "grafana-alert-utils",
+        "import",
+        "--import-dir",
+        "./alerts/raw",
+        "--replace-existing",
+        "--dry-run",
+    ]);
+    assert_eq!(args.import_dir.as_deref(), Some(Path::new("./alerts/raw")));
+    assert!(args.replace_existing);
+    assert!(args.dry_run);
+    assert!(args.diff_dir.is_none());
+}
+
+#[test]
+fn parse_cli_supports_list_rules_subcommand() {
+    let args: AlertCliArgs = parse_cli_from([
+        "grafana-utils alert",
+        "list-rules",
+        "--json",
+    ]);
+    assert_eq!(args.list_kind, Some(super::AlertListKind::Rules));
+    assert!(args.json);
+    assert!(!args.csv);
 }
 
 #[test]

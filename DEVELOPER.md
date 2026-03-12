@@ -11,7 +11,6 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 - `grafana_utils/http_transport.py`: shared HTTP transport adapters and transport selection
 - `grafana_utils/unified_cli.py`: unified Python entrypoint that dispatches dashboard, alert, and access workflows
 - `cmd/grafana-utils.py`: thin source-tree wrapper for the packaged unified CLI
-- `cmd/grafana-alert-utils.py`: thin source-tree wrapper for the alert compatibility shim
 - `cmd/grafana-access-utils.py`: thin source-tree wrapper for the access compatibility shim
 - `rust/src/cli.rs`: unified Rust entrypoint that dispatches dashboard, alert, and access workflows
 - `rust/src/bin/grafana-access-utils.rs`: thin Rust compatibility binary for the access-management CLI
@@ -38,7 +37,7 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 ### CLI shape
 
 - Mode selection is explicit.
-- Installed commands are `grafana-utils`, `grafana-alert-utils`, and `grafana-access-utils`.
+- Installed commands are `grafana-utils` and `grafana-access-utils`.
 - `grafana-utils` is now the primary entrypoint for dashboard, alert, and access workflows.
 - Use `python3 cmd/grafana-utils.py dashboard list ...` to inspect live dashboard summaries.
 - Use `python3 cmd/grafana-utils.py dashboard list-data-sources ...` to inspect live Grafana data sources.
@@ -59,20 +58,21 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 - `export-dashboard --all-orgs` lists `/api/orgs`, rebuilds one scoped export client per org, and exports each org into an `org_<id>_<name>/` subtree to avoid cross-org file collisions on disk.
 - Multi-org export still writes aggregate root-level `raw/index.json` and `prompt/index.json` files under the chosen export root so the top-level manifest points at one coherent variant index.
 - Top-level dashboard help and `export-dashboard -h` now include both a local Basic-auth example and a token example so operators can see both auth styles directly from the CLI.
-- The `list-dashboard` subcommand is read-only and defaults to compact `uid=<uid> name=<title> folder=<folder> folderUid=<folderUid> path=<folderTreePath> org=<orgName> orgId=<orgId>` output.
-- `list-dashboard --table` renders the same fields in columns and adds `FOLDER_PATH`, `ORG`, and `ORG_ID` columns.
+- The `list-dashboard` subcommand is read-only and now defaults to table output with `UID`, `NAME`, `FOLDER`, `FOLDER_UID`, `FOLDER_PATH`, `ORG`, and `ORG_ID` columns.
+- `list-dashboard --no-header` keeps the table rows but suppresses the header line for shell pipelines or snapshot-style output.
 - `list-dashboard --csv` emits header `uid,name,folder,folderUid,path,org,orgId` with CSV escaping.
 - `list-dashboard --json` emits an array of objects with keys `uid`, `name`, `folder`, `folderUid`, `path`, `org`, and `orgId`.
 - `list-dashboard` fetches the current org from `GET /api/org` once and attaches that `org` and `orgId` metadata to every listed dashboard summary.
 - `list-dashboard --org-id <ID>` rebuilds the client with `X-Grafana-Org-Id` and is Basic-auth-only because the CLI needs a server-admin-style org switch rather than a token-bound current org context.
 - `list-dashboard --all-orgs` lists `/api/orgs`, rebuilds one scoped client per org, and aggregates the combined dashboard list output. This is also Basic-auth-only.
-- `list-dashboard --with-sources` fetches each dashboard payload plus the datasource catalog, then appends resolved datasource names to text, table, CSV, and JSON output.
+- `list-dashboard --with-sources` fetches each dashboard payload plus the datasource catalog, then appends resolved datasource names to table, CSV, and JSON output.
 - `list-dashboard --with-sources --csv` also appends `sourceUids` so spreadsheet or script consumers can correlate dashboards back to concrete datasource UIDs when Grafana exposed them.
 - `list-dashboard --with-sources --json` also appends `sourceUids` as an array.
 - `list-dashboard --with-sources` should stay opt-in because it turns one search-oriented list call into a per-dashboard inspection workflow.
+- `export-dashboard --progress` and `import-dashboard --progress` turn on per-dashboard progress lines. Without `--progress`, both commands stay quiet except for summary output and explicit warnings/errors.
 - Folder tree path is resolved from `GET /api/folders/{uid}` using the folder `parents[]` chain when `folderUid` is present.
-- `list-data-sources` is read-only and defaults to compact `uid=<uid> name=<name> type=<type> url=<url> isDefault=<true|false>` output.
-- `list-data-sources --table` renders `UID`, `NAME`, `TYPE`, `URL`, and `IS_DEFAULT`.
+- `list-data-sources` is read-only and now defaults to a table with `UID`, `NAME`, `TYPE`, `URL`, and `IS_DEFAULT`.
+- `list-data-sources --no-header` suppresses the table header line while keeping the same column layout.
 - `list-data-sources --csv` emits header `uid,name,type,url,isDefault`.
 - `list-data-sources --json` emits an array of objects with keys `uid`, `name`, `type`, `url`, and `isDefault`.
 
@@ -80,7 +80,7 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 
 - The installable package lives under `grafana_utils/`.
 - `cmd/` keeps only thin wrappers so the repo can still be used without installation.
-- `pyproject.toml` exposes `grafana-utils`, `grafana-alert-utils`, and `grafana-access-utils` as console scripts.
+- `pyproject.toml` exposes `grafana-utils` and `grafana-access-utils` as console scripts.
 - Base installation depends on `requests`.
 - Optional extra `.[http2]` adds `httpx[http2]` for Python 3.8+ environments.
 
@@ -92,7 +92,7 @@ This document is for maintainers. Keep `README.md` GitHub-facing and task-orient
 - The script uses Docker plus the official Rust image to build `x86_64-unknown-linux-gnu` binaries from macOS.
 - `make build-rust-linux-amd64-zig` runs `scripts/build-rust-linux-amd64-zig.sh`.
 - The zig path expects local `zig`, `cargo-zigbuild`, and a rustup-managed `x86_64-unknown-linux-gnu` target.
-- Output is copied into `dist/linux-amd64/` as `grafana-utils` and `grafana-alert-utils`.
+- Output is copied into `dist/linux-amd64/` as `grafana-utils`.
 - This is the preferred Linux `amd64` build path on macOS because it avoids managing a local Linux cross-linker toolchain.
 
 ### Export variants
@@ -158,13 +158,29 @@ This is why prompt export needs live datasource metadata while raw export does n
 
 ### Supported resource kinds
 
-`cmd/grafana-alert-utils.py` currently supports:
+`grafana-utils alert` currently supports:
 
 - alert rules
 - contact points
 - mute timings
 - notification policies
 - notification message templates
+- preferred command forms:
+  - `grafana-utils alert export ...`
+  - `grafana-utils alert import ...`
+  - `grafana-utils alert diff ...`
+  - `grafana-utils alert list-rules ...`
+  - `grafana-utils alert list-contact-points ...`
+  - `grafana-utils alert list-mute-timings ...`
+  - `grafana-utils alert list-templates ...`
+- legacy direct aliases also exist:
+  - `grafana-utils export-alert ...`
+  - `grafana-utils import-alert ...`
+  - `grafana-utils diff-alert ...`
+  - `grafana-utils list-alert-rules ...`
+  - `grafana-utils list-alert-contact-points ...`
+  - `grafana-utils list-alert-mute-timings ...`
+  - `grafana-utils list-alert-templates ...`
 
 The alerting export root is `alerts/raw/`, with one subdirectory per resource kind.
 
@@ -200,11 +216,11 @@ Template handling notes:
 
 ### Alerting import shape and rejection rules
 
-- Import accepts the tool-owned document format emitted by `cmd/grafana-alert-utils.py`
+- Import accepts the tool-owned document format emitted by `grafana-utils alert export`
 - Import accepts both current tool documents with `schemaVersion` and older tool documents that only carry `apiVersion`
 - `detect_document_kind(...)` also accepts plain resource-shaped JSON for rules/contact points/mute timings/policies/templates
 - Grafana official provisioning `/export` payloads are intentionally rejected for API import
-- Round-trip import is only guaranteed for the tool-owned export format emitted by `cmd/grafana-alert-utils.py`
+- Round-trip import is only guaranteed for the tool-owned export format emitted by `grafana-utils alert export`
 - Reject the combined `alerts/` export root on import; require callers to point at `alerts/raw/`
 
 ### Dashboard-linked alert rules
@@ -452,7 +468,7 @@ grafana-utils access team modify -h
 grafana-utils access service-account list -h
 grafana-utils access service-account add -h
 grafana-utils access service-account token add -h
-grafana-alert-utils -h
+grafana-utils alert -h
 grafana-access-utils -h
 grafana-access-utils user list -h
 grafana-access-utils user add -h
@@ -502,7 +518,7 @@ python3 cmd/grafana-utils.py access team modify -h
 python3 cmd/grafana-utils.py access service-account list -h
 python3 cmd/grafana-utils.py access service-account add -h
 python3 cmd/grafana-utils.py access service-account token add -h
-python3 cmd/grafana-alert-utils.py -h
+python3 cmd/grafana-utils.py alert -h
 python3 cmd/grafana-access-utils.py -h
 ```
 

@@ -3,6 +3,7 @@ import ast
 import base64
 import io
 import importlib
+import json
 import sys
 import tempfile
 import unittest
@@ -14,7 +15,6 @@ from unittest import mock
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = REPO_ROOT / "grafana_utils" / "alert_cli.py"
 TRANSPORT_MODULE_PATH = REPO_ROOT / "grafana_utils" / "http_transport.py"
-WRAPPER_PATH = REPO_ROOT / "cmd" / "grafana-alert-utils.py"
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 transport_module = importlib.import_module("grafana_utils.http_transport")
@@ -231,25 +231,58 @@ class AlertUtilsTests(unittest.TestCase):
 
         ast.parse(source, filename=str(TRANSPORT_MODULE_PATH), feature_version=(3, 6))
 
-    def test_alert_wrapper_script_parses_as_python36_syntax(self):
-        source = WRAPPER_PATH.read_text(encoding="utf-8")
-
-        ast.parse(source, filename=str(WRAPPER_PATH), feature_version=(3, 6))
-
     def test_parse_args_supports_import_mode(self):
         args = alert_utils.parse_args(["--import-dir", "alerts/raw"])
 
+        self.assertEqual(args.alert_command, "import")
         self.assertEqual(args.import_dir, "alerts/raw")
 
     def test_parse_args_supports_diff_mode(self):
         args = alert_utils.parse_args(["--diff-dir", "alerts/raw"])
 
+        self.assertEqual(args.alert_command, "diff")
         self.assertEqual(args.diff_dir, "alerts/raw")
 
     def test_parse_args_supports_dry_run(self):
         args = alert_utils.parse_args(["--import-dir", "alerts/raw", "--dry-run"])
 
         self.assertTrue(args.dry_run)
+
+    def test_parse_args_supports_export_subcommand(self):
+        args = alert_utils.parse_args(
+            ["export", "--output-dir", "alerts", "--overwrite"]
+        )
+
+        self.assertEqual(args.alert_command, "export")
+        self.assertEqual(args.output_dir, "alerts")
+        self.assertTrue(args.overwrite)
+        self.assertIsNone(args.import_dir)
+        self.assertIsNone(args.diff_dir)
+
+    def test_parse_args_supports_import_subcommand(self):
+        args = alert_utils.parse_args(
+            ["import", "--import-dir", "alerts/raw", "--replace-existing", "--dry-run"]
+        )
+
+        self.assertEqual(args.alert_command, "import")
+        self.assertEqual(args.import_dir, "alerts/raw")
+        self.assertTrue(args.replace_existing)
+        self.assertTrue(args.dry_run)
+
+    def test_parse_args_supports_diff_subcommand(self):
+        args = alert_utils.parse_args(["diff", "--diff-dir", "alerts/raw"])
+
+        self.assertEqual(args.alert_command, "diff")
+        self.assertEqual(args.diff_dir, "alerts/raw")
+        self.assertFalse(args.dry_run)
+
+    def test_parse_args_supports_list_rules_subcommand(self):
+        args = alert_utils.parse_args(["list-rules", "--json"])
+
+        self.assertEqual(args.alert_command, "list-rules")
+        self.assertTrue(args.json)
+        self.assertFalse(args.csv)
+        self.assertFalse(args.no_header)
 
     def test_parse_args_accepts_mapping_files(self):
         args = alert_utils.parse_args(
@@ -270,14 +303,18 @@ class AlertUtilsTests(unittest.TestCase):
         help_text = alert_utils.build_parser().format_help()
 
         self.assertIn("Examples:", help_text)
-        self.assertIn("grafana-alert-utils --url https://grafana.example.com", help_text)
-        self.assertIn("--output-dir ./alerts --overwrite", help_text)
-        self.assertIn("--import-dir ./alerts/raw --replace-existing", help_text)
+        self.assertIn("grafana-utils alert export --url https://grafana.example.com", help_text)
+        self.assertIn("grafana-utils alert import --url https://grafana.example.com", help_text)
+        self.assertIn("export", help_text)
+        self.assertIn("import", help_text)
+        self.assertIn("diff", help_text)
+        self.assertIn("list-rules", help_text)
         self.assertIn("--dashboard-uid-map ./dashboard-map.json", help_text)
 
     def test_parse_args_defaults_output_dir_to_alerts(self):
         args = alert_utils.parse_args([])
 
+        self.assertEqual(args.alert_command, "export")
         self.assertEqual(args.output_dir, "alerts")
 
     def test_parse_args_defaults_url_to_local_grafana(self):
@@ -499,6 +536,35 @@ class AlertUtilsTests(unittest.TestCase):
         templates = client.list_templates()
 
         self.assertEqual(templates, [])
+
+    def test_list_rules_renders_table_by_default(self):
+        args = alert_utils.parse_args(["list-rules"])
+        fake_client = FakeAlertClient(rules=[sample_rule()])
+
+        stdout = io.StringIO()
+        with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+            with redirect_stdout(stdout):
+                result = alert_utils.list_alert_resources(args)
+
+        self.assertEqual(result, 0)
+        output = stdout.getvalue()
+        self.assertIn("UID", output)
+        self.assertIn("rule-uid", output)
+        self.assertIn("CPU High", output)
+
+    def test_list_contact_points_renders_json(self):
+        args = alert_utils.parse_args(["list-contact-points", "--json"])
+        fake_client = FakeAlertClient(contact_points=[sample_contact_point()])
+
+        stdout = io.StringIO()
+        with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+            with redirect_stdout(stdout):
+                result = alert_utils.list_alert_resources(args)
+
+        self.assertEqual(result, 0)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(payload[0]["uid"], "cp-uid")
+        self.assertEqual(payload[0]["type"], "webhook")
 
     def test_build_mute_timing_output_path_uses_name(self):
         path = alert_utils.build_mute_timing_output_path(
