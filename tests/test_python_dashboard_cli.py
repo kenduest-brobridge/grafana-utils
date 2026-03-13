@@ -28,6 +28,7 @@ FOLDER_SUPPORT_MODULE_PATH = (
 IMPORT_SUPPORT_MODULE_PATH = (
     REPO_ROOT / "grafana_utils" / "dashboards" / "import_support.py"
 )
+PROGRESS_MODULE_PATH = REPO_ROOT / "grafana_utils" / "dashboards" / "progress.py"
 IMPORT_WORKFLOW_MODULE_PATH = (
     REPO_ROOT / "grafana_utils" / "dashboards" / "import_workflow.py"
 )
@@ -177,6 +178,15 @@ class ExporterTests(unittest.TestCase):
         ast.parse(
             source,
             filename=str(IMPORT_SUPPORT_MODULE_PATH),
+            feature_version=(3, 6),
+        )
+
+    def test_dashboard_progress_module_parses_as_python36_syntax(self):
+        source = PROGRESS_MODULE_PATH.read_text(encoding="utf-8")
+
+        ast.parse(
+            source,
+            filename=str(PROGRESS_MODULE_PATH),
             feature_version=(3, 6),
         )
 

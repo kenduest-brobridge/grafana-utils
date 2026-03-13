@@ -1,5 +1,13 @@
 # ai-changes.md
 
+## 2026-03-13 - Split Python Dashboard Progress Helpers
+- Summary: Extracted the remaining dashboard export/import progress rendering helpers out of `grafana_utils/dashboard_cli.py` into `grafana_utils/dashboards/progress.py`. The new module owns the verbose and progress-mode output formatting for export and import workflows, while the dashboard CLI facade keeps the stable helper names used by the workflow dependency bundles.
+- Tests: Added focused Python 3.6 syntax coverage for the new `grafana_utils/dashboards/progress.py` module and revalidated the dashboard CLI suite against the preserved facade wiring.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py`
+- Validation: Verified the progress helper extraction is behavior-preserving, kept Rust untouched, and reduced the remaining non-parser helper ownership in the Python dashboard facade.
+- Impact: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/progress.py`, `tests/test_python_dashboard_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is a narrow refactor, but future export/import output changes should stay in `grafana_utils/dashboards/progress.py` so `dashboard_cli.py` remains focused on CLI wiring.
+
 ## 2026-03-13 - Split Python Dashboard Folder Support Helpers
 - Summary: Extracted the remaining Python dashboard folder inventory and import-folder helper block out of `grafana_utils/dashboard_cli.py` into `grafana_utils/dashboards/folder_support.py`. The new module owns folder inventory record building, folder inventory collection/loading, folder ensure/inspect helpers, export-inventory lookup wrappers, live folder status resolution, and dashboard import folder-path resolution, while `dashboard_cli.py` now keeps re-exported facade names for the existing tests and workflow dependency wiring.
 - Tests: Added focused Python 3.6 syntax coverage for the new `grafana_utils/dashboards/folder_support.py` module and the previously extracted `grafana_utils/dashboards/import_support.py` module, then revalidated the existing dashboard CLI suite against the preserved `grafana_utils.dashboard_cli` helper surface.

@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-13 - Task: Split Python Dashboard Progress Helpers
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/progress.py`, `tests/test_python_dashboard_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: After the listing, import/diff, and folder-support splits, `grafana_utils/dashboard_cli.py` was already much smaller but still kept the remaining export/import progress rendering helpers inline. That left one small but cohesive output-formatting block in the facade instead of with other focused helper modules.
+- Current Update: Extracted the dashboard export/import progress renderers into `grafana_utils/dashboards/progress.py` and rewired `grafana_utils/dashboard_cli.py` to import and re-export the same helper names used by the workflow dependency bundles. Added Python 3.6 syntax coverage for the new progress helper module.
+- Result: The Python dashboard facade is now closer to a pure parser/dispatch/dependency-bundle host, while progress output behavior stays unchanged for export and import workflows.
+
 ## 2026-03-13 - Task: Split Python Dashboard Folder Support Helpers
 - State: Done
 - Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/folder_support.py`, `tests/test_python_dashboard_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
