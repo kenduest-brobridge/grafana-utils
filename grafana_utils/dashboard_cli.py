@@ -32,7 +32,6 @@ Keep in mind:
 import argparse
 import base64
 import copy
-import csv
 import difflib
 import getpass
 import json
@@ -40,7 +39,7 @@ import re
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from .clients.dashboard_client import GrafanaClient
 from .dashboards.common import (
@@ -84,6 +83,28 @@ from .dashboards.inspection_summary import (
     render_export_inspection_summary as render_export_inspection_summary_from_summary,
     render_export_inspection_tables as render_export_inspection_tables_from_summary,
 )
+from .dashboards.listing import (
+    attach_dashboard_folder_paths,
+    attach_dashboard_org,
+    attach_dashboard_sources as attach_dashboard_sources_from_listing,
+    build_dashboard_summary_record,
+    build_data_source_record,
+    build_datasource_inventory_record,
+    build_folder_path,
+    describe_datasource_ref,
+    format_dashboard_summary_line,
+    format_data_source_line,
+    list_dashboards as run_list_dashboards,
+    list_data_sources as run_list_data_sources,
+    render_dashboard_summary_csv,
+    render_dashboard_summary_json,
+    render_dashboard_summary_table,
+    render_data_source_csv,
+    render_data_source_json,
+    render_data_source_table,
+    resolve_dashboard_source_metadata as resolve_dashboard_source_metadata_from_listing,
+    resolve_datasource_uid,
+)
 from .dashboards.inspection_workflow import (
     materialize_live_inspection_export as run_materialize_live_inspection_export,
 )
@@ -93,10 +114,6 @@ from .dashboards.transformer import (
     build_external_export_document,
     collect_datasource_refs,
     is_builtin_datasource_ref,
-    is_placeholder_string,
-    lookup_datasource,
-    resolve_datasource_ref,
-    resolve_datasource_type_alias,
 )
 from .http_transport import build_json_http_transport
 
@@ -1546,458 +1563,42 @@ def export_dashboards(args: argparse.Namespace) -> int:
     return run_export_dashboards(args, _build_export_workflow_deps())
 
 
-def format_dashboard_summary_line(summary: Dict[str, Any]) -> str:
-    """Render one live dashboard summary in a compact operator-readable form."""
-    record = build_dashboard_summary_record(summary)
-    line = (
-        f"uid={record['uid']} name={record['name']} folder={record['folder']} "
-        f"folderUid={record['folderUid']} path={record['path']} "
-        f"org={record['org']} orgId={record['orgId']}"
+def list_dashboards(args: argparse.Namespace) -> int:
+    """List live dashboard summaries without exporting dashboard JSON."""
+    return run_list_dashboards(
+        args,
+        build_client=build_client,
+        extract_dashboard_object=extract_dashboard_object,
+        datasource_error=GrafanaError,
     )
-    if record.get("sources"):
-        line += f" sources={record['sources']}"
-    return line
-
-
-def build_dashboard_summary_record(summary: Dict[str, Any]) -> Dict[str, str]:
-    """Normalize a dashboard summary into a stable output record."""
-    folder = str(summary.get("folderTitle") or DEFAULT_FOLDER_TITLE)
-    record = {
-        "uid": str(summary.get("uid") or DEFAULT_UNKNOWN_UID),
-        "name": str(summary.get("title") or DEFAULT_DASHBOARD_TITLE),
-        "folder": folder,
-        "folderUid": str(summary.get("folderUid") or DEFAULT_FOLDER_UID),
-        "path": str(summary.get("folderPath") or folder),
-        "org": str(summary.get("orgName") or DEFAULT_ORG_NAME),
-        "orgId": str(summary.get("orgId") or DEFAULT_ORG_ID),
-    }
-    if "sources" in summary:
-        record["sources"] = ",".join(summary.get("sources") or [])
-    if "sourceUids" in summary:
-        record["sourceUids"] = ",".join(summary.get("sourceUids") or [])
-    return record
-
-
-def build_folder_path(folder: Dict[str, Any], fallback_title: str) -> str:
-    """Build a readable folder tree path from Grafana folder metadata."""
-    parents = folder.get("parents")
-    titles: List[str] = []
-    if isinstance(parents, list):
-        for parent in parents:
-            if isinstance(parent, dict):
-                title = str(parent.get("title") or "").strip()
-                if title:
-                    titles.append(title)
-    title = (
-        str(folder.get("title") or fallback_title or DEFAULT_FOLDER_TITLE).strip()
-        or DEFAULT_FOLDER_TITLE
-    )
-    titles.append(title)
-    return " / ".join(titles)
-
-
-def attach_dashboard_folder_paths(
-    client: GrafanaClient,
-    summaries: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
-    """Attach a resolved folder tree path to each dashboard summary when possible."""
-    folder_paths: Dict[str, str] = {}
-    for summary in summaries:
-        folder_uid = str(summary.get("folderUid") or "").strip()
-        folder_title = str(summary.get("folderTitle") or DEFAULT_FOLDER_TITLE)
-        if not folder_uid:
-            continue
-        if folder_uid in folder_paths:
-            continue
-        folder = client.fetch_folder_if_exists(folder_uid)
-        if folder is None:
-            folder_paths[folder_uid] = folder_title
-            continue
-        folder_paths[folder_uid] = build_folder_path(folder, folder_title)
-
-    enriched: List[Dict[str, Any]] = []
-    for summary in summaries:
-        item = dict(summary)
-        folder_uid = str(item.get("folderUid") or "").strip()
-        folder_title = str(item.get("folderTitle") or DEFAULT_FOLDER_TITLE)
-        item["folderPath"] = folder_paths.get(folder_uid, folder_title)
-        enriched.append(item)
-    return enriched
-
-
-def describe_datasource_ref(
-    ref: Any,
-    datasources_by_uid: Dict[str, Dict[str, Any]],
-    datasources_by_name: Dict[str, Dict[str, Any]],
-) -> Optional[str]:
-    """Resolve one datasource reference into a display label when possible."""
-    if ref is None or is_builtin_datasource_ref(ref):
-        return None
-
-    if isinstance(ref, str):
-        if is_placeholder_string(ref):
-            return None
-        datasource = lookup_datasource(
-            datasources_by_uid,
-            datasources_by_name,
-            uid=ref,
-            name=ref,
-        )
-        if datasource is not None:
-            label = datasource.get("name") or ref
-            if isinstance(label, str) and label:
-                return label
-        datasource_type = resolve_datasource_type_alias(ref, datasources_by_uid)
-        if datasource_type is not None:
-            return datasource_type
-        return ref
-
-    if isinstance(ref, dict):
-        uid = ref.get("uid")
-        name = ref.get("name")
-        ds_type = ref.get("type")
-        has_placeholder = (
-            isinstance(uid, str)
-            and is_placeholder_string(uid)
-            or isinstance(name, str)
-            and is_placeholder_string(name)
-        )
-        if has_placeholder:
-            return None
-        datasource = lookup_datasource(
-            datasources_by_uid,
-            datasources_by_name,
-            uid=uid,
-            name=name,
-        )
-        if datasource is not None:
-            label = datasource.get("name") or name or uid
-            if isinstance(label, str) and label:
-                return label
-        for candidate in (name, uid, ds_type):
-            if isinstance(candidate, str) and candidate:
-                return candidate
-    return None
-
-
-def resolve_datasource_uid(
-    ref: Any,
-    datasources_by_uid: Dict[str, Dict[str, Any]],
-    datasources_by_name: Dict[str, Dict[str, Any]],
-) -> Optional[str]:
-    """Resolve one datasource reference into a concrete datasource UID when possible."""
-    if ref is None or is_builtin_datasource_ref(ref):
-        return None
-
-    if isinstance(ref, str):
-        if is_placeholder_string(ref):
-            return None
-        datasource = lookup_datasource(
-            datasources_by_uid,
-            datasources_by_name,
-            uid=ref,
-            name=ref,
-        )
-        if datasource is None:
-            return None
-        uid = datasource.get("uid")
-        if isinstance(uid, str) and uid:
-            return uid
-        return None
-
-    if isinstance(ref, dict):
-        uid = ref.get("uid")
-        name = ref.get("name")
-        has_placeholder = (
-            isinstance(uid, str)
-            and is_placeholder_string(uid)
-            or isinstance(name, str)
-            and is_placeholder_string(name)
-        )
-        if has_placeholder:
-            return None
-        datasource = lookup_datasource(
-            datasources_by_uid,
-            datasources_by_name,
-            uid=uid,
-            name=name,
-        )
-        if datasource is not None:
-            resolved_uid = datasource.get("uid")
-            if isinstance(resolved_uid, str) and resolved_uid:
-                return resolved_uid
-        if isinstance(uid, str) and uid:
-            return uid
-    return None
 
 
 def resolve_dashboard_source_metadata(
     payload: Dict[str, Any],
     datasources_by_uid: Dict[str, Dict[str, Any]],
     datasources_by_name: Dict[str, Dict[str, Any]],
-) -> Tuple[List[str], List[str]]:
-    """Collect sorted datasource display names and concrete UIDs from one dashboard payload."""
-    dashboard = extract_dashboard_object(
+) -> Any:
+    """Keep the historical dashboard-cli helper signature stable."""
+    return resolve_dashboard_source_metadata_from_listing(
         payload,
-        "Unexpected dashboard payload from Grafana.",
+        extract_dashboard_object=extract_dashboard_object,
+        datasource_error=GrafanaError,
+        datasources_by_uid=datasources_by_uid,
+        datasources_by_name=datasources_by_name,
     )
-    refs: List[Any] = []
-    collect_datasource_refs(dashboard, refs)
-    source_names: Set[str] = set()
-    source_uids: Set[str] = set()
-    for ref in refs:
-        try:
-            resolved = resolve_datasource_ref(
-                ref,
-                datasources_by_uid=datasources_by_uid,
-                datasources_by_name=datasources_by_name,
-            )
-        except GrafanaError:
-            resolved = None
-        if resolved is not None:
-            label = resolved.get("label")
-            if isinstance(label, str) and label:
-                source_names.add(label)
-
-        label = describe_datasource_ref(
-            ref,
-            datasources_by_uid=datasources_by_uid,
-            datasources_by_name=datasources_by_name,
-        )
-        if label:
-            source_names.add(label)
-        uid = resolve_datasource_uid(
-            ref,
-            datasources_by_uid=datasources_by_uid,
-            datasources_by_name=datasources_by_name,
-        )
-        if uid:
-            source_uids.add(uid)
-    return sorted(source_names), sorted(source_uids)
 
 
 def attach_dashboard_sources(
     client: GrafanaClient,
     summaries: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
-    """Attach sorted datasource display names to each dashboard summary."""
-    datasources_by_uid, datasources_by_name = build_datasource_catalog(
-        client.list_datasources()
-    )
-    enriched: List[Dict[str, Any]] = []
-    for summary in summaries:
-        item = dict(summary)
-        uid = str(item.get("uid") or "").strip()
-        if uid:
-            payload = client.fetch_dashboard(uid)
-            sources, source_uids = resolve_dashboard_source_metadata(
-                payload,
-                datasources_by_uid=datasources_by_uid,
-                datasources_by_name=datasources_by_name,
-            )
-            item["sources"] = sources
-            item["sourceUids"] = source_uids
-        else:
-            item["sources"] = []
-            item["sourceUids"] = []
-        enriched.append(item)
-    return enriched
-
-
-def attach_dashboard_org(
-    client: GrafanaClient,
-    summaries: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
-    """Attach the current Grafana organization to each dashboard summary."""
-    org = client.fetch_current_org()
-    org_name = str(org.get("name") or DEFAULT_ORG_NAME)
-    org_id = str(org.get("id") or DEFAULT_ORG_ID)
-    enriched: List[Dict[str, Any]] = []
-    for summary in summaries:
-        item = dict(summary)
-        item["orgName"] = org_name
-        item["orgId"] = org_id
-        enriched.append(item)
-    return enriched
-
-
-def render_dashboard_summary_table(
-    summaries: List[Dict[str, Any]],
-    include_header: bool = True,
-) -> List[str]:
-    """Render dashboard summaries as a fixed-width table."""
-    headers = ["UID", "NAME", "FOLDER", "FOLDER_UID", "FOLDER_PATH", "ORG", "ORG_ID"]
-    if summaries and "sources" in summaries[0]:
-        headers.append("SOURCES")
-    rows = []
-    for record in [build_dashboard_summary_record(summary) for summary in summaries]:
-        row = [
-            record["uid"],
-            record["name"],
-            record["folder"],
-            record["folderUid"],
-            record["path"],
-            record["org"],
-            record["orgId"],
-        ]
-        if "sources" in record:
-            row.append(record["sources"])
-        rows.append(row)
-    widths = [len(header) for header in headers]
-    for row in rows:
-        for index, value in enumerate(row):
-            widths[index] = max(widths[index], len(value))
-
-    def format_row(values: List[str]) -> str:
-        return "  ".join(
-            value.ljust(widths[index]) for index, value in enumerate(values)
-        )
-
-    lines = []
-    if include_header:
-        lines.extend([format_row(headers), format_row(["-" * width for width in widths])])
-    lines.extend(format_row(row) for row in rows)
-    return lines
-
-
-def render_dashboard_summary_csv(summaries: List[Dict[str, Any]]) -> None:
-    """Render dashboard summaries as CSV records."""
-    fieldnames = ["uid", "name", "folder", "folderUid", "path", "org", "orgId"]
-    if summaries and "sources" in summaries[0]:
-        fieldnames.append("sources")
-    if summaries and "sourceUids" in summaries[0]:
-        fieldnames.append("sourceUids")
-    writer = csv.DictWriter(sys.stdout, fieldnames=fieldnames, lineterminator="\n")
-    writer.writeheader()
-    for summary in summaries:
-        writer.writerow(build_dashboard_summary_record(summary))
-
-
-def render_dashboard_summary_json(summaries: List[Dict[str, Any]]) -> str:
-    """Render dashboard summaries as JSON."""
-    records = []
-    for summary in summaries:
-        record = build_dashboard_summary_record(summary)
-        if "sources" in summary:
-            record["sources"] = list(summary.get("sources") or [])
-        if "sourceUids" in summary:
-            record["sourceUids"] = list(summary.get("sourceUids") or [])
-        records.append(record)
-    return json.dumps(records, indent=2, sort_keys=False)
-
-
-def list_dashboards(args: argparse.Namespace) -> int:
-    """List live dashboard summaries without exporting dashboard JSON."""
-    all_orgs = bool(getattr(args, "all_orgs", False))
-    org_id = getattr(args, "org_id", None)
-    if all_orgs and org_id:
-        raise GrafanaError("Choose either --org-id or --all-orgs, not both.")
-    client = build_client(args)
-    auth_header = client.headers.get("Authorization", "")
-    if (all_orgs or org_id) and not auth_header.startswith("Basic "):
-        raise GrafanaError(
-            "Dashboard org switching requires Basic auth. Use --basic-user and --basic-password."
-        )
-
-    clients: List[GrafanaClient]
-    if all_orgs:
-        orgs = client.list_orgs()
-        clients = []
-        for org in orgs:
-            org_id = str(org.get("id") or "").strip()
-            if org_id:
-                clients.append(client.with_org_id(org_id))
-    elif org_id:
-        clients = [client.with_org_id(str(org_id))]
-    else:
-        clients = [client]
-
-    summaries: List[Dict[str, Any]] = []
-    for scoped_client in clients:
-        scoped_summaries = attach_dashboard_folder_paths(
-            scoped_client,
-            scoped_client.iter_dashboard_summaries(args.page_size),
-        )
-        scoped_summaries = attach_dashboard_org(scoped_client, scoped_summaries)
-        if args.json or getattr(args, "with_sources", False):
-            scoped_summaries = attach_dashboard_sources(scoped_client, scoped_summaries)
-        summaries.extend(scoped_summaries)
-    if args.csv:
-        render_dashboard_summary_csv(summaries)
-        return 0
-    if args.json:
-        print(render_dashboard_summary_json(summaries))
-        return 0
-    for line in render_dashboard_summary_table(
+    """Keep the historical dashboard-cli helper signature stable."""
+    return attach_dashboard_sources_from_listing(
+        client,
         summaries,
-        include_header=not bool(getattr(args, "no_header", False)),
-    ):
-        print(line)
-    print("")
-    print(f"Listed {len(summaries)} dashboard summaries from {args.url}")
-    return 0
-
-
-def format_data_source_line(datasource: Dict[str, Any]) -> str:
-    record = build_data_source_record(datasource)
-    return (
-        f"uid={record['uid']} name={record['name']} type={record['type']} "
-        f"url={record['url']} isDefault={record['isDefault']}"
+        extract_dashboard_object=extract_dashboard_object,
+        datasource_error=GrafanaError,
     )
-
-
-def build_data_source_record(datasource: Dict[str, Any]) -> Dict[str, str]:
-    return {
-        "uid": str(datasource.get("uid") or ""),
-        "name": str(datasource.get("name") or ""),
-        "type": str(datasource.get("type") or ""),
-        "url": str(datasource.get("url") or ""),
-        "isDefault": "true" if bool(datasource.get("isDefault")) else "false",
-    }
-
-
-def build_datasource_inventory_record(
-    datasource: Dict[str, Any],
-    org: Dict[str, Any],
-) -> Dict[str, str]:
-    record = build_data_source_record(datasource)
-    record["access"] = str(datasource.get("access") or "")
-    record["org"] = str(org.get("name") or DEFAULT_ORG_NAME)
-    record["orgId"] = str(org.get("id") or DEFAULT_ORG_ID)
-    return record
-
-
-def render_data_source_table(
-    datasources: List[Dict[str, Any]],
-    include_header: bool = True,
-) -> List[str]:
-    headers = ["UID", "NAME", "TYPE", "URL", "IS_DEFAULT"]
-    rows = []
-    for record in [build_data_source_record(item) for item in datasources]:
-        rows.append(
-            [
-                record["uid"],
-                record["name"],
-                record["type"],
-                record["url"],
-                record["isDefault"],
-            ]
-        )
-    widths = [len(header) for header in headers]
-    for row in rows:
-        for index, value in enumerate(row):
-            widths[index] = max(widths[index], len(value))
-
-    def format_row(values: List[str]) -> str:
-        return "  ".join(
-            value.ljust(widths[index]) for index, value in enumerate(values)
-        )
-
-    lines = []
-    if include_header:
-        lines.extend([format_row(headers), format_row(["-" * width for width in widths])])
-    lines.extend(format_row(row) for row in rows)
-    return lines
 
 
 def build_dashboard_import_dry_run_record(
@@ -2146,42 +1747,9 @@ def render_folder_inventory_dry_run_table(
     return lines
 
 
-def render_data_source_csv(datasources: List[Dict[str, Any]]) -> None:
-    writer = csv.DictWriter(
-        sys.stdout,
-        fieldnames=["uid", "name", "type", "url", "isDefault"],
-        lineterminator="\n",
-    )
-    writer.writeheader()
-    for datasource in datasources:
-        writer.writerow(build_data_source_record(datasource))
-
-
-def render_data_source_json(datasources: List[Dict[str, Any]]) -> str:
-    return json.dumps(
-        [build_data_source_record(item) for item in datasources],
-        indent=2,
-        sort_keys=False,
-    )
-
-
 def list_data_sources(args: argparse.Namespace) -> int:
-    client = build_client(args)
-    datasources = client.list_datasources()
-    if args.csv:
-        render_data_source_csv(datasources)
-        return 0
-    if args.json:
-        print(render_data_source_json(datasources))
-        return 0
-    for line in render_data_source_table(
-        datasources,
-        include_header=not bool(getattr(args, "no_header", False)),
-    ):
-        print(line)
-    print("")
-    print(f"Listed {len(datasources)} data source(s) from {args.url}")
-    return 0
+    """List live Grafana data sources."""
+    return run_list_data_sources(args, build_client=build_client)
 
 
 def iter_dashboard_panels(panels: Any) -> List[Dict[str, Any]]:

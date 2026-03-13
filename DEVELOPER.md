@@ -12,10 +12,12 @@ Commit message default for this repo:
 ## Repository Scope
 
 - `grafana_utils/dashboard_cli.py`: packaged dashboard export/import utility
+- `grafana_utils/datasource_cli.py`: packaged datasource inventory list/export utility
 - `grafana_utils/dashboards/export_workflow.py`: Python dashboard export orchestration helper that keeps the CLI-facing export workflow out of `dashboard_cli.py`
 - `grafana_utils/dashboards/export_inventory.py`: Python dashboard raw-export discovery, inventory loading, and export metadata validation helpers shared by diff/import/inspect paths
 - `grafana_utils/dashboards/inspection_report.py`: Python dashboard inspection report model, column/mode constants, query-row normalization, and flat/grouped report renderers shared by `inspect-export` and `inspect-live`
 - `grafana_utils/dashboards/inspection_summary.py`: Python dashboard inspection summary builder and summary/table renderers for offline and live inspection paths
+- `grafana_utils/dashboards/listing.py`: Python dashboard live list/datasource-list renderers plus datasource/source-enrichment helpers shared by the stable CLI facade
 - `grafana_utils/dashboards/inspection_workflow.py`: Python dashboard inspect-live and inspect-export orchestration helper that reuses the existing render/analysis functions through dependency injection
 - `grafana_utils/dashboards/import_workflow.py`: Python dashboard import orchestration helper for dry-run, ensure-folder, and live import flows
 - `grafana_utils/alert_cli.py`: packaged alerting resource export/import utility
@@ -37,7 +39,7 @@ Commit message default for this repo:
 - `rust/src/dashboard_export.rs`: Rust dashboard export pathing and multi-org export orchestration
 - `rust/src/dashboard_prompt.rs`: Rust dashboard prompt-export datasource resolution and template-rewrite logic
 - `grafana_utils/http_transport.py`: shared HTTP transport adapters and transport selection
-- `grafana_utils/unified_cli.py`: unified Python entrypoint that dispatches dashboard, alert, and access workflows
+- `grafana_utils/unified_cli.py`: unified Python entrypoint that dispatches dashboard, datasource, alert, and access workflows
 - `python/grafana-utils.py`: thin source-tree wrapper for the packaged unified CLI
 - `rust/src/cli.rs`: unified Rust entrypoint that dispatches dashboard, alert, and access workflows
 - `rust/src/bin/grafana-access-utils.rs`: thin Rust compatibility binary for the access-management CLI
@@ -69,9 +71,10 @@ Commit message default for this repo:
 - Installed Python console script is `grafana-utils`.
 - Rust still keeps `grafana-access-utils` as a compatibility binary.
 - Alert workflows no longer ship a separate `grafana-alert-utils` entrypoint; use `grafana-utils alert ...`.
-- `grafana-utils` is now the primary entrypoint for dashboard, alert, and access workflows.
+- `grafana-utils` is now the primary entrypoint for dashboard, datasource, alert, and access workflows.
 - Use `python3 python/grafana-utils.py dashboard list ...` to inspect live dashboard summaries.
 - Use `python3 python/grafana-utils.py dashboard list-data-sources ...` to inspect live Grafana data sources.
+- Use `python3 python/grafana-utils.py datasource list ...` for the first-class datasource inventory CLI.
 - Use `python3 python/grafana-utils.py dashboard inspect-live ...` to inspect live Grafana dashboards through the same summary/report renderers used for raw exports.
 - Use `python3 python/grafana-utils.py dashboard export ...` for export.
 - Use `python3 python/grafana-utils.py dashboard import ...` for import.
@@ -108,8 +111,10 @@ Commit message default for this repo:
 - `list-data-sources --no-header` suppresses the table header line while keeping the same column layout.
 - `list-data-sources --csv` emits header `uid,name,type,url,isDefault`.
 - `list-data-sources --json` emits an array of objects with keys `uid`, `name`, `type`, `url`, and `isDefault`.
+- `datasource list` mirrors the same human/CSV/JSON output contract as `dashboard list-data-sources` so the standalone datasource surface stays familiar.
+- `datasource export` writes one normalized current-org datasource inventory rooted at `datasources.json`, `index.json`, and `export-metadata.json`, and each exported record carries `uid`, `name`, `type`, `access`, `url`, `isDefault`, `org`, and `orgId`.
 - The Rust alert implementation is intentionally split by responsibility: `alert_cli_defs.rs` owns clap/auth normalization, `alert_client.rs` owns the Grafana alert provisioning client plus shared response parsing helpers, `alert_list.rs` owns list rendering and list-command dispatch, and `alert.rs` keeps the remaining import/export/diff orchestration plus shared alert document helpers.
-- The Python dashboard implementation is intentionally split by responsibility: `dashboard_cli.py` stays as the stable CLI facade and shared helper host, `grafana_utils/dashboards/export_inventory.py` owns raw-export discovery plus inventory/manifest validation helpers, `grafana_utils/dashboards/inspection_summary.py` owns the inspection summary document plus summary/table renderers, `grafana_utils/dashboards/inspection_report.py` owns the explicit per-query report model plus flat/grouped renderers, and `grafana_utils/dashboards/export_workflow.py`, `grafana_utils/dashboards/inspection_workflow.py`, and `grafana_utils/dashboards/import_workflow.py` own the high-level orchestration bodies for export, inspect-live/inspect-export, and import respectively.
+- The Python dashboard implementation is intentionally split by responsibility: `dashboard_cli.py` stays as the stable CLI facade and shared helper host, `grafana_utils/dashboards/listing.py` owns live dashboard/datasource listing plus datasource/source-enrichment helpers, `grafana_utils/dashboards/export_inventory.py` owns raw-export discovery plus inventory/manifest validation helpers, `grafana_utils/dashboards/inspection_summary.py` owns the inspection summary document plus summary/table renderers, `grafana_utils/dashboards/inspection_report.py` owns the explicit per-query report model plus flat/grouped renderers, and `grafana_utils/dashboards/export_workflow.py`, `grafana_utils/dashboards/inspection_workflow.py`, and `grafana_utils/dashboards/import_workflow.py` own the high-level orchestration bodies for export, inspect-live/inspect-export, and import respectively.
 - The Rust dashboard implementation follows the same boundary at a crate-module level: `dashboard.rs` stays as the public facade, `dashboard_files.rs` owns raw-export discovery plus inventory/manifest validation helpers, `dashboard_inspect_report.rs` owns the query-report contract and grouped renderers, and the import/inspect orchestration stays in the dedicated dashboard submodules.
 - The Rust dashboard implementation is intentionally split by responsibility: `dashboard_cli_defs.rs` owns clap/auth/client setup, `dashboard_list.rs` owns list/datasource renderers and org-aware list orchestration, `dashboard_export.rs` owns export pathing and multi-org export orchestration, `dashboard_prompt.rs` owns datasource resolution plus prompt-export template rewrites, and `dashboard.rs` keeps the remaining shared helpers, import, diff, and top-level orchestration flows.
 - The Rust access implementation is intentionally split by responsibility: `access_cli_defs.rs` owns clap/auth/client setup, `access_render.rs` owns output formatting and row normalization, `access_user.rs` owns user flows, `access_team.rs` owns team flows, `access_service_account.rs` owns service-account flows, and `access.rs` keeps shared request wrappers plus top-level dispatch.
@@ -161,7 +166,7 @@ Dashboard export also writes versioned `export-metadata.json` files at:
 
 Those manifests use `schemaVersion` and `variant` markers so `import` and `diff` can reject directories that are not the expected raw export layout.
 
-The Python and Rust dashboard CLIs also have `inspect-export` for offline raw-export analysis. The summary path reads the raw `export-metadata.json`, `index.json`, `folders.json`, `datasources.json`, and dashboard files, then summarizes dashboard count, folder paths, panel/query totals, datasource usage, datasource inventory, and mixed-datasource dashboards. `inspect-export --json` emits the same summary as one machine-readable document, while `inspect-export --table` renders the summary as separate summary, folder-path, datasource-usage, datasource-inventory, and mixed-dashboard tables.
+The Python and Rust dashboard CLIs also have `inspect-export` for offline raw-export analysis. The summary path reads the raw `export-metadata.json`, `index.json`, `folders.json`, `datasources.json`, and dashboard files, then summarizes dashboard count, folder paths, panel/query totals, datasource usage, datasource inventory, orphaned datasources, and mixed-datasource dashboards. `inspect-export --json` emits the same summary as one machine-readable document, while `inspect-export --table` renders the summary as separate summary, folder-path, datasource-usage, datasource-inventory, orphaned-datasource, and mixed-dashboard tables.
 
 The Python CLI also has `inspect-live`, which accepts the normal live dashboard auth/common args, materializes a temporary raw-export-like directory from live dashboard payloads plus current folder and datasource inventories, and then reuses the same summary/report inspection pipeline as `inspect-export`. This keeps the operator-facing output contract aligned while avoiding a second inspection implementation.
 
@@ -214,7 +219,7 @@ This is why prompt export needs live datasource metadata while raw export does n
 - Import `--dry-run --json` renders one JSON document with `mode`, `folders`, `dashboards`, and `summary`, and suppresses the normal human-readable progress/summary lines so scripts can parse it safely.
 - Import `--update-existing-only` switches the workflow to `update-or-skip-missing` by dashboard `uid`, implies overwrite-on-existing behavior, and never creates missing dashboards.
 - When import updates an existing dashboard by `uid`, it preserves the destination Grafana folder by default; only an explicit `--import-folder-uid` overrides that folder placement.
-- `inspect-export` is a local raw-export analysis workflow; it does not call Grafana APIs and instead reads `raw/export-metadata.json`, `raw/folders.json`, `raw/datasources.json`, and dashboard JSON files to summarize folder paths, panels, queries, datasource references, datasource inventory, and mixed-datasource dashboards.
+- `inspect-export` is a local raw-export analysis workflow; it does not call Grafana APIs and instead reads `raw/export-metadata.json`, `raw/folders.json`, `raw/datasources.json`, and dashboard JSON files to summarize folder paths, panels, queries, datasource references, datasource inventory, orphaned datasources, and mixed-datasource dashboards.
 - `inspect-live` is the live-data adapter for the same inspection workflow; it calls the live dashboard, folder, and datasource APIs, writes a temporary raw-style layout, and then hands off to the existing inspection renderers.
 - `inspect-export --report` walks the same local dashboard JSON but emits one per-target query record so operators can inspect datasource usage plus query text and extracted metric-like names without contacting Grafana.
 - Report extraction should stay decomposed by datasource/query family over time. Shared traversal and row rendering can remain generic, but Prometheus, Loki, Flux/Influx, SQL, and future datasource-specific parsing should be pluggable so one datasource's parser growth does not complicate the others.

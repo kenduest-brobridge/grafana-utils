@@ -168,6 +168,16 @@ class DashboardInspectionTests(unittest.TestCase):
                         "org": "Main Org.",
                         "orgId": "1",
                     },
+                    {
+                        "uid": "unused-main",
+                        "name": "Unused Main",
+                        "type": "tempo",
+                        "access": "proxy",
+                        "url": "http://tempo:3200",
+                        "isDefault": "false",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
                 ],
                 index=[{"uid": "abc", "title": "CPU", "path": "General", "kind": "raw"}],
             )
@@ -181,11 +191,13 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertIn("Panels: 2", output)
             self.assertIn("Queries: 3", output)
             self.assertIn("Mixed datasource dashboards: 1", output)
+            self.assertIn("Orphaned datasources: 1", output)
             self.assertIn("Platform / Infra (1 dashboards)", output)
             self.assertIn("prom-main (2 refs across 2 dashboards)", output)
             self.assertIn("logs-main (1 refs across 1 dashboards)", output)
-            self.assertIn("Datasource inventory: 2", output)
+            self.assertIn("Datasource inventory: 3", output)
             self.assertIn("Prometheus Main uid=prom-main", output)
+            self.assertIn("Unused Main uid=unused-main", output)
             self.assertIn("Mixed Main (mixed-main) path=Platform / Infra", output)
 
     def test_inspect_export_renders_json(self):
@@ -224,7 +236,17 @@ class DashboardInspectionTests(unittest.TestCase):
                         "isDefault": "true",
                         "org": "Main Org.",
                         "orgId": "1",
-                    }
+                    },
+                    {
+                        "uid": "unused-main",
+                        "name": "Unused Main",
+                        "type": "tempo",
+                        "access": "proxy",
+                        "url": "http://tempo:3200",
+                        "isDefault": "false",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
                 ],
             )
 
@@ -238,11 +260,14 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertEqual(payload["summary"]["dashboardCount"], 1)
             self.assertEqual(payload["summary"]["panelCount"], 1)
             self.assertEqual(payload["summary"]["queryCount"], 2)
-            self.assertEqual(payload["summary"]["datasourceInventoryCount"], 1)
+            self.assertEqual(payload["summary"]["datasourceInventoryCount"], 2)
+            self.assertEqual(payload["summary"]["orphanedDatasourceCount"], 1)
             self.assertEqual(payload["folders"][0]["path"], "General")
             self.assertEqual(payload["datasources"][0]["name"], "prom-main")
             self.assertEqual(payload["datasourceInventory"][0]["name"], "Prometheus Main")
             self.assertEqual(payload["datasourceInventory"][0]["referenceCount"], 1)
+            self.assertEqual(payload["orphanedDatasources"][0]["uid"], "unused-main")
+            self.assertEqual(payload["orphanedDatasources"][0]["name"], "Unused Main")
             self.assertEqual(payload["dashboards"][0]["folderPath"], "General")
             self.assertFalse(payload["dashboards"][0]["mixedDatasource"])
 
@@ -329,6 +354,16 @@ class DashboardInspectionTests(unittest.TestCase):
                         "orgId": "1",
                     },
                     {
+                        "uid": "unused-main",
+                        "name": "Unused Main",
+                        "type": "tempo",
+                        "access": "proxy",
+                        "url": "http://tempo:3200",
+                        "isDefault": "false",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                    {
                         "uid": "prom-main",
                         "name": "Prometheus Main",
                         "type": "prometheus",
@@ -355,7 +390,9 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertIn("Platform / Infra", output)
             self.assertIn("prom-main", output)
             self.assertIn("# Datasource inventory", output)
+            self.assertIn("# Orphaned datasources", output)
             self.assertIn("Prometheus Main", output)
+            self.assertIn("Unused Main", output)
             self.assertIn("mixed-main", output)
 
     def test_inspect_export_renders_query_report_json(self):

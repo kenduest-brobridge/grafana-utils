@@ -1,5 +1,30 @@
 # ai-changes.md
 
+## 2026-03-13 - Add Datasource Inventory CLI
+- Summary: Added a new Python `grafana-utils datasource` surface with `list` and `export` subcommands while preserving `grafana-utils dashboard list-data-sources` for compatibility. The new export path writes a minimal explicit datasource contract rooted at `datasources.json`, `index.json`, and `export-metadata.json`, and normalizes each datasource record to include `uid`, `name`, `type`, `access`, `url`, `isDefault`, `org`, and `orgId`.
+- Tests: Added a focused Python datasource CLI suite covering parser behavior, default list rendering, and export/dry-run contract output, and extended the unified CLI tests to cover datasource dispatch and help text.
+- Test Run: `python3 -m unittest -v tests/test_python_datasource_cli.py tests/test_python_unified_cli.py`
+- Validation: Verified the new module stays Python 3.6-parseable, confirmed unified `grafana-utils datasource ...` dispatch forwards correctly, and confirmed export writes the expected normalized manifest/index/data files without altering the existing dashboard datasource listing path.
+- Impact: `grafana_utils/datasource_cli.py`, `grafana_utils/unified_cli.py`, `tests/test_python_datasource_cli.py`, `tests/test_python_unified_cli.py`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Moderate. This is a new user-facing resource family and only the Python implementation exists so far; the export contract is intentionally minimal and current-org-only until later datasource import/diff and Rust parity work lands.
+
+## 2026-03-13 - Split Python Dashboard Listing Helpers
+- Summary: Extracted the live dashboard list/datasource-list logic out of `grafana_utils/dashboard_cli.py` into `grafana_utils/dashboards/listing.py`. The new module owns list renderers, dashboard folder/org/source enrichment, datasource UID/name resolution, datasource inventory record normalization, and the `list-dashboard` / `list-data-sources` command bodies, while `dashboard_cli.py` stays as the stable facade and re-exports the existing helper names for tests and callers.
+- Tests: Added Python 3.6 syntax coverage for the new `grafana_utils/dashboards/listing.py` module and revalidated the focused dashboard CLI suite against the preserved public helper surface.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py`
+- Validation: Verified the extracted module stays Python 3.6-parseable, preserved the existing `grafana_utils.dashboard_cli` helper names used by tests, and kept live dashboard/datasource list behavior unchanged while reducing top-level facade ownership.
+- Impact: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/listing.py`, `tests/test_python_dashboard_cli.py`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. The refactor is intended to be behavior-preserving, but future list-related work should keep `grafana_utils/dashboards/listing.py` as the ownership boundary so list renderers and datasource/source enrichment do not drift back into `dashboard_cli.py`.
+
+## 2026-03-13 - Add Inspect Export Orphaned Datasources
+- Summary: Extended the Python dashboard inspection summary model so `inspect-export` now computes explicit orphaned datasource governance output from the exported datasource inventory. The summary JSON includes `orphanedDatasourceCount` and an `orphanedDatasources` list, the plain-text renderer calls out the orphan count plus each orphaned datasource, and `--table` adds a dedicated orphaned-datasource section alongside the existing datasource inventory table.
+- Tests: Updated `tests/test_python_dashboard_inspection_cli.py` to cover human summary, JSON, and table rendering when the raw export carries one datasource inventory record that no dashboard references.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_inspection_cli.py`
+- Reason: The inspection roadmap calls for stronger datasource governance visibility, and the raw export summary already had enough inventory data to surface unused datasources directly instead of forcing operators to infer them from zero-count rows.
+- Validation: Verified the focused inspection suite passes and kept the change scoped to the summary path so the existing per-query report contract remains unchanged.
+- Impact: `grafana_utils/dashboards/inspection_summary.py`, `tests/test_python_dashboard_inspection_cli.py`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. This adds new summary JSON fields and one extra summary/table section, so downstream consumers of `inspect-export --json` should tolerate the additional `orphanedDatasourceCount` and `orphanedDatasources` keys.
+
 ## 2026-03-13 - Add Flux And SQL Dashboard Inspection Extraction
 - Summary: Extended the existing dashboard inspect query extraction heuristics in both Python and Rust without changing the shared report contract. Flux queries now surface pipeline/source function names in `metrics`, `_measurement` values in `measurements`, and `bucket` values in `buckets`. SQL-family queries (`mysql`, `postgres`, `mssql`, plus `rawSql` / `sql` targets) now surface coarse query-shape hints in `metrics`, table/source references in `measurements`, and leave `buckets` empty.
 - Tests: Added focused Python and Rust coverage for Flux pipeline extraction and SQL-family source/query-shape extraction, while keeping the existing Prometheus report behavior coverage in place.

@@ -2,11 +2,11 @@
 
 Language / 語言: English | [繁體中文 README.zh-TW.md](README.zh-TW.md)
 
-Export, back up, migrate, and re-import Grafana dashboards and alerting resources as JSON.
+Export, back up, migrate, and re-import Grafana dashboards, datasource inventory, and alerting resources as JSON.
 
 This repository provides one primary unified CLI in two implementations:
 
-- `grafana-utils`: unified dashboard, alerting, and access-management CLI
+- `grafana-utils`: unified dashboard, datasource, alerting, and access-management CLI
 - packaged Python implementation under [`grafana_utils/`](grafana_utils/)
 - Rust implementation under [`rust/`](rust/)
 
@@ -28,6 +28,7 @@ Compatibility:
 - [Choose Python or Rust](#choose-python-or-rust)
 - [Quick Start](#quick-start)
 - [Dashboard Utility](#dashboard-utility)
+- [Datasource Utility](#datasource-utility)
 - [Alerting Utility](#alerting-utility)
 - [Access Utility](#access-utility)
 - [Build and Install](#build-and-install)
@@ -43,6 +44,8 @@ The repo now uses one primary command name with explicit areas underneath it.
 - `grafana-utils dashboard export ...`
 - `grafana-utils dashboard list ...`
 - `grafana-utils dashboard list-data-sources ...`
+- `grafana-utils datasource list ...`
+- `grafana-utils datasource export ...`
 - `grafana-utils dashboard inspect-live ...`
 - `grafana-utils dashboard import ...`
 - `grafana-utils dashboard diff ...`
@@ -79,8 +82,8 @@ Use the path that matches how you want to operate the repo.
 
 | Option | When to use it | Commands |
 | --- | --- | --- |
-| Installed Python package | Best default for normal usage | `grafana-utils dashboard ...`, `grafana-utils alert ...`, `grafana-utils access ...` |
-| Python from git checkout | Best when editing or testing the repo directly | `python3 python/grafana-utils.py dashboard ...`, `python3 python/grafana-utils.py alert ...`, `python3 python/grafana-utils.py access ...` |
+| Installed Python package | Best default for normal usage | `grafana-utils dashboard ...`, `grafana-utils datasource ...`, `grafana-utils alert ...`, `grafana-utils access ...` |
+| Python from git checkout | Best when editing or testing the repo directly | `python3 python/grafana-utils.py dashboard ...`, `python3 python/grafana-utils.py datasource ...`, `python3 python/grafana-utils.py alert ...`, `python3 python/grafana-utils.py access ...` |
 | Rust from git checkout | Best when validating or developing the Rust implementation | `cargo run --bin grafana-utils -- dashboard ...`, `cargo run --bin grafana-utils -- alert ...`, `cargo run --bin grafana-utils -- access ...` |
 
 Notes:
@@ -123,6 +126,17 @@ python3 python/grafana-utils.py dashboard export \
   --basic-password "$GRAFANA_PASSWORD" \
   --all-orgs \
   --export-dir ./dashboards \
+  --overwrite
+```
+
+Datasource inventory export from the current Grafana org:
+
+```bash
+python3 python/grafana-utils.py datasource export \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
+  --export-dir ./datasources \
   --overwrite
 ```
 
@@ -529,8 +543,8 @@ Use `prompt/` when you want:
 | `--progress` | For `export-dashboard` or `import-dashboard`, print concise per-dashboard `current/total` progress lines while the command runs |
 | `-v, --verbose` | For `export-dashboard` or `import-dashboard`, print detailed per-item output including variants, paths, and import results; overrides `--progress` |
 | `import-dashboard --dry-run --table` | Render dry-run import predictions as a table showing `uid`, destination state, action, destination folder path, and file |
-| `inspect-export --json` | Analyze a raw export directory and emit machine-readable structure summary including folder paths, panels, queries, datasource usage, datasource inventory, and mixed dashboards |
-| `inspect-export --table` | Analyze a raw export directory and render multi-section tables for summary, folder paths, datasource usage, datasource inventory, and mixed dashboards |
+| `inspect-export --json` | Analyze a raw export directory and emit machine-readable structure summary including folder paths, panels, queries, datasource usage, datasource inventory, orphaned datasources, and mixed dashboards |
+| `inspect-export --table` | Analyze a raw export directory and render multi-section tables for summary, folder paths, datasource usage, datasource inventory, orphaned datasources, and mixed dashboards |
 | `inspect-export --report[=table|json|tree|tree-table]` | Emit one full per-query inspection report; default `table` output stays flat row-per-query, `tree` renders the same records as a dashboard -> panel -> query tree, and `tree-table` renders per-dashboard grouped tables |
 | `inspect-live --json|--table|--report[=table|csv|json|tree|tree-table]` | Inspect live Grafana dashboards by materializing a temporary raw-style snapshot and then rendering the same summary/report outputs as `inspect-export` |
 | `inspect-export --help-full` / `inspect-live --help-full` | Show the normal inspect help plus a short extended examples section for report modes, filters, and `--report-columns` |
@@ -575,9 +589,9 @@ For dashboard export:
 - `import-dashboard --dry-run --table --no-header` omits the dry-run table header row
 - `import-dashboard --update-existing-only` updates only existing dashboard UIDs, skips missing dashboards, and implies `--replace-existing`
 - `import-dashboard` now prints an `Import mode: ...` line up front so you can see whether the run is `create-only`, `create-or-update`, or `update-or-skip-missing`
-- `inspect-export` analyzes a raw export directory offline and summarizes dashboard count, folder paths, panels, queries, datasource usage, datasource inventory, and mixed-datasource dashboards
+- `inspect-export` analyzes a raw export directory offline and summarizes dashboard count, folder paths, panels, queries, datasource usage, datasource inventory, orphaned datasources, and mixed-datasource dashboards
 - `inspect-export --json` emits the same analysis as one JSON document for scripts or CI checks
-- `inspect-export --table` renders the same analysis as multiple tables for summary, folder paths, datasource usage, datasource inventory, and mixed dashboards
+- `inspect-export --table` renders the same analysis as multiple tables for summary, folder paths, datasource usage, datasource inventory, orphaned datasources, and mixed dashboards
 - `inspect-export --report` emits one row per query target with dashboard uid/title, folder path, panel id/title/type, datasource, query field, extracted metrics/measurements/buckets, and the raw query text
 - `inspect-export --report json` emits the same per-query inspection model as one machine-readable JSON document, including `datasourceUid` when the raw export carries a concrete datasource uid
 - `inspect-export --report tree` keeps the same underlying query records but renders them as a dashboard -> panel -> query tree when you want to read one dashboard at a time instead of scanning a wide flat table
@@ -595,6 +609,24 @@ For datasource listing:
 - `list-data-sources --no-header` omits the table header row
 - `list-data-sources --csv` emits `uid,name,type,url,isDefault`
 - `list-data-sources --json` emits an array of datasource objects
+
+## Datasource Utility
+
+`grafana-utils datasource` currently provides:
+
+- `list`
+- `export`
+
+For datasource inventory:
+
+- `datasource list` defaults to a table showing `uid`, `name`, `type`, `url`, and `isDefault`
+- `datasource list --no-header` omits the table header row
+- `datasource list --csv` emits `uid,name,type,url,isDefault`
+- `datasource list --json` emits an array of datasource objects
+- `datasource export` writes `datasources.json`, `index.json`, and `export-metadata.json` into the chosen export directory
+- `datasource export` normalizes each record to `uid`, `name`, `type`, `access`, `url`, `isDefault`, `org`, and `orgId`
+- `datasource export --dry-run` prints the target files without writing them
+- `datasource export --overwrite` replaces existing export files in the target directory
 
 ### Raw Export
 

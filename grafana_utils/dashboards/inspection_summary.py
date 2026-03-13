@@ -39,6 +39,20 @@ def summarize_datasource_inventory_usage(
     }
 
 
+def build_orphaned_datasource_record(record: Dict[str, Any]) -> Dict[str, str]:
+    """Keep one stable orphaned datasource summary record for governance views."""
+    return {
+        "uid": str(record.get("uid") or ""),
+        "name": str(record.get("name") or ""),
+        "type": str(record.get("type") or ""),
+        "access": str(record.get("access") or ""),
+        "url": str(record.get("url") or ""),
+        "isDefault": str(record.get("isDefault") or "false"),
+        "org": str(record.get("org") or ""),
+        "orgId": str(record.get("orgId") or ""),
+    }
+
+
 def build_export_inspection_document(
     import_dir: Path,
     deps: Dict[str, Any],
@@ -157,6 +171,7 @@ def build_export_inspection_document(
         )
 
     datasource_inventory_records = []
+    orphaned_datasource_records = []
     for datasource in sorted(
         datasource_inventory,
         key=lambda item: (
@@ -180,6 +195,10 @@ def build_export_inspection_document(
                 "dashboardCount": usage["dashboardCount"],
             }
         )
+        if usage["referenceCount"] == 0 and usage["dashboardCount"] == 0:
+            orphaned_datasource_records.append(
+                build_orphaned_datasource_record(datasource_inventory_records[-1])
+            )
 
     folder_records = [
         {"path": path, "dashboardCount": count} for path, count in folder_paths.items()
@@ -196,10 +215,12 @@ def build_export_inspection_document(
             "queryCount": total_queries,
             "mixedDatasourceDashboardCount": len(mixed_dashboards),
             "datasourceInventoryCount": len(datasource_inventory_records),
+            "orphanedDatasourceCount": len(orphaned_datasource_records),
         },
         "folders": folder_records,
         "datasources": datasource_records,
         "datasourceInventory": datasource_inventory_records,
+        "orphanedDatasources": orphaned_datasource_records,
         "mixedDatasourceDashboards": mixed_dashboards,
         "dashboards": dashboards,
     }
@@ -214,6 +235,7 @@ def render_export_inspection_summary(
     folder_records = list(document.get("folders") or [])
     datasource_records = list(document.get("datasources") or [])
     datasource_inventory = list(document.get("datasourceInventory") or [])
+    orphaned_datasources = list(document.get("orphanedDatasources") or [])
     mixed_dashboards = list(document.get("mixedDatasourceDashboards") or [])
     lines = [
         "Export inspection: %s" % import_dir,
@@ -223,6 +245,8 @@ def render_export_inspection_summary(
         "Queries: %s" % int(summary.get("queryCount") or 0),
         "Datasource inventory: %s"
         % int(summary.get("datasourceInventoryCount") or 0),
+        "Orphaned datasources: %s"
+        % int(summary.get("orphanedDatasourceCount") or 0),
         "Mixed datasource dashboards: %s"
         % int(summary.get("mixedDatasourceDashboardCount") or 0),
     ]
@@ -267,6 +291,22 @@ def render_export_inspection_summary(
                     int(record.get("dashboardCount") or 0),
                 )
             )
+    if orphaned_datasources:
+        lines.append("")
+        lines.append("Orphaned datasources:")
+        for record in orphaned_datasources:
+            lines.append(
+                "- [%s] %s uid=%s type=%s access=%s url=%s isDefault=%s"
+                % (
+                    str(record.get("orgId") or ""),
+                    str(record.get("name") or ""),
+                    str(record.get("uid") or ""),
+                    str(record.get("type") or ""),
+                    str(record.get("access") or ""),
+                    str(record.get("url") or ""),
+                    str(record.get("isDefault") or "false"),
+                )
+            )
     if mixed_dashboards:
         lines.append("")
         lines.append("Mixed datasource dashboards:")
@@ -293,6 +333,7 @@ def render_export_inspection_tables(
     folder_records = list(document.get("folders") or [])
     datasource_records = list(document.get("datasources") or [])
     datasource_inventory = list(document.get("datasourceInventory") or [])
+    orphaned_datasources = list(document.get("orphanedDatasources") or [])
     mixed_dashboards = list(document.get("mixedDatasourceDashboards") or [])
     lines = ["Export inspection: %s" % import_dir, ""]
 
@@ -308,6 +349,10 @@ def render_export_inspection_tables(
                 [
                     "datasource_inventory_count",
                     str(int(summary.get("datasourceInventoryCount") or 0)),
+                ],
+                [
+                    "orphaned_datasource_count",
+                    str(int(summary.get("orphanedDatasourceCount") or 0)),
                 ],
                 [
                     "mixed_datasource_dashboard_count",
@@ -382,6 +427,36 @@ def render_export_inspection_tables(
                         str(int(record.get("dashboardCount") or 0)),
                     ]
                     for record in datasource_inventory
+                ],
+                include_header=include_header,
+            )
+        )
+
+    if orphaned_datasources:
+        lines.append("")
+        lines.append("# Orphaned datasources")
+        lines.extend(
+            render_export_inspection_table_section(
+                [
+                    "ORG_ID",
+                    "UID",
+                    "NAME",
+                    "TYPE",
+                    "ACCESS",
+                    "URL",
+                    "IS_DEFAULT",
+                ],
+                [
+                    [
+                        str(record.get("orgId") or ""),
+                        str(record.get("uid") or ""),
+                        str(record.get("name") or ""),
+                        str(record.get("type") or ""),
+                        str(record.get("access") or ""),
+                        str(record.get("url") or ""),
+                        str(record.get("isDefault") or "false"),
+                    ]
+                    for record in orphaned_datasources
                 ],
                 include_header=include_header,
             )

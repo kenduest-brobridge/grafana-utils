@@ -37,6 +37,7 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertIn("export", help_text)
         self.assertIn("alert", help_text)
         self.assertIn("access", help_text)
+        self.assertIn("datasource", help_text)
 
     def test_parse_args_dashboard_without_subcommand_prints_dashboard_help(self):
         stdout = io.StringIO()
@@ -72,6 +73,17 @@ class UnifiedCliTests(unittest.TestCase):
         help_text = stdout.getvalue()
         self.assertIn("grafana-utils access", help_text)
         self.assertIn("{user,team,service-account}", help_text)
+
+    def test_parse_args_datasource_without_subcommand_prints_datasource_help(self):
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            with self.assertRaises(SystemExit) as exc:
+                unified_cli.parse_args(["datasource"])
+
+        self.assertEqual(exc.exception.code, 0)
+        help_text = stdout.getvalue()
+        self.assertIn("grafana-utils datasource", help_text)
+        self.assertIn("{list,export}", help_text)
 
     def test_parse_args_supports_dashboard_passthrough(self):
         args = unified_cli.parse_args(["diff", "--import-dir", "dashboards/raw"])
@@ -133,6 +145,17 @@ class UnifiedCliTests(unittest.TestCase):
             ["user", "list", "--url", "http://127.0.0.1:3000"],
         )
 
+    def test_parse_args_supports_datasource_namespace(self):
+        args = unified_cli.parse_args(
+            ["datasource", "export", "--export-dir", "./datasources", "--overwrite"]
+        )
+
+        self.assertEqual(args.entrypoint, "datasource")
+        self.assertEqual(
+            args.forwarded_argv,
+            ["export", "--export-dir", "./datasources", "--overwrite"],
+        )
+
     def test_parse_args_rejects_unknown_top_level_command(self):
         with self.assertRaises(SystemExit):
             unified_cli.parse_args(["unknown-command"])
@@ -157,6 +180,13 @@ class UnifiedCliTests(unittest.TestCase):
 
         self.assertEqual(result, 5)
         mocked.assert_called_once_with(["team", "list", "--json"])
+
+    def test_main_dispatches_datasource_passthrough(self):
+        with mock.patch.object(unified_cli.datasource_cli, "main", return_value=9) as mocked:
+            result = unified_cli.main(["datasource", "list", "--json"])
+
+        self.assertEqual(result, 9)
+        mocked.assert_called_once_with(["list", "--json"])
 
 
 if __name__ == "__main__":

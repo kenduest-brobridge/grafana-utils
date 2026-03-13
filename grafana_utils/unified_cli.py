@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Unified Python entrypoint for dashboard, alert, and access CLIs."""
+"""Unified Python entrypoint for dashboard, alert, access, and datasource CLIs."""
 
 import argparse
 import sys
 from typing import List, Optional
 
-from . import access_cli, alert_cli, dashboard_cli
+from . import access_cli, alert_cli, dashboard_cli, datasource_cli
 
 
 DASHBOARD_COMMAND_HELP = {
@@ -44,6 +44,10 @@ ALERT_COMMAND_HELP = {
     "list-alert-mute-timings": "List live Grafana mute timings.",
     "list-alert-templates": "List live Grafana notification templates.",
 }
+DATASOURCE_COMMAND_HELP = {
+    "list": "List live Grafana datasource inventory.",
+    "export": "Export live Grafana datasource inventory as normalized JSON files.",
+}
 LEGACY_ALERT_COMMAND_MAP = {
     "export-alert": "export",
     "import-alert": "import",
@@ -73,14 +77,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="grafana-utils",
         description=(
-            "Unified Grafana CLI for dashboards, alerting resources, and "
-            "access management."
+            "Unified Grafana CLI for dashboards, alerting resources, access "
+            "management, and datasource inventory."
         ),
         epilog=(
             "Examples:\n\n"
             "  grafana-utils dashboard export --url http://localhost:3000 --export-dir ./dashboards\n"
             "  grafana-utils alert export --url http://localhost:3000 --output-dir ./alerts\n"
-            "  grafana-utils access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\""
+            "  grafana-utils access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n"
+            "  grafana-utils datasource export --url http://localhost:3000 --export-dir ./datasources"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -112,6 +117,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run the access-management CLI under grafana-utils access ...",
         add_help=False,
     )
+    datasource_parser = subparsers.add_parser(
+        "datasource",
+        help="Run the datasource inventory CLI under grafana-utils datasource ...",
+        add_help=False,
+    )
+    datasource_subparsers = datasource_parser.add_subparsers(dest="datasource_command")
+    datasource_subparsers.required = False
+    for command, help_text in DATASOURCE_COMMAND_HELP.items():
+        datasource_subparsers.add_parser(command, help=help_text, add_help=False)
     return parser
 
 
@@ -150,6 +164,12 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
             raise SystemExit(0)
         return argparse.Namespace(entrypoint="access", forwarded_argv=argv[1:])
 
+    if command == "datasource":
+        if len(argv) == 1 or argv[1] in ("-h", "--help"):
+            datasource_cli.build_parser(prog="grafana-utils datasource").print_help()
+            raise SystemExit(0)
+        return argparse.Namespace(entrypoint="datasource", forwarded_argv=argv[1:])
+
     mapped = LEGACY_DASHBOARD_COMMAND_MAP.get(command)
     if mapped:
         return argparse.Namespace(entrypoint="dashboard", forwarded_argv=[mapped] + argv[1:])
@@ -170,6 +190,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return alert_cli.main(args.forwarded_argv)
     if args.entrypoint == "access":
         return access_cli.main(args.forwarded_argv)
+    if args.entrypoint == "datasource":
+        return datasource_cli.main(args.forwarded_argv)
     raise RuntimeError("Unsupported unified CLI entrypoint.")
 if __name__ == "__main__":
     sys.exit(main())
