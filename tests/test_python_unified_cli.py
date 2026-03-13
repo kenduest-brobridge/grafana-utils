@@ -88,6 +88,17 @@ class UnifiedCliTests(unittest.TestCase):
             ["export-dashboard", "--export-dir", "dashboards"],
         )
 
+    def test_parse_args_supports_dashboard_inspect_live_namespace(self):
+        args = unified_cli.parse_args(
+            ["dashboard", "inspect-live", "--url", "http://127.0.0.1:3000", "--report"]
+        )
+
+        self.assertEqual(args.entrypoint, "dashboard")
+        self.assertEqual(
+            args.forwarded_argv,
+            ["inspect-live", "--url", "http://127.0.0.1:3000", "--report"],
+        )
+
     def test_parse_args_supports_alert_namespace(self):
         args = unified_cli.parse_args(["alert", "--url", "http://127.0.0.1:3000"])
 

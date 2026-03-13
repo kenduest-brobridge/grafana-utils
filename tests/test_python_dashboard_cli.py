@@ -187,6 +187,18 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("--json", help_text)
         self.assertIn("--table", help_text)
 
+    def test_inspect_live_help_mentions_live_report_flags(self):
+        stream = io.StringIO()
+
+        with redirect_stdout(stream):
+            with self.assertRaises(SystemExit):
+                exporter.parse_args(["inspect-live", "-h"])
+
+        help_text = stream.getvalue()
+        self.assertIn("--url", help_text)
+        self.assertIn("--page-size", help_text)
+        self.assertIn("--report", help_text)
+        self.assertIn("--report-filter-panel-id", help_text)
 
     def test_parse_args_supports_import_mode(self):
         args = exporter.parse_args(["import-dashboard", "--import-dir", "dashboards"])
@@ -390,6 +402,27 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(args.command, "inspect-export")
         self.assertTrue(args.table)
         self.assertTrue(args.no_header)
+
+    def test_parse_args_supports_inspect_live_report_json(self):
+        args = exporter.parse_args(
+            [
+                "inspect-live",
+                "--url",
+                "http://localhost:3000",
+                "--report",
+                "json",
+                "--report-filter-datasource",
+                "prom-main",
+                "--report-filter-panel-id",
+                "7",
+            ]
+        )
+
+        self.assertEqual(args.command, "inspect-live")
+        self.assertEqual(args.url, "http://localhost:3000")
+        self.assertEqual(args.report, "json")
+        self.assertEqual(args.report_filter_datasource, "prom-main")
+        self.assertEqual(args.report_filter_panel_id, "7")
 
     def test_parse_args_supports_inspect_export_report_table(self):
         args = exporter.parse_args(
@@ -1697,6 +1730,83 @@ class ExporterTests(unittest.TestCase):
             self.assertEqual(payload["summary"]["queryRecordCount"], 1)
             self.assertEqual(len(payload["queries"]), 1)
             self.assertEqual(payload["queries"][0]["panelId"], "7")
+
+    def test_inspect_live_renders_report_json_from_mocked_client(self):
+        summaries = [
+            {
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "folderUid": "infra",
+                "folderTitle": "Infra",
+            }
+        ]
+        dashboards = {
+            "cpu-main": {
+                "dashboard": {
+                    "id": 1,
+                    "uid": "cpu-main",
+                    "title": "CPU Main",
+                    "panels": [
+                        {
+                            "id": 7,
+                            "title": "CPU Panel",
+                            "type": "timeseries",
+                            "datasource": {"type": "prometheus", "uid": "prom-main"},
+                            "targets": [{"refId": "A", "expr": "up"}],
+                        }
+                    ],
+                },
+                "meta": {"folderUid": "infra"},
+            }
+        }
+        datasources = [
+            {
+                "uid": "prom-main",
+                "name": "Prometheus Main",
+                "type": "prometheus",
+                "access": "proxy",
+                "url": "http://prometheus:9090",
+                "isDefault": True,
+            }
+        ]
+        folders = {
+            "infra": {
+                "uid": "infra",
+                "title": "Infra",
+                "parents": [{"uid": "platform", "title": "Platform"}],
+            }
+        }
+        fake_client = FakeDashboardWorkflowClient(
+            summaries=summaries,
+            dashboards=dashboards,
+            datasources=datasources,
+            folders=folders,
+        )
+        args = exporter.parse_args(
+            [
+                "inspect-live",
+                "--url",
+                "http://localhost:3000",
+                "--report",
+                "json",
+                "--report-filter-panel-id",
+                "7",
+            ]
+        )
+        stdout = io.StringIO()
+        with mock.patch.object(exporter, "build_client", return_value=fake_client):
+            with redirect_stdout(stdout):
+                result = exporter.inspect_live(args)
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(result, 0)
+        self.assertEqual(payload["summary"]["dashboardCount"], 1)
+        self.assertEqual(payload["summary"]["queryRecordCount"], 1)
+        self.assertEqual(payload["queries"][0]["dashboardUid"], "cpu-main")
+        self.assertEqual(payload["queries"][0]["folderPath"], "Platform / Infra")
+        self.assertEqual(payload["queries"][0]["panelId"], "7")
+        self.assertEqual(payload["queries"][0]["datasource"], "prom-main")
+        self.assertEqual(payload["queries"][0]["metrics"], ["up"])
 
     def test_inspect_export_filters_query_report_by_datasource_for_csv(self):
         with tempfile.TemporaryDirectory() as tmpdir:

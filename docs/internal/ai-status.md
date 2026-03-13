@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-13 - Task: Add Dashboard Inspect Live Command
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Dashboard inspection currently requires a raw export directory on disk via `inspect-export`. Operators can inspect exported data offline, but there is no direct live Grafana inspection command that reuses the same summary/report output contract.
+- Current Update: Added a Python-only `inspect-live` dashboard subcommand that accepts live auth/common args plus `inspect-export`-style summary/report flags, materializes a temporary raw-export-like layout from live dashboards, folders, and datasources, and then reuses the existing `inspect-export` analysis/rendering pipeline. Added parser/help coverage and a mocked-client report-path test, then updated the public and maintainer docs.
+- Result: Operators can now inspect live Grafana dashboards with the same summary/report surface they already use for raw export directories, without manually running export first. Validation passed with `python3 -m unittest -v tests/test_python_dashboard_cli.py`.
+
 ## 2026-03-13 - Task: Add Inspect Report Datasource UID
 - State: Done
 - Scope: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

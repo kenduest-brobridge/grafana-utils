@@ -331,6 +331,74 @@ pub struct InspectExportArgs {
     pub no_header: bool,
 }
 
+#[derive(Debug, Clone, Args)]
+pub struct InspectLiveArgs {
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(long, default_value_t = DEFAULT_PAGE_SIZE, help = "Dashboard search page size.")]
+    pub page_size: usize,
+    #[arg(
+        long,
+        conflicts_with = "all_orgs",
+        help = "Inspect dashboards from this Grafana org ID."
+    )]
+    pub org_id: Option<i64>,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with = "org_id",
+        help = "Enumerate all visible Grafana orgs and inspect dashboards across them."
+    )]
+    pub all_orgs: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with = "report",
+        conflicts_with = "table",
+        help = "Render the live inspection analysis as JSON."
+    )]
+    pub json: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with = "report",
+        conflicts_with = "json",
+        help = "Render the live inspection analysis as a table-oriented summary."
+    )]
+    pub table: bool,
+    #[arg(
+        long,
+        value_enum,
+        num_args = 0..=1,
+        default_missing_value = "table",
+        conflicts_with_all = ["json", "table"],
+        help = "Render a full per-query inspection report. Defaults to table; use --report csv or --report json for alternate output."
+    )]
+    pub report: Option<InspectExportReportFormat>,
+    #[arg(
+        long,
+        value_delimiter = ',',
+        help = "For --report table or csv output, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
+    )]
+    pub report_columns: Vec<String>,
+    #[arg(
+        long,
+        help = "For --report output, include only rows whose datasource label exactly matches this value."
+    )]
+    pub report_filter_datasource: Option<String>,
+    #[arg(
+        long,
+        help = "For --report output, include only rows whose panel id exactly matches this value."
+    )]
+    pub report_filter_panel_id: Option<String>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Do not print headers when rendering table or csv inspection output."
+    )]
+    pub no_header: bool,
+}
+
 #[derive(Debug, Clone, Subcommand)]
 pub enum DashboardCommand {
     #[command(
@@ -360,6 +428,11 @@ pub enum DashboardCommand {
         about = "Analyze a raw dashboard export directory and summarize its structure."
     )]
     InspectExport(InspectExportArgs),
+    #[command(
+        name = "inspect-live",
+        about = "Analyze live Grafana dashboards via a temporary raw-export snapshot."
+    )]
+    InspectLive(InspectLiveArgs),
 }
 
 #[derive(Debug, Clone, Parser)]

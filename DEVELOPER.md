@@ -63,6 +63,7 @@ Commit message default for this repo:
 - `grafana-utils` is now the primary entrypoint for dashboard, alert, and access workflows.
 - Use `python3 python/grafana-utils.py dashboard list ...` to inspect live dashboard summaries.
 - Use `python3 python/grafana-utils.py dashboard list-data-sources ...` to inspect live Grafana data sources.
+- Use `python3 python/grafana-utils.py dashboard inspect-live ...` to inspect live Grafana dashboards through the same summary/report renderers used for raw exports.
 - Use `python3 python/grafana-utils.py dashboard export ...` for export.
 - Use `python3 python/grafana-utils.py dashboard import ...` for import.
 - Use `python3 python/grafana-utils.py dashboard diff ...` for live-vs-local comparison.
@@ -145,6 +146,8 @@ Those manifests use `schemaVersion` and `variant` markers so `import` and `diff`
 
 The Python and Rust dashboard CLIs also have `inspect-export` for offline raw-export analysis. The summary path reads the raw `export-metadata.json`, `index.json`, `folders.json`, `datasources.json`, and dashboard files, then summarizes dashboard count, folder paths, panel/query totals, datasource usage, datasource inventory, and mixed-datasource dashboards. `inspect-export --json` emits the same summary as one machine-readable document, while `inspect-export --table` renders the summary as separate summary, folder-path, datasource-usage, datasource-inventory, and mixed-dashboard tables.
 
+The Python CLI also has `inspect-live`, which accepts the normal live dashboard auth/common args, materializes a temporary raw-export-like directory from live dashboard payloads plus current folder and datasource inventories, and then reuses the same summary/report inspection pipeline as `inspect-export`. This keeps the operator-facing output contract aligned while avoiding a second inspection implementation.
+
 `inspect-export --report` takes the same raw export input but emits one per-query record instead of the higher-level summary. Each record carries dashboard uid/title, folder path, panel id/title/type, target `refId`, resolved datasource label, a best-effort `datasourceUid`, the query field chosen from the target payload (`expr`, `query`, `rawSql`, and similar), the raw query text, and heuristic extraction fields such as `metrics`, `measurements`, and `buckets`. `--report` defaults to table output, while `--report json` emits the same record model as JSON for downstream analysis.
 
 `--report-columns` only affects table-style report output and uses stable column ids such as `dashboard_uid`, `panel_title`, `datasource`, `metrics`, and `query`. Optional columns such as `datasource_uid` stay out of the default table/CSV layout so the common report shape remains stable, but callers can opt them in explicitly. `--report-filter-datasource` applies before either table or JSON rendering and keeps only rows whose datasource label exactly matches the requested value. `--report-filter-panel-id` applies at the same stage and keeps only rows whose `panelId` exactly matches the requested value, which is useful when one dashboard expands into many panel/query rows.
@@ -193,6 +196,7 @@ This is why prompt export needs live datasource metadata while raw export does n
 - Import `--update-existing-only` switches the workflow to `update-or-skip-missing` by dashboard `uid`, implies overwrite-on-existing behavior, and never creates missing dashboards.
 - When import updates an existing dashboard by `uid`, it preserves the destination Grafana folder by default; only an explicit `--import-folder-uid` overrides that folder placement.
 - `inspect-export` is a local raw-export analysis workflow; it does not call Grafana APIs and instead reads `raw/export-metadata.json`, `raw/folders.json`, `raw/datasources.json`, and dashboard JSON files to summarize folder paths, panels, queries, datasource references, datasource inventory, and mixed-datasource dashboards.
+- `inspect-live` is the live-data adapter for the same inspection workflow; it calls the live dashboard, folder, and datasource APIs, writes a temporary raw-style layout, and then hands off to the existing inspection renderers.
 - `inspect-export --report` walks the same local dashboard JSON but emits one per-target query record so operators can inspect datasource usage plus query text and extracted metric-like names without contacting Grafana.
 - Report extraction should stay decomposed by datasource/query family over time. Shared traversal and row rendering can remain generic, but Prometheus, Loki, Flux/Influx, SQL, and future datasource-specific parsing should be pluggable so one datasource's parser growth does not complicate the others.
 - `inspect-export --table --no-header` suppresses the header row for each rendered section table when operators need compact terminal output.

@@ -43,6 +43,7 @@ The repo now uses one primary command name with explicit areas underneath it.
 - `grafana-utils dashboard export ...`
 - `grafana-utils dashboard list ...`
 - `grafana-utils dashboard list-data-sources ...`
+- `grafana-utils dashboard inspect-live ...`
 - `grafana-utils dashboard import ...`
 - `grafana-utils dashboard diff ...`
 - `grafana-utils alert export ...`
@@ -163,6 +164,17 @@ python3 python/grafana-utils.py dashboard inspect-export \
   --import-dir ./dashboards/raw \
   --report csv \
   --report-columns dashboard_uid,panel_id,datasource_uid,datasource,query
+```
+
+Inspect live Grafana dashboards with the same report contract:
+
+```bash
+python3 python/grafana-utils.py dashboard inspect-live \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
+  --report json \
+  --report-filter-panel-id 7
 ```
 
 Dashboard list, including resolved datasource names per dashboard:
@@ -502,6 +514,7 @@ Use `prompt/` when you want:
 | `inspect-export --json` | Analyze a raw export directory and emit machine-readable structure summary including folder paths, panels, queries, datasource usage, datasource inventory, and mixed dashboards |
 | `inspect-export --table` | Analyze a raw export directory and render multi-section tables for summary, folder paths, datasource usage, datasource inventory, and mixed dashboards |
 | `inspect-export --report[=table|json]` | Emit one full per-query inspection report; default table output includes dashboard/panel context, datasource, extracted metrics/measurements/buckets, and the raw query text |
+| `inspect-live --json|--table|--report[=table|csv|json]` | Inspect live Grafana dashboards by materializing a temporary raw-style snapshot and then rendering the same summary/report outputs as `inspect-export` |
 | `inspect-export --report-columns ...` | With `--report` table or csv output, limit the query report to selected columns such as `dashboard_uid,panel_title,datasource,metrics,query` or add optional fields such as `datasource_uid` |
 | `inspect-export --report-filter-datasource ...` | With `--report`, include only rows whose datasource label exactly matches the requested value |
 | `inspect-export --report-filter-panel-id ...` | With `--report`, include only rows whose panel id exactly matches the requested value |
@@ -552,6 +565,7 @@ For dashboard export:
 - `inspect-export --report-columns dashboard_uid,panel_id,datasource_uid,datasource,query` opts `datasource_uid` into table or csv output without widening the default report
 - `inspect-export --report-filter-datasource <label>` narrows table or JSON report output to one datasource label, which is useful when checking migration leftovers or datasource retirement impact
 - `inspect-export --report-filter-panel-id <id>` narrows table or JSON report output to one panel id when one dashboard contains many panels and you only want one panel's queries
+- `inspect-live` reuses the same summary/report flags as `inspect-export`, but sources the dashboards, folders, and datasource inventory directly from Grafana instead of a pre-existing raw export directory
 - `inspect-export --table --no-header` suppresses each section's header row when you need compact copy/paste output
 
 For datasource listing:

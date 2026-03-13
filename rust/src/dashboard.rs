@@ -2,9 +2,12 @@ use regex::Regex;
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
+use std::env;
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::common::{message, object_field, string_field, value_as_object, Result};
 use crate::http::JsonHttpClient;
@@ -21,7 +24,8 @@ mod dashboard_prompt;
 pub use dashboard_cli_defs::{
     build_auth_context, build_http_client, build_http_client_for_org, parse_cli_from,
     CommonCliArgs, DashboardAuthContext, DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs,
-    ImportArgs, InspectExportArgs, InspectExportReportFormat, ListArgs, ListDataSourcesArgs,
+    ImportArgs, InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, ListArgs,
+    ListDataSourcesArgs,
 };
 pub use dashboard_export::{
     build_export_variant_dirs, build_output_path, export_dashboards_with_client,
@@ -2403,6 +2407,81 @@ fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
     Ok(summary.dashboard_count)
 }
 
+struct TempInspectLiveDir {
+    path: PathBuf,
+}
+
+impl TempInspectLiveDir {
+    fn new() -> Result<Self> {
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|error| message(format!("Failed to build inspect-live temp path: {error}")))?
+            .as_nanos();
+        let path = env::temp_dir().join(format!(
+            "grafana-utils-inspect-live-{}-{timestamp}",
+            process::id()
+        ));
+        fs::create_dir_all(&path)?;
+        Ok(Self { path })
+    }
+}
+
+impl Drop for TempInspectLiveDir {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
+}
+
+fn build_live_export_args(args: &InspectLiveArgs, export_dir: PathBuf) -> ExportArgs {
+    ExportArgs {
+        common: args.common.clone(),
+        export_dir,
+        page_size: args.page_size,
+        org_id: args.org_id,
+        all_orgs: args.all_orgs,
+        flat: false,
+        overwrite: false,
+        without_dashboard_raw: false,
+        without_dashboard_prompt: true,
+        dry_run: false,
+        progress: false,
+        verbose: false,
+    }
+}
+
+fn build_export_inspect_args_from_live(args: &InspectLiveArgs, import_dir: PathBuf) -> InspectExportArgs {
+    InspectExportArgs {
+        import_dir,
+        json: args.json,
+        table: args.table,
+        report: args.report,
+        report_columns: args.report_columns.clone(),
+        report_filter_datasource: args.report_filter_datasource.clone(),
+        report_filter_panel_id: args.report_filter_panel_id.clone(),
+        no_header: args.no_header,
+    }
+}
+
+fn inspect_live_dashboards_with_request<F>(
+    mut request_json: F,
+    args: &InspectLiveArgs,
+) -> Result<usize>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    if args.all_orgs {
+        return Err(message(
+            "inspect-live does not yet support --all-orgs. Export dashboards first or inspect one org at a time.",
+        ));
+    }
+    let temp_dir = TempInspectLiveDir::new()?;
+    let export_args = build_live_export_args(args, temp_dir.path.clone());
+    let _ = dashboard_export::export_dashboards_with_request(&mut request_json, &export_args)?;
+    let inspect_args =
+        build_export_inspect_args_from_live(args, temp_dir.path.join(RAW_EXPORT_SUBDIR));
+    analyze_export_dir(&inspect_args)
+}
+
 fn list_datasources_with_request<F>(mut request_json: F) -> Result<Vec<Map<String, Value>>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -2884,6 +2963,13 @@ pub fn run_dashboard_cli_with_client(
             let _ = analyze_export_dir(&inspect_args)?;
             Ok(())
         }
+        DashboardCommand::InspectLive(inspect_args) => {
+            let _ = inspect_live_dashboards_with_request(
+                |method, path, params, payload| client.request_json(method, path, params, payload),
+                &inspect_args,
+            )?;
+            Ok(())
+        }
     }
 }
 
@@ -2925,6 +3011,14 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
         }
         DashboardCommand::InspectExport(inspect_args) => {
             let _ = analyze_export_dir(&inspect_args)?;
+            Ok(())
+        }
+        DashboardCommand::InspectLive(inspect_args) => {
+            let client = build_http_client(&inspect_args.common)?;
+            let _ = inspect_live_dashboards_with_request(
+                |method, path, params, payload| client.request_json(method, path, params, payload),
+                &inspect_args,
+            )?;
             Ok(())
         }
     }

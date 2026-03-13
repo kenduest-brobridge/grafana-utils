@@ -56,6 +56,33 @@ fn parse_cli_supports_dashboard_group_inspect_export_command() {
 }
 
 #[test]
+fn parse_cli_supports_dashboard_group_inspect_live_command() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-utils",
+        "dashboard",
+        "inspect-live",
+        "--url",
+        "http://127.0.0.1:3000",
+        "--report",
+        "json",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Dashboard { command } => match command {
+            super::DashboardGroupCommand::InspectLive(inner) => {
+                assert_eq!(inner.common.url, "http://127.0.0.1:3000");
+                assert_eq!(
+                    inner.report,
+                    Some(crate::dashboard::InspectExportReportFormat::Json)
+                );
+            }
+            _ => panic!("expected dashboard inspect-live"),
+        },
+        _ => panic!("expected dashboard group"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_legacy_dashboard_command() {
     let args: CliArgs = parse_cli_from(["grafana-utils", "list", "--json"]);
 

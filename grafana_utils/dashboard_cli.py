@@ -39,6 +39,7 @@ import io
 import json
 import re
 import sys
+import tempfile
 from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -467,6 +468,77 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
+    add_common_cli_args(parser)
+    parser.add_argument(
+        "--page-size",
+        type=int,
+        default=DEFAULT_PAGE_SIZE,
+        help=f"Dashboard search page size (default: {DEFAULT_PAGE_SIZE}).",
+    )
+    parser.add_argument(
+        "--report",
+        nargs="?",
+        const="table",
+        choices=("table", "csv", "json"),
+        default=None,
+        help=(
+            "Render one full per-query inspection report. "
+            "Use --report for table output, --report csv for CSV, or --report json for JSON."
+        ),
+    )
+    parser.add_argument(
+        "--report-columns",
+        default=None,
+        help=(
+            "With --report table or csv, render only these comma-separated report columns. "
+            "Supported values: %s."
+            % ", ".join(
+                list(REPORT_COLUMN_ALIASES.keys())
+                + [
+                    "datasource",
+                    "metrics",
+                    "measurements",
+                    "buckets",
+                    "query",
+                    "file",
+                ]
+            )
+        ),
+    )
+    parser.add_argument(
+        "--report-filter-datasource",
+        default=None,
+        help=(
+            "With --report, only include query report rows whose datasource label "
+            "exactly matches this value."
+        ),
+    )
+    parser.add_argument(
+        "--report-filter-panel-id",
+        default=None,
+        help=(
+            "With --report, only include query report rows whose panel id "
+            "exactly matches this value."
+        ),
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Render the live dashboard inspection as JSON instead of human-readable summary lines.",
+    )
+    parser.add_argument(
+        "--table",
+        action="store_true",
+        help="Render the live dashboard inspection as multi-section tables instead of prose summary lines.",
+    )
+    parser.add_argument(
+        "--no-header",
+        action="store_true",
+        help="With --table, omit the per-section table header rows.",
+    )
+
+
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Export or import Grafana dashboards.",
@@ -544,6 +616,11 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         help="Inspect one raw dashboard export directory and summarize its structure.",
     )
     add_inspect_export_cli_args(inspect_export_parser)
+    inspect_live_parser = subparsers.add_parser(
+        "inspect-live",
+        help="Inspect live Grafana dashboards with the same summary/report modes as inspect-export.",
+    )
+    add_inspect_live_cli_args(inspect_live_parser)
 
     return parser.parse_args(argv)
 
@@ -2732,6 +2809,74 @@ def format_report_column_value(record: Dict[str, Any], column_id: str) -> str:
     return str(value or "")
 
 
+def materialize_live_inspection_export(
+    client: "GrafanaClient",
+    page_size: int,
+    raw_dir: Path,
+) -> Path:
+    """Write one temporary raw-export-like directory for live dashboard inspection."""
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    summaries = attach_dashboard_org(client, client.iter_dashboard_summaries(page_size))
+    org = client.fetch_current_org()
+    folder_inventory = collect_folder_inventory(client, org, summaries)
+    datasource_inventory = [
+        build_datasource_inventory_record(item, org)
+        for item in client.list_datasources()
+    ]
+    index_items: List[Dict[str, str]] = []
+    for summary in summaries:
+        uid = str(summary.get("uid") or "").strip()
+        if not uid:
+            continue
+        payload = client.fetch_dashboard(uid)
+        document = build_preserved_web_import_document(payload)
+        output_path = build_output_path(raw_dir, summary, flat=False)
+        write_dashboard(document, output_path, overwrite=True)
+        item = build_dashboard_index_item(summary, uid)
+        item["raw_path"] = str(output_path)
+        index_items.append(item)
+
+    raw_index = build_variant_index(
+        index_items,
+        "raw_path",
+        "grafana-web-import-preserve-uid",
+    )
+    raw_metadata = build_export_metadata(
+        variant=RAW_EXPORT_SUBDIR,
+        dashboard_count=len(raw_index),
+        format_name="grafana-web-import-preserve-uid",
+        folders_file=FOLDER_INVENTORY_FILENAME,
+        datasources_file=DATASOURCE_INVENTORY_FILENAME,
+    )
+    write_json_document(raw_index, raw_dir / "index.json")
+    write_json_document(raw_metadata, raw_dir / EXPORT_METADATA_FILENAME)
+    write_json_document(folder_inventory, raw_dir / FOLDER_INVENTORY_FILENAME)
+    write_json_document(datasource_inventory, raw_dir / DATASOURCE_INVENTORY_FILENAME)
+    return raw_dir
+
+
+def inspect_live(args: argparse.Namespace) -> int:
+    """Inspect live Grafana dashboards by reusing the raw-export inspection pipeline."""
+    client = build_client(args)
+    with tempfile.TemporaryDirectory(prefix="grafana-utils-inspect-live-") as tmpdir:
+        raw_dir = materialize_live_inspection_export(
+            client,
+            page_size=int(args.page_size),
+            raw_dir=Path(tmpdir) / RAW_EXPORT_SUBDIR,
+        )
+        inspect_args = argparse.Namespace(
+            import_dir=str(raw_dir),
+            report=getattr(args, "report", None),
+            report_columns=getattr(args, "report_columns", None),
+            report_filter_datasource=getattr(args, "report_filter_datasource", None),
+            report_filter_panel_id=getattr(args, "report_filter_panel_id", None),
+            json=bool(getattr(args, "json", False)),
+            table=bool(getattr(args, "table", False)),
+            no_header=bool(getattr(args, "no_header", False)),
+        )
+        return inspect_export(inspect_args)
+
+
 def render_export_inspection_report_csv(
     document: Dict[str, Any],
     selected_columns: Optional[List[str]] = None,
@@ -3572,6 +3717,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             return list_data_sources(args)
         if args.command == "inspect-export":
             return inspect_export(args)
+        if args.command == "inspect-live":
+            return inspect_live(args)
         if args.command == "import-dashboard":
             return import_dashboards(args)
         if args.command == "diff":

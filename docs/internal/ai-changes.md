@@ -1,5 +1,13 @@
 # ai-changes.md
 
+## 2026-03-13 - Add Dashboard Inspect Live Command
+- Summary: Added a Python `dashboard inspect-live` subcommand that accepts live auth/common args and mirrors the existing inspection output modes as closely as practical, including `--json`, `--table`, `--report[=table|csv|json]`, `--report-columns`, `--report-filter-datasource`, `--report-filter-panel-id`, and `--no-header`. The implementation materializes a temporary raw-export-like layout from live dashboard payloads plus current folder and datasource inventories, then reuses the existing `inspect-export` analysis/rendering pipeline.
+- Tests: Added focused parser/help coverage and a mocked-client behavior test that exercises `inspect-live --report json` end to end through the temporary raw-layout adapter.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py`
+- Validation: Verified the focused dashboard Python suite passes after adding `inspect-live`, including the mocked live-report path and the parser/help assertions for the new subcommand.
+- Impact: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Moderate. The new command intentionally reuses the raw-export inspection pipeline instead of duplicating logic, but it depends on the temporary materialization staying compatible with the assumptions inside `inspect-export` and on live payloads continuing to resemble the existing export path closely enough.
+
 ## 2026-03-13 - Add Inspect Report Datasource UID
 - Summary: Extended dashboard `inspect-export --report` so each JSON query row now includes a best-effort `datasourceUid` when the raw export carries a concrete datasource uid. Table and CSV report output keep the existing default columns, but operators can now opt `datasource_uid` in explicitly through `--report-columns`.
 - Tests: Updated Python dashboard report parser/output tests and Rust query-report extraction/rendering tests to cover `datasourceUid` in JSON plus the optional `datasource_uid` table/CSV column.

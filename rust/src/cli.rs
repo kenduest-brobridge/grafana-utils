@@ -9,7 +9,7 @@ use crate::alert::{
 use crate::common::Result;
 use crate::dashboard::{
     run_dashboard_cli, DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs, ImportArgs,
-    InspectExportArgs, ListArgs, ListDataSourcesArgs,
+    InspectExportArgs, InspectLiveArgs, ListArgs, ListDataSourcesArgs,
 };
 
 const UNIFIED_HELP_TEXT: &str = "Examples:\n\n  Export dashboards:\n    grafana-utils export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n  Export alerting resources through the unified binary:\n    grafana-utils alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n\n  List org users through the unified binary:\n    grafana-utils access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n\nCompatibility shim remains available:\n  grafana-access-utils ...";
@@ -37,6 +37,8 @@ pub enum DashboardGroupCommand {
     Diff(DiffArgs),
     #[command(about = "Analyze a raw dashboard export directory and summarize its structure.")]
     InspectExport(InspectExportArgs),
+    #[command(about = "Analyze live Grafana dashboards without writing a persistent export.")]
+    InspectLive(InspectLiveArgs),
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -58,6 +60,8 @@ pub enum UnifiedCommand {
     Diff(DiffArgs),
     #[command(about = "Analyze a raw dashboard export directory and summarize its structure.")]
     InspectExport(InspectExportArgs),
+    #[command(about = "Analyze live Grafana dashboards without writing a persistent export.")]
+    InspectLive(InspectLiveArgs),
     #[command(about = "Export, import, or diff Grafana alerting resources.")]
     Alert(AlertNamespaceArgs),
     #[command(
@@ -131,6 +135,9 @@ fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
         DashboardGroupCommand::InspectExport(inner) => {
             wrap_dashboard(DashboardCommand::InspectExport(inner))
         }
+        DashboardGroupCommand::InspectLive(inner) => {
+            wrap_dashboard(DashboardCommand::InspectLive(inner))
+        }
     }
 }
 
@@ -160,6 +167,9 @@ where
         UnifiedCommand::Diff(inner) => run_dashboard(wrap_dashboard(DashboardCommand::Diff(inner))),
         UnifiedCommand::InspectExport(inner) => {
             run_dashboard(wrap_dashboard(DashboardCommand::InspectExport(inner)))
+        }
+        UnifiedCommand::InspectLive(inner) => {
+            run_dashboard(wrap_dashboard(DashboardCommand::InspectLive(inner)))
         }
         UnifiedCommand::Alert(inner) => run_alert(normalize_alert_namespace_args(inner)),
         UnifiedCommand::ExportAlert(inner) => run_alert(normalize_alert_group_command(

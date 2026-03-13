@@ -10,9 +10,9 @@ use super::{
     render_dashboard_summary_csv, render_dashboard_summary_json, render_dashboard_summary_table,
     render_data_source_csv, render_data_source_json, render_data_source_table, CommonCliArgs,
     DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs, FolderInventoryStatusKind,
-    ImportArgs, InspectExportArgs, InspectExportReportFormat, ListArgs, ListDataSourcesArgs,
-    DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME,
-    TOOL_SCHEMA_VERSION,
+    ImportArgs, InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, ListArgs,
+    ListDataSourcesArgs, DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME,
+    FOLDER_INVENTORY_FILENAME, TOOL_SCHEMA_VERSION,
 };
 use crate::common::api_response;
 use clap::{CommandFactory, Parser};
@@ -565,6 +565,36 @@ fn parse_cli_supports_inspect_export_report_columns_and_filter() {
         }
         _ => panic!("expected inspect-export command"),
     }
+}
+
+#[test]
+fn parse_cli_supports_inspect_live_report_json_flag() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "inspect-live",
+        "--url",
+        "https://grafana.example.com",
+        "--report",
+        "json",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectLive(inspect_args) => {
+            assert_eq!(inspect_args.common.url, "https://grafana.example.com");
+            assert_eq!(inspect_args.report, Some(InspectExportReportFormat::Json));
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-live command"),
+    }
+}
+
+#[test]
+fn inspect_live_help_mentions_report_and_panel_filter_flags() {
+    let help = render_dashboard_subcommand_help("inspect-live");
+
+    assert!(help.contains("--report"));
+    assert!(help.contains("--report-filter-panel-id"));
 }
 
 #[test]
@@ -2888,6 +2918,90 @@ fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
             .to_string()
             .contains("--report-filter-panel-id is only supported together with --report")
     );
+}
+
+#[test]
+fn inspect_live_dashboards_with_request_reports_live_json_via_temp_raw_export() {
+    let args = InspectLiveArgs {
+        common: make_common_args("https://grafana.example.com".to_string()),
+        page_size: 100,
+        org_id: None,
+        all_orgs: false,
+        json: false,
+        table: false,
+        report: Some(InspectExportReportFormat::Json),
+        report_columns: Vec::new(),
+        report_filter_datasource: Some("prom-main".to_string()),
+        report_filter_panel_id: Some("7".to_string()),
+        no_header: false,
+    };
+
+    let count = super::inspect_live_dashboards_with_request(
+        |method, path, _params, _payload| {
+            let method_name = method.to_string();
+            match (method, path) {
+            (reqwest::Method::GET, "/api/org") => Ok(Some(json!({
+                "id": 1,
+                "name": "Main Org."
+            }))),
+            (reqwest::Method::GET, "/api/datasources") => Ok(Some(json!([
+                {
+                    "uid": "prom-main",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                    "access": "proxy",
+                    "url": "http://prometheus:9090",
+                    "isDefault": true
+                }
+            ]))),
+            (reqwest::Method::GET, "/api/search") => Ok(Some(json!([
+                {
+                    "uid": "cpu-main",
+                    "title": "CPU Main",
+                    "type": "dash-db",
+                    "folderUid": "general",
+                    "folderTitle": "General"
+                }
+            ]))),
+            (reqwest::Method::GET, "/api/folders/general") => Ok(Some(json!({
+                "uid": "general",
+                "title": "General"
+            }))),
+            (reqwest::Method::GET, "/api/dashboards/uid/cpu-main") => Ok(Some(json!({
+                "dashboard": {
+                    "id": 11,
+                    "uid": "cpu-main",
+                    "title": "CPU Main",
+                    "panels": [
+                        {
+                            "id": 7,
+                            "title": "CPU Query",
+                            "type": "timeseries",
+                            "datasource": {"uid": "prom-main", "type": "prometheus"},
+                            "targets": [
+                                {"refId": "A", "expr": "up"}
+                            ]
+                        },
+                        {
+                            "id": 8,
+                            "title": "Memory Query",
+                            "type": "timeseries",
+                            "datasource": {"uid": "prom-main", "type": "prometheus"},
+                            "targets": [
+                                {"refId": "A", "expr": "process_resident_memory_bytes"}
+                            ]
+                        }
+                    ]
+                },
+                "meta": {}
+            }))),
+            _ => Err(super::message(format!("unexpected request {method_name} {path}"))),
+        }},
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 1);
 }
 
 #[test]
