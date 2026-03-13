@@ -1,5 +1,13 @@
 # ai-changes.md
 
+## 2026-03-13 - Add Flux And SQL Dashboard Inspection Extraction
+- Summary: Extended the existing dashboard inspect query extraction heuristics in both Python and Rust without changing the shared report contract. Flux queries now surface pipeline/source function names in `metrics`, `_measurement` values in `measurements`, and `bucket` values in `buckets`. SQL-family queries (`mysql`, `postgres`, `mssql`, plus `rawSql` / `sql` targets) now surface coarse query-shape hints in `metrics`, table/source references in `measurements`, and leave `buckets` empty.
+- Tests: Added focused Python and Rust coverage for Flux pipeline extraction and SQL-family source/query-shape extraction, while keeping the existing Prometheus report behavior coverage in place.
+- Test Run: `python3 -m unittest -v tests.test_python_dashboard_inspection_cli`; `cargo test --manifest-path rust/Cargo.toml --quiet build_export_inspection_query_report`
+- Validation: Verified the full Python inspection CLI suite still passes, verified the focused Rust query-report tests pass, and confirmed the shared report fields remain unchanged while Flux/SQL-family rows now carry richer best-effort metadata.
+- Impact: `grafana_utils/dashboards/inspection_report.py`, `tests/test_python_dashboard_inspection_cli.py`, `rust/src/dashboard_inspect.rs`, `rust/src/dashboard_rust_tests.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Moderate. The change is intentionally heuristic and conservative, but the current shared contract still lacks dedicated fields for SQL table refs/query-shape hints and Flux pipeline stages, so those details are temporarily mapped into the existing generic `metrics` / `measurements` / `buckets` lists.
+
 ## 2026-03-13 - Split Dashboard Export Inventory Helpers
 - Summary: Extracted the remaining dashboard raw-export inventory and manifest helpers into dedicated Python and Rust modules so the main dashboard facades no longer need to own raw file discovery and export metadata validation inline.
 - Tests: Added Python 3.6 syntax coverage for the new `grafana_utils/dashboards/export_inventory.py` module and revalidated the focused Python dashboard suites, the Rust dashboard suite, and the full repo quality gate after routing the facades through the new helper boundary.

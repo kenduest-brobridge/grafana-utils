@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-13 - Task: Add Flux And SQL Dashboard Inspection Extraction
+- State: Done
+- Scope: `grafana_utils/dashboards/inspection_report.py`, `tests/test_python_dashboard_inspection_cli.py`, `rust/src/dashboard_inspect.rs`, `rust/src/dashboard_rust_tests.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Dashboard inspection already exposed one stable per-query report contract, but Flux extraction only covered `_measurement`/`bucket` heuristics and SQL-family queries still fell back to the generic token extractor, so table/source references and coarse query shape were not surfaced usefully.
+- Current Update: Kept the shared report contract unchanged and added conservative Flux/SQL-family extraction on both implementations. Flux now maps pipeline/source function names into `metrics` while keeping `_measurement` values in `measurements` and `bucket` values in `buckets`. SQL-family queries now map coarse query-shape hints into `metrics`, table/source references into `measurements`, and leave `buckets` empty because the current contract does not expose dedicated SQL fields.
+- Result: Inspect report rows stay schema-compatible, but Flux and SQL-family dashboards now produce more useful best-effort extraction without widening CLI/report scope. The main remaining constraint is contractual: table refs, query-shape hints, and Flux pipeline stages still share the existing generic list fields instead of dedicated report columns.
+
 ## 2026-03-13 - Task: Split Dashboard Export Inventory Helpers
 - State: Done
 - Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/export_inventory.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_files.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
