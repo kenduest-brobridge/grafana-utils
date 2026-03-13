@@ -55,6 +55,12 @@ from .dashboards.common import (
     GrafanaApiError,
     GrafanaError,
 )
+from .dashboards.export_workflow import run_export_dashboards
+from .dashboards.import_workflow import run_import_dashboards
+from .dashboards.inspection_workflow import (
+    materialize_live_inspection_export as run_materialize_live_inspection_export,
+)
+from .dashboards.inspection_workflow import run_inspect_export, run_inspect_live
 from .dashboards.transformer import (
     build_datasource_catalog,
     build_external_export_document,
@@ -1597,247 +1603,40 @@ def describe_dashboard_import_mode(
     return "create-only"
 
 
+def _build_export_workflow_deps() -> Dict[str, Any]:
+    return {
+        "GrafanaError": GrafanaError,
+        "DATASOURCE_INVENTORY_FILENAME": DATASOURCE_INVENTORY_FILENAME,
+        "EXPORT_METADATA_FILENAME": EXPORT_METADATA_FILENAME,
+        "FOLDER_INVENTORY_FILENAME": FOLDER_INVENTORY_FILENAME,
+        "PROMPT_EXPORT_SUBDIR": PROMPT_EXPORT_SUBDIR,
+        "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
+        "attach_dashboard_org": attach_dashboard_org,
+        "build_all_orgs_output_dir": build_all_orgs_output_dir,
+        "build_client": build_client,
+        "build_dashboard_index_item": build_dashboard_index_item,
+        "build_datasource_catalog": build_datasource_catalog,
+        "build_datasource_inventory_record": build_datasource_inventory_record,
+        "build_export_metadata": build_export_metadata,
+        "build_export_variant_dirs": build_export_variant_dirs,
+        "build_external_export_document": build_external_export_document,
+        "build_output_path": build_output_path,
+        "build_preserved_web_import_document": build_preserved_web_import_document,
+        "build_root_export_index": build_root_export_index,
+        "build_variant_index": build_variant_index,
+        "collect_folder_inventory": collect_folder_inventory,
+        "ensure_dashboard_write_target": ensure_dashboard_write_target,
+        "print_dashboard_export_progress": print_dashboard_export_progress,
+        "print_dashboard_export_progress_summary": print_dashboard_export_progress_summary,
+        "sys": sys,
+        "write_dashboard": write_dashboard,
+        "write_json_document": write_json_document,
+    }
+
+
 def export_dashboards(args: argparse.Namespace) -> int:
     """Export dashboards into raw JSON, prompt JSON, or both variants."""
-    if args.without_dashboard_raw and args.without_dashboard_prompt:
-        raise GrafanaError(
-            "Nothing to export. Remove one of --without-dashboard-raw or --without-dashboard-prompt."
-        )
-
-    output_dir = Path(args.export_dir)
-    export_raw = not args.without_dashboard_raw
-    export_prompt = not args.without_dashboard_prompt
-    client = build_client(args)
-    all_orgs = bool(getattr(args, "all_orgs", False))
-    org_id = getattr(args, "org_id", None)
-    if all_orgs and org_id:
-        raise GrafanaError("Choose either --org-id or --all-orgs, not both.")
-    auth_header = client.headers.get("Authorization", "")
-    if (all_orgs or org_id) and not auth_header.startswith("Basic "):
-        raise GrafanaError(
-            "Dashboard org switching requires Basic auth. Use --basic-user and --basic-password."
-        )
-
-    clients = [client]
-    if all_orgs:
-        clients = []
-        for org in client.list_orgs():
-            scoped_org_id = str(org.get("id") or "").strip()
-            if scoped_org_id:
-                clients.append((org, client.with_org_id(scoped_org_id)))
-    elif org_id:
-        scoped_client = client.with_org_id(str(org_id))
-        clients = [(scoped_client.fetch_current_org(), scoped_client)]
-    else:
-        clients = [(client.fetch_current_org(), client)]
-
-    org_exports = []
-    total_dashboards = 0
-    for org, scoped_client in clients:
-        scoped_output_dir = output_dir
-        if all_orgs:
-            scoped_output_dir = build_all_orgs_output_dir(output_dir, org)
-        raw_dir, prompt_dir = build_export_variant_dirs(scoped_output_dir)
-        datasource_inventory = [
-            build_datasource_inventory_record(item, org)
-            for item in scoped_client.list_datasources()
-        ]
-        datasource_catalog = None
-        if export_prompt:
-            # Prompt exports need datasource metadata up front so dashboard references
-            # can be rewritten into Grafana's __inputs import format.
-            datasource_catalog = build_datasource_catalog(datasource_inventory)
-
-        summaries = attach_dashboard_org(
-            scoped_client,
-            scoped_client.iter_dashboard_summaries(args.page_size),
-        )
-        if not summaries:
-            continue
-        total_dashboards += len(summaries)
-        folder_inventory = collect_folder_inventory(scoped_client, org, summaries)
-        org_exports.append(
-            (
-                org,
-                scoped_client,
-                scoped_output_dir,
-                raw_dir,
-                prompt_dir,
-                datasource_catalog,
-                datasource_inventory,
-                summaries,
-                folder_inventory,
-            )
-        )
-
-    index_items: List[Dict[str, str]] = []
-    processed_dashboards = 0
-    folder_inventory = []
-    datasource_inventory = []
-    for (
-        _,
-        scoped_client,
-        _,
-        raw_dir,
-        prompt_dir,
-        datasource_catalog,
-        scoped_datasource_inventory,
-        summaries,
-        scoped_folder_inventory,
-    ) in org_exports:
-        folder_inventory.extend(scoped_folder_inventory)
-        datasource_inventory.extend(scoped_datasource_inventory)
-        for summary in summaries:
-            processed_dashboards += 1
-            uid = str(summary["uid"])
-            print_dashboard_export_progress_summary(
-                args,
-                processed_dashboards,
-                total_dashboards,
-                uid,
-                dry_run=bool(args.dry_run),
-            )
-            payload = scoped_client.fetch_dashboard(uid)
-            item = build_dashboard_index_item(summary, uid)
-            if export_raw:
-                raw_document = build_preserved_web_import_document(payload)
-                raw_path = build_output_path(raw_dir, summary, args.flat)
-                if args.dry_run:
-                    ensure_dashboard_write_target(
-                        raw_path,
-                        args.overwrite,
-                        create_parents=False,
-                    )
-                    print_dashboard_export_progress(
-                        args,
-                        processed_dashboards,
-                        total_dashboards,
-                        uid,
-                        "raw",
-                        raw_path,
-                        dry_run=True,
-                    )
-                else:
-                    write_dashboard(raw_document, raw_path, args.overwrite)
-                    print_dashboard_export_progress(
-                        args,
-                        processed_dashboards,
-                        total_dashboards,
-                        uid,
-                        "raw",
-                        raw_path,
-                        dry_run=False,
-                    )
-                item["raw_path"] = str(raw_path)
-            if export_prompt:
-                assert datasource_catalog is not None
-                prompt_document = build_external_export_document(payload, datasource_catalog)
-                prompt_path = build_output_path(prompt_dir, summary, args.flat)
-                if args.dry_run:
-                    ensure_dashboard_write_target(
-                        prompt_path,
-                        args.overwrite,
-                        create_parents=False,
-                    )
-                    print_dashboard_export_progress(
-                        args,
-                        processed_dashboards,
-                        total_dashboards,
-                        uid,
-                        "prompt",
-                        prompt_path,
-                        dry_run=True,
-                    )
-                else:
-                    write_dashboard(prompt_document, prompt_path, args.overwrite)
-                    print_dashboard_export_progress(
-                        args,
-                        processed_dashboards,
-                        total_dashboards,
-                        uid,
-                        "prompt",
-                        prompt_path,
-                        dry_run=False,
-                    )
-                item["prompt_path"] = str(prompt_path)
-            index_items.append(item)
-
-    if not index_items:
-        print("No dashboards found.", file=sys.stderr)
-        return 0
-
-    raw_index_path = None
-    raw_metadata_path = None
-    raw_folders_path = None
-    raw_datasources_path = None
-    if export_raw:
-        raw_variant_dir = output_dir / RAW_EXPORT_SUBDIR if all_orgs else raw_dir
-        raw_index_path = raw_variant_dir / "index.json"
-        raw_metadata_path = raw_variant_dir / EXPORT_METADATA_FILENAME
-        raw_folders_path = raw_variant_dir / FOLDER_INVENTORY_FILENAME
-        raw_datasources_path = raw_variant_dir / DATASOURCE_INVENTORY_FILENAME
-        raw_index = build_variant_index(
-            index_items,
-            "raw_path",
-            "grafana-web-import-preserve-uid",
-        )
-        raw_metadata = build_export_metadata(
-            variant=RAW_EXPORT_SUBDIR,
-            dashboard_count=len(raw_index),
-            format_name="grafana-web-import-preserve-uid",
-            folders_file=FOLDER_INVENTORY_FILENAME,
-            datasources_file=DATASOURCE_INVENTORY_FILENAME,
-        )
-        if not args.dry_run:
-            write_json_document(raw_index, raw_index_path)
-            write_json_document(raw_metadata, raw_metadata_path)
-            write_json_document(folder_inventory, raw_folders_path)
-            write_json_document(datasource_inventory, raw_datasources_path)
-    prompt_index_path = None
-    prompt_metadata_path = None
-    if export_prompt:
-        prompt_variant_dir = output_dir / PROMPT_EXPORT_SUBDIR if all_orgs else prompt_dir
-        prompt_index_path = prompt_variant_dir / "index.json"
-        prompt_metadata_path = prompt_variant_dir / EXPORT_METADATA_FILENAME
-        prompt_index = build_variant_index(
-            index_items,
-            "prompt_path",
-            "grafana-web-import-with-datasource-inputs",
-        )
-        prompt_metadata = build_export_metadata(
-            variant=PROMPT_EXPORT_SUBDIR,
-            dashboard_count=len(prompt_index),
-            format_name="grafana-web-import-with-datasource-inputs",
-        )
-        if not args.dry_run:
-            write_json_document(prompt_index, prompt_index_path)
-            write_json_document(prompt_metadata, prompt_metadata_path)
-    index_path = output_dir / "index.json"
-    root_index = build_root_export_index(index_items, raw_index_path, prompt_index_path)
-    root_metadata_path = output_dir / EXPORT_METADATA_FILENAME
-    root_metadata = build_export_metadata(
-        variant="root",
-        dashboard_count=len(index_items),
-    )
-    if not args.dry_run:
-        write_json_document(root_index, index_path)
-        write_json_document(root_metadata, root_metadata_path)
-    summary_verb = "Would export" if args.dry_run else "Exported"
-    summary_parts = [f"{summary_verb} {len(index_items)} dashboards."]
-    if raw_index_path is not None:
-        summary_parts.append(f"Raw index: {raw_index_path}")
-    if raw_metadata_path is not None:
-        summary_parts.append(f"Raw manifest: {raw_metadata_path}")
-    if raw_datasources_path is not None:
-        summary_parts.append(f"Raw datasources: {raw_datasources_path}")
-    if prompt_index_path is not None:
-        summary_parts.append(f"Prompt index: {prompt_index_path}")
-    if prompt_metadata_path is not None:
-        summary_parts.append(f"Prompt manifest: {prompt_metadata_path}")
-    summary_parts.append(f"Root index: {index_path}")
-    summary_parts.append(f"Root manifest: {root_metadata_path}")
-    print(" ".join(summary_parts))
-    return 0
+    return run_export_dashboards(args, _build_export_workflow_deps())
 
 
 def format_dashboard_summary_line(summary: Dict[str, Any]) -> str:
@@ -2809,72 +2608,56 @@ def format_report_column_value(record: Dict[str, Any], column_id: str) -> str:
     return str(value or "")
 
 
+def _build_inspection_workflow_deps() -> Dict[str, Any]:
+    return {
+        "GrafanaError": GrafanaError,
+        "DATASOURCE_INVENTORY_FILENAME": DATASOURCE_INVENTORY_FILENAME,
+        "EXPORT_METADATA_FILENAME": EXPORT_METADATA_FILENAME,
+        "FOLDER_INVENTORY_FILENAME": FOLDER_INVENTORY_FILENAME,
+        "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
+        "attach_dashboard_org": attach_dashboard_org,
+        "build_client": build_client,
+        "build_dashboard_index_item": build_dashboard_index_item,
+        "build_datasource_inventory_record": build_datasource_inventory_record,
+        "build_export_inspection_document": build_export_inspection_document,
+        "build_export_inspection_report_document": build_export_inspection_report_document,
+        "build_export_metadata": build_export_metadata,
+        "build_output_path": build_output_path,
+        "build_preserved_web_import_document": build_preserved_web_import_document,
+        "build_variant_index": build_variant_index,
+        "collect_folder_inventory": collect_folder_inventory,
+        "filter_export_inspection_report_document": filter_export_inspection_report_document,
+        "inspect_export": inspect_export,
+        "json": json,
+        "parse_report_columns": parse_report_columns,
+        "render_export_inspection_report_csv": render_export_inspection_report_csv,
+        "render_export_inspection_report_tables": render_export_inspection_report_tables,
+        "render_export_inspection_summary": render_export_inspection_summary,
+        "render_export_inspection_tables": render_export_inspection_tables,
+        "sys": sys,
+        "tempfile": tempfile,
+        "write_dashboard": write_dashboard,
+        "write_json_document": write_json_document,
+    }
+
+
 def materialize_live_inspection_export(
     client: "GrafanaClient",
     page_size: int,
     raw_dir: Path,
 ) -> Path:
     """Write one temporary raw-export-like directory for live dashboard inspection."""
-    raw_dir.mkdir(parents=True, exist_ok=True)
-    summaries = attach_dashboard_org(client, client.iter_dashboard_summaries(page_size))
-    org = client.fetch_current_org()
-    folder_inventory = collect_folder_inventory(client, org, summaries)
-    datasource_inventory = [
-        build_datasource_inventory_record(item, org)
-        for item in client.list_datasources()
-    ]
-    index_items: List[Dict[str, str]] = []
-    for summary in summaries:
-        uid = str(summary.get("uid") or "").strip()
-        if not uid:
-            continue
-        payload = client.fetch_dashboard(uid)
-        document = build_preserved_web_import_document(payload)
-        output_path = build_output_path(raw_dir, summary, flat=False)
-        write_dashboard(document, output_path, overwrite=True)
-        item = build_dashboard_index_item(summary, uid)
-        item["raw_path"] = str(output_path)
-        index_items.append(item)
-
-    raw_index = build_variant_index(
-        index_items,
-        "raw_path",
-        "grafana-web-import-preserve-uid",
+    return run_materialize_live_inspection_export(
+        client,
+        page_size,
+        raw_dir,
+        _build_inspection_workflow_deps(),
     )
-    raw_metadata = build_export_metadata(
-        variant=RAW_EXPORT_SUBDIR,
-        dashboard_count=len(raw_index),
-        format_name="grafana-web-import-preserve-uid",
-        folders_file=FOLDER_INVENTORY_FILENAME,
-        datasources_file=DATASOURCE_INVENTORY_FILENAME,
-    )
-    write_json_document(raw_index, raw_dir / "index.json")
-    write_json_document(raw_metadata, raw_dir / EXPORT_METADATA_FILENAME)
-    write_json_document(folder_inventory, raw_dir / FOLDER_INVENTORY_FILENAME)
-    write_json_document(datasource_inventory, raw_dir / DATASOURCE_INVENTORY_FILENAME)
-    return raw_dir
 
 
 def inspect_live(args: argparse.Namespace) -> int:
     """Inspect live Grafana dashboards by reusing the raw-export inspection pipeline."""
-    client = build_client(args)
-    with tempfile.TemporaryDirectory(prefix="grafana-utils-inspect-live-") as tmpdir:
-        raw_dir = materialize_live_inspection_export(
-            client,
-            page_size=int(args.page_size),
-            raw_dir=Path(tmpdir) / RAW_EXPORT_SUBDIR,
-        )
-        inspect_args = argparse.Namespace(
-            import_dir=str(raw_dir),
-            report=getattr(args, "report", None),
-            report_columns=getattr(args, "report_columns", None),
-            report_filter_datasource=getattr(args, "report_filter_datasource", None),
-            report_filter_panel_id=getattr(args, "report_filter_panel_id", None),
-            json=bool(getattr(args, "json", False)),
-            table=bool(getattr(args, "table", False)),
-            no_header=bool(getattr(args, "no_header", False)),
-        )
-        return inspect_export(inspect_args)
+    return run_inspect_live(args, _build_inspection_workflow_deps())
 
 
 def render_export_inspection_report_csv(
@@ -3329,317 +3112,40 @@ def render_export_inspection_report_tables(
 
 def inspect_export(args: argparse.Namespace) -> int:
     """Inspect one raw export directory and summarize dashboards, folders, and datasources."""
-    import_dir = Path(args.import_dir)
-    report_format = getattr(args, "report", None)
-    report_columns = parse_report_columns(getattr(args, "report_columns", None))
-    report_filter_datasource = getattr(args, "report_filter_datasource", None)
-    report_filter_panel_id = getattr(args, "report_filter_panel_id", None)
-    if report_format and (getattr(args, "table", False) or getattr(args, "json", False)):
-        raise GrafanaError("--report cannot be combined with --table or --json.")
-    if getattr(args, "table", False) and getattr(args, "json", False):
-        raise GrafanaError("--table and --json are mutually exclusive for inspect-export.")
-    if report_columns is not None and report_format is None:
-        raise GrafanaError("--report-columns is only supported with --report.")
-    if report_filter_datasource and report_format is None:
-        raise GrafanaError(
-            "--report-filter-datasource is only supported with --report."
-        )
-    if report_filter_panel_id and report_format is None:
-        raise GrafanaError(
-            "--report-filter-panel-id is only supported with --report."
-        )
-    if report_columns is not None and report_format not in ("table", "csv"):
-        raise GrafanaError(
-            "--report-columns is only supported with --report table or --report csv."
-        )
-    if getattr(args, "no_header", False) and not (
-        getattr(args, "table", False) or report_format == "table"
-    ):
-        raise GrafanaError(
-            "--no-header is only supported with --table or --report for inspect-export."
-        )
-    if report_format == "json":
-        document = filter_export_inspection_report_document(
-            build_export_inspection_report_document(import_dir),
-            datasource_label=report_filter_datasource,
-            panel_id=report_filter_panel_id,
-        )
-        print(
-            json.dumps(
-                document,
-                indent=2,
-                sort_keys=False,
-                ensure_ascii=False,
-            )
-        )
-        return 0
-    if report_format == "table":
-        document = filter_export_inspection_report_document(
-            build_export_inspection_report_document(import_dir),
-            datasource_label=report_filter_datasource,
-            panel_id=report_filter_panel_id,
-        )
-        for line in render_export_inspection_report_tables(
-            document,
-            import_dir,
-            include_header=not bool(getattr(args, "no_header", False)),
-            selected_columns=report_columns,
-        ):
-            print(line)
-        return 0
-    if report_format == "csv":
-        document = filter_export_inspection_report_document(
-            build_export_inspection_report_document(import_dir),
-            datasource_label=report_filter_datasource,
-            panel_id=report_filter_panel_id,
-        )
-        sys.stdout.write(
-            render_export_inspection_report_csv(
-                document,
-                selected_columns=report_columns,
-                include_header=not bool(getattr(args, "no_header", False)),
-            )
-        )
-        return 0
-    document = build_export_inspection_document(import_dir)
-    if getattr(args, "json", False):
-        print(json.dumps(document, indent=2, sort_keys=False, ensure_ascii=False))
-        return 0
-    if getattr(args, "table", False):
-        for line in render_export_inspection_tables(
-            document,
-            import_dir,
-            include_header=not bool(getattr(args, "no_header", False)),
-        ):
-            print(line)
-        return 0
-    for line in render_export_inspection_summary(document, import_dir):
-        print(line)
-    return 0
+    return run_inspect_export(args, _build_inspection_workflow_deps())
+
+
+def _build_import_workflow_deps() -> Dict[str, Any]:
+    return {
+        "DEFAULT_UNKNOWN_UID": DEFAULT_UNKNOWN_UID,
+        "FOLDER_INVENTORY_FILENAME": FOLDER_INVENTORY_FILENAME,
+        "GrafanaError": GrafanaError,
+        "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
+        "build_client": build_client,
+        "build_dashboard_import_dry_run_record": build_dashboard_import_dry_run_record,
+        "build_folder_inventory_lookup": build_folder_inventory_lookup,
+        "build_import_payload": build_import_payload,
+        "describe_dashboard_import_mode": describe_dashboard_import_mode,
+        "determine_dashboard_import_action": determine_dashboard_import_action,
+        "determine_import_folder_uid_override": determine_import_folder_uid_override,
+        "discover_dashboard_files": discover_dashboard_files,
+        "ensure_folder_inventory": ensure_folder_inventory,
+        "extract_dashboard_object": extract_dashboard_object,
+        "inspect_folder_inventory": inspect_folder_inventory,
+        "load_export_metadata": load_export_metadata,
+        "load_json_file": load_json_file,
+        "print_dashboard_import_progress": print_dashboard_import_progress,
+        "render_dashboard_import_dry_run_json": render_dashboard_import_dry_run_json,
+        "render_dashboard_import_dry_run_table": render_dashboard_import_dry_run_table,
+        "render_folder_inventory_dry_run_table": render_folder_inventory_dry_run_table,
+        "resolve_dashboard_import_folder_path": resolve_dashboard_import_folder_path,
+        "resolve_folder_inventory_requirements": resolve_folder_inventory_requirements,
+    }
 
 
 def import_dashboards(args: argparse.Namespace) -> int:
     """Import previously exported raw dashboard JSON files through Grafana's API."""
-    if getattr(args, "table", False) and not args.dry_run:
-        raise GrafanaError("--table is only supported with --dry-run for import-dashboard.")
-    if getattr(args, "json", False) and not args.dry_run:
-        raise GrafanaError("--json is only supported with --dry-run for import-dashboard.")
-    if getattr(args, "table", False) and getattr(args, "json", False):
-        raise GrafanaError("--table and --json are mutually exclusive for import-dashboard.")
-    if getattr(args, "no_header", False) and not getattr(args, "table", False):
-        raise GrafanaError("--no-header is only supported with --dry-run --table for import-dashboard.")
-    client = build_client(args)
-    import_dir = Path(args.import_dir)
-    metadata = load_export_metadata(import_dir, expected_variant=RAW_EXPORT_SUBDIR)
-    dashboard_files = discover_dashboard_files(import_dir)
-    folder_inventory = resolve_folder_inventory_requirements(args, import_dir, metadata)
-    folder_inventory_lookup = build_folder_inventory_lookup(folder_inventory)
-
-    dry_run_records = []
-    imported_count = 0
-    skipped_missing_count = 0
-    effective_replace_existing = bool(
-        getattr(args, "replace_existing", False)
-        or getattr(args, "update_existing_only", False)
-    )
-    mode = describe_dashboard_import_mode(
-        bool(getattr(args, "replace_existing", False)),
-        bool(getattr(args, "update_existing_only", False)),
-    )
-    json_output = bool(getattr(args, "json", False))
-    if not json_output:
-        print("Import mode: %s" % mode)
-    folder_dry_run_records = []
-    if getattr(args, "dry_run", False) and getattr(args, "ensure_folders", False):
-        folder_dry_run_records = inspect_folder_inventory(client, folder_inventory)
-        if json_output:
-            pass
-        elif getattr(args, "table", False):
-            for line in render_folder_inventory_dry_run_table(
-                folder_dry_run_records,
-                include_header=not bool(getattr(args, "no_header", False)),
-            ):
-                print(line)
-        else:
-            for record in folder_dry_run_records:
-                print(
-                    "Dry-run folder uid=%s dest=%s status=%s reason=%s expected=%s actual=%s"
-                    % (
-                        record["uid"],
-                        record["destination"],
-                        record["status"],
-                        record["reason"] or "-",
-                        record["expected_path"] or "-",
-                        record["actual_path"] or "-",
-                    )
-                )
-        if folder_dry_run_records and not json_output:
-            missing_folder_count = len(
-                [record for record in folder_dry_run_records if record.get("status") == "missing"]
-            )
-            mismatched_folder_count = len(
-                [record for record in folder_dry_run_records if record.get("status") == "mismatch"]
-            )
-            print(
-                "Dry-run checked %s folder(s) from %s; %s missing, %s mismatched"
-                % (
-                    len(folder_dry_run_records),
-                    import_dir
-                    / str(
-                        (metadata or {}).get("foldersFile") or FOLDER_INVENTORY_FILENAME
-                    ),
-                    missing_folder_count,
-                    mismatched_folder_count,
-                )
-            )
-    if (
-        getattr(args, "ensure_folders", False)
-        and folder_inventory
-        and args.import_folder_uid is None
-        and not getattr(args, "dry_run", False)
-    ):
-        created_folders = ensure_folder_inventory(client, folder_inventory)
-        print(
-            "Ensured %s folder(s) from %s"
-            % (
-                created_folders,
-                import_dir
-                / str(
-                    (metadata or {}).get("foldersFile") or FOLDER_INVENTORY_FILENAME
-                ),
-            )
-        )
-    total_dashboards = len(dashboard_files)
-    for index, dashboard_file in enumerate(dashboard_files, 1):
-        document = load_json_file(dashboard_file)
-        dashboard = extract_dashboard_object(
-            document, "Dashboard payload must be a JSON object."
-        )
-        dashboard_uid = str(dashboard.get("uid") or "")
-        folder_uid_override = determine_import_folder_uid_override(
-            client,
-            dashboard_uid,
-            args.import_folder_uid,
-            preserve_existing_folder=effective_replace_existing,
-        )
-        payload = build_import_payload(
-            document=document,
-            folder_uid_override=folder_uid_override,
-            replace_existing=effective_replace_existing,
-            message=args.import_message,
-        )
-        folder_path = resolve_dashboard_import_folder_path(
-            client,
-            payload,
-            document,
-            dashboard_file,
-            import_dir,
-            folder_inventory_lookup,
-        )
-        uid = payload["dashboard"].get("uid") or DEFAULT_UNKNOWN_UID
-        if args.dry_run:
-            action = determine_dashboard_import_action(
-                client,
-                payload,
-                effective_replace_existing,
-                update_existing_only=bool(getattr(args, "update_existing_only", False)),
-            )
-            if getattr(args, "table", False) or json_output:
-                dry_run_records.append(
-                    build_dashboard_import_dry_run_record(
-                        dashboard_file,
-                        str(uid),
-                        action,
-                        folder_path=folder_path,
-                    )
-                )
-                continue
-            print_dashboard_import_progress(
-                args,
-                index,
-                total_dashboards,
-                dashboard_file,
-                str(uid),
-                action=action,
-                folder_path=folder_path,
-                dry_run=True,
-            )
-            continue
-
-        if bool(getattr(args, "update_existing_only", False)):
-            action = determine_dashboard_import_action(
-                client,
-                payload,
-                effective_replace_existing,
-                update_existing_only=True,
-            )
-            if action == "would-skip-missing":
-                skipped_missing_count += 1
-                if getattr(args, "verbose", False):
-                    print(
-                        "Skipped import uid=%s dest=missing action=skip-missing file=%s"
-                        % (uid, dashboard_file)
-                    )
-                elif getattr(args, "progress", False):
-                    print(
-                        "Skipping dashboard %s/%s: %s dest=missing action=skip-missing"
-                        % (index, total_dashboards, uid)
-                    )
-                continue
-
-        result = client.import_dashboard(payload)
-        status = result.get("status", "unknown")
-        uid = result.get("uid") or uid
-        imported_count += 1
-        print_dashboard_import_progress(
-            args,
-            index,
-            total_dashboards,
-            dashboard_file,
-            str(uid),
-            status=str(status),
-            dry_run=False,
-        )
-
-    if args.dry_run:
-        if getattr(args, "update_existing_only", False):
-            skipped_missing_count = len(
-                [record for record in dry_run_records if record.get("action") == "skip-missing"]
-            )
-        if json_output:
-            print(
-                render_dashboard_import_dry_run_json(
-                    mode,
-                    folder_dry_run_records,
-                    dry_run_records,
-                    import_dir,
-                    skipped_missing_count,
-                )
-            )
-        elif getattr(args, "table", False):
-            for line in render_dashboard_import_dry_run_table(
-                dry_run_records,
-                include_header=not bool(getattr(args, "no_header", False)),
-            ):
-                print(line)
-        if json_output:
-            pass
-        elif getattr(args, "update_existing_only", False) and skipped_missing_count:
-            print(
-                "Dry-run checked %s dashboard files from %s; would skip %s missing dashboards"
-                % (len(dashboard_files), import_dir, skipped_missing_count)
-            )
-        else:
-            print(f"Dry-run checked {len(dashboard_files)} dashboard files from {import_dir}")
-    else:
-        if getattr(args, "update_existing_only", False) and skipped_missing_count:
-            print(
-                "Imported %s dashboard files from %s; skipped %s missing dashboards"
-                % (imported_count, import_dir, skipped_missing_count)
-            )
-        else:
-            print(f"Imported {imported_count} dashboard files from {import_dir}")
-    return 0
+    return run_import_dashboards(args, _build_import_workflow_deps())
 
 
 def diff_dashboards(args: argparse.Namespace) -> int:

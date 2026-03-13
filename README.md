@@ -883,6 +883,9 @@ The repo root includes a [`Makefile`](Makefile):
 - `make build`
 - `make test-python`
 - `make test-rust`
+- `make fmt-rust-check`
+- `make lint-rust`
+- `make quality`
 - `make test-rust-live`
 - `make test-access-live`
 - `make test`
@@ -894,6 +897,12 @@ Artifact locations:
 - `make build-rust-macos-arm64` writes native Apple Silicon Rust binaries into `dist/macos-arm64/`
 - `make build-rust-linux-amd64` writes Linux `amd64` Rust binaries into `dist/linux-amd64/`
 - `make build-rust-linux-amd64-zig` writes Linux `amd64` Rust binaries into `dist/linux-amd64/` without Docker
+
+Basic quality gates:
+
+- `make quality` runs the repo's baseline automated checks
+- `make fmt-rust-check` runs `cargo fmt --check`
+- `make lint-rust` runs `cargo clippy --all-targets -- -D warnings`
 
 ### Rust Build and Run
 

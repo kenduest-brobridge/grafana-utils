@@ -16,6 +16,15 @@ MODULE_PATH = REPO_ROOT / "grafana_utils" / "dashboard_cli.py"
 TRANSPORT_MODULE_PATH = REPO_ROOT / "grafana_utils" / "http_transport.py"
 CLIENT_MODULE_PATH = REPO_ROOT / "grafana_utils" / "clients" / "dashboard_client.py"
 COMMON_MODULE_PATH = REPO_ROOT / "grafana_utils" / "dashboards" / "common.py"
+EXPORT_WORKFLOW_MODULE_PATH = (
+    REPO_ROOT / "grafana_utils" / "dashboards" / "export_workflow.py"
+)
+IMPORT_WORKFLOW_MODULE_PATH = (
+    REPO_ROOT / "grafana_utils" / "dashboards" / "import_workflow.py"
+)
+INSPECTION_WORKFLOW_MODULE_PATH = (
+    REPO_ROOT / "grafana_utils" / "dashboards" / "inspection_workflow.py"
+)
 TRANSFORMER_MODULE_PATH = REPO_ROOT / "grafana_utils" / "dashboards" / "transformer.py"
 WRAPPER_PATH = REPO_ROOT / "python" / "grafana-utils.py"
 if str(REPO_ROOT) not in sys.path:
@@ -122,6 +131,25 @@ class ExporterTests(unittest.TestCase):
         source = COMMON_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(source, filename=str(COMMON_MODULE_PATH), feature_version=(3, 6))
+
+    def test_dashboard_export_workflow_module_parses_as_python36_syntax(self):
+        source = EXPORT_WORKFLOW_MODULE_PATH.read_text(encoding="utf-8")
+
+        ast.parse(source, filename=str(EXPORT_WORKFLOW_MODULE_PATH), feature_version=(3, 6))
+
+    def test_dashboard_import_workflow_module_parses_as_python36_syntax(self):
+        source = IMPORT_WORKFLOW_MODULE_PATH.read_text(encoding="utf-8")
+
+        ast.parse(source, filename=str(IMPORT_WORKFLOW_MODULE_PATH), feature_version=(3, 6))
+
+    def test_dashboard_inspection_workflow_module_parses_as_python36_syntax(self):
+        source = INSPECTION_WORKFLOW_MODULE_PATH.read_text(encoding="utf-8")
+
+        ast.parse(
+            source,
+            filename=str(INSPECTION_WORKFLOW_MODULE_PATH),
+            feature_version=(3, 6),
+        )
 
     def test_dashboard_transformer_module_parses_as_python36_syntax(self):
         source = TRANSFORMER_MODULE_PATH.read_text(encoding="utf-8")

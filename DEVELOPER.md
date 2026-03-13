@@ -12,6 +12,9 @@ Commit message default for this repo:
 ## Repository Scope
 
 - `grafana_utils/dashboard_cli.py`: packaged dashboard export/import utility
+- `grafana_utils/dashboards/export_workflow.py`: Python dashboard export orchestration helper that keeps the CLI-facing export workflow out of `dashboard_cli.py`
+- `grafana_utils/dashboards/inspection_workflow.py`: Python dashboard inspect-live and inspect-export orchestration helper that reuses the existing render/analysis functions through dependency injection
+- `grafana_utils/dashboards/import_workflow.py`: Python dashboard import orchestration helper for dry-run, ensure-folder, and live import flows
 - `grafana_utils/alert_cli.py`: packaged alerting resource export/import utility
 - `grafana_utils/access_cli.py`: packaged access-management utility, currently covering `user list`, `user add`, `user modify`, `user delete`, `team list`, `team add`, `team modify`, and initial service-account commands
 - `rust/src/access.rs`: Rust access-management orchestration entrypoint and shared request helpers
@@ -39,6 +42,7 @@ Commit message default for this repo:
 - `tests/test_python_alert_cli.py`: alerting Python unit tests
 - `tests/test_python_packaging.py`: Python package metadata and console-script tests
 - `Makefile`: shared developer shortcuts for Python wheel builds, Rust release builds, and test runs
+- `.github/workflows/ci.yml`: baseline CI gates for Python tests plus Rust tests/format/lint checks
 - `scripts/build-rust-macos-arm64.sh`: native Apple Silicon Rust release build helper that copies binaries into `dist/macos-arm64/`
 - `scripts/build-rust-linux-amd64.sh`: Docker-based Linux `amd64` Rust build helper for macOS or other non-Linux hosts
 - `scripts/build-rust-linux-amd64-zig.sh`: non-Docker Linux `amd64` Rust build helper using local `zig` and `cargo-zigbuild`
@@ -100,6 +104,7 @@ Commit message default for this repo:
 - `list-data-sources --csv` emits header `uid,name,type,url,isDefault`.
 - `list-data-sources --json` emits an array of objects with keys `uid`, `name`, `type`, `url`, and `isDefault`.
 - The Rust alert implementation is intentionally split by responsibility: `alert_cli_defs.rs` owns clap/auth normalization, `alert_client.rs` owns the Grafana alert provisioning client plus shared response parsing helpers, `alert_list.rs` owns list rendering and list-command dispatch, and `alert.rs` keeps the remaining import/export/diff orchestration plus shared alert document helpers.
+- The Python dashboard implementation is intentionally split by responsibility: `dashboard_cli.py` stays as the stable CLI facade and shared helper host, while `grafana_utils/dashboards/export_workflow.py`, `grafana_utils/dashboards/inspection_workflow.py`, and `grafana_utils/dashboards/import_workflow.py` now own the high-level orchestration bodies for export, inspect-live/inspect-export, and import respectively.
 - The Rust dashboard implementation is intentionally split by responsibility: `dashboard_cli_defs.rs` owns clap/auth/client setup, `dashboard_list.rs` owns list/datasource renderers and org-aware list orchestration, `dashboard_export.rs` owns export pathing and multi-org export orchestration, `dashboard_prompt.rs` owns datasource resolution plus prompt-export template rewrites, and `dashboard.rs` keeps the remaining shared helpers, import, diff, and top-level orchestration flows.
 - The Rust access implementation is intentionally split by responsibility: `access_cli_defs.rs` owns clap/auth/client setup, `access_render.rs` owns output formatting and row normalization, `access_user.rs` owns user flows, `access_team.rs` owns team flows, `access_service_account.rs` owns service-account flows, and `access.rs` keeps shared request wrappers plus top-level dispatch.
 
@@ -110,6 +115,12 @@ Commit message default for this repo:
 - `pyproject.toml` exposes `grafana-utils` as the Python console script.
 - Base installation depends on `requests`.
 - Optional extra `.[http2]` adds `httpx[http2]` for Python 3.8+ environments.
+
+### Quality gates
+
+- `make quality` is the baseline local gate and currently runs Python unit tests, Rust unit tests, `cargo fmt --check`, and `cargo clippy --all-targets -- -D warnings`.
+- `.github/workflows/ci.yml` mirrors that baseline split into a Python test job and a Rust quality job so CLI and module changes hit the same minimum checks before merge.
+- The repo does not yet enforce a dedicated Python formatter or type checker; the current baseline is intentionally limited to checks that already pass reliably in the existing toolchain.
 
 ### Rust cross-build notes
 

@@ -1,5 +1,29 @@
 # ai-changes.md
 
+## 2026-03-13 - Add Basic Quality Gates
+- Summary: Added a baseline CI workflow under `.github/workflows/ci.yml` plus shared local entrypoints in `Makefile` so the repo now has one explicit minimum quality bar instead of relying only on developers remembering ad hoc commands. The baseline gate currently runs Python unit tests plus Rust tests, `cargo fmt --check`, and `cargo clippy --all-targets -- -D warnings`.
+- Tests: Reused the existing Python and Rust automated suites and validated the new gate commands directly through `make quality`.
+- Test Run: `make quality`
+- Validation: Confirmed the new `make quality`, `make fmt-rust-check`, and `make lint-rust` targets work locally and that the checked-in GitHub Actions workflow mirrors the same Python/Rust gate split.
+- Impact: `.github/workflows/ci.yml`, `Makefile`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is additive automation, but future gate changes should stay aligned between `Makefile` and the GitHub Actions workflow so local and CI expectations do not drift.
+
+## 2026-03-13 - Split Rust Dashboard Orchestration Modules
+- Summary: Split the Rust dashboard orchestration further so `rust/src/dashboard.rs` now mainly keeps shared types/helpers and top-level entrypoints while import/diff flows live in `rust/src/dashboard_import.rs` and inspect-export/inspect-live flows live in `rust/src/dashboard_inspect.rs`. The refactor keeps the public `crate::dashboard` API stable through targeted re-exports used by the CLI and tests.
+- Tests: Kept the existing Rust dashboard suite and ensured the refactored module boundaries still satisfy the current test imports and CLI behavior expectations.
+- Test Run: `cargo test dashboard --manifest-path rust/Cargo.toml --quiet`; `make quality`
+- Validation: Verified `rust/src/dashboard.rs` dropped from the prior ~3k-line state to roughly 1287 lines while the Rust dashboard test suite still passes and the repo-level quality gate stays green.
+- Impact: `rust/src/dashboard.rs`, `rust/src/dashboard_import.rs`, `rust/src/dashboard_inspect.rs`, `rust/src/dashboard_rust_tests.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. The refactor is intended to be behavior-preserving, but future Rust dashboard changes need to keep shared helper ownership clear so the split modules do not start re-growing overlapping orchestration logic.
+
+## 2026-03-13 - Split Python Dashboard Orchestration Modules
+- Summary: Split the high-level Python dashboard export, inspect-live/inspect-export, and import orchestration bodies into `grafana_utils/dashboards/export_workflow.py`, `grafana_utils/dashboards/inspection_workflow.py`, and `grafana_utils/dashboards/import_workflow.py`. `grafana_utils/dashboard_cli.py` now acts more clearly as the stable CLI facade and shared-helper host by delegating those workflows through explicit dependency bundles instead of carrying all orchestration inline.
+- Tests: Added Python 3.6 syntax coverage for the new workflow modules and kept the existing dashboard behavior suite exercising the stable `grafana_utils.dashboard_cli` facade entrypoints.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py`
+- Validation: Verified the focused dashboard Python suite still passes after the refactor and that `grafana_utils/dashboard_cli.py` dropped from 3733 lines to 3238 lines while preserving the existing command/test surface.
+- Impact: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/__init__.py`, `grafana_utils/dashboards/export_workflow.py`, `grafana_utils/dashboards/inspection_workflow.py`, `grafana_utils/dashboards/import_workflow.py`, `tests/test_python_dashboard_cli.py`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. The refactor is meant to be behavior-preserving, but future changes need to keep the dependency bundles in `dashboard_cli.py` aligned with the helper modules so the facade continues exposing the same orchestration behavior.
+
 ## 2026-03-13 - Add Dashboard Inspect Live Command
 - Summary: Added a Python `dashboard inspect-live` subcommand that accepts live auth/common args and mirrors the existing inspection output modes as closely as practical, including `--json`, `--table`, `--report[=table|csv|json]`, `--report-columns`, `--report-filter-datasource`, `--report-filter-panel-id`, and `--no-header`. The implementation materializes a temporary raw-export-like layout from live dashboard payloads plus current folder and datasource inventories, then reuses the existing `inspect-export` analysis/rendering pipeline.
 - Tests: Added focused parser/help coverage and a mocked-client behavior test that exercises `inspect-live --report json` end to end through the temporary raw-layout adapter.

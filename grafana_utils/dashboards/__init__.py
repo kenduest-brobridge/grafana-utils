@@ -1,1 +1,1 @@
-"""Dashboard-specific shared helpers."""
+"""Dashboard-specific shared helpers and workflow modules."""

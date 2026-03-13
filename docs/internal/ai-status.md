@@ -1,5 +1,26 @@
 # ai-status.md
 
+## 2026-03-13 - Task: Add Basic Quality Gates
+- State: Done
+- Scope: `.github/workflows/ci.yml`, `Makefile`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The repo had strong unit test coverage, but quality enforcement still depended on developers manually running local commands. There was no checked-in CI workflow and no shared shortcut that grouped the repo's baseline automated gates.
+- Current Update: Added a baseline GitHub Actions workflow with separate Python and Rust jobs, and introduced `make quality`, `make fmt-rust-check`, and `make lint-rust` so local and CI checks use the same entrypoints. The first baseline intentionally stays pragmatic: Python unit tests plus Rust tests, `cargo fmt --check`, and `cargo clippy --all-targets -- -D warnings`.
+- Result: The repo now has a minimum automated quality gate instead of relying only on local discipline, and maintainers have one documented local command that matches the CI baseline. Validation passed with `make quality`.
+
+## 2026-03-13 - Task: Split Rust Dashboard Orchestration Modules
+- State: Done
+- Scope: `rust/src/dashboard.rs`, `rust/src/dashboard_import.rs`, `rust/src/dashboard_inspect.rs`, `rust/src/dashboard_rust_tests.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `rust/src/dashboard.rs` had regrown past 3000 lines and still mixed shared types/helpers with import/diff orchestration plus inspect-export/inspect-live analysis and rendering. The Rust dashboard surface was behaviorally healthy again, but the main module had resumed accumulating too many responsibilities.
+- Current Update: Extracted import and diff orchestration into `rust/src/dashboard_import.rs`, moved inspect-export and inspect-live analysis/rendering into `rust/src/dashboard_inspect.rs`, and kept the `crate::dashboard` API stable through targeted re-exports used by the CLI paths and tests. The remaining `rust/src/dashboard.rs` now focuses more clearly on shared types/helpers plus top-level entrypoints.
+- Result: The Rust dashboard implementation is materially easier to evolve: `rust/src/dashboard.rs` dropped to roughly 1287 lines, while import/diff and inspect/live flows now live in dedicated modules without changing operator-facing behavior. Validation passed with `cargo test dashboard --manifest-path rust/Cargo.toml --quiet` and `make quality`.
+
+## 2026-03-13 - Task: Split Python Dashboard Orchestration Modules
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/__init__.py`, `grafana_utils/dashboards/export_workflow.py`, `grafana_utils/dashboards/inspection_workflow.py`, `grafana_utils/dashboards/import_workflow.py`, `tests/test_python_dashboard_cli.py`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `grafana_utils/dashboard_cli.py` has grown into a 3700+ line module that still mixes CLI parsing, rendering helpers, data-shape helpers, and the high-level export/import/inspect orchestration flows in one file. The Python dashboard path works, but the orchestration layer is harder to change safely than the already-split Rust implementation.
+- Current Update: Extracted the high-level Python dashboard export, import, and inspection workflow bodies into `grafana_utils/dashboards/export_workflow.py`, `grafana_utils/dashboards/import_workflow.py`, and `grafana_utils/dashboards/inspection_workflow.py`. `grafana_utils/dashboard_cli.py` now delegates through explicit dependency bundles so the existing CLI entrypoints, shared helpers, and direct test imports stay stable while the main module shrinks materially.
+- Result: The Python dashboard CLI keeps the same operator-facing behavior, but its top-level module is smaller and future workflow changes can now land in focused orchestration modules instead of growing one file. Validation passed with `python3 -m unittest -v tests/test_python_dashboard_cli.py`.
+
 ## 2026-03-13 - Task: Add Dashboard Inspect Live Command
 - State: Done
 - Scope: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
