@@ -214,6 +214,21 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("raw/ export directory explicitly", help_text)
         self.assertIn("--json", help_text)
         self.assertIn("--table", help_text)
+        self.assertNotIn("Extended examples:", help_text)
+
+    def test_inspect_export_help_full_includes_extended_examples(self):
+        stream = io.StringIO()
+
+        with redirect_stdout(stream):
+            with self.assertRaises(SystemExit):
+                exporter.parse_args(["inspect-export", "--help-full"])
+
+        help_text = stream.getvalue()
+        self.assertIn("raw/ export directory explicitly", help_text)
+        self.assertIn("Extended examples:", help_text)
+        self.assertIn("--report tree-table", help_text)
+        self.assertIn("--report-filter-datasource prom-main", help_text)
+        self.assertIn("--report-columns panel_id,panel_title,datasource,query", help_text)
 
     def test_inspect_live_help_mentions_live_report_flags(self):
         stream = io.StringIO()
@@ -229,6 +244,21 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("tree-table", help_text)
         self.assertIn("tree", help_text)
         self.assertIn("--report-filter-panel-id", help_text)
+        self.assertNotIn("Extended examples:", help_text)
+
+    def test_inspect_live_help_full_includes_extended_examples(self):
+        stream = io.StringIO()
+
+        with redirect_stdout(stream):
+            with self.assertRaises(SystemExit):
+                exporter.parse_args(["inspect-live", "--help-full"])
+
+        help_text = stream.getvalue()
+        self.assertIn("--url", help_text)
+        self.assertIn("Extended examples:", help_text)
+        self.assertIn("--report tree-table", help_text)
+        self.assertIn("--report-filter-panel-id 7", help_text)
+        self.assertIn("--report-columns panel_id,panel_title,datasource,query", help_text)
 
     def test_parse_args_supports_import_mode(self):
         args = exporter.parse_args(["import-dashboard", "--import-dir", "dashboards"])

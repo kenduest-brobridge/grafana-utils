@@ -118,6 +118,50 @@ REPORT_COLUMN_ALIASES = {
 SUPPORTED_REPORT_COLUMN_HEADERS = OrderedDict(
     list(REPORT_COLUMN_HEADERS.items()) + list(OPTIONAL_REPORT_COLUMN_HEADERS.items())
 )
+INSPECT_EXPORT_HELP_FULL_EXAMPLES = (
+    "Extended examples:\n\n"
+    "  Inspect one raw export as the default flat query table:\n"
+    "    grafana-utils inspect-export --import-dir ./dashboards/raw --report\n\n"
+    "  Inspect one raw export as dashboard-first grouped tables:\n"
+    "    grafana-utils inspect-export --import-dir ./dashboards/raw "
+    "--report tree-table\n\n"
+    "  Narrow the report to one datasource and one panel id:\n"
+    "    grafana-utils inspect-export --import-dir ./dashboards/raw "
+    "--report tree-table --report-filter-datasource prom-main "
+    "--report-filter-panel-id 7\n\n"
+    "  Trim the per-query columns for flat or tree-table output:\n"
+    "    grafana-utils inspect-export --import-dir ./dashboards/raw "
+    "--report tree-table --report-columns panel_id,panel_title,datasource,query"
+)
+INSPECT_LIVE_HELP_FULL_EXAMPLES = (
+    "Extended examples:\n\n"
+    "  Inspect live dashboards as the default flat query table:\n"
+    "    grafana-utils inspect-live --url http://localhost:3000 "
+    "--basic-user admin --basic-password admin --report\n\n"
+    "  Inspect live dashboards as dashboard-first grouped tables:\n"
+    "    grafana-utils inspect-live --url http://localhost:3000 "
+    "--basic-user admin --basic-password admin --report tree-table\n\n"
+    "  Narrow live inspection to one datasource and one panel id:\n"
+    "    grafana-utils inspect-live --url http://localhost:3000 "
+    "--basic-user admin --basic-password admin --report tree-table "
+    "--report-filter-datasource prom-main --report-filter-panel-id 7\n\n"
+    "  Trim the per-query columns for flat or tree-table output:\n"
+    "    grafana-utils inspect-live --url http://localhost:3000 "
+    "--basic-user admin --basic-password admin --report tree-table "
+    "--report-columns panel_id,panel_title,datasource,query"
+)
+
+
+class HelpFullAction(argparse.Action):
+    """Print normal help plus a short extended examples section."""
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        parser.print_help()
+        examples = getattr(namespace, "_help_full_examples", "") or ""
+        if examples:
+            print("")
+            print(examples)
+        parser.exit()
 
 
 def add_common_cli_args(parser: argparse.ArgumentParser) -> None:
@@ -403,6 +447,7 @@ def add_diff_cli_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
+    parser.set_defaults(_help_full_examples=INSPECT_EXPORT_HELP_FULL_EXAMPLES)
     parser.add_argument(
         "--import-dir",
         required=True,
@@ -410,6 +455,12 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
             "Inspect dashboards from this raw export directory. "
             f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly."
         ),
+    )
+    parser.add_argument(
+        "--help-full",
+        nargs=0,
+        action=HelpFullAction,
+        help="Show normal help plus extended inspect-export report examples.",
     )
     parser.add_argument(
         "--report",
@@ -477,12 +528,19 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
+    parser.set_defaults(_help_full_examples=INSPECT_LIVE_HELP_FULL_EXAMPLES)
     add_common_cli_args(parser)
     parser.add_argument(
         "--page-size",
         type=int,
         default=DEFAULT_PAGE_SIZE,
         help=f"Dashboard search page size (default: {DEFAULT_PAGE_SIZE}).",
+    )
+    parser.add_argument(
+        "--help-full",
+        nargs=0,
+        action=HelpFullAction,
+        help="Show normal help plus extended inspect-live report examples.",
     )
     parser.add_argument(
         "--report",

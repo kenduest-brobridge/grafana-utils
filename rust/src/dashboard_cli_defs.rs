@@ -328,6 +328,12 @@ pub struct InspectExportArgs {
     #[arg(
         long,
         default_value_t = false,
+        help = "Show extended help with report examples for inspect-export."
+    )]
+    pub help_full: bool,
+    #[arg(
+        long,
+        default_value_t = false,
         help = "Do not print table headers when rendering the table summary or table-like report output."
     )]
     pub no_header: bool,
@@ -393,6 +399,12 @@ pub struct InspectLiveArgs {
         help = "For --report output, include only rows whose panel id exactly matches this value."
     )]
     pub report_filter_panel_id: Option<String>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Show extended help with report examples for inspect-live."
+    )]
+    pub help_full: bool,
     #[arg(
         long,
         default_value_t = false,

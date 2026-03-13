@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-13 - Task: Add Full Inspect Help For Dashboard CLI
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_rust_tests.rs`, `rust/src/bin/grafana-utils.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The dashboard `inspect-export` and `inspect-live` help output stayed concise, but operators had no built-in way to ask either CLI for a richer inspect-specific examples block covering report modes like `tree-table`, filters, and `--report-columns`.
+- Current Update: Added `--help-full` for `inspect-export` and `inspect-live` in both Python and Rust. The new flag prints the normal subcommand help first, then appends a short extended examples section focused on report modes, datasource/panel filters, and column trimming. Normal `-h/--help` remains unchanged.
+- Result: Inspect users can now ask either CLI for richer examples without making standard help noisier. Validation passed with `python3 -m unittest -v tests/test_python_dashboard_cli.py` and `cargo test dashboard --manifest-path rust/Cargo.toml --quiet`.
+
 ## 2026-03-13 - Task: Refine Python Tree-Table Dashboard Inspect Report
 - State: Done
 - Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/inspection_workflow.py`, `tests/test_python_dashboard_cli.py`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

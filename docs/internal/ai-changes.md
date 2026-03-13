@@ -1,5 +1,13 @@
 # ai-changes.md
 
+## 2026-03-13 - Add Full Inspect Help For Dashboard CLI
+- Summary: Added `--help-full` to dashboard `inspect-export` and `inspect-live` in both Python and Rust. The new flag prints the normal concise help followed by a short extended examples section that covers the main report modes, especially `tree-table`, plus datasource/panel filters and `--report-columns`.
+- Tests: Added focused help-behavior tests to confirm normal `-h` stays concise while `--help-full` appends the extended examples block for both inspect subcommands.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py`; `cargo test dashboard --manifest-path rust/Cargo.toml --quiet`
+- Validation: Verified the focused dashboard Python and Rust suites pass and that `--help-full` is limited to the two inspect subcommands without changing other help surfaces.
+- Impact: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_rust_tests.rs`, `rust/src/bin/grafana-utils.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. The change is additive and inspect-only, but future inspect examples should stay short enough that `--help-full` remains useful without becoming another long manual page.
+
 ## 2026-03-13 - Refine Python Tree-Table Dashboard Inspect Report
 - Summary: Added Python support for `--report tree-table` in dashboard `inspect-export` and `inspect-live`, keeping the flat query-record report model as the canonical intermediate form and rendering dashboard-first sections with one query table per dashboard.
 - Tests: Added Python parser/help coverage plus focused `tree-table` rendering tests, including `--report-columns` behavior to confirm custom columns flow through to the per-dashboard tables.

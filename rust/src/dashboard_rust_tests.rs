@@ -572,6 +572,25 @@ fn parse_cli_supports_inspect_export_report_tree_table_flag() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_export_help_full_flag() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--help-full",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert!(inspect_args.help_full);
+            assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_inspect_export_report_columns_and_filter() {
     let args = parse_cli_from([
         "grafana-utils",
@@ -653,13 +672,34 @@ fn parse_cli_supports_inspect_live_report_tree_table_flag() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_live_help_full_flag() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "inspect-live",
+        "--url",
+        "https://grafana.example.com",
+        "--help-full",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectLive(inspect_args) => {
+            assert!(inspect_args.help_full);
+            assert_eq!(inspect_args.common.url, "https://grafana.example.com");
+        }
+        _ => panic!("expected inspect-live command"),
+    }
+}
+
+#[test]
 fn inspect_live_help_mentions_report_and_panel_filter_flags() {
     let help = render_dashboard_subcommand_help("inspect-live");
 
     assert!(help.contains("--report"));
     assert!(help.contains("--report-filter-panel-id"));
+    assert!(help.contains("--help-full"));
     assert!(help.contains("tree"));
     assert!(help.contains("tree-table"));
+    assert!(!help.contains("Extended Examples:"));
 }
 
 #[test]
@@ -672,6 +712,54 @@ fn inspect_export_help_lists_datasource_uid_report_column() {
         .to_string();
 
     assert!(help.contains("datasource_uid"));
+}
+
+#[test]
+fn inspect_export_help_full_includes_extended_examples() {
+    let help = super::render_inspect_export_help_full();
+
+    assert!(help.contains("--help-full"));
+    assert!(help.contains("Extended Examples:"));
+    assert!(help.contains("--report tree-table"));
+    assert!(help.contains("--report-filter-datasource"));
+    assert!(help.contains("--report-columns"));
+}
+
+#[test]
+fn inspect_live_help_full_includes_extended_examples() {
+    let help = super::render_inspect_live_help_full();
+
+    assert!(help.contains("--help-full"));
+    assert!(help.contains("Extended Examples:"));
+    assert!(help.contains("--report tree-table"));
+    assert!(help.contains("--report-filter-panel-id"));
+    assert!(help.contains("--report-columns"));
+}
+
+#[test]
+fn maybe_render_dashboard_help_full_from_os_args_handles_missing_required_args() {
+    let help = super::maybe_render_dashboard_help_full_from_os_args([
+        "grafana-utils",
+        "dashboard",
+        "inspect-export",
+        "--help-full",
+    ])
+    .expect("expected inspect-export full help");
+
+    assert!(help.contains("inspect-export"));
+    assert!(help.contains("Extended Examples:"));
+    assert!(help.contains("--report tree-table"));
+}
+
+#[test]
+fn maybe_render_dashboard_help_full_from_os_args_ignores_other_commands() {
+    let help = super::maybe_render_dashboard_help_full_from_os_args([
+        "grafana-utils",
+        "export",
+        "--help-full",
+    ]);
+
+    assert!(help.is_none());
 }
 
 #[test]
@@ -2918,6 +3006,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_without_report() {
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
+        help_full: false,
         no_header: false,
     };
 
@@ -2937,6 +3026,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_json_report() 
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
+        help_full: false,
         no_header: false,
     };
 
@@ -2956,6 +3046,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_tree_report() 
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
+        help_full: false,
         no_header: false,
     };
 
@@ -2975,6 +3066,7 @@ fn validate_inspect_export_report_args_allows_report_columns_for_tree_table_repo
         report_columns: vec!["panel_id".to_string(), "query".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
+        help_full: false,
         no_header: false,
     };
 
@@ -3142,6 +3234,7 @@ fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: Some("7".to_string()),
+        help_full: false,
         no_header: false,
     };
 
@@ -3164,6 +3257,7 @@ fn inspect_live_dashboards_with_request_reports_live_json_via_temp_raw_export() 
         report_columns: Vec::new(),
         report_filter_datasource: Some("prom-main".to_string()),
         report_filter_panel_id: Some("7".to_string()),
+        help_full: false,
         no_header: false,
     };
 
