@@ -668,22 +668,6 @@ def analyze_query_text(
     query_field: str,
 ) -> Dict[str, List[str]]:
     """Extract conservative datasource-family inspection details."""
-    if datasource_family == "loki":
-        return {"metrics": [], "measurements": [], "buckets": []}
-    if datasource_family in FLUX_DATASOURCE_FAMILIES or looks_like_flux_query(query_text):
-        return {
-            "metrics": extract_flux_pipeline_functions(query_text),
-            "measurements": extract_measurements(query_text),
-            "buckets": extract_buckets(query_text),
-        }
-    if datasource_family in SQL_DATASOURCE_FAMILIES or looks_like_sql_query(
-        query_text, query_field
-    ):
-        return {
-            "metrics": extract_sql_query_shape_hints(query_text),
-            "measurements": extract_sql_source_references(query_text),
-            "buckets": [],
-        }
     metrics = extract_metric_names(query_text)
     if datasource_family == "prometheus":
         metrics = extract_prometheus_metric_names(query_text)

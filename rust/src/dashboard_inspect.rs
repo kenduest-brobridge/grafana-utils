@@ -309,17 +309,6 @@ pub(crate) fn dispatch_query_analysis(context: &QueryExtractionContext<'_>) -> Q
             measurements: extract_query_measurements(context.target, context.query_text),
             buckets: extract_query_buckets(context.target, context.query_text),
         },
-        DATASOURCE_FAMILY_FLUX => QueryAnalysis {
-            metrics: extract_flux_pipeline_functions(context.query_text),
-            measurements: extract_query_measurements(context.target, context.query_text),
-            buckets: extract_query_buckets(context.target, context.query_text),
-        },
-        DATASOURCE_FAMILY_SQL => QueryAnalysis {
-            metrics: extract_sql_query_shape_hints(context.query_text),
-            measurements: extract_sql_source_references(context.query_text),
-            buckets: Vec::new(),
-        },
-        DATASOURCE_FAMILY_LOKI => QueryAnalysis::default(),
         _ => QueryAnalysis {
             metrics: extract_metric_names(context.query_text),
             measurements: extract_query_measurements(context.target, context.query_text),
