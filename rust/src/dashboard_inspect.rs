@@ -462,164 +462,34 @@ pub(crate) fn build_export_inspection_query_report(
         }
     }
 
-    Ok(ExportInspectionQueryReport {
-        import_dir: summary.import_dir.clone(),
-        summary: QueryReportSummary {
-            dashboard_count: summary.dashboard_count,
-            panel_count: summary.panel_count,
-            query_count: summary.query_count,
-            report_row_count: rows.len(),
-        },
-        queries: rows,
-    })
+    Ok(build_query_report(
+        summary.import_dir.clone(),
+        summary.dashboard_count,
+        summary.panel_count,
+        summary.query_count,
+        rows,
+    ))
 }
 
-pub(crate) fn resolve_report_column_ids(selected: &[String]) -> Result<Vec<String>> {
-    if selected.is_empty() {
-        return Ok(DEFAULT_REPORT_COLUMN_IDS
-            .iter()
-            .map(|value| value.to_string())
-            .collect());
-    }
-    let mut result = Vec::new();
-    for value in selected {
-        let normalized = value.trim();
-        if normalized.is_empty() {
-            continue;
-        }
-        if !SUPPORTED_REPORT_COLUMN_IDS.contains(&normalized) {
-            return Err(message(format!(
-                "Unsupported --report-columns value {:?}. Supported columns: {}",
-                normalized,
-                SUPPORTED_REPORT_COLUMN_IDS.join(",")
-            )));
-        }
-        if !result.iter().any(|item| item == normalized) {
-            result.push(normalized.to_string());
-        }
-    }
-    if result.is_empty() {
-        return Err(message(format!(
-            "--report-columns did not include any supported columns. Supported columns: {}",
-            SUPPORTED_REPORT_COLUMN_IDS.join(",")
-        )));
-    }
-    Ok(result)
-}
-
-fn report_column_header(column_id: &str) -> &'static str {
-    match column_id {
-        "dashboard_uid" => "DASHBOARD_UID",
-        "dashboard_title" => "DASHBOARD_TITLE",
-        "folder_path" => "FOLDER_PATH",
-        "panel_id" => "PANEL_ID",
-        "panel_title" => "PANEL_TITLE",
-        "panel_type" => "PANEL_TYPE",
-        "ref_id" => "REF_ID",
-        "datasource" => "DATASOURCE",
-        "datasource_uid" => "DATASOURCE_UID",
-        "query_field" => "QUERY_FIELD",
-        "metrics" => "METRICS",
-        "measurements" => "MEASUREMENTS",
-        "buckets" => "BUCKETS",
-        "query" => "QUERY",
-        _ => unreachable!("unsupported report column header"),
-    }
-}
-
-fn render_query_report_column(row: &ExportInspectionQueryRow, column_id: &str) -> String {
-    match column_id {
-        "dashboard_uid" => row.dashboard_uid.clone(),
-        "dashboard_title" => row.dashboard_title.clone(),
-        "folder_path" => row.folder_path.clone(),
-        "panel_id" => row.panel_id.clone(),
-        "panel_title" => row.panel_title.clone(),
-        "panel_type" => row.panel_type.clone(),
-        "ref_id" => row.ref_id.clone(),
-        "datasource" => row.datasource.clone(),
-        "datasource_uid" => row.datasource_uid.clone(),
-        "query_field" => row.query_field.clone(),
-        "metrics" => row.metrics.join(","),
-        "measurements" => row.measurements.join(","),
-        "buckets" => row.buckets.join(","),
-        "query" => row.query_text.clone(),
-        _ => unreachable!("unsupported report column value"),
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-struct GroupedPanelReport {
-    panel_id: String,
-    panel_title: String,
-    panel_type: String,
-    queries: Vec<ExportInspectionQueryRow>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-struct GroupedDashboardReport {
-    dashboard_uid: String,
-    dashboard_title: String,
-    folder_path: String,
-    panels: Vec<GroupedPanelReport>,
-}
-
-fn build_grouped_query_report(
-    report: &ExportInspectionQueryReport,
-) -> Vec<GroupedDashboardReport> {
-    let mut dashboards = Vec::new();
-    for row in &report.queries {
-        let dashboard_index = dashboards
-            .iter()
-            .position(|item: &GroupedDashboardReport| item.dashboard_uid == row.dashboard_uid)
-            .unwrap_or_else(|| {
-                dashboards.push(GroupedDashboardReport {
-                    dashboard_uid: row.dashboard_uid.clone(),
-                    dashboard_title: row.dashboard_title.clone(),
-                    folder_path: row.folder_path.clone(),
-                    panels: Vec::new(),
-                });
-                dashboards.len() - 1
-            });
-        let panels = &mut dashboards[dashboard_index].panels;
-        let panel_index = panels
-            .iter()
-            .position(|item| {
-                item.panel_id == row.panel_id
-                    && item.panel_title == row.panel_title
-                    && item.panel_type == row.panel_type
-            })
-            .unwrap_or_else(|| {
-                panels.push(GroupedPanelReport {
-                    panel_id: row.panel_id.clone(),
-                    panel_title: row.panel_title.clone(),
-                    panel_type: row.panel_type.clone(),
-                    queries: Vec::new(),
-                });
-                panels.len() - 1
-            });
-        panels[panel_index].queries.push(row.clone());
-    }
-    dashboards
-}
-
-pub(crate) fn render_grouped_query_report(
-    report: &ExportInspectionQueryReport,
-) -> Vec<String> {
-    let grouped = build_grouped_query_report(report);
+pub(crate) fn render_grouped_query_report(report: &ExportInspectionQueryReport) -> Vec<String> {
+    let normalized = normalize_query_report(report);
     let mut lines = Vec::new();
-    lines.push(format!("Export inspection report: {}", report.import_dir));
+    lines.push(format!(
+        "Export inspection report: {}",
+        normalized.import_dir
+    ));
     lines.push(String::new());
     lines.push("# Summary".to_string());
     lines.push(format!(
         "dashboards={} panels={} queries={} rows={}",
-        report.summary.dashboard_count,
-        report.summary.panel_count,
-        report.summary.query_count,
-        report.summary.report_row_count
+        normalized.summary.dashboard_count,
+        normalized.summary.panel_count,
+        normalized.summary.query_count,
+        normalized.summary.report_row_count
     ));
     lines.push(String::new());
     lines.push("# Dashboard tree".to_string());
-    for (index, dashboard) in grouped.into_iter().enumerate() {
+    for (index, dashboard) in normalized.dashboards.into_iter().enumerate() {
         let panel_count = dashboard.panels.len();
         let query_count = dashboard
             .panels
@@ -658,10 +528,7 @@ pub(crate) fn render_grouped_query_report(
                     details.push(format!("metrics={}", query.metrics.join(",")));
                 }
                 if !query.measurements.is_empty() {
-                    details.push(format!(
-                        "measurements={}",
-                        query.measurements.join(",")
-                    ));
+                    details.push(format!("measurements={}", query.measurements.join(",")));
                 }
                 if !query.buckets.is_empty() {
                     details.push(format!("buckets={}", query.buckets.join(",")));
@@ -681,7 +548,7 @@ pub(crate) fn render_grouped_query_table_report(
     column_ids: &[String],
     include_header: bool,
 ) -> Vec<String> {
-    let grouped = build_grouped_query_report(report);
+    let normalized = normalize_query_report(report);
     let headers = column_ids
         .iter()
         .map(|column_id| report_column_header(column_id))
@@ -689,20 +556,20 @@ pub(crate) fn render_grouped_query_table_report(
     let mut lines = Vec::new();
     lines.push(format!(
         "Export inspection tree-table report: {}",
-        report.import_dir
+        normalized.import_dir
     ));
     lines.push(String::new());
     lines.push("# Summary".to_string());
     lines.push(format!(
         "dashboards={} panels={} queries={} rows={}",
-        report.summary.dashboard_count,
-        report.summary.panel_count,
-        report.summary.query_count,
-        report.summary.report_row_count
+        normalized.summary.dashboard_count,
+        normalized.summary.panel_count,
+        normalized.summary.query_count,
+        normalized.summary.report_row_count
     ));
     lines.push(String::new());
     lines.push("# Dashboard sections".to_string());
-    for (index, dashboard) in grouped.into_iter().enumerate() {
+    for (index, dashboard) in normalized.dashboards.into_iter().enumerate() {
         let panel_count = dashboard.panels.len();
         let query_count = dashboard
             .panels
@@ -763,26 +630,7 @@ pub(crate) fn apply_query_report_filters(
             .unwrap_or(true);
         datasource_match && panel_match
     });
-    report.summary.dashboard_count = report
-        .queries
-        .iter()
-        .map(|row| row.dashboard_uid.clone())
-        .collect::<std::collections::BTreeSet<String>>()
-        .len();
-    report.summary.panel_count = report
-        .queries
-        .iter()
-        .map(|row| {
-            (
-                row.dashboard_uid.clone(),
-                row.panel_id.clone(),
-                row.panel_title.clone(),
-            )
-        })
-        .collect::<std::collections::BTreeSet<(String, String, String)>>()
-        .len();
-    report.summary.query_count = report.queries.len();
-    report.summary.report_row_count = report.queries.len();
+    refresh_filtered_query_report_summary(&mut report);
     report
 }
 
@@ -805,10 +653,11 @@ pub(crate) fn validate_inspect_export_report_args(args: &InspectExportArgs) -> R
         }
         return Ok(());
     }
-    if matches!(
-        args.report,
-        Some(InspectExportReportFormat::Json | InspectExportReportFormat::Tree)
-    ) && !args.report_columns.is_empty()
+    if args
+        .report
+        .map(|format| !report_format_supports_columns(format))
+        .unwrap_or(false)
+        && !args.report_columns.is_empty()
     {
         return Err(message(
             "--report-columns is only supported with table, tree-table, or csv --report output.",
@@ -1226,6 +1075,7 @@ fn build_export_inspect_args_from_live(
         report_columns: args.report_columns.clone(),
         report_filter_datasource: args.report_filter_datasource.clone(),
         report_filter_panel_id: args.report_filter_panel_id.clone(),
+        help_full: args.help_full,
         no_header: args.no_header,
     }
 }

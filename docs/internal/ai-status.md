@@ -1,5 +1,26 @@
 # ai-status.md
 
+## 2026-03-13 - Task: Split Dashboard Export Inventory Helpers
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/export_inventory.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_files.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Even after the earlier workflow and inspection splits, the dashboard facades still kept raw-export file discovery, folder/datasource inventory loading, and export metadata validation inline, so both Python and Rust entry modules still mixed low-level filesystem concerns with higher-level orchestration.
+- Current Update: Extracted the remaining Python raw-export helpers into `grafana_utils/dashboards/export_inventory.py`, routed the Python facade through those helpers, and kept the Rust side aligned by moving the matching helper ownership under `rust/src/dashboard_files.rs` behind the existing `dashboard.rs` re-export surface.
+- Result: The Python and Rust dashboard facades now carry less raw-export plumbing, which reduces the chance that future inspect/import changes re-entangle file inventory logic with top-level CLI orchestration. Validation passed with `python3 -m unittest -v tests/test_python_dashboard_cli.py tests/test_python_dashboard_inspection_cli.py tests/test_python_unified_cli.py`, `cargo test dashboard --manifest-path rust/Cargo.toml --quiet`, and `make quality`.
+
+## 2026-03-13 - Task: Split Python Dashboard Inspection Summary Internals
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/inspection_summary.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_dashboard_inspection_cli.py`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: After the inspection report split, `dashboard_cli.py` still kept the higher-level inspection summary document builder and summary/table renderers inline, so the Python inspection surface was still only partially decomposed and the summary-focused tests still lived in the broader dashboard CLI suite.
+- Current Update: Extracted the summary document builder plus summary/table renderers into `grafana_utils/dashboards/inspection_summary.py`, routed `inspect-export` and `inspect-live` through that module using the existing inspection dependency bundle, and moved the summary-specific inspection behavior tests into `tests/test_python_dashboard_inspection_cli.py`.
+- Result: Python dashboard inspection now has a clearer internal boundary between summary inspection and per-query reporting, and `dashboard_cli.py` shrank again without changing operator-facing behavior. Validation passed with `python3 -m unittest -v tests/test_python_dashboard_cli.py tests/test_python_dashboard_inspection_cli.py`.
+
+## 2026-03-13 - Task: Stabilize Dashboard Inspection Report Internals
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/inspection_report.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_dashboard_inspection_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_inspect.rs`, `rust/src/dashboard_inspect_report.rs`, `rust/src/dashboard_rust_tests.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: After the earlier dashboard workflow split, inspection was still the path most likely to re-tangle. Python still mixed report constants/row normalization/rendering into the CLI surface, Rust still kept most inspection report model helpers inside the broader dashboard modules, and the Python inspection-heavy tests were still largely concentrated in the main dashboard CLI test file.
+- Current Update: Centralized the Python inspection report contract in `grafana_utils/dashboards/inspection_report.py`, moved the inspection-heavy Python behavior coverage into `tests/test_python_dashboard_inspection_cli.py`, and split the Rust inspection report model/column contract into `rust/src/dashboard_inspect_report.rs` so both implementations now route flat/tree/tree-table output through a narrower dedicated inspection-report layer.
+- Result: Dashboard inspection behavior stays unchanged for operators, but the canonical inspection model is now much more explicit in both implementations and the Python inspection tests are no longer piled into one giant dashboard CLI file. Validation passed with `python3 -m unittest -v tests/test_python_dashboard_cli.py tests/test_python_dashboard_inspection_cli.py tests/test_python_unified_cli.py`, `cargo test dashboard --manifest-path rust/Cargo.toml --quiet`, and `make quality`.
+
 ## 2026-03-13 - Task: Add Full Inspect Help For Dashboard CLI
 - State: Done
 - Scope: `grafana_utils/dashboard_cli.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_rust_tests.rs`, `rust/src/bin/grafana-utils.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

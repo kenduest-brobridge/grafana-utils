@@ -13,6 +13,9 @@ Commit message default for this repo:
 
 - `grafana_utils/dashboard_cli.py`: packaged dashboard export/import utility
 - `grafana_utils/dashboards/export_workflow.py`: Python dashboard export orchestration helper that keeps the CLI-facing export workflow out of `dashboard_cli.py`
+- `grafana_utils/dashboards/export_inventory.py`: Python dashboard raw-export discovery, inventory loading, and export metadata validation helpers shared by diff/import/inspect paths
+- `grafana_utils/dashboards/inspection_report.py`: Python dashboard inspection report model, column/mode constants, query-row normalization, and flat/grouped report renderers shared by `inspect-export` and `inspect-live`
+- `grafana_utils/dashboards/inspection_summary.py`: Python dashboard inspection summary builder and summary/table renderers for offline and live inspection paths
 - `grafana_utils/dashboards/inspection_workflow.py`: Python dashboard inspect-live and inspect-export orchestration helper that reuses the existing render/analysis functions through dependency injection
 - `grafana_utils/dashboards/import_workflow.py`: Python dashboard import orchestration helper for dry-run, ensure-folder, and live import flows
 - `grafana_utils/alert_cli.py`: packaged alerting resource export/import utility
@@ -29,6 +32,7 @@ Commit message default for this repo:
 - `rust/src/alert_list.rs`: Rust alert list rendering and list-command orchestration
 - `rust/src/dashboard.rs`: Rust dashboard orchestration entrypoint and shared dashboard helpers that are still used across import, diff, and prompt-export flows
 - `rust/src/dashboard_cli_defs.rs`: Rust dashboard CLI arg definitions and auth/client builders
+- `rust/src/dashboard_files.rs`: Rust dashboard raw-export file discovery, inventory loading, and export metadata validation helpers shared by diff/import/inspect paths
 - `rust/src/dashboard_list.rs`: Rust dashboard and datasource list rendering plus multi-org list orchestration
 - `rust/src/dashboard_export.rs`: Rust dashboard export pathing and multi-org export orchestration
 - `rust/src/dashboard_prompt.rs`: Rust dashboard prompt-export datasource resolution and template-rewrite logic
@@ -39,6 +43,7 @@ Commit message default for this repo:
 - `rust/src/bin/grafana-access-utils.rs`: thin Rust compatibility binary for the access-management CLI
 - `pyproject.toml`: build metadata, dependencies, and console-script entrypoints
 - `tests/test_python_dashboard_cli.py`: dashboard Python unit tests
+- `tests/test_python_dashboard_inspection_cli.py`: focused Python inspection summary/report tests kept separate from the broader dashboard CLI suite
 - `tests/test_python_alert_cli.py`: alerting Python unit tests
 - `tests/test_python_packaging.py`: Python package metadata and console-script tests
 - `Makefile`: shared developer shortcuts for Python wheel builds, Rust release builds, and test runs
@@ -104,7 +109,8 @@ Commit message default for this repo:
 - `list-data-sources --csv` emits header `uid,name,type,url,isDefault`.
 - `list-data-sources --json` emits an array of objects with keys `uid`, `name`, `type`, `url`, and `isDefault`.
 - The Rust alert implementation is intentionally split by responsibility: `alert_cli_defs.rs` owns clap/auth normalization, `alert_client.rs` owns the Grafana alert provisioning client plus shared response parsing helpers, `alert_list.rs` owns list rendering and list-command dispatch, and `alert.rs` keeps the remaining import/export/diff orchestration plus shared alert document helpers.
-- The Python dashboard implementation is intentionally split by responsibility: `dashboard_cli.py` stays as the stable CLI facade and shared helper host, while `grafana_utils/dashboards/export_workflow.py`, `grafana_utils/dashboards/inspection_workflow.py`, and `grafana_utils/dashboards/import_workflow.py` now own the high-level orchestration bodies for export, inspect-live/inspect-export, and import respectively.
+- The Python dashboard implementation is intentionally split by responsibility: `dashboard_cli.py` stays as the stable CLI facade and shared helper host, `grafana_utils/dashboards/export_inventory.py` owns raw-export discovery plus inventory/manifest validation helpers, `grafana_utils/dashboards/inspection_summary.py` owns the inspection summary document plus summary/table renderers, `grafana_utils/dashboards/inspection_report.py` owns the explicit per-query report model plus flat/grouped renderers, and `grafana_utils/dashboards/export_workflow.py`, `grafana_utils/dashboards/inspection_workflow.py`, and `grafana_utils/dashboards/import_workflow.py` own the high-level orchestration bodies for export, inspect-live/inspect-export, and import respectively.
+- The Rust dashboard implementation follows the same boundary at a crate-module level: `dashboard.rs` stays as the public facade, `dashboard_files.rs` owns raw-export discovery plus inventory/manifest validation helpers, `dashboard_inspect_report.rs` owns the query-report contract and grouped renderers, and the import/inspect orchestration stays in the dedicated dashboard submodules.
 - The Rust dashboard implementation is intentionally split by responsibility: `dashboard_cli_defs.rs` owns clap/auth/client setup, `dashboard_list.rs` owns list/datasource renderers and org-aware list orchestration, `dashboard_export.rs` owns export pathing and multi-org export orchestration, `dashboard_prompt.rs` owns datasource resolution plus prompt-export template rewrites, and `dashboard.rs` keeps the remaining shared helpers, import, diff, and top-level orchestration flows.
 - The Rust access implementation is intentionally split by responsibility: `access_cli_defs.rs` owns clap/auth/client setup, `access_render.rs` owns output formatting and row normalization, `access_user.rs` owns user flows, `access_team.rs` owns team flows, `access_service_account.rs` owns service-account flows, and `access.rs` keeps shared request wrappers plus top-level dispatch.
 

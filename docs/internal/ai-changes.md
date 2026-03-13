@@ -1,5 +1,29 @@
 # ai-changes.md
 
+## 2026-03-13 - Split Dashboard Export Inventory Helpers
+- Summary: Extracted the remaining dashboard raw-export inventory and manifest helpers into dedicated Python and Rust modules so the main dashboard facades no longer need to own raw file discovery and export metadata validation inline.
+- Tests: Added Python 3.6 syntax coverage for the new `grafana_utils/dashboards/export_inventory.py` module and revalidated the focused Python dashboard suites, the Rust dashboard suite, and the full repo quality gate after routing the facades through the new helper boundary.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py tests/test_python_dashboard_inspection_cli.py tests/test_python_unified_cli.py`; `cargo test dashboard --manifest-path rust/Cargo.toml --quiet`; `make quality`
+- Validation: Verified the extracted Python inventory module stays Python 3.6-parseable, confirmed the Python and Rust dashboard facades still satisfy their existing import/diff/inspect behavior through the narrower helper surfaces, and kept the repo-level quality gate green after the split.
+- Impact: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/export_inventory.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_files.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. The change is intended to be behavior-preserving, but future raw-export helper work should keep `export_inventory.py` and `dashboard_files.rs` as the ownership boundary so file inventory logic does not drift back into the top-level dashboard facades.
+
+## 2026-03-13 - Split Python Dashboard Inspection Summary Internals
+- Summary: Extracted the Python dashboard inspection summary document builder plus the human/table summary renderers into `grafana_utils/dashboards/inspection_summary.py` so `grafana_utils/dashboard_cli.py` no longer has to keep both the summary and per-query inspection layers inline.
+- Tests: Added Python 3.6 syntax coverage for the new summary module and moved the summary-oriented inspect-export behavior tests into `tests/test_python_dashboard_inspection_cli.py` so the broader dashboard CLI suite can stay focused on general CLI behavior.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py tests/test_python_dashboard_inspection_cli.py`
+- Validation: Verified the focused Python dashboard suites still pass and that `inspect-export` summary, JSON, and table output stay unchanged after routing through the new summary module.
+- Impact: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/inspection_summary.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_dashboard_inspection_cli.py`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. The change is intended to be behavior-preserving, but future Python inspection work should keep the summary and report layers separate so `dashboard_cli.py` does not re-accumulate inspection document/rendering logic.
+
+## 2026-03-13 - Stabilize Dashboard Inspection Report Internals
+- Summary: Split the dashboard inspection report layer into explicit Python and Rust modules instead of letting report-model logic drift back into the large CLI/orchestration files. Python now keeps the inspection column/mode contract, query-row normalization, and flat/tree/tree-table renderers under `grafana_utils/dashboards/inspection_report.py`, while Rust now keeps the matching inspection report types and column helpers under `rust/src/dashboard_inspect_report.rs`.
+- Tests: Kept the broader dashboard CLI coverage in `tests/test_python_dashboard_cli.py`, added/kept focused Python inspection behavior coverage in `tests/test_python_dashboard_inspection_cli.py`, added Python 3.6 syntax coverage for the new inspection report module, and preserved the Rust dashboard report/render tests against the split Rust module boundary.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py tests/test_python_dashboard_inspection_cli.py tests/test_python_unified_cli.py`; `cargo test dashboard --manifest-path rust/Cargo.toml --quiet`; `make quality`
+- Validation: Verified the focused dashboard suites still pass after the refactor, confirmed the repo-level quality gate remains green, and fixed the Python inspection report edge cases uncovered while re-running the full gate: mixed-datasource sentinels no longer leak into datasource summaries and the best-effort metric extraction no longer mistakes PromQL label names/values for metric names.
+- Impact: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/inspection_report.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_dashboard_inspection_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_inspect.rs`, `rust/src/dashboard_inspect_report.rs`, `rust/src/dashboard_rust_tests.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. The refactor is intended to be behavior-preserving, but future inspection work should keep treating the extracted inspection-report modules as the single source of truth for row fields, grouped renderers, and report-column contracts so Python/Rust do not drift back toward duplicated ad hoc logic.
+
 ## 2026-03-13 - Add Full Inspect Help For Dashboard CLI
 - Summary: Added `--help-full` to dashboard `inspect-export` and `inspect-live` in both Python and Rust. The new flag prints the normal concise help followed by a short extended examples section that covers the main report modes, especially `tree-table`, plus datasource/panel filters and `--report-columns`.
 - Tests: Added focused help-behavior tests to confirm normal `-h` stays concise while `--help-full` appends the extended examples block for both inspect subcommands.

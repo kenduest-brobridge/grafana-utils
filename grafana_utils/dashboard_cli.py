@@ -35,12 +35,10 @@ import copy
 import csv
 import difflib
 import getpass
-import io
 import json
 import re
 import sys
 import tempfile
-from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -56,7 +54,36 @@ from .dashboards.common import (
     GrafanaError,
 )
 from .dashboards.export_workflow import run_export_dashboards
+from .dashboards.export_inventory import (
+    build_folder_inventory_lookup as build_folder_inventory_lookup_from_export,
+    build_import_dashboard_folder_path as build_import_dashboard_folder_path_from_export,
+    discover_dashboard_files as discover_dashboard_files_from_export,
+    load_datasource_inventory as load_datasource_inventory_from_export,
+    load_export_metadata as load_export_metadata_from_export,
+    load_folder_inventory as load_folder_inventory_from_export,
+    resolve_folder_inventory_record_for_dashboard as resolve_folder_inventory_record_for_dashboard_from_export,
+    validate_export_metadata as validate_export_metadata_from_export,
+)
 from .dashboards.import_workflow import run_import_dashboards
+from .dashboards.inspection_report import (
+    INSPECT_EXPORT_HELP_FULL_EXAMPLES,
+    INSPECT_LIVE_HELP_FULL_EXAMPLES,
+    INSPECT_REPORT_FORMAT_CHOICES,
+    REPORT_COLUMN_ALIASES,
+    build_export_inspection_report_document,
+    build_grouped_export_inspection_report_document,
+    filter_export_inspection_report_document,
+    parse_report_columns,
+    render_export_inspection_grouped_report,
+    render_export_inspection_report_csv,
+    render_export_inspection_report_tables,
+    render_export_inspection_tree_tables,
+)
+from .dashboards.inspection_summary import (
+    build_export_inspection_document as build_export_inspection_document_from_summary,
+    render_export_inspection_summary as render_export_inspection_summary_from_summary,
+    render_export_inspection_tables as render_export_inspection_tables_from_summary,
+)
 from .dashboards.inspection_workflow import (
     materialize_live_inspection_export as run_materialize_live_inspection_export,
 )
@@ -85,71 +112,6 @@ FOLDER_INVENTORY_FILENAME = "folders.json"
 DATASOURCE_INVENTORY_FILENAME = "datasources.json"
 TOOL_SCHEMA_VERSION = 1
 ROOT_INDEX_KIND = "grafana-utils-dashboard-export-index"
-REPORT_COLUMN_HEADERS = OrderedDict(
-    [
-        ("dashboardUid", "DASHBOARD_UID"),
-        ("dashboardTitle", "DASHBOARD_TITLE"),
-        ("folderPath", "FOLDER_PATH"),
-        ("panelId", "PANEL_ID"),
-        ("panelTitle", "PANEL_TITLE"),
-        ("panelType", "PANEL_TYPE"),
-        ("refId", "REF_ID"),
-        ("datasource", "DATASOURCE"),
-        ("queryField", "QUERY_FIELD"),
-        ("metrics", "METRICS"),
-        ("measurements", "MEASUREMENTS"),
-        ("buckets", "BUCKETS"),
-        ("query", "QUERY"),
-        ("file", "FILE"),
-    ]
-)
-OPTIONAL_REPORT_COLUMN_HEADERS = OrderedDict([("datasourceUid", "DATASOURCE_UID")])
-REPORT_COLUMN_ALIASES = {
-    "dashboard_uid": "dashboardUid",
-    "dashboard_title": "dashboardTitle",
-    "folder_path": "folderPath",
-    "panel_id": "panelId",
-    "panel_title": "panelTitle",
-    "panel_type": "panelType",
-    "ref_id": "refId",
-    "query_field": "queryField",
-    "datasource_uid": "datasourceUid",
-}
-SUPPORTED_REPORT_COLUMN_HEADERS = OrderedDict(
-    list(REPORT_COLUMN_HEADERS.items()) + list(OPTIONAL_REPORT_COLUMN_HEADERS.items())
-)
-INSPECT_EXPORT_HELP_FULL_EXAMPLES = (
-    "Extended examples:\n\n"
-    "  Inspect one raw export as the default flat query table:\n"
-    "    grafana-utils inspect-export --import-dir ./dashboards/raw --report\n\n"
-    "  Inspect one raw export as dashboard-first grouped tables:\n"
-    "    grafana-utils inspect-export --import-dir ./dashboards/raw "
-    "--report tree-table\n\n"
-    "  Narrow the report to one datasource and one panel id:\n"
-    "    grafana-utils inspect-export --import-dir ./dashboards/raw "
-    "--report tree-table --report-filter-datasource prom-main "
-    "--report-filter-panel-id 7\n\n"
-    "  Trim the per-query columns for flat or tree-table output:\n"
-    "    grafana-utils inspect-export --import-dir ./dashboards/raw "
-    "--report tree-table --report-columns panel_id,panel_title,datasource,query"
-)
-INSPECT_LIVE_HELP_FULL_EXAMPLES = (
-    "Extended examples:\n\n"
-    "  Inspect live dashboards as the default flat query table:\n"
-    "    grafana-utils inspect-live --url http://localhost:3000 "
-    "--basic-user admin --basic-password admin --report\n\n"
-    "  Inspect live dashboards as dashboard-first grouped tables:\n"
-    "    grafana-utils inspect-live --url http://localhost:3000 "
-    "--basic-user admin --basic-password admin --report tree-table\n\n"
-    "  Narrow live inspection to one datasource and one panel id:\n"
-    "    grafana-utils inspect-live --url http://localhost:3000 "
-    "--basic-user admin --basic-password admin --report tree-table "
-    "--report-filter-datasource prom-main --report-filter-panel-id 7\n\n"
-    "  Trim the per-query columns for flat or tree-table output:\n"
-    "    grafana-utils inspect-live --url http://localhost:3000 "
-    "--basic-user admin --basic-password admin --report tree-table "
-    "--report-columns panel_id,panel_title,datasource,query"
-)
 
 
 class HelpFullAction(argparse.Action):
@@ -466,7 +428,7 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report",
         nargs="?",
         const="table",
-        choices=("table", "json", "csv", "tree", "tree-table"),
+        choices=INSPECT_REPORT_FORMAT_CHOICES,
         default=None,
         help=(
             "Render one full per-query inspection report. "
@@ -546,7 +508,7 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report",
         nargs="?",
         const="table",
-        choices=("table", "csv", "json", "tree", "tree-table"),
+        choices=INSPECT_REPORT_FORMAT_CHOICES,
         default=None,
         help=(
             "Render one full per-query inspection report. "
@@ -835,30 +797,14 @@ def write_json_document(payload: Any, output_path: Path) -> None:
 
 def discover_dashboard_files(import_dir: Path) -> List[Path]:
     """Find dashboard JSON files for import and reject ambiguous combined roots."""
-    if not import_dir.exists():
-        raise GrafanaError(f"Import directory does not exist: {import_dir}")
-    if not import_dir.is_dir():
-        raise GrafanaError(f"Import path is not a directory: {import_dir}")
-    if (import_dir / RAW_EXPORT_SUBDIR).is_dir() and (import_dir / PROMPT_EXPORT_SUBDIR).is_dir():
-        raise GrafanaError(
-            f"Import path {import_dir} looks like the combined export root. "
-            f"Point --import-dir at {import_dir / RAW_EXPORT_SUBDIR}."
-        )
-
-    files = [
-        path
-        for path in sorted(import_dir.rglob("*.json"))
-        if path.name
-        not in {
-            "index.json",
-            EXPORT_METADATA_FILENAME,
-            FOLDER_INVENTORY_FILENAME,
-            DATASOURCE_INVENTORY_FILENAME,
-        }
-    ]
-    if not files:
-        raise GrafanaError(f"No dashboard JSON files found in {import_dir}")
-    return files
+    return discover_dashboard_files_from_export(
+        import_dir,
+        RAW_EXPORT_SUBDIR,
+        PROMPT_EXPORT_SUBDIR,
+        EXPORT_METADATA_FILENAME,
+        FOLDER_INVENTORY_FILENAME,
+        DATASOURCE_INVENTORY_FILENAME,
+    )
 
 
 def load_json_file(path: Path) -> Dict[str, Any]:
@@ -1062,74 +1008,22 @@ def load_folder_inventory(
     import_dir: Path,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, str]]:
-    folders_file = FOLDER_INVENTORY_FILENAME
-    if isinstance(metadata, dict):
-        folders_file = str(metadata.get("foldersFile") or FOLDER_INVENTORY_FILENAME)
-    path = import_dir / folders_file
-    if not path.is_file():
-        return []
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except OSError as exc:
-        raise GrafanaError("Failed to read %s: %s" % (path, exc)) from exc
-    except json.JSONDecodeError as exc:
-        raise GrafanaError("Invalid JSON in %s: %s" % (path, exc)) from exc
-    if not isinstance(raw, list):
-        raise GrafanaError("Folder inventory file must contain a JSON array: %s" % path)
-    records: List[Dict[str, str]] = []
-    for item in raw:
-        if not isinstance(item, dict):
-            raise GrafanaError("Folder inventory entry must be a JSON object: %s" % path)
-        records.append(
-            {
-                "uid": str(item.get("uid") or ""),
-                "title": str(item.get("title") or ""),
-                "parentUid": str(item.get("parentUid") or ""),
-                "path": str(item.get("path") or ""),
-                "org": str(item.get("org") or ""),
-                "orgId": str(item.get("orgId") or ""),
-            }
-        )
-    return records
+    return load_folder_inventory_from_export(
+        import_dir,
+        FOLDER_INVENTORY_FILENAME,
+        metadata=metadata,
+    )
 
 
 def load_datasource_inventory(
     import_dir: Path,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, str]]:
-    datasources_file = DATASOURCE_INVENTORY_FILENAME
-    if isinstance(metadata, dict):
-        datasources_file = str(
-            metadata.get("datasourcesFile") or DATASOURCE_INVENTORY_FILENAME
-        )
-    path = import_dir / datasources_file
-    if not path.is_file():
-        return []
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except OSError as exc:
-        raise GrafanaError("Failed to read %s: %s" % (path, exc)) from exc
-    except json.JSONDecodeError as exc:
-        raise GrafanaError("Invalid JSON in %s: %s" % (path, exc)) from exc
-    if not isinstance(raw, list):
-        raise GrafanaError("Datasource inventory file must contain a JSON array: %s" % path)
-    records: List[Dict[str, str]] = []
-    for item in raw:
-        if not isinstance(item, dict):
-            raise GrafanaError("Datasource inventory entry must be a JSON object: %s" % path)
-        records.append(
-            {
-                "uid": str(item.get("uid") or ""),
-                "name": str(item.get("name") or ""),
-                "type": str(item.get("type") or ""),
-                "access": str(item.get("access") or ""),
-                "url": str(item.get("url") or ""),
-                "isDefault": str(item.get("isDefault") or "false"),
-                "org": str(item.get("org") or ""),
-                "orgId": str(item.get("orgId") or ""),
-            }
-        )
-    return records
+    return load_datasource_inventory_from_export(
+        import_dir,
+        DATASOURCE_INVENTORY_FILENAME,
+        metadata=metadata,
+    )
 
 
 def ensure_folder_inventory(
@@ -1223,18 +1117,11 @@ def resolve_folder_inventory_requirements(
 def build_folder_inventory_lookup(
     folders: List[Dict[str, str]],
 ) -> Dict[str, Dict[str, str]]:
-    lookup: Dict[str, Dict[str, str]] = {}
-    for folder in folders:
-        uid = str(folder.get("uid") or "")
-        if uid:
-            lookup[uid] = dict(folder)
-    return lookup
+    return build_folder_inventory_lookup_from_export(folders)
 
 
 def build_import_dashboard_folder_path(dashboard_file: Path, import_dir: Path) -> str:
-    relative_path = dashboard_file.relative_to(import_dir)
-    parts = list(relative_path.parts[:-1])
-    return " / ".join(parts)
+    return build_import_dashboard_folder_path_from_export(dashboard_file, import_dir)
 
 
 def resolve_folder_inventory_record_for_dashboard(
@@ -1243,39 +1130,14 @@ def resolve_folder_inventory_record_for_dashboard(
     import_dir: Path,
     folder_lookup: Dict[str, Dict[str, str]],
 ) -> Optional[Dict[str, str]]:
-    def build_general_record() -> Dict[str, str]:
-        return {
-            "uid": DEFAULT_FOLDER_UID,
-            "title": DEFAULT_FOLDER_TITLE,
-            "parentUid": "",
-            "path": DEFAULT_FOLDER_TITLE,
-            "builtin": "true",
-        }
-
-    meta = document.get("meta")
-    if isinstance(meta, dict):
-        folder_uid = str(meta.get("folderUid") or "")
-        if folder_uid and folder_uid in folder_lookup:
-            return dict(folder_lookup[folder_uid])
-        if folder_uid == DEFAULT_FOLDER_UID:
-            return build_general_record()
-
-    folder_path = build_import_dashboard_folder_path(dashboard_file, import_dir)
-    if not folder_path:
-        return None
-    if folder_path == DEFAULT_FOLDER_TITLE:
-        return build_general_record()
-    if " / " not in folder_path:
-        title_matches = []
-        for record in folder_lookup.values():
-            if str(record.get("title") or "") == folder_path:
-                title_matches.append(dict(record))
-        if len(title_matches) == 1:
-            return title_matches[0]
-    for record in folder_lookup.values():
-        if str(record.get("path") or "") == folder_path:
-            return dict(record)
-    return None
+    return resolve_folder_inventory_record_for_dashboard_from_export(
+        document,
+        dashboard_file,
+        import_dir,
+        folder_lookup,
+        default_folder_uid=DEFAULT_FOLDER_UID,
+        default_folder_title=DEFAULT_FOLDER_TITLE,
+    )
 
 
 def build_live_folder_inventory_record(
@@ -1480,16 +1342,13 @@ def load_export_metadata(
     expected_variant: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
     """Load the optional export manifest and validate its schema version when present."""
-    metadata_path = import_dir / EXPORT_METADATA_FILENAME
-    if not metadata_path.is_file():
-        return None
-    metadata = load_json_file(metadata_path)
-    validate_export_metadata(
-        metadata,
-        metadata_path=metadata_path,
+    return load_export_metadata_from_export(
+        import_dir,
+        EXPORT_METADATA_FILENAME,
+        ROOT_INDEX_KIND,
+        TOOL_SCHEMA_VERSION,
         expected_variant=expected_variant,
     )
-    return metadata
 
 
 def validate_export_metadata(
@@ -1498,27 +1357,13 @@ def validate_export_metadata(
     expected_variant: Optional[str] = None,
 ) -> None:
     """Reject dashboard export manifests this implementation does not understand."""
-    if metadata.get("kind") != ROOT_INDEX_KIND:
-        raise GrafanaError(
-            f"Unexpected dashboard export manifest kind in {metadata_path}: "
-            f"{metadata.get('kind')!r}"
-        )
-
-    schema_version = metadata.get("schemaVersion")
-    if schema_version != TOOL_SCHEMA_VERSION:
-        raise GrafanaError(
-            f"Unsupported dashboard export schemaVersion {schema_version!r} in "
-            f"{metadata_path}. Expected {TOOL_SCHEMA_VERSION}."
-        )
-
-    if expected_variant is None:
-        return
-    variant = metadata.get("variant")
-    if variant != expected_variant:
-        raise GrafanaError(
-            f"Dashboard export manifest {metadata_path} describes variant {variant!r}. "
-            f"Point this command at the {expected_variant}/ directory."
-        )
+    validate_export_metadata_from_export(
+        metadata,
+        metadata_path,
+        ROOT_INDEX_KIND,
+        TOOL_SCHEMA_VERSION,
+        expected_variant=expected_variant,
+    )
 
 
 def build_compare_document(
@@ -2354,322 +2199,6 @@ def iter_dashboard_panels(panels: Any) -> List[Dict[str, Any]]:
     return flattened
 
 
-def describe_export_datasource_ref(ref: Any) -> Optional[str]:
-    """Convert one raw-export datasource ref into a readable usage label."""
-    if ref is None or is_builtin_datasource_ref(ref):
-        return None
-    if isinstance(ref, str):
-        return ref
-    if isinstance(ref, dict):
-        for key in ("name", "uid", "type"):
-            value = ref.get(key)
-            if isinstance(value, str) and value:
-                return value
-    return None
-
-
-def summarize_datasource_inventory_usage(
-    datasource: Dict[str, str],
-    usage_by_label: Dict[str, Dict[str, Any]],
-) -> Dict[str, int]:
-    labels = []
-    uid = str(datasource.get("uid") or "").strip()
-    name = str(datasource.get("name") or "").strip()
-    if uid:
-        labels.append(uid)
-    if name and name not in labels:
-        labels.append(name)
-    reference_count = 0
-    dashboards = set()
-    for label in labels:
-        usage = usage_by_label.get(label) or {}
-        reference_count += int(usage.get("referenceCount") or 0)
-        dashboards.update(usage.get("dashboards") or set())
-    return {
-        "referenceCount": reference_count,
-        "dashboardCount": len(dashboards),
-    }
-
-
-def extract_string_values(value: Any) -> List[str]:
-    values = []
-    if isinstance(value, str):
-        normalized = value.strip()
-        if normalized:
-            values.append(normalized)
-    elif isinstance(value, list):
-        for item in value:
-            values.extend(extract_string_values(item))
-    elif isinstance(value, dict):
-        for item in value.values():
-            values.extend(extract_string_values(item))
-    return values
-
-
-def unique_strings(values: List[str]) -> List[str]:
-    result = []
-    seen = set()
-    for value in values:
-        normalized = str(value).strip()
-        if not normalized or normalized in seen:
-            continue
-        seen.add(normalized)
-        result.append(normalized)
-    return result
-
-
-def describe_panel_datasource(panel: Dict[str, Any], target: Dict[str, Any]) -> str:
-    for ref in (target.get("datasource"), panel.get("datasource")):
-        label = describe_export_datasource_ref(ref)
-        if label:
-            return label
-    return ""
-
-
-def describe_panel_datasource_uid(panel: Dict[str, Any], target: Dict[str, Any]) -> str:
-    for ref in (target.get("datasource"), panel.get("datasource")):
-        if isinstance(ref, dict):
-            value = ref.get("uid")
-            if isinstance(value, str) and value.strip():
-                return value.strip()
-        elif isinstance(ref, str):
-            value = ref.strip()
-            if value and not is_builtin_datasource_ref(value):
-                return value
-    return ""
-
-
-def build_query_field_and_text(target: Dict[str, Any]) -> Tuple[str, str]:
-    for key in (
-        "expr",
-        "expression",
-        "query",
-        "rawSql",
-        "rawQuery",
-        "sql",
-        "queryText",
-        "jql",
-    ):
-        value = target.get(key)
-        if isinstance(value, str) and value.strip():
-            return key, value.strip()
-    return "", ""
-
-
-def extract_metric_names(query_text: str) -> List[str]:
-    names = []
-    names.extend(
-        re.findall(r'__name__\s*=~?\s*"([^"]+)"', query_text)
-    )
-    scrubbed = re.sub(r'"[^"]*"', '""', query_text)
-    for token in re.findall(r"\b([A-Za-z_:][A-Za-z0-9_:]*)\b", scrubbed):
-        if token in {
-            "and",
-            "bool",
-            "by",
-            "group_left",
-            "group_right",
-            "ignoring",
-            "offset",
-            "on",
-            "or",
-            "unless",
-            "without",
-        }:
-            continue
-        if re.search(r"\b%s\s*=~?" % re.escape(token), scrubbed):
-            continue
-        if re.search(r"\b%s\s*\(" % re.escape(token), query_text):
-            continue
-        names.append(token)
-    return unique_strings(names)
-
-
-def extract_measurements(query_text: str, target: Dict[str, Any]) -> List[str]:
-    measurements = []
-    for key in ("measurement", "measurementName"):
-        value = target.get(key)
-        if isinstance(value, str) and value.strip():
-            measurements.append(value.strip())
-    measurements.extend(
-        re.findall(r'FROM\s+"?([A-Za-z0-9_.:-]+)"?', query_text, flags=re.IGNORECASE)
-    )
-    measurements.extend(
-        re.findall(r'_measurement\s*==\s*"([^"]+)"', query_text)
-    )
-    return unique_strings(measurements)
-
-
-def extract_buckets(query_text: str, target: Dict[str, Any]) -> List[str]:
-    buckets = []
-    buckets.extend(
-        re.findall(r'from\s*\(\s*bucket\s*:\s*"([^"]+)"', query_text, flags=re.IGNORECASE)
-    )
-    buckets.extend(extract_string_values(target.get("bucketAggs")))
-    return unique_strings(buckets)
-
-
-def build_query_report_record(
-    dashboard: Dict[str, Any],
-    folder_path: str,
-    panel: Dict[str, Any],
-    target: Dict[str, Any],
-    dashboard_file: Path,
-) -> Dict[str, Any]:
-    query_field, query_text = build_query_field_and_text(target)
-    metrics = extract_metric_names(query_text)
-    measurements = extract_measurements(query_text, target)
-    buckets = extract_buckets(query_text, target)
-    return {
-        "dashboardUid": str(dashboard.get("uid") or DEFAULT_UNKNOWN_UID),
-        "dashboardTitle": str(dashboard.get("title") or DEFAULT_DASHBOARD_TITLE),
-        "folderPath": folder_path,
-        "panelId": str(panel.get("id") or ""),
-        "panelTitle": str(panel.get("title") or ""),
-        "panelType": str(panel.get("type") or ""),
-        "refId": str(target.get("refId") or ""),
-        "datasourceUid": describe_panel_datasource_uid(panel, target),
-        "datasource": describe_panel_datasource(panel, target),
-        "queryField": query_field,
-        "query": query_text,
-        "metrics": metrics,
-        "measurements": measurements,
-        "buckets": buckets,
-        "file": str(dashboard_file),
-    }
-
-
-def build_export_inspection_report_document(import_dir: Path) -> Dict[str, Any]:
-    """Analyze one raw export directory and emit one per-query inspection record."""
-    metadata = load_export_metadata(import_dir, expected_variant=RAW_EXPORT_SUBDIR)
-    dashboard_files = discover_dashboard_files(import_dir)
-    folder_inventory = load_folder_inventory(import_dir, metadata)
-    folder_lookup = build_folder_inventory_lookup(folder_inventory)
-    records = []
-
-    for dashboard_file in dashboard_files:
-        document = load_json_file(dashboard_file)
-        dashboard = extract_dashboard_object(
-            document, "Dashboard payload must be a JSON object."
-        )
-        folder_record = resolve_folder_inventory_record_for_dashboard(
-            document,
-            dashboard_file,
-            import_dir,
-            folder_lookup,
-        )
-        folder_path = str(
-            (folder_record or {}).get("path")
-            or (folder_record or {}).get("title")
-            or DEFAULT_FOLDER_TITLE
-        ).strip() or DEFAULT_FOLDER_TITLE
-        for panel in iter_dashboard_panels(dashboard.get("panels")):
-            targets = panel.get("targets")
-            if not isinstance(targets, list):
-                continue
-            for target in targets:
-                if not isinstance(target, dict):
-                    continue
-                records.append(
-                    build_query_report_record(
-                        dashboard,
-                        folder_path,
-                        panel,
-                        target,
-                        dashboard_file,
-                    )
-                )
-
-    records.sort(
-        key=lambda item: (
-            item["folderPath"],
-            item["dashboardTitle"],
-            item["dashboardUid"],
-            item["panelId"],
-            item["refId"],
-        )
-    )
-    return {
-        "summary": {
-            "dashboardCount": len(
-                set(record["dashboardUid"] for record in records)
-            ),
-            "queryRecordCount": len(records),
-        },
-        "queries": records,
-    }
-
-
-def parse_report_columns(value: Optional[str]) -> Optional[List[str]]:
-    if value is None:
-        return None
-    columns = []
-    for item in value.split(","):
-        column = item.strip()
-        if column:
-            columns.append(REPORT_COLUMN_ALIASES.get(column, column))
-    if not columns:
-        raise GrafanaError(
-            "--report-columns requires one or more comma-separated column ids."
-        )
-    unknown = [
-        column for column in columns if column not in SUPPORTED_REPORT_COLUMN_HEADERS
-    ]
-    if unknown:
-        raise GrafanaError(
-            "Unsupported report column(s): %s. Supported values: %s."
-            % (
-                ", ".join(unknown),
-                ", ".join(
-                    list(REPORT_COLUMN_ALIASES.keys())
-                    + [
-                        "datasourceUid",
-                        "datasource",
-                        "metrics",
-                        "measurements",
-                        "buckets",
-                        "query",
-                        "file",
-                    ]
-                ),
-            )
-        )
-    return columns
-
-
-def filter_export_inspection_report_document(
-    document: Dict[str, Any],
-    datasource_label: Optional[str] = None,
-    panel_id: Optional[str] = None,
-) -> Dict[str, Any]:
-    if not datasource_label and not panel_id:
-        return document
-    filtered_records = [
-        dict(record)
-        for record in list(document.get("queries") or [])
-        if (
-            (not datasource_label or str(record.get("datasource") or "") == datasource_label)
-            and (not panel_id or str(record.get("panelId") or "") == panel_id)
-        )
-    ]
-    return {
-        "summary": {
-            "dashboardCount": len(
-                set(str(record.get("dashboardUid") or "") for record in filtered_records)
-            ),
-            "queryRecordCount": len(filtered_records),
-        },
-        "queries": filtered_records,
-    }
-
-
-def format_report_column_value(record: Dict[str, Any], column_id: str) -> str:
-    value = record.get(column_id)
-    if isinstance(value, list):
-        return ",".join(str(item) for item in value)
-    return str(value or "")
-
-
 def _build_inspection_workflow_deps() -> Dict[str, Any]:
     return {
         "GrafanaError": GrafanaError,
@@ -2679,11 +2208,46 @@ def _build_inspection_workflow_deps() -> Dict[str, Any]:
         "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
         "attach_dashboard_org": attach_dashboard_org,
         "build_client": build_client,
+        "build_datasource_catalog": build_datasource_catalog,
         "build_dashboard_index_item": build_dashboard_index_item,
         "build_datasource_inventory_record": build_datasource_inventory_record,
-        "build_export_inspection_document": build_export_inspection_document,
+        "build_export_inspection_document": (
+            lambda import_dir: build_export_inspection_document_from_summary(
+                import_dir,
+                {
+                    "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
+                    "build_datasource_catalog": build_datasource_catalog,
+                    "build_folder_inventory_lookup": build_folder_inventory_lookup,
+                    "collect_datasource_refs": collect_datasource_refs,
+                    "discover_dashboard_files": discover_dashboard_files,
+                    "extract_dashboard_object": extract_dashboard_object,
+                    "iter_dashboard_panels": iter_dashboard_panels,
+                    "load_datasource_inventory": load_datasource_inventory,
+                    "load_export_metadata": load_export_metadata,
+                    "load_folder_inventory": load_folder_inventory,
+                    "load_json_file": load_json_file,
+                    "resolve_folder_inventory_record_for_dashboard": resolve_folder_inventory_record_for_dashboard,
+                },
+            )
+        ),
         "build_grouped_export_inspection_report_document": build_grouped_export_inspection_report_document,
-        "build_export_inspection_report_document": build_export_inspection_report_document,
+        "build_export_inspection_report_document": (
+            lambda import_dir: build_export_inspection_report_document(
+                import_dir,
+                {
+                    "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
+                    "build_folder_inventory_lookup": build_folder_inventory_lookup,
+                    "discover_dashboard_files": discover_dashboard_files,
+                    "extract_dashboard_object": extract_dashboard_object,
+                    "iter_dashboard_panels": iter_dashboard_panels,
+                    "load_datasource_inventory": load_datasource_inventory,
+                    "load_export_metadata": load_export_metadata,
+                    "load_folder_inventory": load_folder_inventory,
+                    "load_json_file": load_json_file,
+                    "resolve_folder_inventory_record_for_dashboard": resolve_folder_inventory_record_for_dashboard,
+                },
+            )
+        ),
         "build_export_metadata": build_export_metadata,
         "build_output_path": build_output_path,
         "build_preserved_web_import_document": build_preserved_web_import_document,
@@ -2696,9 +2260,9 @@ def _build_inspection_workflow_deps() -> Dict[str, Any]:
         "render_export_inspection_grouped_report": render_export_inspection_grouped_report,
         "render_export_inspection_report_csv": render_export_inspection_report_csv,
         "render_export_inspection_report_tables": render_export_inspection_report_tables,
-        "render_export_inspection_summary": render_export_inspection_summary,
+        "render_export_inspection_summary": render_export_inspection_summary_from_summary,
         "render_export_inspection_tree_tables": render_export_inspection_tree_tables,
-        "render_export_inspection_tables": render_export_inspection_tables,
+        "render_export_inspection_tables": render_export_inspection_tables_from_summary,
         "sys": sys,
         "tempfile": tempfile,
         "write_dashboard": write_dashboard,
@@ -2725,675 +2289,6 @@ def inspect_live(args: argparse.Namespace) -> int:
     return run_inspect_live(args, _build_inspection_workflow_deps())
 
 
-def render_export_inspection_report_csv(
-    document: Dict[str, Any],
-    selected_columns: Optional[List[str]] = None,
-    include_header: bool = True,
-) -> str:
-    """Render one full per-query inspection report as CSV."""
-    selected_columns = list(selected_columns or REPORT_COLUMN_HEADERS.keys())
-    rows = []
-    if include_header:
-        rows.append(
-            [
-                REPORT_COLUMN_ALIASES.get(
-                    column_id,
-                    re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", column_id).lower(),
-                )
-                for column_id in selected_columns
-            ]
-        )
-    for record in list(document.get("queries") or []):
-        rows.append(
-            [
-                format_report_column_value(record, column_id)
-                for column_id in selected_columns
-            ]
-        )
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerows(rows)
-    return output.getvalue()
-
-
-def build_export_inspection_document(import_dir: Path) -> Dict[str, Any]:
-    """Analyze one raw export directory and summarize dashboard structure."""
-    metadata = load_export_metadata(import_dir, expected_variant=RAW_EXPORT_SUBDIR)
-    dashboard_files = discover_dashboard_files(import_dir)
-    folder_inventory = load_folder_inventory(import_dir, metadata)
-    datasource_inventory = load_datasource_inventory(import_dir, metadata)
-    folder_lookup = build_folder_inventory_lookup(folder_inventory)
-    folder_paths = OrderedDict()
-    datasource_usage: Dict[str, Dict[str, Any]] = {}
-    dashboards = []
-    total_panels = 0
-    total_queries = 0
-    mixed_dashboards = []
-
-    for folder in sorted(folder_inventory, key=lambda item: str(item.get("path") or "")):
-        path = str(folder.get("path") or str(folder.get("title") or "")).strip()
-        if path:
-            folder_paths[path] = 0
-
-    for dashboard_file in dashboard_files:
-        document = load_json_file(dashboard_file)
-        dashboard = extract_dashboard_object(
-            document, "Dashboard payload must be a JSON object."
-        )
-        folder_record = resolve_folder_inventory_record_for_dashboard(
-            document,
-            dashboard_file,
-            import_dir,
-            folder_lookup,
-        )
-        folder_path = str(
-            folder_record.get("path")
-            or folder_record.get("title")
-            or DEFAULT_FOLDER_TITLE
-        ).strip() or DEFAULT_FOLDER_TITLE
-        folder_paths[folder_path] = int(folder_paths.get(folder_path) or 0) + 1
-
-        panels = iter_dashboard_panels(dashboard.get("panels"))
-        panel_count = len(panels)
-        query_count = 0
-        datasource_refs = []
-        collect_datasource_refs(dashboard, datasource_refs)
-        datasource_labels = []
-        for ref in datasource_refs:
-            label = describe_export_datasource_ref(ref)
-            if label:
-                datasource_labels.append(label)
-        unique_datasources = sorted(set(datasource_labels))
-        is_mixed = False
-        for panel in panels:
-            targets = panel.get("targets")
-            if isinstance(targets, list):
-                query_count += len([target for target in targets if isinstance(target, dict)])
-            panel_datasource = panel.get("datasource")
-            if isinstance(panel_datasource, dict) and str(panel_datasource.get("uid") or "") == "-- Mixed --":
-                is_mixed = True
-        if len(unique_datasources) > 1:
-            is_mixed = True
-
-        for label in datasource_labels:
-            usage = datasource_usage.setdefault(
-                label,
-                {"name": label, "referenceCount": 0, "dashboards": set()},
-            )
-            usage["referenceCount"] = int(usage.get("referenceCount") or 0) + 1
-            usage["dashboards"].add(str(dashboard.get("uid") or DEFAULT_UNKNOWN_UID))
-
-        total_panels += panel_count
-        total_queries += query_count
-        dashboard_record = {
-            "uid": str(dashboard.get("uid") or DEFAULT_UNKNOWN_UID),
-            "title": str(dashboard.get("title") or DEFAULT_DASHBOARD_TITLE),
-            "folderPath": folder_path,
-            "panelCount": panel_count,
-            "queryCount": query_count,
-            "datasources": unique_datasources,
-            "mixedDatasource": is_mixed,
-            "file": str(dashboard_file),
-        }
-        dashboards.append(dashboard_record)
-        if is_mixed:
-            mixed_dashboards.append(
-                {
-                    "uid": dashboard_record["uid"],
-                    "title": dashboard_record["title"],
-                    "folderPath": folder_path,
-                    "datasources": unique_datasources,
-                }
-            )
-
-    datasource_records = []
-    for label in sorted(datasource_usage):
-        usage = datasource_usage[label]
-        datasource_records.append(
-            {
-                "name": label,
-                "referenceCount": int(usage.get("referenceCount") or 0),
-                "dashboardCount": len(usage.get("dashboards") or []),
-            }
-        )
-
-    datasource_inventory_records = []
-    for datasource in sorted(
-        datasource_inventory,
-        key=lambda item: (
-            str(item.get("orgId") or ""),
-            str(item.get("name") or ""),
-            str(item.get("uid") or ""),
-        ),
-    ):
-        usage = summarize_datasource_inventory_usage(datasource, datasource_usage)
-        datasource_inventory_records.append(
-            {
-                "uid": str(datasource.get("uid") or ""),
-                "name": str(datasource.get("name") or ""),
-                "type": str(datasource.get("type") or ""),
-                "access": str(datasource.get("access") or ""),
-                "url": str(datasource.get("url") or ""),
-                "isDefault": str(datasource.get("isDefault") or "false"),
-                "org": str(datasource.get("org") or ""),
-                "orgId": str(datasource.get("orgId") or ""),
-                "referenceCount": usage["referenceCount"],
-                "dashboardCount": usage["dashboardCount"],
-            }
-        )
-
-    folder_records = [
-        {"path": path, "dashboardCount": count}
-        for path, count in folder_paths.items()
-    ]
-    dashboards.sort(key=lambda item: (item["folderPath"], item["title"], item["uid"]))
-    mixed_dashboards.sort(key=lambda item: (item["folderPath"], item["title"], item["uid"]))
-    return {
-        "summary": {
-            "dashboardCount": len(dashboards),
-            "folderCount": len(folder_records),
-            "panelCount": total_panels,
-            "queryCount": total_queries,
-            "mixedDatasourceDashboardCount": len(mixed_dashboards),
-            "datasourceInventoryCount": len(datasource_inventory_records),
-        },
-        "folders": folder_records,
-        "datasources": datasource_records,
-        "datasourceInventory": datasource_inventory_records,
-        "mixedDatasourceDashboards": mixed_dashboards,
-        "dashboards": dashboards,
-    }
-
-
-def render_export_inspection_summary(document: Dict[str, Any], import_dir: Path) -> List[str]:
-    """Render a compact human-readable export inspection summary."""
-    summary = document.get("summary") or {}
-    folder_records = list(document.get("folders") or [])
-    datasource_records = list(document.get("datasources") or [])
-    datasource_inventory = list(document.get("datasourceInventory") or [])
-    mixed_dashboards = list(document.get("mixedDatasourceDashboards") or [])
-    lines = [
-        "Export inspection: %s" % import_dir,
-        "Dashboards: %s" % int(summary.get("dashboardCount") or 0),
-        "Folders: %s" % int(summary.get("folderCount") or 0),
-        "Panels: %s" % int(summary.get("panelCount") or 0),
-        "Queries: %s" % int(summary.get("queryCount") or 0),
-        "Datasource inventory: %s"
-        % int(summary.get("datasourceInventoryCount") or 0),
-        "Mixed datasource dashboards: %s"
-        % int(summary.get("mixedDatasourceDashboardCount") or 0),
-    ]
-    if folder_records:
-        lines.append("")
-        lines.append("Folder paths:")
-        for record in folder_records:
-            lines.append(
-                "- %s (%s dashboards)"
-                % (
-                    str(record.get("path") or DEFAULT_FOLDER_TITLE),
-                    int(record.get("dashboardCount") or 0),
-                )
-            )
-    if datasource_records:
-        lines.append("")
-        lines.append("Datasource usage:")
-        for record in datasource_records:
-            lines.append(
-                "- %s (%s refs across %s dashboards)"
-                % (
-                    str(record.get("name") or ""),
-                    int(record.get("referenceCount") or 0),
-                    int(record.get("dashboardCount") or 0),
-                )
-            )
-    if datasource_inventory:
-        lines.append("")
-        lines.append("Datasource inventory:")
-        for record in datasource_inventory:
-            lines.append(
-                "- [%s] %s uid=%s type=%s access=%s url=%s isDefault=%s refs=%s dashboards=%s"
-                % (
-                    str(record.get("orgId") or ""),
-                    str(record.get("name") or ""),
-                    str(record.get("uid") or ""),
-                    str(record.get("type") or ""),
-                    str(record.get("access") or ""),
-                    str(record.get("url") or ""),
-                    str(record.get("isDefault") or "false"),
-                    int(record.get("referenceCount") or 0),
-                    int(record.get("dashboardCount") or 0),
-                )
-            )
-    if mixed_dashboards:
-        lines.append("")
-        lines.append("Mixed datasource dashboards:")
-        for record in mixed_dashboards:
-            lines.append(
-                "- %s (%s) path=%s datasources=%s"
-                % (
-                    str(record.get("title") or ""),
-                    str(record.get("uid") or ""),
-                    str(record.get("folderPath") or DEFAULT_FOLDER_TITLE),
-                    ",".join(record.get("datasources") or []),
-                )
-            )
-    return lines
-
-
-def render_export_inspection_table_section(
-    headers: List[str],
-    rows: List[List[str]],
-    include_header: bool = True,
-) -> List[str]:
-    """Render one simple left-aligned table section."""
-    widths = [len(header) for header in headers]
-    for row in rows:
-        for index, value in enumerate(row):
-            widths[index] = max(widths[index], len(value))
-
-    def format_row(values: List[str]) -> str:
-        return "  ".join(
-            value.ljust(widths[index]) for index, value in enumerate(values)
-        )
-
-    lines = []
-    if include_header:
-        lines.append(format_row(headers))
-        lines.append(format_row(["-" * width for width in widths]))
-    lines.extend(format_row(row) for row in rows)
-    return lines
-
-
-def render_export_inspection_tables(
-    document: Dict[str, Any],
-    import_dir: Path,
-    include_header: bool = True,
-) -> List[str]:
-    """Render export inspection as multiple compact table sections."""
-    summary = document.get("summary") or {}
-    folder_records = list(document.get("folders") or [])
-    datasource_records = list(document.get("datasources") or [])
-    datasource_inventory = list(document.get("datasourceInventory") or [])
-    mixed_dashboards = list(document.get("mixedDatasourceDashboards") or [])
-    lines = ["Export inspection: %s" % import_dir, ""]
-
-    lines.append("# Summary")
-    lines.extend(
-        render_export_inspection_table_section(
-            ["METRIC", "VALUE"],
-            [
-                ["dashboard_count", str(int(summary.get("dashboardCount") or 0))],
-                ["folder_count", str(int(summary.get("folderCount") or 0))],
-                ["panel_count", str(int(summary.get("panelCount") or 0))],
-                ["query_count", str(int(summary.get("queryCount") or 0))],
-                [
-                    "datasource_inventory_count",
-                    str(int(summary.get("datasourceInventoryCount") or 0)),
-                ],
-                [
-                    "mixed_datasource_dashboard_count",
-                    str(int(summary.get("mixedDatasourceDashboardCount") or 0)),
-                ],
-            ],
-            include_header=include_header,
-        )
-    )
-
-    if folder_records:
-        lines.append("")
-        lines.append("# Folder paths")
-        lines.extend(
-            render_export_inspection_table_section(
-                ["FOLDER_PATH", "DASHBOARDS"],
-                [
-                    [
-                        str(record.get("path") or DEFAULT_FOLDER_TITLE),
-                        str(int(record.get("dashboardCount") or 0)),
-                    ]
-                    for record in folder_records
-                ],
-                include_header=include_header,
-            )
-        )
-
-    if datasource_records:
-        lines.append("")
-        lines.append("# Datasource usage")
-        lines.extend(
-            render_export_inspection_table_section(
-                ["DATASOURCE", "REFS", "DASHBOARDS"],
-                [
-                    [
-                        str(record.get("name") or ""),
-                        str(int(record.get("referenceCount") or 0)),
-                        str(int(record.get("dashboardCount") or 0)),
-                    ]
-                    for record in datasource_records
-                ],
-                include_header=include_header,
-            )
-        )
-
-    if datasource_inventory:
-        lines.append("")
-        lines.append("# Datasource inventory")
-        lines.extend(
-            render_export_inspection_table_section(
-                [
-                    "ORG_ID",
-                    "UID",
-                    "NAME",
-                    "TYPE",
-                    "ACCESS",
-                    "URL",
-                    "IS_DEFAULT",
-                    "REFS",
-                    "DASHBOARDS",
-                ],
-                [
-                    [
-                        str(record.get("orgId") or ""),
-                        str(record.get("uid") or ""),
-                        str(record.get("name") or ""),
-                        str(record.get("type") or ""),
-                        str(record.get("access") or ""),
-                        str(record.get("url") or ""),
-                        str(record.get("isDefault") or "false"),
-                        str(int(record.get("referenceCount") or 0)),
-                        str(int(record.get("dashboardCount") or 0)),
-                    ]
-                    for record in datasource_inventory
-                ],
-                include_header=include_header,
-            )
-        )
-
-    if mixed_dashboards:
-        lines.append("")
-        lines.append("# Mixed datasource dashboards")
-        lines.extend(
-            render_export_inspection_table_section(
-                ["UID", "TITLE", "FOLDER_PATH", "DATASOURCES"],
-                [
-                    [
-                        str(record.get("uid") or ""),
-                        str(record.get("title") or ""),
-                        str(record.get("folderPath") or DEFAULT_FOLDER_TITLE),
-                        ",".join(record.get("datasources") or []),
-                    ]
-                    for record in mixed_dashboards
-                ],
-                include_header=include_header,
-            )
-        )
-    return lines
-
-
-def render_export_inspection_report_tables(
-    document: Dict[str, Any],
-    import_dir: Path,
-    include_header: bool = True,
-    selected_columns: Optional[List[str]] = None,
-) -> List[str]:
-    """Render one full per-query inspection report as a table."""
-    summary = document.get("summary") or {}
-    query_records = list(document.get("queries") or [])
-    selected_columns = list(selected_columns or REPORT_COLUMN_HEADERS.keys())
-    lines = ["Export inspection report: %s" % import_dir, ""]
-
-    lines.append("# Summary")
-    lines.extend(
-        render_export_inspection_table_section(
-            ["METRIC", "VALUE"],
-            [
-                ["dashboard_count", str(int(summary.get("dashboardCount") or 0))],
-                ["query_record_count", str(int(summary.get("queryRecordCount") or 0))],
-            ],
-            include_header=include_header,
-        )
-    )
-
-    if query_records:
-        lines.append("")
-        lines.append("# Query report")
-        lines.extend(
-            render_export_inspection_table_section(
-                [
-                    SUPPORTED_REPORT_COLUMN_HEADERS[column_id]
-                    for column_id in selected_columns
-                ],
-                [
-                    [
-                        format_report_column_value(record, column_id)
-                        for column_id in selected_columns
-                    ]
-                    for record in query_records
-                ],
-                include_header=include_header,
-            )
-        )
-    return lines
-
-
-def build_grouped_export_inspection_report_document(
-    document: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Group one flat per-query report by dashboard, then by panel."""
-    query_records = list(document.get("queries") or [])
-    dashboards = OrderedDict()
-
-    for record in query_records:
-        dashboard_key = (
-            str(record.get("folderPath") or DEFAULT_FOLDER_TITLE),
-            str(record.get("dashboardTitle") or DEFAULT_DASHBOARD_TITLE),
-            str(record.get("dashboardUid") or DEFAULT_UNKNOWN_UID),
-        )
-        dashboard_entry = dashboards.get(dashboard_key)
-        if dashboard_entry is None:
-            dashboard_entry = {
-                "dashboardUid": dashboard_key[2],
-                "dashboardTitle": dashboard_key[1],
-                "folderPath": dashboard_key[0],
-                "file": str(record.get("file") or ""),
-                "queryCount": 0,
-                "panels": OrderedDict(),
-            }
-            dashboards[dashboard_key] = dashboard_entry
-        dashboard_entry["queryCount"] = int(dashboard_entry.get("queryCount") or 0) + 1
-
-        panel_key = (
-            str(record.get("panelId") or ""),
-            str(record.get("panelTitle") or ""),
-            str(record.get("panelType") or ""),
-        )
-        panel_entry = dashboard_entry["panels"].get(panel_key)
-        if panel_entry is None:
-            panel_entry = {
-                "panelId": panel_key[0],
-                "panelTitle": panel_key[1],
-                "panelType": panel_key[2],
-                "datasources": [],
-                "queryCount": 0,
-                "queries": [],
-            }
-            dashboard_entry["panels"][panel_key] = panel_entry
-        datasource_label = str(record.get("datasource") or "")
-        if datasource_label and datasource_label not in panel_entry["datasources"]:
-            panel_entry["datasources"].append(datasource_label)
-        panel_entry["queryCount"] = int(panel_entry.get("queryCount") or 0) + 1
-        panel_entry["queries"].append(dict(record))
-
-    dashboard_records = []
-    panel_count = 0
-    for dashboard_entry in dashboards.values():
-        panels = []
-        for panel_entry in dashboard_entry["panels"].values():
-            panel_entry["datasources"].sort()
-            panels.append(panel_entry)
-        panel_count += len(panels)
-        dashboard_records.append(
-            {
-                "dashboardUid": dashboard_entry["dashboardUid"],
-                "dashboardTitle": dashboard_entry["dashboardTitle"],
-                "folderPath": dashboard_entry["folderPath"],
-                "file": dashboard_entry["file"],
-                "panelCount": len(panels),
-                "queryCount": int(dashboard_entry.get("queryCount") or 0),
-                "panels": panels,
-            }
-        )
-
-    return {
-        "summary": {
-            "dashboardCount": len(dashboard_records),
-            "panelCount": panel_count,
-            "queryRecordCount": len(query_records),
-        },
-        "dashboards": dashboard_records,
-    }
-
-
-def render_export_inspection_grouped_report(
-    document: Dict[str, Any],
-    import_dir: Path,
-) -> List[str]:
-    """Render one per-query inspection report grouped by dashboard and panel."""
-    summary = document.get("summary") or {}
-    dashboard_records = list(document.get("dashboards") or [])
-    lines = ["Export inspection tree report: %s" % import_dir, ""]
-
-    lines.append("# Summary")
-    lines.extend(
-        render_export_inspection_table_section(
-            ["METRIC", "VALUE"],
-            [
-                ["dashboard_count", str(int(summary.get("dashboardCount") or 0))],
-                ["panel_count", str(int(summary.get("panelCount") or 0))],
-                ["query_record_count", str(int(summary.get("queryRecordCount") or 0))],
-            ],
-            include_header=True,
-        )
-    )
-
-    if dashboard_records:
-        lines.append("")
-        lines.append("# Dashboard tree")
-        for index, dashboard in enumerate(dashboard_records, 1):
-            lines.append(
-                "[%s] Dashboard %s title=%s path=%s panels=%s queries=%s"
-                % (
-                    index,
-                    str(dashboard.get("dashboardUid") or DEFAULT_UNKNOWN_UID),
-                    str(dashboard.get("dashboardTitle") or DEFAULT_DASHBOARD_TITLE),
-                    str(dashboard.get("folderPath") or DEFAULT_FOLDER_TITLE),
-                    int(dashboard.get("panelCount") or 0),
-                    int(dashboard.get("queryCount") or 0),
-                )
-            )
-            for panel in list(dashboard.get("panels") or []):
-                datasource_text = ",".join(panel.get("datasources") or []) or "-"
-                lines.append(
-                    "  Panel %s title=%s type=%s datasources=%s queries=%s"
-                    % (
-                        str(panel.get("panelId") or ""),
-                        str(panel.get("panelTitle") or ""),
-                        str(panel.get("panelType") or ""),
-                        datasource_text,
-                        int(panel.get("queryCount") or 0),
-                    )
-                )
-                for query in list(panel.get("queries") or []):
-                    detail_parts = [
-                        "datasource=%s" % str(query.get("datasource") or "-"),
-                        "field=%s" % str(query.get("queryField") or "-"),
-                    ]
-                    metrics = format_report_column_value(query, "metrics")
-                    measurements = format_report_column_value(query, "measurements")
-                    buckets = format_report_column_value(query, "buckets")
-                    if metrics:
-                        detail_parts.append("metrics=%s" % metrics)
-                    if measurements:
-                        detail_parts.append("measurements=%s" % measurements)
-                    if buckets:
-                        detail_parts.append("buckets=%s" % buckets)
-                    lines.append(
-                        "    Query %s %s"
-                        % (
-                            str(query.get("refId") or ""),
-                            " ".join(detail_parts),
-                        )
-                    )
-                    lines.append("      %s" % str(query.get("query") or ""))
-    return lines
-
-
-def render_export_inspection_tree_tables(
-    document: Dict[str, Any],
-    import_dir: Path,
-    include_header: bool = True,
-    selected_columns: Optional[List[str]] = None,
-) -> List[str]:
-    """Render one grouped report as dashboard-first sections with per-dashboard tables."""
-    summary = document.get("summary") or {}
-    dashboard_records = list(document.get("dashboards") or [])
-    selected_columns = list(selected_columns or REPORT_COLUMN_HEADERS.keys())
-    lines = ["Export inspection tree-table report: %s" % import_dir, ""]
-
-    lines.append("# Summary")
-    lines.extend(
-        render_export_inspection_table_section(
-            ["METRIC", "VALUE"],
-            [
-                ["dashboard_count", str(int(summary.get("dashboardCount") or 0))],
-                ["panel_count", str(int(summary.get("panelCount") or 0))],
-                ["query_record_count", str(int(summary.get("queryRecordCount") or 0))],
-            ],
-            include_header=include_header,
-        )
-    )
-
-    if dashboard_records:
-        lines.append("")
-        lines.append("# Dashboard sections")
-        for index, dashboard in enumerate(dashboard_records, 1):
-            lines.append(
-                "[%s] Dashboard %s title=%s path=%s panels=%s queries=%s"
-                % (
-                    index,
-                    str(dashboard.get("dashboardUid") or DEFAULT_UNKNOWN_UID),
-                    str(dashboard.get("dashboardTitle") or DEFAULT_DASHBOARD_TITLE),
-                    str(dashboard.get("folderPath") or DEFAULT_FOLDER_TITLE),
-                    int(dashboard.get("panelCount") or 0),
-                    int(dashboard.get("queryCount") or 0),
-                )
-            )
-            query_records = []
-            for panel in list(dashboard.get("panels") or []):
-                for query in list(panel.get("queries") or []):
-                    query_records.append(query)
-            if query_records:
-                lines.extend(
-                    render_export_inspection_table_section(
-                        [
-                            SUPPORTED_REPORT_COLUMN_HEADERS[column_id]
-                            for column_id in selected_columns
-                        ],
-                        [
-                            [
-                                format_report_column_value(record, column_id)
-                                for column_id in selected_columns
-                            ]
-                            for record in query_records
-                        ],
-                        include_header=include_header,
-                    )
-                )
-            else:
-                lines.append("(no query rows)")
-            lines.append("")
-        if lines[-1] == "":
-            lines.pop()
-    return lines
 
 
 def inspect_export(args: argparse.Namespace) -> int:
