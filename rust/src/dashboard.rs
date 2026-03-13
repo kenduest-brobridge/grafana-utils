@@ -51,7 +51,8 @@ pub(crate) use dashboard_inspect::inspect_live_dashboards_with_request;
 #[cfg(test)]
 pub(crate) use dashboard_inspect::{
     apply_query_report_filters, build_export_inspection_query_report,
-    build_export_inspection_summary, render_csv, resolve_report_column_ids,
+    build_export_inspection_summary, render_csv, render_grouped_query_report,
+    resolve_report_column_ids,
     validate_inspect_export_report_args,
 };
 #[cfg(test)]

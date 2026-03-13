@@ -1,5 +1,13 @@
 # ai-changes.md
 
+## 2026-03-13 - Add Tree Dashboard Inspect Report
+- Summary: Added a `--report tree` mode for dashboard `inspect-export` and `inspect-live` in both Python and Rust. The flat row-per-query report remains unchanged, but operators can now ask for the same filtered record set rendered as a dashboard -> panel -> query tree that is easier to read interactively.
+- Tests: Added parser/help coverage plus focused tree-report rendering tests, including a panel-id-filtered tree report case. Kept the existing flat report tests intact so the prior contract stays covered across both implementations.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py`; `cargo test dashboard --manifest-path rust/Cargo.toml --quiet`
+- Validation: Verified the focused dashboard Python and Rust suites pass and that tree output works through the existing inspection pipeline after datasource/panel filters are applied to the flat query records.
+- Impact: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/inspection_workflow.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_inspect.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. The change is additive and intentionally leaves the existing flat report modes untouched, but future inspection work should continue treating the flat query-record model as the canonical intermediate form so tree and flat renderers do not drift.
+
 ## 2026-03-13 - Add Basic Quality Gates
 - Summary: Added a baseline CI workflow under `.github/workflows/ci.yml` plus shared local entrypoints in `Makefile` so the repo now has one explicit minimum quality bar instead of relying only on developers remembering ad hoc commands. The baseline gate currently runs Python unit tests plus Rust tests, `cargo fmt --check`, and `cargo clippy --all-targets -- -D warnings`.
 - Tests: Reused the existing Python and Rust automated suites and validated the new gate commands directly through `make quality`.

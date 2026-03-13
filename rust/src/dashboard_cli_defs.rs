@@ -273,6 +273,7 @@ pub enum InspectExportReportFormat {
     Table,
     Csv,
     Json,
+    Tree,
 }
 
 #[derive(Debug, Clone, Args)]
@@ -304,7 +305,7 @@ pub struct InspectExportArgs {
         num_args = 0..=1,
         default_missing_value = "table",
         conflicts_with_all = ["json", "table"],
-        help = "Render a full per-query inspection report. Defaults to table; use --report csv or --report json for machine-readable output."
+        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for machine-readable output, or --report tree for dashboard-first grouped text."
     )]
     pub report: Option<InspectExportReportFormat>,
     #[arg(
@@ -372,7 +373,7 @@ pub struct InspectLiveArgs {
         num_args = 0..=1,
         default_missing_value = "table",
         conflicts_with_all = ["json", "table"],
-        help = "Render a full per-query inspection report. Defaults to table; use --report csv or --report json for alternate output."
+        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for alternate output, or --report tree for dashboard-first grouped text."
     )]
     pub report: Option<InspectExportReportFormat>,
     #[arg(

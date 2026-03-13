@@ -547,6 +547,134 @@ fn render_query_report_column(row: &ExportInspectionQueryRow, column_id: &str) -
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+struct GroupedPanelReport {
+    panel_id: String,
+    panel_title: String,
+    panel_type: String,
+    queries: Vec<ExportInspectionQueryRow>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct GroupedDashboardReport {
+    dashboard_uid: String,
+    dashboard_title: String,
+    folder_path: String,
+    panels: Vec<GroupedPanelReport>,
+}
+
+fn build_grouped_query_report(
+    report: &ExportInspectionQueryReport,
+) -> Vec<GroupedDashboardReport> {
+    let mut dashboards = Vec::new();
+    for row in &report.queries {
+        let dashboard_index = dashboards
+            .iter()
+            .position(|item: &GroupedDashboardReport| item.dashboard_uid == row.dashboard_uid)
+            .unwrap_or_else(|| {
+                dashboards.push(GroupedDashboardReport {
+                    dashboard_uid: row.dashboard_uid.clone(),
+                    dashboard_title: row.dashboard_title.clone(),
+                    folder_path: row.folder_path.clone(),
+                    panels: Vec::new(),
+                });
+                dashboards.len() - 1
+            });
+        let panels = &mut dashboards[dashboard_index].panels;
+        let panel_index = panels
+            .iter()
+            .position(|item| {
+                item.panel_id == row.panel_id
+                    && item.panel_title == row.panel_title
+                    && item.panel_type == row.panel_type
+            })
+            .unwrap_or_else(|| {
+                panels.push(GroupedPanelReport {
+                    panel_id: row.panel_id.clone(),
+                    panel_title: row.panel_title.clone(),
+                    panel_type: row.panel_type.clone(),
+                    queries: Vec::new(),
+                });
+                panels.len() - 1
+            });
+        panels[panel_index].queries.push(row.clone());
+    }
+    dashboards
+}
+
+pub(crate) fn render_grouped_query_report(
+    report: &ExportInspectionQueryReport,
+) -> Vec<String> {
+    let grouped = build_grouped_query_report(report);
+    let mut lines = Vec::new();
+    lines.push(format!("Export inspection report: {}", report.import_dir));
+    lines.push(String::new());
+    lines.push("# Summary".to_string());
+    lines.push(format!(
+        "dashboards={} panels={} queries={} rows={}",
+        report.summary.dashboard_count,
+        report.summary.panel_count,
+        report.summary.query_count,
+        report.summary.report_row_count
+    ));
+    lines.push(String::new());
+    lines.push("# Dashboard tree".to_string());
+    for dashboard in grouped {
+        let panel_count = dashboard.panels.len();
+        let query_count = dashboard
+            .panels
+            .iter()
+            .map(|panel| panel.queries.len())
+            .sum::<usize>();
+        lines.push(format!(
+            "Dashboard: {} (uid={}, folder={}, panels={}, queries={})",
+            dashboard.dashboard_title,
+            dashboard.dashboard_uid,
+            dashboard.folder_path,
+            panel_count,
+            query_count
+        ));
+        for panel in dashboard.panels {
+            lines.push(format!(
+                "  Panel: {} (id={}, type={}, queries={})",
+                panel.panel_title,
+                panel.panel_id,
+                panel.panel_type,
+                panel.queries.len()
+            ));
+            for query in panel.queries {
+                let mut details = vec![format!("refId={}", query.ref_id)];
+                if !query.datasource.is_empty() {
+                    details.push(format!("datasource={}", query.datasource));
+                }
+                if !query.datasource_uid.is_empty() {
+                    details.push(format!("datasourceUid={}", query.datasource_uid));
+                }
+                if !query.query_field.is_empty() {
+                    details.push(format!("field={}", query.query_field));
+                }
+                if !query.metrics.is_empty() {
+                    details.push(format!("metrics={}", query.metrics.join(",")));
+                }
+                if !query.measurements.is_empty() {
+                    details.push(format!(
+                        "measurements={}",
+                        query.measurements.join(",")
+                    ));
+                }
+                if !query.buckets.is_empty() {
+                    details.push(format!("buckets={}", query.buckets.join(",")));
+                }
+                lines.push(format!("    Query: {}", details.join(" ")));
+                if !query.query_text.is_empty() {
+                    lines.push(format!("      {}", query.query_text));
+                }
+            }
+        }
+    }
+    lines
+}
+
 pub(crate) fn apply_query_report_filters(
     mut report: ExportInspectionQueryReport,
     datasource_filter: Option<&str>,
@@ -612,7 +740,11 @@ pub(crate) fn validate_inspect_export_report_args(args: &InspectExportArgs) -> R
         }
         return Ok(());
     }
-    if args.report == Some(InspectExportReportFormat::Json) && !args.report_columns.is_empty() {
+    if matches!(
+        args.report,
+        Some(InspectExportReportFormat::Json | InspectExportReportFormat::Tree)
+    ) && !args.report_columns.is_empty()
+    {
         return Err(message(
             "--report-columns is only supported with table or csv --report output.",
         ));
@@ -782,6 +914,12 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
         );
         if report_format == InspectExportReportFormat::Json {
             println!("{}", serde_json::to_string_pretty(&report)?);
+            return Ok(report.summary.dashboard_count);
+        }
+        if report_format == InspectExportReportFormat::Tree {
+            for line in render_grouped_query_report(&report) {
+                println!("{line}");
+            }
             return Ok(report.summary.dashboard_count);
         }
 

@@ -415,11 +415,12 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report",
         nargs="?",
         const="table",
-        choices=("table", "json", "csv"),
+        choices=("table", "json", "csv", "tree"),
         default=None,
         help=(
             "Render one full per-query inspection report. "
-            "Use --report for table output, --report json for JSON, or --report csv for CSV."
+            "Use --report for flat table output, --report json for flat JSON, "
+            "--report csv for flat CSV, or --report tree for a dashboard/panel/query tree."
         ),
     )
     parser.add_argument(
@@ -486,11 +487,12 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report",
         nargs="?",
         const="table",
-        choices=("table", "csv", "json"),
+        choices=("table", "csv", "json", "tree"),
         default=None,
         help=(
             "Render one full per-query inspection report. "
-            "Use --report for table output, --report csv for CSV, or --report json for JSON."
+            "Use --report for flat table output, --report csv for flat CSV, "
+            "--report json for flat JSON, or --report tree for a dashboard/panel/query tree."
         ),
     )
     parser.add_argument(
@@ -2620,6 +2622,7 @@ def _build_inspection_workflow_deps() -> Dict[str, Any]:
         "build_dashboard_index_item": build_dashboard_index_item,
         "build_datasource_inventory_record": build_datasource_inventory_record,
         "build_export_inspection_document": build_export_inspection_document,
+        "build_grouped_export_inspection_report_document": build_grouped_export_inspection_report_document,
         "build_export_inspection_report_document": build_export_inspection_report_document,
         "build_export_metadata": build_export_metadata,
         "build_output_path": build_output_path,
@@ -2630,6 +2633,7 @@ def _build_inspection_workflow_deps() -> Dict[str, Any]:
         "inspect_export": inspect_export,
         "json": json,
         "parse_report_columns": parse_report_columns,
+        "render_export_inspection_grouped_report": render_export_inspection_grouped_report,
         "render_export_inspection_report_csv": render_export_inspection_report_csv,
         "render_export_inspection_report_tables": render_export_inspection_report_tables,
         "render_export_inspection_summary": render_export_inspection_summary,
@@ -3107,6 +3111,157 @@ def render_export_inspection_report_tables(
                 include_header=include_header,
             )
         )
+    return lines
+
+
+def build_grouped_export_inspection_report_document(
+    document: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Group one flat per-query report by dashboard, then by panel."""
+    query_records = list(document.get("queries") or [])
+    dashboards = OrderedDict()
+
+    for record in query_records:
+        dashboard_key = (
+            str(record.get("folderPath") or DEFAULT_FOLDER_TITLE),
+            str(record.get("dashboardTitle") or DEFAULT_DASHBOARD_TITLE),
+            str(record.get("dashboardUid") or DEFAULT_UNKNOWN_UID),
+        )
+        dashboard_entry = dashboards.get(dashboard_key)
+        if dashboard_entry is None:
+            dashboard_entry = {
+                "dashboardUid": dashboard_key[2],
+                "dashboardTitle": dashboard_key[1],
+                "folderPath": dashboard_key[0],
+                "file": str(record.get("file") or ""),
+                "queryCount": 0,
+                "panels": OrderedDict(),
+            }
+            dashboards[dashboard_key] = dashboard_entry
+        dashboard_entry["queryCount"] = int(dashboard_entry.get("queryCount") or 0) + 1
+
+        panel_key = (
+            str(record.get("panelId") or ""),
+            str(record.get("panelTitle") or ""),
+            str(record.get("panelType") or ""),
+        )
+        panel_entry = dashboard_entry["panels"].get(panel_key)
+        if panel_entry is None:
+            panel_entry = {
+                "panelId": panel_key[0],
+                "panelTitle": panel_key[1],
+                "panelType": panel_key[2],
+                "datasources": [],
+                "queryCount": 0,
+                "queries": [],
+            }
+            dashboard_entry["panels"][panel_key] = panel_entry
+        datasource_label = str(record.get("datasource") or "")
+        if datasource_label and datasource_label not in panel_entry["datasources"]:
+            panel_entry["datasources"].append(datasource_label)
+        panel_entry["queryCount"] = int(panel_entry.get("queryCount") or 0) + 1
+        panel_entry["queries"].append(dict(record))
+
+    dashboard_records = []
+    panel_count = 0
+    for dashboard_entry in dashboards.values():
+        panels = []
+        for panel_entry in dashboard_entry["panels"].values():
+            panel_entry["datasources"].sort()
+            panels.append(panel_entry)
+        panel_count += len(panels)
+        dashboard_records.append(
+            {
+                "dashboardUid": dashboard_entry["dashboardUid"],
+                "dashboardTitle": dashboard_entry["dashboardTitle"],
+                "folderPath": dashboard_entry["folderPath"],
+                "file": dashboard_entry["file"],
+                "panelCount": len(panels),
+                "queryCount": int(dashboard_entry.get("queryCount") or 0),
+                "panels": panels,
+            }
+        )
+
+    return {
+        "summary": {
+            "dashboardCount": len(dashboard_records),
+            "panelCount": panel_count,
+            "queryRecordCount": len(query_records),
+        },
+        "dashboards": dashboard_records,
+    }
+
+
+def render_export_inspection_grouped_report(
+    document: Dict[str, Any],
+    import_dir: Path,
+) -> List[str]:
+    """Render one per-query inspection report grouped by dashboard and panel."""
+    summary = document.get("summary") or {}
+    dashboard_records = list(document.get("dashboards") or [])
+    lines = ["Export inspection tree report: %s" % import_dir, ""]
+
+    lines.append("# Summary")
+    lines.extend(
+        render_export_inspection_table_section(
+            ["METRIC", "VALUE"],
+            [
+                ["dashboard_count", str(int(summary.get("dashboardCount") or 0))],
+                ["panel_count", str(int(summary.get("panelCount") or 0))],
+                ["query_record_count", str(int(summary.get("queryRecordCount") or 0))],
+            ],
+            include_header=True,
+        )
+    )
+
+    if dashboard_records:
+        lines.append("")
+        lines.append("# Dashboard tree")
+        for dashboard in dashboard_records:
+            lines.append(
+                "Dashboard %s title=%s path=%s panels=%s queries=%s"
+                % (
+                    str(dashboard.get("dashboardUid") or DEFAULT_UNKNOWN_UID),
+                    str(dashboard.get("dashboardTitle") or DEFAULT_DASHBOARD_TITLE),
+                    str(dashboard.get("folderPath") or DEFAULT_FOLDER_TITLE),
+                    int(dashboard.get("panelCount") or 0),
+                    int(dashboard.get("queryCount") or 0),
+                )
+            )
+            for panel in list(dashboard.get("panels") or []):
+                datasource_text = ",".join(panel.get("datasources") or []) or "-"
+                lines.append(
+                    "  Panel %s title=%s type=%s datasources=%s queries=%s"
+                    % (
+                        str(panel.get("panelId") or ""),
+                        str(panel.get("panelTitle") or ""),
+                        str(panel.get("panelType") or ""),
+                        datasource_text,
+                        int(panel.get("queryCount") or 0),
+                    )
+                )
+                for query in list(panel.get("queries") or []):
+                    detail_parts = [
+                        "datasource=%s" % str(query.get("datasource") or "-"),
+                        "field=%s" % str(query.get("queryField") or "-"),
+                    ]
+                    metrics = format_report_column_value(query, "metrics")
+                    measurements = format_report_column_value(query, "measurements")
+                    buckets = format_report_column_value(query, "buckets")
+                    if metrics:
+                        detail_parts.append("metrics=%s" % metrics)
+                    if measurements:
+                        detail_parts.append("measurements=%s" % measurements)
+                    if buckets:
+                        detail_parts.append("buckets=%s" % buckets)
+                    lines.append(
+                        "    Query %s %s"
+                        % (
+                            str(query.get("refId") or ""),
+                            " ".join(detail_parts),
+                        )
+                    )
+                    lines.append("      %s" % str(query.get("query") or ""))
     return lines
 
 

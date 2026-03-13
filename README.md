@@ -166,6 +166,15 @@ python3 python/grafana-utils.py dashboard inspect-export \
   --report-columns dashboard_uid,panel_id,datasource_uid,datasource,query
 ```
 
+Inspect the same query report tree by dashboard and panel:
+
+```bash
+python3 python/grafana-utils.py dashboard inspect-export \
+  --import-dir ./dashboards/raw \
+  --report tree \
+  --report-filter-panel-id 7
+```
+
 Inspect live Grafana dashboards with the same report contract:
 
 ```bash
@@ -513,8 +522,8 @@ Use `prompt/` when you want:
 | `import-dashboard --dry-run --table` | Render dry-run import predictions as a table showing `uid`, destination state, action, destination folder path, and file |
 | `inspect-export --json` | Analyze a raw export directory and emit machine-readable structure summary including folder paths, panels, queries, datasource usage, datasource inventory, and mixed dashboards |
 | `inspect-export --table` | Analyze a raw export directory and render multi-section tables for summary, folder paths, datasource usage, datasource inventory, and mixed dashboards |
-| `inspect-export --report[=table|json]` | Emit one full per-query inspection report; default table output includes dashboard/panel context, datasource, extracted metrics/measurements/buckets, and the raw query text |
-| `inspect-live --json|--table|--report[=table|csv|json]` | Inspect live Grafana dashboards by materializing a temporary raw-style snapshot and then rendering the same summary/report outputs as `inspect-export` |
+| `inspect-export --report[=table|json|tree]` | Emit one full per-query inspection report; default `table` output stays flat row-per-query, while `tree` renders the same records as a dashboard -> panel -> query tree |
+| `inspect-live --json|--table|--report[=table|csv|json|tree]` | Inspect live Grafana dashboards by materializing a temporary raw-style snapshot and then rendering the same summary/report outputs as `inspect-export` |
 | `inspect-export --report-columns ...` | With `--report` table or csv output, limit the query report to selected columns such as `dashboard_uid,panel_title,datasource,metrics,query` or add optional fields such as `datasource_uid` |
 | `inspect-export --report-filter-datasource ...` | With `--report`, include only rows whose datasource label exactly matches the requested value |
 | `inspect-export --report-filter-panel-id ...` | With `--report`, include only rows whose panel id exactly matches the requested value |
@@ -561,6 +570,7 @@ For dashboard export:
 - `inspect-export --table` renders the same analysis as multiple tables for summary, folder paths, datasource usage, datasource inventory, and mixed dashboards
 - `inspect-export --report` emits one row per query target with dashboard uid/title, folder path, panel id/title/type, datasource, query field, extracted metrics/measurements/buckets, and the raw query text
 - `inspect-export --report json` emits the same per-query inspection model as one machine-readable JSON document, including `datasourceUid` when the raw export carries a concrete datasource uid
+- `inspect-export --report tree` keeps the same underlying query records but renders them as a dashboard -> panel -> query tree when you want to read one dashboard at a time instead of scanning a wide flat table
 - `inspect-export --report-columns dashboard_uid,panel_title,datasource,metrics,query` trims the table report down to the columns you care about most
 - `inspect-export --report-columns dashboard_uid,panel_id,datasource_uid,datasource,query` opts `datasource_uid` into table or csv output without widening the default report
 - `inspect-export --report-filter-datasource <label>` narrows table or JSON report output to one datasource label, which is useful when checking migration leftovers or datasource retirement impact

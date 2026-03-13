@@ -226,6 +226,7 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("--url", help_text)
         self.assertIn("--page-size", help_text)
         self.assertIn("--report", help_text)
+        self.assertIn("tree", help_text)
         self.assertIn("--report-filter-panel-id", help_text)
 
     def test_parse_args_supports_import_mode(self):
@@ -475,6 +476,14 @@ class ExporterTests(unittest.TestCase):
 
         self.assertEqual(args.command, "inspect-export")
         self.assertEqual(args.report, "csv")
+
+    def test_parse_args_supports_inspect_export_report_tree(self):
+        args = exporter.parse_args(
+            ["inspect-export", "--import-dir", "dashboards/raw", "--report", "tree"]
+        )
+
+        self.assertEqual(args.command, "inspect-export")
+        self.assertEqual(args.report, "tree")
 
     def test_parse_args_supports_inspect_export_report_columns_and_filter(self):
         args = exporter.parse_args(
@@ -1396,6 +1405,139 @@ class ExporterTests(unittest.TestCase):
             self.assertIn("CPU Usage", output)
             self.assertIn("QUERY_FIELD", output)
             self.assertIn("node_cpu_seconds_total", output)
+
+    def test_inspect_export_renders_tree_query_report(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                    folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document([], import_dir / exporter.FOLDER_INVENTORY_FILENAME)
+            exporter.write_json_document(
+                {
+                    "dashboard": {
+                        "id": None,
+                        "uid": "infra-main",
+                        "title": "Infra Main",
+                        "panels": [
+                            {
+                                "id": 7,
+                                "title": "CPU Usage",
+                                "type": "timeseries",
+                                "datasource": {"type": "prometheus", "uid": "prom-main"},
+                                "targets": [
+                                    {
+                                        "refId": "A",
+                                        "expr": 'sum(rate(node_cpu_seconds_total{job="node"}[5m]))',
+                                    }
+                                ],
+                            },
+                            {
+                                "id": 8,
+                                "title": "Logs",
+                                "type": "logs",
+                                "datasource": {"type": "loki", "uid": "logs-main"},
+                                "targets": [{"refId": "B", "expr": '{job="grafana"}'}],
+                            },
+                        ],
+                    },
+                    "meta": {},
+                },
+                import_dir / "General" / "Infra_Main__infra-main.json",
+            )
+
+            args = exporter.parse_args(
+                ["inspect-export", "--import-dir", str(import_dir), "--report", "tree"]
+            )
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = exporter.inspect_export(args)
+
+            output = stdout.getvalue()
+            self.assertEqual(result, 0)
+            self.assertIn("Export inspection tree report:", output)
+            self.assertIn("# Dashboard tree", output)
+            self.assertIn(
+                "Dashboard infra-main title=Infra Main path=General panels=2 queries=2",
+                output,
+            )
+            self.assertIn(
+                "  Panel 7 title=CPU Usage type=timeseries datasources=prom-main queries=1",
+                output,
+            )
+            self.assertIn("    Query A datasource=prom-main field=expr", output)
+            self.assertIn(
+                "      sum(rate(node_cpu_seconds_total{job=\"node\"}[5m]))",
+                output,
+            )
+
+    def test_inspect_export_renders_tree_query_report_with_panel_filter(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                    folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document([], import_dir / exporter.FOLDER_INVENTORY_FILENAME)
+            exporter.write_json_document(
+                {
+                    "dashboard": {
+                        "id": None,
+                        "uid": "multi-panel",
+                        "title": "Multi Panel",
+                        "panels": [
+                            {
+                                "id": 7,
+                                "title": "CPU",
+                                "type": "timeseries",
+                                "datasource": {"type": "prometheus", "uid": "prom-main"},
+                                "targets": [{"refId": "A", "expr": "up"}],
+                            },
+                            {
+                                "id": 8,
+                                "title": "Logs",
+                                "type": "logs",
+                                "datasource": {"type": "loki", "uid": "logs-main"},
+                                "targets": [{"refId": "B", "expr": '{job="grafana"}'}],
+                            },
+                        ],
+                    },
+                    "meta": {},
+                },
+                import_dir / "General" / "Multi_Panel__multi-panel.json",
+            )
+
+            args = exporter.parse_args(
+                [
+                    "inspect-export",
+                    "--import-dir",
+                    str(import_dir),
+                    "--report",
+                    "tree",
+                    "--report-filter-panel-id",
+                    "7",
+                ]
+            )
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = exporter.inspect_export(args)
+
+            output = stdout.getvalue()
+            self.assertEqual(result, 0)
+            self.assertIn("Panel 7 title=CPU", output)
+            self.assertNotIn("Panel 8 title=Logs", output)
+            self.assertIn("Query A datasource=prom-main field=expr", output)
 
     def test_inspect_export_renders_query_report_csv(self):
         with tempfile.TemporaryDirectory() as tmpdir:

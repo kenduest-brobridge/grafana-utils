@@ -158,6 +158,20 @@ def run_inspect_export(args, deps):
             )
         )
         return 0
+    if report_format == "tree":
+        document = deps["build_grouped_export_inspection_report_document"](
+            deps["filter_export_inspection_report_document"](
+                deps["build_export_inspection_report_document"](import_dir),
+                datasource_label=report_filter_datasource,
+                panel_id=report_filter_panel_id,
+            )
+        )
+        for line in deps["render_export_inspection_grouped_report"](
+            document,
+            import_dir,
+        ):
+            print(line)
+        return 0
     document = deps["build_export_inspection_document"](import_dir)
     if getattr(args, "json", False):
         print(
