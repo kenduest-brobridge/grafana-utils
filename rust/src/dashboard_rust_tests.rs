@@ -2891,6 +2891,182 @@ fn build_export_inspection_query_report_extracts_metrics_measurements_and_bucket
 }
 
 #[test]
+fn build_export_inspection_query_report_keeps_loki_fields_conservative() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(raw_dir.join("General")).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("General").join("logs.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "logs-main",
+                "title": "Logs Main",
+                "panels": [
+                    {
+                        "id": 8,
+                        "title": "Errors",
+                        "type": "logs",
+                        "datasource": {"uid": "logs-main", "type": "loki"},
+                        "targets": [
+                            {
+                                "refId": "A",
+                                "logql": "sum by (cluster) (count_over_time({job=\"grafana\"} |= \"error\" | json [5m]))"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let report = super::build_export_inspection_query_report(&raw_dir).unwrap();
+
+    assert_eq!(report.queries.len(), 1);
+    assert_eq!(report.queries[0].query_field, "logql");
+    assert_eq!(report.queries[0].datasource, "logs-main");
+    assert_eq!(report.queries[0].datasource_uid, "logs-main");
+    assert!(report.queries[0].metrics.is_empty());
+    assert!(report.queries[0].measurements.is_empty());
+    assert!(report.queries[0].buckets.is_empty());
+}
+
+#[test]
+fn build_export_inspection_query_report_extracts_sql_tables_and_shape_hints() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(raw_dir.join("General")).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("General").join("sql.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "sql-main",
+                "title": "SQL Main",
+                "panels": [
+                    {
+                        "id": 12,
+                        "title": "Top Services",
+                        "type": "table",
+                        "datasource": {"uid": "pg-main", "type": "postgres"},
+                        "targets": [
+                            {
+                                "refId": "A",
+                                "rawSql": "WITH latest AS (SELECT service_id, MAX(ts) AS max_ts FROM metrics.events GROUP BY service_id) SELECT DISTINCT e.service_id FROM metrics.events e JOIN latest l ON l.service_id = e.service_id WHERE e.status = 'ok' ORDER BY e.service_id LIMIT 20"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let report = super::build_export_inspection_query_report(&raw_dir).unwrap();
+
+    assert_eq!(report.queries.len(), 1);
+    assert_eq!(report.queries[0].query_field, "rawSql");
+    assert_eq!(
+        report.queries[0].metrics,
+        vec![
+            "with".to_string(),
+            "select".to_string(),
+            "distinct".to_string(),
+            "join".to_string(),
+            "where".to_string(),
+            "group_by".to_string(),
+            "order_by".to_string(),
+            "limit".to_string(),
+        ]
+    );
+    assert_eq!(report.queries[0].measurements, vec!["metrics.events".to_string()]);
+    assert!(report.queries[0].buckets.is_empty());
+}
+
+#[test]
+fn build_export_inspection_query_report_keeps_prometheus_metrics_and_skips_label_tokens() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(raw_dir.join("General")).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("General").join("prometheus.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "prom-main",
+                "title": "Prom Main",
+                "panels": [
+                    {
+                        "id": 7,
+                        "title": "HTTP Requests",
+                        "type": "timeseries",
+                        "datasource": {"uid": "prom-main", "type": "prometheus"},
+                        "targets": [
+                            {
+                                "refId": "A",
+                                "expr": "sum by(instance) (rate(http_requests_total{job=\"api\", instance=~\"web-.+\", __name__=\"http_requests_total\"}[5m])) / ignoring(pod) group_left(namespace) kube_pod_info{namespace=\"prod\", pod=~\"api-.+\"}"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let report = super::build_export_inspection_query_report(&raw_dir).unwrap();
+
+    assert_eq!(report.queries.len(), 1);
+    assert_eq!(
+        report.queries[0].metrics,
+        vec![
+            "http_requests_total".to_string(),
+            "kube_pod_info".to_string(),
+        ]
+    );
+}
+
+#[test]
 fn resolve_report_column_ids_keep_datasource_uid_optional() {
     let default_columns = super::resolve_report_column_ids(&[]).unwrap();
     assert!(!default_columns

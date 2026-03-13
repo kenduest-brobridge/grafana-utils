@@ -412,6 +412,154 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertEqual(payload["queries"][1]["buckets"], ["prod"])
             self.assertEqual(payload["queries"][1]["measurements"], ["cpu"])
 
+    def test_inspect_export_prometheus_metrics_ignore_grouping_labels_and_values(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self.write_report_fixture(
+                import_dir,
+                {
+                    "id": None,
+                    "uid": "prom-main",
+                    "title": "Prometheus Main",
+                    "panels": [
+                        {
+                            "id": 7,
+                            "title": "CPU Usage",
+                            "type": "timeseries",
+                            "datasource": {"type": "prometheus", "uid": "prom-main"},
+                            "targets": [
+                                {
+                                    "refId": "A",
+                                    "expr": (
+                                        'sum by (instance) (rate(node_cpu_seconds_total'
+                                        '{job=~"node|api",mode!="idle"}[5m]))'
+                                    ),
+                                },
+                                {
+                                    "refId": "B",
+                                    "expr": (
+                                        'up{job="prometheus_build_info"} '
+                                        '/ ignoring(job) group_left(instance) '
+                                        'kube_pod_info{pod=~"node_cpu_seconds_total|api"}'
+                                    ),
+                                },
+                                {
+                                    "refId": "C",
+                                    "expr": '{__name__="prometheus_build_info",job="api"}',
+                                },
+                            ],
+                        }
+                    ],
+                },
+            )
+
+            args = exporter.parse_args(
+                ["inspect-export", "--import-dir", str(import_dir), "--report", "json"]
+            )
+            result, output = self.run_inspect(args)
+            payload = json.loads(output)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(payload["queries"][0]["metrics"], ["node_cpu_seconds_total"])
+            self.assertEqual(payload["queries"][1]["metrics"], ["up", "kube_pod_info"])
+            self.assertEqual(payload["queries"][2]["metrics"], ["prometheus_build_info"])
+
+    def test_inspect_export_flux_pipeline_functions_are_mapped_into_metrics(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self.write_report_fixture(
+                import_dir,
+                {
+                    "id": None,
+                    "uid": "flux-main",
+                    "title": "Flux Main",
+                    "panels": [
+                        {
+                            "id": 8,
+                            "title": "Flux Query",
+                            "type": "table",
+                            "datasource": {"type": "influxdb", "uid": "influx-main"},
+                            "targets": [
+                                {
+                                    "refId": "B",
+                                    "query": (
+                                        'from(bucket: "prod") |> range(start: -1h) '
+                                        '|> filter(fn: (r) => r._measurement == "cpu") '
+                                        '|> aggregateWindow(every: 5m, fn: mean) '
+                                        '|> keep(columns: ["_time", "_value"])'
+                                    ),
+                                }
+                            ],
+                        }
+                    ],
+                },
+            )
+
+            args = exporter.parse_args(
+                ["inspect-export", "--import-dir", str(import_dir), "--report", "json"]
+            )
+            result, output = self.run_inspect(args)
+            payload = json.loads(output)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(
+                payload["queries"][0]["metrics"],
+                ["from", "range", "filter", "aggregateWindow", "keep"],
+            )
+            self.assertEqual(payload["queries"][0]["measurements"], ["cpu"])
+            self.assertEqual(payload["queries"][0]["buckets"], ["prod"])
+
+    def test_inspect_export_sql_sources_and_shape_hints_are_extracted(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self.write_report_fixture(
+                import_dir,
+                {
+                    "id": None,
+                    "uid": "sql-main",
+                    "title": "SQL Main",
+                    "panels": [
+                        {
+                            "id": 12,
+                            "title": "Top Services",
+                            "type": "table",
+                            "datasource": {"type": "postgres", "uid": "pg-main"},
+                            "targets": [
+                                {
+                                    "refId": "A",
+                                    "rawSql": (
+                                        "WITH latest AS ("
+                                        "SELECT service_id, MAX(ts) AS max_ts "
+                                        "FROM metrics.events GROUP BY service_id"
+                                        ") "
+                                        "SELECT DISTINCT e.service_id "
+                                        "FROM metrics.events e "
+                                        "JOIN latest l ON l.service_id = e.service_id "
+                                        "WHERE e.status = 'ok' "
+                                        "ORDER BY e.service_id LIMIT 20"
+                                    ),
+                                }
+                            ],
+                        }
+                    ],
+                },
+            )
+
+            args = exporter.parse_args(
+                ["inspect-export", "--import-dir", str(import_dir), "--report", "json"]
+            )
+            result, output = self.run_inspect(args)
+            payload = json.loads(output)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(payload["queries"][0]["queryField"], "rawSql")
+            self.assertEqual(
+                payload["queries"][0]["metrics"],
+                ["with", "select", "distinct", "join", "where", "group_by", "order_by", "limit"],
+            )
+            self.assertEqual(payload["queries"][0]["measurements"], ["metrics.events"])
+            self.assertEqual(payload["queries"][0]["buckets"], [])
+
     def test_inspect_export_renders_query_report_table(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
@@ -662,20 +810,44 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertEqual(payload["summary"]["queryRecordCount"], 1)
             self.assertEqual(payload["queries"][0]["datasource"], "prom-main")
 
-            csv_args = exporter.parse_args(
-                [
-                    "inspect-export",
-                    "--import-dir",
-                    str(import_dir),
-                    "--report",
-                    "csv",
-                    "--report-filter-datasource",
-                    "prom-main",
-                ]
+    def test_inspect_export_keeps_loki_fields_conservative(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self.write_report_fixture(
+                import_dir,
+                {
+                    "id": None,
+                    "uid": "logs-main",
+                    "title": "Logs Main",
+                    "panels": [
+                        {
+                            "id": 8,
+                            "title": "Errors",
+                            "type": "logs",
+                            "datasource": {"type": "loki", "uid": "logs-main"},
+                            "targets": [
+                                {
+                                    "refId": "A",
+                                    "logql": 'sum by (cluster) (count_over_time({job="grafana"} |= "error" | json [5m]))',
+                                }
+                            ],
+                        }
+                    ],
+                },
             )
-            _, csv_output = self.run_inspect(csv_args)
-            self.assertIn("prom-main", csv_output)
-            self.assertNotIn("logs-main", csv_output)
+
+            args = exporter.parse_args(
+                ["inspect-export", "--import-dir", str(import_dir), "--report", "json"]
+            )
+            result, output = self.run_inspect(args)
+            payload = json.loads(output)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(payload["queries"][0]["queryField"], "logql")
+            self.assertEqual(payload["queries"][0]["datasource"], "logs-main")
+            self.assertEqual(payload["queries"][0]["metrics"], [])
+            self.assertEqual(payload["queries"][0]["measurements"], [])
+            self.assertEqual(payload["queries"][0]["buckets"], [])
 
     def test_inspect_live_renders_report_json_from_mocked_client(self):
         fake_client = FakeDashboardWorkflowClient(

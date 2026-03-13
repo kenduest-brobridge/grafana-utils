@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 from .common import (
+    DATASOURCE_TYPE_ALIASES,
     DEFAULT_DASHBOARD_TITLE,
     DEFAULT_FOLDER_TITLE,
     DEFAULT_UNKNOWN_UID,
@@ -67,6 +68,8 @@ NORMALIZED_QUERY_REPORT_FIELDS = (
     "buckets",
     "file",
 )
+FLUX_DATASOURCE_FAMILIES = {"influxdb"}
+SQL_DATASOURCE_FAMILIES = {"mysql", "postgres", "mssql"}
 INSPECT_EXPORT_HELP_FULL_EXAMPLES = (
     "Extended examples:\n\n"
     "  Inspect one raw export as the default flat query table:\n"
@@ -215,35 +218,6 @@ def describe_export_datasource_ref(
     return ref_type
 
 
-def extract_string_values(query: str, pattern: str) -> List[str]:
-    """Extract one stable list of string matches from a query text."""
-    if not query:
-        return []
-    values = []
-    for match in re.findall(pattern, query):
-        if isinstance(match, tuple):
-            for item in match:
-                if item:
-                    values.append(str(item))
-                    break
-        elif match:
-            values.append(str(match))
-    return values
-
-
-def unique_strings(values: List[str]) -> List[str]:
-    """Keep first-seen order while dropping empty duplicates."""
-    seen = set()  # type: Set[str]
-    ordered = []
-    for value in values:
-        text = str(value or "").strip()
-        if not text or text in seen:
-            continue
-        seen.add(text)
-        ordered.append(text)
-    return ordered
-
-
 def describe_panel_datasource(
     panel: Dict[str, Any],
     target: Dict[str, Any],
@@ -288,6 +262,35 @@ def describe_panel_datasource_uid(
     return ""
 
 
+def extract_string_values(query: str, pattern: str) -> List[str]:
+    """Extract one stable list of string matches from a query text."""
+    if not query:
+        return []
+    values = []
+    for match in re.findall(pattern, query):
+        if isinstance(match, tuple):
+            for item in match:
+                if item:
+                    values.append(str(item))
+                    break
+        elif match:
+            values.append(str(match))
+    return values
+
+
+def unique_strings(values: List[str]) -> List[str]:
+    """Keep first-seen order while dropping empty duplicates."""
+    seen = set()  # type: Set[str]
+    ordered = []
+    for value in values:
+        text = str(value or "").strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        ordered.append(text)
+    return ordered
+
+
 def build_query_field_and_text(target: Dict[str, Any]) -> List[str]:
     """Choose the most relevant query field and raw text from one target."""
     for field in (
@@ -310,8 +313,129 @@ def build_query_field_and_text(target: Dict[str, Any]) -> List[str]:
     return ["", ""]
 
 
+PROMETHEUS_RESERVED_WORDS = {
+    "and",
+    "bool",
+    "by",
+    "ignoring",
+    "group_left",
+    "group_right",
+    "on",
+    "offset",
+    "or",
+    "unless",
+    "without",
+    "sum",
+    "min",
+    "max",
+    "avg",
+    "count",
+    "stddev",
+    "stdvar",
+    "bottomk",
+    "topk",
+    "quantile",
+    "count_values",
+    "rate",
+    "irate",
+    "increase",
+    "delta",
+    "idelta",
+    "deriv",
+    "predict_linear",
+    "holt_winters",
+    "sort",
+    "sort_desc",
+    "label_replace",
+    "label_join",
+    "histogram_quantile",
+    "clamp_max",
+    "clamp_min",
+    "abs",
+    "absent",
+    "ceil",
+    "floor",
+    "ln",
+    "log2",
+    "log10",
+    "round",
+    "scalar",
+    "vector",
+    "year",
+    "month",
+    "day_of_month",
+    "day_of_week",
+    "hour",
+    "minute",
+    "time",
+}
+
+
+def resolve_query_datasource_family(
+    panel: Dict[str, Any],
+    target: Dict[str, Any],
+    datasources_by_uid: Dict[str, Dict[str, str]],
+    datasources_by_name: Dict[str, Dict[str, str]],
+) -> str:
+    """Resolve one canonical datasource family from target or panel scope."""
+    for ref in (target.get("datasource"), panel.get("datasource")):
+        if isinstance(ref, dict):
+            ref_type = normalize_query_datasource_family(ref.get("type"))
+            if ref_type:
+                return ref_type
+            uid = str(ref.get("uid") or "").strip()
+            name = str(ref.get("name") or "").strip()
+            datasource = None
+            if uid:
+                datasource = datasources_by_uid.get(uid)
+            if datasource is None and name:
+                datasource = datasources_by_name.get(name)
+            if datasource is not None:
+                return normalize_query_datasource_family(datasource.get("type"))
+        elif isinstance(ref, str):
+            name = ref.strip()
+            normalized = normalize_query_datasource_family(name)
+            if normalized:
+                return normalized
+            datasource = datasources_by_name.get(name)
+            if datasource is not None:
+                return normalize_query_datasource_family(datasource.get("type"))
+    return ""
+
+
+def normalize_query_datasource_family(value: Any) -> str:
+    """Normalize datasource types into one stable inspection family id."""
+    normalized = str(
+        DATASOURCE_TYPE_ALIASES.get(
+            str(value or "").strip().lower(),
+            str(value or "").strip().lower(),
+        )
+    )
+    if not normalized:
+        return ""
+    if normalized in FLUX_DATASOURCE_FAMILIES or normalized in SQL_DATASOURCE_FAMILIES:
+        return normalized
+    if "influx" in normalized:
+        return "influxdb"
+    if "postgres" in normalized:
+        return "postgres"
+    if "mysql" in normalized:
+        return "mysql"
+    if "mssql" in normalized or "sqlserver" in normalized:
+        return "mssql"
+    return normalized
+
+
+def strip_sql_comments(query: str) -> str:
+    """Drop obvious SQL comments before heuristic extraction."""
+    if not query:
+        return ""
+    query = re.sub(r"/\*.*?\*/", " ", query, flags=re.DOTALL)
+    return re.sub(r"--[^\n]*", " ", query)
+
+
 def extract_metric_names(query: str) -> List[str]:
-    """Extract best-effort Prometheus-style metric identifiers."""
+    """Extract best-effort metric identifiers with the existing generic rules."""
     if not query:
         return []
     sanitized_query = re.sub(r'"[^"]*"', '""', query)
@@ -319,66 +443,49 @@ def extract_metric_names(query: str) -> List[str]:
         r"(?<![A-Za-z0-9_:])([A-Za-z_:][A-Za-z0-9_:]*)",
         sanitized_query,
     )
-    ignored = {
-        "and",
-        "bool",
-        "by",
-        "ignoring",
-        "group_left",
-        "group_right",
-        "on",
-        "offset",
-        "or",
-        "unless",
-        "without",
-        "sum",
-        "min",
-        "max",
-        "avg",
-        "count",
-        "stddev",
-        "stdvar",
-        "bottomk",
-        "topk",
-        "quantile",
-        "count_values",
-        "rate",
-        "irate",
-        "increase",
-        "delta",
-        "idelta",
-        "deriv",
-        "predict_linear",
-        "holt_winters",
-        "sort",
-        "sort_desc",
-        "label_replace",
-        "label_join",
-        "histogram_quantile",
-        "clamp_max",
-        "clamp_min",
-        "abs",
-        "absent",
-        "ceil",
-        "floor",
-        "ln",
-        "log2",
-        "log10",
-        "round",
-        "scalar",
-        "vector",
-        "year",
-        "month",
-        "day_of_month",
-        "day_of_week",
-        "hour",
-        "minute",
-        "time",
-    }
     values = []
     for matched in candidates:
         candidate = matched.group(1)
-        if candidate.lower() in ignored:
+        if candidate.lower() in PROMETHEUS_RESERVED_WORDS:
+            continue
+        if candidate.startswith("$"):
+            continue
+        trailing = sanitized_query[matched.end() :].lstrip()
+        if trailing.startswith("("):
+            continue
+        if trailing.startswith(("=", "!=", "=~", "!~")):
+            continue
+        values.append(candidate)
+    return unique_strings(values)
+
+
+def extract_prometheus_metric_names(query: str) -> List[str]:
+    """Extract Prometheus metric identifiers conservatively."""
+    if not query:
+        return []
+    values = extract_string_values(
+        query,
+        r'__name__\s*=\s*"([A-Za-z_:][A-Za-z0-9_:]*)"',
+    )
+    sanitized_query = re.sub(r'"(?:\\.|[^"\\])*"', '""', query)
+    sanitized_query = re.sub(
+        r"\b(?:by|without|on|ignoring)\s*\(\s*[^)]*\)",
+        " ",
+        sanitized_query,
+    )
+    sanitized_query = re.sub(
+        r"\b(?:group_left|group_right)\s*(?:\(\s*[^)]*\))?",
+        " ",
+        sanitized_query,
+    )
+    sanitized_query = re.sub(r"\{[^{}]*\}", "{}", sanitized_query)
+    candidates = re.finditer(
+        r"(?<![A-Za-z0-9_:])([A-Za-z_:][A-Za-z0-9_:]*)",
+        sanitized_query,
+    )
+    for matched in candidates:
+        candidate = matched.group(1)
+        if candidate.lower() in PROMETHEUS_RESERVED_WORDS:
             continue
         if candidate.startswith("$"):
             continue
@@ -400,7 +507,17 @@ def extract_measurements(query: str) -> List[str]:
         )
         + extract_string_values(
             query,
-            r"from\s*\(\s*measurement\s*:\s*\"([^\"]+)\"",
+            r'from\s*\(\s*measurement\s*:\s*"([^"]+)"',
+        )
+    )
+
+
+def extract_flux_pipeline_functions(query: str) -> List[str]:
+    """Extract Flux source and pipeline functions in execution order."""
+    return unique_strings(
+        extract_string_values(
+            query,
+            r'(?:^|\|>)\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(',
         )
     )
 
@@ -419,6 +536,164 @@ def extract_buckets(query: str) -> List[str]:
     )
 
 
+def normalize_sql_identifier(value: str) -> str:
+    """Normalize one quoted SQL identifier into a compact dotted name."""
+    parts = []
+    for part in re.split(r"\s*\.\s*", str(value or "").strip()):
+        normalized = part.strip()
+        if len(normalized) >= 2 and (
+            (normalized[0] == normalized[-1] and normalized[0] in ('"', "'", "`"))
+            or (normalized[0] == "[" and normalized[-1] == "]")
+        ):
+            normalized = normalized[1:-1]
+        normalized = normalized.strip()
+        if normalized:
+            parts.append(normalized)
+    return ".".join(parts)
+
+
+def extract_sql_source_references(query: str) -> List[str]:
+    """Extract best-effort SQL table/source references conservatively."""
+    query = strip_sql_comments(query)
+    if not query:
+        return []
+    cte_names = {
+        str(name).strip().lower()
+        for name in extract_string_values(
+            query,
+            r"(?i)\bwith\s+([A-Za-z_][A-Za-z0-9_$]*)\s+as\s*\(",
+        )
+    }
+    references = []
+    for value in extract_string_values(
+        query,
+        (
+            r"(?i)\b(?:from|join|update|into|delete\s+from)\s+"
+            r"("
+            r"(?:[A-Za-z_][A-Za-z0-9_$]*|\"[^\"]+\"|`[^`]+`|\[[^\]]+\])"
+            r"(?:\s*\.\s*(?:[A-Za-z_][A-Za-z0-9_$]*|\"[^\"]+\"|`[^`]+`|\[[^\]]+\])){0,2}"
+            r")"
+        ),
+    ):
+        normalized = normalize_sql_identifier(value)
+        if normalized and normalized.lower() not in cte_names:
+            references.append(normalized)
+    return unique_strings(references)
+
+
+def extract_sql_query_shape_hints(query: str) -> List[str]:
+    """Extract coarse SQL query-shape hints."""
+    lowered = strip_sql_comments(query).lower()
+    hints = []
+    for hint, pattern in (
+        ("with", r"\bwith\b"),
+        ("select", r"\bselect\b"),
+        ("insert", r"\binsert\s+into\b"),
+        ("update", r"\bupdate\b"),
+        ("delete", r"\bdelete\s+from\b"),
+        ("distinct", r"\bdistinct\b"),
+        ("join", r"\bjoin\b"),
+        ("where", r"\bwhere\b"),
+        ("group_by", r"\bgroup\s+by\b"),
+        ("having", r"\bhaving\b"),
+        ("order_by", r"\border\s+by\b"),
+        ("limit", r"\blimit\b"),
+        ("top", r"\btop\s+\d+\b"),
+        ("union", r"\bunion(?:\s+all)?\b"),
+        ("window", r"\bover\s*\("),
+        ("subquery", r"\b(?:from|join)\s*\("),
+    ):
+        if re.search(pattern, lowered):
+            hints.append(hint)
+    return unique_strings(hints)
+
+
+def extract_sql_function_names(query: str) -> List[str]:
+    """Extract best-effort SQL function calls for the shared metrics field."""
+    query = strip_sql_comments(query)
+    if not query:
+        return []
+    ignored = {
+        "as",
+        "case",
+        "cast",
+        "distinct",
+        "else",
+        "end",
+        "from",
+        "in",
+        "join",
+        "not",
+        "on",
+        "over",
+        "select",
+        "then",
+        "when",
+        "where",
+    }
+    values = []
+    for name in extract_string_values(
+        query,
+        r"\b([A-Za-z_][A-Za-z0-9_$]*)\s*\(",
+    ):
+        if name.lower() in ignored:
+            continue
+        values.append(name)
+    return unique_strings(values)
+
+
+def looks_like_flux_query(query_text: str) -> bool:
+    """Return whether query text looks like Flux."""
+    return bool(
+        re.search(r"\bfrom\s*\(\s*bucket\s*:", query_text)
+        or re.search(r"\|>\s*[A-Za-z_][A-Za-z0-9_]*\s*\(", query_text)
+    )
+
+
+def looks_like_sql_query(query_text: str, query_field: str) -> bool:
+    """Return whether query text looks like SQL."""
+    if query_field in ("rawSql", "sql"):
+        return True
+    return bool(
+        re.search(
+            r"(?is)^\s*(?:with\b.+?\bselect\b|select\b|insert\b|update\b|delete\b)",
+            query_text,
+        )
+    )
+
+
+def analyze_query_text(
+    query_text: str,
+    datasource_family: str,
+    query_field: str,
+) -> Dict[str, List[str]]:
+    """Extract conservative datasource-family inspection details."""
+    if datasource_family == "loki":
+        return {"metrics": [], "measurements": [], "buckets": []}
+    if datasource_family in FLUX_DATASOURCE_FAMILIES or looks_like_flux_query(query_text):
+        return {
+            "metrics": extract_flux_pipeline_functions(query_text),
+            "measurements": extract_measurements(query_text),
+            "buckets": extract_buckets(query_text),
+        }
+    if datasource_family in SQL_DATASOURCE_FAMILIES or looks_like_sql_query(
+        query_text, query_field
+    ):
+        return {
+            "metrics": extract_sql_query_shape_hints(query_text),
+            "measurements": extract_sql_source_references(query_text),
+            "buckets": [],
+        }
+    metrics = extract_metric_names(query_text)
+    if datasource_family == "prometheus":
+        metrics = extract_prometheus_metric_names(query_text)
+    return {
+        "metrics": metrics,
+        "measurements": extract_measurements(query_text),
+        "buckets": extract_buckets(query_text),
+    }
+
+
 def build_query_report_record(
     dashboard: Dict[str, Any],
     folder_path: str,
@@ -430,6 +705,13 @@ def build_query_report_record(
 ) -> Dict[str, Any]:
     """Build one canonical per-query inspection row."""
     query_field, query_text = build_query_field_and_text(target)
+    datasource_family = resolve_query_datasource_family(
+        panel,
+        target,
+        datasources_by_uid,
+        datasources_by_name,
+    )
+    analysis = analyze_query_text(query_text, datasource_family, query_field)
     record = {
         "dashboardUid": str(dashboard.get("uid") or DEFAULT_UNKNOWN_UID),
         "dashboardTitle": str(dashboard.get("title") or DEFAULT_DASHBOARD_TITLE),
@@ -451,9 +733,9 @@ def build_query_report_record(
         ),
         "queryField": query_field,
         "query": query_text,
-        "metrics": extract_metric_names(query_text),
-        "measurements": extract_measurements(query_text),
-        "buckets": extract_buckets(query_text),
+        "metrics": analysis["metrics"],
+        "measurements": analysis["measurements"],
+        "buckets": analysis["buckets"],
         "file": str(dashboard_file),
     }
     normalized = {}
