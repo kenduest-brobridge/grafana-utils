@@ -43,7 +43,7 @@ The repo now uses one primary command name with explicit areas underneath it.
 
 - `grafana-utils dashboard export ...`
 - `grafana-utils dashboard list ...`
-- `grafana-utils dashboard list-data-sources ...`
+- `grafana-utils datasource list ...`
 - `grafana-utils datasource list ...`
 - `grafana-utils datasource export ...`
 - `grafana-utils dashboard inspect-live ...`
@@ -223,7 +223,7 @@ python3 python/grafana-utils.py dashboard list \
 List dashboards from one explicit Grafana org:
 
 ```bash
-python3 python/grafana-utils.py list-dashboard \
+python3 python/grafana-utils.py dashboard list \
   --url http://localhost:3000 \
   --basic-user "$GRAFANA_USERNAME" \
   --basic-password "$GRAFANA_PASSWORD" \
@@ -234,7 +234,7 @@ python3 python/grafana-utils.py list-dashboard \
 List dashboards across every visible Grafana org:
 
 ```bash
-python3 python/grafana-utils.py list-dashboard \
+python3 python/grafana-utils.py dashboard list \
   --url http://localhost:3000 \
   --basic-user "$GRAFANA_USERNAME" \
   --basic-password "$GRAFANA_PASSWORD" \
@@ -245,7 +245,7 @@ python3 python/grafana-utils.py list-dashboard \
 List live dashboards without writing export files:
 
 ```bash
-python3 python/grafana-utils.py list-dashboard \
+python3 python/grafana-utils.py dashboard list \
   --url http://localhost:3000 \
   --basic-user admin \
   --basic-password admin
@@ -254,7 +254,7 @@ python3 python/grafana-utils.py list-dashboard \
 List live dashboards as a table with folder tree path:
 
 ```bash
-python3 python/grafana-utils.py list-dashboard \
+python3 python/grafana-utils.py dashboard list \
   --table \
   --url http://localhost:3000 \
   --basic-user admin \
@@ -264,7 +264,7 @@ python3 python/grafana-utils.py list-dashboard \
 List live dashboards as CSV:
 
 ```bash
-python3 python/grafana-utils.py list-dashboard \
+python3 python/grafana-utils.py dashboard list \
   --csv \
   --url http://localhost:3000 \
   --basic-user admin \
@@ -274,7 +274,7 @@ python3 python/grafana-utils.py list-dashboard \
 List live dashboards as JSON:
 
 ```bash
-python3 python/grafana-utils.py list-dashboard \
+python3 python/grafana-utils.py dashboard list \
   --json \
   --url http://localhost:3000 \
   --basic-user admin \
@@ -284,7 +284,7 @@ python3 python/grafana-utils.py list-dashboard \
 List live Grafana data sources as a table:
 
 ```bash
-python3 python/grafana-utils.py list-data-sources \
+python3 python/grafana-utils.py dashboard list-data-sources \
   --table \
   --url http://localhost:3000 \
   --basic-user admin \
@@ -294,7 +294,7 @@ python3 python/grafana-utils.py list-data-sources \
 Dashboard API import from the raw export:
 
 ```bash
-python3 python/grafana-utils.py import-dashboard \
+python3 python/grafana-utils.py dashboard import \
   --url http://localhost:3000 \
   --basic-user admin \
   --basic-password admin \
@@ -305,7 +305,7 @@ python3 python/grafana-utils.py import-dashboard \
 Dashboard diff against the current Grafana state:
 
 ```bash
-python3 python/grafana-utils.py diff \
+python3 python/grafana-utils.py dashboard diff \
   --url http://localhost:3000 \
   --basic-user admin \
   --basic-password admin \
@@ -521,7 +521,7 @@ Use `raw/` when you want:
 
 - the same dashboard `uid`
 - minimal transformation
-- API re-import through `grafana-utils import-dashboard`
+- API re-import through `grafana-utils dashboard import`
 
 Use `prompt/` when you want:
 
@@ -536,13 +536,13 @@ Use `prompt/` when you want:
 | `--url` | Grafana base URL. Default: `http://localhost:3000` |
 | `--export-dir` | Root export directory. Default: `dashboards/` |
 | `--page-size` | Dashboard search page size. Default: `500` |
-| `--org-id ORG_ID` | For `list-dashboard` or `export-dashboard`, switch to one explicit Grafana org ID; requires Basic auth |
-| `--all-orgs` | For `list-dashboard` or `export-dashboard`, enumerate visible Grafana orgs and aggregate list output or export each org; requires Basic auth |
-| `--with-sources` | For `list-dashboard` table or CSV output, fetch each dashboard payload and include datasource names used by that dashboard; JSON already includes datasource names and best-effort datasource UIDs by default |
-| `--no-header` | For `list-dashboard`, `list-data-sources`, `import-dashboard --dry-run --table`, or `inspect-export --table`, omit the table header row |
-| `--progress` | For `export-dashboard` or `import-dashboard`, print concise per-dashboard `current/total` progress lines while the command runs |
-| `-v, --verbose` | For `export-dashboard` or `import-dashboard`, print detailed per-item output including variants, paths, and import results; overrides `--progress` |
-| `import-dashboard --dry-run --table` | Render dry-run import predictions as a table showing `uid`, destination state, action, destination folder path, and file |
+| `--org-id ORG_ID` | For `dashboard list` or `dashboard export`, switch to one explicit Grafana org ID; requires Basic auth |
+| `--all-orgs` | For `dashboard list` or `dashboard export`, enumerate visible Grafana orgs and aggregate list output or export each org; requires Basic auth |
+| `--with-sources` | For `dashboard list` table or CSV output, fetch each dashboard payload and include datasource names used by that dashboard; JSON already includes datasource names and best-effort datasource UIDs by default |
+| `--no-header` | For `dashboard list`, `dashboard list-data-sources`, `dashboard import --dry-run --table`, or `dashboard inspect-export --table`, omit the table header row |
+| `--progress` | For `dashboard export` or `dashboard import`, print concise per-dashboard `current/total` progress lines while the command runs |
+| `-v, --verbose` | For `dashboard export` or `dashboard import`, print detailed per-item output including variants, paths, and import results; overrides `--progress` |
+| `dashboard import --dry-run --table` | Render dry-run import predictions as a table showing `uid`, destination state, action, destination folder path, and file |
 | `inspect-export --json` | Analyze a raw export directory and emit machine-readable structure summary including folder paths, panels, queries, datasource usage, datasource inventory, orphaned datasources, and mixed dashboards |
 | `inspect-export --table` | Analyze a raw export directory and render multi-section tables for summary, folder paths, datasource usage, datasource inventory, orphaned datasources, and mixed dashboards |
 | `inspect-export --report[=table|json|tree|tree-table]` | Emit one full per-query inspection report; default `table` output stays flat row-per-query, `tree` renders the same records as a dashboard -> panel -> query tree, and `tree-table` renders per-dashboard grouped tables |
@@ -551,9 +551,9 @@ Use `prompt/` when you want:
 | `inspect-export --report-columns ...` | With `--report` table, csv, or tree-table output, limit the query report to selected columns such as `dashboard_uid,panel_title,datasource,metrics,query` or add optional fields such as `datasource_uid` |
 | `inspect-export --report-filter-datasource ...` | With `--report`, include only rows whose datasource label exactly matches the requested value |
 | `inspect-export --report-filter-panel-id ...` | With `--report`, include only rows whose panel id exactly matches the requested value |
-| `--update-existing-only` | For `import-dashboard`, update only dashboards whose UID already exists in Grafana and skip missing dashboards instead of creating them |
-| `--ensure-folders` | For `import-dashboard`, read `raw/folders.json` and create any missing destination folder chain before importing dashboards |
-| `list-data-sources --table|--csv|--json` | List live Grafana data sources in human-readable or machine-readable output |
+| `--update-existing-only` | For `dashboard import`, update only dashboards whose UID already exists in Grafana and skip missing dashboards instead of creating them |
+| `--ensure-folders` | For `dashboard import`, read `raw/folders.json` and create any missing destination folder chain before importing dashboards |
+| `dashboard list-data-sources --table|--csv|--json` | List live Grafana data sources in human-readable or machine-readable output |
 | `--flat` | Do not create per-folder subdirectories |
 | `--overwrite` | Replace existing exported files |
 | `--without-dashboard-raw` | Skip the `raw/` export variant |
@@ -563,52 +563,52 @@ Use `prompt/` when you want:
 
 For dashboard listing:
 
-- default `list-dashboard` output is a table showing `uid`, `name`, `folder`, `folderUid`, resolved folder tree path, `org`, and `orgId`
-- `list-dashboard --no-header` omits the table header row
-- `list-dashboard --org-id <ID>` reads dashboards from that explicit org instead of the current auth context and requires Basic auth
-- `list-dashboard --all-orgs` aggregates dashboards across every visible org and requires Basic auth
-- `list-dashboard --json` includes datasource names and a best-effort `sourceUids` array by default
-- `list-dashboard --with-sources` remains useful for table or CSV output, where datasource expansion stays opt-in to keep the default list view compact
-- `list-dashboard --with-sources --csv` adds `sources` plus a `sourceUids` column with best-effort datasource UIDs
-- `list-dashboard --with-sources` is slower than plain `list-dashboard` because it fetches each dashboard payload and the datasource catalog
+- default `dashboard list` output is a table showing `uid`, `name`, `folder`, `folderUid`, resolved folder tree path, `org`, and `orgId`
+- `dashboard list --no-header` omits the table header row
+- `dashboard list --org-id <ID>` reads dashboards from that explicit org instead of the current auth context and requires Basic auth
+- `dashboard list --all-orgs` aggregates dashboards across every visible org and requires Basic auth
+- `dashboard list --json` includes datasource names and a best-effort `sourceUids` array by default
+- `dashboard list --with-sources` remains useful for table or CSV output, where datasource expansion stays opt-in to keep the default list view compact
+- `dashboard list --with-sources --csv` adds `sources` plus a `sourceUids` column with best-effort datasource UIDs
+- `dashboard list --with-sources` is slower than plain `dashboard list` because it fetches each dashboard payload and the datasource catalog
 
 For dashboard export:
 
-- `export-dashboard --org-id <ID>` exports dashboards from that explicit org instead of the current auth context and requires Basic auth
-- `export-dashboard --all-orgs` exports dashboards from every visible org and requires Basic auth
-- `export-dashboard --all-orgs` writes per-org trees such as `org_2_Org_Two/raw/...` and `org_2_Org_Two/prompt/...` to avoid cross-org file collisions
-- `export-dashboard` stays quiet by default except for the final summary
-- `export-dashboard --progress` prints one concise progress line per exported dashboard, such as `Exporting dashboard 3/10: cpu-main`
-- `export-dashboard -v` prints detailed per-variant output such as `Exported raw    cpu-main -> dashboards/raw/Infra/CPU__cpu-main.json`
-- `export-dashboard -v --progress` uses verbose output and suppresses the concise progress form
-- `import-dashboard` stays quiet by default except for the final summary
-- `import-dashboard --progress` prints one concise progress line per imported dashboard, such as `Importing dashboard 2/7: cpu-main`
-- `import-dashboard -v` prints detailed per-file import results, including dry-run actions or returned status values
-- `import-dashboard -v --progress` uses verbose output and suppresses the concise progress form
-- `import-dashboard --dry-run --table` prints a final table with `uid`, `destination`, `action`, `folder_path`, and `file`
-- `import-dashboard --dry-run --table --no-header` omits the dry-run table header row
-- `import-dashboard --update-existing-only` updates only existing dashboard UIDs, skips missing dashboards, and implies `--replace-existing`
-- `import-dashboard` now prints an `Import mode: ...` line up front so you can see whether the run is `create-only`, `create-or-update`, or `update-or-skip-missing`
-- `inspect-export` analyzes a raw export directory offline and summarizes dashboard count, folder paths, panels, queries, datasource usage, datasource inventory, orphaned datasources, and mixed-datasource dashboards
-- `inspect-export --json` emits the same analysis as one JSON document for scripts or CI checks
-- `inspect-export --table` renders the same analysis as multiple tables for summary, folder paths, datasource usage, datasource inventory, orphaned datasources, and mixed dashboards
-- `inspect-export --report` emits one row per query target with dashboard uid/title, folder path, panel id/title/type, datasource, query field, extracted metrics/measurements/buckets, and the raw query text
-- `inspect-export --report json` emits the same per-query inspection model as one machine-readable JSON document, including `datasourceUid` when the raw export carries a concrete datasource uid
-- `inspect-export --report tree` keeps the same underlying query records but renders them as a dashboard -> panel -> query tree when you want to read one dashboard at a time instead of scanning a wide flat table
-- `inspect-export --report tree-table` keeps the same dashboard-first grouping but renders each dashboard section as a compact table, which is easier to scan when you still want columns
-- `inspect-export --report-columns dashboard_uid,panel_title,datasource,metrics,query` trims the table report down to the columns you care about most
-- `inspect-export --report-columns dashboard_uid,panel_id,datasource_uid,datasource,query` opts `datasource_uid` into table or csv output without widening the default report
-- `inspect-export --report-filter-datasource <label>` narrows table or JSON report output to one datasource label, which is useful when checking migration leftovers or datasource retirement impact
-- `inspect-export --report-filter-panel-id <id>` narrows table or JSON report output to one panel id when one dashboard contains many panels and you only want one panel's queries
-- `inspect-live` reuses the same summary/report flags as `inspect-export`, but sources the dashboards, folders, and datasource inventory directly from Grafana instead of a pre-existing raw export directory
-- `inspect-export --table --no-header` suppresses each section's header row when you need compact copy/paste output
+- `dashboard export --org-id <ID>` exports dashboards from that explicit org instead of the current auth context and requires Basic auth
+- `dashboard export --all-orgs` exports dashboards from every visible org and requires Basic auth
+- `dashboard export --all-orgs` writes per-org trees such as `org_2_Org_Two/raw/...` and `org_2_Org_Two/prompt/...` to avoid cross-org file collisions
+- `dashboard export` stays quiet by default except for the final summary
+- `dashboard export --progress` prints one concise progress line per exported dashboard, such as `Exporting dashboard 3/10: cpu-main`
+- `dashboard export -v` prints detailed per-variant output such as `Exported raw    cpu-main -> dashboards/raw/Infra/CPU__cpu-main.json`
+- `dashboard export -v --progress` uses verbose output and suppresses the concise progress form
+- `dashboard import` stays quiet by default except for the final summary
+- `dashboard import --progress` prints one concise progress line per imported dashboard, such as `Importing dashboard 2/7: cpu-main`
+- `dashboard import -v` prints detailed per-file import results, including dry-run actions or returned status values
+- `dashboard import -v --progress` uses verbose output and suppresses the concise progress form
+- `dashboard import --dry-run --table` prints a final table with `uid`, `destination`, `action`, `folder_path`, and `file`
+- `dashboard import --dry-run --table --no-header` omits the dry-run table header row
+- `dashboard import --update-existing-only` updates only existing dashboard UIDs, skips missing dashboards, and implies `--replace-existing`
+- `dashboard import` now prints an `Import mode: ...` line up front so you can see whether the run is `create-only`, `create-or-update`, or `update-or-skip-missing`
+- `dashboard inspect-export` analyzes a raw export directory offline and summarizes dashboard count, folder paths, panels, queries, datasource usage, datasource inventory, orphaned datasources, and mixed-datasource dashboards
+- `dashboard inspect-export --json` emits the same analysis as one JSON document for scripts or CI checks
+- `dashboard inspect-export --table` renders the same analysis as multiple tables for summary, folder paths, datasource usage, datasource inventory, orphaned datasources, and mixed dashboards
+- `dashboard inspect-export --report` emits one row per query target with dashboard uid/title, folder path, panel id/title/type, datasource, query field, extracted metrics/measurements/buckets, and the raw query text
+- `dashboard inspect-export --report json` emits the same per-query inspection model as one machine-readable JSON document, including `datasourceUid` when the raw export carries a concrete datasource uid
+- `dashboard inspect-export --report tree` keeps the same underlying query records but renders them as a dashboard -> panel -> query tree when you want to read one dashboard at a time instead of scanning a wide flat table
+- `dashboard inspect-export --report tree-table` keeps the same dashboard-first grouping but renders each dashboard section as a compact table, which is easier to scan when you still want columns
+- `dashboard inspect-export --report-columns dashboard_uid,panel_title,datasource,metrics,query` trims the table report down to the columns you care about most
+- `dashboard inspect-export --report-columns dashboard_uid,panel_id,datasource_uid,datasource,query` opts `datasource_uid` into table or csv output without widening the default report
+- `dashboard inspect-export --report-filter-datasource <label>` narrows table or JSON report output to one datasource label, which is useful when checking migration leftovers or datasource retirement impact
+- `dashboard inspect-export --report-filter-panel-id <id>` narrows table or JSON report output to one panel id when one dashboard contains many panels and you only want one panel's queries
+- `dashboard inspect-live` reuses the same summary/report flags as `dashboard inspect-export`, but sources the dashboards, folders, and datasource inventory directly from Grafana instead of a pre-existing raw export directory
+- `dashboard inspect-export --table --no-header` suppresses each section's header row when you need compact copy/paste output
 
 For datasource listing:
 
-- `list-data-sources` defaults to a table showing `uid`, `name`, `type`, `url`, and `isDefault`
-- `list-data-sources --no-header` omits the table header row
-- `list-data-sources --csv` emits `uid,name,type,url,isDefault`
-- `list-data-sources --json` emits an array of datasource objects
+- `dashboard list-data-sources` defaults to a table showing `uid`, `name`, `type`, `url`, and `isDefault`
+- `dashboard list-data-sources --no-header` omits the table header row
+- `dashboard list-data-sources --csv` emits `uid,name,type,url,isDefault`
+- `dashboard list-data-sources --json` emits an array of datasource objects
 
 ## Datasource Utility
 
@@ -640,7 +640,7 @@ Raw export preserves the Grafana dashboard identity as much as possible:
 If you only want the prompt variant:
 
 ```bash
-python3 python/grafana-utils.py export-dashboard \
+python3 python/grafana-utils.py dashboard export \
   --export-dir ./dashboards \
   --without-dashboard-raw
 ```
@@ -663,7 +663,7 @@ Important notes:
 If you only want the raw variant:
 
 ```bash
-python3 python/grafana-utils.py export-dashboard \
+python3 python/grafana-utils.py dashboard export \
   --export-dir ./dashboards \
   --without-dashboard-prompt
 ```
@@ -675,7 +675,7 @@ Dashboard import reads normal dashboard JSON through the Grafana API.
 Example:
 
 ```bash
-python3 python/grafana-utils.py import-dashboard \
+python3 python/grafana-utils.py dashboard import \
   --url http://127.0.0.1:3000 \
   --import-dir ./dashboards/raw \
   --replace-existing
@@ -684,7 +684,7 @@ python3 python/grafana-utils.py import-dashboard \
 Dry-run import as a table:
 
 ```bash
-python3 python/grafana-utils.py import-dashboard \
+python3 python/grafana-utils.py dashboard import \
   --url http://127.0.0.1:3000 \
   --import-dir ./dashboards/raw \
   --dry-run \
@@ -694,7 +694,7 @@ python3 python/grafana-utils.py import-dashboard \
 Update only dashboards that already exist in Grafana:
 
 ```bash
-python3 python/grafana-utils.py import-dashboard \
+python3 python/grafana-utils.py dashboard import \
   --url http://127.0.0.1:3000 \
   --import-dir ./dashboards/raw \
   --update-existing-only
@@ -703,7 +703,7 @@ python3 python/grafana-utils.py import-dashboard \
 Ensure exported folder UIDs exist before importing dashboards:
 
 ```bash
-python3 python/grafana-utils.py import-dashboard \
+python3 python/grafana-utils.py dashboard import \
   --url http://127.0.0.1:3000 \
   --import-dir ./dashboards/raw \
   --ensure-folders \
@@ -987,7 +987,7 @@ Run the Rust dashboard CLI from the repo and export dashboards from local Grafan
 
 ```bash
 cd rust
-cargo run --bin grafana-utils -- export-dashboard \
+cargo run --bin grafana-utils -- dashboard export \
   --url http://localhost:3000 \
   --basic-user admin \
   --basic-password admin \
@@ -998,7 +998,7 @@ List dashboards from local Grafana with the Rust CLI:
 
 ```bash
 cd rust
-cargo run --bin grafana-utils -- list-dashboard \
+cargo run --bin grafana-utils -- dashboard list \
   --url http://localhost:3000 \
   --basic-user admin \
   --basic-password admin \
@@ -1009,7 +1009,7 @@ Compare raw dashboard exports with local Grafana using the Rust CLI:
 
 ```bash
 cd rust
-cargo run --bin grafana-utils -- diff \
+cargo run --bin grafana-utils -- dashboard diff \
   --url http://localhost:3000 \
   --basic-user admin \
   --basic-password admin \
@@ -1020,7 +1020,7 @@ Show Rust dashboard CLI help:
 
 ```bash
 cd rust
-cargo run --bin grafana-utils -- -h
+cargo run --bin grafana-utils -- dashboard -h
 ```
 
 Linux `amd64` build notes:
@@ -1125,7 +1125,7 @@ Username/password example:
 ```bash
 export GRAFANA_USERNAME='admin'
 export GRAFANA_PASSWORD='admin'
-python3 python/grafana-utils.py export-dashboard \
+python3 python/grafana-utils.py dashboard export \
   --url http://localhost:3000 \
   --basic-user "$GRAFANA_USERNAME" \
   --basic-password "$GRAFANA_PASSWORD" \
@@ -1135,7 +1135,7 @@ python3 python/grafana-utils.py export-dashboard \
 Prompted password example:
 
 ```bash
-python3 python/grafana-utils.py export-dashboard \
+python3 python/grafana-utils.py dashboard export \
   --url http://localhost:3000 \
   --basic-user admin \
   --prompt-password \
@@ -1150,7 +1150,7 @@ TLS note:
 Example:
 
 ```bash
-python3 python/grafana-utils.py export-dashboard --verify-ssl
+python3 python/grafana-utils.py dashboard export --verify-ssl
 ```
 
 ## Output Directory Layout
