@@ -22,7 +22,8 @@ def run_export_dashboards(args, deps):
     auth_header = client.headers.get("Authorization", "")
     if (all_orgs or org_id) and not auth_header.startswith("Basic "):
         raise grafana_error(
-            "Dashboard org switching requires Basic auth. Use --basic-user and --basic-password."
+            "Dashboard org switching does not support API token auth. Use Grafana "
+            "username/password login with --basic-user and --basic-password."
         )
 
     clients = [client]

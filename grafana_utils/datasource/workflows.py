@@ -263,7 +263,8 @@ def build_effective_import_client(args, client):
     auth_header = client.headers.get("Authorization", "")
     if org_id and not auth_header.startswith("Basic "):
         raise GrafanaError(
-            "Datasource org switching requires Basic auth. Use --basic-user and --basic-password."
+            "Datasource org switching does not support API token auth. Use Grafana "
+            "username/password login with --basic-user and --basic-password."
         )
     if org_id:
         return client.with_org_id(str(org_id))

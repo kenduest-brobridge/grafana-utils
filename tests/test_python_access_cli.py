@@ -1161,27 +1161,27 @@ class AccessCliTests(unittest.TestCase):
     def test_validate_user_list_auth_rejects_global_token_auth(self):
         args = argparse.Namespace(scope="global", with_teams=False)
 
-        with self.assertRaisesRegex(access_utils.GrafanaError, "requires Basic auth"):
+        with self.assertRaisesRegex(access_utils.GrafanaError, "does not support API token auth"):
             access_utils.validate_user_list_auth(args, "token")
 
     def test_validate_user_list_auth_rejects_with_teams_token_auth(self):
         args = argparse.Namespace(scope="org", with_teams=True)
 
-        with self.assertRaisesRegex(access_utils.GrafanaError, "--with-teams requires Basic auth"):
+        with self.assertRaisesRegex(access_utils.GrafanaError, "does not support API token auth"):
             access_utils.validate_user_list_auth(args, "token")
 
     def test_validate_user_add_auth_rejects_token_auth(self):
-        with self.assertRaisesRegex(access_utils.GrafanaError, "User add requires Basic auth"):
+        with self.assertRaisesRegex(access_utils.GrafanaError, "does not support API token auth"):
             access_utils.validate_user_add_auth("token")
 
     def test_validate_user_modify_auth_rejects_token_auth(self):
-        with self.assertRaisesRegex(access_utils.GrafanaError, "User modify requires Basic auth"):
+        with self.assertRaisesRegex(access_utils.GrafanaError, "does not support API token auth"):
             access_utils.validate_user_modify_auth("token")
 
     def test_validate_user_delete_auth_rejects_global_token_auth(self):
         args = argparse.Namespace(scope="global")
 
-        with self.assertRaisesRegex(access_utils.GrafanaError, "requires Basic auth"):
+        with self.assertRaisesRegex(access_utils.GrafanaError, "does not support API token auth"):
             access_utils.validate_user_delete_auth(args, "token")
 
     def test_validate_user_delete_args_requires_confirmation(self):

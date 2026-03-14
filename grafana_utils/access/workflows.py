@@ -57,17 +57,21 @@ from .pending_cli_staging import (
 def validate_user_list_auth(args, auth_mode):
     if args.scope == "global" and auth_mode != "basic":
         raise GrafanaError(
-            "User list with --scope global requires Basic auth "
-            "(--basic-user / --basic-password)."
+            "User list with --scope global does not support API token auth. Use "
+            "Grafana username/password login (--basic-user / --basic-password)."
         )
     if args.with_teams and auth_mode != "basic":
-        raise GrafanaError("--with-teams requires Basic auth.")
+        raise GrafanaError(
+            "--with-teams does not support API token auth. Use Grafana "
+            "username/password login."
+        )
 
 
 def validate_user_add_auth(auth_mode):
     if auth_mode != "basic":
         raise GrafanaError(
-            "User add requires Basic auth (--basic-user / --basic-password)."
+            "User add does not support API token auth. Use Grafana "
+            "username/password login (--basic-user / --basic-password)."
         )
 
 
@@ -89,7 +93,8 @@ def validate_user_modify_args(args):
 def validate_user_modify_auth(auth_mode):
     if auth_mode != "basic":
         raise GrafanaError(
-            "User modify requires Basic auth (--basic-user / --basic-password)."
+            "User modify does not support API token auth. Use Grafana "
+            "username/password login (--basic-user / --basic-password)."
         )
 
 
@@ -101,8 +106,8 @@ def validate_user_delete_args(args):
 def validate_user_delete_auth(args, auth_mode):
     if args.scope == "global" and auth_mode != "basic":
         raise GrafanaError(
-            "User delete with --scope global requires Basic auth "
-            "(--basic-user / --basic-password)."
+            "User delete with --scope global does not support API token auth. Use "
+            "Grafana username/password login (--basic-user / --basic-password)."
         )
 
 

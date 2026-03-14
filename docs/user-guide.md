@@ -103,7 +103,7 @@ Purpose: export live dashboards into `raw/` and `prompt/` variants.
 | --- | --- | --- |
 | `--export-dir` | Export root directory | Default `dashboards`; contains `raw/` and `prompt/` |
 | `--page-size` | Pagination size | Increase for large estates |
-| `--org-id` | Export from one explicit org | Usually requires Basic auth |
+| `--org-id` | Export from one explicit org | API token is not supported here; use Grafana username/password login |
 | `--all-orgs` | Export from all visible orgs | Best for central backups |
 | `--flat` | Flatten folder paths | Useful for simpler git diffs |
 | `--overwrite` | Replace existing files | Typical for repeatable exports |

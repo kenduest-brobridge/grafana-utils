@@ -573,7 +573,7 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("combined", help_text)
         self.assertIn("export root", help_text)
         self.assertIn("--org-id", help_text)
-        self.assertIn("Requires Basic auth", help_text)
+        self.assertIn("API token auth is not supported here", help_text)
         self.assertIn("--require-matching-export-org", help_text)
         self.assertIn("missing/match/mismatch", help_text)
         self.assertIn("skipped/blocked", help_text)
@@ -3578,7 +3578,7 @@ class ExporterTests(unittest.TestCase):
         )
 
         with mock.patch.object(exporter, "build_client", return_value=client):
-            with self.assertRaisesRegex(exporter.GrafanaError, "Basic auth"):
+            with self.assertRaisesRegex(exporter.GrafanaError, "does not support API token auth"):
                 exporter.export_dashboards(args)
 
     def test_import_dashboards_rejects_org_switch_with_token_auth(self):
@@ -3594,7 +3594,7 @@ class ExporterTests(unittest.TestCase):
         )
 
         with mock.patch.object(exporter, "build_client", return_value=client):
-            with self.assertRaisesRegex(exporter.GrafanaError, "Basic auth"):
+            with self.assertRaisesRegex(exporter.GrafanaError, "does not support API token auth"):
                 exporter.import_dashboards(args)
 
     def test_import_dashboards_rejects_export_org_mismatch_for_token_scope(self):

@@ -65,7 +65,8 @@ def run_import_dashboards(args, deps):
     auth_header = client.headers.get("Authorization", "")
     if org_id and not auth_header.startswith("Basic "):
         raise grafana_error(
-            "Dashboard org switching requires Basic auth. Use --basic-user and --basic-password."
+            "Dashboard org switching does not support API token auth. Use Grafana "
+            "username/password login with --basic-user and --basic-password."
         )
     if org_id:
         client = client.with_org_id(str(org_id))

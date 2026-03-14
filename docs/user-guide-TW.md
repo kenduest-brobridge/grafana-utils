@@ -93,7 +93,7 @@ Rust 入口差異要點：
 | `--export-dir`（預設 `dashboards`） | 匯出根目錄，輸出含 `raw/` 與 `prompt/` | `--flat` 時不保留 dashboard 資料夾階層 |
 | `--page-size`（預設 `500`） | 分頁抓取筆數 | 大庫可調高降低請求次數 |
 | `--org-id` | 指定要匯出的 org id | 與 `--all-orgs` 互斥；通常配合 basic auth |
-| `--all-orgs` | 匯出目前 token/user 可見全部 org | Basic auth 通常才能看到更多 |
+| `--all-orgs` | 匯出目前登入身分可見的全部 org | 不支援 API token；需用 Grafana 帳號密碼登入 |
 | `--flat` | 不保留 folder 結構，平鋪輸出 | `--import-folder-uid`/目錄比對流程會更穩定 |
 | `--overwrite` | 覆蓋已存在檔案 | CI 重跑時常用 |
 | `--without-dashboard-raw` | 不輸出 `raw/` | 只要做 UI 匯入時可省空間 |
@@ -1300,10 +1300,10 @@ cargo run --bin grafana-util -- access service-account token delete --url <URL> 
 
 | 命令 | `--org-id` | `--all-orgs` |
 | --- | --- | --- |
-| dashboard list | 可用（需 basic） | 可用（需 basic） |
-| dashboard export | 可用（需 basic） | 可用（需 basic） |
-| dashboard import | 可用（需 basic） | 不可 |
-| datasource import | 可用（需 basic） | 不可 |
+| dashboard list | 可用（不可用 token，需 Grafana 帳號密碼） | 可用（不可用 token，需 Grafana 帳號密碼） |
+| dashboard export | 可用（不可用 token，需 Grafana 帳號密碼） | 可用（不可用 token，需 Grafana 帳號密碼） |
+| dashboard import | 可用（不可用 token，需 Grafana 帳號密碼） | 不可 |
+| datasource import | 可用（不可用 token，需 Grafana 帳號密碼） | 不可 |
 | datasource list/export | 不在 parser 暴露（使用共用的 dashboard default 行為） | 不在 parser 暴露 |
 | alert 全部 | 不支援 `org-id`/`all-orgs` | 不支援 |
 | access 全部 | 用 `--scope` 替代 | 不支援 |

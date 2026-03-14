@@ -145,7 +145,8 @@ def add_import_cli_args(parser):
         default=None,
         help=(
             "Import datasources into this explicit Grafana organization ID instead "
-            "of the current org context. Requires Basic auth."
+            "of the current org context. API token auth is not supported here; "
+            "use Grafana username/password login."
         ),
     )
     parser.add_argument(

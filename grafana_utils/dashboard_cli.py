@@ -308,7 +308,11 @@ def add_export_cli_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--all-orgs",
         action="store_true",
-        help="Export dashboards from every visible Grafana organization and write per-org subdirectories under the export root. Requires Basic auth.",
+        help=(
+            "Export dashboards from every visible Grafana organization and write per-org "
+            "subdirectories under the export root. API token auth is not supported here; "
+            "use Grafana username/password login."
+        ),
     )
     parser.add_argument(
         "--flat",
@@ -363,7 +367,10 @@ def add_list_cli_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--all-orgs",
         action="store_true",
-        help="List dashboards from every Grafana organization. Requires Basic auth.",
+        help=(
+            "List dashboards from every Grafana organization. API token auth is not "
+            "supported here; use Grafana username/password login."
+        ),
     )
     parser.add_argument(
         "--with-sources",
@@ -455,7 +462,8 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
         default=None,
         help=(
             "Import dashboards into this explicit Grafana organization ID instead "
-            "of the current org context. Requires Basic auth."
+            "of the current org context. API token auth is not supported here; "
+            "use Grafana username/password login."
         ),
     )
     parser.add_argument(

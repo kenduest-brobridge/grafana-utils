@@ -542,7 +542,10 @@ def add_user_list_cli_args(parser):
     parser.add_argument(
         "--with-teams",
         action="store_true",
-        help="Include team memberships. Requires Basic auth.",
+        help=(
+            "Include team memberships. API token auth is not supported here; use "
+            "Grafana username/password login."
+        ),
     )
     parser.add_argument(
         "--page",
