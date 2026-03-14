@@ -1393,4 +1393,3 @@ make test-access-live
 - Traditional Chinese README: [`README.zh-TW.md`](README.zh-TW.md)
 - recent change history: [`CHANGELOG.md`](CHANGELOG.md)
 - maintainer and implementation notes: [`DEVELOPER.md`](DEVELOPER.md)
-- architecture overviews: [`Python`](docs/overview-python.md), [`Rust`](docs/overview-rust.md)
