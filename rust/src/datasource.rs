@@ -21,6 +21,16 @@ const DATASOURCE_EXPORT_FILENAME: &str = "datasources.json";
 const EXPORT_METADATA_FILENAME: &str = "export-metadata.json";
 const ROOT_INDEX_KIND: &str = "grafana-utils-datasource-export-index";
 const TOOL_SCHEMA_VERSION: i64 = 1;
+const DATASOURCE_CONTRACT_FIELDS: &[&str] = &[
+    "uid",
+    "name",
+    "type",
+    "access",
+    "url",
+    "isDefault",
+    "org",
+    "orgId",
+];
 
 #[path = "datasource_diff.rs"]
 mod datasource_diff;
@@ -568,6 +578,26 @@ fn parse_export_metadata(path: &Path) -> Result<DatasourceExportMetadata> {
     })
 }
 
+fn validate_datasource_contract_record(
+    record: &Map<String, Value>,
+    context_label: &str,
+) -> Result<()> {
+    let mut extra_fields = record
+        .keys()
+        .filter(|key| !DATASOURCE_CONTRACT_FIELDS.contains(&key.as_str()))
+        .cloned()
+        .collect::<Vec<String>>();
+    extra_fields.sort();
+    if extra_fields.is_empty() {
+        return Ok(());
+    }
+    Err(message(format!(
+        "{context_label} contains unsupported datasource field(s): {}. Supported fields: {}.",
+        extra_fields.join(", "),
+        DATASOURCE_CONTRACT_FIELDS.join(", ")
+    )))
+}
+
 fn load_import_records(
     import_dir: &Path,
 ) -> Result<(DatasourceExportMetadata, Vec<DatasourceImportRecord>)> {
@@ -618,6 +648,10 @@ fn load_import_records(
                 datasources_path.display()
             ))
         })?;
+        validate_datasource_contract_record(
+            object,
+            &format!("Datasource import entry in {}", datasources_path.display()),
+        )?;
         records.push(DatasourceImportRecord {
             uid: string_field(object, "uid", ""),
             name: string_field(object, "name", ""),
@@ -671,6 +705,18 @@ fn load_diff_record_values(diff_dir: &Path) -> Result<Vec<Value>> {
             datasources_path.display()
         ))
     })?;
+    for item in items {
+        let object = item.as_object().ok_or_else(|| {
+            message(format!(
+                "Datasource inventory entry must be a JSON object: {}",
+                datasources_path.display()
+            ))
+        })?;
+        validate_datasource_contract_record(
+            object,
+            &format!("Datasource diff entry in {}", datasources_path.display()),
+        )?;
+    }
     Ok(items.clone())
 }
 

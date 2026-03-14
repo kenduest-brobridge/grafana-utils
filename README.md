@@ -678,6 +678,7 @@ For datasource inventory:
 - `datasource export --dry-run` prints the target files without writing them
 - `datasource export --overwrite` replaces existing export files in the target directory
 - `datasource import` reads the normalized datasource export root back into Grafana
+- `datasource import` rejects datasource records that carry extra fields outside the normalized contract, such as `id`, `jsonData`, `secureJsonData`, or passwords
 - `datasource import --dry-run` predicts create/update/skip/block actions without calling Grafana write APIs
 - `datasource import --org-id <ID>` switches the whole import run to one explicit destination org and requires Basic auth
 - `datasource import --require-matching-export-org` fails when the export's recorded `orgId` does not match the resolved target org for the run
@@ -688,7 +689,7 @@ For datasource inventory:
 - `datasource import --dry-run --table --output-columns uid,action,org_id,file` trims the dry-run table to the selected review columns without changing the default table when the flag is omitted
 - `datasource import --dry-run --json` renders one machine-readable JSON document with the active mode, per-datasource actions, and summary counts
 - `datasource diff` compares one exported datasource inventory root against the current live Grafana datasource inventory
-- `datasource diff --diff-dir <DIR>` reads `datasources.json`, `index.json`, and `export-metadata.json` from that export root, prints per-datasource diff status, and exits with status `1` when differences are found
+- `datasource diff --diff-dir <DIR>` reads `datasources.json`, `index.json`, and `export-metadata.json` from that export root, rejects extra datasource fields outside the normalized contract, prints per-datasource diff status, and exits with status `1` when differences are found
 
 ### Raw Export
 
@@ -1223,12 +1224,14 @@ Developer sample-data seed notes:
 Authentication methods:
 
 - API token with `--token` or legacy `--api-token`
+- Prompted API token with `--prompt-token`
 - Basic auth with `--basic-user` and `--basic-password`
 - Prompted Basic auth with `--basic-user` and `--prompt-password`
 
 Auth note:
 
 - prefer either token auth or Basic auth for one command, not both
+- `--prompt-token` hides the API token input instead of putting it in shell history or process arguments
 - the CLIs reject partial Basic auth input such as only `--basic-user` without `--basic-password` or `--prompt-password`
 - `--prompt-password` hides the password input instead of putting it in shell history or process arguments
 - `GRAFANA_API_TOKEN`, `GRAFANA_USERNAME`, and `GRAFANA_PASSWORD` still work as environment fallbacks
@@ -1263,6 +1266,15 @@ python3 python/grafana-utils.py dashboard export \
   --url http://localhost:3000 \
   --basic-user admin \
   --prompt-password \
+  --export-dir ./dashboards
+```
+
+Prompted token example:
+
+```bash
+python3 python/grafana-utils.py dashboard export \
+  --url http://localhost:3000 \
+  --prompt-token \
   --export-dir ./dashboards
 ```
 

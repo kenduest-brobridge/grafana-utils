@@ -352,6 +352,52 @@ class DatasourceCliTests(unittest.TestCase):
                     case["expectedImportPayload"],
                 )
 
+    def test_load_import_bundle_rejects_extra_secret_or_server_managed_fields(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            (import_dir / datasource_cli.EXPORT_METADATA_FILENAME).write_text(
+                json.dumps(
+                    {
+                        "kind": datasource_cli.ROOT_INDEX_KIND,
+                        "schemaVersion": datasource_cli.TOOL_SCHEMA_VERSION,
+                        "variant": "root",
+                        "resource": "datasource",
+                        "datasourceCount": 1,
+                        "datasourcesFile": datasource_cli.DATASOURCE_EXPORT_FILENAME,
+                        "indexFile": "index.json",
+                        "format": "grafana-datasource-inventory-v1",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (import_dir / datasource_cli.DATASOURCE_EXPORT_FILENAME).write_text(
+                json.dumps(
+                    [
+                        {
+                            "uid": "prom-main",
+                            "name": "Prometheus Main",
+                            "type": "prometheus",
+                            "access": "proxy",
+                            "url": "http://prometheus:9090",
+                            "isDefault": "true",
+                            "org": "Main Org.",
+                            "orgId": "1",
+                            "id": 7,
+                            "jsonData": {"httpMethod": "POST"},
+                            "secureJsonData": {"httpHeaderValue1": "secret"},
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (import_dir / "index.json").write_text("{}", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                datasource_cli.GrafanaError,
+                "unsupported datasource field\\(s\\): id, jsonData, secureJsonData",
+            ):
+                datasource_cli.load_import_bundle(import_dir)
+
     def test_export_datasources_dry_run_does_not_write_files(self):
         args = datasource_cli.parse_args(
             ["export", "--export-dir", "ignored", "--dry-run", "--url", "http://127.0.0.1:3000"]

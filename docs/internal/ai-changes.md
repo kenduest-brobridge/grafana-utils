@@ -1,5 +1,21 @@
 # ai-changes.md
 
+## 2026-03-14 - Add Python Prompt Token Support
+- Summary: Added `--prompt-token` across the Python dashboard, alert, and access CLIs so operators can enter a Grafana API token through a non-echoed prompt instead of passing `--token` on the command line. The shared Python auth resolver in `grafana_utils/auth_staging.py` now handles prompted token input alongside the existing explicit token, explicit Basic auth, and prompted Basic-auth paths.
+- Tests: Added prompt-token parser and auth-resolution coverage for dashboard, alert, access, and the shared auth-staging helper, including conflict cases for `--token` plus `--prompt-token`.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py tests/test_python_alert_cli.py tests/test_python_access_cli.py tests/test_python_auth_staging.py`
+- Validation: Confirmed the Python parsers now accept `--prompt-token`, confirmed the shared auth resolver prompts with `Grafana API token: ` and returns a Bearer header, and confirmed the CLIs reject combining `--prompt-token` with `--token` or any Basic-auth inputs.
+- Impact: `grafana_utils/auth_staging.py`, `grafana_utils/dashboard_cli.py`, `grafana_utils/alert_cli.py`, `grafana_utils/access_cli.py`, `tests/test_python_auth_staging.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `tests/test_python_access_cli.py`, `README.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. The change is additive and keeps the existing token/env/basic-auth flows intact, but interactive prompting still assumes a TTY when operators choose `--prompt-token`.
+
+## 2026-03-14 - Reject Extra Datasource Contract Fields
+- Summary: Tightened datasource import/diff contract enforcement so both Python and Rust now reject `datasources.json` entries that carry fields outside the documented normalized inventory shape. Instead of silently dropping server-managed fields or secret-bearing settings such as `id`, `jsonData`, `secureJsonData`, and `password`, the loaders now fail closed before import or diff proceeds.
+- Tests: Added focused Python import/diff loader tests and Rust datasource import/diff tests that inject extra datasource fields and assert the new contract errors.
+- Test Run: `python3 -m unittest -v tests/test_python_datasource_cli.py tests/test_python_datasource_diff.py`; `cargo test --manifest-path rust/Cargo.toml datasource --quiet`
+- Validation: Confirmed Python and Rust both reject datasource import/diff inputs that try to carry non-contract fields, and updated the user and maintainer docs plus `TODO.md` to reflect that secret-bearing and server-managed datasource fields are now explicitly blocked rather than merely ignored.
+- Impact: `grafana_utils/datasource_contract.py`, `grafana_utils/datasource_cli.py`, `grafana_utils/datasource_diff.py`, `tests/test_python_datasource_cli.py`, `tests/test_python_datasource_diff.py`, `rust/src/datasource.rs`, `rust/src/datasource_rust_tests.rs`, `rust/src/datasource_diff_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Moderate. This is an intentional fail-closed behavior change for datasource import/diff inputs, so any existing hand-edited or over-exported datasource bundles that still include secret-bearing or server-managed fields will now error until they are reduced back to the normalized contract.
+
 ## 2026-03-14 - Align Datasource Contract Fixtures Across Python and Rust
 - Summary: Added one shared datasource contract fixture set for Prometheus, Loki, and InfluxDB examples, including secret-bearing and mixed auth fields that must not leak into the normalized export/import contract. Python now uses a dedicated `datasource_contract.py` helper to canonicalize datasource record values, and both the Python datasource CLI/diff tests and the Rust datasource import/diff tests validate their normalized records and import payloads against the same fixture file.
 - Tests: Added Python fixture-based normalization and import-payload tests, added Rust fixture-based normalization and import-payload tests, and kept the existing datasource CLI/diff suites as the verification path.

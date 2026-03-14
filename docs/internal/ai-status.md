@@ -1,5 +1,19 @@
 # ai-status.md
 
+## 2026-03-14 - Task: Add Python Prompt Token Support
+- State: Done
+- Scope: `grafana_utils/auth_staging.py`, `grafana_utils/dashboard_cli.py`, `grafana_utils/alert_cli.py`, `grafana_utils/access_cli.py`, `tests/test_python_auth_staging.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `tests/test_python_access_cli.py`, `README.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The Python CLIs already supported explicit token auth and prompted Basic-auth passwords, but there was no secure interactive equivalent for token auth. Operators who wanted to avoid putting a Grafana API token in shell history still had to pass `--token` directly or rely on environment variables.
+- Current Update: Added `--prompt-token` to the shared Python auth path and the dashboard, alert, and access parsers, wired it through the shared auth resolver, and added focused success/conflict coverage for prompted token input.
+- Result: Python operators can now enter a Grafana API token through a non-echoed prompt with `--prompt-token`, while the CLIs still reject mixing token and Basic-auth inputs or combining `--prompt-token` with an explicit `--token`.
+
+## 2026-03-14 - Task: Reject Extra Datasource Contract Fields
+- State: Done
+- Scope: `grafana_utils/datasource_contract.py`, `grafana_utils/datasource_cli.py`, `grafana_utils/datasource_diff.py`, `tests/test_python_datasource_cli.py`, `tests/test_python_datasource_diff.py`, `rust/src/datasource.rs`, `rust/src/datasource_rust_tests.rs`, `rust/src/datasource_diff_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Datasource export/import had a narrow normalized contract in practice, but the import and diff loaders still accepted `datasources.json` entries with extra fields and silently normalized them away. That meant server-managed fields, secret-bearing settings, and datasource-type-specific config blobs could still appear in import/diff inputs without an explicit failure.
+- Current Update: Added shared datasource contract validation in Python, mirrored the same fail-closed validation in Rust datasource import/diff loaders, and added focused tests that reject extra fields such as `id`, `jsonData`, `secureJsonData`, and `password` instead of silently dropping them.
+- Result: Datasource import and diff now enforce the documented normalized contract directly in both runtimes, so secret-bearing or server-managed datasource fields cause an explicit error instead of being ignored.
+
 ## 2026-03-14 - Task: Align Datasource Contract Fixtures Across Python and Rust
 - State: Done
 - Scope: `grafana_utils/datasource_contract.py`, `grafana_utils/datasource_cli.py`, `grafana_utils/datasource_diff.py`, `tests/fixtures/datasource_contract_cases.json`, `tests/test_python_datasource_cli.py`, `tests/test_python_datasource_diff.py`, `rust/src/datasource_rust_tests.rs`, `rust/src/datasource_diff_rust_tests.rs`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

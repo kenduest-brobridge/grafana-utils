@@ -57,7 +57,7 @@
 - reduce Python/Rust inspect-export and inspect-live drift by keeping one stable summary/report schema, shared filters, and synchronized help/examples
 - reduce repeated live Grafana lookups during dashboard import and dry-run paths so large imports do not multiply API round-trips per dashboard
 - add datasource `diff` workflows so inventory replay has a first-class compare path alongside `list`, `export`, and `import`
-- tighten the datasource import/export contract further around server-managed fields, secure settings, and explicit update-safety rules now that Python/Rust normalization fixtures are aligned
+- tighten the datasource import/export contract further around explicit update-safety rules now that extra fields and secret-bearing settings are rejected
 - dashboard `prompt` export should surface the original datasource name in Grafana web-import prompts, not only the datasource type label
 - dashboard `prompt` export should align `__requires` names and versions with Grafana external export where possible
 - dashboard `prompt` export should add broader mixed-type and same-type datasource validation coverage beyond the current Prometheus/Loki cases

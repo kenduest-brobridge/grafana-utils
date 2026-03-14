@@ -2,6 +2,17 @@
 
 from typing import Any, Dict
 
+DATASOURCE_CONTRACT_FIELDS = (
+    "uid",
+    "name",
+    "type",
+    "access",
+    "url",
+    "isDefault",
+    "org",
+    "orgId",
+)
+
 
 def normalize_datasource_string(value: Any) -> str:
     if value is None:
@@ -29,3 +40,21 @@ def normalize_datasource_record(record: Dict[str, Any]) -> Dict[str, str]:
         "org": normalize_datasource_string(record.get("org")),
         "orgId": normalize_datasource_string(record.get("orgId")),
     }
+
+
+def validate_datasource_contract_record(
+    record: Dict[str, Any],
+    context_label: str,
+) -> None:
+    extra_fields = sorted(
+        key for key in record.keys() if key not in DATASOURCE_CONTRACT_FIELDS
+    )
+    if extra_fields:
+        raise ValueError(
+            "%s contains unsupported datasource field(s): %s. Supported fields: %s."
+            % (
+                context_label,
+                ", ".join(extra_fields),
+                ", ".join(DATASOURCE_CONTRACT_FIELDS),
+            )
+        )

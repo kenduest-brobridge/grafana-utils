@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from .clients.dashboard_client import GrafanaClient
 from .datasource_contract import normalize_datasource_record
+from .datasource_contract import validate_datasource_contract_record
 from .dashboard_cli import GrafanaError, build_datasource_inventory_record
 
 
@@ -86,6 +87,13 @@ def load_datasource_diff_bundle(import_dir):
             raise GrafanaError(
                 "Datasource diff entry must be a JSON object: %s" % datasources_path
             )
+        try:
+            validate_datasource_contract_record(
+                item,
+                "Datasource diff entry in %s" % datasources_path,
+            )
+        except ValueError as exc:
+            raise GrafanaError(str(exc))
         records.append(normalize_datasource_record(item))
 
     index_document = load_json_document(index_path)

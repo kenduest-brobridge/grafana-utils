@@ -31,6 +31,7 @@ from .datasource_diff import (
     load_datasource_diff_bundle,
 )
 from .datasource_contract import normalize_datasource_record
+from .datasource_contract import validate_datasource_contract_record
 
 
 DEFAULT_EXPORT_DIR = "datasources"
@@ -496,6 +497,13 @@ def load_import_bundle(import_dir: Path) -> Dict[str, Any]:
             raise GrafanaError(
                 "Datasource import entry must be a JSON object: %s" % datasources_path
             )
+        try:
+            validate_datasource_contract_record(
+                item,
+                "Datasource import entry in %s" % datasources_path,
+            )
+        except ValueError as exc:
+            raise GrafanaError(str(exc))
         records.append(normalize_datasource_record(item))
     index_document = load_json_document(index_path)
     if not isinstance(index_document, dict):

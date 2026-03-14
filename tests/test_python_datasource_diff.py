@@ -75,6 +75,45 @@ class DatasourceDiffScaffoldTests(unittest.TestCase):
                     case["expectedNormalizedRecord"],
                 )
 
+    def test_load_datasource_diff_bundle_rejects_extra_contract_fields(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            (import_dir / "export-metadata.json").write_text(
+                json.dumps(
+                    {
+                        "schemaVersion": 1,
+                        "kind": "grafana-utils-datasource-export-index",
+                        "resource": "datasource",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (import_dir / "datasources.json").write_text(
+                json.dumps(
+                    [
+                        {
+                            "uid": "prom-main",
+                            "name": "Prometheus Main",
+                            "type": "prometheus",
+                            "access": "proxy",
+                            "url": "http://prometheus:9090",
+                            "isDefault": True,
+                            "org": "Main Org.",
+                            "orgId": 7,
+                            "password": "secret-password",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (import_dir / "index.json").write_text("{}", encoding="utf-8")
+
+            with self.assertRaisesRegex(
+                dashboard_cli.GrafanaError,
+                "unsupported datasource field\\(s\\): password",
+            ):
+                datasource_diff.load_datasource_diff_bundle(import_dir)
+
     def test_load_datasource_diff_bundle_rejects_wrong_metadata_kind(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)

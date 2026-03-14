@@ -1,6 +1,6 @@
 use super::{
-    build_import_payload, diff_datasources_with_live, render_import_table, resolve_match,
-    run_datasource_cli, DatasourceCliArgs, DatasourceImportRecord,
+    build_import_payload, diff_datasources_with_live, load_import_records, render_import_table,
+    resolve_match, run_datasource_cli, DatasourceCliArgs, DatasourceImportRecord,
 };
 use clap::{CommandFactory, Parser};
 use serde_json::{json, Value};
@@ -27,8 +27,10 @@ fn live_datasource(
 }
 
 fn load_contract_cases() -> Vec<Value> {
-    serde_json::from_str(include_str!("../../tests/fixtures/datasource_contract_cases.json"))
-        .unwrap()
+    serde_json::from_str(include_str!(
+        "../../tests/fixtures/datasource_contract_cases.json"
+    ))
+    .unwrap()
 }
 
 #[test]
@@ -256,7 +258,11 @@ fn build_import_payload_matches_shared_contract_fixtures() {
             .unwrap();
         let expected_payload = object.get("expectedImportPayload").cloned().unwrap();
         let record = DatasourceImportRecord {
-            uid: normalized.get("uid").and_then(Value::as_str).unwrap().to_string(),
+            uid: normalized
+                .get("uid")
+                .and_then(Value::as_str)
+                .unwrap()
+                .to_string(),
             name: normalized
                 .get("name")
                 .and_then(Value::as_str)
@@ -272,12 +278,12 @@ fn build_import_payload_matches_shared_contract_fixtures() {
                 .and_then(Value::as_str)
                 .unwrap()
                 .to_string(),
-            url: normalized.get("url").and_then(Value::as_str).unwrap().to_string(),
-            is_default: normalized
-                .get("isDefault")
+            url: normalized
+                .get("url")
                 .and_then(Value::as_str)
                 .unwrap()
-                == "true",
+                .to_string(),
+            is_default: normalized.get("isDefault").and_then(Value::as_str).unwrap() == "true",
             org_id: normalized
                 .get("orgId")
                 .and_then(Value::as_str)
@@ -317,6 +323,56 @@ fn datasource_import_rejects_output_columns_without_table_output() {
     assert!(error
         .to_string()
         .contains("--output-columns is only supported with --dry-run --table"));
+}
+
+#[test]
+fn datasource_import_rejects_extra_secret_or_server_managed_fields() {
+    let temp = tempdir().unwrap();
+    let import_dir = temp.path().join("datasources");
+    fs::create_dir_all(&import_dir).unwrap();
+    fs::write(
+        import_dir.join("export-metadata.json"),
+        serde_json::to_string_pretty(&json!({
+            "schemaVersion": 1,
+            "kind": "grafana-utils-datasource-export-index",
+            "variant": "root",
+            "resource": "datasource",
+            "datasourcesFile": "datasources.json",
+            "indexFile": "index.json",
+            "datasourceCount": 1,
+            "format": "grafana-datasource-inventory-v1"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        import_dir.join("datasources.json"),
+        serde_json::to_string_pretty(&json!([{
+            "uid": "prom-main",
+            "name": "Prometheus Main",
+            "type": "prometheus",
+            "access": "proxy",
+            "url": "http://prometheus:9090",
+            "isDefault": true,
+            "org": "Main Org.",
+            "orgId": "1",
+            "id": 7,
+            "secureJsonData": {"httpHeaderValue1": "secret"}
+        }]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        import_dir.join("index.json"),
+        serde_json::to_string_pretty(&json!({"items": []})).unwrap(),
+    )
+    .unwrap();
+
+    let error = load_import_records(&import_dir).unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("unsupported datasource field(s): id, secureJsonData"));
 }
 
 #[test]
