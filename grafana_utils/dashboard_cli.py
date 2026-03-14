@@ -184,6 +184,18 @@ FOLDER_INVENTORY_FILENAME = "folders.json"
 DATASOURCE_INVENTORY_FILENAME = "datasources.json"
 TOOL_SCHEMA_VERSION = 1
 ROOT_INDEX_KIND = "grafana-utils-dashboard-export-index"
+INSPECT_OUTPUT_FORMAT_CHOICES = (
+    "text",
+    "table",
+    "json",
+    "report-table",
+    "report-csv",
+    "report-json",
+    "report-tree",
+    "report-tree-table",
+    "governance",
+    "governance-json",
+)
 
 
 class HelpFullAction(argparse.Action):
@@ -538,10 +550,22 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
         ),
     )
     parser.add_argument(
+        "--output-format",
+        choices=INSPECT_OUTPUT_FORMAT_CHOICES,
+        default=None,
+        help=(
+            "Alternative single-flag output selector for inspect output. "
+            "Use text, table, json, report-table, report-csv, report-json, "
+            "report-tree, report-tree-table, governance, or governance-json. "
+            "This cannot be combined with --json, --table, or --report."
+        ),
+    )
+    parser.add_argument(
         "--report-columns",
         default=None,
         help=(
-            "With --report table, csv, or tree-table, render only these comma-separated report columns. "
+            "With --report table, csv, or tree-table, or the equivalent report-like --output-format, "
+            "render only these comma-separated report columns. "
             "Supported values: %s."
             % ", ".join(
                 list(REPORT_COLUMN_ALIASES.keys())
@@ -560,7 +584,7 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report-filter-datasource",
         default=None,
         help=(
-            "With --report, only include query report rows whose datasource label "
+            "With --report or report-like --output-format, only include query report rows whose datasource label "
             "exactly matches this value."
         ),
     )
@@ -568,7 +592,7 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report-filter-panel-id",
         default=None,
         help=(
-            "With --report, only include query report rows whose panel id "
+            "With --report or report-like --output-format, only include query report rows whose panel id "
             "exactly matches this value."
         ),
     )
@@ -585,7 +609,7 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--no-header",
         action="store_true",
-        help="With --table or table-like --report output, omit the per-section table header rows.",
+        help="With --table, table-like --report, or compatible --output-format values, omit the per-section table header rows.",
     )
 
 
@@ -620,10 +644,22 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
         ),
     )
     parser.add_argument(
+        "--output-format",
+        choices=INSPECT_OUTPUT_FORMAT_CHOICES,
+        default=None,
+        help=(
+            "Alternative single-flag output selector for inspect output. "
+            "Use text, table, json, report-table, report-csv, report-json, "
+            "report-tree, report-tree-table, governance, or governance-json. "
+            "This cannot be combined with --json, --table, or --report."
+        ),
+    )
+    parser.add_argument(
         "--report-columns",
         default=None,
         help=(
-            "With --report table, csv, or tree-table, render only these comma-separated report columns. "
+            "With --report table, csv, or tree-table, or the equivalent report-like --output-format, "
+            "render only these comma-separated report columns. "
             "Supported values: %s."
             % ", ".join(
                 list(REPORT_COLUMN_ALIASES.keys())
@@ -642,7 +678,7 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report-filter-datasource",
         default=None,
         help=(
-            "With --report, only include query report rows whose datasource label "
+            "With --report or report-like --output-format, only include query report rows whose datasource label "
             "exactly matches this value."
         ),
     )
@@ -650,7 +686,7 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report-filter-panel-id",
         default=None,
         help=(
-            "With --report, only include query report rows whose panel id "
+            "With --report or report-like --output-format, only include query report rows whose panel id "
             "exactly matches this value."
         ),
     )
@@ -667,7 +703,7 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--no-header",
         action="store_true",
-        help="With --table or table-like --report output, omit the per-section table header rows.",
+        help="With --table, table-like --report, or compatible --output-format values, omit the per-section table header rows.",
     )
 
 

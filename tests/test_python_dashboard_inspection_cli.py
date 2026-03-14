@@ -1025,7 +1025,7 @@ class DashboardInspectionTests(unittest.TestCase):
         cases = [
             (
                 ["inspect-export", "--import-dir", "dashboards/raw", "--no-header"],
-                "--no-header is only supported with --table, --report table, --report csv, or --report tree-table",
+                "--no-header is only supported with --table, table-like --report, or compatible --output-format values",
             ),
             (
                 ["inspect-export", "--import-dir", "dashboards/raw", "--table", "--json"],
@@ -1036,8 +1036,19 @@ class DashboardInspectionTests(unittest.TestCase):
                 "--report cannot be combined with --table or --json",
             ),
             (
+                [
+                    "inspect-export",
+                    "--import-dir",
+                    "dashboards/raw",
+                    "--output-format",
+                    "json",
+                    "--table",
+                ],
+                "--output-format cannot be combined with --json, --table, or --report",
+            ),
+            (
                 ["inspect-export", "--import-dir", "dashboards/raw", "--report-columns", "dashboardUid,datasource"],
-                "--report-columns is only supported with --report",
+                "--report-columns is only supported with --report or report-like --output-format",
             ),
             (
                 [
@@ -1049,7 +1060,7 @@ class DashboardInspectionTests(unittest.TestCase):
                     "--report-columns",
                     "dashboardUid,datasource",
                 ],
-                "--report-columns is only supported with --report table, --report csv, or --report tree-table",
+                "--report-columns is only supported with report-table, report-csv, report-tree-table, or the equivalent --report modes",
             ),
             (
                 [
@@ -1061,7 +1072,7 @@ class DashboardInspectionTests(unittest.TestCase):
                     "--report-columns",
                     "dashboardUid,datasource",
                 ],
-                "--report-columns is not supported with --report governance or --report governance-json",
+                "--report-columns is not supported with governance output",
             ),
             (
                 [
@@ -1071,7 +1082,7 @@ class DashboardInspectionTests(unittest.TestCase):
                     "--report-filter-datasource",
                     "prom-main",
                 ],
-                "--report-filter-datasource is only supported with --report",
+                "--report-filter-datasource is only supported with --report or report-like --output-format",
             ),
             (
                 [
@@ -1081,7 +1092,7 @@ class DashboardInspectionTests(unittest.TestCase):
                     "--report-filter-panel-id",
                     "7",
                 ],
-                "--report-filter-panel-id is only supported with --report",
+                "--report-filter-panel-id is only supported with --report or report-like --output-format",
             ),
             (
                 [
@@ -1100,3 +1111,44 @@ class DashboardInspectionTests(unittest.TestCase):
             args = exporter.parse_args(argv)
             with self.assertRaisesRegex(exporter.GrafanaError, message):
                 exporter.inspect_export(args)
+
+    def test_inspect_export_accepts_report_like_output_format(self):
+        args = exporter.parse_args(
+            [
+                "inspect-export",
+                "--import-dir",
+                "dashboards/raw",
+                "--output-format",
+                "report-json",
+                "--report-filter-datasource",
+                "prom-main",
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self.write_report_fixture(
+                import_dir,
+                {
+                    "id": None,
+                    "uid": "cpu-main",
+                    "title": "CPU Main",
+                    "panels": [
+                        {
+                            "id": 7,
+                            "title": "CPU",
+                            "type": "timeseries",
+                            "targets": [{"refId": "A", "expr": "up"}],
+                            "datasource": {"uid": "prom-main", "type": "prometheus"},
+                        }
+                    ],
+                },
+            )
+            args.import_dir = str(import_dir)
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = exporter.inspect_export(args)
+
+        self.assertEqual(result, 0)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(payload["summary"]["dashboardCount"], 1)

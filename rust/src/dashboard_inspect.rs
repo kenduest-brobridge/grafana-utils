@@ -786,26 +786,26 @@ pub(crate) fn apply_query_report_filters(
 }
 
 pub(crate) fn validate_inspect_export_report_args(args: &InspectExportArgs) -> Result<()> {
-    if args.report.is_none() {
+    let report_format = effective_inspect_report_format(args);
+    if report_format.is_none() {
         if !args.report_columns.is_empty() {
             return Err(message(
-                "--report-columns is only supported together with --report.",
+                "--report-columns is only supported together with --report or report-like --output-format.",
             ));
         }
         if args.report_filter_datasource.is_some() {
             return Err(message(
-                "--report-filter-datasource is only supported together with --report.",
+                "--report-filter-datasource is only supported together with --report or report-like --output-format.",
             ));
         }
         if args.report_filter_panel_id.is_some() {
             return Err(message(
-                "--report-filter-panel-id is only supported together with --report.",
+                "--report-filter-panel-id is only supported together with --report or report-like --output-format.",
             ));
         }
         return Ok(());
     }
-    if args
-        .report
+    if report_format
         .map(|format| {
             matches!(
                 format,
@@ -816,21 +816,48 @@ pub(crate) fn validate_inspect_export_report_args(args: &InspectExportArgs) -> R
         && !args.report_columns.is_empty()
     {
         return Err(message(
-            "--report-columns is not supported with governance --report output.",
+            "--report-columns is not supported with governance output.",
         ));
     }
-    if args
-        .report
+    if report_format
         .map(|format| !report_format_supports_columns(format))
         .unwrap_or(false)
         && !args.report_columns.is_empty()
     {
         return Err(message(
-            "--report-columns is only supported with table, tree-table, or csv --report output.",
+            "--report-columns is only supported with report-table, report-csv, report-tree-table, or the equivalent --report modes.",
         ));
     }
     let _ = resolve_report_column_ids(&args.report_columns)?;
     Ok(())
+}
+
+fn map_output_format_to_report(output_format: InspectOutputFormat) -> Option<InspectExportReportFormat> {
+    match output_format {
+        InspectOutputFormat::Text
+        | InspectOutputFormat::Table
+        | InspectOutputFormat::Json => None,
+        InspectOutputFormat::ReportTable => Some(InspectExportReportFormat::Table),
+        InspectOutputFormat::ReportCsv => Some(InspectExportReportFormat::Csv),
+        InspectOutputFormat::ReportJson => Some(InspectExportReportFormat::Json),
+        InspectOutputFormat::ReportTree => Some(InspectExportReportFormat::Tree),
+        InspectOutputFormat::ReportTreeTable => Some(InspectExportReportFormat::TreeTable),
+        InspectOutputFormat::Governance => Some(InspectExportReportFormat::Governance),
+        InspectOutputFormat::GovernanceJson => Some(InspectExportReportFormat::GovernanceJson),
+    }
+}
+
+fn effective_inspect_report_format(args: &InspectExportArgs) -> Option<InspectExportReportFormat> {
+    args.report
+        .or_else(|| args.output_format.and_then(map_output_format_to_report))
+}
+
+fn effective_inspect_json(args: &InspectExportArgs) -> bool {
+    args.json || matches!(args.output_format, Some(InspectOutputFormat::Json))
+}
+
+fn effective_inspect_table(args: &InspectExportArgs) -> bool {
+    args.table || matches!(args.output_format, Some(InspectOutputFormat::Table))
 }
 
 pub(crate) fn build_export_inspection_summary(
@@ -986,7 +1013,7 @@ pub(crate) fn build_export_inspection_summary(
 
 pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
     validate_inspect_export_report_args(args)?;
-    if let Some(report_format) = args.report {
+    if let Some(report_format) = effective_inspect_report_format(args) {
         let report = apply_query_report_filters(
             build_export_inspection_query_report(&args.import_dir)?,
             args.report_filter_datasource.as_deref(),
@@ -1056,13 +1083,13 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
     }
 
     let summary = build_export_inspection_summary(&args.import_dir)?;
-    if args.json {
+    if effective_inspect_json(args) {
         println!("{}", serde_json::to_string_pretty(&summary)?);
         return Ok(summary.dashboard_count);
     }
 
     println!("Export inspection: {}", summary.import_dir);
-    if args.table {
+    if effective_inspect_table(args) {
         println!();
         println!("# Summary");
         let summary_rows = vec![
@@ -1252,6 +1279,7 @@ fn build_export_inspect_args_from_live(
         json: args.json,
         table: args.table,
         report: args.report,
+        output_format: args.output_format,
         report_columns: args.report_columns.clone(),
         report_filter_datasource: args.report_filter_datasource.clone(),
         report_filter_panel_id: args.report_filter_panel_id.clone(),

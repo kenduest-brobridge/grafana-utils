@@ -475,6 +475,7 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("raw/ export directory explicitly", help_text)
         self.assertIn("--json", help_text)
         self.assertIn("--table", help_text)
+        self.assertIn("--output-format", help_text)
         self.assertNotIn("Extended examples:", help_text)
 
     def test_inspect_export_help_full_includes_extended_examples(self):
@@ -502,6 +503,7 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("--url", help_text)
         self.assertIn("--page-size", help_text)
         self.assertIn("--report", help_text)
+        self.assertIn("--output-format", help_text)
         self.assertIn("tree-table", help_text)
         self.assertIn("tree", help_text)
         self.assertIn("--report-filter-panel-id", help_text)
@@ -743,6 +745,23 @@ class ExporterTests(unittest.TestCase):
         self.assertTrue(args.table)
         self.assertTrue(args.no_header)
 
+    def test_parse_args_supports_inspect_export_output_format(self):
+        args = exporter.parse_args(
+            [
+                "inspect-export",
+                "--import-dir",
+                "dashboards/raw",
+                "--output-format",
+                "report-tree-table",
+            ]
+        )
+
+        self.assertEqual(args.command, "inspect-export")
+        self.assertEqual(args.output_format, "report-tree-table")
+        self.assertIsNone(args.report)
+        self.assertFalse(args.json)
+        self.assertFalse(args.table)
+
     def test_parse_args_supports_inspect_live_report_json(self):
         args = exporter.parse_args(
             [
@@ -778,6 +797,21 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(args.command, "inspect-live")
         self.assertEqual(args.url, "http://localhost:3000")
         self.assertEqual(args.report, "tree-table")
+
+    def test_parse_args_supports_inspect_live_output_format(self):
+        args = exporter.parse_args(
+            [
+                "inspect-live",
+                "--url",
+                "http://localhost:3000",
+                "--output-format",
+                "governance-json",
+            ]
+        )
+
+        self.assertEqual(args.command, "inspect-live")
+        self.assertEqual(args.output_format, "governance-json")
+        self.assertIsNone(args.report)
 
     def test_parse_args_supports_inspect_export_report_table(self):
         args = exporter.parse_args(

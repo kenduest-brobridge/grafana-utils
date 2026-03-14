@@ -125,6 +125,13 @@
 - Current Update: Extracted the live dashboard/datasource listing helpers into `grafana_utils/dashboards/listing.py`, including table/CSV/JSON renderers, folder-path/org/source enrichment, datasource UID/name resolution, and the two list command bodies. `grafana_utils/dashboard_cli.py` now re-exports the existing helper names and delegates `list-dashboard` / `list-data-sources` through the extracted module so the stable test and CLI surface stays intact.
 - Result: The Python dashboard facade carries less list-specific logic, the list responsibilities now live behind a focused helper boundary similar to Rust `dashboard_list.rs`, and operator-facing behavior stays unchanged.
 
+## 2026-03-14 - Task: Add Inspect Output Format Alias
+- State: In Progress
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/inspection_workflow.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_dashboard_inspection_cli.py`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_inspect.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Dashboard inspect output was split across legacy `--json` / `--table` summary flags plus `--report[=...]` for query-level/governance modes, which made the output contract harder to remember and explain.
+- Current Update: Added `--output-format` to both `inspect-export` and `inspect-live` as a single explicit selector for `text`, `table`, `json`, `report-*`, and governance modes, while preserving the older flags for compatibility and rejecting mixed selector combinations.
+- Result: Inspect output can now be requested with one clearer flag without removing old CLI spellings. The remaining work is keeping docs/examples biased toward `--output-format` over time.
+
 ## 2026-03-13 - Task: Add Datasource Inventory CLI
 - State: Done
 - Scope: `grafana_utils/datasource_cli.py`, `grafana_utils/unified_cli.py`, `tests/test_python_datasource_cli.py`, `tests/test_python_unified_cli.py`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

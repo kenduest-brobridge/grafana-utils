@@ -574,6 +574,7 @@ Use `prompt/` when you want:
 | `dashboard import --dry-run --table` | Render dry-run import predictions as a table showing `uid`, destination state, action, destination folder path, and file |
 | `inspect-export --json` | Analyze a raw export directory and emit machine-readable structure summary including folder paths, panels, queries, datasource usage, datasource inventory, orphaned datasources, and mixed dashboards |
 | `inspect-export --table` | Analyze a raw export directory and render multi-section tables for summary, folder paths, datasource usage, datasource inventory, orphaned datasources, and mixed dashboards |
+| `inspect-export --output-format <mode>` | Alternative single-flag selector for inspect output using `text`, `table`, `json`, `report-table`, `report-csv`, `report-json`, `report-tree`, `report-tree-table`, `governance`, or `governance-json` |
 | `inspect-export --report[=table|json|tree|tree-table]` | Emit one full per-query inspection report; default `table` output stays flat row-per-query, `tree` renders the same records as a dashboard -> panel -> query tree, and `tree-table` renders per-dashboard grouped tables |
 | `inspect-live --json|--table|--report[=table|csv|json|tree|tree-table]` | Inspect live Grafana dashboards by materializing a temporary raw-style snapshot and then rendering the same summary/report outputs as `inspect-export` |
 | `inspect-export --help-full` / `inspect-live --help-full` | Show the normal inspect help plus a short extended examples section for report modes, filters, and `--report-columns` |
@@ -634,6 +635,7 @@ For dashboard export:
 - `dashboard inspect-export` analyzes a raw export directory offline and summarizes dashboard count, folder paths, panels, queries, datasource usage, datasource inventory, orphaned datasources, and mixed-datasource dashboards
 - `dashboard inspect-export --json` emits the same analysis as one JSON document for scripts or CI checks
 - `dashboard inspect-export --table` renders the same analysis as multiple tables for summary, folder paths, datasource usage, datasource inventory, orphaned datasources, and mixed dashboards
+- `dashboard inspect-export --output-format text|table|json|report-table|report-csv|report-json|report-tree|report-tree-table|governance|governance-json` is the newer single-flag alternative when you do not want to remember whether a mode currently lives under `--json`, `--table`, or `--report`
 - `dashboard inspect-export --report` emits one row per query target with dashboard uid/title, folder path, panel id/title/type, datasource, query field, extracted metrics/measurements/buckets, and the raw query text
 - `dashboard inspect-export --report json` emits the same per-query inspection model as one machine-readable JSON document, including `datasourceUid` when the raw export carries a concrete datasource uid
 - `dashboard inspect-export --report tree` keeps the same underlying query records but renders them as a dashboard -> panel -> query tree when you want to read one dashboard at a time instead of scanning a wide flat table
@@ -642,6 +644,7 @@ For dashboard export:
 - `dashboard inspect-export --report-columns dashboard_uid,panel_id,datasource_uid,datasource,query` opts `datasource_uid` into table or csv output without widening the default report
 - `dashboard inspect-export --report-filter-datasource <label>` narrows table or JSON report output to one datasource label, which is useful when checking migration leftovers or datasource retirement impact
 - `dashboard inspect-export --report-filter-panel-id <id>` narrows table or JSON report output to one panel id when one dashboard contains many panels and you only want one panel's queries
+- `--output-format` cannot be combined with `--json`, `--table`, or `--report`
 - `dashboard inspect-live` reuses the same summary/report flags as `dashboard inspect-export`, but sources the dashboards, folders, and datasource inventory directly from Grafana instead of a pre-existing raw export directory
 - `dashboard inspect-export --table --no-header` suppresses each section's header row when you need compact copy/paste output
 

@@ -296,6 +296,20 @@ pub enum InspectExportReportFormat {
     GovernanceJson,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum InspectOutputFormat {
+    Text,
+    Table,
+    Json,
+    ReportTable,
+    ReportCsv,
+    ReportJson,
+    ReportTree,
+    ReportTreeTable,
+    Governance,
+    GovernanceJson,
+}
+
 #[derive(Debug, Clone, Args)]
 pub struct InspectExportArgs {
     #[arg(
@@ -330,18 +344,25 @@ pub struct InspectExportArgs {
     pub report: Option<InspectExportReportFormat>,
     #[arg(
         long,
+        value_enum,
+        conflicts_with_all = ["json", "table", "report"],
+        help = "Alternative single-flag output selector for inspect output. Use text, table, json, report-table, report-csv, report-json, report-tree, report-tree-table, governance, or governance-json."
+    )]
+    pub output_format: Option<InspectOutputFormat>,
+    #[arg(
+        long,
         value_delimiter = ',',
-        help = "For --report table, csv, or tree-table output, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
+        help = "For --report table, csv, or tree-table output, or the equivalent report-like --output-format values, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
     )]
     pub report_columns: Vec<String>,
     #[arg(
         long,
-        help = "For --report output, include only rows whose datasource label exactly matches this value."
+        help = "For --report output or report-like --output-format values, include only rows whose datasource label exactly matches this value."
     )]
     pub report_filter_datasource: Option<String>,
     #[arg(
         long,
-        help = "For --report output, include only rows whose panel id exactly matches this value."
+        help = "For --report output or report-like --output-format values, include only rows whose panel id exactly matches this value."
     )]
     pub report_filter_panel_id: Option<String>,
     #[arg(
@@ -353,7 +374,7 @@ pub struct InspectExportArgs {
     #[arg(
         long,
         default_value_t = false,
-        help = "Do not print table headers when rendering the table summary or table-like report output."
+        help = "Do not print table headers when rendering the table summary, table-like --report output, or compatible --output-format values."
     )]
     pub no_header: bool,
 }
@@ -404,18 +425,25 @@ pub struct InspectLiveArgs {
     pub report: Option<InspectExportReportFormat>,
     #[arg(
         long,
+        value_enum,
+        conflicts_with_all = ["json", "table", "report"],
+        help = "Alternative single-flag output selector for inspect output. Use text, table, json, report-table, report-csv, report-json, report-tree, report-tree-table, governance, or governance-json."
+    )]
+    pub output_format: Option<InspectOutputFormat>,
+    #[arg(
+        long,
         value_delimiter = ',',
-        help = "For --report table, csv, or tree-table output, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
+        help = "For --report table, csv, or tree-table output, or the equivalent report-like --output-format values, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
     )]
     pub report_columns: Vec<String>,
     #[arg(
         long,
-        help = "For --report output, include only rows whose datasource label exactly matches this value."
+        help = "For --report output or report-like --output-format values, include only rows whose datasource label exactly matches this value."
     )]
     pub report_filter_datasource: Option<String>,
     #[arg(
         long,
-        help = "For --report output, include only rows whose panel id exactly matches this value."
+        help = "For --report output or report-like --output-format values, include only rows whose panel id exactly matches this value."
     )]
     pub report_filter_panel_id: Option<String>,
     #[arg(
@@ -427,7 +455,7 @@ pub struct InspectLiveArgs {
     #[arg(
         long,
         default_value_t = false,
-        help = "Do not print headers when rendering table, csv, or tree-table inspection output."
+        help = "Do not print headers when rendering table, csv, or tree-table inspection output, including compatible --output-format values."
     )]
     pub no_header: bool,
 }

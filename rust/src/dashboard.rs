@@ -38,7 +38,8 @@ mod dashboard_prompt;
 pub use dashboard_cli_defs::{
     build_auth_context, build_http_client, build_http_client_for_org, parse_cli_from,
     CommonCliArgs, DashboardAuthContext, DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs,
-    ImportArgs, InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, ListArgs,
+    ImportArgs, InspectExportArgs, InspectExportReportFormat, InspectLiveArgs,
+    InspectOutputFormat, ListArgs,
     ListDataSourcesArgs,
 };
 pub use dashboard_export::{

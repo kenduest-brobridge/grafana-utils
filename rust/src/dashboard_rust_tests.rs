@@ -12,7 +12,8 @@ use super::{
     render_data_source_csv, render_data_source_json, render_data_source_table,
     render_import_dry_run_json, render_import_dry_run_table, CommonCliArgs, DashboardCliArgs,
     DashboardCommand, DiffArgs, ExportArgs, FolderInventoryStatusKind, ImportArgs,
-    InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, ListArgs, ListDataSourcesArgs,
+    InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs,
+    ListDataSourcesArgs,
     DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME,
     TOOL_SCHEMA_VERSION,
 };
@@ -557,6 +558,32 @@ fn parse_cli_supports_inspect_export_json_flag() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_export_output_format_flag() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--output-format",
+        "report-tree-table",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
+            assert_eq!(
+                inspect_args.output_format,
+                Some(InspectOutputFormat::ReportTreeTable)
+            );
+            assert_eq!(inspect_args.report, None);
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_inspect_export_report_json_flag() {
     let args = parse_cli_from([
         "grafana-utils",
@@ -751,6 +778,32 @@ fn parse_cli_supports_inspect_live_report_json_flag() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_live_output_format_flag() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "inspect-live",
+        "--url",
+        "https://grafana.example.com",
+        "--output-format",
+        "governance-json",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectLive(inspect_args) => {
+            assert_eq!(inspect_args.common.url, "https://grafana.example.com");
+            assert_eq!(
+                inspect_args.output_format,
+                Some(InspectOutputFormat::GovernanceJson)
+            );
+            assert_eq!(inspect_args.report, None);
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-live command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_inspect_live_report_tree_table_flag() {
     let args = parse_cli_from([
         "grafana-utils",
@@ -824,6 +877,7 @@ fn inspect_live_help_mentions_report_and_panel_filter_flags() {
     let help = render_dashboard_subcommand_help("inspect-live");
 
     assert!(help.contains("--report"));
+    assert!(help.contains("--output-format"));
     assert!(help.contains("--report-filter-panel-id"));
     assert!(help.contains("--help-full"));
     assert!(help.contains("tree"));
@@ -841,6 +895,7 @@ fn inspect_export_help_lists_datasource_uid_report_column() {
         .to_string();
 
     assert!(help.contains("datasource_uid"));
+    assert!(help.contains("--output-format"));
 }
 
 #[test]
@@ -3364,6 +3419,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_without_report() {
         json: false,
         table: false,
         report: None,
+        output_format: None,
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -3374,7 +3430,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_without_report() {
     let error = super::validate_inspect_export_report_args(&args).unwrap_err();
     assert!(error
         .to_string()
-        .contains("--report-columns is only supported together with --report"));
+        .contains("--report-columns is only supported together with --report or report-like --output-format"));
 }
 
 #[test]
@@ -3384,6 +3440,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_json_report() 
         json: false,
         table: false,
         report: Some(InspectExportReportFormat::Json),
+        output_format: None,
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -3393,7 +3450,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_json_report() 
 
     let error = super::validate_inspect_export_report_args(&args).unwrap_err();
     assert!(error.to_string().contains(
-        "--report-columns is only supported with table, tree-table, or csv --report output"
+        "--report-columns is only supported with report-table, report-csv, report-tree-table, or the equivalent --report modes"
     ));
 }
 
@@ -3404,6 +3461,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_tree_report() 
         json: false,
         table: false,
         report: Some(InspectExportReportFormat::Tree),
+        output_format: None,
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -3413,7 +3471,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_tree_report() 
 
     let error = super::validate_inspect_export_report_args(&args).unwrap_err();
     assert!(error.to_string().contains(
-        "--report-columns is only supported with table, tree-table, or csv --report output"
+        "--report-columns is only supported with report-table, report-csv, report-tree-table, or the equivalent --report modes"
     ));
 }
 
@@ -3424,6 +3482,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_governance_rep
         json: false,
         table: false,
         report: Some(InspectExportReportFormat::Governance),
+        output_format: None,
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -3434,7 +3493,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_governance_rep
     let error = super::validate_inspect_export_report_args(&args).unwrap_err();
     assert!(error
         .to_string()
-        .contains("--report-columns is not supported with governance --report output"));
+        .contains("--report-columns is not supported with governance output"));
 }
 
 #[test]
@@ -3444,6 +3503,7 @@ fn validate_inspect_export_report_args_allows_report_columns_for_tree_table_repo
         json: false,
         table: false,
         report: Some(InspectExportReportFormat::TreeTable),
+        output_format: None,
         report_columns: vec!["panel_id".to_string(), "query".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -3900,6 +3960,7 @@ fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
         json: false,
         table: false,
         report: None,
+        output_format: None,
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: Some("7".to_string()),
@@ -3910,7 +3971,7 @@ fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
     let error = super::validate_inspect_export_report_args(&args).unwrap_err();
     assert!(error
         .to_string()
-        .contains("--report-filter-panel-id is only supported together with --report"));
+        .contains("--report-filter-panel-id is only supported together with --report or report-like --output-format"));
 }
 
 #[test]
@@ -3923,6 +3984,7 @@ fn inspect_live_dashboards_with_request_reports_live_json_via_temp_raw_export() 
         json: false,
         table: false,
         report: Some(InspectExportReportFormat::Json),
+        output_format: None,
         report_columns: Vec::new(),
         report_filter_datasource: Some("prom-main".to_string()),
         report_filter_panel_id: Some("7".to_string()),
