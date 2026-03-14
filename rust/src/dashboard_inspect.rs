@@ -1,3 +1,5 @@
+//! Dashboard inspection pipeline for live systems and export directories.
+//! Coordinates query extraction, filtering, report assembly, and table/JSON rendering entry points.
 use regex::Regex;
 use reqwest::Method;
 use serde_json::{Map, Value};
@@ -561,6 +563,8 @@ fn strip_sql_comments(query_text: &str) -> String {
     line_regex.replace_all(&without_blocks, " ").into_owned()
 }
 
+// Normalize SQL identifiers into a stable dot-qualified form for dedup and
+// cross-query matching.
 fn normalize_sql_identifier(value: &str) -> String {
     value
         .split('.')
@@ -989,6 +993,11 @@ pub(crate) fn build_export_inspection_summary(
             .then(left.name.cmp(&right.name))
             .then(left.uid.cmp(&right.uid))
     });
+    let orphaned_datasource_summary = datasource_inventory_summary
+        .iter()
+        .filter(|item| item.reference_count == 0 && item.dashboard_count == 0)
+        .cloned()
+        .collect::<Vec<DatasourceInventorySummary>>();
     mixed_dashboards.sort_by(|left, right| {
         left.folder_path
             .cmp(&right.folder_path)
@@ -1003,10 +1012,12 @@ pub(crate) fn build_export_inspection_summary(
         panel_count: total_panels,
         query_count: total_queries,
         datasource_inventory_count: datasource_inventory_summary.len(),
+        orphaned_datasource_count: orphaned_datasource_summary.len(),
         mixed_dashboard_count: mixed_dashboards.len(),
         folder_paths,
         datasource_usage,
         datasource_inventory: datasource_inventory_summary,
+        orphaned_datasources: orphaned_datasource_summary,
         mixed_dashboards,
     })
 }
@@ -1034,7 +1045,8 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
             return Ok(summary.dashboard_count);
         }
         if report_format == InspectExportReportFormat::Json {
-            println!("{}", serde_json::to_string_pretty(&report)?);
+            let document = build_export_inspection_query_report_document(&report);
+            println!("{}", serde_json::to_string_pretty(&document)?);
             return Ok(report.summary.dashboard_count);
         }
         if report_format == InspectExportReportFormat::Tree {
@@ -1084,7 +1096,8 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
 
     let summary = build_export_inspection_summary(&args.import_dir)?;
     if effective_inspect_json(args) {
-        println!("{}", serde_json::to_string_pretty(&summary)?);
+        let document = build_export_inspection_summary_document(&summary);
+        println!("{}", serde_json::to_string_pretty(&document)?);
         return Ok(summary.dashboard_count);
     }
 
@@ -1105,6 +1118,10 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
                 summary.datasource_inventory_count.to_string(),
             ],
             vec![
+                "orphaned_datasource_count".to_string(),
+                summary.orphaned_datasource_count.to_string(),
+            ],
+            vec![
                 "mixed_datasource_dashboard_count".to_string(),
                 summary.mixed_dashboard_count.to_string(),
             ],
@@ -1120,6 +1137,10 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
         println!(
             "Datasource inventory: {}",
             summary.datasource_inventory_count
+        );
+        println!(
+            "Orphaned datasources: {}",
+            summary.orphaned_datasource_count
         );
         println!(
             "Mixed datasource dashboards: {}",
@@ -1196,6 +1217,33 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
                 "DASHBOARDS",
             ],
             &datasource_inventory_rows,
+            !args.no_header,
+        ) {
+            println!("{line}");
+        }
+    }
+
+    if !summary.orphaned_datasources.is_empty() {
+        println!();
+        println!("# Orphaned datasources");
+        let orphaned_rows = summary
+            .orphaned_datasources
+            .iter()
+            .map(|item| {
+                vec![
+                    item.org_id.clone(),
+                    item.uid.clone(),
+                    item.name.clone(),
+                    item.datasource_type.clone(),
+                    item.access.clone(),
+                    item.url.clone(),
+                    item.is_default.clone(),
+                ]
+            })
+            .collect::<Vec<Vec<String>>>();
+        for line in render_simple_table(
+            &["ORG_ID", "UID", "NAME", "TYPE", "ACCESS", "URL", "IS_DEFAULT"],
+            &orphaned_rows,
             !args.no_header,
         ) {
             println!("{line}");

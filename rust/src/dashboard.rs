@@ -1,5 +1,21 @@
-use serde::{Deserialize, Serialize};
-
+//! Dashboard domain orchestrator.
+//!
+//! Purpose:
+//! - Own the dashboard command surface (`list`, `list-data-sources`, `export`,
+//!   `import`, `diff`, `inspect`).
+//! - Re-export shared parser and helper APIs from sibling modules for consumers.
+//! - Keep transport setup, normalization, and execution branching in this module.
+//!
+//! Flow:
+//! - Build command args via `dashboard_cli_defs` and normalize in `normalize_dashboard_cli_args`
+//!   where needed.
+//! - Construct `JsonHttpClient` in command-specific branches.
+//! - Delegate each branch to focused dashboard submodules (`list`, `export`, `import`, `diff`,
+//!   `inspect`).
+//!
+//! Caveats:
+//! - Avoid embedding HTTP retry/backoff logic; that belongs to `common`/`http` or submodules.
+//! - Keep this module free of command-specific domain details beyond orchestration and normalization.
 use crate::common::{message, Result};
 use crate::http::JsonHttpClient;
 
@@ -15,6 +31,8 @@ mod dashboard_help;
 mod dashboard_import;
 #[path = "dashboard_inspect.rs"]
 mod dashboard_inspect;
+#[path = "dashboard_inspect_summary.rs"]
+mod dashboard_inspect_summary;
 #[path = "dashboard_inspect_analyzer_flux.rs"]
 mod dashboard_inspect_analyzer_flux;
 #[path = "dashboard_inspect_analyzer_loki.rs"]
@@ -33,6 +51,8 @@ mod dashboard_inspect_report;
 mod dashboard_list;
 #[path = "dashboard_live.rs"]
 mod dashboard_live;
+#[path = "dashboard_models.rs"]
+mod dashboard_models;
 #[path = "dashboard_prompt.rs"]
 mod dashboard_prompt;
 
@@ -71,6 +91,11 @@ pub(crate) use dashboard_files::{
     load_export_metadata, load_folder_inventory, load_json_file, write_dashboard,
     write_json_document,
 };
+pub(crate) use dashboard_inspect_summary::{
+    build_export_inspection_summary_document, DatasourceInventorySummary,
+    ExportDatasourceUsage, ExportFolderUsage, ExportInspectionSummary,
+    MixedDashboardSummary,
+};
 #[cfg(test)]
 pub(crate) use dashboard_import::{
     build_import_auth_context, describe_dashboard_import_mode, diff_dashboards_with_request,
@@ -95,9 +120,10 @@ pub(crate) use dashboard_inspect_render::{
 #[cfg(test)]
 pub(crate) use dashboard_inspect_report::normalize_query_report;
 pub(crate) use dashboard_inspect_report::{
-    build_query_report, refresh_filtered_query_report_summary, render_query_report_column,
-    report_column_header, report_format_supports_columns, resolve_report_column_ids,
-    ExportInspectionQueryReport, ExportInspectionQueryRow,
+    build_export_inspection_query_report_document, build_query_report,
+    refresh_filtered_query_report_summary, render_query_report_column, report_column_header,
+    report_format_supports_columns, resolve_report_column_ids, ExportInspectionQueryReport,
+    ExportInspectionQueryRow,
 };
 #[cfg(test)]
 pub(crate) use dashboard_inspect_report::{QueryReportSummary, DEFAULT_REPORT_COLUMN_IDS};
@@ -123,6 +149,10 @@ pub(crate) use dashboard_prompt::{
     build_datasource_catalog, collect_datasource_refs, datasource_type_alias,
     is_builtin_datasource_ref, is_placeholder_string, lookup_datasource,
     resolve_datasource_type_alias,
+};
+pub(crate) use dashboard_models::{
+    DashboardIndexItem, DatasourceInventoryItem, ExportMetadata, FolderInventoryItem,
+    RootExportIndex, RootExportVariants, VariantIndexEntry,
 };
 
 pub const DEFAULT_URL: &str = "http://localhost:3000";
@@ -153,94 +183,6 @@ const BUILTIN_DATASOURCE_NAMES: &[&str] = &[
     "__expr__",
 ];
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub(crate) struct ExportMetadata {
-    #[serde(rename = "schemaVersion")]
-    schema_version: i64,
-    kind: String,
-    variant: String,
-    #[serde(rename = "dashboardCount")]
-    dashboard_count: u64,
-    #[serde(rename = "indexFile")]
-    index_file: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    format: Option<String>,
-    #[serde(rename = "foldersFile", skip_serializing_if = "Option::is_none")]
-    folders_file: Option<String>,
-    #[serde(rename = "datasourcesFile", skip_serializing_if = "Option::is_none")]
-    datasources_file: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub(crate) struct DashboardIndexItem {
-    uid: String,
-    title: String,
-    #[serde(rename = "folderTitle")]
-    folder_title: String,
-    org: String,
-    #[serde(rename = "orgId")]
-    org_id: String,
-    #[serde(rename = "raw_path", skip_serializing_if = "Option::is_none")]
-    raw_path: Option<String>,
-    #[serde(rename = "prompt_path", skip_serializing_if = "Option::is_none")]
-    prompt_path: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub(crate) struct VariantIndexEntry {
-    uid: String,
-    title: String,
-    path: String,
-    format: String,
-    org: String,
-    #[serde(rename = "orgId")]
-    org_id: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub(crate) struct RootExportVariants {
-    raw: Option<String>,
-    prompt: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub(crate) struct RootExportIndex {
-    #[serde(rename = "schemaVersion")]
-    schema_version: i64,
-    kind: String,
-    items: Vec<DashboardIndexItem>,
-    variants: RootExportVariants,
-    #[serde(default)]
-    folders: Vec<FolderInventoryItem>,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub(crate) struct FolderInventoryItem {
-    uid: String,
-    title: String,
-    path: String,
-    #[serde(rename = "parentUid", skip_serializing_if = "Option::is_none")]
-    parent_uid: Option<String>,
-    org: String,
-    #[serde(rename = "orgId")]
-    org_id: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub(crate) struct DatasourceInventoryItem {
-    uid: String,
-    name: String,
-    #[serde(rename = "type")]
-    datasource_type: String,
-    access: String,
-    url: String,
-    #[serde(rename = "isDefault")]
-    is_default: String,
-    org: String,
-    #[serde(rename = "orgId")]
-    org_id: String,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum FolderInventoryStatusKind {
     Missing,
@@ -260,60 +202,8 @@ pub(crate) struct FolderInventoryStatus {
     pub kind: FolderInventoryStatusKind,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
-struct ExportFolderUsage {
-    path: String,
-    dashboards: usize,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize)]
-struct ExportDatasourceUsage {
-    datasource: String,
-    reference_count: usize,
-    dashboard_count: usize,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize)]
-struct DatasourceInventorySummary {
-    uid: String,
-    name: String,
-    #[serde(rename = "type")]
-    datasource_type: String,
-    access: String,
-    url: String,
-    #[serde(rename = "isDefault")]
-    is_default: String,
-    org: String,
-    #[serde(rename = "orgId")]
-    org_id: String,
-    reference_count: usize,
-    dashboard_count: usize,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize)]
-struct MixedDashboardSummary {
-    uid: String,
-    title: String,
-    folder_path: String,
-    datasource_count: usize,
-    datasources: Vec<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize)]
-pub(crate) struct ExportInspectionSummary {
-    import_dir: String,
-    dashboard_count: usize,
-    folder_count: usize,
-    panel_count: usize,
-    query_count: usize,
-    datasource_inventory_count: usize,
-    mixed_dashboard_count: usize,
-    folder_paths: Vec<ExportFolderUsage>,
-    datasource_usage: Vec<ExportDatasourceUsage>,
-    datasource_inventory: Vec<DatasourceInventorySummary>,
-    mixed_dashboards: Vec<MixedDashboardSummary>,
-}
-
+/// Execution path for callers that already own a configured client.
+/// Useful for tests that want to inject transport behavior and avoid side-effects.
 pub fn run_dashboard_cli_with_client(
     client: &JsonHttpClient,
     args: DashboardCliArgs,
@@ -367,6 +257,11 @@ pub fn run_dashboard_cli_with_client(
     }
 }
 
+/// Dashboard dispatcher for runtime execution.
+///
+/// Flow:
+/// 1) normalize args, 2) build or reuse client(s), 3) delegate to domain handlers.
+/// Errors are surfaced directly to the CLI caller for consistent exit behavior.
 pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
     let args = normalize_dashboard_cli_args(args);
     match args.command {

@@ -1,3 +1,5 @@
+//! Inspection report model and aggregation surface.
+//! Defines summary/row schemas and grouped/report helpers used by both CLI renderers and tests.
 use serde::Serialize;
 
 use crate::common::{message, Result};
@@ -6,9 +8,13 @@ use super::InspectExportReportFormat;
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct QueryReportSummary {
+    #[serde(rename = "dashboardCount")]
     pub(crate) dashboard_count: usize,
+    #[serde(rename = "panelCount")]
     pub(crate) panel_count: usize,
+    #[serde(rename = "queryCount")]
     pub(crate) query_count: usize,
+    #[serde(rename = "queryRecordCount")]
     pub(crate) report_row_count: usize,
 }
 
@@ -33,7 +39,7 @@ pub(crate) struct ExportInspectionQueryRow {
     pub(crate) datasource_uid: String,
     #[serde(rename = "queryField")]
     pub(crate) query_field: String,
-    #[serde(rename = "queryText")]
+    #[serde(rename = "query")]
     pub(crate) query_text: String,
     pub(crate) metrics: Vec<String>,
     pub(crate) measurements: Vec<String>,
@@ -44,6 +50,20 @@ pub(crate) struct ExportInspectionQueryRow {
 pub(crate) struct ExportInspectionQueryReport {
     pub(crate) import_dir: String,
     pub(crate) summary: QueryReportSummary,
+    pub(crate) queries: Vec<ExportInspectionQueryRow>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub(crate) struct ExportInspectionQueryReportJsonSummary {
+    #[serde(rename = "dashboardCount")]
+    pub(crate) dashboard_count: usize,
+    #[serde(rename = "queryRecordCount")]
+    pub(crate) query_record_count: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub(crate) struct ExportInspectionQueryReportDocument {
+    pub(crate) summary: ExportInspectionQueryReportJsonSummary,
     pub(crate) queries: Vec<ExportInspectionQueryRow>,
 }
 
@@ -119,6 +139,18 @@ pub(crate) fn build_query_report(
             report_row_count: queries.len(),
         },
         queries,
+    }
+}
+
+pub(crate) fn build_export_inspection_query_report_document(
+    report: &ExportInspectionQueryReport,
+) -> ExportInspectionQueryReportDocument {
+    ExportInspectionQueryReportDocument {
+        summary: ExportInspectionQueryReportJsonSummary {
+            dashboard_count: report.summary.dashboard_count,
+            query_record_count: report.queries.len(),
+        },
+        queries: report.queries.clone(),
     }
 }
 
@@ -230,6 +262,7 @@ pub(crate) fn report_format_supports_columns(format: InspectExportReportFormat) 
     )
 }
 
+// Group query rows by dashboard/panel so report output is deterministic and renderable.
 pub(crate) fn normalize_query_report(
     report: &ExportInspectionQueryReport,
 ) -> NormalizedQueryReport {

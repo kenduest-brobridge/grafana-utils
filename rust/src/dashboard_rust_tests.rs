@@ -1,3 +1,6 @@
+// Dashboard domain test suite.
+// Covers parser surfaces, formatter/output contracts, and export/import/inspect/list/diff behavior with
+// in-memory/mocked request fixtures.
 use super::{
     attach_dashboard_folder_paths_with_request, build_export_metadata, build_export_variant_dirs,
     build_external_export_document, build_folder_inventory_status, build_folder_path,
@@ -2891,6 +2894,16 @@ fn build_export_inspection_summary_reports_structure_and_datasources() {
                 "isDefault": "true",
                 "org": "Main Org.",
                 "orgId": "1"
+            },
+            {
+                "uid": "unused-main",
+                "name": "Unused Main",
+                "type": "tempo",
+                "access": "proxy",
+                "url": "http://tempo:3200",
+                "isDefault": "false",
+                "org": "Main Org.",
+                "orgId": "1"
             }
         ]))
         .unwrap(),
@@ -2946,7 +2959,8 @@ fn build_export_inspection_summary_reports_structure_and_datasources() {
     assert_eq!(summary.folder_count, 2);
     assert_eq!(summary.panel_count, 2);
     assert_eq!(summary.query_count, 3);
-    assert_eq!(summary.datasource_inventory_count, 2);
+    assert_eq!(summary.datasource_inventory_count, 3);
+    assert_eq!(summary.orphaned_datasource_count, 1);
     assert_eq!(summary.mixed_dashboard_count, 1);
     assert!(summary
         .folder_paths
@@ -2965,7 +2979,29 @@ fn build_export_inspection_summary_reports_structure_and_datasources() {
     assert_eq!(prom_usage.dashboard_count, 2);
     assert_eq!(summary.datasource_inventory[0].dashboard_count, 1);
     assert_eq!(summary.datasource_inventory[1].reference_count, 3);
+    assert_eq!(summary.orphaned_datasources.len(), 1);
+    assert_eq!(summary.orphaned_datasources[0].uid, "unused-main");
     assert_eq!(summary.mixed_dashboards[0].uid, "mixed");
+
+    let summary_json = serde_json::to_value(super::build_export_inspection_summary_document(
+        &summary,
+    ))
+    .unwrap();
+    assert_eq!(summary_json["summary"]["dashboardCount"], Value::from(2));
+    assert_eq!(summary_json["summary"]["folderCount"], Value::from(2));
+    assert_eq!(summary_json["summary"]["queryCount"], Value::from(3));
+    assert_eq!(
+        summary_json["datasourceInventory"][1]["referenceCount"],
+        Value::from(3)
+    );
+    assert_eq!(
+        summary_json["orphanedDatasources"][0]["uid"],
+        Value::String("unused-main".to_string())
+    );
+    assert_eq!(
+        summary_json["mixedDatasourceDashboards"][0]["folderPath"],
+        Value::String("Platform / Team / Apps / Prod".to_string())
+    );
 }
 
 #[test]
@@ -3223,15 +3259,25 @@ fn build_export_inspection_query_report_extracts_metrics_measurements_and_bucket
         vec!["http_requests".to_string()]
     );
 
-    let report_json = serde_json::to_value(&report).unwrap();
+    let report_json = serde_json::to_value(super::build_export_inspection_query_report_document(
+        &report,
+    ))
+    .unwrap();
+    assert_eq!(report_json["summary"]["dashboardCount"], Value::from(2));
+    assert_eq!(report_json["summary"]["queryRecordCount"], Value::from(2));
     assert_eq!(
         report_json["queries"][0]["datasourceUid"],
         Value::String("prom-main".to_string())
     );
     assert_eq!(
+        report_json["queries"][0]["query"],
+        Value::String("sum(rate(node_cpu_seconds_total{job=\"node\"}[5m]))".to_string())
+    );
+    assert_eq!(
         report_json["queries"][1]["datasourceUid"],
         Value::String("influx-main".to_string())
     );
+    assert_eq!(report_json.get("import_dir"), None);
 }
 
 #[test]
@@ -3887,6 +3933,7 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
         panel_count: 3,
         query_count: 3,
         datasource_inventory_count: 3,
+        orphaned_datasource_count: 1,
         mixed_dashboard_count: 1,
         folder_paths: Vec::new(),
         datasource_usage: Vec::new(),
@@ -3928,6 +3975,18 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
                 dashboard_count: 0,
             },
         ],
+        orphaned_datasources: vec![super::DatasourceInventorySummary {
+            uid: "unused-main".to_string(),
+            name: "Unused Main".to_string(),
+            datasource_type: "tempo".to_string(),
+            access: "proxy".to_string(),
+            url: "http://tempo:3200".to_string(),
+            is_default: "false".to_string(),
+            org: "Main Org.".to_string(),
+            org_id: "1".to_string(),
+            reference_count: 0,
+            dashboard_count: 0,
+        }],
         mixed_dashboards: vec![super::MixedDashboardSummary {
             uid: "mixed-main".to_string(),
             title: "Mixed Main".to_string(),
@@ -4030,6 +4089,7 @@ fn render_governance_table_report_displays_sections() {
         panel_count: 1,
         query_count: 1,
         datasource_inventory_count: 2,
+        orphaned_datasource_count: 1,
         mixed_dashboard_count: 0,
         folder_paths: Vec::new(),
         datasource_usage: Vec::new(),
@@ -4059,6 +4119,18 @@ fn render_governance_table_report_displays_sections() {
                 dashboard_count: 0,
             },
         ],
+        orphaned_datasources: vec![super::DatasourceInventorySummary {
+            uid: "unused-main".to_string(),
+            name: "Unused Main".to_string(),
+            datasource_type: "tempo".to_string(),
+            access: "proxy".to_string(),
+            url: "http://tempo:3200".to_string(),
+            is_default: "false".to_string(),
+            org: "Main Org.".to_string(),
+            org_id: "1".to_string(),
+            reference_count: 0,
+            dashboard_count: 0,
+        }],
         mixed_dashboards: Vec::new(),
     };
     let report = super::ExportInspectionQueryReport {

@@ -5,6 +5,34 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-15 - Task: Align Rust Inspect JSON Contract With Python
+- State: Done
+- Scope: `rust/src/dashboard.rs`, `rust/src/dashboard_inspect.rs`, `rust/src/dashboard_inspect_summary.rs`, `rust/src/dashboard_inspect_report.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust `inspect-export --json` still serialized the internal `ExportInspectionSummary` struct directly, which kept snake_case count fields, exposed Rust-only field names such as `datasource_usage` and `mixed_dashboards`, and diverged from the Python summary/report JSON contract that already uses a wrapper document with camelCase keys.
+- Current Update: Added dedicated Rust JSON document builders for summary and report inspection output, kept the internal runtime structs unchanged for text/table rendering, and switched the Rust inspect JSON paths to emit the Python-shaped document keys such as `summary.dashboardCount`, `datasourceInventory`, `orphanedDatasources`, `mixedDatasourceDashboards`, and `queries[*].query`.
+- Result: Rust `inspect-export --json` and `inspect-live --output-format report-json` now emit a much closer machine-readable contract to the Python inspection output without changing the existing text, table, or governance renderers.
+
+## 2026-03-15 - Task: Standardize Python Development On Poetry
+- State: Done
+- Scope: `pyproject.toml`, `README.md`, `DEVELOPER.md`, `AGENTS.md`, `tests/test_python_packaging.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Python development instructions were split between direct `python3 -m unittest`, source-tree module execution, and packaged `pip install` examples without one declared standard environment manager for maintainers.
+- Current Update: Declared Poetry as the standard Python development environment workflow, updated current README, maintainer notes, and repo instructions to prefer `poetry install --with dev` plus `poetry run ...` for day-to-day development, and kept packaged `pip install` guidance explicitly scoped to install/build validation.
+- Result: The repo now has one documented Python development workflow for maintainers while preserving the existing packaging and install surfaces for release and compatibility checks.
+
+## 2026-03-15 - Task: Add Maintainer Architecture Comments for Python CLI Facades
+- State: Done
+- Scope: `DEVELOPER.md`, `grafana_utils/unified_cli.py`, `grafana_utils/alert_cli.py`, `grafana_utils/dashboard_cli.py`, `grafana_utils/access_cli.py`, `grafana_utils/datasource_cli.py`, `grafana_utils/datasource_contract.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Python CLI entrypoint and facade files were functionally stable but carried fewer maintainer-facing boundary notes than their module layout, making future refactors slower to reason about at a glance.
+- Current Update: Added explicit module and function docstrings for unified routing, parser normalization, dispatch boundaries, and datasource contract semantics; added a DEVELOPER section for Python CLI boundary responsibilities.
+- Result: No behavior changes. Future maintainers can now infer the intended separation between entrypoint routing and domain workflow ownership directly from source and maintainer documentation.
+
+## 2026-03-15 - Task: Align Rust Inspection Orphaned Datasource Summary
+- State: Done
+- Scope: `rust/src/dashboard_inspect_summary.rs`, `rust/src/dashboard_inspect.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Python `inspect-export` and `inspect-live` summary output already exposed `orphanedDatasourceCount` and `orphanedDatasources`, but the Rust inspection summary only carried datasource inventory and mixed-dashboard aggregates. That left the two runtimes with a visible summary capability gap even though the Rust governance path already knew how to derive orphaned datasource risk from the same inventory.
+- Current Update: Added orphaned datasource count and orphaned datasource inventory rows to the Rust inspection summary model, wired the summary builder to materialize those rows directly from the datasource inventory usage counts, and extended the Rust dashboard tests to lock in the new summary fields.
+- Result: Rust inspection summary output now exposes the same orphaned-datasource concept that Python summary output already had, reducing one concrete inspect-export/inspect-live drift point without changing the existing governance risk behavior.
+
 ## 2026-03-15 - Task: Raise Python Baseline To 3.9
 - State: Done
 - Scope: `pyproject.toml`, `README.md`, `README.zh-TW.md`, `DEVELOPER.md`, `grafana_utils/auth_staging.py`, `grafana_utils/http_transport.py`, `grafana_utils/unified_cli.py`, `grafana_utils/datasource_contract.py`, `tests/test_python_packaging.py`, `tests/test_python_unified_cli.py`, `tests/test_python_auth_staging.py`, `tests/test_python_access_cli.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_dashboard_inspection_governance.py`, `tests/test_python_access_pending_cli_staging.py`, `tests/test_python_datasource_cli.py`, `tests/test_python_alert_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
@@ -21,7 +49,7 @@ Historical note:
 
 ## 2026-03-15 - Task: Rename Unified CLI To grafana-util
 - State: Done
-- Scope: `pyproject.toml`, `python/grafana-util.py`, `grafana_utils/unified_cli.py`, `tests/test_python_packaging.py`, `tests/test_python_unified_cli.py`, `tests/test_python_access_cli.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `README.md`, `README.zh-TW.md`, `DEVELOPER.md`, `AGENTS.md`, `rust/src/bin/grafana-util.rs`, `rust/src/cli.rs`, `rust/src/alert.rs`, `rust/src/alert_cli_defs.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_help.rs`, `rust/src/datasource.rs`, `rust/src/cli_rust_tests.rs`, `rust/src/alert_rust_tests.rs`, `rust/src/dashboard_rust_tests.rs`, `rust/src/datasource_rust_tests.rs`, `scripts/test-python-access-live-grafana.sh`, `scripts/test-rust-live-grafana.sh`, `scripts/build-rust-linux-amd64.sh`, `scripts/build-rust-linux-amd64-zig.sh`, `scripts/build-rust-macos-arm64.sh`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Scope: `pyproject.toml`, `grafana_utils/__main__.py`, `grafana_utils/unified_cli.py`, `tests/test_python_packaging.py`, `tests/test_python_unified_cli.py`, `tests/test_python_access_cli.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `README.md`, `README.zh-TW.md`, `DEVELOPER.md`, `AGENTS.md`, `rust/src/bin/grafana-util.rs`, `rust/src/cli.rs`, `rust/src/alert.rs`, `rust/src/alert_cli_defs.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_help.rs`, `rust/src/datasource.rs`, `rust/src/cli_rust_tests.rs`, `rust/src/alert_rust_tests.rs`, `rust/src/dashboard_rust_tests.rs`, `rust/src/datasource_rust_tests.rs`, `scripts/test-python-access-live-grafana.sh`, `scripts/test-rust-live-grafana.sh`, `scripts/build-rust-linux-amd64.sh`, `scripts/build-rust-linux-amd64-zig.sh`, `scripts/build-rust-macos-arm64.sh`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
 - Baseline: The unified Python and Rust CLIs, repo-local wrapper path, packaging metadata, tests, and current docs all still present the primary tool name as `grafana-utils`, while Python packaging also still only includes the top-level `grafana_utils` package and would omit newly added subpackages on install.
 - Current Update: Renamed the unified installed command and repo-local wrapper usage to `grafana-util`, renamed the Rust unified binary source entrypoint to `rust/src/bin/grafana-util.rs`, updated help text, tests, scripts, and current docs to the singular command name, and widened the Python setuptools package discovery to include `grafana_utils.*` so the split access and datasource subpackages remain installable.
 - Result: The repo now presents one singular unified command name, `grafana-util`, across Python packaging, source-tree wrapper usage, Rust unified binary/help, tests, and current operator docs, while keeping existing export/import metadata kinds unchanged for compatibility and keeping Python subpackages included in packaged installs.
