@@ -47,7 +47,15 @@ REPORT_COLUMN_ALIASES = {
 SUPPORTED_REPORT_COLUMN_HEADERS = OrderedDict(
     list(REPORT_COLUMN_HEADERS.items()) + list(OPTIONAL_REPORT_COLUMN_HEADERS.items())
 )
-INSPECT_REPORT_FORMAT_CHOICES = ("table", "json", "csv", "tree", "tree-table")
+INSPECT_REPORT_FORMAT_CHOICES = (
+    "table",
+    "json",
+    "csv",
+    "tree",
+    "tree-table",
+    "governance",
+    "governance-json",
+)
 NORMALIZED_QUERY_REPORT_FIELDS = (
     "dashboardUid",
     "dashboardTitle",
@@ -69,6 +77,10 @@ INSPECT_EXPORT_HELP_FULL_EXAMPLES = (
     "Extended examples:\n\n"
     "  Inspect one raw export as the default flat query table:\n"
     "    grafana-utils inspect-export --import-dir ./dashboards/raw --report\n\n"
+    "  Inspect one raw export as datasource governance tables:\n"
+    "    grafana-utils inspect-export --import-dir ./dashboards/raw --report governance\n\n"
+    "  Inspect one raw export as datasource governance JSON:\n"
+    "    grafana-utils inspect-export --import-dir ./dashboards/raw --report governance-json\n\n"
     "  Inspect one raw export as dashboard-first grouped tables:\n"
     "    grafana-utils inspect-export --import-dir ./dashboards/raw --report tree-table\n\n"
     "  Narrow the report to one datasource and one panel id:\n"
@@ -83,6 +95,12 @@ INSPECT_LIVE_HELP_FULL_EXAMPLES = (
     "  Inspect live dashboards as the default flat query table:\n"
     "    grafana-utils inspect-live --url http://localhost:3000 --basic-user admin "
     "--basic-password admin --report\n\n"
+    "  Inspect live dashboards as datasource governance tables:\n"
+    "    grafana-utils inspect-live --url http://localhost:3000 --basic-user admin "
+    "--basic-password admin --report governance\n\n"
+    "  Inspect live dashboards as datasource governance JSON:\n"
+    "    grafana-utils inspect-live --url http://localhost:3000 --basic-user admin "
+    "--basic-password admin --report governance-json\n\n"
     "  Inspect live dashboards as dashboard-first grouped tables:\n"
     "    grafana-utils inspect-live --url http://localhost:3000 --basic-user admin "
     "--basic-password admin --report tree-table\n\n"

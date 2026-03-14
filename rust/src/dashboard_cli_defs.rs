@@ -286,6 +286,8 @@ pub enum InspectExportReportFormat {
     Json,
     Tree,
     TreeTable,
+    Governance,
+    GovernanceJson,
 }
 
 #[derive(Debug, Clone, Args)]
@@ -317,7 +319,7 @@ pub struct InspectExportArgs {
         num_args = 0..=1,
         default_missing_value = "table",
         conflicts_with_all = ["json", "table"],
-        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for machine-readable output, --report tree for dashboard-first grouped text, or --report tree-table for dashboard-first grouped tables."
+        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for machine-readable output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report governance for datasource governance tables, or --report governance-json for governance JSON."
     )]
     pub report: Option<InspectExportReportFormat>,
     #[arg(
@@ -391,7 +393,7 @@ pub struct InspectLiveArgs {
         num_args = 0..=1,
         default_missing_value = "table",
         conflicts_with_all = ["json", "table"],
-        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for alternate output, --report tree for dashboard-first grouped text, or --report tree-table for dashboard-first grouped tables."
+        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for alternate output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report governance for datasource governance tables, or --report governance-json for governance JSON."
     )]
     pub report: Option<InspectExportReportFormat>,
     #[arg(

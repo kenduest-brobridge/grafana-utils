@@ -76,6 +76,113 @@ class DashboardInspectionTests(unittest.TestCase):
             result = exporter.inspect_export(args)
         return result, stdout.getvalue()
 
+    def write_governance_fixture(self, import_dir):
+        self.write_summary_fixture(
+            import_dir,
+            dashboards=[
+                {
+                    "path": Path("General") / "CPU_Main__cpu-main.json",
+                    "dashboard": {
+                        "id": None,
+                        "uid": "cpu-main",
+                        "title": "CPU Main",
+                        "panels": [
+                            {
+                                "id": 7,
+                                "title": "CPU Usage",
+                                "type": "timeseries",
+                                "datasource": {
+                                    "type": "prometheus",
+                                    "uid": "prom-main",
+                                },
+                                "targets": [{"refId": "A", "expr": "up"}],
+                            }
+                        ],
+                    },
+                },
+                {
+                    "path": Path("Infra") / "Mixed_Main__mixed-main.json",
+                    "dashboard": {
+                        "id": None,
+                        "uid": "mixed-main",
+                        "title": "Mixed Main",
+                        "panels": [
+                            {
+                                "id": 8,
+                                "title": "Logs",
+                                "type": "logs",
+                                "datasource": {
+                                    "type": "datasource",
+                                    "uid": "-- Mixed --",
+                                },
+                                "targets": [
+                                    {
+                                        "refId": "A",
+                                        "expr": '{job="grafana"}',
+                                        "datasource": {
+                                            "type": "loki",
+                                            "uid": "logs-main",
+                                        },
+                                    },
+                                    {
+                                        "refId": "B",
+                                        "query": "custom_query",
+                                        "datasource": {
+                                            "type": "custom-plugin",
+                                            "uid": "custom-main",
+                                        },
+                                    },
+                                ],
+                            }
+                        ],
+                    },
+                    "meta": {"folderUid": "infra"},
+                },
+            ],
+            folders=[
+                {
+                    "uid": "infra",
+                    "title": "Infra",
+                    "parentUid": "platform",
+                    "path": "Platform / Infra",
+                    "org": "Main Org.",
+                    "orgId": "1",
+                }
+            ],
+            datasources=[
+                {
+                    "uid": "prom-main",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                    "access": "proxy",
+                    "url": "http://prometheus:9090",
+                    "isDefault": "true",
+                    "org": "Main Org.",
+                    "orgId": "1",
+                },
+                {
+                    "uid": "logs-main",
+                    "name": "Logs Main",
+                    "type": "loki",
+                    "access": "proxy",
+                    "url": "http://loki:3100",
+                    "isDefault": "false",
+                    "org": "Main Org.",
+                    "orgId": "1",
+                },
+                {
+                    "uid": "unused-main",
+                    "name": "Unused Main",
+                    "type": "tempo",
+                    "access": "proxy",
+                    "url": "http://tempo:3200",
+                    "isDefault": "false",
+                    "org": "Main Org.",
+                    "orgId": "1",
+                },
+            ],
+        )
+
     def test_inspect_export_renders_human_summary(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
@@ -449,6 +556,27 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertEqual(payload["queries"][1]["buckets"], ["prod"])
             self.assertEqual(payload["queries"][1]["measurements"], ["cpu"])
 
+    def test_parse_args_supports_governance_report_formats(self):
+        args = exporter.parse_args(
+            ["inspect-export", "--import-dir", "dashboards/raw", "--report", "governance"]
+        )
+        self.assertEqual(args.report, "governance")
+
+        governance_json_args = exporter.parse_args(
+            [
+                "inspect-live",
+                "--url",
+                "http://localhost:3000",
+                "--basic-user",
+                "admin",
+                "--basic-password",
+                "admin",
+                "--report",
+                "governance-json",
+            ]
+        )
+        self.assertEqual(governance_json_args.report, "governance-json")
+
     def test_inspect_export_prometheus_metrics_ignore_grouping_labels_and_values(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
@@ -532,6 +660,63 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertIn("# Query report", output)
             self.assertIn("DASHBOARD_UID", output)
             self.assertIn("CPU Usage", output)
+
+    def test_inspect_export_renders_governance_json(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self.write_governance_fixture(import_dir)
+
+            args = exporter.parse_args(
+                [
+                    "inspect-export",
+                    "--import-dir",
+                    str(import_dir),
+                    "--report",
+                    "governance-json",
+                    "--report-filter-datasource",
+                    "logs-main",
+                ]
+            )
+            result, output = self.run_inspect(args)
+            payload = json.loads(output)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(payload["summary"]["dashboardCount"], 2)
+            self.assertEqual(payload["summary"]["queryRecordCount"], 1)
+            self.assertEqual(payload["summary"]["datasourceFamilyCount"], 1)
+            self.assertEqual(payload["datasourceFamilies"][0]["family"], "loki")
+            self.assertEqual(payload["datasources"][0]["datasourceUid"], "logs-main")
+            self.assertEqual(len(payload["riskRecords"]), 2)
+            self.assertEqual(payload["riskRecords"][0]["kind"], "orphaned-datasource")
+            self.assertEqual(
+                payload["riskRecords"][1]["kind"], "mixed-datasource-dashboard"
+            )
+
+    def test_inspect_export_renders_governance_tables(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self.write_governance_fixture(import_dir)
+
+            args = exporter.parse_args(
+                [
+                    "inspect-export",
+                    "--import-dir",
+                    str(import_dir),
+                    "--report",
+                    "governance",
+                ]
+            )
+            result, output = self.run_inspect(args)
+
+            self.assertEqual(result, 0)
+            self.assertIn("Export inspection governance: %s" % import_dir, output)
+            self.assertIn("# Summary", output)
+            self.assertIn("# Datasource Families", output)
+            self.assertIn("# Datasources", output)
+            self.assertIn("# Risks", output)
+            self.assertIn("mixed-datasource-dashboard", output)
+            self.assertIn("orphaned-datasource", output)
+            self.assertIn("unknown-datasource-family", output)
 
     def test_inspect_export_renders_tree_and_tree_table_reports(self):
         dashboard = {
@@ -849,6 +1034,18 @@ class DashboardInspectionTests(unittest.TestCase):
                     "dashboardUid,datasource",
                 ],
                 "--report-columns is only supported with --report table, --report csv, or --report tree-table",
+            ),
+            (
+                [
+                    "inspect-export",
+                    "--import-dir",
+                    "dashboards/raw",
+                    "--report",
+                    "governance",
+                    "--report-columns",
+                    "dashboardUid,datasource",
+                ],
+                "--report-columns is not supported with --report governance or --report governance-json",
             ),
             (
                 [

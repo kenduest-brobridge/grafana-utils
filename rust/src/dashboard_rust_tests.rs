@@ -629,6 +629,31 @@ fn parse_cli_supports_inspect_export_report_tree_table_flag() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_export_report_governance_flag() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--report",
+        "governance",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
+            assert_eq!(
+                inspect_args.report,
+                Some(InspectExportReportFormat::Governance)
+            );
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_inspect_export_help_full_flag() {
     let args = parse_cli_from([
         "grafana-utils",
@@ -723,6 +748,31 @@ fn parse_cli_supports_inspect_live_report_tree_table_flag() {
             assert_eq!(
                 inspect_args.report,
                 Some(InspectExportReportFormat::TreeTable)
+            );
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-live command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_inspect_live_report_governance_json_flag() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "inspect-live",
+        "--url",
+        "https://grafana.example.com",
+        "--report",
+        "governance-json",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectLive(inspect_args) => {
+            assert_eq!(inspect_args.common.url, "https://grafana.example.com");
+            assert_eq!(
+                inspect_args.report,
+                Some(InspectExportReportFormat::GovernanceJson)
             );
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
@@ -3349,6 +3399,26 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_tree_report() 
 }
 
 #[test]
+fn validate_inspect_export_report_args_rejects_report_columns_for_governance_report() {
+    let args = InspectExportArgs {
+        import_dir: PathBuf::from("./dashboards/raw"),
+        json: false,
+        table: false,
+        report: Some(InspectExportReportFormat::Governance),
+        report_columns: vec!["dashboard_uid".to_string()],
+        report_filter_datasource: None,
+        report_filter_panel_id: None,
+        help_full: false,
+        no_header: false,
+    };
+
+    let error = super::validate_inspect_export_report_args(&args).unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("--report-columns is not supported with governance --report output"));
+}
+
+#[test]
 fn validate_inspect_export_report_args_allows_report_columns_for_tree_table_report() {
     let args = InspectExportArgs {
         import_dir: PathBuf::from("./dashboards/raw"),
@@ -3576,6 +3646,213 @@ fn render_grouped_query_table_report_uses_default_column_set_when_requested() {
             .map(|value| value.to_string())
             .collect::<Vec<String>>()
     );
+}
+
+#[test]
+fn build_export_inspection_governance_document_summarizes_families_and_risks() {
+    let summary = super::ExportInspectionSummary {
+        import_dir: "/tmp/raw".to_string(),
+        dashboard_count: 2,
+        folder_count: 2,
+        panel_count: 3,
+        query_count: 3,
+        datasource_inventory_count: 3,
+        mixed_dashboard_count: 1,
+        folder_paths: Vec::new(),
+        datasource_usage: Vec::new(),
+        datasource_inventory: vec![
+            super::DatasourceInventorySummary {
+                uid: "prom-main".to_string(),
+                name: "Prometheus Main".to_string(),
+                datasource_type: "prometheus".to_string(),
+                access: "proxy".to_string(),
+                url: "http://prometheus:9090".to_string(),
+                is_default: "true".to_string(),
+                org: "Main Org.".to_string(),
+                org_id: "1".to_string(),
+                reference_count: 1,
+                dashboard_count: 1,
+            },
+            super::DatasourceInventorySummary {
+                uid: "logs-main".to_string(),
+                name: "Logs Main".to_string(),
+                datasource_type: "loki".to_string(),
+                access: "proxy".to_string(),
+                url: "http://loki:3100".to_string(),
+                is_default: "false".to_string(),
+                org: "Main Org.".to_string(),
+                org_id: "1".to_string(),
+                reference_count: 1,
+                dashboard_count: 1,
+            },
+            super::DatasourceInventorySummary {
+                uid: "unused-main".to_string(),
+                name: "Unused Main".to_string(),
+                datasource_type: "tempo".to_string(),
+                access: "proxy".to_string(),
+                url: "http://tempo:3200".to_string(),
+                is_default: "false".to_string(),
+                org: "Main Org.".to_string(),
+                org_id: "1".to_string(),
+                reference_count: 0,
+                dashboard_count: 0,
+            },
+        ],
+        mixed_dashboards: vec![super::MixedDashboardSummary {
+            uid: "mixed-main".to_string(),
+            title: "Mixed Main".to_string(),
+            folder_path: "Platform / Infra".to_string(),
+            datasource_count: 2,
+            datasources: vec!["custom-main".to_string(), "logs-main".to_string()],
+        }],
+    };
+    let report = super::ExportInspectionQueryReport {
+        import_dir: "/tmp/raw".to_string(),
+        summary: super::QueryReportSummary {
+            dashboard_count: 2,
+            panel_count: 2,
+            query_count: 2,
+            report_row_count: 2,
+        },
+        queries: vec![
+            super::ExportInspectionQueryRow {
+                dashboard_uid: "cpu-main".to_string(),
+                dashboard_title: "CPU Main".to_string(),
+                folder_path: "General".to_string(),
+                panel_id: "7".to_string(),
+                panel_title: "CPU".to_string(),
+                panel_type: "timeseries".to_string(),
+                ref_id: "A".to_string(),
+                datasource: "prom-main".to_string(),
+                datasource_uid: "prom-main".to_string(),
+                query_field: "expr".to_string(),
+                query_text: "up".to_string(),
+                metrics: vec!["up".to_string()],
+                measurements: Vec::new(),
+                buckets: Vec::new(),
+            },
+            super::ExportInspectionQueryRow {
+                dashboard_uid: "mixed-main".to_string(),
+                dashboard_title: "Mixed Main".to_string(),
+                folder_path: "Platform / Infra".to_string(),
+                panel_id: "8".to_string(),
+                panel_title: "Logs".to_string(),
+                panel_type: "logs".to_string(),
+                ref_id: "B".to_string(),
+                datasource: "custom-main".to_string(),
+                datasource_uid: String::new(),
+                query_field: "query".to_string(),
+                query_text: "custom_query".to_string(),
+                metrics: Vec::new(),
+                measurements: Vec::new(),
+                buckets: Vec::new(),
+            },
+        ],
+    };
+
+    let document = super::build_export_inspection_governance_document(&summary, &report);
+
+    assert_eq!(document.summary.dashboard_count, 2);
+    assert_eq!(document.summary.query_record_count, 2);
+    assert_eq!(document.summary.datasource_family_count, 2);
+    assert_eq!(document.summary.risk_record_count, 4);
+    assert_eq!(document.datasource_families[0].family, "prometheus");
+    assert_eq!(document.datasource_families[1].family, "unknown");
+    let unused = document
+        .datasources
+        .iter()
+        .find(|item| item.datasource_uid == "unused-main")
+        .unwrap();
+    assert!(unused.orphaned);
+    let risk_kinds = document
+        .risk_records
+        .iter()
+        .map(|item| item.kind.as_str())
+        .collect::<Vec<&str>>();
+    assert!(risk_kinds.contains(&"mixed-datasource-dashboard"));
+    assert!(risk_kinds.contains(&"orphaned-datasource"));
+    assert!(risk_kinds.contains(&"unknown-datasource-family"));
+    assert!(risk_kinds.contains(&"empty-query-analysis"));
+}
+
+#[test]
+fn render_governance_table_report_displays_sections() {
+    let summary = super::ExportInspectionSummary {
+        import_dir: "/tmp/raw".to_string(),
+        dashboard_count: 1,
+        folder_count: 1,
+        panel_count: 1,
+        query_count: 1,
+        datasource_inventory_count: 2,
+        mixed_dashboard_count: 0,
+        folder_paths: Vec::new(),
+        datasource_usage: Vec::new(),
+        datasource_inventory: vec![
+            super::DatasourceInventorySummary {
+                uid: "logs-main".to_string(),
+                name: "Logs Main".to_string(),
+                datasource_type: "loki".to_string(),
+                access: "proxy".to_string(),
+                url: "http://loki:3100".to_string(),
+                is_default: "false".to_string(),
+                org: "Main Org.".to_string(),
+                org_id: "1".to_string(),
+                reference_count: 1,
+                dashboard_count: 1,
+            },
+            super::DatasourceInventorySummary {
+                uid: "unused-main".to_string(),
+                name: "Unused Main".to_string(),
+                datasource_type: "tempo".to_string(),
+                access: "proxy".to_string(),
+                url: "http://tempo:3200".to_string(),
+                is_default: "false".to_string(),
+                org: "Main Org.".to_string(),
+                org_id: "1".to_string(),
+                reference_count: 0,
+                dashboard_count: 0,
+            },
+        ],
+        mixed_dashboards: Vec::new(),
+    };
+    let report = super::ExportInspectionQueryReport {
+        import_dir: "/tmp/raw".to_string(),
+        summary: super::QueryReportSummary {
+            dashboard_count: 1,
+            panel_count: 1,
+            query_count: 1,
+            report_row_count: 1,
+        },
+        queries: vec![super::ExportInspectionQueryRow {
+            dashboard_uid: "logs-main".to_string(),
+            dashboard_title: "Logs Main".to_string(),
+            folder_path: "Logs".to_string(),
+            panel_id: "11".to_string(),
+            panel_title: "Errors".to_string(),
+            panel_type: "logs".to_string(),
+            ref_id: "A".to_string(),
+            datasource: "logs-main".to_string(),
+            datasource_uid: "logs-main".to_string(),
+            query_field: "expr".to_string(),
+            query_text: "{job=\"grafana\"}".to_string(),
+            metrics: vec!["count_over_time".to_string()],
+            measurements: vec!["job=\"grafana\"".to_string()],
+            buckets: vec!["5m".to_string()],
+        }],
+    };
+
+    let document = super::build_export_inspection_governance_document(&summary, &report);
+    let lines = super::render_governance_table_report("/tmp/raw", &document);
+    let output = lines.join("\n");
+
+    assert!(output.contains("Export inspection governance: /tmp/raw"));
+    assert!(output.contains("# Summary"));
+    assert!(output.contains("# Datasource Families"));
+    assert!(output.contains("# Datasources"));
+    assert!(output.contains("# Risks"));
+    assert!(output.contains("logs-main"));
+    assert!(output.contains("unused-main"));
+    assert!(output.contains("orphaned-datasource"));
 }
 
 #[test]

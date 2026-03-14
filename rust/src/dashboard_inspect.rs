@@ -13,9 +13,11 @@ use super::dashboard_inspect_analyzer_flux;
 use super::dashboard_inspect_analyzer_loki;
 use super::dashboard_inspect_analyzer_prometheus;
 use super::dashboard_inspect_analyzer_sql;
+use super::dashboard_inspect_governance::{
+    build_export_inspection_governance_document, render_governance_table_report,
+};
 use super::dashboard_inspect_render::{
-    render_csv, render_grouped_query_report, render_grouped_query_table_report,
-    render_simple_table,
+    render_csv, render_grouped_query_report, render_grouped_query_table_report, render_simple_table,
 };
 use super::*;
 
@@ -38,7 +40,6 @@ pub(crate) struct QueryExtractionContext<'a> {
     pub(crate) query_field: &'a str,
     pub(crate) query_text: &'a str,
 }
-
 
 fn resolve_export_folder_path(
     document: &Map<String, Value>,
@@ -805,6 +806,21 @@ pub(crate) fn validate_inspect_export_report_args(args: &InspectExportArgs) -> R
     }
     if args
         .report
+        .map(|format| {
+            matches!(
+                format,
+                InspectExportReportFormat::Governance | InspectExportReportFormat::GovernanceJson
+            )
+        })
+        .unwrap_or(false)
+        && !args.report_columns.is_empty()
+    {
+        return Err(message(
+            "--report-columns is not supported with governance --report output.",
+        ));
+    }
+    if args
+        .report
         .map(|format| !report_format_supports_columns(format))
         .unwrap_or(false)
         && !args.report_columns.is_empty()
@@ -976,6 +992,20 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
             args.report_filter_datasource.as_deref(),
             args.report_filter_panel_id.as_deref(),
         );
+        if report_format == InspectExportReportFormat::Governance
+            || report_format == InspectExportReportFormat::GovernanceJson
+        {
+            let summary = build_export_inspection_summary(&args.import_dir)?;
+            let governance = build_export_inspection_governance_document(&summary, &report);
+            if report_format == InspectExportReportFormat::GovernanceJson {
+                println!("{}", serde_json::to_string_pretty(&governance)?);
+            } else {
+                for line in render_governance_table_report(&summary.import_dir, &governance) {
+                    println!("{line}");
+                }
+            }
+            return Ok(summary.dashboard_count);
+        }
         if report_format == InspectExportReportFormat::Json {
             println!("{}", serde_json::to_string_pretty(&report)?);
             return Ok(report.summary.dashboard_count);

@@ -108,6 +108,12 @@ from .dashboards.inspection_report import (
     render_export_inspection_report_tables,
     render_export_inspection_tree_tables,
 )
+from .dashboards.inspection_governance import (
+    build_export_inspection_governance_document,
+)
+from .dashboards.inspection_governance_render import (
+    render_export_inspection_governance_tables,
+)
 from .dashboards.inspection_summary import (
     build_export_inspection_document as build_export_inspection_document_from_summary,
     render_export_inspection_summary as render_export_inspection_summary_from_summary,
@@ -517,7 +523,9 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
             "Render one full per-query inspection report. "
             "Use --report for flat table output, --report json for flat JSON, "
             "--report csv for flat CSV, --report tree for a dashboard/panel/query tree, "
-            "or --report tree-table for per-dashboard tables."
+            "--report tree-table for per-dashboard tables, "
+            "--report governance for datasource governance tables, "
+            "or --report governance-json for governance JSON."
         ),
     )
     parser.add_argument(
@@ -597,7 +605,9 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
             "Render one full per-query inspection report. "
             "Use --report for flat table output, --report csv for flat CSV, "
             "--report json for flat JSON, --report tree for a dashboard/panel/query tree, "
-            "or --report tree-table for per-dashboard tables."
+            "--report tree-table for per-dashboard tables, "
+            "--report governance for datasource governance tables, "
+            "or --report governance-json for governance JSON."
         ),
     )
     parser.add_argument(
@@ -1123,6 +1133,9 @@ def _build_inspection_workflow_deps() -> Dict[str, Any]:
                 },
             )
         ),
+        "build_export_inspection_governance_document": (
+            build_export_inspection_governance_document
+        ),
         "build_export_metadata": build_export_metadata,
         "build_output_path": build_output_path,
         "build_preserved_web_import_document": build_preserved_web_import_document,
@@ -1133,6 +1146,9 @@ def _build_inspection_workflow_deps() -> Dict[str, Any]:
         "json": json,
         "parse_report_columns": parse_report_columns,
         "render_export_inspection_grouped_report": render_export_inspection_grouped_report,
+        "render_export_inspection_governance_tables": (
+            render_export_inspection_governance_tables
+        ),
         "render_export_inspection_report_csv": render_export_inspection_report_csv,
         "render_export_inspection_report_tables": render_export_inspection_report_tables,
         "render_export_inspection_summary": render_export_inspection_summary_from_summary,

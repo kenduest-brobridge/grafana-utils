@@ -26,6 +26,8 @@ mod dashboard_inspect_analyzer_prometheus;
 mod dashboard_inspect_analyzer_sql;
 #[path = "dashboard_inspect_render.rs"]
 mod dashboard_inspect_render;
+#[path = "dashboard_inspect_governance.rs"]
+mod dashboard_inspect_governance;
 #[path = "dashboard_inspect_report.rs"]
 mod dashboard_inspect_report;
 #[path = "dashboard_list.rs"]
@@ -76,6 +78,10 @@ pub(crate) use dashboard_inspect::{
 #[cfg(test)]
 pub(crate) use dashboard_inspect_render::{
     render_csv, render_grouped_query_report, render_grouped_query_table_report,
+};
+#[cfg(test)]
+pub(crate) use dashboard_inspect_governance::{
+    build_export_inspection_governance_document, render_governance_table_report,
 };
 #[cfg(test)]
 pub(crate) use dashboard_inspect_report::normalize_query_report;
@@ -176,9 +182,9 @@ const BUILTIN_DATASOURCE_NAMES: &[&str] = &[
     "__expr__",
 ];
 
-const INSPECT_EXPORT_HELP_FULL_EXAMPLES: &str = "\nExtended Examples:\n\n  Flat per-query table report:\n    grafana-utils dashboard inspect-export --import-dir ./dashboards/raw --report\n\n  Dashboard-first grouped tables:\n    grafana-utils dashboard inspect-export --import-dir ./dashboards/raw --report tree-table\n\n  Filter to one datasource and narrow columns:\n    grafana-utils dashboard inspect-export --import-dir ./dashboards/raw --report tree-table --report-filter-datasource prom-main --report-columns panel_id,panel_title,datasource,query\n\n  Dashboard/panel tree text view:\n    grafana-utils dashboard inspect-export --import-dir ./dashboards/raw --report tree --report-filter-panel-id 7\n";
+const INSPECT_EXPORT_HELP_FULL_EXAMPLES: &str = "\nExtended Examples:\n\n  Flat per-query table report:\n    grafana-utils dashboard inspect-export --import-dir ./dashboards/raw --report\n\n  Datasource governance tables:\n    grafana-utils dashboard inspect-export --import-dir ./dashboards/raw --report governance\n\n  Datasource governance JSON:\n    grafana-utils dashboard inspect-export --import-dir ./dashboards/raw --report governance-json\n\n  Dashboard-first grouped tables:\n    grafana-utils dashboard inspect-export --import-dir ./dashboards/raw --report tree-table\n\n  Filter to one datasource and narrow columns:\n    grafana-utils dashboard inspect-export --import-dir ./dashboards/raw --report tree-table --report-filter-datasource prom-main --report-columns panel_id,panel_title,datasource,query\n\n  Dashboard/panel tree text view:\n    grafana-utils dashboard inspect-export --import-dir ./dashboards/raw --report tree --report-filter-panel-id 7\n";
 
-const INSPECT_LIVE_HELP_FULL_EXAMPLES: &str = "\nExtended Examples:\n\n  Flat per-query table report from live Grafana:\n    grafana-utils dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --report\n\n  Dashboard-first grouped tables from live Grafana:\n    grafana-utils dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --report tree-table\n\n  Filter to one datasource and narrow columns:\n    grafana-utils dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --report tree-table --report-filter-datasource prom-main --report-columns panel_id,panel_title,datasource,query\n\n  Dashboard/panel tree text view:\n    grafana-utils dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --report tree --report-filter-panel-id 7\n";
+const INSPECT_LIVE_HELP_FULL_EXAMPLES: &str = "\nExtended Examples:\n\n  Flat per-query table report from live Grafana:\n    grafana-utils dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --report\n\n  Datasource governance tables from live Grafana:\n    grafana-utils dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --report governance\n\n  Datasource governance JSON from live Grafana:\n    grafana-utils dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --report governance-json\n\n  Dashboard-first grouped tables from live Grafana:\n    grafana-utils dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --report tree-table\n\n  Filter to one datasource and narrow columns:\n    grafana-utils dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --report tree-table --report-filter-datasource prom-main --report-columns panel_id,panel_title,datasource,query\n\n  Dashboard/panel tree text view:\n    grafana-utils dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --report tree --report-filter-panel-id 7\n";
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct ExportMetadata {

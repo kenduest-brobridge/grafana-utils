@@ -105,6 +105,10 @@ def run_inspect_export(args, deps):
         raise grafana_error(
             "--report-filter-panel-id is only supported with --report."
         )
+    if report_columns is not None and report_format in ("governance", "governance-json"):
+        raise grafana_error(
+            "--report-columns is not supported with --report governance or --report governance-json."
+        )
     if report_columns is not None and report_format not in ("table", "csv", "tree-table"):
         raise grafana_error(
             "--report-columns is only supported with --report table, --report csv, or --report tree-table."
@@ -186,6 +190,32 @@ def run_inspect_export(args, deps):
             import_dir,
             include_header=not bool(getattr(args, "no_header", False)),
             selected_columns=report_columns,
+        ):
+            print(line)
+        return 0
+    if report_format in ("governance", "governance-json"):
+        report_document = deps["filter_export_inspection_report_document"](
+            deps["build_export_inspection_report_document"](import_dir),
+            datasource_label=report_filter_datasource,
+            panel_id=report_filter_panel_id,
+        )
+        document = deps["build_export_inspection_governance_document"](
+            deps["build_export_inspection_document"](import_dir),
+            report_document,
+        )
+        if report_format == "governance-json":
+            print(
+                deps["json"].dumps(
+                    document,
+                    indent=2,
+                    sort_keys=False,
+                    ensure_ascii=False,
+                )
+            )
+            return 0
+        for line in deps["render_export_inspection_governance_tables"](
+            document,
+            import_dir,
         ):
             print(line)
         return 0
