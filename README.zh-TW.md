@@ -39,10 +39,31 @@ Grafana Utilities 的價值就是把這些流程明文化：
 | Dashboards | ✓ | ✓ | ✓ | ✓ | ✓ | - | - | - | 適合做盤點、備份、還原與跨環境搬移 |
 | Datasources | ✓ | ✓ | ✓ | ✓ | - | - | - | - | 適合做 datasource 盤點、重播與漂移比對 |
 | Alert rules 與 alerting 資源 | ✓ | ✓ | ✓ | ✓ | - | - | - | - | 包含 alert rules、contact points、mute timings、templates |
-| Users | ✓ | - | - | - | - | ✓ | ✓ | ✓ | 屬於 access 管理流程，不是匯出匯入流程 |
-| Teams | ✓ | - | - | - | - | ✓ | ✓ | ✓ | 支援 team 與成員管理 |
+| Users | ✓ | ✓ | ✓ | - | - | ✓ | ✓ | ✓ | Rust 支援 access user 的匯出/匯入；Python 仍為即時存取流程 |
+| Teams (alias: group) | ✓ | ✓ | ✓ | - | - | ✓ | ✓ | ✓ | 支援 team 與成員管理，Rust 提供匯出/匯入 |
 | Service accounts | ✓ | - | - | - | - | ✓ | ✓ | ✓ | 支援 service account 生命週期管理 |
 | Service account tokens | ✓ | - | - | - | - | ✓ | - | ✓ | 支援 token 建立、查看與撤銷 |
+
+### Access command 的支援設計
+
+#### Python CLI（`grafana_utils` / `python3 -m grafana_utils`）
+
+Python 版的 `user` 與 `team`（`group`）是以「即時帳號權限管理」為設計核心：
+- 不提供 `access ... export` 或 `access ... import` 指令。
+- 不做完整 user/team snapshot 的匯出/匯入，因為這類資料與 live 實例綁定很強，包含 ID、角色、密碼欄位、組織關聯與成員上下文。
+- 跨環境移轉建議採用：
+  1. 先用 `access user/team list` 盤點來源資料
+  2. 你的流程外部先做狀態正規化（CSV/JSON/YAML）
+  3. 透過 `access ... add/modify/delete` 套用到目標環境
+- 這樣可避免直接「套用檔案就導入」造成的不可預期覆寫與權限風險。
+
+#### Rust CLI（`cargo run --bin grafana-util` / `grafana-util`）
+
+- `access user` 與 `access team` 提供 `export` 與 `import` 子命令。
+- `team import` 支援成員與管理員同步，若會移除既有成員需加 `--yes` 才能執行。
+- 適合做跨環境一致性還原與可控改動預覽。
+
+如果你要做更嚴格的 file-diff 文件比對，請使用 Rust 版 `access ... export|import`；Python 版本仍以即時操作模型為主。 
 
 如果你現在的流程還是：
 
