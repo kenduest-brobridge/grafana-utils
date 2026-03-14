@@ -6,6 +6,7 @@ import csv
 import difflib
 import json
 import sys
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from urllib import parse
@@ -38,6 +39,26 @@ ROOT_INDEX_KIND = "grafana-utils-datasource-export-index"
 TOOL_SCHEMA_VERSION = 1
 LIST_OUTPUT_FORMAT_CHOICES = ("table", "csv", "json")
 IMPORT_DRY_RUN_OUTPUT_FORMAT_CHOICES = ("text", "table", "json")
+IMPORT_DRY_RUN_COLUMN_HEADERS = OrderedDict(
+    [
+        ("uid", "UID"),
+        ("name", "NAME"),
+        ("type", "TYPE"),
+        ("destination", "DESTINATION"),
+        ("action", "ACTION"),
+        ("orgId", "ORG_ID"),
+        ("file", "FILE"),
+    ]
+)
+IMPORT_DRY_RUN_COLUMN_ALIASES = {
+    "uid": "uid",
+    "name": "name",
+    "type": "type",
+    "destination": "destination",
+    "action": "action",
+    "org_id": "orgId",
+    "file": "file",
+}
 
 HELP_FULL_EXAMPLES = (
     "Extended Examples:\n\n"
@@ -177,6 +198,14 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
         ),
     )
     parser.add_argument(
+        "--output-columns",
+        default=None,
+        help=(
+            "For --dry-run --table only, render only these comma-separated columns. "
+            "Supported values: uid, name, type, destination, action, org_id, file."
+        ),
+    )
+    parser.add_argument(
         "--progress",
         action="store_true",
         help="Show concise per-datasource import progress in <current>/<total> form while processing records.",
@@ -283,6 +312,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser = build_parser()
     args = parser.parse_args(argv)
     _normalize_output_format_args(args, parser)
+    _parse_import_output_columns(args, parser)
     return args
 
 
@@ -311,6 +341,25 @@ def _normalize_output_format_args(
             )
         args.table = output_format == "table"
         args.json = output_format == "json"
+
+
+def _parse_import_output_columns(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+) -> None:
+    if getattr(args, "command", None) != "import":
+        return
+    value = getattr(args, "output_columns", None)
+    if value is None:
+        return
+    if not bool(getattr(args, "table", False)):
+        parser.error(
+            "--output-columns is only supported with --dry-run --table or table-like --output-format for datasource import."
+        )
+    try:
+        args.output_columns = parse_import_dry_run_columns(value)
+    except GrafanaError as exc:
+        parser.error(str(exc))
 
 
 def build_client(args: argparse.Namespace) -> GrafanaClient:
@@ -628,21 +677,41 @@ def build_import_payload(
     return payload
 
 
+def parse_import_dry_run_columns(value: Optional[str]) -> Optional[List[str]]:
+    if value is None:
+        return None
+    columns = []
+    for item in str(value).split(","):
+        column = item.strip()
+        if column:
+            columns.append(IMPORT_DRY_RUN_COLUMN_ALIASES.get(column, column))
+    if not columns:
+        raise GrafanaError(
+            "--output-columns requires one or more comma-separated datasource import dry-run column ids."
+        )
+    unsupported = [
+        column for column in columns if column not in IMPORT_DRY_RUN_COLUMN_HEADERS
+    ]
+    if unsupported:
+        raise GrafanaError(
+            "Unsupported datasource import dry-run column(s): %s. Supported values: %s."
+            % (", ".join(unsupported), ", ".join(sorted(IMPORT_DRY_RUN_COLUMN_ALIASES.keys())))
+        )
+    return columns
+
+
 def render_import_dry_run_table(
     records: List[Dict[str, str]],
     include_header: bool,
+    selected_columns: Optional[List[str]] = None,
 ) -> List[str]:
-    headers = ["UID", "NAME", "TYPE", "DESTINATION", "ACTION", "ORG_ID", "FILE"]
+    columns = list(
+        selected_columns
+        or ["uid", "name", "type", "destination", "action", "orgId", "file"]
+    )
+    headers = [IMPORT_DRY_RUN_COLUMN_HEADERS[column] for column in columns]
     rows = [
-        [
-            item.get("uid") or "",
-            item.get("name") or "",
-            item.get("type") or "",
-            item.get("destination") or "",
-            item.get("action") or "",
-            item.get("orgId") or "",
-            item.get("file") or "",
-        ]
+        [item.get(column) or "" for column in columns]
         for item in records
     ]
     widths = [len(value) for value in headers]
@@ -959,7 +1028,9 @@ def import_datasources(args: argparse.Namespace) -> int:
             return 0
         if getattr(args, "table", False):
             for line in render_import_dry_run_table(
-                records, include_header=not bool(getattr(args, "no_header", False))
+                records,
+                include_header=not bool(getattr(args, "no_header", False)),
+                selected_columns=getattr(args, "output_columns", None),
             ):
                 print(line)
         print(

@@ -308,6 +308,35 @@ def build_dashboard_import_dry_run_record(
     }
 
 
+def parse_dashboard_import_dry_run_columns(
+    value: Optional[str],
+) -> Optional[List[str]]:
+    """Parse one import dry-run column list into canonical dashboard import field ids."""
+    if value is None:
+        return None
+    columns = []
+    for item in str(value).split(","):
+        column = item.strip()
+        if column:
+            columns.append(IMPORT_DRY_RUN_COLUMN_ALIASES.get(column, column))
+    if not columns:
+        raise GrafanaError(
+            "--output-columns requires one or more comma-separated import dry-run column ids."
+        )
+    unsupported = [
+        column for column in columns if column not in IMPORT_DRY_RUN_COLUMN_HEADERS
+    ]
+    if unsupported:
+        raise GrafanaError(
+            "Unsupported import dry-run column(s): %s. Supported values: %s."
+            % (
+                ", ".join(unsupported),
+                ", ".join(sorted(IMPORT_DRY_RUN_COLUMN_ALIASES.keys())),
+            )
+        )
+    return columns
+
+
 def _render_table(headers: List[str], rows: List[List[str]], include_header: bool) -> List[str]:
     widths = [len(header) for header in headers]
     for row in rows:
@@ -329,35 +358,23 @@ def _render_table(headers: List[str], rows: List[List[str]], include_header: boo
 def render_dashboard_import_dry_run_table(
     records: List[Dict[str, str]],
     include_header: bool = True,
+    selected_columns: Optional[List[str]] = None,
 ) -> List[str]:
-    headers = ["UID", "DESTINATION", "ACTION"]
-    include_folder = any(record.get("folderPath") for record in records)
-    include_source_folder = any(record.get("sourceFolderPath") for record in records)
-    include_destination_folder = any(
-        record.get("destinationFolderPath") for record in records
-    )
-    include_reason = any(record.get("reason") for record in records)
-    if include_folder:
-        headers.append("FOLDER_PATH")
-    if include_source_folder:
-        headers.append("SOURCE_FOLDER_PATH")
-    if include_destination_folder:
-        headers.append("DESTINATION_FOLDER_PATH")
-    if include_reason:
-        headers.append("REASON")
-    headers.append("FILE")
+    columns = list(selected_columns or ["uid", "destination", "action"])
+    if selected_columns is None:
+        if any(record.get("folderPath") for record in records):
+            columns.append("folderPath")
+        if any(record.get("sourceFolderPath") for record in records):
+            columns.append("sourceFolderPath")
+        if any(record.get("destinationFolderPath") for record in records):
+            columns.append("destinationFolderPath")
+        if any(record.get("reason") for record in records):
+            columns.append("reason")
+        columns.append("file")
+    headers = [IMPORT_DRY_RUN_COLUMN_HEADERS[column] for column in columns]
     rows = []
     for record in records:
-        row = [record["uid"], record["destination"], record["action"]]
-        if include_folder:
-            row.append(record.get("folderPath") or "")
-        if include_source_folder:
-            row.append(record.get("sourceFolderPath") or "")
-        if include_destination_folder:
-            row.append(record.get("destinationFolderPath") or "")
-        if include_reason:
-            row.append(record.get("reason") or "")
-        row.append(record["file"])
+        row = [record.get(column) or "" for column in columns]
         rows.append(row)
     return _render_table(headers, rows, include_header)
 

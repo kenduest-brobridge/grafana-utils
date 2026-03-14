@@ -1,12 +1,13 @@
 use super::{
-    diff_datasources_with_live, render_import_table, resolve_match, DatasourceCliArgs,
-    DatasourceImportRecord,
+    diff_datasources_with_live, render_import_table, resolve_match, run_datasource_cli,
+    DatasourceCliArgs, DatasourceImportRecord,
 };
 use clap::{CommandFactory, Parser};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tempfile::tempdir;
 
 fn live_datasource(
     id: i64,
@@ -44,6 +45,7 @@ fn import_help_explains_common_operator_flags() {
     assert!(help.contains("--table"));
     assert!(help.contains("--json"));
     assert!(help.contains("--output-format"));
+    assert!(help.contains("--output-columns"));
     assert!(help.contains("--progress"));
     assert!(help.contains("--verbose"));
 }
@@ -129,11 +131,42 @@ fn render_import_table_can_omit_header() {
         "datasources.json#0".to_string(),
     ]];
 
-    let lines = render_import_table(&rows, false);
+    let lines = render_import_table(&rows, false, None);
 
     assert_eq!(lines.len(), 1);
     assert!(lines[0].contains("prom-main"));
     assert!(!lines[0].contains("UID"));
+}
+
+#[test]
+fn render_import_table_honors_selected_columns() {
+    let rows = vec![vec![
+        "prom-main".to_string(),
+        "Prometheus Main".to_string(),
+        "prometheus".to_string(),
+        "exists-uid".to_string(),
+        "would-update".to_string(),
+        "7".to_string(),
+        "datasources.json#0".to_string(),
+    ]];
+
+    let lines = render_import_table(
+        &rows,
+        true,
+        Some(&[
+            "uid".to_string(),
+            "action".to_string(),
+            "org_id".to_string(),
+        ]),
+    );
+
+    assert!(lines[0].contains("UID"));
+    assert!(lines[0].contains("ACTION"));
+    assert!(lines[0].contains("ORG_ID"));
+    assert!(!lines[0].contains("NAME"));
+    assert!(lines[2].contains("prom-main"));
+    assert!(lines[2].contains("would-update"));
+    assert!(lines[2].contains("7"));
 }
 
 #[test]
@@ -180,6 +213,62 @@ fn parse_datasource_import_supports_output_format_table() {
         }
         _ => panic!("expected datasource import"),
     }
+}
+
+#[test]
+fn parse_datasource_import_supports_output_columns() {
+    let args = DatasourceCliArgs::parse_normalized_from([
+        "grafana-utils",
+        "import",
+        "--import-dir",
+        "./datasources",
+        "--dry-run",
+        "--output-format",
+        "table",
+        "--output-columns",
+        "uid,action,orgId,file",
+    ]);
+
+    match args.command {
+        super::DatasourceGroupCommand::Import(inner) => {
+            assert!(inner.table);
+            assert_eq!(
+                inner.output_columns,
+                vec!["uid", "action", "org_id", "file"]
+            );
+        }
+        _ => panic!("expected datasource import"),
+    }
+}
+
+#[test]
+fn datasource_import_rejects_output_columns_without_table_output() {
+    let temp = tempdir().unwrap();
+    let import_dir = temp.path().join("datasources");
+    fs::create_dir_all(&import_dir).unwrap();
+    fs::write(
+        import_dir.join("datasources.json"),
+        serde_json::to_string_pretty(&json!([])).unwrap(),
+    )
+    .unwrap();
+
+    let error = run_datasource_cli(
+        DatasourceCliArgs::parse_normalized_from([
+            "grafana-utils",
+            "import",
+            "--import-dir",
+            import_dir.to_str().unwrap(),
+            "--dry-run",
+            "--output-columns",
+            "uid",
+        ])
+        .command,
+    )
+    .unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("--output-columns is only supported with --dry-run --table"));
 }
 
 #[test]

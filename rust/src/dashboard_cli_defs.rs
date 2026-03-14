@@ -285,6 +285,14 @@ pub struct ImportArgs {
     pub no_header: bool,
     #[arg(
         long,
+        value_delimiter = ',',
+        requires = "dry_run",
+        value_parser = parse_dashboard_import_output_column,
+        help = "For --dry-run --table only, render only these comma-separated columns. Supported values: uid, destination, action, folder_path, source_folder_path, destination_folder_path, reason, file."
+    )]
+    pub output_columns: Vec<String>,
+    #[arg(
+        long,
         default_value_t = false,
         help = "Show concise per-dashboard import progress in <current>/<total> form while processing files. Use this for long-running batch imports."
     )]
@@ -556,6 +564,24 @@ where
     T: Into<std::ffi::OsString> + Clone,
 {
     normalize_dashboard_cli_args(DashboardCliArgs::parse_from(iter))
+}
+
+fn parse_dashboard_import_output_column(value: &str) -> std::result::Result<String, String> {
+    match value {
+        "uid" => Ok("uid".to_string()),
+        "destination" => Ok("destination".to_string()),
+        "action" => Ok("action".to_string()),
+        "folder_path" | "folderPath" => Ok("folder_path".to_string()),
+        "source_folder_path" | "sourceFolderPath" => Ok("source_folder_path".to_string()),
+        "destination_folder_path" | "destinationFolderPath" => {
+            Ok("destination_folder_path".to_string())
+        }
+        "reason" => Ok("reason".to_string()),
+        "file" => Ok("file".to_string()),
+        _ => Err(format!(
+            "Unsupported --output-columns value '{value}'. Supported values: uid, destination, action, folder_path, source_folder_path, destination_folder_path, reason, file."
+        )),
+    }
 }
 
 fn normalize_simple_output_format(

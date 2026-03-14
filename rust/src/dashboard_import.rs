@@ -449,7 +449,8 @@ fn build_import_dry_run_record(
     folder_path: &str,
     source_folder_path: &str,
     destination_folder_path: Option<&str>,
-) -> [String; 7] {
+    reason: &str,
+) -> [String; 8] {
     let (destination, action_label) = describe_import_action(action);
     [
         uid.to_string(),
@@ -458,42 +459,30 @@ fn build_import_dry_run_record(
         folder_path.to_string(),
         source_folder_path.to_string(),
         destination_folder_path.unwrap_or("").to_string(),
+        reason.to_string(),
         dashboard_file.display().to_string(),
     ]
 }
 
 pub(crate) fn render_import_dry_run_table(
-    records: &[[String; 7]],
+    records: &[[String; 8]],
     include_header: bool,
+    selected_columns: Option<&[String]>,
 ) -> Vec<String> {
-    let include_source_folder = records.iter().any(|row| !row[4].is_empty());
-    let include_destination_folder = records.iter().any(|row| !row[5].is_empty());
-    let mut headers = vec!["UID", "DESTINATION", "ACTION", "FOLDER_PATH"];
-    if include_source_folder {
-        headers.push("SOURCE_FOLDER_PATH");
-    }
-    if include_destination_folder {
-        headers.push("DESTINATION_FOLDER_PATH");
-    }
-    headers.push("FILE");
+    let columns = resolve_dashboard_import_table_columns(records, selected_columns);
+    let headers = columns
+        .iter()
+        .map(|(_, header)| *header)
+        .collect::<Vec<&str>>();
     let mut widths = headers
         .iter()
         .map(|header| header.len())
         .collect::<Vec<usize>>();
     for row in records {
-        let mut visible = vec![
-            row[0].as_str(),
-            row[1].as_str(),
-            row[2].as_str(),
-            row[3].as_str(),
-        ];
-        if include_source_folder {
-            visible.push(row[4].as_str());
-        }
-        if include_destination_folder {
-            visible.push(row[5].as_str());
-        }
-        visible.push(row[6].as_str());
+        let visible = columns
+            .iter()
+            .map(|(index, _)| row[*index].as_str())
+            .collect::<Vec<&str>>();
         for (index, value) in visible.iter().enumerate() {
             widths[index] = widths[index].max(value.len());
         }
@@ -520,28 +509,61 @@ pub(crate) fn render_import_dry_run_table(
         lines.push(format_row(&divider_values));
     }
     for row in records {
-        let mut visible = vec![
-            row[0].clone(),
-            row[1].clone(),
-            row[2].clone(),
-            row[3].clone(),
-        ];
-        if include_source_folder {
-            visible.push(row[4].clone());
-        }
-        if include_destination_folder {
-            visible.push(row[5].clone());
-        }
-        visible.push(row[6].clone());
+        let visible = columns
+            .iter()
+            .map(|(index, _)| row[*index].clone())
+            .collect::<Vec<String>>();
         lines.push(format_row(&visible));
     }
     lines
 }
 
+fn resolve_dashboard_import_table_columns(
+    records: &[[String; 8]],
+    selected_columns: Option<&[String]>,
+) -> Vec<(usize, &'static str)> {
+    if let Some(columns) = selected_columns {
+        return columns
+            .iter()
+            .map(|column| match column.as_str() {
+                "uid" => (0usize, "UID"),
+                "destination" => (1usize, "DESTINATION"),
+                "action" => (2usize, "ACTION"),
+                "folder_path" => (3usize, "FOLDER_PATH"),
+                "source_folder_path" => (4usize, "SOURCE_FOLDER_PATH"),
+                "destination_folder_path" => (5usize, "DESTINATION_FOLDER_PATH"),
+                "reason" => (6usize, "REASON"),
+                "file" => (7usize, "FILE"),
+                _ => unreachable!("validated dashboard import output column"),
+            })
+            .collect();
+    }
+    let include_source_folder = records.iter().any(|row| !row[4].is_empty());
+    let include_destination_folder = records.iter().any(|row| !row[5].is_empty());
+    let include_reason = records.iter().any(|row| !row[6].is_empty());
+    let mut columns = vec![
+        (0usize, "UID"),
+        (1usize, "DESTINATION"),
+        (2usize, "ACTION"),
+        (3usize, "FOLDER_PATH"),
+    ];
+    if include_source_folder {
+        columns.push((4usize, "SOURCE_FOLDER_PATH"));
+    }
+    if include_destination_folder {
+        columns.push((5usize, "DESTINATION_FOLDER_PATH"));
+    }
+    if include_reason {
+        columns.push((6usize, "REASON"));
+    }
+    columns.push((7usize, "FILE"));
+    columns
+}
+
 pub(crate) fn render_import_dry_run_json(
     mode: &str,
     folder_statuses: &[FolderInventoryStatus],
-    dashboard_records: &[[String; 7]],
+    dashboard_records: &[[String; 8]],
     import_dir: &Path,
     skipped_missing_count: usize,
     skipped_folder_mismatch_count: usize,
@@ -586,7 +608,8 @@ pub(crate) fn render_import_dry_run_json(
                 "folderPath": row[3],
                 "sourceFolderPath": row[4],
                 "destinationFolderPath": row[5],
-                "file": row[6],
+                "reason": row[6],
+                "file": row[7],
             })
         })
         .collect::<Vec<Value>>();
@@ -691,6 +714,11 @@ where
             "--no-header is only supported with --dry-run --table for import-dashboard.",
         ));
     }
+    if !args.output_columns.is_empty() && !args.table {
+        return Err(message(
+            "--output-columns is only supported with --dry-run --table or table-like --output-format for import-dashboard.",
+        ));
+    }
     if args.require_matching_folder_path && args.import_folder_uid.is_some() {
         return Err(message(
             "--require-matching-folder-path cannot be combined with --import-folder-uid.",
@@ -733,7 +761,7 @@ where
     });
     let total = dashboard_files.len();
     let effective_replace_existing = args.replace_existing || args.update_existing_only;
-    let mut dry_run_records: Vec<[String; 7]> = Vec::new();
+    let mut dry_run_records: Vec<[String; 8]> = Vec::new();
     let mut imported_count = 0usize;
     let mut skipped_missing_count = 0usize;
     let mut skipped_folder_mismatch_count = 0usize;
@@ -834,7 +862,7 @@ where
         };
         let (
             folder_paths_match,
-            _folder_match_reason,
+            folder_match_reason,
             normalized_source_folder_path,
             normalized_destination_folder_path,
         ) = if args.require_matching_folder_path {
@@ -870,6 +898,7 @@ where
                     &folder_path,
                     &normalized_source_folder_path,
                     normalized_destination_folder_path.as_deref(),
+                    &folder_match_reason,
                 ));
             } else if args.verbose {
                 println!(
@@ -1004,7 +1033,15 @@ where
                 )?
             );
         } else if args.table {
-            for line in render_import_dry_run_table(&dry_run_records, !args.no_header) {
+            for line in render_import_dry_run_table(
+                &dry_run_records,
+                !args.no_header,
+                if args.output_columns.is_empty() {
+                    None
+                } else {
+                    Some(args.output_columns.as_slice())
+                },
+            ) {
                 println!("{line}");
             }
         }

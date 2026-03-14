@@ -47,11 +47,12 @@
 - access-management CLI exists in both Python and Rust, and the remaining open access work is now limited to shared TLS/auth parameter expansion plus live validation coverage for the newer destructive commands
 - service-account support now includes delete and token-delete, but broader auth/TLS option parity and live validation coverage still need follow-through
 - baseline quality gate scripts now exist and are wired into `make` and CI, but optional Python formatter/lint/static-check coverage still depends on tool availability in the active environment
+- Python dashboard orchestration is now split across dedicated export/import/inspection/diff runtime helpers, and the remaining cleanup is limited to trimming compatibility wrappers from `dashboard_cli.py`
 
 ### Next
 
-- split the oversized Python dashboard CLI orchestration paths into smaller helpers so export/import logic is easier to change safely
 - split the oversized Rust dashboard orchestration paths further so live/export/import/inspect flows do not keep accreting in one module
+- trim the remaining Python dashboard CLI compatibility wrappers now that export/import/inspection/diff runtime wiring has moved into dedicated helper modules
 - consolidate duplicated Python auth resolution logic across dashboard, alert, and access CLIs into shared helpers to reduce behavior drift
 - reduce Python/Rust inspect-export and inspect-live drift by keeping one stable summary/report schema, shared filters, and synchronized help/examples
 - reduce repeated live Grafana lookups during dashboard import and dry-run paths so large imports do not multiply API round-trips per dashboard
@@ -172,8 +173,8 @@ Rules to keep:
 
 ## Priority Order
 
-1. split Python dashboard import/export/inspect orchestration into smaller helpers
-2. split Rust dashboard live/export/import/inspect orchestration into smaller modules
+1. split Rust dashboard live/export/import/inspect orchestration into smaller modules
+2. trim the remaining Python dashboard CLI compatibility wrappers
 3. refactor query report extraction behind datasource-type-specific analyzers
 4. add datasource `diff` workflows plus a tighter stable import/export contract
 5. add broader import dependency preflight for datasources/plugins/alert references

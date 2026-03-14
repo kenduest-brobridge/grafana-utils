@@ -856,6 +856,30 @@ class ExporterTests(unittest.TestCase):
         self.assertTrue(args.table)
         self.assertFalse(args.json)
 
+    def test_parse_args_supports_import_dry_run_output_columns(self):
+        args = exporter.parse_args(
+            [
+                "import-dashboard",
+                "--import-dir",
+                "dashboards/raw",
+                "--dry-run",
+                "--table",
+                "--output-columns",
+                "uid,action,source_folder_path,destination_folder_path,reason",
+            ]
+        )
+
+        self.assertEqual(
+            args.output_columns,
+            [
+                "uid",
+                "action",
+                "sourceFolderPath",
+                "destinationFolderPath",
+                "reason",
+            ],
+        )
+
     def test_parse_args_rejects_import_output_format_with_legacy_flags(self):
         with self.assertRaises(SystemExit):
             exporter.parse_args(
@@ -866,6 +890,19 @@ class ExporterTests(unittest.TestCase):
                     "--output-format",
                     "json",
                     "--table",
+                ]
+            )
+
+    def test_parse_args_rejects_import_output_columns_without_table_output(self):
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    "dashboards/raw",
+                    "--dry-run",
+                    "--output-columns",
+                    "uid,action",
                 ]
             )
 
@@ -4504,6 +4541,82 @@ class ExporterTests(unittest.TestCase):
             self.assertIn("Platform / Infra", output)
             self.assertIn("Platform / Legacy Infra", output)
             self.assertIn("folder-path-mismatch", output)
+
+    def test_import_dashboards_dry_run_table_output_columns_limits_rendered_fields(self):
+        client = FakeDashboardWorkflowClient(
+            dashboards={
+                "abc": {
+                    "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "dest-folder"},
+                }
+            },
+            folders={
+                "dest-folder": {
+                    "uid": "dest-folder",
+                    "title": "Legacy Infra",
+                    "parents": [{"uid": "platform", "title": "Platform"}],
+                }
+            },
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                    folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "child",
+                        "title": "Infra",
+                        "parentUid": "platform",
+                        "path": "Platform / Infra",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    }
+                ],
+                import_dir / exporter.FOLDER_INVENTORY_FILENAME,
+            )
+            exporter.write_json_document(
+                {
+                    "dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "child"},
+                },
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(import_dir),
+                    "--dry-run",
+                    "--replace-existing",
+                    "--require-matching-folder-path",
+                    "--table",
+                    "--output-columns",
+                    "uid,action,reason",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            output = stdout.getvalue()
+            self.assertIn("UID", output)
+            self.assertIn("ACTION", output)
+            self.assertIn("REASON", output)
+            self.assertNotIn("SOURCE_FOLDER_PATH", output)
+            self.assertNotIn("DESTINATION_FOLDER_PATH", output)
+            self.assertNotIn("FILE", output)
 
     def test_import_dashboards_rejects_matching_folder_path_with_import_folder_uid(self):
         client = FakeDashboardWorkflowClient()

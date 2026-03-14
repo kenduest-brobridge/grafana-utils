@@ -1,5 +1,19 @@
 # ai-status.md
 
+## 2026-03-14 - Task: Add Import Dry-Run Output Columns
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/import_support.py`, `grafana_utils/dashboards/import_workflow.py`, `grafana_utils/datasource_cli.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_datasource_cli.py`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_import.rs`, `rust/src/dashboard_rust_tests.rs`, `rust/src/datasource.rs`, `rust/src/datasource_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Dashboard and datasource import dry-run output could now be switched between text, table, and JSON, but the table view still had a fixed column set. Dashboard table output also carried newer folder-match details in the record flow without giving operators a way to narrow the rendered columns to the fields they actually needed for review.
+- Current Update: Added `--output-columns` for dashboard and datasource import dry-run table output in Python and Rust, normalized the supported column ids and aliases, kept the default tables unchanged when the flag is omitted, and tightened validation so the selector is only accepted together with table-like dry-run output.
+- Result: Operators can now trim import dry-run tables down to the specific fields they care about, such as `uid,action,file` for datasource review or `uid,source_folder_path,destination_folder_path,reason` for dashboard folder-mismatch review, while the existing default summaries still render exactly as before.
+
+## 2026-03-14 - Task: Trim Dashboard CLI Compatibility Wrappers
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/import_runtime.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_dashboard_inspection_cli.py`, `tests/test_python_dashboard_integration_flow.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: After the export/import/inspection/diff runtime splits and the dashboard test decoupling work, `dashboard_cli.py` still carried a large block of thin compatibility wrappers for output support, export inventory, folder inventory, listing helpers, and inspection materialization. Most of those names no longer had active runtime or test callers, but they still kept the CLI facade larger and harder to reason about.
+- Current Update: Removed the now-unused wrapper layer from `dashboard_cli.py`, rewired import and diff dependency assembly to call canonical helper modules directly, and kept only the real CLI entrypoints plus dependency-bundle factories in the facade.
+- Result: `dashboard_cli.py` is now much closer to a true CLI facade instead of a mixed facade-and-helper module, and the remaining dashboard helper logic now lives in the dedicated `grafana_utils.dashboards.*` modules where it belongs.
+
 ## 2026-03-14 - Task: Decouple Dashboard Tests From CLI Compatibility Wrappers
 - State: Done
 - Scope: `tests/test_python_dashboard_cli.py`, `tests/test_python_dashboard_inspection_cli.py`, `tests/test_python_dashboard_integration_flow.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

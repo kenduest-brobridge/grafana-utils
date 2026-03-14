@@ -80,16 +80,17 @@ from .dashboards.folder_path_match import (
 )
 from .dashboards.import_support import (
     build_compare_diff_lines,
-    build_import_payload,
     build_local_compare_document,
     build_remote_compare_document,
     build_dashboard_import_dry_run_record,
+    build_import_payload,
     describe_dashboard_import_mode,
     determine_dashboard_import_action,
     determine_import_folder_uid_override,
     extract_dashboard_object,
     load_json_file,
     load_export_metadata as import_support_load_export_metadata,
+    parse_dashboard_import_dry_run_columns,
     render_dashboard_import_dry_run_json,
     render_dashboard_import_dry_run_table,
     render_folder_inventory_dry_run_table,
@@ -516,6 +517,15 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
         ),
     )
     parser.add_argument(
+        "--output-columns",
+        default=None,
+        help=(
+            "For --dry-run --table only, render only these comma-separated columns. "
+            "Supported values: uid, destination, action, folder_path, "
+            "source_folder_path, destination_folder_path, reason, file."
+        ),
+    )
+    parser.add_argument(
         "--progress",
         action="store_true",
         help="Show concise per-dashboard import progress as current/total while processing files. Use this for long-running batch imports.",
@@ -824,6 +834,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
 
     args = parser.parse_args(argv)
     _normalize_output_format_args(args, parser)
+    _parse_dashboard_import_output_columns(args, parser)
     return args
 
 
@@ -853,6 +864,25 @@ def _normalize_output_format_args(
             )
         args.table = output_format == "table"
         args.json = output_format == "json"
+
+
+def _parse_dashboard_import_output_columns(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+) -> None:
+    if getattr(args, "command", None) != "import-dashboard":
+        return
+    value = getattr(args, "output_columns", None)
+    if value is None:
+        return
+    if not bool(getattr(args, "table", False)):
+        parser.error(
+            "--output-columns is only supported with --dry-run --table or table-like --output-format for import-dashboard."
+        )
+    try:
+        args.output_columns = parse_dashboard_import_dry_run_columns(value)
+    except GrafanaError as exc:
+        parser.error(str(exc))
 
 
 def resolve_auth(args: argparse.Namespace) -> Dict[str, str]:
@@ -906,197 +936,6 @@ def resolve_auth(args: argparse.Namespace) -> Dict[str, str]:
                 "--prompt-password / GRAFANA_USERNAME and GRAFANA_PASSWORD."
             )
         raise GrafanaError(message)
-
-
-def build_output_path(
-    output_dir: Path,
-    summary: Dict[str, Any],
-    flat: bool,
-) -> Path:
-    return build_output_path_from_output_support(
-        output_dir,
-        summary,
-        flat,
-        default_folder_title=DEFAULT_FOLDER_TITLE,
-        default_dashboard_title=DEFAULT_DASHBOARD_TITLE,
-        default_unknown_uid=DEFAULT_UNKNOWN_UID,
-    )
-
-
-def build_all_orgs_output_dir(
-    output_dir: Path,
-    org: Dict[str, Any],
-) -> Path:
-    return build_all_orgs_output_dir_from_output_support(
-        output_dir,
-        org,
-        default_unknown_uid=DEFAULT_UNKNOWN_UID,
-    )
-
-
-def build_export_variant_dirs(output_dir: Path) -> Tuple[Path, Path]:
-    return build_export_variant_dirs_from_output_support(
-        output_dir,
-        raw_export_subdir=RAW_EXPORT_SUBDIR,
-        prompt_export_subdir=PROMPT_EXPORT_SUBDIR,
-    )
-
-
-def write_dashboard(
-    payload: Dict[str, Any],
-    output_path: Path,
-    overwrite: bool,
-) -> None:
-    write_dashboard_from_output_support(
-        payload,
-        output_path,
-        overwrite,
-        error_cls=GrafanaError,
-    )
-
-
-def ensure_dashboard_write_target(
-    output_path: Path,
-    overwrite: bool,
-    create_parents: bool = True,
-) -> None:
-    ensure_dashboard_write_target_from_output_support(
-        output_path,
-        overwrite,
-        error_cls=GrafanaError,
-        create_parents=create_parents,
-    )
-
-
-def discover_dashboard_files(import_dir: Path) -> List[Path]:
-    """Find dashboard JSON files for import and reject ambiguous combined roots."""
-    return discover_dashboard_files_from_export(
-        import_dir,
-        RAW_EXPORT_SUBDIR,
-        PROMPT_EXPORT_SUBDIR,
-        EXPORT_METADATA_FILENAME,
-        FOLDER_INVENTORY_FILENAME,
-        DATASOURCE_INVENTORY_FILENAME,
-    )
-def build_dashboard_index_item(summary: Dict[str, Any], uid: str) -> Dict[str, str]:
-    return build_dashboard_index_item_from_output_support(
-        summary,
-        uid,
-        default_org_name=DEFAULT_ORG_NAME,
-        default_org_id=DEFAULT_ORG_ID,
-    )
-
-
-def build_root_export_index(
-    index_items: List[Dict[str, str]],
-    raw_index_path: Optional[Path],
-    prompt_index_path: Optional[Path],
-) -> Dict[str, Any]:
-    return build_root_export_index_from_output_support(
-        index_items,
-        raw_index_path,
-        prompt_index_path,
-        tool_schema_version=TOOL_SCHEMA_VERSION,
-        root_index_kind=ROOT_INDEX_KIND,
-    )
-
-
-def build_export_metadata(
-    variant: str,
-    dashboard_count: int,
-    format_name: Optional[str] = None,
-    folders_file: Optional[str] = None,
-    datasources_file: Optional[str] = None,
-) -> Dict[str, Any]:
-    return build_export_metadata_from_output_support(
-        variant,
-        dashboard_count,
-        tool_schema_version=TOOL_SCHEMA_VERSION,
-        root_index_kind=ROOT_INDEX_KIND,
-        format_name=format_name,
-        folders_file=folders_file,
-        datasources_file=datasources_file,
-    )
-
-
-def load_folder_inventory(
-    import_dir: Path,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> List[Dict[str, str]]:
-    return load_folder_inventory_from_folder_support(
-        import_dir,
-        folder_inventory_filename=FOLDER_INVENTORY_FILENAME,
-        metadata=metadata,
-    )
-
-
-def load_datasource_inventory(
-    import_dir: Path,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> List[Dict[str, str]]:
-    return load_datasource_inventory_from_folder_support(
-        import_dir,
-        datasource_inventory_filename=DATASOURCE_INVENTORY_FILENAME,
-        metadata=metadata,
-    )
-
-
-def resolve_folder_inventory_requirements(
-    args: argparse.Namespace,
-    import_dir: Path,
-    metadata: Optional[Dict[str, Any]],
-) -> List[Dict[str, str]]:
-    """Load the optional folder inventory and enforce explicit operator intent."""
-    return resolve_folder_inventory_requirements_from_folder_support(
-        args,
-        import_dir,
-        folder_inventory_filename=FOLDER_INVENTORY_FILENAME,
-        metadata=metadata,
-    )
-
-
-def load_export_metadata(
-    import_dir: Path,
-    expected_variant: Optional[str] = None,
-) -> Optional[Dict[str, Any]]:
-    """Load the optional export manifest and validate its schema version when present."""
-    return import_support_load_export_metadata(
-        import_dir,
-        export_metadata_filename=EXPORT_METADATA_FILENAME,
-        root_index_kind=ROOT_INDEX_KIND,
-        tool_schema_version=TOOL_SCHEMA_VERSION,
-        expected_variant=expected_variant,
-    )
-
-
-def resolve_export_org_id(
-    import_dir: Path,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> Optional[str]:
-    """Resolve one stable source export orgId from the raw export directory."""
-    return resolve_export_org_id_from_export_inventory(
-        import_dir,
-        folder_inventory_filename=FOLDER_INVENTORY_FILENAME,
-        datasource_inventory_filename=DATASOURCE_INVENTORY_FILENAME,
-        metadata=metadata,
-    )
-
-
-def validate_export_metadata(
-    metadata: Dict[str, Any],
-    metadata_path: Path,
-    expected_variant: Optional[str] = None,
-) -> None:
-    """Reject dashboard export manifests this implementation does not understand."""
-    import_support_validate_export_metadata(
-        metadata,
-        metadata_path,
-        root_index_kind=ROOT_INDEX_KIND,
-        tool_schema_version=TOOL_SCHEMA_VERSION,
-        expected_variant=expected_variant,
-    )
-
-
 def _build_export_workflow_deps() -> Dict[str, Any]:
     return build_export_workflow_deps_from_runtime(
         {
@@ -1135,42 +974,9 @@ def list_dashboards(args: argparse.Namespace) -> int:
     )
 
 
-def resolve_dashboard_source_metadata(
-    payload: Dict[str, Any],
-    datasources_by_uid: Dict[str, Dict[str, Any]],
-    datasources_by_name: Dict[str, Dict[str, Any]],
-) -> Any:
-    """Keep the historical dashboard-cli helper signature stable."""
-    return resolve_dashboard_source_metadata_from_listing(
-        payload,
-        extract_dashboard_object=extract_dashboard_object,
-        datasource_error=GrafanaError,
-        datasources_by_uid=datasources_by_uid,
-        datasources_by_name=datasources_by_name,
-    )
-
-
-def attach_dashboard_sources(
-    client: GrafanaClient,
-    summaries: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
-    """Keep the historical dashboard-cli helper signature stable."""
-    return attach_dashboard_sources_from_listing(
-        client,
-        summaries,
-        extract_dashboard_object=extract_dashboard_object,
-        datasource_error=GrafanaError,
-    )
-
-
 def list_data_sources(args: argparse.Namespace) -> int:
     """List live Grafana data sources."""
     return run_list_data_sources(args, build_client=build_client)
-
-
-def iter_dashboard_panels(panels: Any) -> List[Dict[str, Any]]:
-    """Flatten Grafana panels, including nested row/library panel layouts."""
-    return iter_dashboard_panels_from_runtime(panels)
 
 
 def _build_inspection_workflow_deps() -> Dict[str, Any]:
@@ -1194,26 +1000,9 @@ def _build_inspection_workflow_deps() -> Dict[str, Any]:
     )
 
 
-def materialize_live_inspection_export(
-    client: "GrafanaClient",
-    page_size: int,
-    raw_dir: Path,
-) -> Path:
-    """Write one temporary raw-export-like directory for live dashboard inspection."""
-    return run_materialize_live_inspection_export(
-        client,
-        page_size,
-        raw_dir,
-        _build_inspection_workflow_deps(),
-    )
-
-
 def inspect_live(args: argparse.Namespace) -> int:
     """Inspect live Grafana dashboards by reusing the raw-export inspection pipeline."""
     return run_inspect_live(args, _build_inspection_workflow_deps())
-
-
-
 
 def inspect_export(args: argparse.Namespace) -> int:
     """Inspect one raw export directory and summarize dashboards, folders, and datasources."""
@@ -1224,13 +1013,15 @@ def _build_import_workflow_deps() -> Dict[str, Any]:
     return build_import_workflow_deps_from_runtime(
         {
             "DEFAULT_UNKNOWN_UID": DEFAULT_UNKNOWN_UID,
+            "DATASOURCE_INVENTORY_FILENAME": DATASOURCE_INVENTORY_FILENAME,
+            "EXPORT_METADATA_FILENAME": EXPORT_METADATA_FILENAME,
             "FOLDER_INVENTORY_FILENAME": FOLDER_INVENTORY_FILENAME,
             "GrafanaError": GrafanaError,
+            "PROMPT_EXPORT_SUBDIR": PROMPT_EXPORT_SUBDIR,
             "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
+            "ROOT_INDEX_KIND": ROOT_INDEX_KIND,
+            "TOOL_SCHEMA_VERSION": TOOL_SCHEMA_VERSION,
             "build_client": build_client,
-            "discover_dashboard_files": discover_dashboard_files,
-            "load_export_metadata": load_export_metadata,
-            "resolve_export_org_id": resolve_export_org_id,
         }
     )
 
@@ -1247,8 +1038,25 @@ def _build_diff_workflow_deps() -> Dict[str, Any]:
         "build_compare_diff_lines": build_compare_diff_lines,
         "build_local_compare_document": build_local_compare_document,
         "build_remote_compare_document": build_remote_compare_document,
-        "discover_dashboard_files": discover_dashboard_files,
-        "load_export_metadata": load_export_metadata,
+        "discover_dashboard_files": (
+            lambda import_dir: discover_dashboard_files_from_export(
+                import_dir,
+                RAW_EXPORT_SUBDIR,
+                PROMPT_EXPORT_SUBDIR,
+                EXPORT_METADATA_FILENAME,
+                FOLDER_INVENTORY_FILENAME,
+                DATASOURCE_INVENTORY_FILENAME,
+            )
+        ),
+        "load_export_metadata": (
+            lambda import_dir, expected_variant=None: import_support_load_export_metadata(
+                import_dir,
+                export_metadata_filename=EXPORT_METADATA_FILENAME,
+                root_index_kind=ROOT_INDEX_KIND,
+                tool_schema_version=TOOL_SCHEMA_VERSION,
+                expected_variant=expected_variant,
+            )
+        ),
         "load_json_file": load_json_file,
         "resolve_dashboard_uid_for_import": resolve_dashboard_uid_for_import,
         "serialize_compare_document": serialize_compare_document,

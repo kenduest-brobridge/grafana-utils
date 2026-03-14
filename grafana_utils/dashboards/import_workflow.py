@@ -339,6 +339,7 @@ def run_import_dashboards(args, deps):
             for line in deps["render_dashboard_import_dry_run_table"](
                 dry_run_records,
                 include_header=not bool(getattr(args, "no_header", False)),
+                selected_columns=getattr(args, "output_columns", None),
             ):
                 print(line)
         if json_output:

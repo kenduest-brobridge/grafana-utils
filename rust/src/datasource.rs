@@ -153,6 +153,14 @@ pub struct DatasourceImportArgs {
     pub no_header: bool,
     #[arg(
         long,
+        value_delimiter = ',',
+        requires = "dry_run",
+        value_parser = parse_datasource_import_output_column,
+        help = "For --dry-run --table only, render only these comma-separated columns. Supported values: uid, name, type, destination, action, org_id, file."
+    )]
+    pub output_columns: Vec<String>,
+    #[arg(
+        long,
         default_value_t = false,
         help = "Show concise per-datasource progress in <current>/<total> form while processing files."
     )]
@@ -235,6 +243,21 @@ fn normalize_datasource_group_command(
         _ => {}
     }
     command
+}
+
+fn parse_datasource_import_output_column(value: &str) -> std::result::Result<String, String> {
+    match value {
+        "uid" => Ok("uid".to_string()),
+        "name" => Ok("name".to_string()),
+        "type" => Ok("type".to_string()),
+        "destination" => Ok("destination".to_string()),
+        "action" => Ok("action".to_string()),
+        "org_id" | "orgId" => Ok("org_id".to_string()),
+        "file" => Ok("file".to_string()),
+        _ => Err(format!(
+            "Unsupported --output-columns value '{value}'. Supported values: uid, name, type, destination, action, org_id, file."
+        )),
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -811,19 +834,44 @@ fn build_import_payload(record: &DatasourceImportRecord) -> Value {
     ]))
 }
 
-fn render_import_table(rows: &[Vec<String>], include_header: bool) -> Vec<String> {
-    let headers = vec![
-        "UID".to_string(),
-        "NAME".to_string(),
-        "TYPE".to_string(),
-        "DESTINATION".to_string(),
-        "ACTION".to_string(),
-        "ORG_ID".to_string(),
-        "FILE".to_string(),
-    ];
+fn render_import_table(
+    rows: &[Vec<String>],
+    include_header: bool,
+    selected_columns: Option<&[String]>,
+) -> Vec<String> {
+    let columns = if let Some(selected) = selected_columns {
+        selected
+            .iter()
+            .map(|column| match column.as_str() {
+                "uid" => (0usize, "UID"),
+                "name" => (1usize, "NAME"),
+                "type" => (2usize, "TYPE"),
+                "destination" => (3usize, "DESTINATION"),
+                "action" => (4usize, "ACTION"),
+                "org_id" => (5usize, "ORG_ID"),
+                "file" => (6usize, "FILE"),
+                _ => unreachable!("validated datasource import output column"),
+            })
+            .collect::<Vec<(usize, &str)>>()
+    } else {
+        vec![
+            (0usize, "UID"),
+            (1usize, "NAME"),
+            (2usize, "TYPE"),
+            (3usize, "DESTINATION"),
+            (4usize, "ACTION"),
+            (5usize, "ORG_ID"),
+            (6usize, "FILE"),
+        ]
+    };
+    let headers = columns
+        .iter()
+        .map(|(_, header)| header.to_string())
+        .collect::<Vec<String>>();
     let mut widths: Vec<usize> = headers.iter().map(|item| item.len()).collect();
     for row in rows {
-        for (index, value) in row.iter().enumerate() {
+        for (index, (source_index, _)) in columns.iter().enumerate() {
+            let value = &row[*source_index];
             widths[index] = widths[index].max(value.len());
         }
     }
@@ -844,7 +892,13 @@ fn render_import_table(rows: &[Vec<String>], include_header: bool) -> Vec<String
         lines.push(format_row(&headers));
         lines.push(format_row(&separator));
     }
-    lines.extend(rows.iter().map(|row| format_row(row)));
+    lines.extend(rows.iter().map(|row| {
+        let values = columns
+            .iter()
+            .map(|(source_index, _)| row[*source_index].clone())
+            .collect::<Vec<String>>();
+        format_row(&values)
+    }));
     lines
 }
 
@@ -993,6 +1047,11 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
             if args.no_header && !args.table {
                 return Err(message(
                     "--no-header is only supported with --dry-run --table for datasource import.",
+                ));
+            }
+            if !args.output_columns.is_empty() && !args.table {
+                return Err(message(
+                    "--output-columns is only supported with --dry-run --table or table-like --output-format for datasource import.",
                 ));
             }
             let replace_existing = args.replace_existing || args.update_existing_only;
@@ -1167,7 +1226,15 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                         ])))?
                     );
                 } else if args.table {
-                    for line in render_import_table(&dry_run_rows, !args.no_header) {
+                    for line in render_import_table(
+                        &dry_run_rows,
+                        !args.no_header,
+                        if args.output_columns.is_empty() {
+                            None
+                        } else {
+                            Some(args.output_columns.as_slice())
+                        },
+                    ) {
                         println!("{line}");
                     }
                     println!(

@@ -418,6 +418,7 @@ fn import_help_explains_common_operator_flags() {
     assert!(help.contains("--org-id"));
     assert!(help.contains("requires Basic auth"));
     assert!(help.contains("--require-matching-export-org"));
+    assert!(help.contains("--output-columns"));
 }
 
 #[test]
@@ -521,6 +522,39 @@ fn parse_cli_supports_import_dry_run_output_format_table() {
             assert!(import_args.dry_run);
             assert!(import_args.table);
             assert!(!import_args.json);
+        }
+        _ => panic!("expected import command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_import_dry_run_output_columns() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "import",
+        "--import-dir",
+        "./dashboards/raw",
+        "--dry-run",
+        "--output-format",
+        "table",
+        "--output-columns",
+        "uid,action,source_folder_path,destinationFolderPath,reason,file",
+    ]);
+
+    match args.command {
+        DashboardCommand::Import(import_args) => {
+            assert!(import_args.table);
+            assert_eq!(
+                import_args.output_columns,
+                vec![
+                    "uid",
+                    "action",
+                    "source_folder_path",
+                    "destination_folder_path",
+                    "reason",
+                    "file",
+                ]
+            );
         }
         _ => panic!("expected import command"),
     }
@@ -1265,6 +1299,7 @@ fn render_import_dry_run_table_supports_optional_header() {
             "General".to_string(),
             "General".to_string(),
             "General".to_string(),
+            "".to_string(),
             "/tmp/a.json".to_string(),
         ],
         [
@@ -1274,10 +1309,11 @@ fn render_import_dry_run_table_supports_optional_header() {
             "Platform / Infra".to_string(),
             "Platform / Infra".to_string(),
             "".to_string(),
+            "".to_string(),
             "/tmp/b.json".to_string(),
         ],
     ];
-    let with_header = super::render_import_dry_run_table(&rows, true);
+    let with_header = super::render_import_dry_run_table(&rows, true, None);
     assert!(with_header[0].contains("UID"));
     assert!(with_header[0].contains("DESTINATION"));
     assert!(with_header[0].contains("ACTION"));
@@ -1288,13 +1324,41 @@ fn render_import_dry_run_table_supports_optional_header() {
     assert!(with_header[2].contains("update"));
     assert!(with_header[2].contains("General"));
     assert!(with_header[2].contains("/tmp/a.json"));
-    let without_header = super::render_import_dry_run_table(&rows, false);
+    let without_header = super::render_import_dry_run_table(&rows, false, None);
     assert_eq!(without_header.len(), 2);
     assert!(without_header[0].contains("abc"));
     assert!(without_header[0].contains("exists"));
     assert!(without_header[0].contains("update"));
     assert!(without_header[0].contains("General"));
     assert!(without_header[0].contains("/tmp/a.json"));
+}
+
+#[test]
+fn render_import_dry_run_table_honors_selected_columns() {
+    let rows = vec![[
+        "abc".to_string(),
+        "exists".to_string(),
+        "skip-folder-mismatch".to_string(),
+        "Platform / Ops".to_string(),
+        "Platform / Source".to_string(),
+        "Platform / Dest".to_string(),
+        "path".to_string(),
+        "/tmp/a.json".to_string(),
+    ]];
+
+    let lines = super::render_import_dry_run_table(
+        &rows,
+        true,
+        Some(&["uid".to_string(), "reason".to_string(), "file".to_string()]),
+    );
+
+    assert!(lines[0].contains("UID"));
+    assert!(lines[0].contains("REASON"));
+    assert!(lines[0].contains("FILE"));
+    assert!(!lines[0].contains("DESTINATION"));
+    assert!(lines[2].contains("abc"));
+    assert!(lines[2].contains("path"));
+    assert!(lines[2].contains("/tmp/a.json"));
 }
 
 #[test]
@@ -1316,6 +1380,7 @@ fn render_import_dry_run_json_returns_structured_document() {
         "Platform / Infra".to_string(),
         "Platform / Infra".to_string(),
         "Platform / Infra".to_string(),
+        "".to_string(),
         "/tmp/a.json".to_string(),
     ]];
 
@@ -4174,6 +4239,7 @@ fn import_dashboards_with_client_imports_discovered_files() {
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -4213,6 +4279,7 @@ fn import_dashboards_with_org_id_requires_basic_auth() {
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -4243,6 +4310,7 @@ fn build_import_auth_context_adds_org_header_for_basic_auth_imports() {
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -4313,6 +4381,7 @@ fn import_dashboards_rejects_mismatched_export_org_with_explicit_org_id() {
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -4382,6 +4451,7 @@ fn import_dashboards_rejects_mismatched_export_org_with_current_token_org() {
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -4457,6 +4527,7 @@ fn import_dashboards_allows_matching_export_org_with_current_org_lookup() {
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -4526,6 +4597,7 @@ fn import_dashboards_with_dry_run_skips_post_requests() {
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -4580,6 +4652,7 @@ fn import_dashboards_rejects_unsupported_export_schema_version() {
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -4642,6 +4715,7 @@ fn import_dashboards_with_update_existing_only_skips_missing_dashboards() {
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -4714,6 +4788,7 @@ fn import_dashboards_with_update_existing_only_table_marks_missing_dashboards_as
         json: false,
         output_format: None,
         no_header: true,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -4778,6 +4853,7 @@ fn import_dashboards_replace_existing_preserves_destination_folder() {
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -4847,6 +4923,7 @@ fn import_dashboards_rejects_ensure_folders_with_import_folder_override() {
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -4901,6 +4978,7 @@ fn import_dashboards_rejects_matching_folder_path_with_import_folder_uid() {
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -4922,15 +5000,18 @@ fn render_import_dry_run_table_includes_source_and_destination_folder_path_colum
         "Platform / Ops".to_string(),
         "Platform / Source".to_string(),
         "Platform / Ops".to_string(),
+        "path".to_string(),
         "/tmp/raw/dash.json".to_string(),
     ]];
 
-    let lines = render_import_dry_run_table(&records, true);
+    let lines = render_import_dry_run_table(&records, true, None);
 
     assert!(lines[0].contains("SOURCE_FOLDER_PATH"));
     assert!(lines[0].contains("DESTINATION_FOLDER_PATH"));
+    assert!(lines[0].contains("REASON"));
     assert!(lines[2].contains("Platform / Source"));
     assert!(lines[2].contains("Platform / Ops"));
+    assert!(lines[2].contains("path"));
 }
 
 #[test]
@@ -4942,6 +5023,7 @@ fn render_import_dry_run_json_reports_skipped_folder_mismatch_dashboards() {
         "Platform / Ops".to_string(),
         "Platform / Source".to_string(),
         "Platform / Ops".to_string(),
+        "path".to_string(),
         "/tmp/raw/dash.json".to_string(),
     ]];
 
@@ -4963,6 +5045,10 @@ fn render_import_dry_run_json_reports_skipped_folder_mismatch_dashboards() {
     assert_eq!(
         value["dashboards"][0]["destinationFolderPath"],
         Value::String("Platform / Ops".to_string())
+    );
+    assert_eq!(
+        value["dashboards"][0]["reason"],
+        Value::String("path".to_string())
     );
     assert_eq!(
         value["summary"]["skippedFolderMismatchDashboards"],
@@ -5013,6 +5099,7 @@ fn import_dashboards_with_matching_folder_path_skips_live_update_mismatch() {
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -5077,6 +5164,7 @@ fn import_dashboards_rejects_json_without_dry_run() {
         json: true,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -5087,6 +5175,53 @@ fn import_dashboards_rejects_json_without_dry_run() {
     assert!(error
         .to_string()
         .contains("--json is only supported with --dry-run"));
+}
+
+#[test]
+fn import_dashboards_reject_output_columns_without_table_output() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(&raw_dir).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 0,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let args = ImportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        org_id: None,
+        import_dir: raw_dir,
+        import_folder_uid: None,
+        ensure_folders: false,
+        replace_existing: false,
+        update_existing_only: false,
+        require_matching_folder_path: false,
+        require_matching_export_org: false,
+        import_message: "sync dashboards".to_string(),
+        dry_run: true,
+        table: false,
+        json: false,
+        output_format: None,
+        no_header: false,
+        output_columns: vec!["uid".to_string()],
+        progress: false,
+        verbose: false,
+    };
+
+    let error = import_dashboards_with_request(|_method, _path, _params, _payload| Ok(None), &args)
+        .unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("--output-columns is only supported with --dry-run --table"));
 }
 
 #[test]
@@ -5156,6 +5291,7 @@ fn import_dashboards_with_ensure_folders_creates_missing_folder_chain_from_raw_i
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -5283,6 +5419,7 @@ fn import_dashboards_with_dry_run_and_ensure_folders_checks_folder_inventory() {
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
@@ -5372,6 +5509,7 @@ fn import_dashboards_with_ensure_folders_requires_inventory_manifest() {
         json: false,
         output_format: None,
         no_header: false,
+        output_columns: Vec::new(),
         progress: false,
         verbose: false,
     };
