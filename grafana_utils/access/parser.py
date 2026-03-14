@@ -16,6 +16,14 @@ DEFAULT_URL = "http://127.0.0.1:3000"
 DEFAULT_TIMEOUT = 30
 DEFAULT_SCOPE = "org"
 DEFAULT_SERVICE_ACCOUNT_ROLE = "Viewer"
+DEFAULT_ACCESS_USER_EXPORT_DIR = "access-users"
+DEFAULT_ACCESS_TEAM_EXPORT_DIR = "access-teams"
+ACCESS_USER_EXPORT_FILENAME = "users.json"
+ACCESS_TEAM_EXPORT_FILENAME = "teams.json"
+ACCESS_EXPORT_METADATA_FILENAME = "export-metadata.json"
+ACCESS_EXPORT_KIND_USERS = "grafana-utils-access-user-export-index"
+ACCESS_EXPORT_KIND_TEAMS = "grafana-utils-access-team-export-index"
+ACCESS_EXPORT_VERSION = 1
 SCOPE_CHOICES = ("org", "global")
 LIST_OUTPUT_FORMAT_CHOICES = ("text", "table", "csv", "json")
 
@@ -47,6 +55,77 @@ def add_list_output_format_arg(parser):
     )
 
 
+def add_access_export_cli_args(parser, default_export_dir, resource="user"):
+    payload_name = (
+        ACCESS_USER_EXPORT_FILENAME
+        if resource == "user"
+        else ACCESS_TEAM_EXPORT_FILENAME
+    )
+    parser.add_argument(
+        "--export-dir",
+        default=default_export_dir,
+        help=(
+            "Directory to write the exported JSON file. The export creates "
+            "%s and %s under the directory."
+            % (payload_name, ACCESS_EXPORT_METADATA_FILENAME)
+        ),
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help=(
+            "Overwrite existing export files instead of failing."
+        ),
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview export paths without writing files.",
+    )
+
+
+def add_access_import_cli_args(parser, resource, default_scope=DEFAULT_SCOPE):
+    parser.add_argument(
+        "--import-dir",
+        required=True,
+        help=(
+            "Import directory that contains %s for %s and %s."
+            % (
+                ACCESS_USER_EXPORT_FILENAME
+                if resource == "user"
+                else ACCESS_TEAM_EXPORT_FILENAME,
+                resource,
+                ACCESS_EXPORT_METADATA_FILENAME,
+            )
+        ),
+    )
+    if resource == "user":
+        parser.add_argument(
+            "--scope",
+            choices=SCOPE_CHOICES,
+            default=default_scope,
+            help=(
+                "Import match strategy for users: global or org scope (default: %s)."
+                % default_scope
+            ),
+        )
+    parser.add_argument(
+        "--replace-existing",
+        action="store_true",
+        help="Update matching existing items instead of failing import on duplicates.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview what this import would do without writing to Grafana.",
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Acknowledge destructive import operations (delete/missing sync).",
+    )
+
+
 def build_parser(prog=None):
     parser = argparse.ArgumentParser(
         prog=prog,
@@ -68,6 +147,45 @@ def build_parser(prog=None):
     )
     add_common_cli_args(list_parser)
     add_user_list_cli_args(list_parser)
+
+    user_export_parser = user_subparsers.add_parser(
+        "export",
+        help="Export Grafana users to JSON files.",
+    )
+    add_common_cli_args(
+        user_export_parser,
+        allow_token_auth=True,
+        username_dest="auth_username",
+        password_dest="auth_password",
+    )
+    add_access_export_cli_args(
+        user_export_parser,
+        DEFAULT_ACCESS_USER_EXPORT_DIR,
+        resource="user",
+    )
+    user_export_parser.add_argument(
+        "--scope",
+        choices=SCOPE_CHOICES,
+        default=DEFAULT_SCOPE,
+        help="Export org-scoped or global users (default: %s)." % DEFAULT_SCOPE,
+    )
+    user_export_parser.add_argument(
+        "--with-teams",
+        action="store_true",
+        help="Include team memberships in exported user objects.",
+    )
+
+    user_import_parser = user_subparsers.add_parser(
+        "import",
+        help="Import Grafana users from a JSON export.",
+    )
+    add_common_cli_args(
+        user_import_parser,
+        allow_token_auth=True,
+        username_dest="auth_username",
+        password_dest="auth_password",
+    )
+    add_access_import_cli_args(user_import_parser, resource="user", default_scope=DEFAULT_SCOPE)
 
     add_parser = user_subparsers.add_parser(
         "add",
@@ -131,6 +249,30 @@ def build_parser(prog=None):
     )
     add_common_cli_args(team_modify_parser)
     add_team_modify_cli_args(team_modify_parser)
+
+    team_export_parser = team_subparsers.add_parser(
+        "export",
+        help="Export Grafana teams and membership to JSON files.",
+    )
+    add_common_cli_args(team_export_parser)
+    add_access_export_cli_args(
+        team_export_parser,
+        DEFAULT_ACCESS_TEAM_EXPORT_DIR,
+        resource="team",
+    )
+    team_export_parser.add_argument(
+        "--with-members",
+        action="store_true",
+        default=True,
+        help="Include team members and admin identities in exported team objects.",
+    )
+
+    team_import_parser = team_subparsers.add_parser(
+        "import",
+        help="Import Grafana teams and membership from a JSON export.",
+    )
+    add_common_cli_args(team_import_parser)
+    add_access_import_cli_args(team_import_parser, resource="team")
 
     team_delete_parser = team_subparsers.add_parser(
         "delete",

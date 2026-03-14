@@ -457,6 +457,52 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.yes)
         self.assertTrue(args.json)
 
+    def test_parse_args_supports_user_export_mode(self):
+        args = access_utils.parse_args(
+            [
+                "user",
+                "export",
+                "--basic-user",
+                "admin",
+                "--basic-password",
+                "secret",
+                "--export-dir",
+                "tmp-access-users",
+                "--scope",
+                "global",
+                "--with-teams",
+            ]
+        )
+
+        self.assertEqual(args.resource, "user")
+        self.assertEqual(args.command, "export")
+        self.assertEqual(args.export_dir, "tmp-access-users")
+        self.assertEqual(args.scope, "global")
+        self.assertTrue(args.with_teams)
+
+    def test_parse_args_supports_user_import_mode(self):
+        args = access_utils.parse_args(
+            [
+                "user",
+                "import",
+                "--basic-user",
+                "admin",
+                "--basic-password",
+                "secret",
+                "--import-dir",
+                "tmp-access-users",
+                "--scope",
+                "global",
+                "--replace-existing",
+            ]
+        )
+
+        self.assertEqual(args.resource, "user")
+        self.assertEqual(args.command, "import")
+        self.assertEqual(args.import_dir, "tmp-access-users")
+        self.assertEqual(args.scope, "global")
+        self.assertTrue(args.replace_existing)
+
     def test_user_add_help_uses_basic_auth_and_local_password_flags(self):
         parser = access_utils.build_parser()
         user_add_parser = parser._subparsers._group_actions[0].choices["user"]._subparsers._group_actions[0].choices["add"]
@@ -512,6 +558,48 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.page, 2)
         self.assertEqual(args.per_page, 5)
         self.assertTrue(args.json)
+
+    def test_parse_args_supports_team_export_mode(self):
+        args = access_utils.parse_args(
+            [
+                "team",
+                "export",
+                "--basic-user",
+                "admin",
+                "--basic-password",
+                "secret",
+                "--export-dir",
+                "tmp-access-teams",
+                "--with-members",
+            ]
+        )
+
+        self.assertEqual(args.resource, "team")
+        self.assertEqual(args.command, "export")
+        self.assertEqual(args.export_dir, "tmp-access-teams")
+        self.assertTrue(args.with_members)
+
+    def test_parse_args_supports_team_import_mode(self):
+        args = access_utils.parse_args(
+            [
+                "team",
+                "import",
+                "--basic-user",
+                "admin",
+                "--basic-password",
+                "secret",
+                "--import-dir",
+                "tmp-access-teams",
+                "--replace-existing",
+                "--yes",
+            ]
+        )
+
+        self.assertEqual(args.resource, "team")
+        self.assertEqual(args.command, "import")
+        self.assertEqual(args.import_dir, "tmp-access-teams")
+        self.assertTrue(args.replace_existing)
+        self.assertTrue(args.yes)
 
     def test_team_add_help_describes_initial_members_and_admins(self):
         parser = access_utils.build_parser()
