@@ -64,6 +64,12 @@ Commit message default for this repo:
 - `scripts/seed-grafana-sample-data.sh`: idempotent developer seed helper for sample orgs, datasources, folders, and dashboards in a running Grafana
 - `scripts/test-rust-live-grafana.sh`: Docker-backed Grafana smoke test for the Rust CLIs
 
+### Python CLI Boundaries
+
+- `grafana_utils.unified_cli` only dispatches and normalizes top-level command entrypoints; it does not implement domain business logic.
+- `grafana_utils.dashboard_cli`, `grafana_utils.alert_cli`, `grafana_utils.access_cli`, and `grafana_utils.datasource_cli` are stable facades: parser wiring, output-mode normalization, auth/client bootstrap, and dispatch stay here, while heavier execution remains in dedicated workflow/parser modules.
+- [Overview for maintainers](docs/overview-python.md) provides a longer architecture walkthrough for maintainers.
+
 ## Python Baseline
 
 - Both Python entrypoints now target Python 3.9+ syntax and runtime support.

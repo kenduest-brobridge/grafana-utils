@@ -68,6 +68,11 @@ The repo now uses one primary command name with explicit areas underneath it.
 - `grafana-util access group ...`
 - `grafana-util access service-account ...`
 
+Maintainer architecture overviews:
+
+- Python architecture: [`docs/overview-python.md`](docs/overview-python.md)
+- Rust architecture: [`rust/overview-rust.md`](rust/overview-rust.md)
+
 Compatibility notes:
 
 - old dashboard direct forms such as `grafana-util export-dashboard ...` and `grafana-util list-dashboard ...` still work
@@ -1382,3 +1387,4 @@ make test-access-live
 - Traditional Chinese README: [`README.zh-TW.md`](README.zh-TW.md)
 - recent change history: [`CHANGELOG.md`](CHANGELOG.md)
 - maintainer and implementation notes: [`DEVELOPER.md`](DEVELOPER.md)
+- architecture overviews: [`Python`](docs/overview-python.md), [`Rust`](rust/overview-rust.md)
