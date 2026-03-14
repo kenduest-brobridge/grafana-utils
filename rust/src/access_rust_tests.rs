@@ -6,15 +6,15 @@ use super::{
     delete_service_account_with_request, delete_team_with_request, delete_user_with_request,
     diff_service_accounts_with_request, diff_teams_with_request, diff_users_with_request,
     export_service_accounts_with_request, import_service_accounts_with_request,
-    list_service_accounts_command_with_request, list_teams_command_with_request,
-    list_users_with_request, modify_team_with_request, modify_user_with_request, parse_cli_from,
-    import_teams_with_request, run_access_cli_with_request, AccessCommand, CommonCliArgs, Scope,
-    DryRunOutputFormat, ServiceAccountAddArgs, ServiceAccountDiffArgs, ServiceAccountExportArgs,
-    ServiceAccountImportArgs, ServiceAccountCommand, ServiceAccountDeleteArgs, ServiceAccountListArgs,
-    ServiceAccountTokenAddArgs, ServiceAccountTokenCommand, ServiceAccountTokenDeleteArgs,
-    TeamAddArgs, TeamCommand, TeamDeleteArgs, TeamImportArgs, TeamListArgs,
-    TeamDiffArgs, TeamModifyArgs, UserAddArgs, UserCommand, UserDeleteArgs, UserDiffArgs,
-    UserListArgs, UserModifyArgs,
+    import_teams_with_request, list_service_accounts_command_with_request,
+    list_teams_command_with_request, list_users_with_request, modify_team_with_request,
+    modify_user_with_request, parse_cli_from, run_access_cli_with_request, AccessCommand,
+    CommonCliArgs, DryRunOutputFormat, Scope, ServiceAccountAddArgs, ServiceAccountCommand,
+    ServiceAccountDeleteArgs, ServiceAccountDiffArgs, ServiceAccountExportArgs,
+    ServiceAccountImportArgs, ServiceAccountListArgs, ServiceAccountTokenAddArgs,
+    ServiceAccountTokenCommand, ServiceAccountTokenDeleteArgs, TeamAddArgs, TeamCommand,
+    TeamDeleteArgs, TeamDiffArgs, TeamImportArgs, TeamListArgs, TeamModifyArgs, UserAddArgs,
+    UserCommand, UserDeleteArgs, UserDiffArgs, UserListArgs, UserModifyArgs,
 };
 use crate::access::access_cli_defs::AccessCliRoot;
 use clap::CommandFactory;
@@ -460,7 +460,10 @@ fn parse_cli_supports_user_diff() {
             command: UserCommand::Diff(args),
         } => {
             assert_eq!(args.scope, Scope::Global);
-            assert_eq!(args.diff_dir.to_string_lossy().as_ref(), "/tmp/access-users");
+            assert_eq!(
+                args.diff_dir.to_string_lossy().as_ref(),
+                "/tmp/access-users"
+            );
         }
         _ => panic!("expected user diff"),
     }
@@ -480,7 +483,10 @@ fn parse_cli_supports_team_diff() {
         AccessCommand::Team {
             command: TeamCommand::Diff(args),
         } => {
-            assert_eq!(args.diff_dir.to_string_lossy().as_ref(), "/tmp/access-teams");
+            assert_eq!(
+                args.diff_dir.to_string_lossy().as_ref(),
+                "/tmp/access-teams"
+            );
         }
         _ => panic!("expected team diff"),
     }
@@ -641,6 +647,10 @@ fn run_access_cli_with_request_routes_user_export() {
         "export",
         "--scope",
         "global",
+        "--basic-user",
+        "admin",
+        "--basic-password",
+        "admin",
         "--dry-run",
     ]);
     let result = run_access_cli_with_request(
@@ -659,12 +669,7 @@ fn run_access_cli_with_request_routes_user_export() {
 
 #[test]
 fn run_access_cli_with_request_routes_team_export() {
-    let args = parse_cli_from([
-        "grafana-access-utils",
-        "team",
-        "export",
-        "--dry-run",
-    ]);
+    let args = parse_cli_from(["grafana-access-utils", "team", "export", "--dry-run"]);
     let result = run_access_cli_with_request(
         |method, path, _params, _payload| {
             assert_eq!(method.to_string(), Method::GET.to_string());
@@ -711,16 +716,12 @@ fn run_access_cli_with_request_routes_team_import() {
     );
 
     assert!(result.is_ok());
-    assert!(
-        calls
-            .iter()
-            .any(|(method, path)| method == "GET" && path == "/api/teams/search")
-    );
-    assert!(
-        calls
-            .iter()
-            .any(|(method, path)| method == "POST" && path == "/api/teams")
-    );
+    assert!(calls
+        .iter()
+        .any(|(method, path)| method == "GET" && path == "/api/teams/search"));
+    assert!(calls
+        .iter()
+        .any(|(method, path)| method == "POST" && path == "/api/teams"));
 }
 
 #[test]
@@ -780,7 +781,9 @@ fn run_access_cli_with_request_routes_team_diff() {
     ]);
     let result = run_access_cli_with_request(
         |_method, path, _params, _payload| match path {
-            "/api/teams/search" => Ok(Some(json!({"teams": [{"id": "3", "name":"Ops", "email":"ops@example.com"}]}))),
+            "/api/teams/search" => Ok(Some(
+                json!({"teams": [{"id": "3", "name":"Ops", "email":"ops@example.com"}]}),
+            )),
             _ => panic!("unexpected path {path}"),
         },
         args,
@@ -924,11 +927,9 @@ fn team_import_with_request_creates_team_and_memberships() {
     .unwrap();
 
     assert_eq!(result, 1);
-    assert!(
-        calls
-            .iter()
-            .any(|(method, path, _)| method == "POST" && path == "/api/teams"),
-    );
+    assert!(calls
+        .iter()
+        .any(|(method, path, _)| method == "POST" && path == "/api/teams"),);
     assert!(
         calls
             .iter()
@@ -936,11 +937,9 @@ fn team_import_with_request_creates_team_and_memberships() {
             .count()
             >= 2
     );
-    assert!(
-        calls
-            .iter()
-            .any(|(method, path, _)| method == "PUT" && path == "/api/teams/3/members"),
-    );
+    assert!(calls
+        .iter()
+        .any(|(method, path, _)| method == "PUT" && path == "/api/teams/3/members"),);
 }
 
 #[test]
@@ -948,7 +947,11 @@ fn team_import_with_request_rejects_member_removals_without_yes() {
     let temp = tempdir().unwrap();
     let import_dir = temp.path().join("access-teams");
     fs::create_dir_all(&import_dir).unwrap();
-    fs::write(import_dir.join("teams.json"), r#"[{"name":"Ops","members":["alice@example.com"]}]"#).unwrap();
+    fs::write(
+        import_dir.join("teams.json"),
+        r#"[{"name":"Ops","members":["alice@example.com"]}]"#,
+    )
+    .unwrap();
     let args = TeamImportArgs {
         common: make_token_common(),
         import_dir: import_dir.clone(),
@@ -972,7 +975,9 @@ fn team_import_with_request_rejects_member_removals_without_yes() {
     );
     assert!(result.is_err());
     let error = result.unwrap_err();
-    assert!(error.to_string().contains("Team import would remove team memberships for Ops"));
+    assert!(error
+        .to_string()
+        .contains("Team import would remove team memberships for Ops"));
 }
 
 #[test]
@@ -1000,7 +1005,9 @@ fn team_import_with_request_updates_memberships_when_yes_is_set() {
         |method, path, _params, payload| {
             calls.push((method.to_string(), path.to_string(), payload.cloned()));
             match (method, path) {
-                (Method::GET, "/api/teams/search") => Ok(Some(json!({"teams": [{"id": "3", "name": "Ops"}]}))),
+                (Method::GET, "/api/teams/search") => {
+                    Ok(Some(json!({"teams": [{"id": "3", "name": "Ops"}]})))
+                }
                 (Method::GET, "/api/teams/3/members") => Ok(Some(json!([
                     {"userId": 7, "login": "alice@example.com"},
                     {"userId": 9, "login": "carol@example.com"},
@@ -1020,21 +1027,15 @@ fn team_import_with_request_updates_memberships_when_yes_is_set() {
     .unwrap();
 
     assert_eq!(result, 1);
-    assert!(
-        calls
-            .iter()
-            .any(|(method, path, _)| method == "POST" && path == "/api/teams/3/members")
-    );
-    assert!(
-        calls
-            .iter()
-            .any(|(method, path, _)| method == "DELETE" && path == "/api/teams/3/members/9")
-    );
-    assert!(
-        calls
-            .iter()
-            .any(|(method, path, _)| method == "PUT" && path == "/api/teams/3/members")
-    );
+    assert!(calls
+        .iter()
+        .any(|(method, path, _)| method == "POST" && path == "/api/teams/3/members"));
+    assert!(calls
+        .iter()
+        .any(|(method, path, _)| method == "DELETE" && path == "/api/teams/3/members/9"));
+    assert!(calls
+        .iter()
+        .any(|(method, path, _)| method == "PUT" && path == "/api/teams/3/members"));
 }
 
 #[test]
@@ -1277,7 +1278,9 @@ fn team_add_with_request_creates_empty_team_without_members() {
 
     assert!(result.is_ok());
     assert!(calls.iter().any(|(_, path, _, _)| path == "/api/teams"));
-    assert!(!calls.iter().any(|(_, path, _, _)| path == "/api/teams/3/members"));
+    assert!(!calls
+        .iter()
+        .any(|(_, path, _, _)| path == "/api/teams/3/members"));
 }
 
 #[test]
@@ -1443,7 +1446,12 @@ fn service_account_import_with_request_updates_existing() {
     let mut calls = Vec::new();
     let result = import_service_accounts_with_request(
         |method, path, params, payload| {
-            calls.push((method.to_string(), path.to_string(), params.to_vec(), payload.cloned()));
+            calls.push((
+                method.to_string(),
+                path.to_string(),
+                params.to_vec(),
+                payload.cloned(),
+            ));
             match path {
                 "/api/serviceaccounts/search" => Ok(Some(json!({
                     "serviceAccounts": [
@@ -1459,7 +1467,9 @@ fn service_account_import_with_request_updates_existing() {
         &args,
     );
     assert!(result.is_ok());
-    assert!(calls.iter().any(|(method, path, _, _)| method == "PUT" && path == "/api/serviceaccounts/4"));
+    assert!(calls
+        .iter()
+        .any(|(method, path, _, _)| method == "PUT" && path == "/api/serviceaccounts/4"));
 }
 
 #[test]

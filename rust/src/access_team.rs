@@ -2,13 +2,13 @@
 //! Covers team CRUD, membership discovery, and table/list rendering helpers for CLI output.
 use reqwest::Method;
 use serde_json::{Map, Value};
-use std::fmt::Write as _;
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Write as _;
 use std::fs;
 use std::path::Path;
 
 use crate::common::{
-    message, load_json_object_file, string_field, value_as_object, write_json_file, Result,
+    load_json_object_file, message, string_field, value_as_object, write_json_file, Result,
 };
 
 use super::access_render::{
@@ -17,9 +17,9 @@ use super::access_render::{
 };
 use super::access_user::lookup_org_user_by_identity;
 use super::{
-    request_array, request_object, ACCESS_EXPORT_KIND_TEAMS, ACCESS_EXPORT_METADATA_FILENAME,
-    ACCESS_EXPORT_VERSION, ACCESS_TEAM_EXPORT_FILENAME, TeamAddArgs, TeamExportArgs,
-    TeamDiffArgs, TeamImportArgs, TeamListArgs, TeamModifyArgs, DEFAULT_PAGE_SIZE,
+    request_array, request_object, TeamAddArgs, TeamDiffArgs, TeamExportArgs, TeamImportArgs,
+    TeamListArgs, TeamModifyArgs, ACCESS_EXPORT_KIND_TEAMS, ACCESS_EXPORT_METADATA_FILENAME,
+    ACCESS_EXPORT_VERSION, ACCESS_TEAM_EXPORT_FILENAME, DEFAULT_PAGE_SIZE,
 };
 
 fn normalize_access_identity(value: &str) -> String {
@@ -47,14 +47,23 @@ fn sorted_membership_union(members: &[String], admins: &[String]) -> Vec<String>
     merged
 }
 
-fn normalize_team_for_diff(record: &Map<String, Value>, include_members: bool) -> Map<String, Value> {
+fn normalize_team_for_diff(
+    record: &Map<String, Value>,
+    include_members: bool,
+) -> Map<String, Value> {
     let mut members = parse_access_identity_list(record.get("members").unwrap_or(&Value::Null));
     let mut admins = parse_access_identity_list(record.get("admins").unwrap_or(&Value::Null));
     members.sort();
     admins.sort();
     let mut payload = Map::from_iter(vec![
-        ("name".to_string(), Value::String(string_field(record, "name", ""))),
-        ("email".to_string(), Value::String(string_field(record, "email", ""))),
+        (
+            "name".to_string(),
+            Value::String(string_field(record, "name", "")),
+        ),
+        (
+            "email".to_string(),
+            Value::String(string_field(record, "email", "")),
+        ),
     ]);
     if include_members {
         payload.insert(
@@ -121,8 +130,8 @@ where
         ]);
         if include_members {
             let team_id = string_field(&team, "id", "");
-            let mut members = Vec::new();
-            let mut admins = Vec::new();
+            let mut members: Vec<String> = Vec::new();
+            let mut admins: Vec<String> = Vec::new();
             if !team_id.is_empty() {
                 for member in list_team_members_with_request(&mut request_json, &team_id)? {
                     let identity = team_member_identity(&member);
@@ -175,24 +184,21 @@ fn build_record_diff_fields(left: &Map<String, Value>, right: &Map<String, Value
     changed
 }
 
-pub(crate) fn diff_teams_with_request<F>(
-    mut request_json: F,
-    args: &TeamDiffArgs,
-) -> Result<usize>
+pub(crate) fn diff_teams_with_request<F>(mut request_json: F, args: &TeamDiffArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
     let local_records = load_team_import_records(&args.diff_dir, ACCESS_EXPORT_KIND_TEAMS)?;
     let include_members = local_records.iter().any(|record| {
-        match record.get("members") {
+        (match record.get("members") {
             Some(Value::Array(values)) => !values.is_empty(),
             Some(Value::String(text)) => !text.trim().is_empty(),
             _ => false,
-        } || match record.get("admins") {
+        }) || (match record.get("admins") {
             Some(Value::Array(values)) => !values.is_empty(),
             Some(Value::String(text)) => !text.trim().is_empty(),
             _ => false,
-        }
+        })
     });
     let local_map = build_team_diff_map(
         &local_records,
@@ -235,7 +241,10 @@ where
         differences += 1;
         checked += 1;
         let (_, live_payload) = &live_map[key];
-        println!("Diff extra-live team {}", map_get_text(live_payload, "name"));
+        println!(
+            "Diff extra-live team {}",
+            map_get_text(live_payload, "name")
+        );
     }
     if differences > 0 {
         println!(
@@ -248,11 +257,7 @@ where
     Ok(differences)
 }
 
-
-fn build_membership_payloads(
-    members: &[String],
-    admins: &[String],
-) -> (Vec<String>, Vec<String>) {
+fn build_membership_payloads(members: &[String], admins: &[String]) -> (Vec<String>, Vec<String>) {
     let admin_keys = admins
         .iter()
         .map(|identity| normalize_access_identity(identity))
@@ -325,7 +330,9 @@ fn validate_team_import_dry_run_output(args: &TeamImportArgs) -> Result<()> {
         ));
     }
     if args.table && args.json {
-        return Err(message("--table and --json cannot be used together for team import."));
+        return Err(message(
+            "--table and --json cannot be used together for team import.",
+        ));
     }
     Ok(())
 }
@@ -346,12 +353,18 @@ fn build_team_access_export_metadata(
     record_count: usize,
 ) -> Map<String, Value> {
     Map::from_iter(vec![
-        ("kind".to_string(), Value::String(ACCESS_EXPORT_KIND_TEAMS.to_string())),
+        (
+            "kind".to_string(),
+            Value::String(ACCESS_EXPORT_KIND_TEAMS.to_string()),
+        ),
         (
             "version".to_string(),
             Value::Number((ACCESS_EXPORT_VERSION).into()),
         ),
-        ("sourceUrl".to_string(), Value::String(source_url.to_string())),
+        (
+            "sourceUrl".to_string(),
+            Value::String(source_url.to_string()),
+        ),
         (
             "recordCount".to_string(),
             Value::Number((record_count as i64).into()),
@@ -363,10 +376,16 @@ fn build_team_access_export_metadata(
     ])
 }
 
-fn load_team_import_records(import_dir: &Path, expected_kind: &str) -> Result<Vec<Map<String, Value>>> {
+fn load_team_import_records(
+    import_dir: &Path,
+    expected_kind: &str,
+) -> Result<Vec<Map<String, Value>>> {
     let path = import_dir.join(ACCESS_TEAM_EXPORT_FILENAME);
     if !path.is_file() {
-        return Err(message(format!("Access import file not found: {}", path.display())));
+        return Err(message(format!(
+            "Access import file not found: {}",
+            path.display()
+        )));
     }
 
     let raw = fs::read_to_string(&path)?;
@@ -394,17 +413,23 @@ fn load_team_import_records(import_dir: &Path, expected_kind: &str) -> Result<Ve
                     )));
                 }
             }
-            object.get("records").cloned().ok_or_else(|| {
-                message(format!("Access import bundle is missing records list: {}", path.display()))
-            })?
-            .as_array()
-            .ok_or_else(|| {
-                message(format!(
-                    "Access import records must be a list in {}",
-                    path.display()
-                ))
-            })?
-            .to_vec()
+            object
+                .get("records")
+                .cloned()
+                .ok_or_else(|| {
+                    message(format!(
+                        "Access import bundle is missing records list: {}",
+                        path.display()
+                    ))
+                })?
+                .as_array()
+                .ok_or_else(|| {
+                    message(format!(
+                        "Access import records must be a list in {}",
+                        path.display()
+                    ))
+                })?
+                .to_vec()
         }
         _ => {
             return Err(message(format!(
@@ -422,7 +447,11 @@ fn load_team_import_records(import_dir: &Path, expected_kind: &str) -> Result<Ve
     let mut normalized = Vec::new();
     for value in records {
         normalized.push(
-            value_as_object(&value, &format!("Access import entry in {}", path.display()))?.clone(),
+            value_as_object(
+                &value,
+                &format!("Access import entry in {}", path.display()),
+            )?
+            .clone(),
         );
     }
     Ok(normalized)
@@ -573,10 +602,7 @@ where
     )
 }
 
-pub(crate) fn lookup_team_by_name<F>(
-    mut request_json: F,
-    name: &str,
-) -> Result<Map<String, Value>>
+pub(crate) fn lookup_team_by_name<F>(mut request_json: F, name: &str) -> Result<Map<String, Value>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
@@ -587,19 +613,17 @@ where
         .ok_or_else(|| message(format!("Grafana team lookup did not find {name}.")))
 }
 
-fn iter_teams_with_request<F>(mut request_json: F, query: Option<&str>) -> Result<Vec<Map<String, Value>>>
+fn iter_teams_with_request<F>(
+    mut request_json: F,
+    query: Option<&str>,
+) -> Result<Vec<Map<String, Value>>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
     let mut teams = Vec::new();
     let mut page = 1usize;
     loop {
-        let batch = list_teams_with_request(
-            &mut request_json,
-            query,
-            page,
-            DEFAULT_PAGE_SIZE,
-        )?;
+        let batch = list_teams_with_request(&mut request_json, query, page, DEFAULT_PAGE_SIZE)?;
         let batch_len = batch.len();
         teams.extend(batch);
         if batch_len < DEFAULT_PAGE_SIZE {
@@ -653,7 +677,9 @@ where
     let user_id = {
         let found = user_id_from_record(&user);
         if found.is_empty() {
-            return Err(message(format!("Team member lookup did not return an id: {identity}")));
+            return Err(message(format!(
+                "Team member lookup did not return an id: {identity}"
+            )));
         }
         found
     };
@@ -952,14 +978,15 @@ where
     records.sort_by(|left, right| {
         let lhs = map_get_text(left, "name");
         let rhs = map_get_text(right, "name");
-        lhs.cmp(&rhs).then_with(|| map_get_text(left, "id").cmp(&map_get_text(right, "id")))
+        lhs.cmp(&rhs)
+            .then_with(|| map_get_text(left, "id").cmp(&map_get_text(right, "id")))
     });
 
     if args.with_members {
         for row in &mut records {
             let team_id = map_get_text(row, "id");
-            let mut members = Vec::new();
-            let mut admins = Vec::new();
+            let mut members: Vec<String> = Vec::new();
+            let mut admins: Vec<String> = Vec::new();
             for member in list_team_members_with_request(&mut request_json, &team_id)? {
                 let identity = team_member_identity(&member);
                 if identity.is_empty() {
@@ -992,7 +1019,10 @@ where
 
     if !args.dry_run {
         let payload = Value::Object(Map::from_iter(vec![
-            ("kind".to_string(), Value::String(ACCESS_EXPORT_KIND_TEAMS.to_string())),
+            (
+                "kind".to_string(),
+                Value::String(ACCESS_EXPORT_KIND_TEAMS.to_string()),
+            ),
             (
                 "version".to_string(),
                 Value::Number((ACCESS_EXPORT_VERSION).into()),
@@ -1014,7 +1044,11 @@ where
         )?;
     }
 
-    let action = if args.dry_run { "Would export" } else { "Exported" };
+    let action = if args.dry_run {
+        "Would export"
+    } else {
+        "Exported"
+    };
     println!(
         "{} {} team(s) from {} -> {} and {}",
         action,
@@ -1054,8 +1088,10 @@ where
             )));
         }
 
-        let record_members = parse_access_identity_list(record.get("members").unwrap_or(&Value::Null));
-        let record_admins = parse_access_identity_list(record.get("admins").unwrap_or(&Value::Null));
+        let record_members =
+            parse_access_identity_list(record.get("members").unwrap_or(&Value::Null));
+        let record_admins =
+            parse_access_identity_list(record.get("admins").unwrap_or(&Value::Null));
         let merged_members = sorted_membership_union(&record_members, &record_admins);
         let (regular_members_payload, admin_payload) =
             build_membership_payloads(&record_members, &record_admins);
@@ -1103,7 +1139,10 @@ where
                 &mut request_json,
                 &Value::Object(Map::from_iter([
                     ("name".to_string(), Value::String(team_name.clone())),
-                    ("email".to_string(), Value::String(string_field(record, "email", ""))),
+                    (
+                        "email".to_string(),
+                        Value::String(string_field(record, "email", "")),
+                    ),
                 ])),
             )?;
             let team_id = {
@@ -1115,7 +1154,10 @@ where
                 }
             };
             if team_id.is_empty() {
-                return Err(message(format!("Team import did not return team id for {}", team_name)));
+                return Err(message(format!(
+                    "Team import did not return team id for {}",
+                    team_name
+                )));
             }
 
             if !(record_members.is_empty() && record_admins.is_empty()) {
@@ -1123,7 +1165,10 @@ where
                     let user = lookup_org_user_by_identity(&mut request_json, identity)?;
                     let user_id = user_id_from_record(&user);
                     if user_id.is_empty() {
-                        return Err(message(format!("Team member lookup did not return an id: {}", identity)));
+                        return Err(message(format!(
+                            "Team member lookup did not return an id: {}",
+                            identity
+                        )));
                     }
                     add_team_member_with_request(&mut request_json, &team_id, &user_id)?;
                 }
@@ -1201,15 +1246,18 @@ where
                 let user = lookup_org_user_by_identity(&mut request_json, identity)?;
                 let user_id = user_id_from_record(&user);
                 if user_id.is_empty() {
-                    return Err(message(format!("Team member lookup did not return an id: {}", identity)));
+                    return Err(message(format!(
+                        "Team member lookup did not return an id: {}",
+                        identity
+                    )));
                 }
                 add_team_member_with_request(&mut request_json, &team_id, &user_id)?;
                 existing_members.insert(key, (identity.clone().to_string(), false, user_id));
             }
 
             if !remove_keys.is_empty() {
-                for key in remove_keys {
-                    if let Some((_, _, user_id)) = existing_members.remove(&key) {
+                for key in remove_keys.iter() {
+                    if let Some((_, _, user_id)) = existing_members.remove(key.as_str()) {
                         if !user_id.is_empty() {
                             remove_team_member_with_request(&mut request_json, &team_id, &user_id)?;
                         }
@@ -1241,8 +1289,8 @@ where
                     }
                 }
             }
-            for key in remove_keys {
-                if let Some((identity, _, _)) = existing_members.get(&key) {
+            for key in remove_keys.iter() {
+                if let Some((identity, _, _)) = existing_members.get(key.as_str()) {
                     if is_dry_run_table_or_json {
                         dry_run_rows.push(build_team_import_dry_run_row(
                             index + 1,

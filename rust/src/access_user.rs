@@ -7,7 +7,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::common::{
-    message, load_json_object_file, string_field, write_json_file, value_as_object, Result,
+    load_json_object_file, message, string_field, value_as_object, write_json_file, Result,
 };
 
 use super::access_render::{
@@ -16,10 +16,10 @@ use super::access_render::{
     user_table_rows, value_bool,
 };
 use super::{
-    build_auth_context, request_array, request_object, ACCESS_EXPORT_KIND_USERS,
-    ACCESS_EXPORT_METADATA_FILENAME, ACCESS_EXPORT_VERSION, ACCESS_USER_EXPORT_FILENAME, Scope,
-    DEFAULT_PAGE_SIZE, UserAddArgs, UserDeleteArgs, UserExportArgs, UserImportArgs, UserListArgs,
-    UserDiffArgs, UserModifyArgs,
+    build_auth_context, request_array, request_object, Scope, UserAddArgs, UserDeleteArgs,
+    UserDiffArgs, UserExportArgs, UserImportArgs, UserListArgs, UserModifyArgs,
+    ACCESS_EXPORT_KIND_USERS, ACCESS_EXPORT_METADATA_FILENAME, ACCESS_EXPORT_VERSION,
+    ACCESS_USER_EXPORT_FILENAME, DEFAULT_PAGE_SIZE,
 };
 
 fn build_access_import_dry_run_row(
@@ -56,7 +56,9 @@ fn validate_user_import_dry_run_output(args: &UserImportArgs) -> Result<()> {
         ));
     }
     if args.table && args.json {
-        return Err(message("--table and --json cannot be used together for user import."));
+        return Err(message(
+            "--table and --json cannot be used together for user import.",
+        ));
     }
     Ok(())
 }
@@ -98,9 +100,16 @@ fn assert_not_overwrite(path: &Path, dry_run: bool, overwrite: bool) -> Result<(
     )))
 }
 
-fn build_access_export_metadata(source_url: &str, source_dir: &Path, record_count: usize) -> Map<String, Value> {
+fn build_access_export_metadata(
+    source_url: &str,
+    source_dir: &Path,
+    record_count: usize,
+) -> Map<String, Value> {
     Map::from_iter(vec![
-        ("kind".to_string(), Value::String(ACCESS_EXPORT_KIND_USERS.to_string())),
+        (
+            "kind".to_string(),
+            Value::String(ACCESS_EXPORT_KIND_USERS.to_string()),
+        ),
         (
             "version".to_string(),
             Value::Number((ACCESS_EXPORT_VERSION).into()),
@@ -120,10 +129,16 @@ fn build_access_export_metadata(source_url: &str, source_dir: &Path, record_coun
     ])
 }
 
-fn load_access_import_records(import_dir: &Path, expected_kind: &str) -> Result<Vec<Map<String, Value>>> {
+fn load_access_import_records(
+    import_dir: &Path,
+    expected_kind: &str,
+) -> Result<Vec<Map<String, Value>>> {
     let path = import_dir.join(ACCESS_USER_EXPORT_FILENAME);
     if !path.is_file() {
-        return Err(message(format!("Access import file not found: {}", path.display())));
+        return Err(message(format!(
+            "Access import file not found: {}",
+            path.display()
+        )));
     }
 
     let raw = fs::read_to_string(&path)?;
@@ -151,17 +166,23 @@ fn load_access_import_records(import_dir: &Path, expected_kind: &str) -> Result<
                     )));
                 }
             }
-            object.get("records").cloned().ok_or_else(|| {
-                message(format!("Access import bundle is missing records list: {}", path.display()))
-            })?
-            .as_array()
-            .ok_or_else(|| {
-                message(format!(
-                    "Access import records must be a list in {}",
-                    path.display()
-                ))
-            })?
-            .to_vec()
+            object
+                .get("records")
+                .cloned()
+                .ok_or_else(|| {
+                    message(format!(
+                        "Access import bundle is missing records list: {}",
+                        path.display()
+                    ))
+                })?
+                .as_array()
+                .ok_or_else(|| {
+                    message(format!(
+                        "Access import records must be a list in {}",
+                        path.display()
+                    ))
+                })?
+                .to_vec()
         }
         _ => {
             return Err(message(format!(
@@ -179,7 +200,11 @@ fn load_access_import_records(import_dir: &Path, expected_kind: &str) -> Result<
     let mut normalized = Vec::new();
     for value in records {
         normalized.push(
-            value_as_object(&value, &format!("Access import entry in {}", path.display()))?.clone(),
+            value_as_object(
+                &value,
+                &format!("Access import entry in {}", path.display()),
+            )?
+            .clone(),
         );
     }
     Ok(normalized)
@@ -238,9 +263,7 @@ where
             "userId".to_string(),
             Value::String(user_id.to_string()),
         )]))),
-        &format!(
-            "Unexpected team-member add response for team {team_id} user {user_id}"
-        ),
+        &format!("Unexpected team-member add response for team {team_id} user {user_id}"),
     )?;
     Ok(())
 }
@@ -259,14 +282,15 @@ where
         &format!("/api/teams/{team_id}/members/{user_id}"),
         &[],
         None,
-        &format!(
-            "Unexpected team-member remove response for team {team_id} user {user_id}"
-        ),
+        &format!("Unexpected team-member remove response for team {team_id} user {user_id}"),
     )?;
     Ok(())
 }
 
-fn build_user_export_records<F>(mut request_json: F, args: &UserExportArgs) -> Result<Vec<Map<String, Value>>>
+fn build_user_export_records<F>(
+    mut request_json: F,
+    args: &UserExportArgs,
+) -> Result<Vec<Map<String, Value>>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
@@ -309,7 +333,7 @@ where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
     let auth_mode = build_auth_context(&args.common)?.auth_mode;
-    validate_user_list_auth(args, &auth_mode)?;
+    validate_user_scope_auth(&args.scope, args.with_teams, &auth_mode)?;
     let records = build_user_export_records(&mut request_json, args)?;
 
     let users_path = args.export_dir.join(ACCESS_USER_EXPORT_FILENAME);
@@ -319,7 +343,10 @@ where
 
     if !args.dry_run {
         let payload = Value::Object(Map::from_iter(vec![
-            ("kind".to_string(), Value::String(ACCESS_EXPORT_KIND_USERS.to_string())),
+            (
+                "kind".to_string(),
+                Value::String(ACCESS_EXPORT_KIND_USERS.to_string()),
+            ),
             (
                 "version".to_string(),
                 Value::Number((ACCESS_EXPORT_VERSION).into()),
@@ -341,7 +368,11 @@ where
         )?;
     }
 
-    let action = if args.dry_run { "Would export" } else { "Exported" };
+    let action = if args.dry_run {
+        "Would export"
+    } else {
+        "Exported"
+    };
     println!(
         "{} {} user(s) from {} -> {} and {}",
         action,
@@ -376,7 +407,11 @@ where
         processed += 1;
         let login = string_field(record, "login", "");
         let email = string_field(record, "email", "");
-        let identity = if !login.is_empty() { login.clone() } else { email.clone() };
+        let identity = if !login.is_empty() {
+            login.clone()
+        } else {
+            email.clone()
+        };
         if identity.is_empty() {
             return Err(message(format!(
                 "Access user import record {} in {} lacks login or email.",
@@ -388,8 +423,16 @@ where
         let existing = match args.scope {
             Scope::Global => lookup_global_user_by_identity(
                 &mut request_json,
-                if !login.is_empty() { Some(&login) } else { None },
-                if !email.is_empty() { Some(&email) } else { None },
+                if !login.is_empty() {
+                    Some(&login)
+                } else {
+                    None
+                },
+                if !email.is_empty() {
+                    Some(&email)
+                } else {
+                    None
+                },
             )
             .ok(),
             Scope::Org => lookup_org_user_by_identity(
@@ -452,14 +495,12 @@ where
                     ),
                     ("password".to_string(), Value::String(password)),
                 ]);
-                let created_user = create_user_with_request(
-                    &mut request_json,
-                    &Value::Object(payload),
-                )?;
+                let created_user =
+                    create_user_with_request(&mut request_json, &Value::Object(payload))?;
                 let user_id = scalar_text(created_user.get("id"));
                 if !user_id.is_empty() {
                     if let Some(org_role) = record.get("orgRole") {
-                        let normalized_role = normalize_org_role(org_role);
+                        let normalized_role = normalize_org_role(Some(org_role));
                         if !normalized_role.is_empty() {
                             let _ = update_user_org_role_with_request(
                                 &mut request_json,
@@ -568,7 +609,10 @@ where
                         &format!("would update orgRole -> {desired_org_role}"),
                     ));
                 } else {
-                    println!("Would update orgRole for user {} -> {}", identity, desired_org_role);
+                    println!(
+                        "Would update orgRole for user {} -> {}",
+                        identity, desired_org_role
+                    );
                 }
             } else {
                 let _ = update_user_org_role_with_request(
@@ -656,11 +700,7 @@ where
                         println!("Would add user {} to team {}", identity, target);
                     }
                 } else {
-                    add_team_member_for_user_with_request(
-                        &mut request_json,
-                        &team_id,
-                        &user_id,
-                    )?;
+                    add_team_member_for_user_with_request(&mut request_json, &team_id, &user_id)?;
                 }
             }
 
@@ -742,16 +782,23 @@ fn normalize_bool_for_diff(value: Option<&Value>) -> Value {
 
 fn normalize_user_for_diff(record: &Map<String, Value>, include_teams: bool) -> Map<String, Value> {
     let mut payload = Map::from_iter(vec![
-        ("login".to_string(), Value::String(string_field(record, "login", ""))),
-        ("email".to_string(), Value::String(string_field(record, "email", ""))),
-        ("name".to_string(), Value::String(string_field(record, "name", ""))),
+        (
+            "login".to_string(),
+            Value::String(string_field(record, "login", "")),
+        ),
+        (
+            "email".to_string(),
+            Value::String(string_field(record, "email", "")),
+        ),
+        (
+            "name".to_string(),
+            Value::String(string_field(record, "name", "")),
+        ),
         (
             "orgRole".to_string(),
-            Value::String(
-                normalize_org_role(
-                    record.get("orgRole").or_else(|| record.get("role")),
-                ),
-            ),
+            Value::String(normalize_org_role(
+                record.get("orgRole").or_else(|| record.get("role")),
+            )),
         ),
         (
             "grafanaAdmin".to_string(),
@@ -796,8 +843,7 @@ fn build_user_diff_map(
         if indexed.contains_key(&key) {
             return Err(message(format!(
                 "Duplicate user identity in {}: {}",
-                source,
-                identity
+                source, identity
             )));
         }
         let payload = normalize_user_for_diff(record, include_teams);
@@ -861,27 +907,25 @@ fn build_record_diff_fields(left: &Map<String, Value>, right: &Map<String, Value
     changed
 }
 
-pub(crate) fn diff_users_with_request<F>(
-    mut request_json: F,
-    args: &UserDiffArgs,
-) -> Result<usize>
+pub(crate) fn diff_users_with_request<F>(mut request_json: F, args: &UserDiffArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
     let local_records = load_access_import_records(&args.diff_dir, ACCESS_EXPORT_KIND_USERS)?;
-    let include_teams = local_records.iter().any(|record| {
-        match record.get("teams") {
+    let include_teams = local_records
+        .iter()
+        .any(|record| match record.get("teams") {
             Some(Value::Array(values)) => !values.is_empty(),
             Some(Value::String(text)) => !text.trim().is_empty(),
             _ => false,
-        }
-    });
+        });
     let local_map = build_user_diff_map(
         &local_records,
         &args.diff_dir.to_string_lossy(),
         include_teams,
     )?;
-    let live_records = build_user_export_records_for_diff(&mut request_json, &args.scope, include_teams)?;
+    let live_records =
+        build_user_export_records_for_diff(&mut request_json, &args.scope, include_teams)?;
     let live_map = build_user_diff_map(&live_records, "Grafana live users", include_teams)?;
 
     let mut differences = 0usize;
@@ -1185,12 +1229,16 @@ fn validate_basic_auth_only(auth_mode: &str, operation: &str) -> Result<()> {
 }
 
 fn validate_user_list_auth(args: &UserListArgs, auth_mode: &str) -> Result<()> {
-    if args.scope == Scope::Global && auth_mode != "basic" {
+    validate_user_scope_auth(&args.scope, args.with_teams, auth_mode)
+}
+
+fn validate_user_scope_auth(scope: &Scope, with_teams: bool, auth_mode: &str) -> Result<()> {
+    if *scope == Scope::Global && auth_mode != "basic" {
         return Err(message(
             "User list with --scope global requires Basic auth (--basic-user / --basic-password).",
         ));
     }
-    if args.with_teams && auth_mode != "basic" {
+    if with_teams && auth_mode != "basic" {
         return Err(message("--with-teams requires Basic auth."));
     }
     Ok(())
@@ -1234,7 +1282,7 @@ where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
     let auth_mode = build_auth_context(&args.common)?.auth_mode;
-    validate_user_list_auth(args, &auth_mode)?;
+    validate_user_scope_auth(&args.scope, args.with_teams, &auth_mode)?;
     let mut rows = match args.scope {
         Scope::Org => list_org_users_with_request(&mut request_json)?
             .into_iter()
