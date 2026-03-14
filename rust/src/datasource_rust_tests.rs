@@ -1,10 +1,11 @@
 // Datasource domain test suite.
 // Exercises parsing + import/export/diff helpers, including mocked datasource matching and contract fixtures.
 use super::{
-    build_add_payload, build_import_payload, diff_datasources_with_live, load_import_records,
-    parse_json_object_argument, render_import_table, render_live_mutation_json,
-    render_live_mutation_table, resolve_delete_match, resolve_live_mutation_match, resolve_match,
-    run_datasource_cli, DatasourceCliArgs, DatasourceImportRecord,
+    build_add_payload, build_import_payload, build_modify_payload, build_modify_updates,
+    diff_datasources_with_live, load_import_records, parse_json_object_argument,
+    render_import_table, render_live_mutation_json, render_live_mutation_table,
+    resolve_delete_match, resolve_live_mutation_match, resolve_match, run_datasource_cli,
+    DatasourceCliArgs, DatasourceImportRecord,
 };
 use clap::{CommandFactory, Parser};
 use serde_json::{json, Value};
@@ -95,6 +96,25 @@ fn delete_help_explains_live_mutation_flags() {
 }
 
 #[test]
+fn modify_help_explains_live_mutation_flags() {
+    let mut command = DatasourceCliArgs::command();
+    let subcommand = command
+        .find_subcommand_mut("modify")
+        .unwrap_or_else(|| panic!("missing datasource modify help"));
+    let mut output = Vec::new();
+    subcommand.write_long_help(&mut output).unwrap();
+    let help = String::from_utf8(output).unwrap();
+
+    assert!(help.contains("--uid"));
+    assert!(help.contains("--set-url"));
+    assert!(help.contains("--set-access"));
+    assert!(help.contains("--set-default"));
+    assert!(help.contains("--json-data"));
+    assert!(help.contains("--secure-json-data"));
+    assert!(help.contains("--dry-run"));
+}
+
+#[test]
 fn parse_datasource_list_supports_output_format_json() {
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
@@ -157,6 +177,32 @@ fn parse_datasource_delete_supports_output_format_json() {
             assert!(!inner.table);
         }
         _ => panic!("expected datasource delete"),
+    }
+}
+
+#[test]
+fn parse_datasource_modify_supports_output_format_table() {
+    let args = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util",
+        "modify",
+        "--uid",
+        "prom-main",
+        "--set-url",
+        "http://prometheus-v2:9090",
+        "--dry-run",
+        "--output-format",
+        "table",
+    ]);
+
+    match args.command {
+        super::DatasourceGroupCommand::Modify(inner) => {
+            assert_eq!(inner.uid, "prom-main");
+            assert_eq!(inner.set_url.as_deref(), Some("http://prometheus-v2:9090"));
+            assert!(inner.dry_run);
+            assert!(inner.table);
+            assert!(!inner.json);
+        }
+        _ => panic!("expected datasource modify"),
     }
 }
 
@@ -481,6 +527,76 @@ fn build_add_payload_keeps_optional_json_fields() {
 }
 
 #[test]
+fn build_modify_updates_keeps_optional_json_fields() {
+    let args = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util",
+        "modify",
+        "--uid",
+        "prom-main",
+        "--set-url",
+        "http://prometheus-v2:9090",
+        "--set-access",
+        "direct",
+        "--set-default",
+        "true",
+        "--json-data",
+        r#"{"httpMethod":"POST"}"#,
+        "--secure-json-data",
+        r#"{"token":"abc123"}"#,
+    ]);
+    let modify_args = match args.command {
+        super::DatasourceGroupCommand::Modify(inner) => inner,
+        _ => panic!("expected datasource modify"),
+    };
+
+    let updates = build_modify_updates(&modify_args).unwrap();
+
+    assert_eq!(updates["url"], json!("http://prometheus-v2:9090"));
+    assert_eq!(updates["access"], json!("direct"));
+    assert_eq!(updates["isDefault"], json!(true));
+    assert_eq!(updates["jsonData"]["httpMethod"], json!("POST"));
+    assert_eq!(updates["secureJsonData"]["token"], json!("abc123"));
+}
+
+#[test]
+fn build_modify_payload_merges_existing_json_data() {
+    let existing = json!({
+        "id": 7,
+        "uid": "prom-main",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "url": "http://prometheus:9090",
+        "access": "proxy",
+        "isDefault": false,
+        "jsonData": {
+            "httpMethod": "POST"
+        }
+    })
+    .as_object()
+    .unwrap()
+    .clone();
+    let updates = json!({
+        "url": "http://prometheus-v2:9090",
+        "jsonData": {
+            "timeInterval": "30s"
+        },
+        "secureJsonData": {
+            "token": "abc123"
+        }
+    })
+    .as_object()
+    .unwrap()
+    .clone();
+
+    let payload = build_modify_payload(&existing, &updates);
+
+    assert_eq!(payload["url"], json!("http://prometheus-v2:9090"));
+    assert_eq!(payload["jsonData"]["httpMethod"], json!("POST"));
+    assert_eq!(payload["jsonData"]["timeInterval"], json!("30s"));
+    assert_eq!(payload["secureJsonData"]["token"], json!("abc123"));
+}
+
+#[test]
 fn parse_json_object_argument_rejects_non_object_values() {
     let error = parse_json_object_argument(Some("[]"), "--json-data").unwrap_err();
 
@@ -521,6 +637,15 @@ fn render_live_mutation_json_summarizes_actions() {
             String::new(),
         ],
         vec![
+            "modify".to_string(),
+            "prom-mid".to_string(),
+            "Prometheus Updated".to_string(),
+            "prometheus".to_string(),
+            "exists-uid".to_string(),
+            "would-update".to_string(),
+            "9".to_string(),
+        ],
+        vec![
             "delete".to_string(),
             "prom-main".to_string(),
             "Prometheus Main".to_string(),
@@ -540,8 +665,9 @@ fn render_live_mutation_json_summarizes_actions() {
         ],
     ]);
 
-    assert_eq!(value["summary"]["itemCount"], json!(3));
+    assert_eq!(value["summary"]["itemCount"], json!(4));
     assert_eq!(value["summary"]["createCount"], json!(1));
+    assert_eq!(value["summary"]["updateCount"], json!(1));
     assert_eq!(value["summary"]["deleteCount"], json!(1));
     assert_eq!(value["summary"]["blockedCount"], json!(1));
 }

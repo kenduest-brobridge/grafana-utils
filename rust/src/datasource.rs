@@ -314,12 +314,71 @@ pub struct DatasourceDeleteArgs {
     pub no_header: bool,
 }
 
+#[derive(Debug, Clone, Args)]
+pub struct DatasourceModifyArgs {
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(long, help = "Datasource UID to modify.")]
+    pub uid: String,
+    #[arg(long, help = "Replace the datasource URL stored in Grafana.")]
+    pub set_url: Option<String>,
+    #[arg(
+        long,
+        help = "Replace the datasource access mode such as proxy or direct."
+    )]
+    pub set_access: Option<String>,
+    #[arg(
+        long,
+        value_parser = parse_bool_choice,
+        help = "Set whether Grafana treats this datasource as default. Use true or false."
+    )]
+    pub set_default: Option<bool>,
+    #[arg(
+        long,
+        help = "Inline JSON object string to merge into datasource jsonData."
+    )]
+    pub json_data: Option<String>,
+    #[arg(
+        long,
+        help = "Inline JSON object string to send in datasource secureJsonData."
+    )]
+    pub secure_json_data: Option<String>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Preview what datasource modify would do without changing Grafana."
+    )]
+    pub dry_run: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "For --dry-run only, render a compact table instead of plain text."
+    )]
+    pub table: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "For --dry-run only, render one JSON document."
+    )]
+    pub json: bool,
+    #[arg(long, value_enum, conflicts_with_all = ["table", "json"], help = "Alternative single-flag output selector for datasource modify dry-run output. Use text, table, or json.")]
+    pub output_format: Option<DryRunOutputFormat>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "For --dry-run --table only, omit the table header row."
+    )]
+    pub no_header: bool,
+}
+
 #[derive(Debug, Clone, Subcommand)]
 pub enum DatasourceGroupCommand {
     #[command(about = "List live Grafana datasource inventory.")]
     List(DatasourceListArgs),
     #[command(about = "Create one live Grafana datasource through the Grafana API.")]
     Add(DatasourceAddArgs),
+    #[command(about = "Modify one live Grafana datasource through the Grafana API.")]
+    Modify(DatasourceModifyArgs),
     #[command(about = "Delete one live Grafana datasource through the Grafana API.")]
     Delete(DatasourceDeleteArgs),
     #[command(about = "Export live Grafana datasource inventory as normalized JSON files.")]
@@ -333,7 +392,7 @@ pub enum DatasourceGroupCommand {
 #[derive(Debug, Clone, Parser)]
 #[command(
     name = "grafana-util datasource",
-    about = "List, add, delete, export, import, and diff Grafana datasources."
+    about = "List, add, modify, delete, export, import, and diff Grafana datasources."
 )]
 pub struct DatasourceCliArgs {
     #[command(subcommand)]
@@ -357,6 +416,11 @@ fn normalize_output_formats(args: &mut DatasourceCliArgs) {
             Some(DryRunOutputFormat::Text) | None => {}
         },
         DatasourceGroupCommand::Add(inner) => match inner.output_format {
+            Some(DryRunOutputFormat::Table) => inner.table = true,
+            Some(DryRunOutputFormat::Json) => inner.json = true,
+            Some(DryRunOutputFormat::Text) | None => {}
+        },
+        DatasourceGroupCommand::Modify(inner) => match inner.output_format {
             Some(DryRunOutputFormat::Table) => inner.table = true,
             Some(DryRunOutputFormat::Json) => inner.json = true,
             Some(DryRunOutputFormat::Text) | None => {}
@@ -392,6 +456,11 @@ fn normalize_datasource_group_command(
             Some(DryRunOutputFormat::Json) => inner.json = true,
             Some(DryRunOutputFormat::Text) | None => {}
         },
+        DatasourceGroupCommand::Modify(inner) => match inner.output_format {
+            Some(DryRunOutputFormat::Table) => inner.table = true,
+            Some(DryRunOutputFormat::Json) => inner.json = true,
+            Some(DryRunOutputFormat::Text) | None => {}
+        },
         DatasourceGroupCommand::Delete(inner) => match inner.output_format {
             Some(DryRunOutputFormat::Table) => inner.table = true,
             Some(DryRunOutputFormat::Json) => inner.json = true,
@@ -416,6 +485,14 @@ fn parse_datasource_import_output_column(value: &str) -> std::result::Result<Str
         _ => Err(format!(
             "Unsupported --output-columns value '{value}'. Supported values: uid, name, type, destination, action, org_id, file."
         )),
+    }
+}
+
+fn parse_bool_choice(value: &str) -> std::result::Result<bool, String> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "true" => Ok(true),
+        "false" => Ok(false),
+        _ => Err("value must be true or false".to_string()),
     }
 }
 
@@ -1093,6 +1170,135 @@ fn build_add_payload(args: &DatasourceAddArgs) -> Result<Value> {
     Ok(Value::Object(payload))
 }
 
+fn build_modify_updates(args: &DatasourceModifyArgs) -> Result<Map<String, Value>> {
+    let mut updates = Map::new();
+    if let Some(url) = &args.set_url {
+        if !url.trim().is_empty() {
+            updates.insert("url".to_string(), Value::String(url.trim().to_string()));
+        }
+    }
+    if let Some(access) = &args.set_access {
+        if !access.trim().is_empty() {
+            updates.insert(
+                "access".to_string(),
+                Value::String(access.trim().to_string()),
+            );
+        }
+    }
+    if let Some(is_default) = args.set_default {
+        updates.insert("isDefault".to_string(), Value::Bool(is_default));
+    }
+    if let Some(json_data) = parse_json_object_argument(args.json_data.as_deref(), "--json-data")? {
+        updates.insert("jsonData".to_string(), Value::Object(json_data));
+    }
+    if let Some(secure_json_data) =
+        parse_json_object_argument(args.secure_json_data.as_deref(), "--secure-json-data")?
+    {
+        updates.insert(
+            "secureJsonData".to_string(),
+            Value::Object(secure_json_data),
+        );
+    }
+    if updates.is_empty() {
+        return Err(message(
+            "Datasource modify requires at least one change flag.",
+        ));
+    }
+    Ok(updates)
+}
+
+fn fetch_datasource_by_uid_if_exists(
+    client: &JsonHttpClient,
+    uid: &str,
+) -> Result<Option<Map<String, Value>>> {
+    match client.request_json(
+        Method::GET,
+        &format!("/api/datasources/uid/{uid}"),
+        &[],
+        None,
+    ) {
+        Ok(Some(value)) => value
+            .as_object()
+            .cloned()
+            .map(Some)
+            .ok_or_else(|| message(format!("Unexpected datasource payload for UID {uid}."))),
+        Ok(None) => Ok(None),
+        Err(error) if error.status_code() == Some(404) => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+fn build_modify_payload(existing: &Map<String, Value>, updates: &Map<String, Value>) -> Value {
+    let mut payload = Map::from_iter(vec![
+        (
+            "id".to_string(),
+            existing.get("id").cloned().unwrap_or(Value::Null),
+        ),
+        (
+            "uid".to_string(),
+            Value::String(string_field(existing, "uid", "")),
+        ),
+        (
+            "name".to_string(),
+            Value::String(string_field(existing, "name", "")),
+        ),
+        (
+            "type".to_string(),
+            Value::String(string_field(existing, "type", "")),
+        ),
+        (
+            "access".to_string(),
+            Value::String(string_field(existing, "access", "")),
+        ),
+        (
+            "url".to_string(),
+            Value::String(string_field(existing, "url", "")),
+        ),
+        (
+            "isDefault".to_string(),
+            Value::Bool(
+                existing
+                    .get("isDefault")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+            ),
+        ),
+    ]);
+    if let Some(database) = existing.get("database").cloned() {
+        payload.insert("database".to_string(), database);
+    }
+    let merged_json_data = {
+        let mut json_data = existing
+            .get("jsonData")
+            .and_then(Value::as_object)
+            .cloned()
+            .unwrap_or_default();
+        if let Some(update_json_data) = updates.get("jsonData").and_then(Value::as_object) {
+            for (key, value) in update_json_data {
+                json_data.insert(key.clone(), value.clone());
+            }
+        }
+        json_data
+    };
+    if !merged_json_data.is_empty() {
+        payload.insert("jsonData".to_string(), Value::Object(merged_json_data));
+    }
+    if let Some(secure_json_data) = updates.get("secureJsonData").and_then(Value::as_object) {
+        if !secure_json_data.is_empty() {
+            payload.insert(
+                "secureJsonData".to_string(),
+                Value::Object(secure_json_data.clone()),
+            );
+        }
+    }
+    for key in ["url", "access", "isDefault"] {
+        if let Some(value) = updates.get(key).cloned() {
+            payload.insert(key.to_string(), value);
+        }
+    }
+    Value::Object(payload)
+}
+
 fn resolve_live_mutation_match(
     uid: Option<&str>,
     name: Option<&str>,
@@ -1239,6 +1445,7 @@ fn render_live_mutation_table(rows: &[Vec<String>], include_header: bool) -> Vec
 
 fn render_live_mutation_json(rows: &[Vec<String>]) -> Value {
     let create_count = rows.iter().filter(|row| row[5] == "would-create").count();
+    let update_count = rows.iter().filter(|row| row[5] == "would-update").count();
     let delete_count = rows.iter().filter(|row| row[5] == "would-delete").count();
     let blocked_count = rows
         .iter()
@@ -1273,6 +1480,10 @@ fn render_live_mutation_json(rows: &[Vec<String>]) -> Value {
                 (
                     "createCount".to_string(),
                     Value::Number((create_count as i64).into()),
+                ),
+                (
+                    "updateCount".to_string(),
+                    Value::Number((update_count as i64).into()),
                 ),
                 (
                     "deleteCount".to_string(),
@@ -1543,6 +1754,89 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                 "Created datasource uid={} name={}",
                 args.uid.unwrap_or_default(),
                 args.name
+            );
+            Ok(())
+        }
+        DatasourceGroupCommand::Modify(args) => {
+            validate_live_mutation_dry_run_args(
+                args.table,
+                args.json,
+                args.dry_run,
+                args.no_header,
+                "modify",
+            )?;
+            let updates = build_modify_updates(&args)?;
+            let client = build_http_client(&args.common)?;
+            let existing = fetch_datasource_by_uid_if_exists(&client, &args.uid)?;
+            let (action, destination, payload, name, datasource_type, target_id) =
+                if let Some(existing) = existing {
+                    let payload = build_modify_payload(&existing, &updates);
+                    (
+                        "would-update",
+                        "exists-uid",
+                        Some(payload),
+                        string_field(&existing, "name", ""),
+                        string_field(&existing, "type", ""),
+                        existing.get("id").and_then(Value::as_i64),
+                    )
+                } else {
+                    (
+                        "would-fail-missing",
+                        "missing",
+                        None,
+                        String::new(),
+                        String::new(),
+                        None,
+                    )
+                };
+            let row = vec![
+                "modify".to_string(),
+                args.uid.clone(),
+                name.clone(),
+                datasource_type.clone(),
+                destination.to_string(),
+                action.to_string(),
+                target_id.map(|id| id.to_string()).unwrap_or_default(),
+            ];
+            if args.dry_run {
+                if args.json {
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&render_live_mutation_json(&[row]))?
+                    );
+                } else if args.table {
+                    for line in render_live_mutation_table(&[row], !args.no_header) {
+                        println!("{line}");
+                    }
+                    println!("Dry-run checked 1 datasource modify request");
+                } else {
+                    println!(
+                        "Dry-run datasource modify uid={} name={} match={} action={}",
+                        args.uid, name, destination, action
+                    );
+                    println!("Dry-run checked 1 datasource modify request");
+                }
+                return Ok(());
+            }
+            if action != "would-update" {
+                return Err(message(format!(
+                    "Datasource modify blocked for uid={}: destination={} action={}.",
+                    args.uid, destination, action
+                )));
+            }
+            let payload =
+                payload.ok_or_else(|| message("Datasource modify did not build a payload."))?;
+            let target_id = target_id
+                .ok_or_else(|| message("Datasource modify requires a live datasource id."))?;
+            client.request_json(
+                Method::PUT,
+                &format!("/api/datasources/{target_id}"),
+                &[],
+                Some(&payload),
+            )?;
+            println!(
+                "Modified datasource uid={} name={} id={}",
+                args.uid, name, target_id
             );
             Ok(())
         }

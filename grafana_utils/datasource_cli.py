@@ -48,6 +48,7 @@ from .datasource.parser import (
     add_export_cli_args,
     add_import_cli_args,
     add_list_cli_args,
+    add_modify_cli_args,
     build_parser,
 )
 from .datasource import workflows as datasource_workflows
@@ -72,6 +73,7 @@ from .datasource.workflows import (
     list_datasources,
     load_import_bundle,
     load_json_document,
+    modify_datasource as workflow_modify_datasource,
     parse_import_dry_run_columns,
     render_data_source_csv,
     render_data_source_json,
@@ -117,7 +119,7 @@ def _normalize_output_format_args(args, parser):
         args.table = output_format == "table"
         args.json = output_format == "json"
         return
-    if getattr(args, "command", None) in ("add", "delete"):
+    if getattr(args, "command", None) in ("add", "modify", "delete"):
         if bool(getattr(args, "table", False)) or bool(getattr(args, "json", False)):
             parser.error(
                 "--output-format cannot be combined with --table or --json for datasource %s."
@@ -194,6 +196,11 @@ def delete_datasource(args):
     return datasource_workflows.delete_datasource(args)
 
 
+def modify_datasource(args):
+    _sync_facade_overrides()
+    return workflow_modify_datasource(args)
+
+
 def dispatch_datasource_command(args):
     _sync_facade_overrides()
     return datasource_workflows.dispatch_datasource_command(args)
@@ -224,6 +231,7 @@ __all__ = [
     "LIVE_MUTATION_DRY_RUN_OUTPUT_FORMAT_CHOICES",
     "add_add_cli_args",
     "add_datasource",
+    "add_modify_cli_args",
     "build_client",
     "build_effective_import_client",
     "build_existing_datasource_lookups",
@@ -246,6 +254,7 @@ __all__ = [
     "load_datasource_diff_bundle",
     "load_import_bundle",
     "main",
+    "modify_datasource",
     "normalize_datasource_record",
     "parse_args",
     "parse_import_dry_run_columns",

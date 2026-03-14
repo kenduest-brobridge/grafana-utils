@@ -83,7 +83,7 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(exc.exception.code, 0)
         help_text = stdout.getvalue()
         self.assertIn("grafana-util datasource", help_text)
-        self.assertIn("{list,export,import,diff,add,delete}", help_text)
+        self.assertIn("{list,export,import,diff,add,modify,delete}", help_text)
 
     def test_parse_args_supports_dashboard_passthrough(self):
         args = unified_cli.parse_args(["diff", "--import-dir", "dashboards/raw"])
@@ -165,6 +165,17 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(
             args.forwarded_argv,
             ["add", "--name", "Prometheus Main", "--type", "prometheus"],
+        )
+
+    def test_parse_args_supports_datasource_modify_namespace(self):
+        args = unified_cli.parse_args(
+            ["datasource", "modify", "--uid", "prom-main", "--set-url", "http://prometheus-v2:9090"]
+        )
+
+        self.assertEqual(args.entrypoint, "datasource")
+        self.assertEqual(
+            args.forwarded_argv,
+            ["modify", "--uid", "prom-main", "--set-url", "http://prometheus-v2:9090"],
         )
 
     def test_parse_args_supports_datasource_diff_namespace(self):

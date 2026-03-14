@@ -44,6 +44,13 @@ class FakeDatasourceClient(object):
     def request_json(self, path, params=None, method="GET", payload=None):
         if path == "/api/datasources" and method == "GET":
             return list(self._datasources)
+        if path.startswith("/api/datasources/uid/") and method == "GET":
+            uid = path.rsplit("/", 1)[-1]
+            for datasource in self._datasources:
+                if str(datasource.get("uid") or "") == uid:
+                    return dict(datasource)
+            error_type = datasource_cli.exporter_api_error_type()
+            raise error_type(404, path, '{"message":"not found"}')
         if path == "/api/org":
             return dict(self._org)
         if method in ("POST", "PUT"):
@@ -194,6 +201,31 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertTrue(args.dry_run)
         self.assertTrue(args.json)
 
+    def test_parse_args_supports_modify_mode(self):
+        args = datasource_cli.parse_args(
+            [
+                "modify",
+                "--uid",
+                "prom-main",
+                "--set-url",
+                "http://prometheus-v2:9090",
+                "--set-access",
+                "proxy",
+                "--set-default",
+                "false",
+                "--dry-run",
+                "--table",
+            ]
+        )
+
+        self.assertEqual(args.command, "modify")
+        self.assertEqual(args.uid, "prom-main")
+        self.assertEqual(args.set_url, "http://prometheus-v2:9090")
+        self.assertEqual(args.set_access, "proxy")
+        self.assertFalse(args.set_default)
+        self.assertTrue(args.dry_run)
+        self.assertTrue(args.table)
+
     def test_parse_args_supports_import_output_format(self):
         args = datasource_cli.parse_args(
             ["import", "--import-dir", "./datasources", "--dry-run", "--output-format", "json"]
@@ -288,6 +320,19 @@ class DatasourceCliTests(unittest.TestCase):
                     "--json",
                 ]
             )
+        with self.assertRaises(SystemExit):
+            datasource_cli.parse_args(
+                [
+                    "modify",
+                    "--uid",
+                    "prom-main",
+                    "--set-url",
+                    "http://prometheus-v2:9090",
+                    "--output-format",
+                    "table",
+                    "--json",
+                ]
+            )
 
     def test_import_help_mentions_dry_run_and_org_guard_flags(self):
         stream = io.StringIO()
@@ -344,6 +389,26 @@ class DatasourceCliTests(unittest.TestCase):
         help_text = stream.getvalue()
         self.assertIn("--uid", help_text)
         self.assertIn("--name", help_text)
+        self.assertIn("--dry-run", help_text)
+
+    def test_modify_help_mentions_live_mutation_flags(self):
+        stream = io.StringIO()
+
+        with redirect_stdout(stream):
+            with self.assertRaises(SystemExit):
+                datasource_cli.parse_args(["modify", "-h"])
+
+        help_text = stream.getvalue()
+        self.assertIn("--uid", help_text)
+        self.assertIn("--set-url", help_text)
+        self.assertIn("--set-access", help_text)
+        self.assertIn("--set-default", help_text)
+        self.assertIn("--basic-auth", help_text)
+        self.assertIn("--basic-auth-user", help_text)
+        self.assertIn("--basic-auth-password", help_text)
+        self.assertIn("--http-header", help_text)
+        self.assertIn("--json-data", help_text)
+        self.assertIn("--secure-json-data", help_text)
         self.assertIn("--dry-run", help_text)
 
     def test_diff_help_mentions_diff_dir(self):
@@ -575,6 +640,213 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertIn("Deleted datasource uid=prom-main name=Prometheus Main id=7", stdout.getvalue())
         self.assertEqual(client.deleted_paths, ["/api/datasources/7"])
+
+    def test_modify_datasource_dry_run_renders_table(self):
+        args = datasource_cli.parse_args(
+            [
+                "modify",
+                "--uid",
+                "prom-main",
+                "--set-url",
+                "http://prometheus-v2:9090",
+                "--dry-run",
+                "--table",
+            ]
+        )
+        client = FakeDatasourceClient(
+            datasources=[
+                {
+                    "id": 7,
+                    "uid": "prom-main",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                    "url": "http://prometheus:9090",
+                }
+            ]
+        )
+
+        with mock.patch.object(datasource_cli, "build_client", return_value=client):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = datasource_cli.modify_datasource(args)
+
+        self.assertEqual(result, 0)
+        output = stdout.getvalue()
+        self.assertIn("OPERATION", output)
+        self.assertIn("would-update", output)
+        self.assertEqual(client.imported_payloads, [])
+
+    def test_modify_datasource_live_puts_merged_payload(self):
+        args = datasource_cli.parse_args(
+            [
+                "modify",
+                "--uid",
+                "prom-main",
+                "--set-url",
+                "http://prometheus-v2:9090",
+                "--set-access",
+                "proxy",
+                "--basic-auth-user",
+                "metrics-user",
+                "--basic-auth-password",
+                "metrics-pass",
+                "--user",
+                "query-user",
+                "--password",
+                "query-pass",
+                "--with-credentials",
+                "--http-header",
+                "X-Scope-OrgID=tenant-b",
+                "--tls-skip-verify",
+                "--server-name",
+                "prometheus.internal",
+                "--json-data",
+                "{\"httpMethod\": \"POST\"}",
+                "--secure-json-data",
+                "{\"token\": \"abc123\"}",
+            ]
+        )
+        client = FakeDatasourceClient(
+            datasources=[
+                {
+                    "id": 7,
+                    "uid": "prom-main",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                    "access": "direct",
+                    "url": "http://prometheus:9090",
+                    "isDefault": True,
+                    "basicAuth": False,
+                    "jsonData": {"existingKey": "existing"},
+                }
+            ]
+        )
+
+        with mock.patch.object(datasource_cli, "build_client", return_value=client):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = datasource_cli.modify_datasource(args)
+
+        self.assertEqual(result, 0)
+        self.assertIn("Modified datasource uid=prom-main name=Prometheus Main id=7", stdout.getvalue())
+        payload = client.imported_payloads[0]["payload"]
+        self.assertEqual(client.imported_payloads[0]["method"], "PUT")
+        self.assertEqual(client.imported_payloads[0]["path"], "/api/datasources/7")
+        self.assertEqual(payload["url"], "http://prometheus-v2:9090")
+        self.assertEqual(payload["access"], "proxy")
+        self.assertTrue(payload["basicAuth"])
+        self.assertEqual(payload["basicAuthUser"], "metrics-user")
+        self.assertEqual(payload["user"], "query-user")
+        self.assertTrue(payload["withCredentials"])
+        self.assertEqual(
+            payload["jsonData"],
+            {
+                "existingKey": "existing",
+                "httpMethod": "POST",
+                "tlsSkipVerify": True,
+                "serverName": "prometheus.internal",
+                "httpHeaderName1": "X-Scope-OrgID",
+            },
+        )
+        self.assertEqual(
+            payload["secureJsonData"],
+            {
+                "token": "abc123",
+                "basicAuthPassword": "metrics-pass",
+                "password": "query-pass",
+                "httpHeaderValue1": "tenant-b",
+            },
+        )
+
+    def test_modify_datasource_can_reuse_existing_basic_auth_user_for_password_only(self):
+        args = datasource_cli.parse_args(
+            [
+                "modify",
+                "--uid",
+                "prom-main",
+                "--basic-auth-password",
+                "metrics-pass",
+            ]
+        )
+        client = FakeDatasourceClient(
+            datasources=[
+                {
+                    "id": 7,
+                    "uid": "prom-main",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                    "basicAuth": True,
+                    "basicAuthUser": "metrics-user",
+                }
+            ]
+        )
+
+        with mock.patch.object(datasource_cli, "build_client", return_value=client):
+            datasource_cli.modify_datasource(args)
+
+        payload = client.imported_payloads[0]["payload"]
+        self.assertEqual(payload["basicAuthUser"], "metrics-user")
+        self.assertEqual(payload["secureJsonData"], {"basicAuthPassword": "metrics-pass"})
+
+    def test_modify_datasource_rejects_when_no_changes_are_requested(self):
+        args = datasource_cli.parse_args(["modify", "--uid", "prom-main"])
+
+        with self.assertRaisesRegex(datasource_cli.GrafanaError, "requires at least one change flag"):
+            datasource_cli.modify_datasource(args)
+
+    def test_modify_datasource_rejects_invalid_json_data(self):
+        args = datasource_cli.parse_args(
+            [
+                "modify",
+                "--uid",
+                "prom-main",
+                "--json-data",
+                "[]",
+            ]
+        )
+
+        with self.assertRaisesRegex(datasource_cli.GrafanaError, "must decode to a JSON object"):
+            datasource_cli.modify_datasource(args)
+
+    def test_modify_datasource_rejects_json_data_key_conflicts_with_header_flags(self):
+        args = datasource_cli.parse_args(
+            [
+                "modify",
+                "--uid",
+                "prom-main",
+                "--json-data",
+                "{\"httpHeaderName1\": \"X-Existing\"}",
+                "--http-header",
+                "X-Scope-OrgID=tenant-a",
+            ]
+        )
+
+        with self.assertRaisesRegex(datasource_cli.GrafanaError, "would overwrite existing key"):
+            datasource_cli.modify_datasource(args)
+
+    def test_modify_datasource_rejects_missing_target_without_live_write(self):
+        args = datasource_cli.parse_args(
+            [
+                "modify",
+                "--uid",
+                "prom-missing",
+                "--set-url",
+                "http://prometheus-v2:9090",
+                "--dry-run",
+                "--json",
+            ]
+        )
+        client = FakeDatasourceClient(datasources=[])
+
+        with mock.patch.object(datasource_cli, "build_client", return_value=client):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = datasource_cli.modify_datasource(args)
+
+        self.assertEqual(result, 0)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(payload["summary"]["blockedCount"], 1)
+        self.assertEqual(payload["items"][0]["action"], "would-fail-missing")
 
     def test_add_datasource_rejects_invalid_json_data(self):
         args = datasource_cli.parse_args(

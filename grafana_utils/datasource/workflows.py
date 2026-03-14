@@ -550,6 +550,63 @@ def build_add_datasource_spec(args):
     return spec
 
 
+def build_modify_datasource_updates(args):
+    spec = {}
+    if getattr(args, "set_url", None) is not None:
+        spec["url"] = args.set_url
+    if getattr(args, "set_access", None) is not None:
+        spec["access"] = args.set_access
+    if getattr(args, "set_default", None) is not None:
+        spec["isDefault"] = bool(args.set_default)
+    if bool(getattr(args, "basic_auth", False)) or getattr(args, "basic_auth_user", None) or getattr(
+        args, "basic_auth_password", None
+    ):
+        spec["basicAuth"] = True
+    if getattr(args, "basic_auth_user", None) is not None:
+        spec["basicAuthUser"] = args.basic_auth_user
+    if getattr(args, "user", None) is not None:
+        spec["user"] = args.user
+    if bool(getattr(args, "with_credentials", False)):
+        spec["withCredentials"] = True
+
+    json_data = load_json_object_argument(getattr(args, "json_data", None), "--json-data")
+    secure_json_data = load_json_object_argument(
+        getattr(args, "secure_json_data", None),
+        "--secure-json-data",
+    )
+
+    derived_json_data = {}
+    if bool(getattr(args, "tls_skip_verify", False)):
+        derived_json_data["tlsSkipVerify"] = True
+    if getattr(args, "server_name", None) is not None:
+        derived_json_data["serverName"] = args.server_name
+    header_json_data, header_secure_json_data = parse_http_header_arguments(
+        getattr(args, "http_header", None)
+    )
+    derived_json_data.update(header_json_data)
+    json_data = merge_json_object_fields(json_data, derived_json_data, "--json-data")
+    if json_data:
+        spec["jsonData"] = json_data
+
+    derived_secure_json_data = {}
+    if getattr(args, "basic_auth_password", None) is not None:
+        derived_secure_json_data["basicAuthPassword"] = args.basic_auth_password
+    if getattr(args, "password", None) is not None:
+        derived_secure_json_data["password"] = args.password
+    derived_secure_json_data.update(header_secure_json_data)
+    secure_json_data = merge_json_object_fields(
+        secure_json_data,
+        derived_secure_json_data,
+        "--secure-json-data",
+    )
+    if secure_json_data:
+        spec["secureJsonData"] = secure_json_data
+
+    if not spec:
+        raise GrafanaError("Datasource modify requires at least one change flag.")
+    return spec
+
+
 def split_live_add_supported_spec(spec):
     safe_spec = {}
     extra_top_level = {}
@@ -559,6 +616,78 @@ def split_live_add_supported_spec(spec):
             continue
         safe_spec[key] = value
     return safe_spec, extra_top_level
+
+
+def build_modify_datasource_payload(existing, updates):
+    payload = {
+        "id": existing.get("id"),
+        "uid": existing.get("uid") or "",
+        "name": existing.get("name") or "",
+        "type": existing.get("type") or "",
+        "access": existing.get("access") or "",
+        "url": existing.get("url") or "",
+        "isDefault": bool(existing.get("isDefault")),
+    }
+    for key in ("orgId", "basicAuth", "basicAuthUser", "user", "database", "withCredentials"):
+        if key in existing and existing.get(key) is not None:
+            payload[key] = existing.get(key)
+    existing_json_data = existing.get("jsonData")
+    payload["jsonData"] = dict(existing_json_data or {})
+
+    for key in ("url", "access", "isDefault", "basicAuth", "basicAuthUser", "user", "withCredentials"):
+        if key in updates:
+            payload[key] = updates[key]
+
+    if "jsonData" in updates:
+        merged_json_data = dict(payload.get("jsonData") or {})
+        merged_json_data.update(updates["jsonData"])
+        payload["jsonData"] = merged_json_data
+
+    if "secureJsonData" in updates:
+        payload["secureJsonData"] = dict(updates["secureJsonData"])
+
+    if (
+        "secureJsonData" in payload
+        and payload["secureJsonData"].get("basicAuthPassword") is not None
+        and not str(payload.get("basicAuthUser") or "").strip()
+    ):
+        raise GrafanaError(
+            "Datasource modify requires --basic-auth-user or an existing basicAuthUser when setting a basic auth password."
+        )
+    return payload
+
+
+def plan_modify_datasource(client, uid, updates):
+    existing = fetch_datasource_by_uid_if_exists(client, uid)
+    if existing is None:
+        return {
+            "action": "would-fail-missing",
+            "match": "missing",
+            "target": None,
+            "payload": None,
+        }
+    payload = build_modify_datasource_payload(existing, updates)
+    return {
+        "action": "would-update",
+        "match": "exists-uid",
+        "target": existing,
+        "payload": payload,
+    }
+
+
+def render_modify_dry_run_json(record):
+    return json.dumps(
+        {
+            "items": [record],
+            "summary": {
+                "itemCount": 1,
+                "updateCount": 1 if record.get("action") == "would-update" else 0,
+                "blockedCount": 1 if str(record.get("action") or "").startswith("would-fail-") else 0,
+            },
+        },
+        indent=2,
+        sort_keys=False,
+    )
 
 
 def _validate_live_mutation_dry_run_args(args, verb):
@@ -624,6 +753,65 @@ def add_datasource(args):
     print(
         "Created datasource uid=%s name=%s"
         % (payload.get("uid") or "-", payload.get("name") or "-")
+    )
+    return 0
+
+
+def modify_datasource(args):
+    _validate_live_mutation_dry_run_args(args, "modify")
+    updates = build_modify_datasource_updates(args)
+    client = build_client(args)
+    result = plan_modify_datasource(client, getattr(args, "uid", None), updates)
+    record = build_live_mutation_dry_run_record(
+        "modify",
+        result,
+        spec=result.get("payload") or {"uid": getattr(args, "uid", None)},
+        uid=getattr(args, "uid", None),
+    )
+    if args.dry_run:
+        if getattr(args, "json", False):
+            print(render_modify_dry_run_json(record))
+            return 0
+        if getattr(args, "table", False):
+            for line in render_live_mutation_dry_run_table(
+                [record],
+                include_header=not bool(getattr(args, "no_header", False)),
+            ):
+                print(line)
+        else:
+            print(
+                "Dry-run datasource modify uid=%s name=%s match=%s action=%s"
+                % (
+                    record.get("uid") or "-",
+                    record.get("name") or "-",
+                    record.get("match") or "-",
+                    record.get("action") or "-",
+                )
+            )
+        print("Dry-run checked 1 datasource modify request")
+        return 0
+    if result.get("action") != "would-update":
+        raise GrafanaError(
+            "Datasource modify blocked for uid=%s match=%s action=%s"
+            % (
+                getattr(args, "uid", None) or "-",
+                result.get("match") or "-",
+                result.get("action") or "-",
+            )
+        )
+    payload = result.get("payload") or {}
+    client.request_json(
+        "/api/datasources/%s" % payload["id"],
+        method="PUT",
+        payload=payload,
+    )
+    print(
+        "Modified datasource uid=%s name=%s id=%s"
+        % (
+            payload.get("uid") or "-",
+            payload.get("name") or "-",
+            payload.get("id") or "-",
+        )
     )
     return 0
 
@@ -943,6 +1131,8 @@ def dispatch_datasource_command(args):
         return import_datasources(args)
     if args.command == "add":
         return add_datasource(args)
+    if args.command == "modify":
+        return modify_datasource(args)
     if args.command == "delete":
         return delete_datasource(args)
     return diff_datasources(args)
