@@ -4,18 +4,23 @@ use super::{
     add_service_account_token_with_request, add_service_account_with_request,
     add_team_with_request, add_user_with_request, delete_service_account_token_with_request,
     delete_service_account_with_request, delete_team_with_request, delete_user_with_request,
-    list_service_accounts_command_with_request, list_teams_command_with_request,
+    list_service_accounts_command_with_request,
+    list_teams_command_with_request,
     list_users_with_request, modify_team_with_request, modify_user_with_request, parse_cli_from,
-    run_access_cli_with_request, AccessCommand, CommonCliArgs, Scope, ServiceAccountAddArgs,
+    import_teams_with_request, run_access_cli_with_request, AccessCommand, CommonCliArgs, Scope,
+    ServiceAccountAddArgs,
     ServiceAccountCommand, ServiceAccountDeleteArgs, ServiceAccountListArgs,
     ServiceAccountTokenAddArgs, ServiceAccountTokenCommand, ServiceAccountTokenDeleteArgs,
-    TeamAddArgs, TeamCommand, TeamDeleteArgs, TeamListArgs, TeamModifyArgs, UserAddArgs,
-    UserCommand, UserDeleteArgs, UserListArgs, UserModifyArgs,
+    TeamAddArgs, TeamCommand, TeamDeleteArgs, TeamImportArgs, TeamListArgs,
+    TeamModifyArgs, UserAddArgs, UserCommand, UserDeleteArgs,
+    UserListArgs, UserModifyArgs,
 };
 use crate::access::access_cli_defs::AccessCliRoot;
 use clap::CommandFactory;
 use reqwest::Method;
 use serde_json::json;
+use std::fs;
+use tempfile::tempdir;
 
 fn render_access_subcommand_help(path: &[&str]) -> String {
     let mut command = AccessCliRoot::command();
@@ -291,6 +296,345 @@ fn user_list_with_request_reads_org_users() {
     assert_eq!(count, 1);
     assert_eq!(calls[0].0, Method::GET.to_string());
     assert_eq!(calls[0].1, "/api/org/users");
+}
+
+#[test]
+fn parse_cli_supports_user_export_and_import() {
+    let export_args = parse_cli_from([
+        "grafana-access-utils",
+        "user",
+        "export",
+        "--scope",
+        "global",
+        "--with-teams",
+        "--dry-run",
+        "--overwrite",
+        "--export-dir",
+        "/tmp/access-users",
+    ]);
+    match export_args.command {
+        AccessCommand::User {
+            command: UserCommand::Export(args),
+        } => {
+            assert_eq!(args.scope, Scope::Global);
+            assert!(args.with_teams);
+            assert!(args.dry_run);
+            assert!(args.overwrite);
+        }
+        _ => panic!("expected user export"),
+    }
+
+    let import_args = parse_cli_from([
+        "grafana-access-utils",
+        "user",
+        "import",
+        "--scope",
+        "global",
+        "--replace-existing",
+        "--dry-run",
+        "--import-dir",
+        "/tmp/access-users",
+        "--yes",
+    ]);
+    match import_args.command {
+        AccessCommand::User {
+            command: UserCommand::Import(args),
+        } => {
+            assert_eq!(args.scope, Scope::Global);
+            assert!(args.replace_existing);
+            assert!(args.dry_run);
+            assert!(args.yes);
+        }
+        _ => panic!("expected user import"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_team_export_and_import() {
+    let export_args = parse_cli_from([
+        "grafana-access-utils",
+        "team",
+        "export",
+        "--with-members",
+        "--dry-run",
+        "--export-dir",
+        "/tmp/access-teams",
+    ]);
+    match export_args.command {
+        AccessCommand::Team {
+            command: TeamCommand::Export(args),
+        } => {
+            assert!(args.with_members);
+            assert!(args.dry_run);
+        }
+        _ => panic!("expected team export"),
+    }
+
+    let import_args = parse_cli_from([
+        "grafana-access-utils",
+        "team",
+        "import",
+        "--replace-existing",
+        "--dry-run",
+        "--import-dir",
+        "/tmp/access-teams",
+        "--yes",
+    ]);
+    match import_args.command {
+        AccessCommand::Team {
+            command: TeamCommand::Import(args),
+        } => {
+            assert!(args.replace_existing);
+            assert!(args.dry_run);
+            assert!(args.yes);
+        }
+        _ => panic!("expected team import"),
+    }
+}
+
+#[test]
+fn run_access_cli_with_request_routes_user_export() {
+    let args = parse_cli_from([
+        "grafana-access-utils",
+        "user",
+        "export",
+        "--scope",
+        "global",
+        "--dry-run",
+    ]);
+    let result = run_access_cli_with_request(
+        |method, path, params, _payload| {
+            assert_eq!(method.to_string(), Method::GET.to_string());
+            if path == "/api/users" {
+                Ok(Some(json!([])))
+            } else {
+                panic!("unexpected path {path}");
+            }
+        },
+        args,
+    );
+    assert!(result.is_ok());
+}
+
+#[test]
+fn run_access_cli_with_request_routes_team_export() {
+    let args = parse_cli_from([
+        "grafana-access-utils",
+        "team",
+        "export",
+        "--dry-run",
+    ]);
+    let result = run_access_cli_with_request(
+        |method, path, _params, _payload| {
+            assert_eq!(method.to_string(), Method::GET.to_string());
+            if path == "/api/teams/search" {
+                Ok(Some(json!({"teams": []})))
+            } else {
+                panic!("unexpected path {path}");
+            }
+        },
+        args,
+    );
+    assert!(result.is_ok());
+}
+
+#[test]
+fn run_access_cli_with_request_routes_team_import() {
+    let temp = tempdir().unwrap();
+    let import_dir = temp.path().join("access-teams");
+    fs::create_dir_all(&import_dir).unwrap();
+    fs::write(
+        import_dir.join("teams.json"),
+        r#"[{"name":"Ops","email":"ops@example.com"}]"#,
+    )
+    .unwrap();
+
+    let args = parse_cli_from([
+        "grafana-access-utils",
+        "team",
+        "import",
+        "--import-dir",
+        import_dir.to_str().unwrap(),
+    ]);
+    let mut calls = Vec::new();
+    let result = run_access_cli_with_request(
+        |method, path, _params, _payload| {
+            calls.push((method.to_string(), path.to_string()));
+            match (method, path) {
+                (Method::GET, "/api/teams/search") => Ok(Some(json!({"teams": []}))),
+                (Method::POST, "/api/teams") => Ok(Some(json!({"teamId": "3"}))),
+                _ => panic!("unexpected path {path}"),
+            }
+        },
+        args,
+    );
+
+    assert!(result.is_ok());
+    assert!(
+        calls
+            .iter()
+            .any(|(method, path)| method == "GET" && path == "/api/teams/search")
+    );
+    assert!(
+        calls
+            .iter()
+            .any(|(method, path)| method == "POST" && path == "/api/teams")
+    );
+}
+
+#[test]
+fn team_import_with_request_creates_team_and_memberships() {
+    let temp = tempdir().unwrap();
+    let import_dir = temp.path().join("access-teams");
+    fs::create_dir_all(&import_dir).unwrap();
+    fs::write(
+        import_dir.join("teams.json"),
+        r#"[{"name":"Ops","email":"ops@example.com","members":["alice@example.com"],"admins":["bob@example.com"]}]"#,
+    )
+    .unwrap();
+    let args = TeamImportArgs {
+        common: make_token_common(),
+        import_dir: import_dir.clone(),
+        replace_existing: false,
+        dry_run: false,
+        yes: false,
+    };
+    let mut calls = Vec::new();
+    let result = import_teams_with_request(
+        |method, path, _params, payload| {
+            calls.push((method.to_string(), path.to_string(), payload.cloned()));
+            match (method, path) {
+                (Method::GET, "/api/teams/search") => Ok(Some(json!({"teams": []}))),
+                (Method::POST, "/api/teams") => {
+                    let payload = payload.expect("teams payload expected");
+                    assert_eq!(payload.get("name"), Some(&json!("Ops")));
+                    assert_eq!(payload.get("email"), Some(&json!("ops@example.com")));
+                    Ok(Some(json!({"teamId": "3"})))
+                }
+                (Method::POST, "/api/teams/3/members") => Ok(Some(json!({"message": "ok"}))),
+                (Method::GET, "/api/org/users") => Ok(Some(json!([
+                    {"userId": 7, "login": "alice@example.com", "email": "alice@example.com"},
+                    {"userId": 8, "login": "bob@example.com", "email": "bob@example.com"},
+                ]))),
+                (Method::PUT, "/api/teams/3/members") => {
+                    let payload = payload.expect("team members payload expected");
+                    assert_eq!(payload.get("members"), Some(&json!(["alice@example.com"])));
+                    assert_eq!(payload.get("admins"), Some(&json!(["bob@example.com"])));
+                    Ok(Some(json!({"message": "ok"})))
+                }
+                _ => panic!("unexpected path {path}"),
+            }
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(result, 1);
+    assert!(
+        calls
+            .iter()
+            .any(|(method, path, _)| method == "POST" && path == "/api/teams"),
+    );
+    assert!(
+        calls
+            .iter()
+            .filter(|(method, path, _)| method == "POST" && path == "/api/teams/3/members")
+            .count()
+            >= 2
+    );
+    assert!(
+        calls
+            .iter()
+            .any(|(method, path, _)| method == "PUT" && path == "/api/teams/3/members"),
+    );
+}
+
+#[test]
+fn team_import_with_request_rejects_member_removals_without_yes() {
+    let temp = tempdir().unwrap();
+    let import_dir = temp.path().join("access-teams");
+    fs::create_dir_all(&import_dir).unwrap();
+    fs::write(import_dir.join("teams.json"), r#"[{"name":"Ops","members":["alice@example.com"]}]"#).unwrap();
+    let args = TeamImportArgs {
+        common: make_token_common(),
+        import_dir: import_dir.clone(),
+        replace_existing: true,
+        dry_run: false,
+        yes: false,
+    };
+    let result = import_teams_with_request(
+        |_method, path, _params, _payload| match path {
+            "/api/teams/search" => Ok(Some(json!({"teams": [{"id": "3", "name": "Ops"}]}))),
+            "/api/teams/3/members" => Ok(Some(json!([
+                {"userId": 7, "login": "alice@example.com"},
+                {"userId": 9, "login": "carol@example.com"},
+            ]))),
+            _ => panic!("unexpected path {path}"),
+        },
+        &args,
+    );
+    assert!(result.is_err());
+    let error = result.unwrap_err();
+    assert!(error.to_string().contains("Team import would remove team memberships for Ops"));
+}
+
+#[test]
+fn team_import_with_request_updates_memberships_when_yes_is_set() {
+    let temp = tempdir().unwrap();
+    let import_dir = temp.path().join("access-teams");
+    fs::create_dir_all(&import_dir).unwrap();
+    fs::write(
+        import_dir.join("teams.json"),
+        r#"[{"name":"Ops","members":["alice@example.com","bob@example.com"]}]"#,
+    )
+    .unwrap();
+    let args = TeamImportArgs {
+        common: make_token_common(),
+        import_dir: import_dir.clone(),
+        replace_existing: true,
+        dry_run: false,
+        yes: true,
+    };
+    let mut calls = Vec::new();
+    let result = import_teams_with_request(
+        |method, path, _params, payload| {
+            calls.push((method.to_string(), path.to_string(), payload.cloned()));
+            match (method, path) {
+                (Method::GET, "/api/teams/search") => Ok(Some(json!({"teams": [{"id": "3", "name": "Ops"}]}))),
+                (Method::GET, "/api/teams/3/members") => Ok(Some(json!([
+                    {"userId": 7, "login": "alice@example.com"},
+                    {"userId": 9, "login": "carol@example.com"},
+                ]))),
+                (Method::GET, "/api/org/users") => Ok(Some(json!([
+                    {"userId": 7, "login": "alice@example.com", "email": "alice@example.com"},
+                    {"userId": 8, "login": "bob@example.com", "email": "bob@example.com"},
+                ]))),
+                (Method::POST, "/api/teams/3/members") => Ok(Some(json!({"message": "ok"}))),
+                (Method::DELETE, "/api/teams/3/members/9") => Ok(Some(json!({"message": "ok"}))),
+                (Method::PUT, "/api/teams/3/members") => Ok(Some(json!({"message": "ok"}))),
+                _ => panic!("unexpected path {path}"),
+            }
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(result, 1);
+    assert!(
+        calls
+            .iter()
+            .any(|(method, path, _)| method == "POST" && path == "/api/teams/3/members")
+    );
+    assert!(
+        calls
+            .iter()
+            .any(|(method, path, _)| method == "DELETE" && path == "/api/teams/3/members/9")
+    );
+    assert!(
+        calls
+            .iter()
+            .any(|(method, path, _)| method == "PUT" && path == "/api/teams/3/members")
+    );
 }
 
 #[test]
