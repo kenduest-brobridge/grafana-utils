@@ -47,6 +47,8 @@ ALERT_COMMAND_HELP = {
 DATASOURCE_COMMAND_HELP = {
     "list": "List live Grafana datasource inventory.",
     "export": "Export live Grafana datasource inventory as normalized JSON files.",
+    "import": "Import datasource inventory JSON through the Grafana API.",
+    "diff": "Compare exported datasource inventory with the current Grafana state.",
 }
 LEGACY_ALERT_COMMAND_MAP = {
     "export-alert": "export",

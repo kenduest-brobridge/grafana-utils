@@ -83,7 +83,7 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(exc.exception.code, 0)
         help_text = stdout.getvalue()
         self.assertIn("grafana-utils datasource", help_text)
-        self.assertIn("{list,export,import}", help_text)
+        self.assertIn("{list,export,import,diff}", help_text)
 
     def test_parse_args_supports_dashboard_passthrough(self):
         args = unified_cli.parse_args(["diff", "--import-dir", "dashboards/raw"])
@@ -155,6 +155,14 @@ class UnifiedCliTests(unittest.TestCase):
             args.forwarded_argv,
             ["export", "--export-dir", "./datasources", "--overwrite"],
         )
+
+    def test_parse_args_supports_datasource_diff_namespace(self):
+        args = unified_cli.parse_args(
+            ["datasource", "diff", "--diff-dir", "./datasources"]
+        )
+
+        self.assertEqual(args.entrypoint, "datasource")
+        self.assertEqual(args.forwarded_argv, ["diff", "--diff-dir", "./datasources"])
 
     def test_parse_args_rejects_unknown_top_level_command(self):
         with self.assertRaises(SystemExit):

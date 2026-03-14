@@ -33,7 +33,6 @@ import argparse
 import getpass
 import json
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -50,8 +49,13 @@ from .dashboards.common import (
     GrafanaError,
 )
 from .dashboards.export_workflow import run_export_dashboards
+from .dashboards.export_runtime import (
+    build_export_workflow_deps as build_export_workflow_deps_from_runtime,
+)
+from .dashboards.diff_workflow import run_diff_dashboards
 from .dashboards.export_inventory import (
     discover_dashboard_files as discover_dashboard_files_from_export,
+    resolve_export_org_id as resolve_export_org_id_from_export_inventory,
 )
 from .dashboards.folder_support import (
     build_folder_inventory_lookup,
@@ -94,6 +98,13 @@ from .dashboards.import_support import (
     validate_export_metadata as import_support_validate_export_metadata,
 )
 from .dashboards.import_workflow import run_import_dashboards
+from .dashboards.import_runtime import (
+    build_import_workflow_deps as build_import_workflow_deps_from_runtime,
+)
+from .dashboards.inspection_runtime import (
+    build_inspection_workflow_deps as build_inspection_workflow_deps_from_runtime,
+    iter_dashboard_panels as iter_dashboard_panels_from_runtime,
+)
 from .dashboards.inspection_report import (
     INSPECT_EXPORT_HELP_FULL_EXAMPLES,
     INSPECT_LIVE_HELP_FULL_EXAMPLES,
@@ -107,17 +118,6 @@ from .dashboards.inspection_report import (
     render_export_inspection_report_csv,
     render_export_inspection_report_tables,
     render_export_inspection_tree_tables,
-)
-from .dashboards.inspection_governance import (
-    build_export_inspection_governance_document,
-)
-from .dashboards.inspection_governance_render import (
-    render_export_inspection_governance_tables,
-)
-from .dashboards.inspection_summary import (
-    build_export_inspection_document as build_export_inspection_document_from_summary,
-    render_export_inspection_summary as render_export_inspection_summary_from_summary,
-    render_export_inspection_tables as render_export_inspection_tables_from_summary,
 )
 from .dashboards.listing import (
     attach_dashboard_folder_paths,
@@ -184,6 +184,8 @@ FOLDER_INVENTORY_FILENAME = "folders.json"
 DATASOURCE_INVENTORY_FILENAME = "datasources.json"
 TOOL_SCHEMA_VERSION = 1
 ROOT_INDEX_KIND = "grafana-utils-dashboard-export-index"
+LIST_OUTPUT_FORMAT_CHOICES = ("table", "csv", "json")
+IMPORT_DRY_RUN_OUTPUT_FORMAT_CHOICES = ("text", "table", "json")
 INSPECT_OUTPUT_FORMAT_CHOICES = (
     "text",
     "table",
@@ -377,6 +379,16 @@ def add_list_cli_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Do not print table headers when rendering the default table output.",
     )
+    parser.add_argument(
+        "--output-format",
+        choices=LIST_OUTPUT_FORMAT_CHOICES,
+        default=None,
+        help=(
+            "Alternative single-flag output selector for dashboard list output. "
+            "Use table, csv, or json. This cannot be combined with --table, "
+            "--csv, or --json."
+        ),
+    )
 
 
 def add_list_data_sources_cli_args(parser: argparse.ArgumentParser) -> None:
@@ -400,6 +412,16 @@ def add_list_data_sources_cli_args(parser: argparse.ArgumentParser) -> None:
         "--no-header",
         action="store_true",
         help="Do not print table headers when rendering the default table output.",
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=LIST_OUTPUT_FORMAT_CHOICES,
+        default=None,
+        help=(
+            "Alternative single-flag output selector for datasource list output. "
+            "Use table, csv, or json. This cannot be combined with --table, "
+            "--csv, or --json."
+        ),
     )
 
 
@@ -482,6 +504,16 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
         "--no-header",
         action="store_true",
         help="For --dry-run --table only, omit the table header row.",
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=IMPORT_DRY_RUN_OUTPUT_FORMAT_CHOICES,
+        default=None,
+        help=(
+            "Alternative single-flag output selector for import dry-run output. "
+            "Use text, table, or json. This cannot be combined with --table "
+            "or --json."
+        ),
     )
     parser.add_argument(
         "--progress",
@@ -790,7 +822,37 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     )
     add_inspect_live_cli_args(inspect_live_parser)
 
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    _normalize_output_format_args(args, parser)
+    return args
+
+
+def _normalize_output_format_args(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+) -> None:
+    output_format = getattr(args, "output_format", None)
+    command = getattr(args, "command", None)
+    if output_format is None:
+        return
+    if command in ("list-dashboard", "list-data-sources"):
+        if bool(getattr(args, "table", False)) or bool(getattr(args, "csv", False)) or bool(
+            getattr(args, "json", False)
+        ):
+            parser.error(
+                "--output-format cannot be combined with --table, --csv, or --json for dashboard list commands."
+            )
+        args.table = output_format == "table"
+        args.csv = output_format == "csv"
+        args.json = output_format == "json"
+        return
+    if command == "import-dashboard":
+        if bool(getattr(args, "table", False)) or bool(getattr(args, "json", False)):
+            parser.error(
+                "--output-format cannot be combined with --table or --json for import-dashboard."
+            )
+        args.table = output_format == "table"
+        args.json = output_format == "json"
 
 
 def resolve_auth(args: argparse.Namespace) -> Dict[str, str]:
@@ -1012,49 +1074,12 @@ def resolve_export_org_id(
     metadata: Optional[Dict[str, Any]] = None,
 ) -> Optional[str]:
     """Resolve one stable source export orgId from the raw export directory."""
-    org_ids = set()
-    index_file = "index.json"
-    folders_file = FOLDER_INVENTORY_FILENAME
-    datasources_file = DATASOURCE_INVENTORY_FILENAME
-    if isinstance(metadata, dict):
-        index_file = str(metadata.get("indexFile") or index_file)
-        folders_file = str(metadata.get("foldersFile") or folders_file)
-        datasources_file = str(metadata.get("datasourcesFile") or datasources_file)
-    for path in [
-        import_dir / index_file,
-        import_dir / folders_file,
-        import_dir / datasources_file,
-    ]:
-        if not path.is_file():
-            continue
-        try:
-            raw = json.loads(path.read_text(encoding="utf-8"))
-        except OSError as exc:
-            raise GrafanaError("Failed to read %s: %s" % (path, exc)) from exc
-        except ValueError as exc:
-            raise GrafanaError("Invalid JSON in %s: %s" % (path, exc)) from exc
-        if isinstance(raw, dict):
-            items = raw.get("items") or []
-        elif isinstance(raw, list):
-            items = raw
-        else:
-            items = []
-        for item in items:
-            if not isinstance(item, dict):
-                continue
-            org_id = str(item.get("orgId") or "").strip()
-            if org_id:
-                org_ids.add(org_id)
-    if not org_ids:
-        return None
-    if len(org_ids) > 1:
-        raise GrafanaError(
-            "Raw export metadata in %s spans multiple orgIds (%s). "
-            "Point --import-dir at one org-specific raw export or remove "
-            "--require-matching-export-org."
-            % (import_dir, ", ".join(sorted(org_ids)))
-        )
-    return list(org_ids)[0]
+    return resolve_export_org_id_from_export_inventory(
+        import_dir,
+        folder_inventory_filename=FOLDER_INVENTORY_FILENAME,
+        datasource_inventory_filename=DATASOURCE_INVENTORY_FILENAME,
+        metadata=metadata,
+    )
 
 
 def validate_export_metadata(
@@ -1073,34 +1098,26 @@ def validate_export_metadata(
 
 
 def _build_export_workflow_deps() -> Dict[str, Any]:
-    return {
-        "GrafanaError": GrafanaError,
-        "DATASOURCE_INVENTORY_FILENAME": DATASOURCE_INVENTORY_FILENAME,
-        "EXPORT_METADATA_FILENAME": EXPORT_METADATA_FILENAME,
-        "FOLDER_INVENTORY_FILENAME": FOLDER_INVENTORY_FILENAME,
-        "PROMPT_EXPORT_SUBDIR": PROMPT_EXPORT_SUBDIR,
-        "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
-        "attach_dashboard_org": attach_dashboard_org,
-        "build_all_orgs_output_dir": build_all_orgs_output_dir,
-        "build_client": build_client,
-        "build_dashboard_index_item": build_dashboard_index_item,
-        "build_datasource_catalog": build_datasource_catalog,
-        "build_datasource_inventory_record": build_datasource_inventory_record,
-        "build_export_metadata": build_export_metadata,
-        "build_export_variant_dirs": build_export_variant_dirs,
-        "build_external_export_document": build_external_export_document,
-        "build_output_path": build_output_path,
-        "build_preserved_web_import_document": build_preserved_web_import_document,
-        "build_root_export_index": build_root_export_index,
-        "build_variant_index": build_variant_index,
-        "collect_folder_inventory": collect_folder_inventory,
-        "ensure_dashboard_write_target": ensure_dashboard_write_target,
-        "print_dashboard_export_progress": print_dashboard_export_progress,
-        "print_dashboard_export_progress_summary": print_dashboard_export_progress_summary,
-        "sys": sys,
-        "write_dashboard": write_dashboard,
-        "write_json_document": write_json_document,
-    }
+    return build_export_workflow_deps_from_runtime(
+        {
+            "GrafanaError": GrafanaError,
+            "DATASOURCE_INVENTORY_FILENAME": DATASOURCE_INVENTORY_FILENAME,
+            "DEFAULT_DASHBOARD_TITLE": DEFAULT_DASHBOARD_TITLE,
+            "DEFAULT_FOLDER_TITLE": DEFAULT_FOLDER_TITLE,
+            "DEFAULT_ORG_ID": DEFAULT_ORG_ID,
+            "DEFAULT_ORG_NAME": DEFAULT_ORG_NAME,
+            "DEFAULT_UNKNOWN_UID": DEFAULT_UNKNOWN_UID,
+            "EXPORT_METADATA_FILENAME": EXPORT_METADATA_FILENAME,
+            "FOLDER_INVENTORY_FILENAME": FOLDER_INVENTORY_FILENAME,
+            "PROMPT_EXPORT_SUBDIR": PROMPT_EXPORT_SUBDIR,
+            "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
+            "ROOT_INDEX_KIND": ROOT_INDEX_KIND,
+            "TOOL_SCHEMA_VERSION": TOOL_SCHEMA_VERSION,
+            "build_client": build_client,
+            "build_variant_index": build_variant_index,
+            "sys": sys,
+        }
+    )
 
 
 def export_dashboards(args: argparse.Namespace) -> int:
@@ -1153,94 +1170,28 @@ def list_data_sources(args: argparse.Namespace) -> int:
 
 def iter_dashboard_panels(panels: Any) -> List[Dict[str, Any]]:
     """Flatten Grafana panels, including nested row/library panel layouts."""
-    flattened = []
-    if not isinstance(panels, list):
-        return flattened
-    for panel in panels:
-        if not isinstance(panel, dict):
-            continue
-        flattened.append(panel)
-        nested_panels = panel.get("panels")
-        if isinstance(nested_panels, list):
-            flattened.extend(iter_dashboard_panels(nested_panels))
-    return flattened
+    return iter_dashboard_panels_from_runtime(panels)
 
 
 def _build_inspection_workflow_deps() -> Dict[str, Any]:
-    return {
-        "GrafanaError": GrafanaError,
-        "DATASOURCE_INVENTORY_FILENAME": DATASOURCE_INVENTORY_FILENAME,
-        "EXPORT_METADATA_FILENAME": EXPORT_METADATA_FILENAME,
-        "FOLDER_INVENTORY_FILENAME": FOLDER_INVENTORY_FILENAME,
-        "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
-        "attach_dashboard_org": attach_dashboard_org,
-        "build_client": build_client,
-        "build_datasource_catalog": build_datasource_catalog,
-        "build_dashboard_index_item": build_dashboard_index_item,
-        "build_datasource_inventory_record": build_datasource_inventory_record,
-        "build_export_inspection_document": (
-            lambda import_dir: build_export_inspection_document_from_summary(
-                import_dir,
-                {
-                    "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
-                    "build_datasource_catalog": build_datasource_catalog,
-                    "build_folder_inventory_lookup": build_folder_inventory_lookup,
-                    "collect_datasource_refs": collect_datasource_refs,
-                    "discover_dashboard_files": discover_dashboard_files,
-                    "extract_dashboard_object": extract_dashboard_object,
-                    "iter_dashboard_panels": iter_dashboard_panels,
-                    "load_datasource_inventory": load_datasource_inventory,
-                    "load_export_metadata": load_export_metadata,
-                    "load_folder_inventory": load_folder_inventory,
-                    "load_json_file": load_json_file,
-                    "resolve_folder_inventory_record_for_dashboard": resolve_folder_inventory_record_for_dashboard,
-                },
-            )
-        ),
-        "build_grouped_export_inspection_report_document": build_grouped_export_inspection_report_document,
-        "build_export_inspection_report_document": (
-            lambda import_dir: build_export_inspection_report_document(
-                import_dir,
-                {
-                    "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
-                    "build_folder_inventory_lookup": build_folder_inventory_lookup,
-                    "discover_dashboard_files": discover_dashboard_files,
-                    "extract_dashboard_object": extract_dashboard_object,
-                    "iter_dashboard_panels": iter_dashboard_panels,
-                    "load_datasource_inventory": load_datasource_inventory,
-                    "load_export_metadata": load_export_metadata,
-                    "load_folder_inventory": load_folder_inventory,
-                    "load_json_file": load_json_file,
-                    "resolve_folder_inventory_record_for_dashboard": resolve_folder_inventory_record_for_dashboard,
-                },
-            )
-        ),
-        "build_export_inspection_governance_document": (
-            build_export_inspection_governance_document
-        ),
-        "build_export_metadata": build_export_metadata,
-        "build_output_path": build_output_path,
-        "build_preserved_web_import_document": build_preserved_web_import_document,
-        "build_variant_index": build_variant_index,
-        "collect_folder_inventory": collect_folder_inventory,
-        "filter_export_inspection_report_document": filter_export_inspection_report_document,
-        "inspect_export": inspect_export,
-        "json": json,
-        "parse_report_columns": parse_report_columns,
-        "render_export_inspection_grouped_report": render_export_inspection_grouped_report,
-        "render_export_inspection_governance_tables": (
-            render_export_inspection_governance_tables
-        ),
-        "render_export_inspection_report_csv": render_export_inspection_report_csv,
-        "render_export_inspection_report_tables": render_export_inspection_report_tables,
-        "render_export_inspection_summary": render_export_inspection_summary_from_summary,
-        "render_export_inspection_tree_tables": render_export_inspection_tree_tables,
-        "render_export_inspection_tables": render_export_inspection_tables_from_summary,
-        "sys": sys,
-        "tempfile": tempfile,
-        "write_dashboard": write_dashboard,
-        "write_json_document": write_json_document,
-    }
+    return build_inspection_workflow_deps_from_runtime(
+        {
+            "DATASOURCE_INVENTORY_FILENAME": DATASOURCE_INVENTORY_FILENAME,
+            "DEFAULT_DASHBOARD_TITLE": DEFAULT_DASHBOARD_TITLE,
+            "DEFAULT_FOLDER_TITLE": DEFAULT_FOLDER_TITLE,
+            "DEFAULT_ORG_ID": DEFAULT_ORG_ID,
+            "DEFAULT_ORG_NAME": DEFAULT_ORG_NAME,
+            "DEFAULT_UNKNOWN_UID": DEFAULT_UNKNOWN_UID,
+            "EXPORT_METADATA_FILENAME": EXPORT_METADATA_FILENAME,
+            "FOLDER_INVENTORY_FILENAME": FOLDER_INVENTORY_FILENAME,
+            "GrafanaError": GrafanaError,
+            "PROMPT_EXPORT_SUBDIR": PROMPT_EXPORT_SUBDIR,
+            "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
+            "ROOT_INDEX_KIND": ROOT_INDEX_KIND,
+            "TOOL_SCHEMA_VERSION": TOOL_SCHEMA_VERSION,
+            "build_client": build_client,
+        }
+    )
 
 
 def materialize_live_inspection_export(
@@ -1270,36 +1221,18 @@ def inspect_export(args: argparse.Namespace) -> int:
 
 
 def _build_import_workflow_deps() -> Dict[str, Any]:
-    return {
-        "DEFAULT_UNKNOWN_UID": DEFAULT_UNKNOWN_UID,
-        "FOLDER_INVENTORY_FILENAME": FOLDER_INVENTORY_FILENAME,
-        "GrafanaError": GrafanaError,
-        "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
-        "build_client": build_client,
-        "build_dashboard_import_dry_run_record": build_dashboard_import_dry_run_record,
-        "build_folder_inventory_lookup": build_folder_inventory_lookup,
-        "build_folder_path_match_result": build_folder_path_match_result,
-        "build_import_payload": build_import_payload,
-        "describe_dashboard_import_mode": describe_dashboard_import_mode,
-        "determine_dashboard_import_action": determine_dashboard_import_action,
-        "determine_import_folder_uid_override": determine_import_folder_uid_override,
-        "discover_dashboard_files": discover_dashboard_files,
-        "ensure_folder_inventory": ensure_folder_inventory,
-        "extract_dashboard_object": extract_dashboard_object,
-        "inspect_folder_inventory": inspect_folder_inventory,
-        "load_export_metadata": load_export_metadata,
-        "load_json_file": load_json_file,
-        "print_dashboard_import_progress": print_dashboard_import_progress,
-        "apply_folder_path_guard_to_action": apply_folder_path_guard_to_action,
-        "render_dashboard_import_dry_run_json": render_dashboard_import_dry_run_json,
-        "render_dashboard_import_dry_run_table": render_dashboard_import_dry_run_table,
-        "render_folder_inventory_dry_run_table": render_folder_inventory_dry_run_table,
-        "resolve_export_org_id": resolve_export_org_id,
-        "resolve_existing_dashboard_folder_path": resolve_existing_dashboard_folder_path,
-        "resolve_dashboard_import_folder_path": resolve_dashboard_import_folder_path,
-        "resolve_source_dashboard_folder_path": resolve_source_dashboard_folder_path,
-        "resolve_folder_inventory_requirements": resolve_folder_inventory_requirements,
-    }
+    return build_import_workflow_deps_from_runtime(
+        {
+            "DEFAULT_UNKNOWN_UID": DEFAULT_UNKNOWN_UID,
+            "FOLDER_INVENTORY_FILENAME": FOLDER_INVENTORY_FILENAME,
+            "GrafanaError": GrafanaError,
+            "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
+            "build_client": build_client,
+            "discover_dashboard_files": discover_dashboard_files,
+            "load_export_metadata": load_export_metadata,
+            "resolve_export_org_id": resolve_export_org_id,
+        }
+    )
 
 
 def import_dashboards(args: argparse.Namespace) -> int:
@@ -1307,59 +1240,24 @@ def import_dashboards(args: argparse.Namespace) -> int:
     return run_import_dashboards(args, _build_import_workflow_deps())
 
 
+def _build_diff_workflow_deps() -> Dict[str, Any]:
+    return {
+        "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
+        "build_client": build_client,
+        "build_compare_diff_lines": build_compare_diff_lines,
+        "build_local_compare_document": build_local_compare_document,
+        "build_remote_compare_document": build_remote_compare_document,
+        "discover_dashboard_files": discover_dashboard_files,
+        "load_export_metadata": load_export_metadata,
+        "load_json_file": load_json_file,
+        "resolve_dashboard_uid_for_import": resolve_dashboard_uid_for_import,
+        "serialize_compare_document": serialize_compare_document,
+    }
+
+
 def diff_dashboards(args: argparse.Namespace) -> int:
     """Compare local raw dashboard exports with the current Grafana state."""
-    client = build_client(args)
-    import_dir = Path(args.import_dir)
-    load_export_metadata(import_dir, expected_variant=RAW_EXPORT_SUBDIR)
-    dashboard_files = discover_dashboard_files(import_dir)
-    differences = 0
-
-    for dashboard_file in dashboard_files:
-        document = load_json_file(dashboard_file)
-        uid = resolve_dashboard_uid_for_import(document)
-        local_compare = build_local_compare_document(
-            document,
-            args.import_folder_uid,
-        )
-        remote_payload = client.fetch_dashboard_if_exists(uid)
-        if remote_payload is None:
-            print(f"Diff missing-remote {dashboard_file} -> uid={uid}")
-            differences += 1
-            continue
-
-        remote_compare = build_remote_compare_document(
-            remote_payload,
-            args.import_folder_uid,
-        )
-        if serialize_compare_document(local_compare) == serialize_compare_document(
-            remote_compare
-        ):
-            print(f"Diff same {dashboard_file} -> uid={uid}")
-            continue
-
-        print(f"Diff different {dashboard_file} -> uid={uid}")
-        print(
-            "\n".join(
-                build_compare_diff_lines(
-                    remote_compare,
-                    local_compare,
-                    uid,
-                    dashboard_file,
-                    args.context_lines,
-                )
-            )
-        )
-        differences += 1
-
-    if differences:
-        print(
-            f"Found {differences} dashboard differences across {len(dashboard_files)} files."
-        )
-        return 1
-
-    print(f"No dashboard differences across {len(dashboard_files)} files.")
-    return 0
+    return run_diff_dashboards(args, _build_diff_workflow_deps())
 
 
 def build_client(args: argparse.Namespace) -> GrafanaClient:

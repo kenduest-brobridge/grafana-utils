@@ -13,6 +13,22 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 exporter = importlib.import_module("grafana_utils.dashboard_cli")
+output_support = importlib.import_module("grafana_utils.dashboards.output_support")
+
+
+def build_export_metadata(
+    variant, dashboard_count, format_name=None, folders_file=None, datasources_file=None
+):
+    return output_support.build_export_metadata(
+        variant,
+        dashboard_count,
+        tool_schema_version=exporter.TOOL_SCHEMA_VERSION,
+        root_index_kind=exporter.ROOT_INDEX_KIND,
+        format_name=format_name,
+        folders_file=folders_file,
+        datasources_file=datasources_file,
+    )
+
 
 
 class FakeDashboardIntegrationClient:
@@ -55,7 +71,7 @@ class DashboardIntegrationFlowTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=2,
                     format_name="grafana-web-import-preserve-uid",
@@ -207,7 +223,7 @@ class DashboardIntegrationFlowTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=2,
                     format_name="grafana-web-import-preserve-uid",

@@ -55,9 +55,8 @@
 - consolidate duplicated Python auth resolution logic across dashboard, alert, and access CLIs into shared helpers to reduce behavior drift
 - reduce Python/Rust inspect-export and inspect-live drift by keeping one stable summary/report schema, shared filters, and synchronized help/examples
 - reduce repeated live Grafana lookups during dashboard import and dry-run paths so large imports do not multiply API round-trips per dashboard
-- add a first-class datasource resource CLI surface beyond dashboard `list-data-sources`, including scoped `list`, `export`, `import`, and `diff` workflows
-- define a datasource import/export contract that strips server-managed fields, handles secure settings safely, and keeps Python/Rust payload normalization aligned
-- add datasource import strategies that match the dashboard workflows: create-only, create-or-update, and update-only/skip-missing
+- add datasource `diff` workflows so inventory replay has a first-class compare path alongside `list`, `export`, and `import`
+- tighten the datasource import/export contract further around server-managed fields, secure settings, and Python/Rust payload normalization alignment
 - add cross-language datasource fixtures that cover Prometheus, Loki, InfluxDB, and mixed auth/secret-handling cases so Python and Rust stay behaviorally aligned
 - dashboard `prompt` export should surface the original datasource name in Grafana web-import prompts, not only the datasource type label
 - dashboard `prompt` export should align `__requires` names and versions with Grafana external export where possible
@@ -176,7 +175,7 @@ Rules to keep:
 1. split Python dashboard import/export/inspect orchestration into smaller helpers
 2. split Rust dashboard live/export/import/inspect orchestration into smaller modules
 3. refactor query report extraction behind datasource-type-specific analyzers
-4. add first-class datasource `list`/`export`/`import`/`diff` workflows plus a stable import/export contract
+4. add datasource `diff` workflows plus a tighter stable import/export contract
 5. add broader import dependency preflight for datasources/plugins/alert references
 6. reduce repeated dashboard import lookup calls on live Grafana
 7. extend inspection into richer dependency analysis and datasource usage/orphan reports

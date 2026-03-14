@@ -69,6 +69,14 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertFalse(args.table)
         self.assertFalse(args.no_header)
 
+    def test_parse_args_supports_list_output_format(self):
+        args = datasource_cli.parse_args(["list", "--output-format", "csv"])
+
+        self.assertEqual(args.output_format, "csv")
+        self.assertTrue(args.csv)
+        self.assertFalse(args.table)
+        self.assertFalse(args.json)
+
     def test_parse_args_supports_export_mode(self):
         args = datasource_cli.parse_args(["export", "--export-dir", "./datasources", "--overwrite"])
 
@@ -95,6 +103,15 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertTrue(args.dry_run)
         self.assertTrue(args.table)
 
+    def test_parse_args_supports_import_output_format(self):
+        args = datasource_cli.parse_args(
+            ["import", "--import-dir", "./datasources", "--dry-run", "--output-format", "json"]
+        )
+
+        self.assertEqual(args.output_format, "json")
+        self.assertTrue(args.json)
+        self.assertFalse(args.table)
+
     def test_parse_args_supports_import_org_and_export_org_guard(self):
         args = datasource_cli.parse_args(
             [
@@ -110,6 +127,14 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertEqual(args.org_id, "7")
         self.assertTrue(args.require_matching_export_org)
 
+    def test_parse_args_supports_diff_mode(self):
+        args = datasource_cli.parse_args(
+            ["diff", "--diff-dir", "./datasources", "--url", "http://127.0.0.1:3000"]
+        )
+
+        self.assertEqual(args.command, "diff")
+        self.assertEqual(args.diff_dir, "./datasources")
+
     def test_parse_args_rejects_multiple_list_output_modes(self):
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(["list", "--table", "--csv"])
@@ -119,6 +144,16 @@ class DatasourceCliTests(unittest.TestCase):
 
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(["list", "--csv", "--json"])
+
+    def test_parse_args_rejects_output_format_with_legacy_list_flags(self):
+        with self.assertRaises(SystemExit):
+            datasource_cli.parse_args(["list", "--output-format", "table", "--json"])
+
+    def test_parse_args_rejects_output_format_with_legacy_import_flags(self):
+        with self.assertRaises(SystemExit):
+            datasource_cli.parse_args(
+                ["import", "--import-dir", "./datasources", "--output-format", "table", "--json"]
+            )
 
     def test_import_help_mentions_dry_run_and_org_guard_flags(self):
         stream = io.StringIO()
@@ -136,8 +171,19 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("--dry-run", help_text)
         self.assertIn("--table", help_text)
         self.assertIn("--json", help_text)
+        self.assertIn("--output-format", help_text)
         self.assertIn("--progress", help_text)
         self.assertIn("--verbose", help_text)
+
+    def test_diff_help_mentions_diff_dir(self):
+        stream = io.StringIO()
+
+        with redirect_stdout(stream):
+            with self.assertRaises(SystemExit):
+                datasource_cli.parse_args(["diff", "-h"])
+
+        help_text = stream.getvalue()
+        self.assertIn("--diff-dir", help_text)
 
     def test_list_datasources_prints_table_by_default(self):
         args = datasource_cli.parse_args(["list", "--url", "http://127.0.0.1:3000"])
@@ -473,6 +519,132 @@ class DatasourceCliTests(unittest.TestCase):
             self.assertEqual(client.imported_payloads, [])
             self.assertEqual(scoped_client.imported_payloads, [])
             self.assertIn("Import mode: create-only", stdout.getvalue())
+
+    def test_diff_datasources_returns_zero_when_inventory_matches(self):
+        client = FakeDatasourceClient(
+            datasources=[
+                {
+                    "uid": "prom_uid",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                    "access": "proxy",
+                    "url": "http://prometheus:9090",
+                    "isDefault": True,
+                }
+            ]
+        )
+        args = datasource_cli.parse_args(
+            ["diff", "--diff-dir", "ignored", "--url", "http://127.0.0.1:3000"]
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args.diff_dir = tmpdir
+            (Path(tmpdir) / datasource_cli.EXPORT_METADATA_FILENAME).write_text(
+                json.dumps(
+                    {
+                        "kind": datasource_cli.ROOT_INDEX_KIND,
+                        "schemaVersion": datasource_cli.TOOL_SCHEMA_VERSION,
+                        "variant": "root",
+                        "resource": "datasource",
+                        "datasourceCount": 1,
+                        "datasourcesFile": datasource_cli.DATASOURCE_EXPORT_FILENAME,
+                        "indexFile": "index.json",
+                        "format": "grafana-datasource-inventory-v1",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (Path(tmpdir) / datasource_cli.DATASOURCE_EXPORT_FILENAME).write_text(
+                json.dumps(
+                    [
+                        {
+                            "uid": "prom_uid",
+                            "name": "Prometheus Main",
+                            "type": "prometheus",
+                            "access": "proxy",
+                            "url": "http://prometheus:9090",
+                            "isDefault": "true",
+                            "org": "Main Org.",
+                            "orgId": "1",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (Path(tmpdir) / "index.json").write_text("{}", encoding="utf-8")
+
+            with mock.patch.object(datasource_cli, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = datasource_cli.diff_datasources(args)
+
+        self.assertEqual(result, 0)
+        self.assertIn("Diff same", stdout.getvalue())
+        self.assertIn("No datasource differences across 1 exported datasource(s).", stdout.getvalue())
+
+    def test_diff_datasources_returns_one_when_inventory_differs(self):
+        client = FakeDatasourceClient(
+            datasources=[
+                {
+                    "uid": "prom_uid",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                    "access": "proxy",
+                    "url": "http://prometheus-alt:9090",
+                    "isDefault": True,
+                }
+            ]
+        )
+        args = datasource_cli.parse_args(
+            ["diff", "--diff-dir", "ignored", "--url", "http://127.0.0.1:3000"]
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args.diff_dir = tmpdir
+            (Path(tmpdir) / datasource_cli.EXPORT_METADATA_FILENAME).write_text(
+                json.dumps(
+                    {
+                        "kind": datasource_cli.ROOT_INDEX_KIND,
+                        "schemaVersion": datasource_cli.TOOL_SCHEMA_VERSION,
+                        "variant": "root",
+                        "resource": "datasource",
+                        "datasourceCount": 1,
+                        "datasourcesFile": datasource_cli.DATASOURCE_EXPORT_FILENAME,
+                        "indexFile": "index.json",
+                        "format": "grafana-datasource-inventory-v1",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (Path(tmpdir) / datasource_cli.DATASOURCE_EXPORT_FILENAME).write_text(
+                json.dumps(
+                    [
+                        {
+                            "uid": "prom_uid",
+                            "name": "Prometheus Main",
+                            "type": "prometheus",
+                            "access": "proxy",
+                            "url": "http://prometheus:9090",
+                            "isDefault": "true",
+                            "org": "Main Org.",
+                            "orgId": "1",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (Path(tmpdir) / "index.json").write_text("{}", encoding="utf-8")
+
+            with mock.patch.object(datasource_cli, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = datasource_cli.diff_datasources(args)
+
+        self.assertEqual(result, 1)
+        self.assertIn("Diff different", stdout.getvalue())
+        self.assertIn("--- remote/prom_uid", stdout.getvalue())
+        self.assertIn("+++ local/prom_uid", stdout.getvalue())
+        self.assertIn("Found 1 datasource difference(s) across 1 exported datasource(s).", stdout.getvalue())
 
 
 if __name__ == "__main__":

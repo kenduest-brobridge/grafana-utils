@@ -318,6 +318,28 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.per_page, 5)
         self.assertTrue(args.table)
 
+    def test_parse_args_supports_access_list_output_format(self):
+        user_args = access_utils.parse_args(
+            ["user", "list", "--output-format", "json"]
+        )
+        team_args = access_utils.parse_args(
+            ["team", "list", "--output-format", "csv"]
+        )
+        service_account_args = access_utils.parse_args(
+            ["service-account", "list", "--output-format", "table"]
+        )
+
+        self.assertTrue(user_args.json)
+        self.assertFalse(user_args.table)
+        self.assertTrue(team_args.csv)
+        self.assertFalse(team_args.json)
+        self.assertTrue(service_account_args.table)
+        self.assertFalse(service_account_args.csv)
+
+    def test_parse_args_rejects_access_output_format_with_legacy_flags(self):
+        with self.assertRaises(SystemExit):
+            access_utils.parse_args(["user", "list", "--output-format", "table", "--json"])
+
     def test_parse_args_supports_user_add_mode(self):
         args = access_utils.parse_args(
             [

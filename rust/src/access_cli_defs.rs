@@ -59,6 +59,13 @@ pub enum Scope {
     Global,
 }
 
+#[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
+pub enum ListOutputFormat {
+    Table,
+    Csv,
+    Json,
+}
+
 #[derive(Debug, Clone, Args)]
 pub struct UserListArgs {
     #[command(flatten)]
@@ -87,6 +94,13 @@ pub struct UserListArgs {
     pub csv: bool,
     #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"])]
     pub json: bool,
+    #[arg(
+        long,
+        value_enum,
+        conflicts_with_all = ["table", "csv", "json"],
+        help = "Alternative single-flag output selector. Use table, csv, or json."
+    )]
+    pub output_format: Option<ListOutputFormat>,
 }
 
 #[derive(Debug, Clone, Args)]
@@ -173,6 +187,13 @@ pub struct TeamListArgs {
     pub csv: bool,
     #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"])]
     pub json: bool,
+    #[arg(
+        long,
+        value_enum,
+        conflicts_with_all = ["table", "csv", "json"],
+        help = "Alternative single-flag output selector. Use table, csv, or json."
+    )]
+    pub output_format: Option<ListOutputFormat>,
 }
 
 #[derive(Debug, Clone, Args)]
@@ -227,6 +248,13 @@ pub struct ServiceAccountListArgs {
     pub csv: bool,
     #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"])]
     pub json: bool,
+    #[arg(
+        long,
+        value_enum,
+        conflicts_with_all = ["table", "csv", "json"],
+        help = "Alternative single-flag output selector. Use table, csv, or json."
+    )]
+    pub output_format: Option<ListOutputFormat>,
 }
 
 #[derive(Debug, Clone, Args)]
@@ -331,7 +359,57 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
-    AccessCliRoot::parse_from(iter).args
+    normalize_access_cli_args(AccessCliRoot::parse_from(iter).args)
+}
+
+fn apply_list_output_format(
+    table: &mut bool,
+    csv: &mut bool,
+    json: &mut bool,
+    output_format: &Option<ListOutputFormat>,
+) {
+    match output_format {
+        Some(ListOutputFormat::Table) => *table = true,
+        Some(ListOutputFormat::Csv) => *csv = true,
+        Some(ListOutputFormat::Json) => *json = true,
+        None => {}
+    }
+}
+
+pub fn normalize_access_cli_args(mut args: AccessCliArgs) -> AccessCliArgs {
+    match &mut args.command {
+        AccessCommand::User { command } => {
+            if let UserCommand::List(list_args) = command {
+                apply_list_output_format(
+                    &mut list_args.table,
+                    &mut list_args.csv,
+                    &mut list_args.json,
+                    &list_args.output_format,
+                );
+            }
+        }
+        AccessCommand::Team { command } => {
+            if let TeamCommand::List(list_args) = command {
+                apply_list_output_format(
+                    &mut list_args.table,
+                    &mut list_args.csv,
+                    &mut list_args.json,
+                    &list_args.output_format,
+                );
+            }
+        }
+        AccessCommand::ServiceAccount { command } => {
+            if let ServiceAccountCommand::List(list_args) = command {
+                apply_list_output_format(
+                    &mut list_args.table,
+                    &mut list_args.csv,
+                    &mut list_args.json,
+                    &list_args.output_format,
+                );
+            }
+        }
+    }
+    args
 }
 
 pub fn root_command() -> Command {

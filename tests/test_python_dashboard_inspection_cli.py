@@ -6,7 +6,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from tests.test_python_dashboard_cli import FakeDashboardWorkflowClient, exporter
+from tests.test_python_dashboard_cli import FakeDashboardWorkflowClient, build_export_metadata, exporter
 
 
 class DashboardInspectionTests(unittest.TestCase):
@@ -19,7 +19,7 @@ class DashboardInspectionTests(unittest.TestCase):
         index=None,
     ):
         exporter.write_json_document(
-            exporter.build_export_metadata(
+            build_export_metadata(
                 variant=exporter.RAW_EXPORT_SUBDIR,
                 dashboard_count=len(dashboards),
                 format_name="grafana-web-import-preserve-uid",
@@ -48,7 +48,7 @@ class DashboardInspectionTests(unittest.TestCase):
 
     def write_report_fixture(self, import_dir, dashboard):
         exporter.write_json_document(
-            exporter.build_export_metadata(
+            build_export_metadata(
                 variant=exporter.RAW_EXPORT_SUBDIR,
                 dashboard_count=1,
                 format_name="grafana-web-import-preserve-uid",

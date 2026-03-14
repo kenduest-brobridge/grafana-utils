@@ -1,4 +1,4 @@
-use clap::{Args, Command, CommandFactory, Parser, Subcommand};
+use clap::{Args, Command, CommandFactory, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 use crate::common::{resolve_auth_headers, Result};
@@ -198,6 +198,13 @@ pub enum AlertListKind {
     Templates,
 }
 
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AlertListOutputFormat {
+    Table,
+    Csv,
+    Json,
+}
+
 #[derive(Debug, Clone, Args)]
 pub struct AlertListArgs {
     #[command(flatten)]
@@ -212,6 +219,13 @@ pub struct AlertListArgs {
     pub csv: bool,
     #[arg(long, default_value_t = false, help = "Render list output as JSON.")]
     pub json: bool,
+    #[arg(
+        long,
+        value_enum,
+        conflicts_with_all = ["table", "csv", "json"],
+        help = "Alternative single-flag output selector. Use table, csv, or json."
+    )]
+    pub output_format: Option<AlertListOutputFormat>,
     #[arg(long, default_value_t = false, help = "Omit the table header row.")]
     pub no_header: bool,
 }
@@ -344,6 +358,15 @@ pub fn root_command() -> Command {
 }
 
 pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs {
+    fn apply_output_format(args: &mut AlertCliArgs, output_format: Option<AlertListOutputFormat>) {
+        match output_format {
+            Some(AlertListOutputFormat::Table) => args.table = true,
+            Some(AlertListOutputFormat::Csv) => args.csv = true,
+            Some(AlertListOutputFormat::Json) => args.json = true,
+            None => {}
+        }
+    }
+
     match args.command {
         Some(AlertGroupCommand::Export(inner)) => {
             let mut args = cli_args_from_common(inner.common);
@@ -374,6 +397,7 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
             args.table = inner.table;
             args.csv = inner.csv;
             args.json = inner.json;
+            apply_output_format(&mut args, inner.output_format);
             args.no_header = inner.no_header;
             args
         }
@@ -383,6 +407,7 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
             args.table = inner.table;
             args.csv = inner.csv;
             args.json = inner.json;
+            apply_output_format(&mut args, inner.output_format);
             args.no_header = inner.no_header;
             args
         }
@@ -392,6 +417,7 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
             args.table = inner.table;
             args.csv = inner.csv;
             args.json = inner.json;
+            apply_output_format(&mut args, inner.output_format);
             args.no_header = inner.no_header;
             args
         }
@@ -401,6 +427,7 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
             args.table = inner.table;
             args.csv = inner.csv;
             args.json = inner.json;
+            apply_output_format(&mut args, inner.output_format);
             args.no_header = inner.no_header;
             args
         }

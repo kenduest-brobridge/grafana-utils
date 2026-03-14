@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use reqwest::Method;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
@@ -10,6 +10,10 @@ use crate::dashboard::{
     build_auth_context, build_http_client, build_http_client_for_org, list_datasources,
     CommonCliArgs, DEFAULT_ORG_ID,
 };
+use crate::datasource::datasource_diff::{
+    build_datasource_diff_report, normalize_export_records, normalize_live_records,
+    DatasourceDiffEntry, DatasourceDiffReport, DatasourceDiffStatus,
+};
 use crate::http::JsonHttpClient;
 
 const DEFAULT_EXPORT_DIR: &str = "datasources";
@@ -17,6 +21,23 @@ const DATASOURCE_EXPORT_FILENAME: &str = "datasources.json";
 const EXPORT_METADATA_FILENAME: &str = "export-metadata.json";
 const ROOT_INDEX_KIND: &str = "grafana-utils-datasource-export-index";
 const TOOL_SCHEMA_VERSION: i64 = 1;
+
+#[path = "datasource_diff.rs"]
+mod datasource_diff;
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum ListOutputFormat {
+    Table,
+    Csv,
+    Json,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum DryRunOutputFormat {
+    Text,
+    Table,
+    Json,
+}
 
 #[derive(Debug, Clone, Args)]
 pub struct DatasourceListArgs {
@@ -28,6 +49,13 @@ pub struct DatasourceListArgs {
     pub csv: bool,
     #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render datasource summaries as JSON.")]
     pub json: bool,
+    #[arg(
+        long,
+        value_enum,
+        conflicts_with_all = ["table", "csv", "json"],
+        help = "Alternative single-flag output selector. Use table, csv, or json."
+    )]
+    pub output_format: Option<ListOutputFormat>,
     #[arg(
         long,
         default_value_t = false,
@@ -112,6 +140,13 @@ pub struct DatasourceImportArgs {
     pub json: bool,
     #[arg(
         long,
+        value_enum,
+        conflicts_with_all = ["table", "json"],
+        help = "Alternative single-flag output selector for --dry-run output. Use text, table, or json."
+    )]
+    pub output_format: Option<DryRunOutputFormat>,
+    #[arg(
+        long,
         default_value_t = false,
         help = "For --dry-run --table only, omit the table header row."
     )]
@@ -131,6 +166,17 @@ pub struct DatasourceImportArgs {
     pub verbose: bool,
 }
 
+#[derive(Debug, Clone, Args)]
+pub struct DatasourceDiffArgs {
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(
+        long,
+        help = "Compare datasource inventory from this directory against live Grafana. Point this at the datasource export root that contains datasources.json and export-metadata.json."
+    )]
+    pub diff_dir: PathBuf,
+}
+
 #[derive(Debug, Clone, Subcommand)]
 pub enum DatasourceGroupCommand {
     #[command(about = "List live Grafana datasource inventory.")]
@@ -139,16 +185,56 @@ pub enum DatasourceGroupCommand {
     Export(DatasourceExportArgs),
     #[command(about = "Import datasource inventory through the Grafana API.")]
     Import(DatasourceImportArgs),
+    #[command(about = "Compare local datasource export files against live Grafana datasources.")]
+    Diff(DatasourceDiffArgs),
 }
 
 #[derive(Debug, Clone, Parser)]
 #[command(
     name = "grafana-utils datasource",
-    about = "List, export, and import Grafana datasources."
+    about = "List, export, import, and diff Grafana datasources."
 )]
 pub struct DatasourceCliArgs {
     #[command(subcommand)]
     pub command: DatasourceGroupCommand,
+}
+
+#[cfg(test)]
+fn normalize_output_formats(args: &mut DatasourceCliArgs) {
+    match &mut args.command {
+        DatasourceGroupCommand::List(inner) => match inner.output_format {
+            Some(ListOutputFormat::Table) => inner.table = true,
+            Some(ListOutputFormat::Csv) => inner.csv = true,
+            Some(ListOutputFormat::Json) => inner.json = true,
+            None => {}
+        },
+        DatasourceGroupCommand::Import(inner) => match inner.output_format {
+            Some(DryRunOutputFormat::Table) => inner.table = true,
+            Some(DryRunOutputFormat::Json) => inner.json = true,
+            Some(DryRunOutputFormat::Text) | None => {}
+        },
+        _ => {}
+    }
+}
+
+fn normalize_datasource_group_command(
+    mut command: DatasourceGroupCommand,
+) -> DatasourceGroupCommand {
+    match &mut command {
+        DatasourceGroupCommand::List(inner) => match inner.output_format {
+            Some(ListOutputFormat::Table) => inner.table = true,
+            Some(ListOutputFormat::Csv) => inner.csv = true,
+            Some(ListOutputFormat::Json) => inner.json = true,
+            None => {}
+        },
+        DatasourceGroupCommand::Import(inner) => match inner.output_format {
+            Some(DryRunOutputFormat::Table) => inner.table = true,
+            Some(DryRunOutputFormat::Json) => inner.json = true,
+            Some(DryRunOutputFormat::Text) | None => {}
+        },
+        _ => {}
+    }
+    command
 }
 
 #[derive(Debug, Clone)]
@@ -522,6 +608,49 @@ fn load_import_records(
     Ok((metadata, records))
 }
 
+fn load_diff_record_values(diff_dir: &Path) -> Result<Vec<Value>> {
+    let metadata_path = diff_dir.join(EXPORT_METADATA_FILENAME);
+    if !metadata_path.is_file() {
+        return Err(message(format!(
+            "Datasource diff directory is missing {}: {}",
+            EXPORT_METADATA_FILENAME,
+            metadata_path.display()
+        )));
+    }
+    let metadata = parse_export_metadata(&metadata_path)?;
+    if metadata.kind != ROOT_INDEX_KIND {
+        return Err(message(format!(
+            "Unexpected datasource export manifest kind in {}: {:?}",
+            metadata_path.display(),
+            metadata.kind
+        )));
+    }
+    if metadata.schema_version != TOOL_SCHEMA_VERSION {
+        return Err(message(format!(
+            "Unsupported datasource export schemaVersion {:?} in {}. Expected {}.",
+            metadata.schema_version,
+            metadata_path.display(),
+            TOOL_SCHEMA_VERSION
+        )));
+    }
+    if metadata.variant != "root" || metadata.resource != "datasource" {
+        return Err(message(format!(
+            "Datasource export manifest {} is not a datasource export root.",
+            metadata_path.display()
+        )));
+    }
+    let datasources_path = diff_dir.join(&metadata.datasources_file);
+    let raw = fs::read_to_string(&datasources_path)?;
+    let value: Value = serde_json::from_str(&raw)?;
+    let items = value.as_array().ok_or_else(|| {
+        message(format!(
+            "Datasource inventory file must contain a JSON array: {}",
+            datasources_path.display()
+        ))
+    })?;
+    Ok(items.clone())
+}
+
 fn collect_source_org_ids(
     import_dir: &Path,
     metadata: &DatasourceExportMetadata,
@@ -719,7 +848,76 @@ fn render_import_table(rows: &[Vec<String>], include_header: bool) -> Vec<String
     lines
 }
 
+fn render_diff_identity(entry: &DatasourceDiffEntry) -> String {
+    if let Some(record) = &entry.export_record {
+        if !record.uid.is_empty() {
+            return format!("uid={} name={}", record.uid, record.name);
+        }
+        return format!("name={}", record.name);
+    }
+    if let Some(record) = &entry.live_record {
+        if !record.uid.is_empty() {
+            return format!("uid={} name={}", record.uid, record.name);
+        }
+        return format!("name={}", record.name);
+    }
+    entry.key.clone()
+}
+
+fn print_datasource_diff_report(report: &DatasourceDiffReport) {
+    for entry in &report.entries {
+        let identity = render_diff_identity(entry);
+        match entry.status {
+            DatasourceDiffStatus::Matches => {
+                println!("Diff same datasource {identity}");
+            }
+            DatasourceDiffStatus::Different => {
+                let changed_fields = entry
+                    .differences
+                    .iter()
+                    .map(|item| item.field)
+                    .collect::<Vec<&str>>()
+                    .join(",");
+                println!("Diff different datasource {identity} fields={changed_fields}");
+            }
+            DatasourceDiffStatus::MissingInLive => {
+                println!("Diff missing-live datasource {identity}");
+            }
+            DatasourceDiffStatus::MissingInExport => {
+                println!("Diff extra-live datasource {identity}");
+            }
+            DatasourceDiffStatus::AmbiguousLiveMatch => {
+                println!("Diff ambiguous-live datasource {identity}");
+            }
+        }
+    }
+}
+
+pub(crate) fn diff_datasources_with_live(
+    diff_dir: &Path,
+    live: &[Map<String, Value>],
+) -> Result<(usize, usize)> {
+    let export_values = load_diff_record_values(diff_dir)?;
+    let live_values = live
+        .iter()
+        .cloned()
+        .map(Value::Object)
+        .collect::<Vec<Value>>();
+    let report = build_datasource_diff_report(
+        &normalize_export_records(&export_values),
+        &normalize_live_records(&live_values),
+    );
+    print_datasource_diff_report(&report);
+    let difference_count = report.summary.compared_count - report.summary.matches_count;
+    println!(
+        "Diff checked {} datasource(s); {} difference(s) found.",
+        report.summary.compared_count, difference_count
+    );
+    Ok((report.summary.compared_count, difference_count))
+}
+
 pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
+    let command = normalize_datasource_group_command(command);
     match command {
         DatasourceGroupCommand::List(args) => {
             let client = build_http_client(&args.common)?;
@@ -996,9 +1194,42 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
             );
             Ok(())
         }
+        DatasourceGroupCommand::Diff(args) => {
+            let client = build_http_client(&args.common)?;
+            let live = list_datasources(&client)?;
+            let (compared_count, differences) = diff_datasources_with_live(&args.diff_dir, &live)?;
+            if differences > 0 {
+                return Err(message(format!(
+                    "Found {} datasource difference(s) across {} exported datasource(s).",
+                    differences, compared_count
+                )));
+            }
+            println!(
+                "No datasource differences across {} exported datasource(s).",
+                compared_count
+            );
+            Ok(())
+        }
+    }
+}
+
+#[cfg(test)]
+impl DatasourceCliArgs {
+    fn parse_normalized_from<I, T>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = T>,
+        T: Into<std::ffi::OsString> + Clone,
+    {
+        let mut args = Self::parse_from(iter);
+        normalize_output_formats(&mut args);
+        args
     }
 }
 
 #[cfg(test)]
 #[path = "datasource_rust_tests.rs"]
 mod datasource_rust_tests;
+
+#[cfg(test)]
+#[path = "datasource_diff_rust_tests.rs"]
+mod datasource_diff_rust_tests;

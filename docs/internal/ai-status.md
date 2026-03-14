@@ -1,5 +1,61 @@
 # ai-status.md
 
+## 2026-03-14 - Task: Decouple Dashboard Tests From CLI Compatibility Wrappers
+- State: Done
+- Scope: `tests/test_python_dashboard_cli.py`, `tests/test_python_dashboard_inspection_cli.py`, `tests/test_python_dashboard_integration_flow.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The dashboard Python test suites still reached many helper functions through `grafana_utils.dashboard_cli`, including output-support, export-inventory, folder-inventory, and listing helpers whose real implementations now live under `grafana_utils.dashboards.*`. That meant the remaining compatibility wrappers in `dashboard_cli.py` were still pinned in place by tests even after the workflow/runtime wiring had moved out.
+- Current Update: Repointed the dashboard test helpers and fixtures to the canonical `grafana_utils.dashboards.*` modules for export metadata, output-path builders, export inventory discovery/validation, folder inventory loading, dashboard write helpers, and datasource-source attachment. Kept `dashboard_cli` itself for real CLI entrypoint coverage, but stopped using its wrapper surface for fixture construction and helper-unit assertions.
+- Result: The dashboard Python tests now validate the real helper modules directly instead of indirectly through `dashboard_cli` compatibility wrappers, which clears the way for later cleanup of that facade without losing behavior coverage.
+
+## 2026-03-14 - Task: Split Python Dashboard Import Runtime Wiring
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/import_runtime.py`, `tests/test_python_dashboard_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Dashboard import already had a dedicated `import_workflow.py` module, but `dashboard_cli.py` still assembled the full import dependency map locally and therefore kept another large import-only runtime wiring block in the CLI facade. The CLI still needed to preserve its public helper surface, but the import workflow did not need to depend on that local assembly directly.
+- Current Update: Added `grafana_utils/dashboards/import_runtime.py` to own the import dependency-map assembly and rewired `dashboard_cli._build_import_workflow_deps()` to delegate through that runtime helper while preserving the existing `dashboard_cli` entrypoints and helper names.
+- Result: Python dashboard import runtime wiring now sits in a dedicated helper module instead of in the CLI facade, which trims another large behavior-preserving dependency bundle out of `dashboard_cli.py` without changing import behavior or the public helper names used by tests.
+
+## 2026-03-14 - Task: Unify Output Format Flags
+- State: Done
+- Scope: `grafana_utils/access_cli.py`, `grafana_utils/alert_cli.py`, `grafana_utils/dashboard_cli.py`, `grafana_utils/datasource_cli.py`, `tests/test_python_access_cli.py`, `tests/test_python_alert_cli.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_datasource_cli.py`, `rust/src/access_cli_defs.rs`, `rust/src/access.rs`, `rust/src/alert_cli_defs.rs`, `rust/src/alert.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard.rs`, `rust/src/datasource.rs`, `rust/src/access_rust_tests.rs`, `rust/src/alert_rust_tests.rs`, `rust/src/dashboard_rust_tests.rs`, `rust/src/datasource_rust_tests.rs`, `README.md`, `README.zh-TW.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The repo currently uses `--table` in multiple incompatible ways: sometimes as the default list output, sometimes as a dry-run mode switch, and dashboard inspect already has a separate `--output-format` selector. That makes operators guess whether `--table` is redundant, required, or unsupported depending on the command family.
+- Current Update: Added a consistent `--output-format` selector across the existing table/csv/json-like command families without changing current defaults, kept the legacy flags working as compatibility aliases, and documented the new single-flag path in the READMEs.
+- Result: Python and Rust now both accept `--output-format` for access list, alert list, dashboard list, dashboard datasource list, datasource list, and the dashboard/datasource import dry-run summaries. Mixed use with old selector flags now fails cleanly, but existing defaults and old flags continue working unchanged.
+
+## 2026-03-14 - Task: Split Python Dashboard Export Runtime Wiring
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/export_runtime.py`, `tests/test_python_dashboard_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Dashboard export already had a dedicated `export_workflow.py` module, but `dashboard_cli.py` still assembled the full export dependency map locally and therefore kept a large cluster of export-only runtime wiring in the CLI facade. The public helper names in `dashboard_cli.py` still needed to stay available for compatibility and tests, but the export workflow did not need to depend on those local wrappers directly.
+- Current Update: Added `grafana_utils/dashboards/export_runtime.py` to own the export dependency-map assembly and rewired `dashboard_cli._build_export_workflow_deps()` to delegate through that runtime helper while keeping the existing `dashboard_cli` helper surface stable.
+- Result: Python dashboard export runtime wiring now sits in a dedicated helper module instead of inside the CLI facade, which trims another large behavior-preserving dependency bundle out of `dashboard_cli.py` without changing export behavior or the public helper names used by tests.
+
+## 2026-03-14 - Task: Wire Datasource Diff CLI
+- State: Done
+- Scope: `grafana_utils/datasource_cli.py`, `grafana_utils/datasource_diff.py`, `grafana_utils/unified_cli.py`, `tests/test_python_datasource_cli.py`, `tests/test_python_unified_cli.py`, `rust/src/datasource.rs`, `rust/src/datasource_diff.rs`, `rust/src/datasource_rust_tests.rs`, `rust/src/cli.rs`, `rust/src/cli_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Datasource diff scaffolds now exist in standalone Python and Rust files, but neither runtime exposes a `datasource diff` subcommand yet. The unified CLIs, operator help, and crate test graph still describe datasource as `list/export/import` only, so the new compare logic is unreachable.
+- Current Update: Wired both runtimes to expose datasource diff through the existing datasource namespace, kept the compare helpers as the implementation base, extended focused parser/help/behavior coverage, and updated the README datasource command summaries so operator docs no longer claim datasource only supports list/export/import.
+- Result: `grafana-utils datasource diff --diff-dir ...` now works in both Python and Rust, unified CLI help exposes the new subcommand, Python prints per-item unified diffs for changed datasource records, Rust returns a non-zero CLI result when differences are found, and the previously standalone Rust diff scaffold is now part of the crate test graph.
+
+## 2026-03-14 - Task: Split Python Dashboard Inspection Runtime Wiring
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/inspection_runtime.py`, `grafana_utils/dashboards/inspection_workflow.py`, `tests/test_python_dashboard_inspection_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Dashboard inspection already has dedicated workflow, summary, report, and governance modules, but `dashboard_cli.py` still assembles a large inspection dependency map and owns a local `iter_dashboard_panels()` helper just to feed those modules. That leaves too much inspection runtime wiring in the CLI facade even after the earlier dashboard refactors.
+- Current Update: Added `grafana_utils/dashboards/inspection_runtime.py` to own the inspection dependency-map assembly and moved `iter_dashboard_panels()` there. Updated `inspection_workflow.py` to own its own `json`/`sys`/`tempfile` usage and to call `run_inspect_export()` directly for live inspection instead of routing back through a CLI callback.
+- Result: `dashboard_cli.py` now delegates the inspection runtime wiring to a dedicated helper module and keeps only thin compatibility wrappers for inspection entrypoints, which reduces the remaining inspection-specific bulk in the CLI facade without changing the public CLI surface.
+
+## 2026-03-14 - Task: Split Python Dashboard Export Org Resolution
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/export_inventory.py`, `tests/test_python_dashboard_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Dashboard import already delegates most raw-export file discovery and manifest validation to `grafana_utils/dashboards/export_inventory.py`, but `dashboard_cli.py` still owns the separate `resolve_export_org_id()` scan that walks raw `index.json`, `folders.json`, and `datasources.json` directly. That leaves one more raw-export inventory concern in the CLI facade even though the surrounding metadata helpers have already moved out.
+- Current Update: Moved `resolve_export_org_id()` into `grafana_utils/dashboards/export_inventory.py` and rewired the CLI wrapper to delegate through that module, keeping the existing wrapper signature and import-org-guard behavior intact.
+- Result: Raw export metadata resolution now lives with the other export inventory helpers instead of inside the dashboard CLI facade, which further narrows `dashboard_cli.py` toward parser and wiring ownership.
+
+## 2026-03-14 - Task: Split Python Dashboard Diff Workflow
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/diff_workflow.py`, `tests/test_python_dashboard_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Python dashboard export, import, and inspection already delegate their main orchestration into dedicated `grafana_utils/dashboards/*_workflow.py` modules, but `dashboard_cli.py` still owns the remaining dashboard diff loop directly. That keeps one more live orchestration path coupled to the CLI facade even though the rest of the dashboard runtime has mostly been split by responsibility.
+- Current Update: Moved the dashboard diff compare loop into a new `grafana_utils/dashboards/diff_workflow.py` module and rewired `dashboard_cli.diff_dashboards()` to delegate through a focused dependency bundle, matching the existing export/import/inspection workflow pattern.
+- Result: Python dashboard diff now follows the same orchestration split as the other major dashboard flows, and `dashboard_cli.py` keeps only the stable CLI wrapper/dependency wiring for diff instead of the full compare loop.
+
 ## 2026-03-14 - Task: Consolidate Shared Python Auth Helper
 - State: Done
 - Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/alert_cli.py`, `grafana_utils/auth_staging.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

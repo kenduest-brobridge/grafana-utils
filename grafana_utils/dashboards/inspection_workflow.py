@@ -1,6 +1,9 @@
 """Dashboard inspection workflow orchestration helpers."""
 
 import argparse
+import json
+import sys
+import tempfile
 from pathlib import Path
 
 
@@ -87,9 +90,7 @@ def materialize_live_inspection_export(client, page_size, raw_dir, deps):
 def run_inspect_live(args, deps):
     """Inspect live Grafana dashboards by reusing the raw-export inspection pipeline."""
     client = deps["build_client"](args)
-    with deps["tempfile"].TemporaryDirectory(
-        prefix="grafana-utils-inspect-live-"
-    ) as tmpdir:
+    with tempfile.TemporaryDirectory(prefix="grafana-utils-inspect-live-") as tmpdir:
         raw_dir = materialize_live_inspection_export(
             client,
             page_size=int(args.page_size),
@@ -107,7 +108,7 @@ def run_inspect_live(args, deps):
             table=bool(getattr(args, "table", False)),
             no_header=bool(getattr(args, "no_header", False)),
         )
-        return deps["inspect_export"](inspect_args)
+        return run_inspect_export(inspect_args, deps)
 
 
 def run_inspect_export(args, deps):
@@ -162,7 +163,7 @@ def run_inspect_export(args, deps):
             panel_id=report_filter_panel_id,
         )
         print(
-            deps["json"].dumps(
+            json.dumps(
                 document,
                 indent=2,
                 sort_keys=False,
@@ -190,7 +191,7 @@ def run_inspect_export(args, deps):
             datasource_label=report_filter_datasource,
             panel_id=report_filter_panel_id,
         )
-        deps["sys"].stdout.write(
+        sys.stdout.write(
             deps["render_export_inspection_report_csv"](
                 document,
                 selected_columns=report_columns,
@@ -240,7 +241,7 @@ def run_inspect_export(args, deps):
         )
         if report_format == "governance-json":
             print(
-                deps["json"].dumps(
+                json.dumps(
                     document,
                     indent=2,
                     sort_keys=False,
@@ -257,7 +258,7 @@ def run_inspect_export(args, deps):
     document = deps["build_export_inspection_document"](import_dir)
     if json_output:
         print(
-            deps["json"].dumps(
+            json.dumps(
                 document, indent=2, sort_keys=False, ensure_ascii=False
             )
         )

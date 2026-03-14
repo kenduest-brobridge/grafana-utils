@@ -48,8 +48,9 @@
 - `grafana-utils dashboard inspect-live ...`
 - `grafana-utils dashboard import ...`
 - `grafana-utils dashboard diff ...`
-- `grafana-utils datasource list ...`
 - `grafana-utils datasource export ...`
+- `grafana-utils datasource import ...`
+- `grafana-utils datasource diff ...`
 - `grafana-utils alert export ...`
 - `grafana-utils alert import ...`
 - `grafana-utils alert diff ...`
@@ -132,6 +133,12 @@ python3 python/grafana-utils.py dashboard inspect-export \
   --import-dir ./dashboards/raw \
   --json
 ```
+
+補充：
+
+- 目前 list 類與部分 dry-run 類命令已開始支援統一的 `--output-format`。
+- 這一版先不改既有預設，只是新增一致的單旗標選法。
+- 例如可用 `--output-format table|csv|json` 取代部分 command 的 `--table`、`--csv`、`--json`，以及用 `--output-format text|table|json` 控制部分 dry-run 輸出。
 
 從 raw 匯出結果做 dashboard API 匯入：
 
@@ -316,11 +323,15 @@ Dashboard 匯出時也會在根目錄與各 variant 目錄額外寫入 `export-m
 
 - `list`
 - `export`
+- `import`
+- `diff`
 
 常用形式：
 
 - `python3 python/grafana-utils.py datasource list ...`
 - `python3 python/grafana-utils.py datasource export ...`
+- `python3 python/grafana-utils.py datasource import ...`
+- `python3 python/grafana-utils.py datasource diff ...`
 
 ## Alerting 工具
 

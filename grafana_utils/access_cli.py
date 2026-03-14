@@ -89,6 +89,7 @@ DEFAULT_TIMEOUT = 30
 DEFAULT_SCOPE = "org"
 DEFAULT_SERVICE_ACCOUNT_ROLE = "Viewer"
 SCOPE_CHOICES = ("org", "global")
+LIST_OUTPUT_FORMAT_CHOICES = ("text", "table", "csv", "json")
 
 
 def positive_int(value: str) -> int:
@@ -103,6 +104,19 @@ def bool_choice(value: str) -> str:
     if normalized not in {"true", "false"}:
         raise argparse.ArgumentTypeError("value must be true or false")
     return normalized
+
+
+def add_list_output_format_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--output-format",
+        choices=LIST_OUTPUT_FORMAT_CHOICES,
+        default=None,
+        help=(
+            "Alternative single-flag output selector for list output. "
+            "Use text, table, csv, or json. This cannot be combined with "
+            "--table, --csv, or --json."
+        ),
+    )
 
 
 def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
@@ -395,6 +409,7 @@ def add_user_list_cli_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Render users as JSON.",
     )
+    add_list_output_format_arg(parser)
 
 
 def add_user_add_cli_args(parser: argparse.ArgumentParser) -> None:
@@ -563,6 +578,7 @@ def add_service_account_list_cli_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Render service accounts as JSON.",
     )
+    add_list_output_format_arg(parser)
 
 
 def add_team_list_cli_args(parser: argparse.ArgumentParser) -> None:
@@ -609,6 +625,7 @@ def add_team_list_cli_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Render teams as JSON.",
     )
+    add_list_output_format_arg(parser)
 
 
 def add_team_modify_cli_args(parser: argparse.ArgumentParser) -> None:
@@ -777,7 +794,27 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         parser._subparsers._group_actions[0].choices["service-account"]._subparsers._group_actions[0].choices["token"].print_help()
         raise SystemExit(0)
 
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    _normalize_output_format_args(args, parser)
+    return args
+
+
+def _normalize_output_format_args(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+) -> None:
+    output_format = getattr(args, "output_format", None)
+    if output_format is None:
+        return
+    if bool(getattr(args, "table", False)) or bool(getattr(args, "csv", False)) or bool(
+        getattr(args, "json", False)
+    ):
+        parser.error(
+            "--output-format cannot be combined with --table, --csv, or --json for access list commands."
+        )
+    args.table = output_format == "table"
+    args.csv = output_format == "csv"
+    args.json = output_format == "json"
 
 
 def resolve_auth(args: argparse.Namespace) -> Tuple[Dict[str, str], str]:

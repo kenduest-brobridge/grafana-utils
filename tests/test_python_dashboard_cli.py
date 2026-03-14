@@ -76,9 +76,109 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 transport_module = importlib.import_module("grafana_utils.http_transport")
 exporter = importlib.import_module("grafana_utils.dashboard_cli")
+export_inventory = importlib.import_module("grafana_utils.dashboards.export_inventory")
+folder_support = importlib.import_module("grafana_utils.dashboards.folder_support")
+listing_module = importlib.import_module("grafana_utils.dashboards.listing")
+output_support = importlib.import_module("grafana_utils.dashboards.output_support")
 inspection_dispatcher = importlib.import_module(
     "grafana_utils.dashboards.inspection_analyzers.dispatcher"
 )
+
+
+def build_export_metadata(
+    variant, dashboard_count, format_name=None, folders_file=None, datasources_file=None
+):
+    return output_support.build_export_metadata(
+        variant,
+        dashboard_count,
+        tool_schema_version=exporter.TOOL_SCHEMA_VERSION,
+        root_index_kind=exporter.ROOT_INDEX_KIND,
+        format_name=format_name,
+        folders_file=folders_file,
+        datasources_file=datasources_file,
+    )
+
+
+def build_output_path(output_dir, summary, flat):
+    return output_support.build_output_path(
+        output_dir,
+        summary,
+        flat,
+        default_folder_title=exporter.DEFAULT_FOLDER_TITLE,
+        default_dashboard_title=exporter.DEFAULT_DASHBOARD_TITLE,
+        default_unknown_uid=exporter.DEFAULT_UNKNOWN_UID,
+    )
+
+
+def build_all_orgs_output_dir(output_dir, org):
+    return output_support.build_all_orgs_output_dir(
+        output_dir,
+        org,
+        default_unknown_uid=exporter.DEFAULT_UNKNOWN_UID,
+    )
+
+
+def build_export_variant_dirs(output_dir):
+    return output_support.build_export_variant_dirs(
+        output_dir,
+        raw_export_subdir=exporter.RAW_EXPORT_SUBDIR,
+        prompt_export_subdir=exporter.PROMPT_EXPORT_SUBDIR,
+    )
+
+
+def write_dashboard(payload, output_path, overwrite):
+    return output_support.write_dashboard(
+        payload,
+        output_path,
+        overwrite,
+        error_cls=exporter.GrafanaError,
+    )
+
+
+def discover_dashboard_files(import_dir):
+    return export_inventory.discover_dashboard_files(
+        import_dir,
+        exporter.RAW_EXPORT_SUBDIR,
+        exporter.PROMPT_EXPORT_SUBDIR,
+        exporter.EXPORT_METADATA_FILENAME,
+        exporter.FOLDER_INVENTORY_FILENAME,
+        exporter.DATASOURCE_INVENTORY_FILENAME,
+    )
+
+
+def validate_export_metadata(metadata, metadata_path, expected_variant=None):
+    return export_inventory.validate_export_metadata(
+        metadata,
+        metadata_path,
+        root_index_kind=exporter.ROOT_INDEX_KIND,
+        tool_schema_version=exporter.TOOL_SCHEMA_VERSION,
+        expected_variant=expected_variant,
+    )
+
+
+def load_folder_inventory(import_dir, metadata=None):
+    return folder_support.load_folder_inventory(
+        import_dir,
+        exporter.FOLDER_INVENTORY_FILENAME,
+        metadata=metadata,
+    )
+
+
+def load_datasource_inventory(import_dir, metadata=None):
+    return folder_support.load_datasource_inventory(
+        import_dir,
+        exporter.DATASOURCE_INVENTORY_FILENAME,
+        metadata=metadata,
+    )
+
+
+def attach_dashboard_sources(client, summaries):
+    return listing_module.attach_dashboard_sources(
+        client,
+        summaries,
+        extract_dashboard_object=exporter.extract_dashboard_object,
+        datasource_error=exporter.GrafanaError,
+    )
 
 
 class FakeGrafanaClient(exporter.GrafanaClient):
@@ -162,7 +262,7 @@ class FakeDashboardWorkflowClient:
 class ExporterTests(unittest.TestCase):
     def _write_minimal_inspection_export(self, import_dir):
         exporter.write_json_document(
-            exporter.build_export_metadata(
+            build_export_metadata(
                 variant=exporter.RAW_EXPORT_SUBDIR,
                 dashboard_count=1,
                 format_name="grafana-web-import-preserve-uid",
@@ -611,6 +711,18 @@ class ExporterTests(unittest.TestCase):
         self.assertFalse(args.json)
         self.assertFalse(args.no_header)
 
+    def test_parse_args_supports_list_output_format(self):
+        list_args = exporter.parse_args(["list-dashboard", "--output-format", "csv"])
+        data_source_args = exporter.parse_args(
+            ["list-data-sources", "--output-format", "json"]
+        )
+
+        self.assertEqual(list_args.output_format, "csv")
+        self.assertTrue(list_args.csv)
+        self.assertFalse(list_args.table)
+        self.assertTrue(data_source_args.json)
+        self.assertFalse(data_source_args.csv)
+
     def test_parse_args_supports_list_csv_and_json_modes(self):
         csv_args = exporter.parse_args(["list-dashboard", "--csv"])
         json_args = exporter.parse_args(["list-dashboard", "--json"])
@@ -656,6 +768,13 @@ class ExporterTests(unittest.TestCase):
 
         with self.assertRaises(SystemExit):
             exporter.parse_args(["list-data-sources", "--csv", "--json"])
+
+    def test_parse_args_rejects_list_output_format_with_legacy_flags(self):
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(["list-dashboard", "--output-format", "table", "--json"])
+
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(["list-data-sources", "--output-format", "csv", "--table"])
 
     def test_parse_args_supports_diff_mode(self):
         args = exporter.parse_args(["diff", "--import-dir", "dashboards/raw"])
@@ -720,6 +839,35 @@ class ExporterTests(unittest.TestCase):
 
         self.assertTrue(args.dry_run)
         self.assertTrue(args.json)
+
+    def test_parse_args_supports_import_dry_run_output_format(self):
+        args = exporter.parse_args(
+            [
+                "import-dashboard",
+                "--import-dir",
+                "dashboards/raw",
+                "--dry-run",
+                "--output-format",
+                "table",
+            ]
+        )
+
+        self.assertEqual(args.output_format, "table")
+        self.assertTrue(args.table)
+        self.assertFalse(args.json)
+
+    def test_parse_args_rejects_import_output_format_with_legacy_flags(self):
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    "dashboards/raw",
+                    "--output-format",
+                    "json",
+                    "--table",
+                ]
+            )
 
     def test_parse_args_supports_update_existing_only(self):
         args = exporter.parse_args(
@@ -1234,7 +1382,7 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(exporter.sanitize_path_component("..."), "untitled")
 
     def test_build_output_path_keeps_folder_structure(self):
-        path = exporter.build_output_path(
+        path = build_output_path(
             Path("out"),
             {"folderTitle": "Infra Team", "title": "Cluster Health", "uid": "abc"},
             flat=False,
@@ -1243,7 +1391,7 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(path, Path("out/Infra_Team/Cluster_Health__abc.json"))
 
     def test_build_all_orgs_output_dir_uses_org_id_and_name(self):
-        path = exporter.build_all_orgs_output_dir(
+        path = build_all_orgs_output_dir(
             Path("out"),
             {"id": 2, "name": "Ops Org"},
         )
@@ -1251,7 +1399,7 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(path, Path("out/org_2_Ops_Org"))
 
     def test_build_export_variant_dirs(self):
-        raw_dir, prompt_dir = exporter.build_export_variant_dirs(Path("dashboards"))
+        raw_dir, prompt_dir = build_export_variant_dirs(Path("dashboards"))
 
         self.assertEqual(raw_dir, Path("dashboards/raw"))
         self.assertEqual(prompt_dir, Path("dashboards/prompt"))
@@ -1464,7 +1612,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -1545,7 +1693,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -1694,7 +1842,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -1791,7 +1939,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -2056,7 +2204,7 @@ class ExporterTests(unittest.TestCase):
             ],
         )
 
-        summaries = exporter.attach_dashboard_sources(
+        summaries = attach_dashboard_sources(
             client,
             [{"uid": "abc", "title": "CPU"}],
         )
@@ -2573,9 +2721,9 @@ class ExporterTests(unittest.TestCase):
     def test_write_dashboard_obeys_overwrite_flag(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "dash.json"
-            exporter.write_dashboard({"dashboard": {"uid": "x"}}, path, overwrite=False)
+            write_dashboard({"dashboard": {"uid": "x"}}, path, overwrite=False)
             with self.assertRaises(exporter.GrafanaError):
-                exporter.write_dashboard({"dashboard": {"uid": "x"}}, path, overwrite=False)
+                write_dashboard({"dashboard": {"uid": "x"}}, path, overwrite=False)
 
     def test_discover_dashboard_files_ignores_index_json(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -2585,7 +2733,7 @@ class ExporterTests(unittest.TestCase):
             dashboard_path.parent.mkdir(parents=True, exist_ok=True)
             dashboard_path.write_text('{"dashboard": {"uid": "x"}}', encoding="utf-8")
 
-            files = exporter.discover_dashboard_files(root)
+            files = discover_dashboard_files(root)
 
             self.assertEqual(files, [dashboard_path])
 
@@ -2597,7 +2745,7 @@ class ExporterTests(unittest.TestCase):
             dashboard_path.parent.mkdir(parents=True, exist_ok=True)
             dashboard_path.write_text('{"dashboard": {"uid": "x"}}', encoding="utf-8")
 
-            files = exporter.discover_dashboard_files(root)
+            files = discover_dashboard_files(root)
 
             self.assertEqual(files, [dashboard_path])
 
@@ -2609,7 +2757,7 @@ class ExporterTests(unittest.TestCase):
             dashboard_path.parent.mkdir(parents=True, exist_ok=True)
             dashboard_path.write_text('{"dashboard": {"uid": "x"}}', encoding="utf-8")
 
-            files = exporter.discover_dashboard_files(root)
+            files = discover_dashboard_files(root)
 
             self.assertEqual(files, [dashboard_path])
 
@@ -2620,7 +2768,7 @@ class ExporterTests(unittest.TestCase):
             (root / "prompt").mkdir()
 
             with self.assertRaises(exporter.GrafanaError):
-                exporter.discover_dashboard_files(root)
+                discover_dashboard_files(root)
 
     def test_export_dashboards_rejects_disabling_all_variants(self):
         args = exporter.parse_args(
@@ -2631,14 +2779,14 @@ class ExporterTests(unittest.TestCase):
             exporter.export_dashboards(args)
 
     def test_validate_export_metadata_rejects_unsupported_schema_version(self):
-        metadata = exporter.build_export_metadata(
+        metadata = build_export_metadata(
             variant=exporter.RAW_EXPORT_SUBDIR,
             dashboard_count=1,
         )
         metadata["schemaVersion"] = exporter.TOOL_SCHEMA_VERSION + 1
 
         with self.assertRaises(exporter.GrafanaError):
-            exporter.validate_export_metadata(
+            validate_export_metadata(
                 metadata,
                 metadata_path=Path("/tmp/export-metadata.json"),
                 expected_variant=exporter.RAW_EXPORT_SUBDIR,
@@ -2734,7 +2882,7 @@ class ExporterTests(unittest.TestCase):
                 import_dir / exporter.FOLDER_INVENTORY_FILENAME,
             )
 
-            records = exporter.load_folder_inventory(import_dir)
+            records = load_folder_inventory(import_dir)
 
         self.assertEqual(records[0]["uid"], "child")
         self.assertEqual(records[0]["parentUid"], "parent")
@@ -2758,7 +2906,7 @@ class ExporterTests(unittest.TestCase):
                 import_dir / exporter.DATASOURCE_INVENTORY_FILENAME,
             )
 
-            records = exporter.load_datasource_inventory(import_dir)
+            records = load_datasource_inventory(import_dir)
 
         self.assertEqual(records[0]["uid"], "prom")
         self.assertEqual(records[0]["access"], "proxy")
@@ -3338,7 +3486,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -3389,7 +3537,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -3446,7 +3594,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -3499,7 +3647,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=2,
                     format_name="grafana-web-import-preserve-uid",
@@ -3580,7 +3728,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -3634,7 +3782,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -3679,7 +3827,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -3713,7 +3861,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -3750,7 +3898,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -3795,7 +3943,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -3869,7 +4017,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -3938,7 +4086,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=2,
                     format_name="grafana-web-import-preserve-uid",
@@ -3988,7 +4136,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -4032,7 +4180,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=2,
                     format_name="grafana-web-import-preserve-uid",
@@ -4091,7 +4239,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=2,
                     format_name="grafana-web-import-preserve-uid",
@@ -4148,7 +4296,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=2,
                     format_name="grafana-web-import-preserve-uid",
@@ -4202,7 +4350,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -4248,7 +4396,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -4281,6 +4429,81 @@ class ExporterTests(unittest.TestCase):
             self.assertEqual(result, 0)
             output = stdout.getvalue()
             self.assertIn("Platform / Ops", output)
+            self.assertIn("DESTINATION_FOLDER_PATH", output)
+
+    def test_import_dashboards_dry_run_table_includes_folder_match_reason_and_paths(self):
+        client = FakeDashboardWorkflowClient(
+            dashboards={
+                "abc": {
+                    "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "dest-folder"},
+                }
+            },
+            folders={
+                "dest-folder": {
+                    "uid": "dest-folder",
+                    "title": "Legacy Infra",
+                    "parents": [{"uid": "platform", "title": "Platform"}],
+                }
+            },
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                    folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "child",
+                        "title": "Infra",
+                        "parentUid": "platform",
+                        "path": "Platform / Infra",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    }
+                ],
+                import_dir / exporter.FOLDER_INVENTORY_FILENAME,
+            )
+            exporter.write_json_document(
+                {
+                    "dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "child"},
+                },
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(import_dir),
+                    "--dry-run",
+                    "--replace-existing",
+                    "--require-matching-folder-path",
+                    "--table",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            output = stdout.getvalue()
+            self.assertIn("SOURCE_FOLDER_PATH", output)
+            self.assertIn("DESTINATION_FOLDER_PATH", output)
+            self.assertIn("REASON", output)
+            self.assertIn("Platform / Infra", output)
+            self.assertIn("Platform / Legacy Infra", output)
+            self.assertIn("folder-path-mismatch", output)
 
     def test_import_dashboards_rejects_matching_folder_path_with_import_folder_uid(self):
         client = FakeDashboardWorkflowClient()
@@ -4322,7 +4545,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -4386,7 +4609,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -4469,7 +4692,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -4525,7 +4748,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -4566,7 +4789,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -4637,7 +4860,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -4697,7 +4920,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -4758,7 +4981,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=2,
                     format_name="grafana-web-import-preserve-uid",
@@ -4822,7 +5045,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -4858,7 +5081,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -4894,7 +5117,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                     format_name="grafana-web-import-preserve-uid",
@@ -4965,7 +5188,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                 ),
@@ -4992,7 +5215,7 @@ class ExporterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
-                exporter.build_export_metadata(
+                build_export_metadata(
                     variant=exporter.RAW_EXPORT_SUBDIR,
                     dashboard_count=1,
                 ),

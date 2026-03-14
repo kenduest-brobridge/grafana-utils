@@ -18,8 +18,8 @@ mod access_team;
 mod access_user;
 
 pub use access_cli_defs::{
-    build_auth_context, build_http_client, parse_cli_from, root_command, AccessAuthContext,
-    AccessCliArgs, AccessCommand, CommonCliArgs, Scope, ServiceAccountAddArgs,
+    build_auth_context, build_http_client, normalize_access_cli_args, parse_cli_from, root_command,
+    AccessAuthContext, AccessCliArgs, AccessCommand, CommonCliArgs, Scope, ServiceAccountAddArgs,
     ServiceAccountCommand, ServiceAccountListArgs, ServiceAccountTokenAddArgs,
     ServiceAccountTokenCommand, TeamAddArgs, TeamCommand, TeamListArgs, TeamModifyArgs,
     UserAddArgs, UserCommand, UserDeleteArgs, UserListArgs, UserModifyArgs, DEFAULT_PAGE_SIZE,
@@ -165,6 +165,7 @@ where
 }
 
 pub fn run_access_cli(args: AccessCliArgs) -> Result<()> {
+    let args = normalize_access_cli_args(args);
     match &args.command {
         AccessCommand::User { command } => match command {
             UserCommand::List(inner) => {

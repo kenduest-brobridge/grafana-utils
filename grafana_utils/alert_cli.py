@@ -63,6 +63,7 @@ from .http_transport import build_json_http_transport
 DEFAULT_URL = "http://127.0.0.1:3000"
 DEFAULT_TIMEOUT = 30
 DEFAULT_OUTPUT_DIR = "alerts"
+LIST_OUTPUT_FORMAT_CHOICES = ("table", "csv", "json")
 HELP_EPILOG = """Examples:
 
   Export alerting resources with an API token:
@@ -177,6 +178,16 @@ def add_list_args(parser: argparse.ArgumentParser) -> None:
         "--no-header",
         action="store_true",
         help="Omit the table header row.",
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=LIST_OUTPUT_FORMAT_CHOICES,
+        default=None,
+        help=(
+            "Alternative single-flag output selector for alert list output. "
+            "Use table, csv, or json. This cannot be combined with --table, "
+            "--csv, or --json."
+        ),
     )
 
 
@@ -348,7 +359,10 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv in (["-h"], ["--help"]):
-        return build_parser().parse_args(argv)
+        parser = build_parser()
+        args = parser.parse_args(argv)
+        _normalize_output_format_args(args, parser)
+        return args
     if argv and argv[0] in (
         "export",
         "import",
@@ -358,16 +372,39 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         "list-mute-timings",
         "list-templates",
     ):
-        return build_parser().parse_args(argv)
+        parser = build_parser()
+        args = parser.parse_args(argv)
+        _normalize_output_format_args(args, parser)
+        return args
 
-    args = build_legacy_parser().parse_args(argv)
+    parser = build_legacy_parser()
+    args = parser.parse_args(argv)
     if getattr(args, "import_dir", None):
         args.alert_command = "import"
     elif getattr(args, "diff_dir", None):
         args.alert_command = "diff"
     else:
         args.alert_command = "export"
+    _normalize_output_format_args(args, parser)
     return args
+
+
+def _normalize_output_format_args(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+) -> None:
+    output_format = getattr(args, "output_format", None)
+    if output_format is None or not str(getattr(args, "alert_command", "")).startswith("list-"):
+        return
+    if bool(getattr(args, "table", False)) or bool(getattr(args, "csv", False)) or bool(
+        getattr(args, "json", False)
+    ):
+        parser.error(
+            "--output-format cannot be combined with --table, --csv, or --json for alert list commands."
+        )
+    args.table = output_format == "table"
+    args.csv = output_format == "csv"
+    args.json = output_format == "json"
 
 
 def resolve_auth(args: argparse.Namespace) -> Dict[str, str]:

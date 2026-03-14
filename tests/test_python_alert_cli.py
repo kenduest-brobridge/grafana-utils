@@ -296,6 +296,17 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertFalse(args.csv)
         self.assertFalse(args.no_header)
 
+    def test_parse_args_supports_alert_list_output_format(self):
+        args = alert_utils.parse_args(["list-rules", "--output-format", "csv"])
+
+        self.assertEqual(args.output_format, "csv")
+        self.assertTrue(args.csv)
+        self.assertFalse(args.json)
+
+    def test_parse_args_rejects_alert_output_format_with_legacy_flags(self):
+        with self.assertRaises(SystemExit):
+            alert_utils.parse_args(["list-rules", "--output-format", "table", "--json"])
+
     def test_parse_args_accepts_mapping_files(self):
         args = alert_utils.parse_args(
             [

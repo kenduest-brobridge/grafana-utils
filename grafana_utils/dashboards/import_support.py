@@ -3,6 +3,7 @@
 import copy
 import difflib
 import json
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -12,6 +13,30 @@ from .export_inventory import (
     validate_export_metadata as validate_export_metadata_from_export,
 )
 from .transformer import build_preserved_web_import_document
+
+
+IMPORT_DRY_RUN_COLUMN_HEADERS = OrderedDict(
+    [
+        ("uid", "UID"),
+        ("destination", "DESTINATION"),
+        ("action", "ACTION"),
+        ("folderPath", "FOLDER_PATH"),
+        ("sourceFolderPath", "SOURCE_FOLDER_PATH"),
+        ("destinationFolderPath", "DESTINATION_FOLDER_PATH"),
+        ("reason", "REASON"),
+        ("file", "FILE"),
+    ]
+)
+IMPORT_DRY_RUN_COLUMN_ALIASES = {
+    "uid": "uid",
+    "destination": "destination",
+    "action": "action",
+    "folder_path": "folderPath",
+    "source_folder_path": "sourceFolderPath",
+    "destination_folder_path": "destinationFolderPath",
+    "reason": "reason",
+    "file": "file",
+}
 
 
 def load_json_file(path: Path) -> Dict[str, Any]:
@@ -252,6 +277,7 @@ def build_dashboard_import_dry_run_record(
     folder_path: Optional[str] = None,
     source_folder_path: Optional[str] = None,
     destination_folder_path: Optional[str] = None,
+    reason: Optional[str] = None,
 ) -> Dict[str, str]:
     destination = "unknown"
     action_label = action or "unknown"
@@ -277,6 +303,7 @@ def build_dashboard_import_dry_run_record(
         "folderPath": str(folder_path or ""),
         "sourceFolderPath": str(source_folder_path or ""),
         "destinationFolderPath": str(destination_folder_path or ""),
+        "reason": str(reason or ""),
         "file": str(dashboard_file),
     }
 
@@ -309,12 +336,15 @@ def render_dashboard_import_dry_run_table(
     include_destination_folder = any(
         record.get("destinationFolderPath") for record in records
     )
+    include_reason = any(record.get("reason") for record in records)
     if include_folder:
         headers.append("FOLDER_PATH")
     if include_source_folder:
         headers.append("SOURCE_FOLDER_PATH")
     if include_destination_folder:
         headers.append("DESTINATION_FOLDER_PATH")
+    if include_reason:
+        headers.append("REASON")
     headers.append("FILE")
     rows = []
     for record in records:
@@ -325,6 +355,8 @@ def render_dashboard_import_dry_run_table(
             row.append(record.get("sourceFolderPath") or "")
         if include_destination_folder:
             row.append(record.get("destinationFolderPath") or "")
+        if include_reason:
+            row.append(record.get("reason") or "")
         row.append(record["file"])
         rows.append(row)
     return _render_table(headers, rows, include_header)
@@ -360,6 +392,7 @@ def render_dashboard_import_dry_run_json(
                 "folderPath": record.get("folderPath") or "",
                 "sourceFolderPath": record.get("sourceFolderPath") or "",
                 "destinationFolderPath": record.get("destinationFolderPath") or "",
+                "reason": record.get("reason") or "",
                 "file": record.get("file") or "",
             }
             for record in dashboard_records

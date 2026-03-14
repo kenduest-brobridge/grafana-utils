@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Grafana datasource list/export utility."""
+"""Grafana datasource list/export/import/diff utility."""
 
 import argparse
 import csv
+import difflib
 import json
 import sys
 from pathlib import Path
@@ -23,6 +24,11 @@ from .dashboard_cli import (
     resolve_auth,
     write_json_document,
 )
+from .datasource_diff import (
+    build_live_datasource_diff_records,
+    compare_datasource_bundle_to_live,
+    load_datasource_diff_bundle,
+)
 
 
 DEFAULT_EXPORT_DIR = "datasources"
@@ -30,6 +36,8 @@ DATASOURCE_EXPORT_FILENAME = "datasources.json"
 EXPORT_METADATA_FILENAME = "export-metadata.json"
 ROOT_INDEX_KIND = "grafana-utils-datasource-export-index"
 TOOL_SCHEMA_VERSION = 1
+LIST_OUTPUT_FORMAT_CHOICES = ("table", "csv", "json")
+IMPORT_DRY_RUN_OUTPUT_FORMAT_CHOICES = ("text", "table", "json")
 
 HELP_FULL_EXAMPLES = (
     "Extended Examples:\n\n"
@@ -39,6 +47,9 @@ HELP_FULL_EXAMPLES = (
     "  Dry-run datasource import for the current org:\n"
     "    grafana-utils datasource import --url http://localhost:3000 "
     "--token \"$GRAFANA_API_TOKEN\" --import-dir ./datasources --dry-run --table\n\n"
+    "  Compare an exported datasource inventory against live Grafana:\n"
+    "    grafana-utils datasource diff --url http://localhost:3000 "
+    "--token \"$GRAFANA_API_TOKEN\" --diff-dir ./datasources\n\n"
     "  List datasource inventory as JSON for scripting:\n"
     "    grafana-utils datasource list --url http://localhost:3000 "
     "--token \"$GRAFANA_API_TOKEN\" --json"
@@ -66,6 +77,16 @@ def add_list_cli_args(parser: argparse.ArgumentParser) -> None:
         "--no-header",
         action="store_true",
         help="Do not print table headers when rendering the default table output.",
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=LIST_OUTPUT_FORMAT_CHOICES,
+        default=None,
+        help=(
+            "Alternative single-flag output selector for datasource list output. "
+            "Use table, csv, or json. This cannot be combined with --table, "
+            "--csv, or --json."
+        ),
     )
 
 
@@ -146,6 +167,16 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
         help="For --dry-run --table only, omit the table header row.",
     )
     parser.add_argument(
+        "--output-format",
+        choices=IMPORT_DRY_RUN_OUTPUT_FORMAT_CHOICES,
+        default=None,
+        help=(
+            "Alternative single-flag output selector for datasource import "
+            "dry-run output. Use text, table, or json. This cannot be "
+            "combined with --table or --json."
+        ),
+    )
+    parser.add_argument(
         "--progress",
         action="store_true",
         help="Show concise per-datasource import progress in <current>/<total> form while processing records.",
@@ -158,17 +189,31 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_diff_cli_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--diff-dir",
+        required=True,
+        help=(
+            "Compare datasource inventory from this directory against live Grafana. "
+            "Point this to the datasource export root that contains datasources.json "
+            "and export-metadata.json."
+        ),
+    )
+
+
 def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=prog or "grafana-utils datasource",
-        description="List, export, or import Grafana datasource inventory.",
+        description="List, export, import, or diff Grafana datasource inventory.",
         epilog=(
             "Examples:\n\n"
             "  grafana-utils datasource list --url http://localhost:3000 --json\n"
             "  grafana-utils datasource export --url http://localhost:3000 "
             "--export-dir ./datasources --overwrite\n"
             "  grafana-utils datasource import --url http://localhost:3000 "
-            "--import-dir ./datasources --dry-run --table"
+            "--import-dir ./datasources --dry-run --table\n"
+            "  grafana-utils datasource diff --url http://localhost:3000 "
+            "--diff-dir ./datasources"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -217,11 +262,55 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
         help="Show normal help plus extended datasource examples.",
     )
 
+    diff_parser = subparsers.add_parser(
+        "diff",
+        help="Compare exported datasource inventory with the current Grafana state.",
+    )
+    add_common_cli_args(diff_parser)
+    add_diff_cli_args(diff_parser)
+    diff_parser.set_defaults(_help_full_examples=HELP_FULL_EXAMPLES)
+    diff_parser.add_argument(
+        "--help-full",
+        nargs=0,
+        action=HelpFullAction,
+        help="Show normal help plus extended datasource examples.",
+    )
+
     return parser
 
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
-    return build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    _normalize_output_format_args(args, parser)
+    return args
+
+
+def _normalize_output_format_args(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+) -> None:
+    output_format = getattr(args, "output_format", None)
+    if output_format is None:
+        return
+    if getattr(args, "command", None) == "list":
+        if bool(getattr(args, "table", False)) or bool(getattr(args, "csv", False)) or bool(
+            getattr(args, "json", False)
+        ):
+            parser.error(
+                "--output-format cannot be combined with --table, --csv, or --json for datasource list."
+            )
+        args.table = output_format == "table"
+        args.csv = output_format == "csv"
+        args.json = output_format == "json"
+        return
+    if getattr(args, "command", None) == "import":
+        if bool(getattr(args, "table", False)) or bool(getattr(args, "json", False)):
+            parser.error(
+                "--output-format cannot be combined with --table or --json for datasource import."
+            )
+        args.table = output_format == "table"
+        args.json = output_format == "json"
 
 
 def build_client(args: argparse.Namespace) -> GrafanaClient:
@@ -686,6 +775,83 @@ def export_datasources(args: argparse.Namespace) -> int:
     return 0
 
 
+def _serialize_datasource_diff_record(record: Optional[Dict[str, str]]) -> str:
+    if record is None:
+        return "{}"
+    return json.dumps(record, sort_keys=True, indent=2)
+
+
+def _print_datasource_unified_diff(
+    remote_record: Optional[Dict[str, str]],
+    local_record: Optional[Dict[str, str]],
+    remote_label: str,
+    local_label: str,
+) -> None:
+    remote_lines = _serialize_datasource_diff_record(remote_record).splitlines(True)
+    local_lines = _serialize_datasource_diff_record(local_record).splitlines(True)
+    for line in difflib.unified_diff(
+        remote_lines,
+        local_lines,
+        fromfile=remote_label,
+        tofile=local_label,
+    ):
+        sys.stdout.write(line)
+    if remote_lines or local_lines:
+        sys.stdout.write("\n")
+
+
+def diff_datasources(args: argparse.Namespace) -> int:
+    client = build_client(args)
+    bundle = load_datasource_diff_bundle(Path(args.diff_dir))
+    live_records = build_live_datasource_diff_records(client)
+    report = compare_datasource_bundle_to_live(bundle, live_records)
+    diff_dir = Path(args.diff_dir)
+
+    for item in report["items"]:
+        identity = item["identity"]
+        status = item["status"]
+        if status == "match":
+            print("Diff same %s -> datasource=%s" % (diff_dir, identity))
+            continue
+        if status == "different":
+            print(
+                "Diff different %s -> datasource=%s fields=%s"
+                % (diff_dir, identity, ",".join(item["changedFields"]))
+            )
+        elif status == "missing-live":
+            print("Diff missing-live %s -> datasource=%s" % (diff_dir, identity))
+        elif status == "extra-live":
+            print("Diff extra-live %s -> datasource=%s" % (diff_dir, identity))
+        elif status == "ambiguous-live-uid":
+            print("Diff ambiguous-live-uid %s -> datasource=%s" % (diff_dir, identity))
+        elif status == "ambiguous-live-name":
+            print("Diff ambiguous-live-name %s -> datasource=%s" % (diff_dir, identity))
+        else:
+            print("Diff %s %s -> datasource=%s" % (status, diff_dir, identity))
+        _print_datasource_unified_diff(
+            item.get("live"),
+            item.get("local"),
+            "remote/%s" % identity,
+            "local/%s" % identity,
+        )
+
+    diff_count = report["summary"]["diffCount"]
+    bundle_count = report["summary"]["bundleCount"]
+    print(
+        "Diff checked %s datasource(s); %s difference(s) found."
+        % (bundle_count, diff_count)
+    )
+    if diff_count:
+        print(
+            "Found %s datasource difference(s) across %s exported datasource(s)."
+            % (diff_count, bundle_count)
+        )
+        return 1
+
+    print("No datasource differences across %s exported datasource(s)." % bundle_count)
+    return 0
+
+
 def import_datasources(args: argparse.Namespace) -> int:
     if getattr(args, "table", False) and not args.dry_run:
         raise GrafanaError("--table is only supported with --dry-run for datasource import.")
@@ -818,7 +984,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             return list_datasources(args)
         if args.command == "export":
             return export_datasources(args)
-        return import_datasources(args)
+        if args.command == "import":
+            return import_datasources(args)
+        return diff_datasources(args)
     except GrafanaError as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
@@ -836,6 +1004,7 @@ __all__ = [
     "build_export_records",
     "build_parser",
     "export_datasources",
+    "diff_datasources",
     "import_datasources",
     "list_datasources",
     "main",

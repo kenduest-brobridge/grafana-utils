@@ -13,9 +13,8 @@ use super::{
     render_import_dry_run_json, render_import_dry_run_table, CommonCliArgs, DashboardCliArgs,
     DashboardCommand, DiffArgs, ExportArgs, FolderInventoryStatusKind, ImportArgs,
     InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs,
-    ListDataSourcesArgs,
-    DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME,
-    TOOL_SCHEMA_VERSION,
+    ListDataSourcesArgs, DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME,
+    FOLDER_INVENTORY_FILENAME, TOOL_SCHEMA_VERSION,
 };
 use crate::common::api_response;
 use clap::{CommandFactory, Parser};
@@ -248,6 +247,29 @@ fn parse_cli_supports_list_with_sources() {
 }
 
 #[test]
+fn parse_cli_supports_list_output_format_csv() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "list",
+        "--url",
+        "https://grafana.example.com",
+        "--output-format",
+        "csv",
+    ]);
+
+    match args.command {
+        DashboardCommand::List(list_args) => {
+            assert_eq!(list_args.org_id, None);
+            assert!(!list_args.all_orgs);
+            assert!(!list_args.table);
+            assert!(list_args.csv);
+            assert!(!list_args.json);
+        }
+        _ => panic!("expected list command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_list_data_sources_mode() {
     let args = parse_cli_from([
         "grafana-utils",
@@ -264,6 +286,25 @@ fn parse_cli_supports_list_data_sources_mode() {
             assert!(!list_args.csv);
             assert!(!list_args.json);
             assert!(!list_args.no_header);
+        }
+        _ => panic!("expected list-data-sources command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_list_data_sources_output_format_json() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "list-data-sources",
+        "--output-format",
+        "json",
+    ]);
+
+    match args.command {
+        DashboardCommand::ListDataSources(list_args) => {
+            assert!(list_args.json);
+            assert!(!list_args.table);
+            assert!(!list_args.csv);
         }
         _ => panic!("expected list-data-sources command"),
     }
@@ -458,6 +499,28 @@ fn parse_cli_supports_import_dry_run_json_flag() {
         DashboardCommand::Import(import_args) => {
             assert!(import_args.dry_run);
             assert!(import_args.json);
+        }
+        _ => panic!("expected import command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_import_dry_run_output_format_table() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "import",
+        "--import-dir",
+        "./dashboards/raw",
+        "--dry-run",
+        "--output-format",
+        "table",
+    ]);
+
+    match args.command {
+        DashboardCommand::Import(import_args) => {
+            assert!(import_args.dry_run);
+            assert!(import_args.table);
+            assert!(!import_args.json);
         }
         _ => panic!("expected import command"),
     }
@@ -1875,6 +1938,7 @@ fn list_dashboards_with_request_returns_dashboard_count() {
         table: false,
         csv: false,
         json: false,
+        output_format: None,
         no_header: false,
     };
 
@@ -1961,6 +2025,7 @@ fn list_dashboards_with_request_json_fetches_dashboards_and_datasources_by_defau
         table: false,
         csv: false,
         json: true,
+        output_format: None,
         no_header: false,
     };
     let mut calls = Vec::new();
@@ -2021,6 +2086,7 @@ fn list_dashboards_with_request_with_org_id_scopes_requests() {
         table: false,
         csv: false,
         json: true,
+        output_format: None,
         no_header: false,
     };
     let mut calls = Vec::new();
@@ -2107,6 +2173,7 @@ fn list_dashboards_with_request_all_orgs_aggregates_results() {
         table: false,
         csv: false,
         json: true,
+        output_format: None,
         no_header: false,
     };
     let mut calls = Vec::new();
@@ -2225,6 +2292,7 @@ fn list_data_sources_with_request_returns_count() {
         table: false,
         csv: true,
         json: false,
+        output_format: None,
         no_header: false,
     };
 
@@ -3428,9 +3496,9 @@ fn validate_inspect_export_report_args_rejects_report_columns_without_report() {
     };
 
     let error = super::validate_inspect_export_report_args(&args).unwrap_err();
-    assert!(error
-        .to_string()
-        .contains("--report-columns is only supported together with --report or report-like --output-format"));
+    assert!(error.to_string().contains(
+        "--report-columns is only supported together with --report or report-like --output-format"
+    ));
 }
 
 #[test]
@@ -4104,6 +4172,7 @@ fn import_dashboards_with_client_imports_discovered_files() {
         dry_run: false,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -4142,6 +4211,7 @@ fn import_dashboards_with_org_id_requires_basic_auth() {
         dry_run: true,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -4171,6 +4241,7 @@ fn build_import_auth_context_adds_org_header_for_basic_auth_imports() {
         dry_run: true,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -4240,6 +4311,7 @@ fn import_dashboards_rejects_mismatched_export_org_with_explicit_org_id() {
         dry_run: true,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -4308,6 +4380,7 @@ fn import_dashboards_rejects_mismatched_export_org_with_current_token_org() {
         dry_run: true,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -4382,6 +4455,7 @@ fn import_dashboards_allows_matching_export_org_with_current_org_lookup() {
         dry_run: true,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -4450,6 +4524,7 @@ fn import_dashboards_with_dry_run_skips_post_requests() {
         dry_run: true,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -4503,6 +4578,7 @@ fn import_dashboards_rejects_unsupported_export_schema_version() {
         dry_run: false,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -4564,6 +4640,7 @@ fn import_dashboards_with_update_existing_only_skips_missing_dashboards() {
         dry_run: false,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -4635,6 +4712,7 @@ fn import_dashboards_with_update_existing_only_table_marks_missing_dashboards_as
         dry_run: true,
         table: true,
         json: false,
+        output_format: None,
         no_header: true,
         progress: false,
         verbose: false,
@@ -4698,6 +4776,7 @@ fn import_dashboards_replace_existing_preserves_destination_folder() {
         dry_run: false,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -4766,6 +4845,7 @@ fn import_dashboards_rejects_ensure_folders_with_import_folder_override() {
         dry_run: false,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -4819,6 +4899,7 @@ fn import_dashboards_rejects_matching_folder_path_with_import_folder_uid() {
         dry_run: false,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -4930,6 +5011,7 @@ fn import_dashboards_with_matching_folder_path_skips_live_update_mismatch() {
         dry_run: false,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -4993,6 +5075,7 @@ fn import_dashboards_rejects_json_without_dry_run() {
         dry_run: false,
         table: false,
         json: true,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -5071,6 +5154,7 @@ fn import_dashboards_with_ensure_folders_creates_missing_folder_chain_from_raw_i
         dry_run: false,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -5197,6 +5281,7 @@ fn import_dashboards_with_dry_run_and_ensure_folders_checks_folder_inventory() {
         dry_run: true,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,
@@ -5285,6 +5370,7 @@ fn import_dashboards_with_ensure_folders_requires_inventory_manifest() {
         dry_run: false,
         table: false,
         json: false,
+        output_format: None,
         no_header: false,
         progress: false,
         verbose: false,

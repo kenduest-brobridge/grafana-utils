@@ -1,7 +1,12 @@
-use super::{render_import_table, resolve_match, DatasourceCliArgs, DatasourceImportRecord};
+use super::{
+    diff_datasources_with_live, render_import_table, resolve_match, DatasourceCliArgs,
+    DatasourceImportRecord,
+};
 use clap::{CommandFactory, Parser};
 use serde_json::{json, Value};
+use std::fs;
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 fn live_datasource(
     id: i64,
@@ -38,8 +43,28 @@ fn import_help_explains_common_operator_flags() {
     assert!(help.contains("--dry-run"));
     assert!(help.contains("--table"));
     assert!(help.contains("--json"));
+    assert!(help.contains("--output-format"));
     assert!(help.contains("--progress"));
     assert!(help.contains("--verbose"));
+}
+
+#[test]
+fn parse_datasource_list_supports_output_format_json() {
+    let args = DatasourceCliArgs::parse_normalized_from([
+        "grafana-utils",
+        "list",
+        "--output-format",
+        "json",
+    ]);
+
+    match args.command {
+        super::DatasourceGroupCommand::List(inner) => {
+            assert!(inner.json);
+            assert!(!inner.table);
+            assert!(!inner.csv);
+        }
+        _ => panic!("expected datasource list"),
+    }
 }
 
 #[test]
@@ -113,7 +138,7 @@ fn render_import_table_can_omit_header() {
 
 #[test]
 fn parse_datasource_import_preserves_requested_path() {
-    let args = DatasourceCliArgs::parse_from([
+    let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-utils",
         "import",
         "--import-dir",
@@ -133,4 +158,152 @@ fn parse_datasource_import_preserves_requested_path() {
         }
         _ => panic!("expected datasource import"),
     }
+}
+
+#[test]
+fn parse_datasource_import_supports_output_format_table() {
+    let args = DatasourceCliArgs::parse_normalized_from([
+        "grafana-utils",
+        "import",
+        "--import-dir",
+        "./datasources",
+        "--dry-run",
+        "--output-format",
+        "table",
+    ]);
+
+    match args.command {
+        super::DatasourceGroupCommand::Import(inner) => {
+            assert!(inner.dry_run);
+            assert!(inner.table);
+            assert!(!inner.json);
+        }
+        _ => panic!("expected datasource import"),
+    }
+}
+
+#[test]
+fn diff_help_explains_diff_dir_flag() {
+    let mut command = DatasourceCliArgs::command();
+    let subcommand = command
+        .find_subcommand_mut("diff")
+        .unwrap_or_else(|| panic!("missing datasource diff help"));
+    let mut output = Vec::new();
+    subcommand.write_long_help(&mut output).unwrap();
+    let help = String::from_utf8(output).unwrap();
+
+    assert!(help.contains("--diff-dir"));
+    assert!(help.contains("Compare datasource inventory"));
+}
+
+#[test]
+fn parse_datasource_diff_preserves_requested_path() {
+    let args =
+        DatasourceCliArgs::parse_from(["grafana-utils", "diff", "--diff-dir", "./datasources"]);
+
+    match args.command {
+        super::DatasourceGroupCommand::Diff(inner) => {
+            assert_eq!(inner.diff_dir, Path::new("./datasources"));
+        }
+        _ => panic!("expected datasource diff"),
+    }
+}
+
+#[test]
+fn diff_datasources_with_live_returns_zero_for_matching_inventory() {
+    let diff_dir = write_diff_fixture(&[json!({
+        "uid": "prom-main",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "access": "proxy",
+        "url": "http://prometheus:9090",
+        "isDefault": true,
+        "orgId": "1"
+    })]);
+    let live = vec![json!({
+        "id": 7,
+        "uid": "prom-main",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "access": "proxy",
+        "url": "http://prometheus:9090",
+        "isDefault": true,
+        "orgId": "1"
+    })
+    .as_object()
+    .unwrap()
+    .clone()];
+
+    let (compared_count, differences) = diff_datasources_with_live(&diff_dir, &live).unwrap();
+
+    assert_eq!(compared_count, 1);
+    assert_eq!(differences, 0);
+    fs::remove_dir_all(diff_dir).unwrap();
+}
+
+#[test]
+fn diff_datasources_with_live_detects_changed_inventory() {
+    let diff_dir = write_diff_fixture(&[json!({
+        "uid": "prom-main",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "access": "proxy",
+        "url": "http://prometheus:9090",
+        "isDefault": true,
+        "orgId": "1"
+    })]);
+    let live = vec![json!({
+        "id": 7,
+        "uid": "prom-main",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "access": "direct",
+        "url": "http://prometheus:9090",
+        "isDefault": true,
+        "orgId": "1"
+    })
+    .as_object()
+    .unwrap()
+    .clone()];
+
+    let (compared_count, differences) = diff_datasources_with_live(&diff_dir, &live).unwrap();
+
+    assert_eq!(compared_count, 1);
+    assert_eq!(differences, 1);
+    fs::remove_dir_all(diff_dir).unwrap();
+}
+
+fn write_diff_fixture(records: &[Value]) -> std::path::PathBuf {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let dir = std::env::temp_dir().join(format!("grafana-utils-datasource-diff-{unique}"));
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(
+        dir.join("export-metadata.json"),
+        serde_json::to_vec_pretty(&json!({
+            "schemaVersion": 1,
+            "kind": "grafana-utils-datasource-export-index",
+            "variant": "root",
+            "resource": "datasource",
+            "datasourcesFile": "datasources.json",
+            "indexFile": "index.json",
+            "datasourceCount": records.len(),
+            "format": "grafana-datasource-inventory-v1"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        dir.join("datasources.json"),
+        serde_json::to_vec_pretty(&Value::Array(records.to_vec())).unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        dir.join("index.json"),
+        serde_json::to_vec_pretty(&json!({"items": []})).unwrap(),
+    )
+    .unwrap();
+    dir
 }

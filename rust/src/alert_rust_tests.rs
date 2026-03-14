@@ -200,6 +200,20 @@ fn parse_cli_supports_list_rules_subcommand() {
 }
 
 #[test]
+fn parse_cli_supports_list_rules_output_format_csv() {
+    let args: AlertCliArgs = parse_cli_from([
+        "grafana-utils alert",
+        "list-rules",
+        "--output-format",
+        "csv",
+    ]);
+    assert_eq!(args.list_kind, Some(super::AlertListKind::Rules));
+    assert!(args.csv);
+    assert!(!args.table);
+    assert!(!args.json);
+}
+
+#[test]
 fn build_import_operation_accepts_legacy_tool_document_without_schema_version() {
     let (kind, payload) = build_import_operation(&json!({
         "apiVersion": TOOL_API_VERSION,

@@ -8,6 +8,20 @@ use super::{
     DEFAULT_EXPORT_DIR, DEFAULT_IMPORT_MESSAGE, DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT, DEFAULT_URL,
 };
 
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum SimpleOutputFormat {
+    Table,
+    Csv,
+    Json,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum DryRunOutputFormat {
+    Text,
+    Table,
+    Json,
+}
+
 #[derive(Debug, Clone, Args)]
 pub struct CommonCliArgs {
     #[arg(long, default_value = DEFAULT_URL, help = "Grafana base URL.")]
@@ -149,6 +163,13 @@ pub struct ListArgs {
     pub json: bool,
     #[arg(
         long,
+        value_enum,
+        conflicts_with_all = ["table", "csv", "json"],
+        help = "Alternative single-flag output selector. Use table, csv, or json."
+    )]
+    pub output_format: Option<SimpleOutputFormat>,
+    #[arg(
+        long,
         default_value_t = false,
         help = "Do not print table headers when rendering the default table output."
     )]
@@ -165,6 +186,13 @@ pub struct ListDataSourcesArgs {
     pub csv: bool,
     #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render datasource summaries as JSON.")]
     pub json: bool,
+    #[arg(
+        long,
+        value_enum,
+        conflicts_with_all = ["table", "csv", "json"],
+        help = "Alternative single-flag output selector. Use table, csv, or json."
+    )]
+    pub output_format: Option<SimpleOutputFormat>,
     #[arg(
         long,
         default_value_t = false,
@@ -242,6 +270,13 @@ pub struct ImportArgs {
         help = "For --dry-run only, render one JSON document with mode, folder checks, dashboard actions, and summary counts."
     )]
     pub json: bool,
+    #[arg(
+        long,
+        value_enum,
+        conflicts_with_all = ["table", "json"],
+        help = "Alternative single-flag output selector for --dry-run output. Use text, table, or json."
+    )]
+    pub output_format: Option<DryRunOutputFormat>,
     #[arg(
         long,
         default_value_t = false,
@@ -520,7 +555,57 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
-    DashboardCliArgs::parse_from(iter)
+    normalize_dashboard_cli_args(DashboardCliArgs::parse_from(iter))
+}
+
+fn normalize_simple_output_format(
+    table: &mut bool,
+    csv: &mut bool,
+    json: &mut bool,
+    output_format: Option<SimpleOutputFormat>,
+) {
+    match output_format {
+        Some(SimpleOutputFormat::Table) => *table = true,
+        Some(SimpleOutputFormat::Csv) => *csv = true,
+        Some(SimpleOutputFormat::Json) => *json = true,
+        None => {}
+    }
+}
+
+fn normalize_dry_run_output_format(
+    table: &mut bool,
+    json: &mut bool,
+    output_format: Option<DryRunOutputFormat>,
+) {
+    match output_format {
+        Some(DryRunOutputFormat::Table) => *table = true,
+        Some(DryRunOutputFormat::Json) => *json = true,
+        Some(DryRunOutputFormat::Text) | None => {}
+    }
+}
+
+pub fn normalize_dashboard_cli_args(mut args: DashboardCliArgs) -> DashboardCliArgs {
+    match &mut args.command {
+        DashboardCommand::List(list_args) => normalize_simple_output_format(
+            &mut list_args.table,
+            &mut list_args.csv,
+            &mut list_args.json,
+            list_args.output_format,
+        ),
+        DashboardCommand::ListDataSources(list_args) => normalize_simple_output_format(
+            &mut list_args.table,
+            &mut list_args.csv,
+            &mut list_args.json,
+            list_args.output_format,
+        ),
+        DashboardCommand::Import(import_args) => normalize_dry_run_output_format(
+            &mut import_args.table,
+            &mut import_args.json,
+            import_args.output_format,
+        ),
+        _ => {}
+    }
+    args
 }
 
 pub fn build_auth_context(common: &CommonCliArgs) -> Result<DashboardAuthContext> {

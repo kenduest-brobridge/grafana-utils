@@ -44,9 +44,9 @@ The repo now uses one primary command name with explicit areas underneath it.
 - `grafana-utils dashboard export ...`
 - `grafana-utils dashboard list ...`
 - `grafana-utils datasource list ...`
-- `grafana-utils datasource list ...`
 - `grafana-utils datasource export ...`
 - `grafana-utils datasource import ...`
+- `grafana-utils datasource diff ...`
 - `grafana-utils dashboard inspect-live ...`
 - `grafana-utils dashboard import ...`
 - `grafana-utils dashboard diff ...`
@@ -569,6 +569,7 @@ Use `prompt/` when you want:
 | `--all-orgs` | For `dashboard list` or `dashboard export`, enumerate visible Grafana orgs and aggregate list output or export each org; requires Basic auth |
 | `--with-sources` | For `dashboard list` table or CSV output, fetch each dashboard payload and include datasource names used by that dashboard; JSON already includes datasource names and best-effort datasource UIDs by default |
 | `--no-header` | For `dashboard list`, `dashboard list-data-sources`, `dashboard import --dry-run --table`, or `dashboard inspect-export --table`, omit the table header row |
+| `--output-format <mode>` | New cross-command output selector for list and dry-run summary commands. Current commands still keep their old defaults, but you can now use one flag such as `table`, `csv`, `json`, or `text` where supported instead of remembering whether a command needs `--table`, `--csv`, or `--json` |
 | `--progress` | For `dashboard export` or `dashboard import`, print concise per-dashboard `current/total` progress lines while the command runs |
 | `-v, --verbose` | For `dashboard export` or `dashboard import`, print detailed per-item output including variants, paths, and import results; overrides `--progress` |
 | `dashboard import --dry-run --table` | Render dry-run import predictions as a table showing `uid`, destination state, action, destination folder path, and file |
@@ -662,10 +663,12 @@ For datasource listing:
 - `list`
 - `export`
 - `import`
+- `diff`
 
 For datasource inventory:
 
 - `datasource list` defaults to a table showing `uid`, `name`, `type`, `url`, and `isDefault`
+- `datasource list --output-format table|csv|json` is the new single-flag alternative to `--table`, `--csv`, or `--json`
 - `datasource list --no-header` omits the table header row
 - `datasource list --csv` emits `uid,name,type,url,isDefault`
 - `datasource list --json` emits an array of datasource objects
@@ -679,8 +682,11 @@ For datasource inventory:
 - `datasource import --require-matching-export-org` fails when the export's recorded `orgId` does not match the resolved target org for the run
 - `datasource import --replace-existing` updates existing destination datasources that match by `uid` and otherwise by exact `name`
 - `datasource import --update-existing-only` skips missing datasources and only updates matched destination datasources
+- `datasource import --dry-run --output-format text|table|json` is the new single-flag alternative to the old dry-run output flags
 - `datasource import --dry-run --table` renders predicted datasource import actions as a compact table and `--no-header` suppresses that header row
 - `datasource import --dry-run --json` renders one machine-readable JSON document with the active mode, per-datasource actions, and summary counts
+- `datasource diff` compares one exported datasource inventory root against the current live Grafana datasource inventory
+- `datasource diff --diff-dir <DIR>` reads `datasources.json`, `index.json`, and `export-metadata.json` from that export root, prints per-datasource diff status, and exits with status `1` when differences are found
 
 ### Raw Export
 

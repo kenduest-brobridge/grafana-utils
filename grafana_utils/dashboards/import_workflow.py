@@ -228,6 +228,7 @@ def run_import_dashboards(args, deps):
                         folder_path=folder_path,
                         source_folder_path=match_result.get("source_folder_path"),
                         destination_folder_path=match_result.get("destination_folder_path"),
+                        reason=match_result.get("reason"),
                     )
                 )
                 continue

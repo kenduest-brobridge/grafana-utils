@@ -36,11 +36,10 @@ mod dashboard_list;
 mod dashboard_prompt;
 
 pub use dashboard_cli_defs::{
-    build_auth_context, build_http_client, build_http_client_for_org, parse_cli_from,
-    CommonCliArgs, DashboardAuthContext, DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs,
-    ImportArgs, InspectExportArgs, InspectExportReportFormat, InspectLiveArgs,
-    InspectOutputFormat, ListArgs,
-    ListDataSourcesArgs,
+    build_auth_context, build_http_client, build_http_client_for_org, normalize_dashboard_cli_args,
+    parse_cli_from, CommonCliArgs, DashboardAuthContext, DashboardCliArgs, DashboardCommand,
+    DiffArgs, ExportArgs, ImportArgs, InspectExportArgs, InspectExportReportFormat,
+    InspectLiveArgs, InspectOutputFormat, ListArgs, ListDataSourcesArgs,
 };
 pub use dashboard_export::{
     build_export_variant_dirs, build_output_path, export_dashboards_with_client,
@@ -955,6 +954,7 @@ pub fn run_dashboard_cli_with_client(
 }
 
 pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
+    let args = normalize_dashboard_cli_args(args);
     match args.command {
         DashboardCommand::List(list_args) => {
             let _ = list_dashboards_with_org_clients(&list_args)?;

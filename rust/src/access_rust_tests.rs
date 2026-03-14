@@ -64,6 +64,28 @@ fn parse_cli_supports_user_list() {
 }
 
 #[test]
+fn parse_cli_supports_user_list_output_format_json() {
+    let args = parse_cli_from([
+        "grafana-access-utils",
+        "user",
+        "list",
+        "--output-format",
+        "json",
+    ]);
+
+    match args.command {
+        AccessCommand::User {
+            command: UserCommand::List(list_args),
+        } => {
+            assert!(list_args.json);
+            assert!(!list_args.table);
+            assert!(!list_args.csv);
+        }
+        _ => panic!("expected user list"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_service_account_token_add() {
     let args = parse_cli_from([
         "grafana-access-utils",
@@ -157,6 +179,7 @@ fn user_list_with_request_reads_org_users() {
         table: false,
         csv: false,
         json: true,
+        output_format: None,
     };
     let mut calls = Vec::new();
     let count = list_users_with_request(
@@ -312,6 +335,7 @@ fn team_list_with_request_reads_search_and_members() {
         table: false,
         csv: false,
         json: true,
+        output_format: None,
     };
     let mut calls = Vec::new();
     let result = list_teams_command_with_request(
@@ -443,6 +467,7 @@ fn service_account_list_with_request_reads_search() {
         table: false,
         csv: false,
         json: true,
+        output_format: None,
     };
     let mut calls = Vec::new();
     let result = list_service_accounts_command_with_request(

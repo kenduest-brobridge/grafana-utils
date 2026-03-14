@@ -57,6 +57,27 @@ fn parse_cli_supports_datasource_group_command() {
 }
 
 #[test]
+fn parse_cli_supports_datasource_diff_group_command() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-utils",
+        "datasource",
+        "diff",
+        "--diff-dir",
+        "./datasources",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Datasource { command } => match command {
+            DatasourceGroupCommand::Diff(inner) => {
+                assert_eq!(inner.diff_dir, Path::new("./datasources"));
+            }
+            _ => panic!("expected datasource diff"),
+        },
+        _ => panic!("expected datasource group"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_dashboard_group_inspect_export_command() {
     let args: CliArgs = parse_cli_from([
         "grafana-utils",
@@ -185,6 +206,7 @@ fn unified_help_mentions_alert_access_and_shims() {
     let help = render_unified_help();
     assert!(help.contains("grafana-utils access user list"));
     assert!(help.contains("grafana-access-utils"));
+    assert!(help.contains("Run datasource list, export, import, and diff workflows."));
 }
 
 #[test]

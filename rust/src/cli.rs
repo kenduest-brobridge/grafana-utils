@@ -3,8 +3,7 @@ use clap::{Parser, Subcommand};
 use crate::access::{run_access_cli, AccessCliArgs};
 use crate::alert::{
     normalize_alert_group_command, normalize_alert_namespace_args, run_alert_cli, AlertCliArgs,
-    AlertDiffArgs, AlertExportArgs, AlertImportArgs, AlertListArgs, AlertListKind,
-    AlertNamespaceArgs,
+    AlertDiffArgs, AlertExportArgs, AlertImportArgs, AlertListArgs, AlertNamespaceArgs,
 };
 use crate::common::Result;
 use crate::dashboard::{
@@ -49,7 +48,7 @@ pub enum UnifiedCommand {
         #[command(subcommand)]
         command: DashboardGroupCommand,
     },
-    #[command(about = "Run datasource list, export, and import workflows.")]
+    #[command(about = "Run datasource list, export, import, and diff workflows.")]
     Datasource {
         #[command(subcommand)]
         command: DatasourceGroupCommand,
@@ -190,42 +189,18 @@ where
         UnifiedCommand::DiffAlert(inner) => run_alert(normalize_alert_group_command(
             crate::alert::AlertGroupCommand::Diff(inner),
         )),
-        UnifiedCommand::ListAlertRules(inner) => {
-            let mut args = crate::alert::cli_args_from_common(inner.common);
-            args.list_kind = Some(AlertListKind::Rules);
-            args.table = inner.table;
-            args.csv = inner.csv;
-            args.json = inner.json;
-            args.no_header = inner.no_header;
-            run_alert(args)
-        }
-        UnifiedCommand::ListAlertContactPoints(inner) => {
-            let mut args = crate::alert::cli_args_from_common(inner.common);
-            args.list_kind = Some(AlertListKind::ContactPoints);
-            args.table = inner.table;
-            args.csv = inner.csv;
-            args.json = inner.json;
-            args.no_header = inner.no_header;
-            run_alert(args)
-        }
-        UnifiedCommand::ListAlertMuteTimings(inner) => {
-            let mut args = crate::alert::cli_args_from_common(inner.common);
-            args.list_kind = Some(AlertListKind::MuteTimings);
-            args.table = inner.table;
-            args.csv = inner.csv;
-            args.json = inner.json;
-            args.no_header = inner.no_header;
-            run_alert(args)
-        }
-        UnifiedCommand::ListAlertTemplates(inner) => {
-            let mut args = crate::alert::cli_args_from_common(inner.common);
-            args.list_kind = Some(AlertListKind::Templates);
-            args.table = inner.table;
-            args.csv = inner.csv;
-            args.json = inner.json;
-            args.no_header = inner.no_header;
-            run_alert(args)
-        }
+        UnifiedCommand::ListAlertRules(inner) => run_alert(normalize_alert_group_command(
+            crate::alert::AlertGroupCommand::ListRules(inner),
+        )),
+        UnifiedCommand::ListAlertContactPoints(inner) => run_alert(normalize_alert_group_command(
+            crate::alert::AlertGroupCommand::ListContactPoints(inner),
+        )),
+        UnifiedCommand::ListAlertMuteTimings(inner) => run_alert(normalize_alert_group_command(
+            crate::alert::AlertGroupCommand::ListMuteTimings(inner),
+        )),
+        UnifiedCommand::ListAlertTemplates(inner) => run_alert(normalize_alert_group_command(
+            crate::alert::AlertGroupCommand::ListTemplates(inner),
+        )),
         UnifiedCommand::Access(inner) => run_access(inner),
     }
 }

@@ -832,11 +832,11 @@ pub(crate) fn validate_inspect_export_report_args(args: &InspectExportArgs) -> R
     Ok(())
 }
 
-fn map_output_format_to_report(output_format: InspectOutputFormat) -> Option<InspectExportReportFormat> {
+fn map_output_format_to_report(
+    output_format: InspectOutputFormat,
+) -> Option<InspectExportReportFormat> {
     match output_format {
-        InspectOutputFormat::Text
-        | InspectOutputFormat::Table
-        | InspectOutputFormat::Json => None,
+        InspectOutputFormat::Text | InspectOutputFormat::Table | InspectOutputFormat::Json => None,
         InspectOutputFormat::ReportTable => Some(InspectExportReportFormat::Table),
         InspectOutputFormat::ReportCsv => Some(InspectExportReportFormat::Csv),
         InspectOutputFormat::ReportJson => Some(InspectExportReportFormat::Json),

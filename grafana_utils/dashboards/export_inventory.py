@@ -240,3 +240,57 @@ def load_export_metadata(
         expected_variant=expected_variant,
     )
     return raw
+
+
+def resolve_export_org_id(
+    import_dir: Path,
+    folder_inventory_filename: str,
+    datasource_inventory_filename: str,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> Optional[str]:
+    """Resolve one stable source export orgId from the raw export directory."""
+    org_ids = set()
+    index_file = "index.json"
+    folders_file = folder_inventory_filename
+    datasources_file = datasource_inventory_filename
+    if isinstance(metadata, dict):
+        index_file = str(metadata.get("indexFile") or index_file)
+        folders_file = str(metadata.get("foldersFile") or folder_inventory_filename)
+        datasources_file = str(
+            metadata.get("datasourcesFile") or datasource_inventory_filename
+        )
+    for path in [
+        import_dir / index_file,
+        import_dir / folders_file,
+        import_dir / datasources_file,
+    ]:
+        if not path.is_file():
+            continue
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except OSError as exc:
+            raise GrafanaError("Failed to read %s: %s" % (path, exc)) from exc
+        except ValueError as exc:
+            raise GrafanaError("Invalid JSON in %s: %s" % (path, exc)) from exc
+        if isinstance(raw, dict):
+            items = raw.get("items") or []
+        elif isinstance(raw, list):
+            items = raw
+        else:
+            items = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            org_id = str(item.get("orgId") or "").strip()
+            if org_id:
+                org_ids.add(org_id)
+    if not org_ids:
+        return None
+    if len(org_ids) > 1:
+        raise GrafanaError(
+            "Raw export metadata in %s spans multiple orgIds (%s). "
+            "Point --import-dir at one org-specific raw export or remove "
+            "--require-matching-export-org."
+            % (import_dir, ", ".join(sorted(org_ids)))
+        )
+    return list(org_ids)[0]
