@@ -597,31 +597,25 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
         const="table",
         choices=INSPECT_REPORT_FORMAT_CHOICES,
         default=None,
-        help=(
-            "Render one full per-query inspection report. "
-            "Use --report for flat table output, --report json for flat JSON, "
-            "--report csv for flat CSV, --report tree for a dashboard/panel/query tree, "
-            "--report tree-table for per-dashboard tables, "
-            "--report governance for datasource governance tables, "
-            "or --report governance-json for governance JSON."
-        ),
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--output-format",
         choices=INSPECT_OUTPUT_FORMAT_CHOICES,
         default=None,
         help=(
-            "Alternative single-flag output selector for inspect output. "
+            "Single-flag output selector for inspect output. "
             "Use text, table, json, report-table, report-csv, report-json, "
             "report-tree, report-tree-table, governance, or governance-json. "
-            "This cannot be combined with --json, --table, or --report."
+            "Use this instead of the legacy output flags. "
+            "This cannot be combined with hidden legacy output flags."
         ),
     )
     parser.add_argument(
         "--report-columns",
         default=None,
         help=(
-            "With --report table, csv, or tree-table, or the equivalent report-like --output-format, "
+            "With report-table, report-csv, or report-tree-table --output-format values, "
             "render only these comma-separated report columns. "
             "Supported values: %s."
             % ", ".join(
@@ -641,7 +635,7 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report-filter-datasource",
         default=None,
         help=(
-            "With --report or report-like --output-format, only include query report rows whose datasource label "
+            "With report-like --output-format values, only include query report rows whose datasource label "
             "exactly matches this value."
         ),
     )
@@ -649,24 +643,24 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report-filter-panel-id",
         default=None,
         help=(
-            "With --report or report-like --output-format, only include query report rows whose panel id "
+            "With report-like --output-format values, only include query report rows whose panel id "
             "exactly matches this value."
         ),
     )
     parser.add_argument(
         "--json",
         action="store_true",
-        help="Render the export analysis as JSON instead of human-readable summary lines.",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--table",
         action="store_true",
-        help="Render the export analysis as multi-section tables instead of prose summary lines.",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--no-header",
         action="store_true",
-        help="With --table, table-like --report, or compatible --output-format values, omit the per-section table header rows.",
+        help="With table-like --output-format values, omit the per-section table header rows.",
     )
 
 
@@ -691,31 +685,25 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
         const="table",
         choices=INSPECT_REPORT_FORMAT_CHOICES,
         default=None,
-        help=(
-            "Render one full per-query inspection report. "
-            "Use --report for flat table output, --report csv for flat CSV, "
-            "--report json for flat JSON, --report tree for a dashboard/panel/query tree, "
-            "--report tree-table for per-dashboard tables, "
-            "--report governance for datasource governance tables, "
-            "or --report governance-json for governance JSON."
-        ),
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--output-format",
         choices=INSPECT_OUTPUT_FORMAT_CHOICES,
         default=None,
         help=(
-            "Alternative single-flag output selector for inspect output. "
+            "Single-flag output selector for inspect output. "
             "Use text, table, json, report-table, report-csv, report-json, "
             "report-tree, report-tree-table, governance, or governance-json. "
-            "This cannot be combined with --json, --table, or --report."
+            "Use this instead of the legacy output flags. "
+            "This cannot be combined with hidden legacy output flags."
         ),
     )
     parser.add_argument(
         "--report-columns",
         default=None,
         help=(
-            "With --report table, csv, or tree-table, or the equivalent report-like --output-format, "
+            "With report-table, report-csv, or report-tree-table --output-format values, "
             "render only these comma-separated report columns. "
             "Supported values: %s."
             % ", ".join(
@@ -735,7 +723,7 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report-filter-datasource",
         default=None,
         help=(
-            "With --report or report-like --output-format, only include query report rows whose datasource label "
+            "With report-like --output-format values, only include query report rows whose datasource label "
             "exactly matches this value."
         ),
     )
@@ -743,24 +731,24 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report-filter-panel-id",
         default=None,
         help=(
-            "With --report or report-like --output-format, only include query report rows whose panel id "
+            "With report-like --output-format values, only include query report rows whose panel id "
             "exactly matches this value."
         ),
     )
     parser.add_argument(
         "--json",
         action="store_true",
-        help="Render the live dashboard inspection as JSON instead of human-readable summary lines.",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--table",
         action="store_true",
-        help="Render the live dashboard inspection as multi-section tables instead of prose summary lines.",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--no-header",
         action="store_true",
-        help="With --table, table-like --report, or compatible --output-format values, omit the per-section table header rows.",
+        help="With table-like --output-format values, omit the per-section table header rows.",
     )
 
 
@@ -778,14 +766,14 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         epilog=(
             "Examples:\n\n"
             "  Export dashboards from local Grafana with Basic auth:\n"
-            "    grafana-utils export-dashboard --url http://localhost:3000 "
+            "    grafana-util dashboard export --url http://localhost:3000 "
             "--basic-user admin --basic-password admin --export-dir ./dashboards --overwrite\n\n"
             "  Export dashboards with an API token:\n"
             "    export GRAFANA_API_TOKEN='your-token'\n"
-            "    grafana-utils export-dashboard --url http://localhost:3000 "
+            "    grafana-util dashboard export --url http://localhost:3000 "
             "--token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n"
             "  Compare raw dashboard exports against local Grafana:\n"
-            "    grafana-utils diff --url http://localhost:3000 "
+            "    grafana-util dashboard diff --url http://localhost:3000 "
             "--basic-user admin --basic-password admin --import-dir ./dashboards/raw"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -801,14 +789,14 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         epilog=(
             "Examples:\n\n"
             "  Export dashboards from local Grafana with Basic auth:\n"
-            "    grafana-utils export-dashboard --url http://localhost:3000 "
+            "    grafana-util dashboard export --url http://localhost:3000 "
             "--basic-user admin --basic-password admin --export-dir ./dashboards --overwrite\n\n"
             "  Export dashboards with an API token:\n"
             "    export GRAFANA_API_TOKEN='your-token'\n"
-            "    grafana-utils export-dashboard --url http://localhost:3000 "
+            "    grafana-util dashboard export --url http://localhost:3000 "
             "--token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n"
             "  Export into a flat directory layout instead of per-folder subdirectories:\n"
-            "    grafana-utils export-dashboard --url http://localhost:3000 "
+            "    grafana-util dashboard export --url http://localhost:3000 "
             "--basic-user admin --basic-password admin --export-dir ./dashboards --flat"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -847,11 +835,15 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     inspect_export_parser = subparsers.add_parser(
         "inspect-export",
         help="Inspect one raw dashboard export directory and summarize its structure.",
+        epilog=INSPECT_EXPORT_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_inspect_export_cli_args(inspect_export_parser)
     inspect_live_parser = subparsers.add_parser(
         "inspect-live",
         help="Inspect live Grafana dashboards with the same summary/report modes as inspect-export.",
+        epilog=INSPECT_LIVE_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_inspect_live_cli_args(inspect_live_parser)
 
@@ -859,6 +851,32 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     _normalize_output_format_args(args, parser)
     _parse_dashboard_import_output_columns(args, parser)
     return args
+
+
+INSPECT_EXPORT_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  Show one machine-readable summary document:\n"
+    "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
+    "--output-format json\n\n"
+    "  Render grouped dashboard-first query tables:\n"
+    "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
+    "--output-format report-tree-table\n\n"
+    "  Show full inspect help with extended report examples:\n"
+    "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw --help-full"
+)
+
+
+INSPECT_LIVE_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  Inspect live dashboards as a report JSON document:\n"
+    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
+    "--output-format report-json\n\n"
+    "  Filter to one panel in dashboard/panel/query tree output:\n"
+    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
+    "--output-format report-tree --report-filter-panel-id 7\n\n"
+    "  Show full inspect help with extended report examples:\n"
+    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --help-full"
+)
 
 
 def _normalize_output_format_args(
