@@ -1228,10 +1228,6 @@ fn validate_basic_auth_only(auth_mode: &str, operation: &str) -> Result<()> {
     }
 }
 
-fn validate_user_list_auth(args: &UserListArgs, auth_mode: &str) -> Result<()> {
-    validate_user_scope_auth(&args.scope, args.with_teams, auth_mode)
-}
-
 fn validate_user_scope_auth(scope: &Scope, with_teams: bool, auth_mode: &str) -> Result<()> {
     if *scope == Scope::Global && auth_mode != "basic" {
         return Err(message(

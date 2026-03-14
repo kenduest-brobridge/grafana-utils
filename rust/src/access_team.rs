@@ -1252,7 +1252,7 @@ where
                     )));
                 }
                 add_team_member_with_request(&mut request_json, &team_id, &user_id)?;
-                existing_members.insert(key, (identity.clone().to_string(), false, user_id));
+                existing_members.insert(key, (identity.to_string(), false, user_id));
             }
 
             if !remove_keys.is_empty() {

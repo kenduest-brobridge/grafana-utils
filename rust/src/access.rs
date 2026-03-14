@@ -64,14 +64,13 @@ pub(crate) use access_service_account::{
 };
 #[cfg(test)]
 pub(crate) use access_team::{
-    add_team_with_request, diff_teams_with_request, export_teams_with_request,
-    import_teams_with_request, list_teams_command_with_request, modify_team_with_request,
+    add_team_with_request, diff_teams_with_request, import_teams_with_request,
+    list_teams_command_with_request, modify_team_with_request,
 };
 #[cfg(test)]
 pub(crate) use access_user::{
     add_user_with_request, delete_user_with_request, diff_users_with_request,
-    export_users_with_request, import_users_with_request, list_users_with_request,
-    modify_user_with_request,
+    list_users_with_request, modify_user_with_request,
 };
 
 fn request_object<F>(

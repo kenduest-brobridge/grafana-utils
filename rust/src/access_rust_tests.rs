@@ -654,7 +654,7 @@ fn run_access_cli_with_request_routes_user_export() {
         "--dry-run",
     ]);
     let result = run_access_cli_with_request(
-        |method, path, params, _payload| {
+        |method, path, _params, _payload| {
             assert_eq!(method.to_string(), Method::GET.to_string());
             if path == "/api/users" {
                 Ok(Some(json!([])))
