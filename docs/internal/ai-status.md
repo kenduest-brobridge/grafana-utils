@@ -4,6 +4,32 @@ Historical note:
 
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
+
+## 2026-03-15 - Task: Split Python Access CLI Facade
+- State: Planned
+- Scope: `grafana_utils/access_cli.py`, `grafana_utils/access/parser.py`, `grafana_utils/access/workflows.py`, `tests/test_python_access_cli.py`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `grafana_utils/access_cli.py` is still the largest Python CLI facade in the repo and currently mixes argparse wiring, auth validation, identity lookup helpers, user/team/service-account workflows, and top-level dispatch in one file even after earlier support-module extractions.
+
+## 2026-03-15 - Task: Split Rust Dashboard Import Dry-Run Helpers
+- State: Done
+- Scope: `rust/src/dashboard.rs`, `rust/src/dashboard_import.rs`, `rust/src/dashboard_rust_tests.rs`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: After the shared live-helper extraction, `rust/src/dashboard.rs` was smaller but still carried the folder inventory dry-run record builder and table renderer used only by dashboard import. That left the root module holding import-only presentation logic that did not belong with the top-level dashboard facade.
+- Current Update: Moved the folder inventory dry-run record builder and folder dry-run table renderer into `rust/src/dashboard_import.rs`, then kept the existing dashboard test import path stable through a test-only re-export from `dashboard.rs`.
+- Result: `rust/src/dashboard.rs` dropped again from 568 lines to 478 lines, and the folder dry-run rendering logic now sits with the import workflow that actually owns it.
+
+## 2026-03-15 - Task: Split Rust Dashboard Help Surface
+- State: Done
+- Scope: `rust/src/dashboard.rs`, `rust/src/dashboard_help.rs`, `rust/src/dashboard_rust_tests.rs`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Even after the live-helper and import dry-run cleanup, `rust/src/dashboard.rs` still owned the `--help-full` rendering helpers and long inspect example strings for `inspect-export` and `inspect-live`. Those helpers were stable, but they were unrelated to runtime orchestration and kept extra presentation-only detail in the root module.
+- Current Update: Moved the dashboard `--help-full` rendering helpers and extended example text into `rust/src/dashboard_help.rs`, then kept the public `crate::dashboard` API stable by re-exporting the moved functions from `dashboard.rs`.
+- Result: The Rust dashboard root module is smaller again, and the full-help rendering surface now lives in a dedicated module instead of in the orchestration root.
+
+## 2026-03-15 - Task: Split Rust Dashboard Live Orchestration Helpers
+- State: Done
+- Scope: `rust/src/dashboard.rs`, `rust/src/dashboard_live.rs`, `rust/src/dashboard_export.rs`, `rust/src/dashboard_import.rs`, `rust/src/dashboard_list.rs`, `rust/src/dashboard_rust_tests.rs`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust dashboard behavior was already split across CLI definitions, export, import, list, prompt, and inspect modules, but `rust/src/dashboard.rs` still held a large shared block of live Grafana request helpers plus folder inventory orchestration that export, import, and list all depended on through the root module. That made the root dashboard module keep growing even after earlier feature splits.
+- Current Update: Extracted the shared live request and folder inventory helpers into `rust/src/dashboard_live.rs`, rewired `rust/src/dashboard.rs` to re-export the moved helpers, and left the existing export/import/list modules and dashboard tests on the same crate-level names.
+- Result: The Rust dashboard root module dropped from 1017 lines to 568 lines without changing operator-facing behavior, and the shared Grafana fetch/folder reconciliation logic now lives in one dedicated helper module instead of continuing to accrete in `dashboard.rs`.
 ## 2026-03-14 - Task: Block Datasource Name-Match UID Drift Updates
 - State: Done
 - Scope: `grafana_utils/datasource_cli.py`, `tests/test_python_datasource_cli.py`, `rust/src/datasource.rs`, `rust/src/datasource_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

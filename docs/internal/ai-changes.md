@@ -4,6 +4,30 @@ Historical note:
 
 - Older entries preserve the reasoning and follow-up state as of the entry date.
 - Active backlog now lives in `TODO.md`, while completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
+
+## 2026-03-15 - Split Rust Dashboard Import Dry-Run Helpers
+- Summary: Moved the folder inventory dry-run record builder and folder dry-run table renderer out of `rust/src/dashboard.rs` and into `rust/src/dashboard_import.rs`, where the dashboard import flow already owns folder dry-run status handling. Kept the existing dashboard test import path stable by re-exporting the table renderer from `dashboard.rs` under `#[cfg(test)]`.
+- Tests: Reused the Rust dashboard suite, including the existing folder dry-run table assertions, to verify the move without changing behavior.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml dashboard --quiet`
+- Validation: Confirmed dashboard import dry-run still renders the expected folder inventory tables, and confirmed `rust/src/dashboard.rs` dropped from 568 lines to 478 lines after removing the import-only rendering helpers.
+- Impact: `rust/src/dashboard.rs`, `rust/src/dashboard_import.rs`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is a behavior-preserving import-module cleanup, but future Rust dashboard refactors should keep folder dry-run rendering co-located with import rather than reintroducing it into the root module.
+
+## 2026-03-15 - Split Rust Dashboard Help Surface
+- Summary: Moved the Rust dashboard `--help-full` rendering helpers and the long inspect example strings out of `rust/src/dashboard.rs` and into a dedicated `rust/src/dashboard_help.rs` module. Kept the public `crate::dashboard` API stable by re-exporting `render_inspect_export_help_full`, `render_inspect_live_help_full`, and `maybe_render_dashboard_help_full_from_os_args` from the root module.
+- Tests: Reused the focused Rust dashboard help tests and then reran the full Rust dashboard suite to verify the extraction without changing CLI behavior.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml maybe_render_dashboard_help_full_from_os_args --quiet`; `cargo test --manifest-path rust/Cargo.toml inspect_live_help_full --quiet`; `cargo test --manifest-path rust/Cargo.toml dashboard --quiet`
+- Validation: Confirmed the `grafana-utils` binary still routes `--help-full` through the same public function, confirmed the inspect help examples remain unchanged, and confirmed the root dashboard module no longer needs to carry the presentation-only help text.
+- Impact: `rust/src/dashboard.rs`, `rust/src/dashboard_help.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is a behavior-preserving help-surface extraction only, but future CLI-help changes should now be made in `dashboard_help.rs` instead of drifting back into the root module.
+
+## 2026-03-15 - Split Rust Dashboard Live Orchestration Helpers
+- Summary: Moved the Rust dashboard module's shared live Grafana request helpers and folder inventory reconciliation logic out of `rust/src/dashboard.rs` into a dedicated `rust/src/dashboard_live.rs` helper module. `dashboard.rs` now re-exports the moved helpers so export/import/list code and existing dashboard tests keep their current call sites while the root module stays focused on shared types, help text, and top-level command dispatch.
+- Tests: Reused the existing Rust dashboard suite to verify the module split without changing behavior or test imports.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml dashboard --quiet`
+- Validation: Confirmed the extracted live helper module still serves dashboard export, import, and list flows through the existing re-export surface, and confirmed `rust/src/dashboard.rs` dropped from 1017 lines to 568 lines after the move.
+- Impact: `rust/src/dashboard.rs`, `rust/src/dashboard_live.rs`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is intended to be behavior-preserving module extraction only, but future Rust dashboard refactors should continue moving shared runtime helpers into dedicated modules rather than rebuilding the old catch-all `dashboard.rs`.
 ## 2026-03-14 - Block Datasource Name-Match UID Drift Updates
 - Summary: Tightened datasource update safety so `--replace-existing` no longer updates a live datasource by exact `name` when the exported datasource `uid` and live datasource `uid` disagree. Python and Rust now both classify that case as `would-fail-uid-mismatch` instead of a normal update, which keeps one datasource identity from silently overwriting another same-name datasource.
 - Tests: Added focused Python import coverage and Rust match-resolution coverage for same-name different-UID datasource updates.

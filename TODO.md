@@ -9,11 +9,11 @@ Completed items that were previously listed here now live in `docs/internal/todo
 - shared access TLS/auth parameter expansion is still incomplete for Python and Rust parity
 - live validation coverage still needs follow-through for the newer destructive access commands
 - baseline quality gate scripts now exist and are wired into `make` and CI, but optional Python formatter/lint/static-check coverage still depends on tool availability in the active environment
-- Rust dashboard orchestration is now split across CLI definitions, export, import, inspect, list, and shared live-helper modules, and the remaining cleanup is to keep shrinking the root `dashboard.rs` orchestration surface instead of letting more shared runtime logic accumulate there
+- Rust dashboard orchestration is now split across CLI definitions, export, import, inspect, list, shared live helpers, and dedicated help rendering, and the remaining cleanup is to keep shrinking the root `dashboard.rs` surface by moving the last typed export/report structs into dedicated modules
 
 ## Next
 
-- continue splitting the Rust dashboard orchestration surface so `dashboard.rs` keeps only top-level entrypoints/re-exports while shared live/import/report helpers move into dedicated modules
+- continue splitting the Rust dashboard orchestration surface so `dashboard.rs` keeps only top-level entrypoints/re-exports while the remaining typed export/report structs move into dedicated modules
 - reduce Python/Rust inspect-export and inspect-live drift by keeping one stable summary/report schema, shared filters, and synchronized help/examples
 - reduce repeated live Grafana lookups during dashboard import and dry-run paths so large imports do not multiply API round-trips per dashboard
 - dashboard `prompt` export should surface the original datasource name in Grafana web-import prompts, not only the datasource type label

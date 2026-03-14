@@ -464,6 +464,96 @@ fn build_import_dry_run_record(
     ]
 }
 
+fn build_folder_inventory_dry_run_record(status: &FolderInventoryStatus) -> [String; 6] {
+    let destination = match status.kind {
+        FolderInventoryStatusKind::Missing => "missing",
+        _ => "exists",
+    };
+    let reason = match status.kind {
+        FolderInventoryStatusKind::Missing => "would-create".to_string(),
+        FolderInventoryStatusKind::Matches => String::new(),
+        FolderInventoryStatusKind::Mismatch => {
+            let mut reasons = Vec::new();
+            if status.actual_title.as_deref() != Some(status.expected_title.as_str()) {
+                reasons.push("title");
+            }
+            if status.actual_parent_uid != status.expected_parent_uid {
+                reasons.push("parentUid");
+            }
+            if status.actual_path.as_deref() != Some(status.expected_path.as_str()) {
+                reasons.push("path");
+            }
+            reasons.join(",")
+        }
+    };
+    [
+        status.uid.clone(),
+        destination.to_string(),
+        match status.kind {
+            FolderInventoryStatusKind::Missing => "missing",
+            FolderInventoryStatusKind::Matches => "match",
+            FolderInventoryStatusKind::Mismatch => "mismatch",
+        }
+        .to_string(),
+        reason,
+        status.expected_path.clone(),
+        status.actual_path.clone().unwrap_or_default(),
+    ]
+}
+
+pub(crate) fn render_folder_inventory_dry_run_table(
+    records: &[[String; 6]],
+    include_header: bool,
+) -> Vec<String> {
+    let headers = [
+        "UID",
+        "DESTINATION",
+        "STATUS",
+        "REASON",
+        "EXPECTED_PATH",
+        "ACTUAL_PATH",
+    ];
+    let mut widths = headers.map(str::len);
+    for row in records {
+        for (index, value) in row.iter().enumerate() {
+            widths[index] = widths[index].max(value.len());
+        }
+    }
+    let format_row = |values: &[String; 6]| -> String {
+        values
+            .iter()
+            .enumerate()
+            .map(|(index, value)| format!("{value:<width$}", width = widths[index]))
+            .collect::<Vec<String>>()
+            .join("  ")
+    };
+    let mut lines = Vec::new();
+    if include_header {
+        let header_values = [
+            headers[0].to_string(),
+            headers[1].to_string(),
+            headers[2].to_string(),
+            headers[3].to_string(),
+            headers[4].to_string(),
+            headers[5].to_string(),
+        ];
+        let divider_values = [
+            "-".repeat(widths[0]),
+            "-".repeat(widths[1]),
+            "-".repeat(widths[2]),
+            "-".repeat(widths[3]),
+            "-".repeat(widths[4]),
+            "-".repeat(widths[5]),
+        ];
+        lines.push(format_row(&header_values));
+        lines.push(format_row(&divider_values));
+    }
+    for row in records {
+        lines.push(format_row(row));
+    }
+    lines
+}
+
 pub(crate) fn render_import_dry_run_table(
     records: &[[String; 8]],
     include_header: bool,
