@@ -7,6 +7,7 @@ use crate::alert::{
     AlertNamespaceArgs,
 };
 use crate::common::Result;
+use crate::datasource::{run_datasource_cli, DatasourceGroupCommand};
 use crate::dashboard::{
     run_dashboard_cli, DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs, ImportArgs,
     InspectExportArgs, InspectLiveArgs, ListArgs, ListDataSourcesArgs,
@@ -47,6 +48,11 @@ pub enum UnifiedCommand {
     Dashboard {
         #[command(subcommand)]
         command: DashboardGroupCommand,
+    },
+    #[command(about = "Run datasource list, export, and import workflows.")]
+    Datasource {
+        #[command(subcommand)]
+        command: DatasourceGroupCommand,
     },
     #[command(about = "List dashboard summaries without writing export files.")]
     List(ListArgs),
@@ -141,19 +147,22 @@ fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
     }
 }
 
-fn dispatch_with_handlers<FD, FA, FX>(
+fn dispatch_with_handlers<FD, FS, FA, FX>(
     args: CliArgs,
     mut run_dashboard: FD,
+    mut run_datasource: FS,
     mut run_alert: FA,
     mut run_access: FX,
 ) -> Result<()>
 where
     FD: FnMut(DashboardCliArgs) -> Result<()>,
+    FS: FnMut(DatasourceGroupCommand) -> Result<()>,
     FA: FnMut(AlertCliArgs) -> Result<()>,
     FX: FnMut(AccessCliArgs) -> Result<()>,
 {
     match args.command {
         UnifiedCommand::Dashboard { command } => run_dashboard(wrap_dashboard_group(command)),
+        UnifiedCommand::Datasource { command } => run_datasource(command),
         UnifiedCommand::List(inner) => run_dashboard(wrap_dashboard(DashboardCommand::List(inner))),
         UnifiedCommand::ListDataSources(inner) => {
             run_dashboard(wrap_dashboard(DashboardCommand::ListDataSources(inner)))
@@ -222,7 +231,13 @@ where
 }
 
 pub fn run_cli(args: CliArgs) -> Result<()> {
-    dispatch_with_handlers(args, run_dashboard_cli, run_alert_cli, run_access_cli)
+    dispatch_with_handlers(
+        args,
+        run_dashboard_cli,
+        run_datasource_cli,
+        run_alert_cli,
+        run_access_cli,
+    )
 }
 
 #[cfg(test)]

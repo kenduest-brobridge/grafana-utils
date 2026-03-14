@@ -120,6 +120,16 @@
 - Impact: `grafana_utils/datasource_cli.py`, `grafana_utils/unified_cli.py`, `tests/test_python_datasource_cli.py`, `tests/test_python_unified_cli.py`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
 - Rollback/Risk: Moderate. This is a new user-facing resource family and only the Python implementation exists so far; the export contract is intentionally minimal and current-org-only until later datasource import/diff and Rust parity work lands.
 
+## 2026-03-14 - Add Datasource Import
+- Summary: Added `grafana-utils datasource import` on both Python and Rust. The new workflow reads the normalized datasource export root (`datasources.json`, `index.json`, `export-metadata.json`), supports dry-run/table/JSON previews, allows explicit `--org-id` import scoping with Basic auth, and can fail closed with `--require-matching-export-org` before any write happens. Live reconciliation matches destination datasources by `uid` first and otherwise by exact `name`, then applies `create-only`, `create-or-update`, or `update-or-skip-missing` behavior.
+- Tests: Extended the Python datasource CLI suite with parser/help coverage plus import dry-run/org-guard assertions, added Rust datasource parser/help/match/table tests, and extended the unified Rust CLI tests to route the new datasource namespace.
+- Test Run: `python3 -m unittest -v tests.test_python_datasource_cli`
+- Test Run: `cd rust && cargo test --quiet datasource_`
+- Test Run: `cd rust && cargo test --quiet parse_cli_supports_datasource_group_command`
+- Validation: Verified focused Python datasource tests pass, verified the Rust datasource namespace compiles and passes its focused parser/match/table tests, and confirmed unified Rust CLI dispatch recognizes `grafana-utils datasource import`.
+- Impact: `grafana_utils/datasource_cli.py`, `tests/test_python_datasource_cli.py`, `rust/src/datasource.rs`, `rust/src/datasource_rust_tests.rs`, `rust/src/cli.rs`, `rust/src/cli_rust_tests.rs`, `rust/src/lib.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Moderate. The workflow is additive and guarded, but datasource import V1 intentionally does not restore secret-bearing settings and exact-name fallback can still expose ambiguity/block cases that operators need to resolve manually.
+
 ## 2026-03-13 - Split Python Dashboard Listing Helpers
 - Summary: Extracted the live dashboard list/datasource-list logic out of `grafana_utils/dashboard_cli.py` into `grafana_utils/dashboards/listing.py`. The new module owns list renderers, dashboard folder/org/source enrichment, datasource UID/name resolution, datasource inventory record normalization, and the `list-dashboard` / `list-data-sources` command bodies, while `dashboard_cli.py` stays as the stable facade and re-exports the existing helper names for tests and callers.
 - Tests: Added Python 3.6 syntax coverage for the new `grafana_utils/dashboards/listing.py` module and revalidated the focused dashboard CLI suite against the preserved public helper surface.

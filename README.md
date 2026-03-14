@@ -46,6 +46,7 @@ The repo now uses one primary command name with explicit areas underneath it.
 - `grafana-utils datasource list ...`
 - `grafana-utils datasource list ...`
 - `grafana-utils datasource export ...`
+- `grafana-utils datasource import ...`
 - `grafana-utils dashboard inspect-live ...`
 - `grafana-utils dashboard import ...`
 - `grafana-utils dashboard diff ...`
@@ -138,6 +139,21 @@ python3 python/grafana-utils.py datasource export \
   --basic-password admin \
   --export-dir ./datasources \
   --overwrite
+```
+
+Datasource inventory dry-run import into one explicit Grafana org:
+
+```bash
+python3 python/grafana-utils.py datasource import \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
+  --org-id 7 \
+  --import-dir ./datasources \
+  --replace-existing \
+  --require-matching-export-org \
+  --dry-run \
+  --table
 ```
 
 Inspect one raw export directory and summarize its structure:
@@ -629,6 +645,7 @@ For datasource listing:
 
 - `list`
 - `export`
+- `import`
 
 For datasource inventory:
 
@@ -640,6 +657,14 @@ For datasource inventory:
 - `datasource export` normalizes each record to `uid`, `name`, `type`, `access`, `url`, `isDefault`, `org`, and `orgId`
 - `datasource export --dry-run` prints the target files without writing them
 - `datasource export --overwrite` replaces existing export files in the target directory
+- `datasource import` reads the normalized datasource export root back into Grafana
+- `datasource import --dry-run` predicts create/update/skip/block actions without calling Grafana write APIs
+- `datasource import --org-id <ID>` switches the whole import run to one explicit destination org and requires Basic auth
+- `datasource import --require-matching-export-org` fails when the export's recorded `orgId` does not match the resolved target org for the run
+- `datasource import --replace-existing` updates existing destination datasources that match by `uid` and otherwise by exact `name`
+- `datasource import --update-existing-only` skips missing datasources and only updates matched destination datasources
+- `datasource import --dry-run --table` renders predicted datasource import actions as a compact table and `--no-header` suppresses that header row
+- `datasource import --dry-run --json` renders one machine-readable JSON document with the active mode, per-datasource actions, and summary counts
 
 ### Raw Export
 

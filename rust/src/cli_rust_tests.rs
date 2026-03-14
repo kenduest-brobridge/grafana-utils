@@ -1,4 +1,5 @@
 use super::{dispatch_with_handlers, parse_cli_from, CliArgs, UnifiedCommand};
+use crate::datasource::DatasourceGroupCommand;
 use crate::dashboard::DashboardCommand;
 use clap::CommandFactory;
 use std::cell::RefCell;
@@ -29,6 +30,29 @@ fn parse_cli_supports_dashboard_group_command() {
             _ => panic!("expected dashboard export"),
         },
         _ => panic!("expected dashboard group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_datasource_group_command() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-utils",
+        "datasource",
+        "import",
+        "--import-dir",
+        "./datasources",
+        "--dry-run",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Datasource { command } => match command {
+            DatasourceGroupCommand::Import(inner) => {
+                assert_eq!(inner.import_dir, Path::new("./datasources"));
+                assert!(inner.dry_run);
+            }
+            _ => panic!("expected datasource import"),
+        },
+        _ => panic!("expected datasource group"),
     }
 }
 
@@ -183,6 +207,10 @@ fn dispatch_routes_dashboard_group_to_dashboard_handler() {
             });
             Ok(())
         },
+        |_datasource_args| {
+            routed.borrow_mut().push("datasource".to_string());
+            Ok(())
+        },
         |_alert_args| {
             routed.borrow_mut().push("alert".to_string());
             Ok(())
@@ -216,6 +244,10 @@ fn dispatch_routes_access_group_to_access_handler() {
             routed.borrow_mut().push("dashboard".to_string());
             Ok(())
         },
+        |_datasource_args| {
+            routed.borrow_mut().push("datasource".to_string());
+            Ok(())
+        },
         |_alert_args| {
             routed.borrow_mut().push("alert".to_string());
             Ok(())
@@ -228,4 +260,40 @@ fn dispatch_routes_access_group_to_access_handler() {
 
     assert!(result.is_ok());
     assert_eq!(*routed.borrow(), vec!["access".to_string()]);
+}
+
+#[test]
+fn dispatch_routes_datasource_group_to_datasource_handler() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-utils",
+        "datasource",
+        "list",
+        "--json",
+        "--token",
+        "abc",
+    ]);
+    let routed = RefCell::new(Vec::new());
+
+    let result = dispatch_with_handlers(
+        args,
+        |_dashboard_args| {
+            routed.borrow_mut().push("dashboard".to_string());
+            Ok(())
+        },
+        |_datasource_args| {
+            routed.borrow_mut().push("datasource".to_string());
+            Ok(())
+        },
+        |_alert_args| {
+            routed.borrow_mut().push("alert".to_string());
+            Ok(())
+        },
+        |_access_args| {
+            routed.borrow_mut().push("access".to_string());
+            Ok(())
+        },
+    );
+
+    assert!(result.is_ok());
+    assert_eq!(*routed.borrow(), vec!["datasource".to_string()]);
 }

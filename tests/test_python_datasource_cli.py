@@ -18,15 +18,41 @@ datasource_cli = importlib.import_module("grafana_utils.datasource_cli")
 
 
 class FakeDatasourceClient(object):
-    def __init__(self, datasources=None, org=None):
+    def __init__(self, datasources=None, org=None, headers=None, org_clients=None):
         self._datasources = list(datasources or [])
         self._org = dict(org or {"id": 1, "name": "Main Org."})
+        self.headers = dict(headers or {"Authorization": "Basic test"})
+        self._org_clients = dict(org_clients or {})
+        self.imported_payloads = []
 
     def list_datasources(self):
         return list(self._datasources)
 
     def fetch_current_org(self):
         return dict(self._org)
+
+    def with_org_id(self, org_id):
+        key = str(org_id)
+        if key not in self._org_clients:
+            raise AssertionError("Unexpected org id %s" % key)
+        return self._org_clients[key]
+
+    def request_json(self, path, params=None, method="GET", payload=None):
+        if path == "/api/datasources":
+            return list(self._datasources)
+        if path == "/api/org":
+            return dict(self._org)
+        if method in ("POST", "PUT"):
+            self.imported_payloads.append(
+                {
+                    "path": path,
+                    "method": method,
+                    "params": dict(params or {}),
+                    "payload": payload,
+                }
+            )
+            return {"status": "success"}
+        raise AssertionError("Unexpected datasource request %s %s" % (method, path))
 
 
 class DatasourceCliTests(unittest.TestCase):
@@ -51,6 +77,39 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertTrue(args.overwrite)
         self.assertFalse(args.dry_run)
 
+    def test_parse_args_supports_import_mode(self):
+        args = datasource_cli.parse_args(
+            [
+                "import",
+                "--import-dir",
+                "./datasources",
+                "--replace-existing",
+                "--dry-run",
+                "--table",
+            ]
+        )
+
+        self.assertEqual(args.command, "import")
+        self.assertEqual(args.import_dir, "./datasources")
+        self.assertTrue(args.replace_existing)
+        self.assertTrue(args.dry_run)
+        self.assertTrue(args.table)
+
+    def test_parse_args_supports_import_org_and_export_org_guard(self):
+        args = datasource_cli.parse_args(
+            [
+                "import",
+                "--import-dir",
+                "./datasources",
+                "--org-id",
+                "7",
+                "--require-matching-export-org",
+            ]
+        )
+
+        self.assertEqual(args.org_id, "7")
+        self.assertTrue(args.require_matching_export_org)
+
     def test_parse_args_rejects_multiple_list_output_modes(self):
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(["list", "--table", "--csv"])
@@ -60,6 +119,25 @@ class DatasourceCliTests(unittest.TestCase):
 
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(["list", "--csv", "--json"])
+
+    def test_import_help_mentions_dry_run_and_org_guard_flags(self):
+        stream = io.StringIO()
+
+        with redirect_stdout(stream):
+            with self.assertRaises(SystemExit):
+                datasource_cli.parse_args(["import", "-h"])
+
+        help_text = stream.getvalue()
+        self.assertIn("--import-dir", help_text)
+        self.assertIn("--org-id", help_text)
+        self.assertIn("--require-matching-export-org", help_text)
+        self.assertIn("--replace-existing", help_text)
+        self.assertIn("--update-existing-only", help_text)
+        self.assertIn("--dry-run", help_text)
+        self.assertIn("--table", help_text)
+        self.assertIn("--json", help_text)
+        self.assertIn("--progress", help_text)
+        self.assertIn("--verbose", help_text)
 
     def test_list_datasources_prints_table_by_default(self):
         args = datasource_cli.parse_args(["list", "--url", "http://127.0.0.1:3000"])
@@ -208,6 +286,193 @@ class DatasourceCliTests(unittest.TestCase):
             self.assertFalse((Path(tmpdir) / datasource_cli.DATASOURCE_EXPORT_FILENAME).exists())
             self.assertFalse((Path(tmpdir) / "index.json").exists())
             self.assertFalse((Path(tmpdir) / datasource_cli.EXPORT_METADATA_FILENAME).exists())
+
+    def test_import_datasources_rejects_export_org_mismatch_for_token_scope(self):
+        args = datasource_cli.parse_args(
+            [
+                "import",
+                "--import-dir",
+                "ignored",
+                "--dry-run",
+                "--require-matching-export-org",
+            ]
+        )
+        client = FakeDatasourceClient(
+            datasources=[],
+            org={"id": 2, "name": "Ops Org"},
+            headers={"Authorization": "Bearer token"},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args.import_dir = tmpdir
+            (Path(tmpdir) / datasource_cli.EXPORT_METADATA_FILENAME).write_text(
+                json.dumps(
+                    {
+                        "kind": datasource_cli.ROOT_INDEX_KIND,
+                        "schemaVersion": datasource_cli.TOOL_SCHEMA_VERSION,
+                        "variant": "root",
+                        "resource": "datasource",
+                        "datasourceCount": 1,
+                        "datasourcesFile": datasource_cli.DATASOURCE_EXPORT_FILENAME,
+                        "indexFile": "index.json",
+                        "format": "grafana-datasource-inventory-v1",
+                    },
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (Path(tmpdir) / datasource_cli.DATASOURCE_EXPORT_FILENAME).write_text(
+                json.dumps(
+                    [
+                        {
+                            "uid": "prom_uid",
+                            "name": "Prometheus Main",
+                            "type": "prometheus",
+                            "access": "proxy",
+                            "url": "http://prometheus:9090",
+                            "isDefault": "true",
+                            "org": "Main Org.",
+                            "orgId": "1",
+                        }
+                    ],
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (Path(tmpdir) / "index.json").write_text(
+                json.dumps(
+                    {
+                        "kind": datasource_cli.ROOT_INDEX_KIND,
+                        "schemaVersion": datasource_cli.TOOL_SCHEMA_VERSION,
+                        "datasourcesFile": datasource_cli.DATASOURCE_EXPORT_FILENAME,
+                        "count": 1,
+                        "items": [
+                            {
+                                "uid": "prom_uid",
+                                "name": "Prometheus Main",
+                                "type": "prometheus",
+                                "org": "Main Org.",
+                                "orgId": "1",
+                            }
+                        ],
+                    },
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(datasource_cli, "build_client", return_value=client):
+                with self.assertRaisesRegex(
+                    datasource_cli.GrafanaError,
+                    "Raw export orgId 1 does not match target Grafana org id 2",
+                ):
+                    datasource_cli.import_datasources(args)
+
+    def test_import_datasources_dry_run_uses_org_scoped_client(self):
+        scoped_client = FakeDatasourceClient(
+            datasources=[
+                {
+                    "uid": "prom_uid",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                    "access": "proxy",
+                    "url": "http://prometheus:9090",
+                    "isDefault": True,
+                }
+            ],
+            org={"id": 7, "name": "Observability"},
+            headers={"Authorization": "Basic scoped"},
+        )
+        client = FakeDatasourceClient(
+            datasources=[],
+            headers={"Authorization": "Basic root"},
+            org_clients={"7": scoped_client},
+        )
+        args = datasource_cli.parse_args(
+            [
+                "import",
+                "--import-dir",
+                "ignored",
+                "--org-id",
+                "7",
+                "--dry-run",
+                "--verbose",
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args.import_dir = tmpdir
+            (Path(tmpdir) / datasource_cli.EXPORT_METADATA_FILENAME).write_text(
+                json.dumps(
+                    {
+                        "kind": datasource_cli.ROOT_INDEX_KIND,
+                        "schemaVersion": datasource_cli.TOOL_SCHEMA_VERSION,
+                        "variant": "root",
+                        "resource": "datasource",
+                        "datasourceCount": 1,
+                        "datasourcesFile": datasource_cli.DATASOURCE_EXPORT_FILENAME,
+                        "indexFile": "index.json",
+                        "format": "grafana-datasource-inventory-v1",
+                    },
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (Path(tmpdir) / datasource_cli.DATASOURCE_EXPORT_FILENAME).write_text(
+                json.dumps(
+                    [
+                        {
+                            "uid": "prom_uid",
+                            "name": "Prometheus Main",
+                            "type": "prometheus",
+                            "access": "proxy",
+                            "url": "http://prometheus:9090",
+                            "isDefault": "true",
+                            "org": "Observability",
+                            "orgId": "7",
+                        }
+                    ],
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (Path(tmpdir) / "index.json").write_text(
+                json.dumps(
+                    {
+                        "kind": datasource_cli.ROOT_INDEX_KIND,
+                        "schemaVersion": datasource_cli.TOOL_SCHEMA_VERSION,
+                        "datasourcesFile": datasource_cli.DATASOURCE_EXPORT_FILENAME,
+                        "count": 1,
+                        "items": [
+                            {
+                                "uid": "prom_uid",
+                                "name": "Prometheus Main",
+                                "type": "prometheus",
+                                "org": "Observability",
+                                "orgId": "7",
+                            }
+                        ],
+                    },
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch.object(datasource_cli, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = datasource_cli.import_datasources(args)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(client.imported_payloads, [])
+            self.assertEqual(scoped_client.imported_payloads, [])
+            self.assertIn("Import mode: create-only", stdout.getvalue())
 
 
 if __name__ == "__main__":

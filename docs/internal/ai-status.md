@@ -111,6 +111,13 @@
 - Current Update: Added a Python `grafana-utils datasource` entrypoint with `list` and `export` subcommands, kept `dashboard list-data-sources` unchanged as a compatibility path, and defined a minimal datasource export root that writes normalized `datasources.json`, `index.json`, and `export-metadata.json` files for the current org.
 - Result: Datasource inventory is now available through a dedicated Python CLI surface without broad import/update semantics yet. The main remaining gaps are the later roadmap items: multi-org datasource workflows plus import/diff support and Python/Rust parity for the new resource family.
 
+## 2026-03-14 - Task: Add Datasource Import
+- State: In Progress
+- Scope: `grafana_utils/datasource_cli.py`, `tests/test_python_datasource_cli.py`, `rust/src/datasource.rs`, `rust/src/datasource_rust_tests.rs`, `rust/src/cli.rs`, `rust/src/cli_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Datasource inventory could be listed and exported, but there was still no supported path to replay the normalized datasource contract back into Grafana, no dry-run for datasource imports, and no Rust datasource namespace in the unified CLI.
+- Current Update: Added first-pass datasource import in both Python and Rust with dry-run/table/JSON output, explicit `--org-id` import scoping, opt-in `--require-matching-export-org`, and create/update/update-existing-only reconciliation using live datasource `uid` then exact `name` matching.
+- Result: Datasource export now round-trips through a guarded import workflow on both runtimes. The main remaining gaps are secret-bearing datasource settings, broader conflict/mapping controls, and live Docker validation similar to dashboard import.
+
 ## 2026-03-13 - Task: Add Flux And SQL Dashboard Inspection Extraction
 - State: Done
 - Scope: `grafana_utils/dashboards/inspection_report.py`, `tests/test_python_dashboard_inspection_cli.py`, `rust/src/dashboard_inspect.rs`, `rust/src/dashboard_rust_tests.rs`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
