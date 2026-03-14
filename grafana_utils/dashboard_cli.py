@@ -409,6 +409,15 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
         ),
     )
     parser.add_argument(
+        "--require-matching-export-org",
+        action="store_true",
+        help=(
+            "Require the raw export's recorded orgId to match the target Grafana "
+            "org before dry-run or live import. This is a safety guard against "
+            "accidental cross-org import."
+        ),
+    )
+    parser.add_argument(
         "--replace-existing",
         action="store_true",
         help="Update an existing destination dashboard when the imported dashboard UID already exists. Without this flag, existing UIDs are blocked.",
@@ -975,6 +984,56 @@ def load_export_metadata(
     )
 
 
+def resolve_export_org_id(
+    import_dir: Path,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> Optional[str]:
+    """Resolve one stable source export orgId from the raw export directory."""
+    org_ids = set()
+    index_file = "index.json"
+    folders_file = FOLDER_INVENTORY_FILENAME
+    datasources_file = DATASOURCE_INVENTORY_FILENAME
+    if isinstance(metadata, dict):
+        index_file = str(metadata.get("indexFile") or index_file)
+        folders_file = str(metadata.get("foldersFile") or folders_file)
+        datasources_file = str(metadata.get("datasourcesFile") or datasources_file)
+    for path in [
+        import_dir / index_file,
+        import_dir / folders_file,
+        import_dir / datasources_file,
+    ]:
+        if not path.is_file():
+            continue
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except OSError as exc:
+            raise GrafanaError("Failed to read %s: %s" % (path, exc)) from exc
+        except ValueError as exc:
+            raise GrafanaError("Invalid JSON in %s: %s" % (path, exc)) from exc
+        if isinstance(raw, dict):
+            items = raw.get("items") or []
+        elif isinstance(raw, list):
+            items = raw
+        else:
+            items = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            org_id = str(item.get("orgId") or "").strip()
+            if org_id:
+                org_ids.add(org_id)
+    if not org_ids:
+        return None
+    if len(org_ids) > 1:
+        raise GrafanaError(
+            "Raw export metadata in %s spans multiple orgIds (%s). "
+            "Point --import-dir at one org-specific raw export or remove "
+            "--require-matching-export-org."
+            % (import_dir, ", ".join(sorted(org_ids)))
+        )
+    return list(org_ids)[0]
+
+
 def validate_export_metadata(
     metadata: Dict[str, Any],
     metadata_path: Path,
@@ -1212,6 +1271,7 @@ def _build_import_workflow_deps() -> Dict[str, Any]:
         "render_dashboard_import_dry_run_json": render_dashboard_import_dry_run_json,
         "render_dashboard_import_dry_run_table": render_dashboard_import_dry_run_table,
         "render_folder_inventory_dry_run_table": render_folder_inventory_dry_run_table,
+        "resolve_export_org_id": resolve_export_org_id,
         "resolve_existing_dashboard_folder_path": resolve_existing_dashboard_folder_path,
         "resolve_dashboard_import_folder_path": resolve_dashboard_import_folder_path,
         "resolve_source_dashboard_folder_path": resolve_source_dashboard_folder_path,

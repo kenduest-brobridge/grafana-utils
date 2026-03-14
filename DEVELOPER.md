@@ -226,6 +226,9 @@ This is why prompt export needs live datasource metadata while raw export does n
 - Import `--org-id <ID>` switches the whole run to one explicit destination Grafana org, reusing the same Basic-auth-only org scoping model as `list` and `export`.
 - Import `--org-id` intentionally does not read the raw export's recorded `orgId` for routing; it is a manual explicit-target override for the whole run.
 - Plain token-auth import remains supported, but only in the token's current org context and without any explicit org switch semantics.
+- Import `--require-matching-export-org` is an opt-in safety guard that compares the raw export's recorded `orgId` against the resolved target org for this run before dry-run or live import work starts.
+- The target org for `--require-matching-export-org` is `--org-id` when explicitly set, otherwise the current org returned by `GET /api/org` for the active token or Basic-auth client.
+- `--require-matching-export-org` reads export org metadata from `index.json`, `folders.json`, and `datasources.json`, and it fails closed when those files do not provide one stable source `orgId`.
 - Import `--update-existing-only` switches the workflow to `update-or-skip-missing` by dashboard `uid`, implies overwrite-on-existing behavior, and never creates missing dashboards.
 - When import updates an existing dashboard by `uid`, it preserves the destination Grafana folder by default; only an explicit `--import-folder-uid` overrides that folder placement.
 - Import `--require-matching-folder-path` adds an update-only guard that compares the raw source folder path with the current destination Grafana folder path and skips existing-dashboard updates when those full paths differ.

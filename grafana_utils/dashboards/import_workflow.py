@@ -3,6 +3,41 @@
 from pathlib import Path
 
 
+def _normalize_org_id(org):
+    if not isinstance(org, dict):
+        return None
+    value = org.get("id")
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _validate_export_org_match(args, deps, client, import_dir, metadata):
+    if not bool(getattr(args, "require_matching_export_org", False)):
+        return
+    source_org_id = deps["resolve_export_org_id"](import_dir, metadata)
+    if not source_org_id:
+        raise deps["GrafanaError"](
+            "Could not determine one source export orgId from %s while "
+            "--require-matching-export-org is active."
+            % import_dir
+        )
+    target_org = client.fetch_current_org()
+    target_org_id = _normalize_org_id(target_org)
+    if not target_org_id:
+        raise deps["GrafanaError"](
+            "Grafana did not return a usable target org id while "
+            "--require-matching-export-org is active."
+        )
+    if target_org_id != source_org_id:
+        raise deps["GrafanaError"](
+            "Raw export orgId %s does not match target Grafana org id %s. "
+            "Remove --require-matching-export-org to allow cross-org import."
+            % (source_org_id, target_org_id)
+        )
+
+
 def run_import_dashboards(args, deps):
     """Import previously exported raw dashboard JSON files through Grafana's API."""
     grafana_error = deps["GrafanaError"]
@@ -38,6 +73,7 @@ def run_import_dashboards(args, deps):
     metadata = deps["load_export_metadata"](
         import_dir, expected_variant=deps["RAW_EXPORT_SUBDIR"]
     )
+    _validate_export_org_match(args, deps, client, import_dir, metadata)
     dashboard_files = deps["discover_dashboard_files"](import_dir)
     folder_inventory = deps["resolve_folder_inventory_requirements"](
         args, import_dir, metadata

@@ -216,6 +216,12 @@ pub struct ImportArgs {
         help = "Only update an existing dashboard when the source raw folder path matches the destination Grafana folder path exactly. Missing dashboards still follow the active create/skip mode."
     )]
     pub require_matching_folder_path: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Fail the import when the raw export orgId metadata does not match the target Grafana org for this run. This is a safety check for accidental cross-org imports."
+    )]
+    pub require_matching_export_org: bool,
     #[arg(long, default_value = DEFAULT_IMPORT_MESSAGE, help = "Version-history message to attach to each imported dashboard revision in Grafana.")]
     pub import_message: String,
     #[arg(

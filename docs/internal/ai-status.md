@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-14 - Task: Add Dashboard Import Export-Org Guard
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/export_inventory.py`, `grafana_utils/dashboards/import_workflow.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_import.rs`, `rust/src/dashboard_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Dashboard import already respected the active token org or explicit `--org-id`, but it did not warn or fail when a raw export from one org was replayed into a different target org. The raw export inventory recorded `orgId`, yet import treated that metadata as informational only.
+- Current Update: Added opt-in `--require-matching-export-org` to Python and Rust dashboard import. The new guard resolves one stable source export `orgId` from raw metadata files, resolves the target org from `--org-id` or the active current-org lookup, and fails early when those org IDs differ or when the raw export does not provide one stable source org.
+- Result: Operators can now keep token-based current-org import behavior by default, but they can also enable an explicit safety check that blocks accidental cross-org dry-runs or live imports.
+
 ## 2026-03-14 - Task: Wire Inspection Governance Reports
 - State: Done
 - Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/inspection_report.py`, `grafana_utils/dashboards/inspection_workflow.py`, `grafana_utils/dashboards/inspection_governance.py`, `grafana_utils/dashboards/inspection_governance_render.py`, `tests/test_python_dashboard_inspection_cli.py`, `tests/test_python_dashboard_inspection_governance.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_inspect.rs`, `rust/src/dashboard_inspect_governance.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

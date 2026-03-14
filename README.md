@@ -553,6 +553,7 @@ Use `prompt/` when you want:
 | `inspect-export --report-filter-panel-id ...` | With `--report`, include only rows whose panel id exactly matches the requested value |
 | `--update-existing-only` | For `dashboard import`, update only dashboards whose UID already exists in Grafana and skip missing dashboards instead of creating them |
 | `--ensure-folders` | For `dashboard import`, read `raw/folders.json` and create any missing destination folder chain before importing dashboards |
+| `--require-matching-export-org` | For `dashboard import`, verify that the raw export's recorded `orgId` matches the target Grafana org for this run before dry-run or live import |
 | `dashboard list-data-sources --table|--csv|--json` | List live Grafana data sources in human-readable or machine-readable output |
 | `--flat` | Do not create per-folder subdirectories |
 | `--overwrite` | Replace existing exported files |
@@ -598,6 +599,7 @@ For dashboard export:
 - `dashboard import --dry-run --table --no-header` omits the dry-run table header row
 - `dashboard import --org-id <ID>` imports the whole run into that explicit destination org instead of the current auth context and requires Basic auth
 - plain `dashboard import --token ...` imports into the token's current org context
+- `dashboard import --require-matching-export-org` fails early when the raw export's recorded `orgId` does not match the resolved target org for this run
 - `dashboard import --update-existing-only` updates only existing dashboard UIDs, skips missing dashboards, and implies `--replace-existing`
 - `dashboard import` now prints an `Import mode: ...` line up front so you can see whether the run is `create-only`, `create-or-update`, or `update-or-skip-missing`
 - `dashboard inspect-export` analyzes a raw export directory offline and summarizes dashboard count, folder paths, panels, queries, datasource usage, datasource inventory, orphaned datasources, and mixed-datasource dashboards
@@ -743,6 +745,17 @@ python3 python/grafana-utils.py dashboard import \
   --require-matching-folder-path
 ```
 
+Fail early when the raw export org does not match the import target org:
+
+```bash
+python3 python/grafana-utils.py dashboard import \
+  --url http://127.0.0.1:3000 \
+  --token "$GRAFANA_API_TOKEN" \
+  --import-dir ./dashboards/raw \
+  --dry-run \
+  --require-matching-export-org
+```
+
 Important rules:
 
 - point `--import-dir` at `dashboards/raw/`, not the combined `dashboards/` root
@@ -757,6 +770,9 @@ Important rules:
 - `--dry-run --json` renders one machine-readable JSON document with the active import mode, folder inventory checks, per-dashboard actions, destination folder paths, and summary counts
 - `--org-id <ID>` switches the whole import run to one explicit destination Grafana org and requires Basic auth; the raw export's recorded `orgId` is not used automatically for routing
 - plain `--token` import still works, but only in the token's current org context
+- `--require-matching-export-org` compares the raw export's recorded `orgId` from `index.json`, `folders.json`, or `datasources.json` against the resolved target org for this run
+- `--require-matching-export-org` is useful when a token already points at one org and you want a guard against accidentally replaying a raw export from another org
+- `--require-matching-export-org` fails when the raw export does not carry one stable `orgId`, because the safety check cannot prove the import target is correct
 - `--update-existing-only` changes import mode from `create-or-update` to `update-or-skip-missing`, keyed by dashboard `uid`
 - when updating an existing dashboard by `uid`, import preserves the destination Grafana folder by default unless you explicitly pass `--import-folder-uid`
 - `--require-matching-folder-path` only affects updates to existing dashboards; missing dashboards still follow the active create or skip mode

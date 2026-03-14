@@ -2,6 +2,7 @@ use reqwest::Method;
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
+use std::fs;
 use std::path::Path;
 
 use crate::common::{message, object_field, string_field, value_as_object, Result};
@@ -27,6 +28,93 @@ pub(crate) fn build_import_auth_context(args: &ImportArgs) -> Result<DashboardAu
             .push(("X-Grafana-Org-Id".to_string(), org_id.to_string()));
     }
     Ok(context)
+}
+
+fn load_export_org_ids(
+    import_dir: &Path,
+    metadata: Option<&ExportMetadata>,
+) -> Result<std::collections::BTreeSet<String>> {
+    let mut org_ids = std::collections::BTreeSet::new();
+    let index_file = metadata
+        .map(|item| item.index_file.clone())
+        .unwrap_or_else(|| "index.json".to_string());
+    let index_path = import_dir.join(&index_file);
+    if index_path.is_file() {
+        let raw = fs::read_to_string(&index_path)?;
+        let entries: Vec<VariantIndexEntry> = serde_json::from_str(&raw).map_err(|error| {
+            message(format!(
+                "Invalid dashboard export index in {}: {error}",
+                index_path.display()
+            ))
+        })?;
+        for entry in entries {
+            let org_id = entry.org_id.trim();
+            if !org_id.is_empty() {
+                org_ids.insert(org_id.to_string());
+            }
+        }
+    }
+
+    for folder in load_folder_inventory(import_dir, metadata)? {
+        let org_id = folder.org_id.trim();
+        if !org_id.is_empty() {
+            org_ids.insert(org_id.to_string());
+        }
+    }
+    for datasource in load_datasource_inventory(import_dir, metadata)? {
+        let org_id = datasource.org_id.trim();
+        if !org_id.is_empty() {
+            org_ids.insert(org_id.to_string());
+        }
+    }
+    Ok(org_ids)
+}
+
+fn resolve_import_target_org_id_with_request<F>(
+    mut request_json: F,
+    args: &ImportArgs,
+) -> Result<String>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    if let Some(org_id) = args.org_id {
+        return Ok(org_id.to_string());
+    }
+    let org = super::dashboard_list::fetch_current_org_with_request(&mut request_json)?;
+    Ok(super::dashboard_list::org_id_value(&org)?.to_string())
+}
+
+fn validate_matching_export_org_with_request<F>(
+    mut request_json: F,
+    args: &ImportArgs,
+    metadata: Option<&ExportMetadata>,
+) -> Result<()>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    if !args.require_matching_export_org {
+        return Ok(());
+    }
+    let export_org_ids = load_export_org_ids(&args.import_dir, metadata)?;
+    if export_org_ids.is_empty() {
+        return Err(message(
+            "Cannot verify exported org for import: raw export orgId metadata was not found in index.json, folders.json, or datasources.json.",
+        ));
+    }
+    if export_org_ids.len() > 1 {
+        return Err(message(format!(
+            "Cannot verify exported org for import: found multiple export orgIds ({}).",
+            export_org_ids.into_iter().collect::<Vec<String>>().join(", ")
+        )));
+    }
+    let export_org_id = export_org_ids.into_iter().next().unwrap_or_default();
+    let target_org_id = resolve_import_target_org_id_with_request(&mut request_json, args)?;
+    if export_org_id != target_org_id {
+        return Err(message(format!(
+            "Dashboard import export org mismatch: raw export orgId {export_org_id} does not match target org {target_org_id}. Use matching credentials/org selection or omit --require-matching-export-org."
+        )));
+    }
+    Ok(())
 }
 
 fn build_compare_document(dashboard: &Map<String, Value>, folder_uid: Option<&str>) -> Value {
@@ -611,6 +699,7 @@ where
         ));
     }
     let metadata = load_export_metadata(&args.import_dir, Some(RAW_EXPORT_SUBDIR))?;
+    validate_matching_export_org_with_request(&mut request_json, args, metadata.as_ref())?;
     let folder_inventory = if args.ensure_folders {
         load_folder_inventory(&args.import_dir, metadata.as_ref())?
     } else {

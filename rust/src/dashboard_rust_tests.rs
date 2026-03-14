@@ -375,6 +375,7 @@ fn import_help_explains_common_operator_flags() {
     assert!(help.contains("source raw folder path matches"));
     assert!(help.contains("--org-id"));
     assert!(help.contains("requires Basic auth"));
+    assert!(help.contains("--require-matching-export-org"));
 }
 
 #[test]
@@ -512,6 +513,24 @@ fn parse_cli_supports_import_org_scope_flag() {
     match args.command {
         DashboardCommand::Import(import_args) => {
             assert_eq!(import_args.org_id, Some(7));
+        }
+        _ => panic!("expected import command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_import_require_matching_export_org_flag() {
+    let args = parse_cli_from([
+        "grafana-utils",
+        "import",
+        "--import-dir",
+        "./dashboards/raw",
+        "--require-matching-export-org",
+    ]);
+
+    match args.command {
+        DashboardCommand::Import(import_args) => {
+            assert!(import_args.require_matching_export_org);
         }
         _ => panic!("expected import command"),
     }
@@ -3999,6 +4018,7 @@ fn import_dashboards_with_client_imports_discovered_files() {
         replace_existing: true,
         update_existing_only: false,
         require_matching_folder_path: false,
+        require_matching_export_org: false,
         import_message: "sync dashboards".to_string(),
         dry_run: false,
         table: false,
@@ -4036,6 +4056,7 @@ fn import_dashboards_with_org_id_requires_basic_auth() {
         replace_existing: false,
         update_existing_only: false,
         require_matching_folder_path: false,
+        require_matching_export_org: false,
         import_message: "sync dashboards".to_string(),
         dry_run: true,
         table: false,
@@ -4064,6 +4085,7 @@ fn build_import_auth_context_adds_org_header_for_basic_auth_imports() {
         replace_existing: false,
         update_existing_only: false,
         require_matching_folder_path: false,
+        require_matching_export_org: false,
         import_message: "sync dashboards".to_string(),
         dry_run: true,
         table: false,
@@ -4080,6 +4102,231 @@ fn build_import_auth_context_adds_org_header_for_basic_auth_imports() {
         .headers
         .iter()
         .any(|(name, value)| { name == "X-Grafana-Org-Id" && value == "7" }));
+}
+
+#[test]
+fn import_dashboards_rejects_mismatched_export_org_with_explicit_org_id() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(&raw_dir).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("index.json"),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "abc",
+                "title": "CPU",
+                "path": "dash.json",
+                "format": "grafana-web-import-preserve-uid",
+                "org": "Main Org.",
+                "orgId": "1"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("dash.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let args = ImportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        org_id: Some(2),
+        import_dir: raw_dir,
+        import_folder_uid: None,
+        ensure_folders: false,
+        replace_existing: false,
+        update_existing_only: false,
+        require_matching_folder_path: false,
+        require_matching_export_org: true,
+        import_message: "sync dashboards".to_string(),
+        dry_run: true,
+        table: false,
+        json: false,
+        no_header: false,
+        progress: false,
+        verbose: false,
+    };
+
+    let error = import_dashboards_with_request(|_method, _path, _params, _payload| Ok(None), &args)
+        .unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("raw export orgId 1 does not match target org 2"));
+}
+
+#[test]
+fn import_dashboards_rejects_mismatched_export_org_with_current_token_org() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(&raw_dir).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("index.json"),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "abc",
+                "title": "CPU",
+                "path": "dash.json",
+                "format": "grafana-web-import-preserve-uid",
+                "org": "Main Org.",
+                "orgId": "1"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("dash.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let args = ImportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        org_id: None,
+        import_dir: raw_dir,
+        import_folder_uid: None,
+        ensure_folders: false,
+        replace_existing: false,
+        update_existing_only: false,
+        require_matching_folder_path: false,
+        require_matching_export_org: true,
+        import_message: "sync dashboards".to_string(),
+        dry_run: true,
+        table: false,
+        json: false,
+        no_header: false,
+        progress: false,
+        verbose: false,
+    };
+
+    let error = import_dashboards_with_request(
+        |_method, path, _params, _payload| match path {
+            "/api/org" => Ok(Some(json!({"id": 2, "name": "Ops Org"}))),
+            _ => Err(super::message(format!("unexpected path {path}"))),
+        },
+        &args,
+    )
+    .unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("raw export orgId 1 does not match target org 2"));
+}
+
+#[test]
+fn import_dashboards_allows_matching_export_org_with_current_org_lookup() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(&raw_dir).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("index.json"),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "abc",
+                "title": "CPU",
+                "path": "dash.json",
+                "format": "grafana-web-import-preserve-uid",
+                "org": "Main Org.",
+                "orgId": "2"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("dash.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let args = ImportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        org_id: None,
+        import_dir: raw_dir,
+        import_folder_uid: None,
+        ensure_folders: false,
+        replace_existing: false,
+        update_existing_only: false,
+        require_matching_folder_path: false,
+        require_matching_export_org: true,
+        import_message: "sync dashboards".to_string(),
+        dry_run: true,
+        table: false,
+        json: false,
+        no_header: false,
+        progress: false,
+        verbose: false,
+    };
+    let mut calls = Vec::new();
+
+    let count = import_dashboards_with_request(
+        |method, path, _params, _payload| {
+            calls.push(format!("{} {}", method.as_str(), path));
+            match path {
+                "/api/org" => Ok(Some(json!({"id": 2, "name": "Ops Org"}))),
+                "/api/dashboards/uid/abc" => Err(api_response(
+                    404,
+                    "http://127.0.0.1:3000/api/dashboards/uid/abc",
+                    "{\"message\":\"not found\"}",
+                )),
+                _ => Err(super::message(format!("unexpected path {path}"))),
+            }
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 1);
+    assert!(calls.contains(&"GET /api/org".to_string()));
+    assert!(calls.contains(&"GET /api/dashboards/uid/abc".to_string()));
 }
 
 #[test]
@@ -4117,6 +4364,7 @@ fn import_dashboards_with_dry_run_skips_post_requests() {
         replace_existing: true,
         update_existing_only: false,
         require_matching_folder_path: false,
+        require_matching_export_org: false,
         import_message: "sync dashboards".to_string(),
         dry_run: true,
         table: false,
@@ -4169,6 +4417,7 @@ fn import_dashboards_rejects_unsupported_export_schema_version() {
         replace_existing: false,
         update_existing_only: false,
         require_matching_folder_path: false,
+        require_matching_export_org: false,
         import_message: "sync dashboards".to_string(),
         dry_run: false,
         table: false,
@@ -4229,6 +4478,7 @@ fn import_dashboards_with_update_existing_only_skips_missing_dashboards() {
         replace_existing: false,
         update_existing_only: true,
         require_matching_folder_path: false,
+        require_matching_export_org: false,
         import_message: "sync dashboards".to_string(),
         dry_run: false,
         table: false,
@@ -4299,6 +4549,7 @@ fn import_dashboards_with_update_existing_only_table_marks_missing_dashboards_as
         replace_existing: false,
         update_existing_only: true,
         require_matching_folder_path: false,
+        require_matching_export_org: false,
         import_message: "sync dashboards".to_string(),
         dry_run: true,
         table: true,
@@ -4361,6 +4612,7 @@ fn import_dashboards_replace_existing_preserves_destination_folder() {
         replace_existing: true,
         update_existing_only: false,
         require_matching_folder_path: false,
+        require_matching_export_org: false,
         import_message: "sync dashboards".to_string(),
         dry_run: false,
         table: false,
@@ -4428,6 +4680,7 @@ fn import_dashboards_rejects_ensure_folders_with_import_folder_override() {
         replace_existing: false,
         update_existing_only: false,
         require_matching_folder_path: false,
+        require_matching_export_org: false,
         import_message: "sync dashboards".to_string(),
         dry_run: false,
         table: false,
@@ -4480,6 +4733,7 @@ fn import_dashboards_rejects_matching_folder_path_with_import_folder_uid() {
         replace_existing: true,
         update_existing_only: false,
         require_matching_folder_path: true,
+        require_matching_export_org: false,
         import_message: "sync dashboards".to_string(),
         dry_run: false,
         table: false,
@@ -4590,6 +4844,7 @@ fn import_dashboards_with_matching_folder_path_skips_live_update_mismatch() {
         replace_existing: true,
         update_existing_only: false,
         require_matching_folder_path: true,
+        require_matching_export_org: false,
         import_message: "sync dashboards".to_string(),
         dry_run: false,
         table: false,
@@ -4652,6 +4907,7 @@ fn import_dashboards_rejects_json_without_dry_run() {
         replace_existing: false,
         update_existing_only: false,
         require_matching_folder_path: false,
+        require_matching_export_org: false,
         import_message: "sync dashboards".to_string(),
         dry_run: false,
         table: false,
@@ -4729,6 +4985,7 @@ fn import_dashboards_with_ensure_folders_creates_missing_folder_chain_from_raw_i
         replace_existing: false,
         update_existing_only: false,
         require_matching_folder_path: false,
+        require_matching_export_org: false,
         import_message: "sync dashboards".to_string(),
         dry_run: false,
         table: false,
@@ -4854,6 +5111,7 @@ fn import_dashboards_with_dry_run_and_ensure_folders_checks_folder_inventory() {
         replace_existing: false,
         update_existing_only: false,
         require_matching_folder_path: false,
+        require_matching_export_org: false,
         import_message: "sync dashboards".to_string(),
         dry_run: true,
         table: false,
@@ -4941,6 +5199,7 @@ fn import_dashboards_with_ensure_folders_requires_inventory_manifest() {
         replace_existing: false,
         update_existing_only: false,
         require_matching_folder_path: false,
+        require_matching_export_org: false,
         import_message: "sync dashboards".to_string(),
         dry_run: false,
         table: false,

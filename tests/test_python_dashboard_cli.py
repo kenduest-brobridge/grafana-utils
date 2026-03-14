@@ -459,6 +459,7 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("export root", help_text)
         self.assertIn("--org-id", help_text)
         self.assertIn("Requires Basic auth", help_text)
+        self.assertIn("--require-matching-export-org", help_text)
         self.assertIn("missing/match/mismatch", help_text)
         self.assertIn("skipped/blocked", help_text)
         self.assertIn("table form", help_text)
@@ -532,6 +533,18 @@ class ExporterTests(unittest.TestCase):
         )
 
         self.assertEqual(args.org_id, "2")
+
+    def test_parse_args_supports_require_matching_export_org(self):
+        args = exporter.parse_args(
+            [
+                "import-dashboard",
+                "--import-dir",
+                "dashboards/raw",
+                "--require-matching-export-org",
+            ]
+        )
+
+        self.assertTrue(args.require_matching_export_org)
 
     def test_parse_args_supports_preferred_auth_aliases(self):
         args = exporter.parse_args(
@@ -3253,6 +3266,238 @@ class ExporterTests(unittest.TestCase):
         with mock.patch.object(exporter, "build_client", return_value=client):
             with self.assertRaisesRegex(exporter.GrafanaError, "Basic auth"):
                 exporter.import_dashboards(args)
+
+    def test_import_dashboards_rejects_export_org_mismatch_for_token_scope(self):
+        client = FakeDashboardWorkflowClient(
+            org={"id": 2, "name": "Org Two"},
+            headers={"Authorization": "Bearer token"},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                    folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "infra",
+                        "title": "Infra",
+                        "parentUid": "",
+                        "path": "Infra",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    }
+                ],
+                import_dir / exporter.FOLDER_INVENTORY_FILENAME,
+            )
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []}},
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(import_dir),
+                    "--require-matching-export-org",
+                    "--dry-run",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                with self.assertRaisesRegex(
+                    exporter.GrafanaError,
+                    "Raw export orgId 1 does not match target Grafana org id 2",
+                ):
+                    exporter.import_dashboards(args)
+
+    def test_import_dashboards_accepts_matching_export_org_for_token_scope(self):
+        client = FakeDashboardWorkflowClient(
+            org={"id": 2, "name": "Org Two"},
+            headers={"Authorization": "Bearer token"},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "abc",
+                        "title": "CPU",
+                        "folder": "General",
+                        "org": "Org Two",
+                        "orgId": "2",
+                        "path": "cpu__abc.json",
+                        "format": "grafana-web-import-preserve-uid",
+                    }
+                ],
+                import_dir / "index.json",
+            )
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []}},
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(import_dir),
+                    "--require-matching-export-org",
+                    "--dry-run",
+                    "--verbose",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            self.assertIn("Import mode: create-only", stdout.getvalue())
+
+    def test_import_dashboards_rejects_export_org_mismatch_for_org_id_scope(self):
+        scoped_client = FakeDashboardWorkflowClient(
+            org={"id": 2, "name": "Org Two"},
+            headers={"Authorization": "Basic test"},
+        )
+        client = FakeDashboardWorkflowClient(
+            org_clients={"2": scoped_client},
+            headers={"Authorization": "Basic test"},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "abc",
+                        "title": "CPU",
+                        "folder": "General",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                        "path": "cpu__abc.json",
+                        "format": "grafana-web-import-preserve-uid",
+                    }
+                ],
+                import_dir / "index.json",
+            )
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []}},
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(import_dir),
+                    "--org-id",
+                    "2",
+                    "--require-matching-export-org",
+                    "--dry-run",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                with self.assertRaisesRegex(
+                    exporter.GrafanaError,
+                    "Raw export orgId 1 does not match target Grafana org id 2",
+                ):
+                    exporter.import_dashboards(args)
+
+    def test_import_dashboards_rejects_multi_org_export_metadata_when_guard_is_enabled(self):
+        client = FakeDashboardWorkflowClient(
+            org={"id": 2, "name": "Org Two"},
+            headers={"Authorization": "Bearer token"},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=2,
+                    format_name="grafana-web-import-preserve-uid",
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": "abc",
+                        "title": "CPU",
+                        "folder": "General",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                        "path": "cpu__abc.json",
+                        "format": "grafana-web-import-preserve-uid",
+                    },
+                    {
+                        "uid": "xyz",
+                        "title": "Memory",
+                        "folder": "General",
+                        "org": "Org Two",
+                        "orgId": "2",
+                        "path": "memory__xyz.json",
+                        "format": "grafana-web-import-preserve-uid",
+                    },
+                ],
+                import_dir / "index.json",
+            )
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []}},
+                import_dir / "cpu__abc.json",
+            )
+            exporter.write_json_document(
+                {
+                    "dashboard": {
+                        "id": None,
+                        "uid": "xyz",
+                        "title": "Memory",
+                        "panels": [],
+                    }
+                },
+                import_dir / "memory__xyz.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(import_dir),
+                    "--require-matching-export-org",
+                    "--dry-run",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                with self.assertRaisesRegex(
+                    exporter.GrafanaError,
+                    "spans multiple orgIds",
+                ):
+                    exporter.import_dashboards(args)
 
     def test_import_dashboards_dry_run_with_org_id_uses_scoped_client(self):
         scoped_client = FakeDashboardWorkflowClient(
