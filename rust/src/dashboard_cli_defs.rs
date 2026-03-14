@@ -205,6 +205,12 @@ pub struct ImportArgs {
         help = "Reconcile only dashboards whose UID already exists in Grafana. Missing destination UIDs are skipped instead of created."
     )]
     pub update_existing_only: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Only update an existing dashboard when the source raw folder path matches the destination Grafana folder path exactly. Missing dashboards still follow the active create/skip mode."
+    )]
+    pub require_matching_folder_path: bool,
     #[arg(long, default_value = DEFAULT_IMPORT_MESSAGE, help = "Version-history message to attach to each imported dashboard revision in Grafana.")]
     pub import_message: String,
     #[arg(

@@ -1,5 +1,6 @@
 use reqwest::Method;
 use serde_json::{Map, Value};
+use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::path::Path;
 
@@ -157,8 +158,141 @@ fn describe_import_action(action: &str) -> (&'static str, &str) {
         "would-create" => ("missing", "create"),
         "would-update" => ("exists", "update"),
         "would-skip-missing" => ("missing", "skip-missing"),
+        "would-skip-folder-mismatch" => ("exists", "skip-folder-mismatch"),
         "would-fail-existing" => ("exists", "blocked-existing"),
         _ => (DEFAULT_UNKNOWN_UID, action),
+    }
+}
+
+fn normalize_folder_path(path: Option<&str>) -> String {
+    let value = path.unwrap_or("").trim();
+    if value.is_empty() {
+        DEFAULT_FOLDER_TITLE.to_string()
+    } else {
+        value.to_string()
+    }
+}
+
+fn resolve_source_dashboard_folder_path(
+    document: &Value,
+    dashboard_file: &Path,
+    import_dir: &Path,
+    folders_by_uid: &BTreeMap<String, FolderInventoryItem>,
+) -> Result<String> {
+    let document_object =
+        value_as_object(document, "Dashboard payload must be a JSON object.")?;
+    if let Some(folder_uid) = object_field(document_object, "meta")
+        .and_then(|meta| meta.get("folderUid"))
+        .and_then(Value::as_str)
+        .map(str::trim)
+    {
+        if folder_uid.is_empty() || folder_uid == DEFAULT_FOLDER_UID {
+            return Ok(DEFAULT_FOLDER_TITLE.to_string());
+        }
+        if let Some(folder) = folders_by_uid.get(folder_uid) {
+            if !folder.path.is_empty() {
+                return Ok(folder.path.clone());
+            }
+            if !folder.title.is_empty() {
+                return Ok(folder.title.clone());
+            }
+        }
+    }
+    let relative = dashboard_file.strip_prefix(import_dir).map_err(|error| {
+        message(format!(
+            "Failed to resolve import-relative dashboard path for {}: {error}",
+            dashboard_file.display()
+        ))
+    })?;
+    let parts = relative
+        .parent()
+        .map(|path| {
+            path.iter()
+                .map(|part| part.to_string_lossy().into_owned())
+                .collect::<Vec<String>>()
+        })
+        .unwrap_or_default();
+    if parts.is_empty() {
+        Ok(DEFAULT_FOLDER_TITLE.to_string())
+    } else {
+        Ok(parts.join(" / "))
+    }
+}
+
+fn resolve_existing_dashboard_folder_path_with_request<F>(
+    mut request_json: F,
+    uid: &str,
+) -> Result<Option<String>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    if uid.is_empty() {
+        return Ok(None);
+    }
+    let Some(existing_payload) = fetch_dashboard_if_exists_with_request(&mut request_json, uid)? else {
+        return Ok(None);
+    };
+    let object = value_as_object(
+        &existing_payload,
+        &format!("Unexpected dashboard payload for UID {uid}."),
+    )?;
+    let folder_uid = object_field(object, "meta")
+        .and_then(|meta| meta.get("folderUid"))
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    if folder_uid.is_empty() || folder_uid == DEFAULT_FOLDER_UID {
+        return Ok(Some(DEFAULT_FOLDER_TITLE.to_string()));
+    }
+    let Some(folder) = fetch_folder_if_exists_with_request(&mut request_json, &folder_uid)? else {
+        return Ok(None);
+    };
+    let title = string_field(&folder, "title", &folder_uid);
+    let path = build_folder_path(&folder, &title);
+    if path.trim().is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(path))
+    }
+}
+
+fn build_folder_path_match_result(
+    source_folder_path: Option<&str>,
+    destination_folder_path: Option<&str>,
+    destination_exists: bool,
+    require_matching_folder_path: bool,
+) -> (bool, &'static str, String, Option<String>) {
+    let normalized_source = normalize_folder_path(source_folder_path);
+    let normalized_destination = destination_folder_path.map(|path| normalize_folder_path(Some(path)));
+    if !require_matching_folder_path || !destination_exists {
+        return (true, "", normalized_source, normalized_destination);
+    }
+    let Some(ref destination_path) = normalized_destination else {
+        return (
+            false,
+            "folder-path-unknown",
+            normalized_source,
+            normalized_destination,
+        );
+    };
+    if normalized_source == *destination_path {
+        (true, "", normalized_source, normalized_destination)
+    } else {
+        (
+            false,
+            "folder-path-mismatch",
+            normalized_source,
+            normalized_destination,
+        )
+    }
+}
+
+fn apply_folder_path_guard_to_action(action: &'static str, matches: bool) -> &'static str {
+    if action == "would-update" && !matches {
+        "would-skip-folder-mismatch"
+    } else {
+        action
     }
 }
 
@@ -201,29 +335,50 @@ fn build_import_dry_run_record(
     uid: &str,
     action: &str,
     folder_path: &str,
-) -> [String; 5] {
+    source_folder_path: &str,
+    destination_folder_path: Option<&str>,
+) -> [String; 7] {
     let (destination, action_label) = describe_import_action(action);
     [
         uid.to_string(),
         destination.to_string(),
         action_label.to_string(),
         folder_path.to_string(),
+        source_folder_path.to_string(),
+        destination_folder_path.unwrap_or("").to_string(),
         dashboard_file.display().to_string(),
     ]
 }
 
 pub(crate) fn render_import_dry_run_table(
-    records: &[[String; 5]],
+    records: &[[String; 7]],
     include_header: bool,
 ) -> Vec<String> {
-    let headers = ["UID", "DESTINATION", "ACTION", "FOLDER_PATH", "FILE"];
-    let mut widths = headers.map(str::len);
+    let include_source_folder = records.iter().any(|row| !row[4].is_empty());
+    let include_destination_folder = records.iter().any(|row| !row[5].is_empty());
+    let mut headers = vec!["UID", "DESTINATION", "ACTION", "FOLDER_PATH"];
+    if include_source_folder {
+        headers.push("SOURCE_FOLDER_PATH");
+    }
+    if include_destination_folder {
+        headers.push("DESTINATION_FOLDER_PATH");
+    }
+    headers.push("FILE");
+    let mut widths = headers.iter().map(|header| header.len()).collect::<Vec<usize>>();
     for row in records {
-        for (index, value) in row.iter().enumerate() {
+        let mut visible = vec![row[0].as_str(), row[1].as_str(), row[2].as_str(), row[3].as_str()];
+        if include_source_folder {
+            visible.push(row[4].as_str());
+        }
+        if include_destination_folder {
+            visible.push(row[5].as_str());
+        }
+        visible.push(row[6].as_str());
+        for (index, value) in visible.iter().enumerate() {
             widths[index] = widths[index].max(value.len());
         }
     }
-    let format_row = |values: &[String; 5]| -> String {
+    let format_row = |values: &[String]| -> String {
         values
             .iter()
             .enumerate()
@@ -233,25 +388,26 @@ pub(crate) fn render_import_dry_run_table(
     };
     let mut lines = Vec::new();
     if include_header {
-        let header_values = [
-            headers[0].to_string(),
-            headers[1].to_string(),
-            headers[2].to_string(),
-            headers[3].to_string(),
-            headers[4].to_string(),
-        ];
-        let divider_values = [
-            "-".repeat(widths[0]),
-            "-".repeat(widths[1]),
-            "-".repeat(widths[2]),
-            "-".repeat(widths[3]),
-            "-".repeat(widths[4]),
-        ];
+        let header_values = headers.iter().map(|item| item.to_string()).collect::<Vec<String>>();
+        let divider_values = widths.iter().map(|width| "-".repeat(*width)).collect::<Vec<String>>();
         lines.push(format_row(&header_values));
         lines.push(format_row(&divider_values));
     }
     for row in records {
-        lines.push(format_row(row));
+        let mut visible = vec![
+            row[0].clone(),
+            row[1].clone(),
+            row[2].clone(),
+            row[3].clone(),
+        ];
+        if include_source_folder {
+            visible.push(row[4].clone());
+        }
+        if include_destination_folder {
+            visible.push(row[5].clone());
+        }
+        visible.push(row[6].clone());
+        lines.push(format_row(&visible));
     }
     lines
 }
@@ -259,9 +415,10 @@ pub(crate) fn render_import_dry_run_table(
 pub(crate) fn render_import_dry_run_json(
     mode: &str,
     folder_statuses: &[FolderInventoryStatus],
-    dashboard_records: &[[String; 5]],
+    dashboard_records: &[[String; 7]],
     import_dir: &Path,
     skipped_missing_count: usize,
+    skipped_folder_mismatch_count: usize,
 ) -> Result<String> {
     let mut folders = Vec::new();
     for status in folder_statuses {
@@ -301,7 +458,9 @@ pub(crate) fn render_import_dry_run_json(
                 "destination": row[1],
                 "action": row[2],
                 "folderPath": row[3],
-                "file": row[4],
+                "sourceFolderPath": row[4],
+                "destinationFolderPath": row[5],
+                "file": row[6],
             })
         })
         .collect::<Vec<Value>>();
@@ -317,6 +476,7 @@ pub(crate) fn render_import_dry_run_json(
             "dashboardCount": dashboard_records.len(),
             "missingDashboards": dashboard_records.iter().filter(|row| row[1] == "missing").count(),
             "skippedMissingDashboards": skipped_missing_count,
+            "skippedFolderMismatchDashboards": skipped_folder_mismatch_count,
         }
     });
     Ok(serde_json::to_string_pretty(&payload)?)
@@ -405,6 +565,11 @@ where
             "--no-header is only supported with --dry-run --table for import-dashboard.",
         ));
     }
+    if args.require_matching_folder_path && args.import_folder_uid.is_some() {
+        return Err(message(
+            "--require-matching-folder-path cannot be combined with --import-folder-uid.",
+        ));
+    }
     if args.ensure_folders && args.import_folder_uid.is_some() {
         return Err(message(
             "--ensure-folders cannot be combined with --import-folder-uid.",
@@ -431,7 +596,7 @@ where
     } else {
         Vec::new()
     };
-    let folders_by_uid: std::collections::BTreeMap<String, FolderInventoryItem> = folder_inventory
+    let folders_by_uid: BTreeMap<String, FolderInventoryItem> = folder_inventory
         .into_iter()
         .map(|item| (item.uid.clone(), item))
         .collect();
@@ -441,9 +606,10 @@ where
     });
     let total = dashboard_files.len();
     let effective_replace_existing = args.replace_existing || args.update_existing_only;
-    let mut dry_run_records: Vec<[String; 5]> = Vec::new();
+    let mut dry_run_records: Vec<[String; 7]> = Vec::new();
     let mut imported_count = 0usize;
     let mut skipped_missing_count = 0usize;
+    let mut skipped_folder_mismatch_count = 0usize;
     let mode = describe_dashboard_import_mode(args.replace_existing, args.update_existing_only);
     if !args.json {
         println!("Import mode: {}", mode);
@@ -498,6 +664,16 @@ where
             value_as_object(&document, "Dashboard payload must be a JSON object.")?;
         let dashboard = extract_dashboard_object(document_object)?;
         let uid = string_field(dashboard, "uid", "");
+        let source_folder_path = if args.require_matching_folder_path {
+            Some(resolve_source_dashboard_folder_path(
+                &document,
+                dashboard_file,
+                &args.import_dir,
+                &folders_by_uid,
+            )?)
+        } else {
+            None
+        };
         let folder_uid_override = determine_import_folder_uid_override_with_request(
             &mut request_json,
             &uid,
@@ -510,7 +686,11 @@ where
             effective_replace_existing,
             &args.import_message,
         )?;
-        let action = if args.dry_run || args.update_existing_only || args.ensure_folders {
+        let action = if args.dry_run
+            || args.update_existing_only
+            || args.ensure_folders
+            || args.require_matching_folder_path
+        {
             Some(determine_dashboard_import_action_with_request(
                 &mut request_json,
                 &payload,
@@ -520,6 +700,23 @@ where
         } else {
             None
         };
+        let destination_folder_path = if args.require_matching_folder_path {
+            resolve_existing_dashboard_folder_path_with_request(&mut request_json, &uid)?
+        } else {
+            None
+        };
+        let (folder_paths_match, _folder_match_reason, normalized_source_folder_path, normalized_destination_folder_path) =
+            if args.require_matching_folder_path {
+                build_folder_path_match_result(
+                    source_folder_path.as_deref(),
+                    destination_folder_path.as_deref(),
+                    destination_folder_path.is_some(),
+                    true,
+                )
+            } else {
+                (true, "", String::new(), None)
+            };
+        let action = action.map(|value| apply_folder_path_guard_to_action(value, folder_paths_match));
         if args.dry_run {
             let folder_path = resolve_dashboard_import_folder_path_with_request(
                 &mut request_json,
@@ -539,6 +736,8 @@ where
                     &uid,
                     action.unwrap_or(DEFAULT_UNKNOWN_UID),
                     &folder_path,
+                    &normalized_source_folder_path,
+                    normalized_destination_folder_path.as_deref(),
                 ));
             } else if args.verbose {
                 println!(
@@ -566,7 +765,7 @@ where
             }
             continue;
         }
-        if args.update_existing_only {
+        if args.update_existing_only || args.require_matching_folder_path {
             let payload_object =
                 value_as_object(&payload, "Dashboard import payload must be a JSON object.")?;
             let dashboard = payload_object
@@ -585,6 +784,26 @@ where
                 } else if args.progress {
                     println!(
                         "Skipping dashboard {}/{}: {} dest=missing action=skip-missing",
+                        index + 1,
+                        total,
+                        uid
+                    );
+                }
+                continue;
+            }
+            if action == Some("would-skip-folder-mismatch") {
+                skipped_folder_mismatch_count += 1;
+                if args.verbose {
+                    println!(
+                        "Skipped import uid={} dest=exists action=skip-folder-mismatch sourceFolderPath={} destinationFolderPath={} file={}",
+                        uid,
+                        normalized_source_folder_path,
+                        normalized_destination_folder_path.as_deref().unwrap_or("-"),
+                        dashboard_file.display()
+                    );
+                } else if args.progress {
+                    println!(
+                        "Skipping dashboard {}/{}: {} dest=exists action=skip-folder-mismatch",
                         index + 1,
                         total,
                         uid
@@ -636,6 +855,10 @@ where
                 .filter(|record| record[2] == "skip-missing")
                 .count();
         }
+        skipped_folder_mismatch_count = dry_run_records
+            .iter()
+            .filter(|record| record[2] == "skip-folder-mismatch")
+            .count();
         if args.json {
             println!(
                 "{}",
@@ -645,6 +868,7 @@ where
                     &dry_run_records,
                     &args.import_dir,
                     skipped_missing_count,
+                    skipped_folder_mismatch_count,
                 )?
             );
         } else if args.table {
@@ -653,12 +877,30 @@ where
             }
         }
         if args.json {
+        } else if args.update_existing_only
+            && skipped_missing_count > 0
+            && skipped_folder_mismatch_count > 0
+        {
+            println!(
+                "Dry-run checked {} dashboard(s) from {}; would skip {} missing dashboards and {} folder-mismatched dashboards",
+                dashboard_files.len(),
+                args.import_dir.display(),
+                skipped_missing_count,
+                skipped_folder_mismatch_count
+            );
         } else if args.update_existing_only && skipped_missing_count > 0 {
             println!(
                 "Dry-run checked {} dashboard(s) from {}; would skip {} missing dashboards",
                 dashboard_files.len(),
                 args.import_dir.display(),
                 skipped_missing_count
+            );
+        } else if skipped_folder_mismatch_count > 0 {
+            println!(
+                "Dry-run checked {} dashboard(s) from {}; would skip {} folder-mismatched dashboards",
+                dashboard_files.len(),
+                args.import_dir.display(),
+                skipped_folder_mismatch_count
             );
         } else {
             println!(
@@ -669,12 +911,27 @@ where
         }
         return Ok(dashboard_files.len());
     }
-    if args.update_existing_only && skipped_missing_count > 0 {
+    if args.update_existing_only && skipped_missing_count > 0 && skipped_folder_mismatch_count > 0 {
+        println!(
+            "Imported {} dashboard files from {}; skipped {} missing dashboards and {} folder-mismatched dashboards",
+            imported_count,
+            args.import_dir.display(),
+            skipped_missing_count,
+            skipped_folder_mismatch_count
+        );
+    } else if args.update_existing_only && skipped_missing_count > 0 {
         println!(
             "Imported {} dashboard files from {}; skipped {} missing dashboards",
             imported_count,
             args.import_dir.display(),
             skipped_missing_count
+        );
+    } else if skipped_folder_mismatch_count > 0 {
+        println!(
+            "Imported {} dashboard files from {}; skipped {} folder-mismatched dashboards",
+            imported_count,
+            args.import_dir.display(),
+            skipped_folder_mismatch_count
         );
     }
     Ok(imported_count)
