@@ -537,6 +537,82 @@ uid=loki-prod
 + url=http://loki-prod:3100
 ```
 
+### 5.5 `datasource add`（僅 Python CLI）
+
+**用途**：直接在 Grafana 建立一筆 live datasource，不經過本地 export bundle。
+
+| 參數 | 用途 | 差異 / 情境 |
+| --- | --- | --- |
+| `--name` | datasource 名稱 | 必填 |
+| `--type` | datasource plugin type id | 必填 |
+| `--uid` | 穩定 datasource uid | 建議提供 |
+| `--access` | datasource access mode | 常見值：`proxy`、`direct` |
+| `--datasource-url` | datasource 目標 URL | 常見 HTTP datasource 設定 |
+| `--default` | 設成預設 datasource | 選填 |
+| `--basic-auth` | 啟用上游 HTTP Basic auth | 常見於受保護的 Prometheus/Loki |
+| `--basic-auth-user` | Basic auth 帳號 | 搭配 `--basic-auth-password` |
+| `--basic-auth-password` | Basic auth 密碼 | 會放進 `secureJsonData` |
+| `--user` | datasource user/login 欄位 | 常見於 Elasticsearch、SQL、InfluxDB |
+| `--password` | datasource 密碼欄位 | 會放進 `secureJsonData` |
+| `--with-credentials` | 設定 `withCredentials=true` | 支援的類型可帶 browser credentials |
+| `--http-header NAME=VALUE` | 加一組自訂 HTTP header | 可重複多次 |
+| `--tls-skip-verify` | 設定 `jsonData.tlsSkipVerify=true` | 需要放寬 TLS 驗證時使用 |
+| `--server-name` | 設定 `jsonData.serverName` | TLS/SNI override |
+| `--json-data` | 內嵌 `jsonData` JSON 物件 | 進階 plugin 專屬設定 |
+| `--secure-json-data` | 內嵌 `secureJsonData` JSON 物件 | 進階含 secret 設定 |
+| `--dry-run` | 僅預覽 | 建議先跑 |
+| `--table` / `--json` | dry-run 輸出模式 | 人工或自動化 |
+
+補充：
+- 常見 type 包含 `prometheus`、`loki`、`elasticsearch`、`influxdb`、`graphite`、`postgres`、`mysql`、`mssql`、`tempo`、`cloudwatch`。
+- 專用 auth/header 旗標會 merge 進 datasource payload；如果 `--json-data` 或 `--secure-json-data` 已經包含相同 key，命令會直接失敗，不會靜默覆蓋。
+
+示例：Prometheus + basic auth
+```bash
+python3 -m grafana_utils datasource add \
+  --url http://localhost:3000 \
+  --token <TOKEN> \
+  --uid prom-main \
+  --name prometheus-main \
+  --type prometheus \
+  --access proxy \
+  --datasource-url http://prometheus:9090 \
+  --basic-auth \
+  --basic-auth-user metrics-user \
+  --basic-auth-password metrics-pass \
+  --dry-run --table
+```
+
+示例：Loki + tenant header
+```bash
+python3 -m grafana_utils datasource add \
+  --url http://localhost:3000 \
+  --token <TOKEN> \
+  --uid loki-main \
+  --name loki-main \
+  --type loki \
+  --access proxy \
+  --datasource-url http://loki:3100 \
+  --http-header X-Scope-OrgID=tenant-a \
+  --dry-run --json
+```
+
+示例：InfluxDB + 額外 plugin 設定
+```bash
+python3 -m grafana_utils datasource add \
+  --url http://localhost:3000 \
+  --token <TOKEN> \
+  --uid influx-main \
+  --name influx-main \
+  --type influxdb \
+  --access proxy \
+  --datasource-url http://influxdb:8086 \
+  --user influx-user \
+  --password influx-pass \
+  --json-data '{"version":"Flux","organization":"main-org","defaultBucket":"metrics"}' \
+  --dry-run --table
+```
+
 6) access 命令
 -------------
 
@@ -1156,6 +1232,7 @@ cargo run --bin grafana-util -- alert list-rules --url <URL> --token <TOKEN> [--
 
 # datasource
 cargo run --bin grafana-util -- datasource list --url <URL> --token <TOKEN> [--table|--csv|--json]
+python3 -m grafana_utils datasource add --url <URL> --token <TOKEN> --name <NAME> --type <TYPE> [--uid <UID>] [--access proxy|direct] [--datasource-url <URL>] [--basic-auth] [--basic-auth-user <USER>] [--basic-auth-password <PASS>] [--user <USER>] [--password <PASS>] [--with-credentials] [--http-header NAME=VALUE] [--tls-skip-verify] [--server-name <NAME>] [--json-data <JSON>] [--secure-json-data <JSON>] [--dry-run] [--table|--json|--output-format text|table|json]
 cargo run --bin grafana-util -- datasource export --url <URL> --basic-user <USER> --basic-password <PASS> --export-dir <DIR> [--overwrite] [--dry-run]
 cargo run --bin grafana-util -- datasource import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR> --replace-existing [--dry-run] [--output-format table|text|json] [--output-columns uid,name,type,destination,action,org_id,file]
 cargo run --bin grafana-util -- datasource diff --url <URL> --basic-user <USER> --basic-password <PASS> --diff-dir <DIR>
@@ -1197,6 +1274,7 @@ cargo run --bin grafana-util -- access service-account token delete --url <URL> 
 | dashboard import | text/table/json | 不可（僅 text/table/json） | text 為 dry-run 匯總資訊 |
 | alert list-* | table/csv/json | 不可 | list 命令共用 |
 | datasource list | table/csv/json | 不可 | 同上 |
+| datasource add | text/table/json | 不可（僅 text/table/json） | dry-run 可用，僅 Python CLI |
 | datasource import | text/table/json | 不可（僅 text/table/json） | text 為 dry-run 摘要 |
 | access user list | table/csv/json | 不可 | 同上 |
 | access team list | table/csv/json | 不可 | 同上 |

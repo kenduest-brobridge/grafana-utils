@@ -38,9 +38,12 @@ from .datasource.parser import (
     IMPORT_DRY_RUN_COLUMN_ALIASES,
     IMPORT_DRY_RUN_COLUMN_HEADERS,
     IMPORT_DRY_RUN_OUTPUT_FORMAT_CHOICES,
+    LIVE_MUTATION_DRY_RUN_OUTPUT_FORMAT_CHOICES,
     LIST_OUTPUT_FORMAT_CHOICES,
     ROOT_INDEX_KIND,
     TOOL_SCHEMA_VERSION,
+    add_add_cli_args,
+    add_delete_cli_args,
     add_diff_cli_args,
     add_export_cli_args,
     add_import_cli_args,
@@ -113,6 +116,15 @@ def _normalize_output_format_args(args, parser):
             )
         args.table = output_format == "table"
         args.json = output_format == "json"
+        return
+    if getattr(args, "command", None) in ("add", "delete"):
+        if bool(getattr(args, "table", False)) or bool(getattr(args, "json", False)):
+            parser.error(
+                "--output-format cannot be combined with --table or --json for datasource %s."
+                % args.command
+            )
+        args.table = output_format == "table"
+        args.json = output_format == "json"
 
 
 def _parse_import_output_columns(args, parser):
@@ -172,6 +184,16 @@ def diff_datasources(args):
     return datasource_workflows.diff_datasources(args)
 
 
+def add_datasource(args):
+    _sync_facade_overrides()
+    return datasource_workflows.add_datasource(args)
+
+
+def delete_datasource(args):
+    _sync_facade_overrides()
+    return datasource_workflows.delete_datasource(args)
+
+
 def dispatch_datasource_command(args):
     _sync_facade_overrides()
     return datasource_workflows.dispatch_datasource_command(args)
@@ -199,6 +221,9 @@ __all__ = [
     "EXPORT_METADATA_FILENAME",
     "ROOT_INDEX_KIND",
     "TOOL_SCHEMA_VERSION",
+    "LIVE_MUTATION_DRY_RUN_OUTPUT_FORMAT_CHOICES",
+    "add_add_cli_args",
+    "add_datasource",
     "build_client",
     "build_effective_import_client",
     "build_existing_datasource_lookups",
@@ -209,6 +234,7 @@ __all__ = [
     "build_live_datasource_diff_records",
     "build_parser",
     "compare_datasource_bundle_to_live",
+    "delete_datasource",
     "determine_datasource_action",
     "determine_import_mode",
     "diff_datasources",
@@ -223,6 +249,7 @@ __all__ = [
     "normalize_datasource_record",
     "parse_args",
     "parse_import_dry_run_columns",
+    "add_delete_cli_args",
     "render_data_source_csv",
     "render_data_source_json",
     "render_import_dry_run_json",

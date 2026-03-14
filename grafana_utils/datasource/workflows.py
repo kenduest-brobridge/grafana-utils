@@ -26,6 +26,15 @@ from ..datasource_diff import (
     compare_datasource_bundle_to_live,
     load_datasource_diff_bundle,
 )
+from .live_mutation_render_safe import (
+    build_live_mutation_dry_run_record,
+    render_live_mutation_dry_run_json,
+    render_live_mutation_dry_run_table,
+)
+from .live_mutation_safe import (
+    add_datasource as add_live_datasource,
+    delete_datasource as delete_live_datasource,
+)
 from .parser import (
     DATASOURCE_EXPORT_FILENAME,
     EXPORT_METADATA_FILENAME,
@@ -110,6 +119,53 @@ def load_json_document(path):
         raise GrafanaError("Failed to read %s: %s" % (path, exc))
     except ValueError as exc:
         raise GrafanaError("Invalid JSON in %s: %s" % (path, exc))
+
+
+def load_json_object_argument(value, label):
+    if value is None:
+        return None
+    try:
+        data = json.loads(value)
+    except ValueError as exc:
+        raise GrafanaError("Invalid JSON for %s: %s" % (label, exc))
+    if not isinstance(data, dict):
+        raise GrafanaError("%s must decode to a JSON object." % label)
+    return data
+
+
+def merge_json_object_fields(base, extra, label):
+    if extra is None:
+        return dict(base or {})
+    merged = dict(base or {})
+    for key, value in extra.items():
+        if key in merged:
+            raise GrafanaError(
+                "%s would overwrite existing key %r. Move that field to one place."
+                % (label, key)
+            )
+        merged[key] = value
+    return merged
+
+
+def parse_http_header_arguments(values):
+    json_data = {}
+    secure_json_data = {}
+    for index, item in enumerate(values or [], 1):
+        raw = str(item)
+        if "=" not in raw:
+            raise GrafanaError(
+                "--http-header requires NAME=VALUE form. Invalid value: %r." % raw
+            )
+        name, value = raw.split("=", 1)
+        name = name.strip()
+        if not name:
+            raise GrafanaError(
+                "--http-header requires a non-empty header name. Invalid value: %r."
+                % raw
+            )
+        json_data["httpHeaderName%s" % index] = name
+        secure_json_data["httpHeaderValue%s" % index] = value
+    return json_data, secure_json_data
 
 
 def load_import_bundle(import_dir):
@@ -430,6 +486,196 @@ def render_data_source_json(datasources):
     )
 
 
+def build_add_datasource_spec(args):
+    spec = {
+        "name": args.name,
+        "type": args.type,
+    }
+    if getattr(args, "uid", None):
+        spec["uid"] = args.uid
+    if getattr(args, "access", None):
+        spec["access"] = args.access
+    if getattr(args, "datasource_url", None):
+        spec["url"] = args.datasource_url
+    if bool(getattr(args, "is_default", False)):
+        spec["isDefault"] = True
+    if bool(getattr(args, "basic_auth", False)) or getattr(args, "basic_auth_user", None) or getattr(
+        args, "basic_auth_password", None
+    ):
+        spec["basicAuth"] = True
+    if getattr(args, "basic_auth_user", None):
+        spec["basicAuthUser"] = args.basic_auth_user
+    if getattr(args, "user", None):
+        spec["user"] = args.user
+    if bool(getattr(args, "with_credentials", False)):
+        spec["withCredentials"] = True
+
+    json_data = load_json_object_argument(getattr(args, "json_data", None), "--json-data")
+    secure_json_data = load_json_object_argument(
+        getattr(args, "secure_json_data", None),
+        "--secure-json-data",
+    )
+
+    derived_json_data = {}
+    if bool(getattr(args, "tls_skip_verify", False)):
+        derived_json_data["tlsSkipVerify"] = True
+    if getattr(args, "server_name", None):
+        derived_json_data["serverName"] = args.server_name
+    header_json_data, header_secure_json_data = parse_http_header_arguments(
+        getattr(args, "http_header", None)
+    )
+    derived_json_data.update(header_json_data)
+    json_data = merge_json_object_fields(json_data, derived_json_data, "--json-data")
+    if json_data:
+        spec["jsonData"] = json_data
+
+    derived_secure_json_data = {}
+    if getattr(args, "basic_auth_password", None):
+        derived_secure_json_data["basicAuthPassword"] = args.basic_auth_password
+    if getattr(args, "password", None):
+        derived_secure_json_data["password"] = args.password
+    derived_secure_json_data.update(header_secure_json_data)
+    secure_json_data = merge_json_object_fields(
+        secure_json_data,
+        derived_secure_json_data,
+        "--secure-json-data",
+    )
+    if secure_json_data:
+        spec["secureJsonData"] = secure_json_data
+
+    if getattr(args, "basic_auth_password", None) and not getattr(args, "basic_auth_user", None):
+        raise GrafanaError("--basic-auth-password requires --basic-auth-user.")
+
+    return spec
+
+
+def split_live_add_supported_spec(spec):
+    safe_spec = {}
+    extra_top_level = {}
+    for key, value in spec.items():
+        if key in ("basicAuth", "basicAuthUser", "user", "withCredentials"):
+            extra_top_level[key] = value
+            continue
+        safe_spec[key] = value
+    return safe_spec, extra_top_level
+
+
+def _validate_live_mutation_dry_run_args(args, verb):
+    if getattr(args, "table", False) and not args.dry_run:
+        raise GrafanaError("--table is only supported with --dry-run for datasource %s." % verb)
+    if getattr(args, "json", False) and not args.dry_run:
+        raise GrafanaError("--json is only supported with --dry-run for datasource %s." % verb)
+    if getattr(args, "table", False) and getattr(args, "json", False):
+        raise GrafanaError("--table and --json are mutually exclusive for datasource %s." % verb)
+    if getattr(args, "no_header", False) and not getattr(args, "table", False):
+        raise GrafanaError(
+            "--no-header is only supported with --dry-run --table for datasource %s."
+            % verb
+        )
+
+
+def add_datasource(args):
+    _validate_live_mutation_dry_run_args(args, "add")
+    spec = build_add_datasource_spec(args)
+    safe_spec, extra_top_level = split_live_add_supported_spec(spec)
+    client = build_client(args)
+    result = add_live_datasource(client, safe_spec, dry_run=True)
+    if args.dry_run:
+        record = build_live_mutation_dry_run_record("add", result, spec=safe_spec)
+        if getattr(args, "json", False):
+            print(render_live_mutation_dry_run_json([record]))
+            return 0
+        if getattr(args, "table", False):
+            for line in render_live_mutation_dry_run_table(
+                [record],
+                include_header=not bool(getattr(args, "no_header", False)),
+            ):
+                print(line)
+        else:
+            print(
+                "Dry-run datasource add uid=%s name=%s match=%s action=%s"
+                % (
+                    record.get("uid") or "-",
+                    record.get("name") or "-",
+                    record.get("match") or "-",
+                    record.get("action") or "-",
+                )
+            )
+        print("Dry-run checked 1 datasource add request")
+        return 0
+    if result.get("action") != "would-create":
+        raise GrafanaError(
+            "Datasource add blocked for name=%s uid=%s match=%s action=%s"
+            % (
+                safe_spec.get("name") or "-",
+                safe_spec.get("uid") or "-",
+                result.get("match") or "-",
+                result.get("action") or "-",
+            )
+        )
+    payload = dict(result.get("payload") or {})
+    payload.update(extra_top_level)
+    client.request_json(
+        "/api/datasources",
+        method="POST",
+        payload=payload,
+    )
+    print(
+        "Created datasource uid=%s name=%s"
+        % (payload.get("uid") or "-", payload.get("name") or "-")
+    )
+    return 0
+
+
+def delete_datasource(args):
+    _validate_live_mutation_dry_run_args(args, "delete")
+    client = build_client(args)
+    result = delete_live_datasource(
+        client,
+        uid=getattr(args, "uid", None),
+        name=getattr(args, "name", None),
+        dry_run=bool(args.dry_run),
+    )
+    if args.dry_run:
+        record = build_live_mutation_dry_run_record(
+            "delete",
+            result,
+            uid=getattr(args, "uid", None),
+            name=getattr(args, "name", None),
+        )
+        if getattr(args, "json", False):
+            print(render_live_mutation_dry_run_json([record]))
+            return 0
+        if getattr(args, "table", False):
+            for line in render_live_mutation_dry_run_table(
+                [record],
+                include_header=not bool(getattr(args, "no_header", False)),
+            ):
+                print(line)
+        else:
+            print(
+                "Dry-run datasource delete uid=%s name=%s match=%s action=%s"
+                % (
+                    record.get("uid") or "-",
+                    record.get("name") or "-",
+                    record.get("match") or "-",
+                    record.get("action") or "-",
+                )
+            )
+        print("Dry-run checked 1 datasource delete request")
+        return 0
+    target = result.get("target") or {}
+    print(
+        "Deleted datasource uid=%s name=%s id=%s"
+        % (
+            target.get("uid") or "-",
+            target.get("name") or "-",
+            target.get("id") or "-",
+        )
+    )
+    return 0
+
+
 def list_datasources(args):
     client = build_client(args)
     datasources = client.list_datasources()
@@ -694,4 +940,8 @@ def dispatch_datasource_command(args):
         return export_datasources(args)
     if args.command == "import":
         return import_datasources(args)
+    if args.command == "add":
+        return add_datasource(args)
+    if args.command == "delete":
+        return delete_datasource(args)
     return diff_datasources(args)

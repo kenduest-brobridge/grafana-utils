@@ -30,6 +30,7 @@ ROOT_INDEX_KIND = "grafana-utils-datasource-export-index"
 TOOL_SCHEMA_VERSION = 1
 LIST_OUTPUT_FORMAT_CHOICES = ("table", "csv", "json")
 IMPORT_DRY_RUN_OUTPUT_FORMAT_CHOICES = ("text", "table", "json")
+LIVE_MUTATION_DRY_RUN_OUTPUT_FORMAT_CHOICES = ("text", "table", "json")
 IMPORT_DRY_RUN_COLUMN_HEADERS = OrderedDict(
     [
         ("uid", "UID"),
@@ -56,6 +57,13 @@ HELP_FULL_EXAMPLES = (
     "  Export datasource inventory for the current org:\n"
     "    grafana-util datasource export --url http://localhost:3000 "
     "--basic-user admin --basic-password admin --export-dir ./datasources --overwrite\n\n"
+    "  Dry-run a live datasource create without changing Grafana:\n"
+    "    grafana-util datasource add --url http://localhost:3000 "
+    "--token \"$GRAFANA_API_TOKEN\" --name prometheus-main --type prometheus "
+    "--datasource-url http://prometheus:9090 --dry-run --table\n\n"
+    "  Dry-run a live datasource delete by UID:\n"
+    "    grafana-util datasource delete --url http://localhost:3000 "
+    "--token \"$GRAFANA_API_TOKEN\" --uid prom-main --dry-run --json\n\n"
     "  Dry-run datasource import for the current org:\n"
     "    grafana-util datasource import --url http://localhost:3000 "
     "--token \"$GRAFANA_API_TOKEN\" --import-dir ./datasources --dry-run --table\n\n"
@@ -221,6 +229,175 @@ def add_diff_cli_args(parser):
     )
 
 
+def add_add_cli_args(parser):
+    parser.add_argument(
+        "--uid",
+        default=None,
+        help="Datasource UID to create. Optional but recommended for stable identity.",
+    )
+    parser.add_argument(
+        "--name",
+        required=True,
+        help="Datasource name to create.",
+    )
+    parser.add_argument(
+        "--type",
+        required=True,
+        help="Grafana datasource plugin type id to create.",
+    )
+    parser.add_argument(
+        "--access",
+        default=None,
+        help="Datasource access mode such as proxy or direct.",
+    )
+    parser.add_argument(
+        "--datasource-url",
+        dest="datasource_url",
+        default=None,
+        help="Datasource target URL to store in Grafana.",
+    )
+    parser.add_argument(
+        "--default",
+        dest="is_default",
+        action="store_true",
+        help="Mark the new datasource as the default datasource.",
+    )
+    parser.add_argument(
+        "--basic-auth",
+        action="store_true",
+        help="Enable basic auth for the datasource.",
+    )
+    parser.add_argument(
+        "--basic-auth-user",
+        default=None,
+        help="Username for datasource basic auth.",
+    )
+    parser.add_argument(
+        "--basic-auth-password",
+        default=None,
+        help="Password for datasource basic auth. Stored in secureJsonData.",
+    )
+    parser.add_argument(
+        "--user",
+        default=None,
+        help="Datasource user/login field where the plugin supports it.",
+    )
+    parser.add_argument(
+        "--password",
+        default=None,
+        help="Datasource password field where the plugin supports it. Stored in secureJsonData.",
+    )
+    parser.add_argument(
+        "--with-credentials",
+        action="store_true",
+        help="Send browser credentials such as cookies for supported datasource types.",
+    )
+    parser.add_argument(
+        "--http-header",
+        action="append",
+        default=None,
+        metavar="NAME=VALUE",
+        help=(
+            "Add one custom HTTP header for supported datasource types. May be "
+            "specified multiple times."
+        ),
+    )
+    parser.add_argument(
+        "--tls-skip-verify",
+        action="store_true",
+        help="Set jsonData.tlsSkipVerify=true for supported datasource types.",
+    )
+    parser.add_argument(
+        "--server-name",
+        default=None,
+        help="Set jsonData.serverName for supported datasource TLS validation.",
+    )
+    parser.add_argument(
+        "--json-data",
+        default=None,
+        help="Inline JSON object string for datasource jsonData.",
+    )
+    parser.add_argument(
+        "--secure-json-data",
+        default=None,
+        help="Inline JSON object string for datasource secureJsonData.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview what datasource add would do without changing Grafana.",
+    )
+    parser.add_argument(
+        "--table",
+        action="store_true",
+        help="For --dry-run only, render a compact table instead of plain text.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="For --dry-run only, render one JSON document.",
+    )
+    parser.add_argument(
+        "--no-header",
+        action="store_true",
+        help="For --dry-run --table only, omit the table header row.",
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=LIVE_MUTATION_DRY_RUN_OUTPUT_FORMAT_CHOICES,
+        default=None,
+        help=(
+            "Alternative single-flag output selector for datasource add dry-run "
+            "output. Use text, table, or json. This cannot be combined with "
+            "--table or --json."
+        ),
+    )
+
+
+def add_delete_cli_args(parser):
+    target_group = parser.add_mutually_exclusive_group(required=True)
+    target_group.add_argument(
+        "--uid",
+        default=None,
+        help="Datasource UID to delete.",
+    )
+    target_group.add_argument(
+        "--name",
+        default=None,
+        help="Datasource name to delete when UID is not available.",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview what datasource delete would do without changing Grafana.",
+    )
+    parser.add_argument(
+        "--table",
+        action="store_true",
+        help="For --dry-run only, render a compact table instead of plain text.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="For --dry-run only, render one JSON document.",
+    )
+    parser.add_argument(
+        "--no-header",
+        action="store_true",
+        help="For --dry-run --table only, omit the table header row.",
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=LIVE_MUTATION_DRY_RUN_OUTPUT_FORMAT_CHOICES,
+        default=None,
+        help=(
+            "Alternative single-flag output selector for datasource delete dry-run "
+            "output. Use text, table, or json. This cannot be combined with "
+            "--table or --json."
+        ),
+    )
+
+
 def build_parser(prog=None):
     parser = argparse.ArgumentParser(
         prog=prog or "grafana-util datasource",
@@ -228,6 +405,10 @@ def build_parser(prog=None):
         epilog=(
             "Examples:\n\n"
             "  grafana-util datasource list --url http://localhost:3000 --json\n"
+            "  grafana-util datasource add --url http://localhost:3000 --name prometheus-main "
+            "--type prometheus --datasource-url http://prometheus:9090 --dry-run --table\n"
+            "  grafana-util datasource delete --url http://localhost:3000 --uid prom-main "
+            "--dry-run --json\n"
             "  grafana-util datasource export --url http://localhost:3000 "
             "--export-dir ./datasources --overwrite\n"
             "  grafana-util datasource import --url http://localhost:3000 "
@@ -290,6 +471,34 @@ def build_parser(prog=None):
     add_diff_cli_args(diff_parser)
     diff_parser.set_defaults(_help_full_examples=HELP_FULL_EXAMPLES)
     diff_parser.add_argument(
+        "--help-full",
+        nargs=0,
+        action=HelpFullAction,
+        help="Show normal help plus extended datasource examples.",
+    )
+
+    add_parser = subparsers.add_parser(
+        "add",
+        help="Create one live Grafana datasource through the Grafana API.",
+    )
+    add_common_cli_args(add_parser)
+    add_add_cli_args(add_parser)
+    add_parser.set_defaults(_help_full_examples=HELP_FULL_EXAMPLES)
+    add_parser.add_argument(
+        "--help-full",
+        nargs=0,
+        action=HelpFullAction,
+        help="Show normal help plus extended datasource examples.",
+    )
+
+    delete_parser = subparsers.add_parser(
+        "delete",
+        help="Delete one live Grafana datasource through the Grafana API.",
+    )
+    add_common_cli_args(delete_parser)
+    add_delete_cli_args(delete_parser)
+    delete_parser.set_defaults(_help_full_examples=HELP_FULL_EXAMPLES)
+    delete_parser.add_argument(
         "--help-full",
         nargs=0,
         action=HelpFullAction,

@@ -578,6 +578,82 @@ uid=loki-prod
 + url=http://loki-prod:3100
 ```
 
+### 5.5 `datasource add` (Python CLI)
+
+Purpose: create one live datasource directly in Grafana without using a local export bundle.
+
+| Option | Purpose | Difference / scenario |
+| --- | --- | --- |
+| `--name` | Datasource name | Required |
+| `--type` | Datasource plugin type id | Required |
+| `--uid` | Stable datasource uid | Recommended |
+| `--access` | Datasource access mode | Common values: `proxy`, `direct` |
+| `--datasource-url` | Datasource target URL | Common HTTP datasource setup |
+| `--default` | Mark as default datasource | Optional |
+| `--basic-auth` | Enable upstream HTTP Basic auth | Common for protected Prometheus/Loki endpoints |
+| `--basic-auth-user` | Basic auth username | Used with `--basic-auth-password` |
+| `--basic-auth-password` | Basic auth password | Stored in `secureJsonData` |
+| `--user` | Datasource user/login field | Common for Elasticsearch, SQL, InfluxDB |
+| `--password` | Datasource password field | Stored in `secureJsonData` |
+| `--with-credentials` | Set `withCredentials=true` | Browser credential forwarding for supported types |
+| `--http-header NAME=VALUE` | Add one custom HTTP header | Repeat for multiple headers |
+| `--tls-skip-verify` | Set `jsonData.tlsSkipVerify=true` | Relax TLS verification when needed |
+| `--server-name` | Set `jsonData.serverName` | TLS/SNI override |
+| `--json-data` | Inline `jsonData` JSON object | Advanced plugin-specific settings |
+| `--secure-json-data` | Inline `secureJsonData` JSON object | Advanced secret-bearing settings |
+| `--dry-run` | Preview only | Recommended first |
+| `--table` / `--json` | Dry-run output mode | Operator or automation view |
+
+Notes:
+- Common type values include `prometheus`, `loki`, `elasticsearch`, `influxdb`, `graphite`, `postgres`, `mysql`, `mssql`, `tempo`, and `cloudwatch`.
+- Dedicated auth/header flags are merged into the datasource payload. If the same key is already present in `--json-data` or `--secure-json-data`, the command fails closed instead of silently overwriting it.
+
+Example: Prometheus with basic auth
+```bash
+python3 -m grafana_utils datasource add \
+  --url http://localhost:3000 \
+  --token <TOKEN> \
+  --uid prom-main \
+  --name prometheus-main \
+  --type prometheus \
+  --access proxy \
+  --datasource-url http://prometheus:9090 \
+  --basic-auth \
+  --basic-auth-user metrics-user \
+  --basic-auth-password metrics-pass \
+  --dry-run --table
+```
+
+Example: Loki with tenant header
+```bash
+python3 -m grafana_utils datasource add \
+  --url http://localhost:3000 \
+  --token <TOKEN> \
+  --uid loki-main \
+  --name loki-main \
+  --type loki \
+  --access proxy \
+  --datasource-url http://loki:3100 \
+  --http-header X-Scope-OrgID=tenant-a \
+  --dry-run --json
+```
+
+Example: InfluxDB with extra plugin settings
+```bash
+python3 -m grafana_utils datasource add \
+  --url http://localhost:3000 \
+  --token <TOKEN> \
+  --uid influx-main \
+  --name influx-main \
+  --type influxdb \
+  --access proxy \
+  --datasource-url http://influxdb:8086 \
+  --user influx-user \
+  --password influx-pass \
+  --json-data '{"version":"Flux","organization":"main-org","defaultBucket":"metrics"}' \
+  --dry-run --table
+```
+
 6) Access Commands
 ------------------
 
@@ -1193,6 +1269,7 @@ cargo run --bin grafana-util -- alert import --url <URL> --basic-user <USER> --b
 cargo run --bin grafana-util -- alert diff --url <URL> --basic-user <USER> --basic-password <PASS> --diff-dir <DIR>/raw
 
 cargo run --bin grafana-util -- datasource list --url <URL> --token <TOKEN> [--table|--csv|--json]
+python3 -m grafana_utils datasource add --url <URL> --token <TOKEN> --name <NAME> --type <TYPE> [--uid <UID>] [--access proxy|direct] [--datasource-url <URL>] [--basic-auth] [--basic-auth-user <USER>] [--basic-auth-password <PASS>] [--user <USER>] [--password <PASS>] [--with-credentials] [--http-header NAME=VALUE] [--tls-skip-verify] [--server-name <NAME>] [--json-data <JSON>] [--secure-json-data <JSON>] [--dry-run] [--table|--json|--output-format text|table|json]
 cargo run --bin grafana-util -- datasource export --url <URL> --basic-user <USER> --basic-password <PASS> --export-dir <DIR> [--overwrite]
 cargo run --bin grafana-util -- datasource import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR> --replace-existing [--dry-run]
 cargo run --bin grafana-util -- datasource diff --url <URL> --basic-user <USER> --basic-password <PASS> --diff-dir <DIR>
@@ -1220,6 +1297,7 @@ cargo run --bin grafana-util -- access service-account list --url <URL> --token 
 | `dashboard import` | `text/table/json` | Dry-run focused |
 | `alert list-*` | `table/csv/json` | Shared across list commands |
 | `datasource list` | `table/csv/json` | Shared list pattern |
+| `datasource add` | `text/table/json` | Dry-run capable, Python CLI only |
 | `datasource import` | `text/table/json` | Dry-run focused |
 | `access list` commands | `table/csv/json` | Shared list pattern |
 | `access user import` | `text/table/json` | Dry-run table/json/ text summary |

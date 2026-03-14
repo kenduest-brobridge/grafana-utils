@@ -2,58 +2,66 @@
 
 Language: English | [Traditional Chinese README.zh-TW.md](README.zh-TW.md)
 
-Grafana Utilities is a practical operator toolkit for a common Grafana problem: Grafana is easy to click through, but hard to inventory, compare, back up, and replay cleanly across the same instance or between environments.
+Grafana Utilities is an admin-focused toolkit for a common Grafana problem: the official UI is fine for one-off clicks, but large environments need inventory, repeatable change control, safer dry-runs, and migration workflows that can survive review.
 
-This project gives you one unified CLI to:
+One simple way to think about it:
 
-- inventory dashboards, datasources, alerting resources, users, teams, and service accounts
-- export Grafana state into versionable JSON
-- import and restore that state into the same environment or a different one
-- compare local exports with live Grafana before you change anything
-- run dry-runs first so migration and cleanup work is predictable
+> Official Grafana tools are for using Grafana. Grafana Utilities is for operating Grafana.
 
-## Why This Exists
+The project combines Python for CLI flexibility and workflow logic with Rust for performance-oriented paths and standalone binaries. The goal is not to replace Grafana itself. The goal is to make Grafana administration more observable, reviewable, and scriptable.
 
-Traditional Grafana operations are painful when you need repeatable change control.
+## Why Admins Need This
 
-- Dashboard and alert changes are often spread across UI clicks instead of reviewable files.
-- It is hard to answer simple operator questions such as "what exists now?", "what changed?", and "what will this import overwrite?"
-- Moving content between dev, staging, and production is usually manual, fragile, and difficult to audit.
-- Datasource, dashboard, and alert dependencies are easy to drift over time.
-- Access management work is tedious when you need to review users, teams, service accounts, and tokens at scale.
+When you are managing dozens of datasources, hundreds of dashboards, and multiple Grafana environments, the hard part is rarely "how do I click this screen". The hard part is operational control.
 
-Grafana Utilities turns those workflows into explicit CLI operations with stable output and export artifacts you can diff, review, and re-run.
+- Import/export friction:
+  UI and ad hoc API calls make it hard to preserve structure, UIDs, and predictable replay behavior across environments.
+- Inventory blind spots:
+  It is hard to answer basic questions such as "what exists now?", "which datasources are actually in use?", and "what changed since the last snapshot?"
+- Risky live mutations:
+  Datasource and access changes can break dashboards, alerts, or automation if they are applied without preview.
+- Fragmented governance:
+  Dashboards, datasources, alerting, users, teams, and service accounts often end up managed through different manual habits instead of one repeatable workflow.
 
-## What It Solves Well
+Grafana Utilities turns those problems into explicit CLI operations with stable output, dry-run support, diffable artifacts, and environment-to-environment replay flows.
 
-- Environment inventory: list what exists now instead of browsing the UI page by page.
-- Backup and rollback: export Grafana resources into files you can keep in git.
-- Same-environment restore: re-import exported state after accidental deletion or drift.
-- Cross-environment migration: move dashboards, datasource inventory, and alerting resources from one Grafana to another in a controlled way.
-- Change review: compare exported state to live state before import.
-- Safer operations: use `--dry-run` to see predicted actions before writing anything.
+## What It Does Well
+
+- Environment inventory:
+  List live dashboards, datasources, alerting resources, users, teams, and service accounts without browsing the UI page by page.
+- Backup and replay:
+  Export Grafana state into versionable JSON and replay it back into the same environment or another one.
+- Change review:
+  Compare local export bundles with live Grafana before import or cleanup work.
+- Safer live operations:
+  Use dry-run output before mutating dashboards, datasources, access state, and other operator-managed resources.
+- Governance-oriented inspection:
+  Analyze dashboard structure, datasource usage, and query inventory in more depth than a normal UI browse flow.
 
 ## Core Capabilities
 
-- Unified CLI domains:
-  - `dashboard`
-  - `datasource`
-  - `alert`
-  - `access`
-- Export formats that support both:
-  - API-friendly restore workflows
-  - Grafana UI import workflows
-- Operator-friendly outputs for:
-  - table
-  - csv
-  - json
+1. Dashboard administration
+- Export, import, diff, and inspect dashboards with folder-aware workflows and machine-readable output.
+- Analyze dashboard datasource usage and query inventory for migration review and governance work.
+
+2. Datasource administration
+- Inventory, export, import, diff, and live add/delete datasources.
+- Preview datasource mutations with dry-run output before writing to Grafana.
+
+3. Access administration
+- Manage users, teams, service accounts, and service-account tokens.
+- Export/import/diff access snapshots for repeatable reconciliation instead of one-off manual changes.
+
+4. One operator CLI
+- Use the same top-level tool across `dashboard`, `datasource`, `alert`, and `access`.
+- Prefer table/csv/json output modes depending on whether the caller is a human or automation.
 
 ## Supported Grafana Resources
 
 | Resource | List | Export | Import | Diff | Inspect | Add | Modify | Delete | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Dashboards | ✓ | ✓ | ✓ | ✓ | ✓ | - | - | - | Inventory, backup, restore, and cross-environment migration |
-| Datasources | ✓ | ✓ | ✓ | ✓ | - | - | - | - | Useful for datasource inventory, replay, and drift review |
+| Datasources | ✓ | ✓ | ✓ | ✓ | - | ✓ | - | ✓ | Inventory, replay, drift review, and live datasource administration |
 | Alert rules and alerting resources | ✓ | ✓ | ✓ | ✓ | - | - | - | - | Covers alert rules, contact points, mute timings, and templates |
 | Users | ✓ | ✓ | ✓ | ✓ | - | ✓ | ✓ | ✓ | Access workflows support snapshot export/import and drift review, including optional `--with-teams` membership state |
 | Teams (alias: group) | ✓ | ✓ | ✓ | ✓ | - | ✓ | ✓ | ✓ | Team membership and team administration with export/import and drift comparison |
@@ -99,7 +107,7 @@ cargo run --bin grafana-util -- <domain> <command> [options]
 Main domains:
 
 - `dashboard`: export, import, list, diff, inspect
-- `datasource`: list, export, import, diff
+- `datasource`: list, add, delete, export, import, diff
 - `alert`: export, import, diff, list
 - `access`: users, teams, service accounts, tokens
 

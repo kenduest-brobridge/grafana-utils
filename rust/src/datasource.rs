@@ -1,7 +1,7 @@
 //! Datasource domain orchestrator.
 //!
 //! Purpose:
-//! - Own datasource command flows (`list`, `export`, `import`, `diff`).
+//! - Own datasource command flows (`list`, `add`, `delete`, `export`, `import`, `diff`).
 //! - Normalize datasource contract shape across live API payloads and exported metadata.
 //! - Keep output serialization (`table`/`csv`/`json`) selection centralized.
 //!
@@ -210,10 +210,118 @@ pub struct DatasourceDiffArgs {
     pub diff_dir: PathBuf,
 }
 
+#[derive(Debug, Clone, Args)]
+pub struct DatasourceAddArgs {
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(
+        long,
+        help = "Datasource UID to create. Optional but recommended for stable identity."
+    )]
+    pub uid: Option<String>,
+    #[arg(long, help = "Datasource name to create.")]
+    pub name: String,
+    #[arg(long = "type", help = "Grafana datasource plugin type id to create.")]
+    pub datasource_type: String,
+    #[arg(long, help = "Datasource access mode such as proxy or direct.")]
+    pub access: Option<String>,
+    #[arg(long, help = "Datasource target URL to store in Grafana.")]
+    pub datasource_url: Option<String>,
+    #[arg(
+        long = "default",
+        default_value_t = false,
+        help = "Mark the new datasource as the default datasource."
+    )]
+    pub is_default: bool,
+    #[arg(long, help = "Inline JSON object string for datasource jsonData.")]
+    pub json_data: Option<String>,
+    #[arg(
+        long,
+        help = "Inline JSON object string for datasource secureJsonData."
+    )]
+    pub secure_json_data: Option<String>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Preview what datasource add would do without changing Grafana."
+    )]
+    pub dry_run: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "For --dry-run only, render a compact table instead of plain text."
+    )]
+    pub table: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "For --dry-run only, render one JSON document."
+    )]
+    pub json: bool,
+    #[arg(long, value_enum, conflicts_with_all = ["table", "json"], help = "Alternative single-flag output selector for datasource add dry-run output. Use text, table, or json.")]
+    pub output_format: Option<DryRunOutputFormat>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "For --dry-run --table only, omit the table header row."
+    )]
+    pub no_header: bool,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct DatasourceDeleteArgs {
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(
+        long,
+        required_unless_present = "name",
+        conflicts_with = "name",
+        help = "Datasource UID to delete."
+    )]
+    pub uid: Option<String>,
+    #[arg(
+        long,
+        required_unless_present = "uid",
+        conflicts_with = "uid",
+        help = "Datasource name to delete when UID is not available."
+    )]
+    pub name: Option<String>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Preview what datasource delete would do without changing Grafana."
+    )]
+    pub dry_run: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "For --dry-run only, render a compact table instead of plain text."
+    )]
+    pub table: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "For --dry-run only, render one JSON document."
+    )]
+    pub json: bool,
+    #[arg(long, value_enum, conflicts_with_all = ["table", "json"], help = "Alternative single-flag output selector for datasource delete dry-run output. Use text, table, or json.")]
+    pub output_format: Option<DryRunOutputFormat>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "For --dry-run --table only, omit the table header row."
+    )]
+    pub no_header: bool,
+}
+
 #[derive(Debug, Clone, Subcommand)]
 pub enum DatasourceGroupCommand {
     #[command(about = "List live Grafana datasource inventory.")]
     List(DatasourceListArgs),
+    #[command(about = "Create one live Grafana datasource through the Grafana API.")]
+    Add(DatasourceAddArgs),
+    #[command(about = "Delete one live Grafana datasource through the Grafana API.")]
+    Delete(DatasourceDeleteArgs),
     #[command(about = "Export live Grafana datasource inventory as normalized JSON files.")]
     Export(DatasourceExportArgs),
     #[command(about = "Import datasource inventory through the Grafana API.")]
@@ -225,7 +333,7 @@ pub enum DatasourceGroupCommand {
 #[derive(Debug, Clone, Parser)]
 #[command(
     name = "grafana-util datasource",
-    about = "List, export, import, and diff Grafana datasources."
+    about = "List, add, delete, export, import, and diff Grafana datasources."
 )]
 pub struct DatasourceCliArgs {
     #[command(subcommand)]
@@ -248,6 +356,16 @@ fn normalize_output_formats(args: &mut DatasourceCliArgs) {
             Some(DryRunOutputFormat::Json) => inner.json = true,
             Some(DryRunOutputFormat::Text) | None => {}
         },
+        DatasourceGroupCommand::Add(inner) => match inner.output_format {
+            Some(DryRunOutputFormat::Table) => inner.table = true,
+            Some(DryRunOutputFormat::Json) => inner.json = true,
+            Some(DryRunOutputFormat::Text) | None => {}
+        },
+        DatasourceGroupCommand::Delete(inner) => match inner.output_format {
+            Some(DryRunOutputFormat::Table) => inner.table = true,
+            Some(DryRunOutputFormat::Json) => inner.json = true,
+            Some(DryRunOutputFormat::Text) | None => {}
+        },
         _ => {}
     }
 }
@@ -265,6 +383,16 @@ fn normalize_datasource_group_command(
             None => {}
         },
         DatasourceGroupCommand::Import(inner) => match inner.output_format {
+            Some(DryRunOutputFormat::Table) => inner.table = true,
+            Some(DryRunOutputFormat::Json) => inner.json = true,
+            Some(DryRunOutputFormat::Text) | None => {}
+        },
+        DatasourceGroupCommand::Add(inner) => match inner.output_format {
+            Some(DryRunOutputFormat::Table) => inner.table = true,
+            Some(DryRunOutputFormat::Json) => inner.json = true,
+            Some(DryRunOutputFormat::Text) | None => {}
+        },
+        DatasourceGroupCommand::Delete(inner) => match inner.output_format {
             Some(DryRunOutputFormat::Table) => inner.table = true,
             Some(DryRunOutputFormat::Json) => inner.json = true,
             Some(DryRunOutputFormat::Text) | None => {}
@@ -906,6 +1034,289 @@ fn build_import_payload(record: &DatasourceImportRecord) -> Value {
     ]))
 }
 
+fn parse_json_object_argument(
+    value: Option<&str>,
+    label: &str,
+) -> Result<Option<Map<String, Value>>> {
+    let Some(raw) = value else {
+        return Ok(None);
+    };
+    let value: Value = serde_json::from_str(raw)
+        .map_err(|error| message(format!("Invalid JSON for {label}: {error}")))?;
+    let object = value
+        .as_object()
+        .cloned()
+        .ok_or_else(|| message(format!("{label} must decode to a JSON object.")))?;
+    Ok(Some(object))
+}
+
+fn build_add_payload(args: &DatasourceAddArgs) -> Result<Value> {
+    let mut payload = Map::from_iter(vec![
+        ("name".to_string(), Value::String(args.name.clone())),
+        (
+            "type".to_string(),
+            Value::String(args.datasource_type.clone()),
+        ),
+    ]);
+    if let Some(uid) = &args.uid {
+        if !uid.trim().is_empty() {
+            payload.insert("uid".to_string(), Value::String(uid.trim().to_string()));
+        }
+    }
+    if let Some(access) = &args.access {
+        if !access.trim().is_empty() {
+            payload.insert(
+                "access".to_string(),
+                Value::String(access.trim().to_string()),
+            );
+        }
+    }
+    if let Some(url) = &args.datasource_url {
+        if !url.trim().is_empty() {
+            payload.insert("url".to_string(), Value::String(url.trim().to_string()));
+        }
+    }
+    if args.is_default {
+        payload.insert("isDefault".to_string(), Value::Bool(true));
+    }
+    if let Some(json_data) = parse_json_object_argument(args.json_data.as_deref(), "--json-data")? {
+        payload.insert("jsonData".to_string(), Value::Object(json_data));
+    }
+    if let Some(secure_json_data) =
+        parse_json_object_argument(args.secure_json_data.as_deref(), "--secure-json-data")?
+    {
+        payload.insert(
+            "secureJsonData".to_string(),
+            Value::Object(secure_json_data),
+        );
+    }
+    Ok(Value::Object(payload))
+}
+
+fn resolve_live_mutation_match(
+    uid: Option<&str>,
+    name: Option<&str>,
+    live: &[Map<String, Value>],
+) -> MatchResult {
+    let normalized_uid = uid.unwrap_or("").trim();
+    let normalized_name = name.unwrap_or("").trim();
+    let uid_matches = if normalized_uid.is_empty() {
+        Vec::new()
+    } else {
+        live.iter()
+            .filter(|item| string_field(item, "uid", "") == normalized_uid)
+            .collect::<Vec<&Map<String, Value>>>()
+    };
+    let name_matches = if normalized_name.is_empty() {
+        Vec::new()
+    } else {
+        live.iter()
+            .filter(|item| string_field(item, "name", "") == normalized_name)
+            .collect::<Vec<&Map<String, Value>>>()
+    };
+    if uid_matches.len() > 1 {
+        return MatchResult {
+            destination: "ambiguous-uid",
+            action: "would-fail-ambiguous-uid",
+            target_uid: String::new(),
+            target_name: normalized_name.to_string(),
+            target_id: None,
+        };
+    }
+    if uid_matches.len() == 1 {
+        let item = uid_matches[0];
+        let target_name = string_field(item, "name", "");
+        if !normalized_name.is_empty() && target_name != normalized_name {
+            return MatchResult {
+                destination: "uid-name-mismatch",
+                action: "would-fail-uid-name-mismatch",
+                target_uid: string_field(item, "uid", ""),
+                target_name,
+                target_id: item.get("id").and_then(Value::as_i64),
+            };
+        }
+        return MatchResult {
+            destination: "exists-uid",
+            action: "would-fail-existing-uid",
+            target_uid: string_field(item, "uid", ""),
+            target_name,
+            target_id: item.get("id").and_then(Value::as_i64),
+        };
+    }
+    if name_matches.len() > 1 {
+        return MatchResult {
+            destination: "ambiguous-name",
+            action: "would-fail-ambiguous-name",
+            target_uid: String::new(),
+            target_name: normalized_name.to_string(),
+            target_id: None,
+        };
+    }
+    if name_matches.len() == 1 {
+        let item = name_matches[0];
+        let target_uid = string_field(item, "uid", "");
+        if !normalized_uid.is_empty() && !target_uid.is_empty() && target_uid != normalized_uid {
+            return MatchResult {
+                destination: "uid-name-mismatch",
+                action: "would-fail-uid-name-mismatch",
+                target_uid,
+                target_name: string_field(item, "name", ""),
+                target_id: item.get("id").and_then(Value::as_i64),
+            };
+        }
+        return MatchResult {
+            destination: "exists-name",
+            action: "would-fail-existing-name",
+            target_uid,
+            target_name: string_field(item, "name", ""),
+            target_id: item.get("id").and_then(Value::as_i64),
+        };
+    }
+    MatchResult {
+        destination: "missing",
+        action: "would-create",
+        target_uid: String::new(),
+        target_name: normalized_name.to_string(),
+        target_id: None,
+    }
+}
+
+fn resolve_delete_match(
+    uid: Option<&str>,
+    name: Option<&str>,
+    live: &[Map<String, Value>],
+) -> MatchResult {
+    let matching = resolve_live_mutation_match(uid, name, live);
+    match matching.destination {
+        "exists-uid" | "exists-name" => MatchResult {
+            action: "would-delete",
+            ..matching
+        },
+        "missing" => MatchResult {
+            action: "would-fail-missing",
+            ..matching
+        },
+        _ => matching,
+    }
+}
+
+fn render_live_mutation_table(rows: &[Vec<String>], include_header: bool) -> Vec<String> {
+    let headers = vec![
+        "OPERATION".to_string(),
+        "UID".to_string(),
+        "NAME".to_string(),
+        "TYPE".to_string(),
+        "MATCH".to_string(),
+        "ACTION".to_string(),
+        "TARGET_ID".to_string(),
+    ];
+    let mut widths: Vec<usize> = headers.iter().map(|header| header.len()).collect();
+    for row in rows {
+        for (index, value) in row.iter().enumerate() {
+            widths[index] = widths[index].max(value.len());
+        }
+    }
+    let format_row = |values: &[String]| -> String {
+        values
+            .iter()
+            .enumerate()
+            .map(|(index, value)| format!("{:<width$}", value, width = widths[index]))
+            .collect::<Vec<String>>()
+            .join("  ")
+    };
+    let separator = widths
+        .iter()
+        .map(|width| "-".repeat(*width))
+        .collect::<Vec<String>>();
+    let mut lines = Vec::new();
+    if include_header {
+        lines.push(format_row(&headers));
+        lines.push(format_row(&separator));
+    }
+    lines.extend(rows.iter().map(|row| format_row(row)));
+    lines
+}
+
+fn render_live_mutation_json(rows: &[Vec<String>]) -> Value {
+    let create_count = rows.iter().filter(|row| row[5] == "would-create").count();
+    let delete_count = rows.iter().filter(|row| row[5] == "would-delete").count();
+    let blocked_count = rows
+        .iter()
+        .filter(|row| row[5].starts_with("would-fail-"))
+        .count();
+    Value::Object(Map::from_iter(vec![
+        (
+            "items".to_string(),
+            Value::Array(
+                rows.iter()
+                    .map(|row| {
+                        Value::Object(Map::from_iter(vec![
+                            ("operation".to_string(), Value::String(row[0].clone())),
+                            ("uid".to_string(), Value::String(row[1].clone())),
+                            ("name".to_string(), Value::String(row[2].clone())),
+                            ("type".to_string(), Value::String(row[3].clone())),
+                            ("match".to_string(), Value::String(row[4].clone())),
+                            ("action".to_string(), Value::String(row[5].clone())),
+                            ("targetId".to_string(), Value::String(row[6].clone())),
+                        ]))
+                    })
+                    .collect(),
+            ),
+        ),
+        (
+            "summary".to_string(),
+            Value::Object(Map::from_iter(vec![
+                (
+                    "itemCount".to_string(),
+                    Value::Number((rows.len() as i64).into()),
+                ),
+                (
+                    "createCount".to_string(),
+                    Value::Number((create_count as i64).into()),
+                ),
+                (
+                    "deleteCount".to_string(),
+                    Value::Number((delete_count as i64).into()),
+                ),
+                (
+                    "blockedCount".to_string(),
+                    Value::Number((blocked_count as i64).into()),
+                ),
+            ])),
+        ),
+    ]))
+}
+
+fn validate_live_mutation_dry_run_args(
+    table: bool,
+    json: bool,
+    dry_run: bool,
+    no_header: bool,
+    verb: &str,
+) -> Result<()> {
+    if table && !dry_run {
+        return Err(message(format!(
+            "--table is only supported with --dry-run for datasource {verb}."
+        )));
+    }
+    if json && !dry_run {
+        return Err(message(format!(
+            "--json is only supported with --dry-run for datasource {verb}."
+        )));
+    }
+    if table && json {
+        return Err(message(format!(
+            "--table and --json are mutually exclusive for datasource {verb}."
+        )));
+    }
+    if no_header && !table {
+        return Err(message(format!(
+            "--no-header is only supported with --dry-run --table for datasource {verb}."
+        )));
+    }
+    Ok(())
+}
+
 fn render_import_table(
     rows: &[Vec<String>],
     include_header: bool,
@@ -1068,6 +1479,162 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                 println!();
                 println!("Listed {} data source(s).", datasources.len());
             }
+            Ok(())
+        }
+        DatasourceGroupCommand::Add(args) => {
+            validate_live_mutation_dry_run_args(
+                args.table,
+                args.json,
+                args.dry_run,
+                args.no_header,
+                "add",
+            )?;
+            let payload = build_add_payload(&args)?;
+            let client = build_http_client(&args.common)?;
+            let live = list_datasources(&client)?;
+            let matching =
+                resolve_live_mutation_match(args.uid.as_deref(), Some(&args.name), &live);
+            let row = vec![
+                "add".to_string(),
+                args.uid.clone().unwrap_or_default(),
+                args.name.clone(),
+                args.datasource_type.clone(),
+                matching.destination.to_string(),
+                matching.action.to_string(),
+                matching
+                    .target_id
+                    .map(|id| id.to_string())
+                    .unwrap_or_default(),
+            ];
+            if args.dry_run {
+                if args.json {
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&render_live_mutation_json(&[row]))?
+                    );
+                } else if args.table {
+                    for line in render_live_mutation_table(&[row], !args.no_header) {
+                        println!("{line}");
+                    }
+                    println!("Dry-run checked 1 datasource add request");
+                } else {
+                    println!(
+                        "Dry-run datasource add uid={} name={} match={} action={}",
+                        args.uid.clone().unwrap_or_default(),
+                        args.name,
+                        matching.destination,
+                        matching.action
+                    );
+                    println!("Dry-run checked 1 datasource add request");
+                }
+                return Ok(());
+            }
+            if matching.action != "would-create" {
+                return Err(message(format!(
+                    "Datasource add blocked for name={} uid={}: destination={} action={}.",
+                    args.name,
+                    args.uid.clone().unwrap_or_default(),
+                    matching.destination,
+                    matching.action
+                )));
+            }
+            client.request_json(Method::POST, "/api/datasources", &[], Some(&payload))?;
+            println!(
+                "Created datasource uid={} name={}",
+                args.uid.unwrap_or_default(),
+                args.name
+            );
+            Ok(())
+        }
+        DatasourceGroupCommand::Delete(args) => {
+            validate_live_mutation_dry_run_args(
+                args.table,
+                args.json,
+                args.dry_run,
+                args.no_header,
+                "delete",
+            )?;
+            let client = build_http_client(&args.common)?;
+            let live = list_datasources(&client)?;
+            let matching = resolve_delete_match(args.uid.as_deref(), args.name.as_deref(), &live);
+            let row = vec![
+                "delete".to_string(),
+                args.uid
+                    .clone()
+                    .or_else(|| {
+                        if matching.target_uid.is_empty() {
+                            None
+                        } else {
+                            Some(matching.target_uid.clone())
+                        }
+                    })
+                    .unwrap_or_default(),
+                args.name
+                    .clone()
+                    .unwrap_or_else(|| matching.target_name.clone()),
+                String::new(),
+                matching.destination.to_string(),
+                matching.action.to_string(),
+                matching
+                    .target_id
+                    .map(|id| id.to_string())
+                    .unwrap_or_default(),
+            ];
+            if args.dry_run {
+                if args.json {
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&render_live_mutation_json(&[row]))?
+                    );
+                } else if args.table {
+                    for line in render_live_mutation_table(&[row], !args.no_header) {
+                        println!("{line}");
+                    }
+                    println!("Dry-run checked 1 datasource delete request");
+                } else {
+                    println!(
+                        "Dry-run datasource delete uid={} name={} match={} action={}",
+                        args.uid.clone().unwrap_or_default(),
+                        args.name.clone().unwrap_or_default(),
+                        matching.destination,
+                        matching.action
+                    );
+                    println!("Dry-run checked 1 datasource delete request");
+                }
+                return Ok(());
+            }
+            if matching.action != "would-delete" {
+                return Err(message(format!(
+                    "Datasource delete blocked for uid={} name={}: destination={} action={}.",
+                    args.uid.clone().unwrap_or_default(),
+                    args.name.clone().unwrap_or_default(),
+                    matching.destination,
+                    matching.action
+                )));
+            }
+            let target_id = matching
+                .target_id
+                .ok_or_else(|| message("Datasource delete requires a live datasource id."))?;
+            client.request_json(
+                Method::DELETE,
+                &format!("/api/datasources/{target_id}"),
+                &[],
+                None,
+            )?;
+            println!(
+                "Deleted datasource uid={} name={} id={}",
+                if matching.target_uid.is_empty() {
+                    args.uid.unwrap_or_default()
+                } else {
+                    matching.target_uid
+                },
+                if matching.target_name.is_empty() {
+                    args.name.unwrap_or_default()
+                } else {
+                    matching.target_name
+                },
+                target_id
+            );
             Ok(())
         }
         DatasourceGroupCommand::Export(args) => {

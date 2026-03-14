@@ -1,8 +1,10 @@
 // Datasource domain test suite.
 // Exercises parsing + import/export/diff helpers, including mocked datasource matching and contract fixtures.
 use super::{
-    build_import_payload, diff_datasources_with_live, load_import_records, render_import_table,
-    resolve_match, run_datasource_cli, DatasourceCliArgs, DatasourceImportRecord,
+    build_add_payload, build_import_payload, diff_datasources_with_live, load_import_records,
+    parse_json_object_argument, render_import_table, render_live_mutation_json,
+    render_live_mutation_table, resolve_delete_match, resolve_live_mutation_match, resolve_match,
+    run_datasource_cli, DatasourceCliArgs, DatasourceImportRecord,
 };
 use clap::{CommandFactory, Parser};
 use serde_json::{json, Value};
@@ -60,6 +62,39 @@ fn import_help_explains_common_operator_flags() {
 }
 
 #[test]
+fn add_help_explains_live_mutation_flags() {
+    let mut command = DatasourceCliArgs::command();
+    let subcommand = command
+        .find_subcommand_mut("add")
+        .unwrap_or_else(|| panic!("missing datasource add help"));
+    let mut output = Vec::new();
+    subcommand.write_long_help(&mut output).unwrap();
+    let help = String::from_utf8(output).unwrap();
+
+    assert!(help.contains("--name"));
+    assert!(help.contains("--type"));
+    assert!(help.contains("--datasource-url"));
+    assert!(help.contains("--json-data"));
+    assert!(help.contains("--secure-json-data"));
+    assert!(help.contains("--dry-run"));
+}
+
+#[test]
+fn delete_help_explains_live_mutation_flags() {
+    let mut command = DatasourceCliArgs::command();
+    let subcommand = command
+        .find_subcommand_mut("delete")
+        .unwrap_or_else(|| panic!("missing datasource delete help"));
+    let mut output = Vec::new();
+    subcommand.write_long_help(&mut output).unwrap();
+    let help = String::from_utf8(output).unwrap();
+
+    assert!(help.contains("--uid"));
+    assert!(help.contains("--name"));
+    assert!(help.contains("--dry-run"));
+}
+
+#[test]
 fn parse_datasource_list_supports_output_format_json() {
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
@@ -75,6 +110,53 @@ fn parse_datasource_list_supports_output_format_json() {
             assert!(!inner.csv);
         }
         _ => panic!("expected datasource list"),
+    }
+}
+
+#[test]
+fn parse_datasource_add_supports_output_format_table() {
+    let args = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util",
+        "add",
+        "--name",
+        "Prometheus Main",
+        "--type",
+        "prometheus",
+        "--dry-run",
+        "--output-format",
+        "table",
+    ]);
+
+    match args.command {
+        super::DatasourceGroupCommand::Add(inner) => {
+            assert!(inner.dry_run);
+            assert!(inner.table);
+            assert!(!inner.json);
+        }
+        _ => panic!("expected datasource add"),
+    }
+}
+
+#[test]
+fn parse_datasource_delete_supports_output_format_json() {
+    let args = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util",
+        "delete",
+        "--uid",
+        "prom-main",
+        "--dry-run",
+        "--output-format",
+        "json",
+    ]);
+
+    match args.command {
+        super::DatasourceGroupCommand::Delete(inner) => {
+            assert_eq!(inner.uid.as_deref(), Some("prom-main"));
+            assert!(inner.dry_run);
+            assert!(inner.json);
+            assert!(!inner.table);
+        }
+        _ => panic!("expected datasource delete"),
     }
 }
 
@@ -100,6 +182,38 @@ fn resolve_match_marks_multiple_name_matches_as_ambiguous() {
     assert_eq!(matching.action, "would-fail-ambiguous");
     assert_eq!(matching.target_name, "Prometheus Main");
     assert_eq!(matching.target_id, None);
+}
+
+#[test]
+fn resolve_live_mutation_match_distinguishes_uid_name_mismatch() {
+    let live = vec![live_datasource(
+        7,
+        "prom-main",
+        "Prometheus Main",
+        "prometheus",
+    )];
+
+    let matching = resolve_live_mutation_match(Some("prom-main"), Some("Other Name"), &live);
+
+    assert_eq!(matching.destination, "uid-name-mismatch");
+    assert_eq!(matching.action, "would-fail-uid-name-mismatch");
+    assert_eq!(matching.target_id, Some(7));
+}
+
+#[test]
+fn resolve_delete_match_returns_would_delete_for_existing_uid() {
+    let live = vec![live_datasource(
+        7,
+        "prom-main",
+        "Prometheus Main",
+        "prometheus",
+    )];
+
+    let matching = resolve_delete_match(Some("prom-main"), None, &live);
+
+    assert_eq!(matching.destination, "exists-uid");
+    assert_eq!(matching.action, "would-delete");
+    assert_eq!(matching.target_id, Some(7));
 }
 
 #[test]
@@ -321,6 +435,115 @@ fn build_import_payload_matches_shared_contract_fixtures() {
 
         assert_eq!(build_import_payload(&record), expected_payload);
     }
+}
+
+#[test]
+fn build_add_payload_keeps_optional_json_fields() {
+    let args = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util",
+        "add",
+        "--uid",
+        "prom-main",
+        "--name",
+        "Prometheus Main",
+        "--type",
+        "prometheus",
+        "--access",
+        "proxy",
+        "--datasource-url",
+        "http://prometheus:9090",
+        "--default",
+        "--json-data",
+        r#"{"httpMethod":"POST"}"#,
+        "--secure-json-data",
+        r#"{"httpHeaderValue1":"secret"}"#,
+    ]);
+    let add_args = match args.command {
+        super::DatasourceGroupCommand::Add(inner) => inner,
+        _ => panic!("expected datasource add"),
+    };
+
+    let payload = build_add_payload(&add_args).unwrap();
+
+    assert_eq!(
+        payload,
+        json!({
+            "uid": "prom-main",
+            "name": "Prometheus Main",
+            "type": "prometheus",
+            "access": "proxy",
+            "url": "http://prometheus:9090",
+            "isDefault": true,
+            "jsonData": {"httpMethod": "POST"},
+            "secureJsonData": {"httpHeaderValue1": "secret"}
+        })
+    );
+}
+
+#[test]
+fn parse_json_object_argument_rejects_non_object_values() {
+    let error = parse_json_object_argument(Some("[]"), "--json-data").unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("--json-data must decode to a JSON object."));
+}
+
+#[test]
+fn render_live_mutation_table_can_omit_header() {
+    let rows = vec![vec![
+        "add".to_string(),
+        "prom-main".to_string(),
+        "Prometheus Main".to_string(),
+        "prometheus".to_string(),
+        "missing".to_string(),
+        "would-create".to_string(),
+        String::new(),
+    ]];
+
+    let lines = render_live_mutation_table(&rows, false);
+
+    assert_eq!(lines.len(), 1);
+    assert!(lines[0].contains("would-create"));
+    assert!(!lines[0].contains("OPERATION"));
+}
+
+#[test]
+fn render_live_mutation_json_summarizes_actions() {
+    let value = render_live_mutation_json(&[
+        vec![
+            "add".to_string(),
+            "prom-main".to_string(),
+            "Prometheus Main".to_string(),
+            "prometheus".to_string(),
+            "missing".to_string(),
+            "would-create".to_string(),
+            String::new(),
+        ],
+        vec![
+            "delete".to_string(),
+            "prom-main".to_string(),
+            "Prometheus Main".to_string(),
+            String::new(),
+            "exists-uid".to_string(),
+            "would-delete".to_string(),
+            "7".to_string(),
+        ],
+        vec![
+            "add".to_string(),
+            String::new(),
+            "Prometheus Main".to_string(),
+            "prometheus".to_string(),
+            "exists-name".to_string(),
+            "would-fail-existing-name".to_string(),
+            "7".to_string(),
+        ],
+    ]);
+
+    assert_eq!(value["summary"]["itemCount"], json!(3));
+    assert_eq!(value["summary"]["createCount"], json!(1));
+    assert_eq!(value["summary"]["deleteCount"], json!(1));
+    assert_eq!(value["summary"]["blockedCount"], json!(1));
 }
 
 #[test]
