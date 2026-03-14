@@ -1,7 +1,7 @@
-Grafana Utilities Rust 版完整使用指南（與 Python 設計一致版）
-=================================================
+Grafana Utilities 使用指南（繁中版）
+===================================
 
-本指南以 Rust 入口為主，保留與 Python 版同樣的命令級結構：
+本指南說明 repository 共用的命令介面。範例以 Rust source-tree 入口為主，但同一套命令設計也適用於安裝後的 CLI 與 Python source-tree 入口：
 - 全域參數先說
 - 每一命令獨立節點
 - 每個旗標有「用途 / 差異 / 情境」
@@ -53,6 +53,13 @@ Rust 入口差異要點：
 | `--timeout` | HTTP timeout（預設 30） | API 慢或網路抖動 |
 | `--verify-ssl` | 啟用 TLS 憑證驗證（預設關閉） | 生產環境建議開啟 |
 
+### 命令分區（快速導覽）
+
+- Dashboard：`dashboard export`、`dashboard list`、`dashboard list-data-sources`、`dashboard import`、`dashboard diff`、`dashboard inspect-export`、`dashboard inspect-live`
+- Alert：`alert export`、`alert import`、`alert diff`、`alert list-rules`、`alert list-contact-points`、`alert list-mute-timings`、`alert list-templates`
+- Datasource：`datasource list`、`datasource export`、`datasource import`、`datasource diff`
+- Access：`access user list`、`access user add`、`access user modify`、`access user delete`、`access team list`、`access team add`、`access team modify`、`access team delete`、`access service-account list`、`access service-account add`、`access service-account delete`、`access service-account token add`、`access service-account token delete`
+
 認證互斥規則（Rust parser 會直接拒絕）:
 
 1. `--token`/`--api-token` 不可與 `--basic-user`/`--basic-password` 同時使用。
@@ -81,6 +88,20 @@ Rust 入口差異要點：
 | `--progress` | 顯示 `<current>/<total>` 進度 |
 | `-v`, `--verbose` | 每筆明細輸出，會蓋過 `--progress` |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite
+```
+
+示例輸出：
+```text
+Exported raw    cpu-main -> dashboards/raw/Infra/CPU__cpu-main.json
+Exported prompt cpu-main -> dashboards/prompt/Infra/CPU__cpu-main.json
+Exported raw    mem-main -> dashboards/raw/Infra/MEM__mem-main.json
+Exported prompt mem-main -> dashboards/prompt/Infra/MEM__mem-main.json
+Dashboard export completed: 2 dashboard(s), 4 file(s) written
+```
+
 ### 3.2 `dashboard list`（legacy `list-dashboard`）
 
 **用途**：列出 live dashboards。
@@ -97,6 +118,35 @@ Rust 入口差異要點：
 | `--output-format table|csv|json` | 單一輸出旗標取代三旗標 | 互斥關係與 parser 一致 |
 | `--no-header` | 表格不顯示欄位列 | 只取輸出內容時方便 diff |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- dashboard list --url http://localhost:3000 --basic-user admin --basic-password admin --with-sources --table
+```
+
+示例輸出：
+```text
+UID              TITLE            FOLDER   TAGS        DATASOURCES
+cpu-main         CPU Overview     Infra    ops,linux   prometheus-main
+mem-main         Memory Overview  Infra    ops,linux   prometheus-main
+latency-main     API Latency      Apps     api,prod    loki-prod
+```
+
+示例命令（JSON）：
+```bash
+cargo run --bin grafana-util -- dashboard list --url http://localhost:3000 --token <TOKEN> --json
+```
+
+```json
+[
+  {
+    "uid": "cpu-main",
+    "title": "CPU Overview",
+    "folder": "Infra",
+    "tags": ["ops", "linux"]
+  }
+]
+```
+
 ### 3.3 `dashboard list-data-sources`
 
 **用途**：列出 live datasources。
@@ -108,6 +158,19 @@ Rust 入口差異要點：
 | `--json` | JSON 輸出 | API 串接 |
 | `--output-format table/csv/json` | 單一輸出旗標 | 與上述三旗標互斥 |
 | `--no-header` | 不列表頭 | 只取值對比 |
+
+示例命令：
+```bash
+cargo run --bin grafana-util -- dashboard list-data-sources --url http://localhost:3000 --basic-user admin --basic-password admin --table
+```
+
+示例輸出：
+```text
+UID                NAME               TYPE         IS_DEFAULT
+prom-main          prometheus-main    prometheus   true
+loki-prod          loki-prod          loki         false
+tempo-prod         tempo-prod         tempo        false
+```
 
 ### 3.4 `dashboard import`（legacy `import-dashboard`）
 
@@ -133,6 +196,20 @@ Rust 入口差異要點：
 | `--progress` | 匯入進度 |
 | `-v`, `--verbose` | 每筆詳細訊息，覆蓋 `--progress` |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw --replace-existing --dry-run --table
+```
+
+示例輸出：
+```text
+UID          TITLE            ACTION   DESTINATION   FOLDER
+cpu-main     CPU Overview     update   existing      Infra
+mem-main     Memory Overview  create   missing       Infra
+
+Dry-run checked 2 dashboard(s)
+```
+
 ### 3.5 `dashboard diff`
 
 **用途**：比較本地 `raw/` 與 live。
@@ -142,6 +219,22 @@ Rust 入口差異要點：
 | `--import-dir`（必需） | 指向 raw 匯出目錄 | 僅比對，不改寫 API |
 | `--import-folder-uid` | 比對時覆寫 folder UID 對應關係 | 目錄與目標 folder 不一致修正 |
 | `--context-lines`（預設 `3`） | diff 上下文行數 | 大文件可提高觀察粒度 |
+
+示例命令：
+```bash
+cargo run --bin grafana-util -- dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw
+```
+
+示例輸出：
+```text
+Dashboard diff found 1 differing item(s).
+
+--- live/cpu-main
++++ export/cpu-main
+@@
+-  "title": "CPU Overview"
++  "title": "CPU Overview v2"
+```
 
 ### 3.6 `dashboard inspect-export`
 
@@ -160,6 +253,19 @@ Rust 入口差異要點：
 | `--help-full` | 顯示完整 report 範例與欄位說明 | 首次導入常用 |
 | `--no-header` | 表格/可表格化 report 不列表頭 | 便於比對輸出 |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- dashboard inspect-export --import-dir ./dashboards/raw --output-format report-table
+```
+
+示例輸出：
+```text
+UID           TITLE             PANEL_COUNT   DATASOURCES
+cpu-main      CPU Overview      6             prometheus-main
+mem-main      Memory Overview   4             prometheus-main
+latency-main  API Latency       8             loki-prod
+```
+
 ### 3.7 `dashboard inspect-live`
 
 **用途**：live dashboard 即時快照分析（同 inspect-export 的報表邏輯）。
@@ -172,6 +278,23 @@ Rust 入口差異要點：
 | `--json` / `--table` / `--report` / `--output-format*` | 與 `inspect-export` 完全同義 | 可直接對比離線/線上 |
 | `--help-full` | 進一步說明 report 參數 | 導入/診斷複雜情境 |
 | `--no-header` | 不列表頭 | 主要供腳本處理 |
+
+示例命令：
+```bash
+cargo run --bin grafana-util -- dashboard inspect-live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format governance-json
+```
+
+示例輸出：
+```json
+[
+  {
+    "uid": "cpu-main",
+    "title": "CPU Overview",
+    "datasource_count": 1,
+    "status": "ok"
+  }
+]
+```
 
 4) alert 命令
 -------------
@@ -186,6 +309,19 @@ Rust 入口差異要點：
 | `--flat` | 不保留子目錄階層 | 大量檔名變更時更好比對 |
 | `--overwrite` | 覆蓋 existing 檔案 | 重跑前置步驟 |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- alert export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./alerts --overwrite
+```
+
+示例輸出：
+```text
+Exported rule          alerts/raw/rules/cpu_high.json
+Exported contact point alerts/raw/contact-points/oncall_webhook.json
+Exported template      alerts/raw/templates/default_message.json
+Alert export completed: 3 resource(s) written
+```
+
 ### 4.2 `alert import`（legacy `import-alert`）
 
 **用途**：將 alert raw 匯入 Grafana。
@@ -198,6 +334,18 @@ Rust 入口差異要點：
 | `--dashboard-uid-map` | dashboard uid 對照檔 | linked rule 在目標系統 UID 變更時必備 |
 | `--panel-id-map` | panel id 對照檔 | 修復 linked alert 內 panel 參考 |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- alert import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./alerts/raw --replace-existing --dry-run
+```
+
+示例輸出：
+```text
+kind=contact-point name=oncall-webhook action=would-update
+kind=rule-group name=linux-hosts action=would-create
+kind=template name=default_message action=no-change
+```
+
 ### 4.3 `alert diff`（legacy `diff-alert`）
 
 **用途**：本地 alert raw 與 live 內容比較。
@@ -207,6 +355,20 @@ Rust 入口差異要點：
 | `--diff-dir`（必需） | 指向 raw 目錄 |
 | `--dashboard-uid-map` | dashboard 對映，確保跨環境比對一致 |
 | `--panel-id-map` | panel 對映，修正 linked path |
+
+示例命令：
+```bash
+cargo run --bin grafana-util -- alert diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./alerts/raw
+```
+
+示例輸出：
+```text
+Diff different
+
+resource=contact-point name=oncall-webhook
+- url=http://127.0.0.1/notify
++ url=http://127.0.0.1/updated
+```
 
 ### 4.4 `alert list-rules`（legacy `list-alert-rules`）
 ### 4.5 `alert list-contact-points`（legacy `list-alert-contact-points`）
@@ -223,6 +385,40 @@ Rust 入口差異要點：
 | `--output-format table|csv|json` | 取代 `--table/--csv/--json` 的統一入口 |
 | `--no-header` | 不列表頭（table 類） | 結構化比對 |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- alert list-rules --url http://localhost:3000 --basic-user admin --basic-password admin --table
+```
+
+示例輸出：
+```text
+UID                 TITLE              FOLDER        CONDITION
+cpu-high            CPU High           linux-hosts   A > 80
+memory-pressure     Memory Pressure    linux-hosts   B > 90
+api-latency         API Latency        apps-prod     C > 500
+```
+
+`alert list-contact-points` 示例輸出：
+```text
+UID               NAME             TYPE      DESTINATION
+oncall-webhook    Oncall Webhook   webhook   http://alert.example.com/hook
+slack-primary     Slack Primary    slack     #ops-alerts
+```
+
+`alert list-mute-timings` 示例輸出：
+```text
+NAME                 INTERVALS
+maintenance-window   mon-fri 01:00-02:00
+release-freeze       sat-sun 00:00-23:59
+```
+
+`alert list-templates` 示例輸出：
+```text
+NAME               PREVIEW
+default_message    Alert: {{ .CommonLabels.alertname }}
+ops_summary        [{{ .Status }}] {{ .CommonLabels.severity }}
+```
+
 5) datasource 命令
 ------------------
 
@@ -238,6 +434,19 @@ Rust 入口差異要點：
 | `--output-format table|csv|json` | 取代三旗標 |
 | `--no-header` | 不列 header | 比對輸出 |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- datasource list --url http://localhost:3000 --token <TOKEN> --table
+```
+
+示例輸出：
+```text
+UID                NAME               TYPE         URL
+prom-main          prometheus-main    prometheus   http://prometheus:9090
+loki-prod          loki-prod          loki         http://loki:3100
+tempo-prod         tempo-prod         tempo        http://tempo:3200
+```
+
 ### 5.2 `datasource export`
 
 **用途**：匯出 datasource inventory。
@@ -247,6 +456,18 @@ Rust 入口差異要點：
 | `--export-dir`（預設 `datasources`） | 匯出目錄 | 含 `datasources.json` + metadata |
 | `--overwrite` | 覆蓋既有輸出 |
 | `--dry-run` | 僅列預期輸出，不落地 |
+
+示例命令：
+```bash
+cargo run --bin grafana-util -- datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./datasources --overwrite
+```
+
+示例輸出：
+```text
+Exported datasource inventory -> datasources/datasources.json
+Exported metadata            -> datasources/export-metadata.json
+Datasource export completed: 3 item(s)
+```
 
 ### 5.3 `datasource import`
 
@@ -268,6 +489,18 @@ Rust 入口差異要點：
 | `--progress` | 逐筆進度 | 大量匯入穩定觀察 |
 | `-v`, `--verbose` | 詳細逐筆日誌 | 覆蓋 `--progress` |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --replace-existing --dry-run --table
+```
+
+示例輸出：
+```text
+UID         NAME               TYPE         ACTION   DESTINATION
+prom-main   prometheus-main    prometheus   update   existing
+loki-prod   loki-prod          loki         create   missing
+```
+
 ### 5.4 `datasource diff`
 
 **用途**：比較 export 與 live datasource。
@@ -275,6 +508,20 @@ Rust 入口差異要點：
 | 參數 | 用途 |
 | --- | --- |
 | `--diff-dir`（必需） | 指向 datasource 匯出根目錄 |
+
+示例命令：
+```bash
+cargo run --bin grafana-util -- datasource diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./datasources
+```
+
+示例輸出：
+```text
+Datasource diff found 1 differing item(s).
+
+uid=loki-prod
+- url=http://loki:3100
++ url=http://loki-prod:3100
+```
 
 6) access 命令
 -------------
@@ -296,6 +543,19 @@ Rust 入口差異要點：
 | `--table` / `--csv` / `--json` | 輸出格式 |
 | `--output-format table/csv/json` | 取代上述三旗標 |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- access user list --url http://localhost:3000 --basic-user admin --basic-password admin --scope global --table
+```
+
+示例輸出：
+```text
+ID   LOGIN      EMAIL                NAME             ORG_ROLE   GRAFANA_ADMIN
+1    admin      admin@example.com    Grafana Admin    Admin      true
+7    svc-ci     ci@example.com       CI Service       Editor     false
+9    alice      alice@example.com    Alice Chen       Viewer     false
+```
+
 ### 6.2 `access user add`
 
 **用途**：建立 user。
@@ -309,6 +569,23 @@ Rust 入口差異要點：
 | `--org-role` | 初始角色 |
 | `--grafana-admin` | `true/false` |
 | `--json` | JSON 回應 |
+
+示例命令：
+```bash
+cargo run --bin grafana-util -- access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login bob --email bob@example.com --name "Bob Lin" --password '<SECRET>' --org-role Editor --json
+```
+
+示例輸出：
+```json
+{
+  "id": 12,
+  "login": "bob",
+  "email": "bob@example.com",
+  "name": "Bob Lin",
+  "orgRole": "Editor",
+  "grafanaAdmin": false
+}
+```
 
 ### 6.3 `access user modify`
 
@@ -325,6 +602,21 @@ Rust 入口差異要點：
 | `--set-grafana-admin` | 更新管理員身分 |
 | `--json` | JSON 回應 |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- access user modify --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --set-email alice@example.com --set-org-role Editor --json
+```
+
+示例輸出：
+```json
+{
+  "id": 9,
+  "login": "alice",
+  "result": "updated",
+  "changes": ["set-org-role", "set-email"]
+}
+```
+
 ### 6.4 `access user delete`
 
 **用途**：刪除使用者。
@@ -335,6 +627,21 @@ Rust 入口差異要點：
 | `--scope org|global`（預設 `global`） | 刪除範圍 |
 | `--yes` | 跳過刪除確認（建議自動化必加） |
 | `--json` | JSON 回應 |
+
+示例命令：
+```bash
+cargo run --bin grafana-util -- access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --login temp-user --scope global --yes --json
+```
+
+示例輸出：
+```json
+{
+  "id": 14,
+  "login": "temp-user",
+  "scope": "global",
+  "result": "deleted"
+}
+```
 
 ### 6.5 `access team list`
 
@@ -349,6 +656,18 @@ Rust 入口差異要點：
 | `--table` / `--csv` / `--json` | 輸出 |
 | `--output-format table/csv/json` | 取代上述 |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- access team list --url http://localhost:3000 --token <TOKEN> --with-members --table
+```
+
+示例輸出：
+```text
+ID   NAME        EMAIL              MEMBERS   ADMINS
+3    sre-team    sre@example.com    5         2
+7    app-team    app@example.com    8         1
+```
+
 ### 6.6 `access team add`
 
 **用途**：新增 team。
@@ -361,6 +680,21 @@ Rust 入口差異要點：
 | `--admin`（可多） | 初始 admin |
 | `--json` | JSON 回應 |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- access team add --url http://localhost:3000 --token <TOKEN> --name platform-team --email platform@example.com --member alice --member bob --admin alice --json
+```
+
+示例輸出：
+```json
+{
+  "teamId": 15,
+  "name": "platform-team",
+  "membersAdded": 2,
+  "adminsAdded": 1
+}
+```
+
 ### 6.7 `access team modify`
 
 **用途**：調整 team 成員與 admin。
@@ -372,6 +706,22 @@ Rust 入口差異要點：
 | `--add-admin` / `--remove-admin` | admin 身分調整 |
 | `--json` | JSON 回應 |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- access team modify --url http://localhost:3000 --token <TOKEN> --name platform-team --add-member carol --remove-member bob --remove-admin alice --json
+```
+
+示例輸出：
+```json
+{
+  "teamId": 15,
+  "name": "platform-team",
+  "membersAdded": 1,
+  "membersRemoved": 1,
+  "adminsRemoved": 1
+}
+```
+
 ### 6.8 `access team delete`
 
 **用途**：刪除 team。
@@ -381,6 +731,20 @@ Rust 入口差異要點：
 | `--team-id` / `--name` | 三擇一定位 |
 | `--yes` | 確認強制 |
 | `--json` | JSON 回應 |
+
+示例命令：
+```bash
+cargo run --bin grafana-util -- access team delete --url http://localhost:3000 --token <TOKEN> --name platform-team --yes --json
+```
+
+示例輸出：
+```json
+{
+  "teamId": 15,
+  "name": "platform-team",
+  "result": "deleted"
+}
+```
 
 ### 6.9 `access service-account list`
 
@@ -393,6 +757,18 @@ Rust 入口差異要點：
 | `--table` / `--csv` / `--json` | 輸出 |
 | `--output-format table/csv/json` | 取代三旗標 |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- access service-account list --url http://localhost:3000 --token <TOKEN> --table
+```
+
+示例輸出：
+```text
+ID   NAME          ROLE     DISABLED
+2    ci-bot        Editor   false
+5    backup-bot    Viewer   true
+```
+
 ### 6.10 `access service-account add`
 
 **用途**：新增服務帳號。
@@ -404,6 +780,21 @@ Rust 入口差異要點：
 | `--disabled` | `true/false` | Rust 版 `bool` 為文字化輸入 |
 | `--json` | JSON 回應 |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- access service-account add --url http://localhost:3000 --token <TOKEN> --name deploy-bot --role Editor --json
+```
+
+示例輸出：
+```json
+{
+  "id": 21,
+  "name": "deploy-bot",
+  "role": "Editor",
+  "disabled": false
+}
+```
+
 ### 6.11 `access service-account delete`
 
 **用途**：刪除服務帳號。
@@ -413,6 +804,20 @@ Rust 入口差異要點：
 | `--service-account-id` / `--name` | 三擇一定位 |
 | `--yes` | 需要跳過互動確認 |
 | `--json` | JSON 回應 |
+
+示例命令：
+```bash
+cargo run --bin grafana-util -- access service-account delete --url http://localhost:3000 --token <TOKEN> --name deploy-bot --yes --json
+```
+
+示例輸出：
+```json
+{
+  "id": 21,
+  "name": "deploy-bot",
+  "result": "deleted"
+}
+```
 
 ### 6.12 `access service-account token add`
 
@@ -425,6 +830,22 @@ Rust 入口差異要點：
 | `--seconds-to-live` | TTL（秒） |
 | `--json` | JSON 回應 |
 
+示例命令：
+```bash
+cargo run --bin grafana-util -- access service-account token add --url http://localhost:3000 --token <TOKEN> --name deploy-bot --token-name ci-token --seconds-to-live 86400 --json
+```
+
+示例輸出：
+```json
+{
+  "serviceAccountId": 21,
+  "tokenId": 34,
+  "tokenName": "ci-token",
+  "secondsToLive": 86400,
+  "key": "glsa_xxxxxxxxx"
+}
+```
+
 ### 6.13 `access service-account token delete`
 
 **用途**：刪除服務帳號 token。
@@ -435,6 +856,20 @@ Rust 入口差異要點：
 | `--token-id` / `--token-name` | 定位 token（需二擇一） |
 | `--yes` | 跳過確認 |
 | `--json` | JSON 回應 |
+
+示例命令：
+```bash
+cargo run --bin grafana-util -- access service-account token delete --url http://localhost:3000 --token <TOKEN> --name deploy-bot --token-name ci-token --yes --json
+```
+
+示例輸出：
+```json
+{
+  "serviceAccountId": 21,
+  "tokenName": "ci-token",
+  "result": "deleted"
+}
+```
 
 7) 共通輸出與互斥規則摘要
 -------------------------

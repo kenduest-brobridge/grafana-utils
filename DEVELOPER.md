@@ -9,6 +9,17 @@ Commit message default for this repo:
 - then 2-4 flat `- ...` detail bullets
 - keep the bullets concrete about code, tests, docs, or migration impact
 
+## Documentation Maintenance Contract
+
+- Keep `README.md` and `README.zh-TW.md` command documentation sections split by domain: Dashboard, Datasource, Alert, and Access/User so operators can jump directly to one surface without scanning unrelated flags.
+- Keep the English and Traditional Chinese user guides (`docs/user-guide.md`, `docs/user-guide-TW.md`) in lockstep on command surface naming and domain grouping.
+- When command behavior or parameter shapes change, update:
+  - top-level README quick map and per-domain command lists
+  - both language versions of the README documentation sections
+  - both full user guides, including parameter purpose / mode / scenario notes where affected
+- Treat deprecated/legacy option text as cleanup debt: replace `--table/--csv/--json` and other legacy aliases with `--output-format` guidance where implementation supports it, and remove stale "old options" notes from README/examples.
+- For PR-ready changes, include a brief mention in `DEVELOPER.md` whenever docs structure is updated so future contributors know whether behavior, parser compatibility, or only docs shape changed.
+
 ## Repository Scope
 
 - `grafana_utils/dashboard_cli.py`: packaged dashboard export/import utility
