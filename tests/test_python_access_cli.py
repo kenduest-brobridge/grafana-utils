@@ -596,6 +596,104 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.yes)
         self.assertTrue(args.json)
 
+    def test_parse_args_supports_user_export_mode(self):
+        args = access_utils.parse_args(
+            [
+                "user",
+                "export",
+                "--basic-user",
+                "admin",
+                "--basic-password",
+                "secret",
+                "--export-dir",
+                "tmp-users",
+                "--scope",
+                "global",
+                "--with-teams",
+                "--overwrite",
+                "--dry-run",
+            ]
+        )
+
+        self.assertEqual(args.resource, "user")
+        self.assertEqual(args.command, "export")
+        self.assertEqual(args.auth_username, "admin")
+        self.assertEqual(args.auth_password, "secret")
+        self.assertEqual(args.export_dir, "tmp-users")
+        self.assertEqual(args.scope, "global")
+        self.assertTrue(args.with_teams)
+        self.assertTrue(args.overwrite)
+        self.assertTrue(args.dry_run)
+
+    def test_parse_args_supports_user_import_mode(self):
+        args = access_utils.parse_args(
+            [
+                "user",
+                "import",
+                "--token",
+                "abc123",
+                "--import-dir",
+                "tmp-users",
+                "--scope",
+                "org",
+                "--replace-existing",
+                "--yes",
+            ]
+        )
+
+        self.assertEqual(args.resource, "user")
+        self.assertEqual(args.command, "import")
+        self.assertEqual(args.api_token, "abc123")
+        self.assertEqual(args.import_dir, "tmp-users")
+        self.assertEqual(args.scope, "org")
+        self.assertTrue(args.replace_existing)
+        self.assertTrue(args.yes)
+
+    def test_parse_args_supports_team_export_mode(self):
+        args = access_utils.parse_args(
+            [
+                "team",
+                "export",
+                "--token",
+                "abc123",
+                "--export-dir",
+                "tmp-teams",
+                "--with-members",
+                "--overwrite",
+            ]
+        )
+
+        self.assertEqual(args.resource, "team")
+        self.assertEqual(args.command, "export")
+        self.assertEqual(args.api_token, "abc123")
+        self.assertEqual(args.export_dir, "tmp-teams")
+        self.assertTrue(args.with_members)
+        self.assertTrue(args.overwrite)
+
+    def test_parse_args_supports_team_import_mode(self):
+        args = access_utils.parse_args(
+            [
+                "team",
+                "import",
+                "--basic-user",
+                "admin",
+                "--basic-password",
+                "secret",
+                "--import-dir",
+                "tmp-teams",
+                "--replace-existing",
+                "--yes",
+            ]
+        )
+
+        self.assertEqual(args.resource, "team")
+        self.assertEqual(args.command, "import")
+        self.assertEqual(args.auth_username, "admin")
+        self.assertEqual(args.auth_password, "secret")
+        self.assertEqual(args.import_dir, "tmp-teams")
+        self.assertTrue(args.replace_existing)
+        self.assertTrue(args.yes)
+
     def test_parse_args_supports_group_alias_mode(self):
         args = access_utils.parse_args(
             [
@@ -1320,6 +1418,56 @@ class AccessCliTests(unittest.TestCase):
         with self.assertRaisesRegex(access_utils.GrafanaError, "admin state metadata"):
             access_utils.modify_team_with_client(args, client)
 
+    def test_sync_team_members_for_import_updates_admin_and_membership_state(self):
+        client = FakeAccessClient(org_users=[])
+
+        existing_members = {
+            "alice": {"identity": "alice@example.com", "user_id": "10", "admin": True},
+            "bob": {"identity": "bob@example.com", "user_id": "11", "admin": False},
+            "david": {"identity": "david@example.com", "user_id": "12", "admin": True},
+        }
+        with mock.patch(
+            "grafana_utils.access.workflows.lookup_org_user_by_identity",
+            side_effect=lambda *_args, **_kwargs: {
+                "userId": "14",
+                "login": "charlie",
+                "email": "charlie@example.com",
+            },
+        ):
+            summary = access_utils._sync_team_members_for_import(
+                client,
+                team_id="3",
+                team_name="Ops",
+                existing_members=existing_members,
+                desired_members=["charlie", "alice"],
+                desired_admins=["alice"],
+                include_missing=True,
+                dry_run=False,
+            )
+
+        self.assertEqual(summary["addedMembers"], ["charlie"])
+        self.assertEqual(summary["addedAdmins"], [])
+        self.assertEqual(summary["removedAdmins"], ["david@example.com"])
+        self.assertEqual(summary["removedMembers"], ["bob@example.com", "david@example.com"])
+        self.assertEqual(summary["unchangedAdmins"], ["alice@example.com"])
+        self.assertEqual(client.added_team_members, [("3", "14")])
+        self.assertEqual(
+            client.removed_team_members,
+            [("3", "11"), ("3", "12")],
+        )
+        self.assertEqual(
+            client.updated_team_memberships,
+            [
+                (
+                    "3",
+                    {
+                        "members": ["charlie"],
+                        "admins": ["alice"],
+                    },
+                )
+            ],
+        )
+
     def test_delete_team_with_client_deletes_by_name(self):
         client = FakeAccessClient(
             teams=[
@@ -1675,6 +1823,40 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(client.deleted_service_account_tokens, [("7", "4")])
         self.assertIn('"tokenId": "4"', output.getvalue())
         self.assertIn('"tokenName": "nightly"', output.getvalue())
+
+    def test_dispatch_access_command_routes_user_export_import(self):
+        client = FakeAccessClient()
+        args = argparse.Namespace(resource="user", command="export", export_dir="tmp", url="http://127.0.0.1:3000")
+        with mock.patch("grafana_utils.access.workflows.export_users_with_client", return_value=77) as export_users:
+            result = access_utils.dispatch_access_command(args, client, "basic")
+        self.assertEqual(result, 77)
+        export_users.assert_called_once_with(args, client)
+
+        args = argparse.Namespace(resource="user", command="import", import_dir="tmp")
+        with mock.patch("grafana_utils.access.workflows.import_users_with_client", return_value=88) as import_users:
+            result = access_utils.dispatch_access_command(args, client, "basic")
+        self.assertEqual(result, 88)
+        import_users.assert_called_once_with(args, client)
+
+    def test_dispatch_access_command_routes_team_export_import(self):
+        client = FakeAccessClient()
+        args = argparse.Namespace(resource="team", command="export", export_dir="tmp")
+        with mock.patch("grafana_utils.access.workflows.export_teams_with_client", return_value=55) as export_teams:
+            result = access_utils.dispatch_access_command(args, client, "basic")
+        self.assertEqual(result, 55)
+        export_teams.assert_called_once_with(args, client)
+
+        args = argparse.Namespace(
+            resource="team",
+            command="import",
+            import_dir="tmp",
+            yes=True,
+            replace_existing=True,
+        )
+        with mock.patch("grafana_utils.access.workflows.import_teams_with_client", return_value=66) as import_teams:
+            result = access_utils.dispatch_access_command(args, client, "basic")
+        self.assertEqual(result, 66)
+        import_teams.assert_called_once_with(args, client)
 
     def test_main_returns_one_on_auth_error(self):
         stderr = io.StringIO()

@@ -1,11 +1,20 @@
 """Workflow and helper logic for the Python access-management CLI."""
 
 import json
+from pathlib import Path
 from typing import Any, Optional
 
 from .common import (
     DEFAULT_PAGE_SIZE,
     GrafanaError,
+)
+from .parser import (
+    ACCESS_EXPORT_KIND_TEAMS,
+    ACCESS_EXPORT_KIND_USERS,
+    ACCESS_EXPORT_METADATA_FILENAME,
+    ACCESS_EXPORT_VERSION,
+    ACCESS_TEAM_EXPORT_FILENAME,
+    ACCESS_USER_EXPORT_FILENAME,
 )
 from .models import (
     bool_label,
@@ -138,6 +147,739 @@ def normalize_created_user(user_id, args):
         "scope": "global",
         "teams": [],
     }
+
+
+def _build_access_export_metadata(source_url, kind, source_count, source_dir):
+    return {
+        "kind": kind,
+        "version": ACCESS_EXPORT_VERSION,
+        "sourceUrl": source_url,
+        "recordCount": source_count,
+        "sourceDir": source_dir,
+    }
+
+
+def _build_user_export_records(client, args):
+    users = []
+    if args.scope == "global":
+        raw_users = client.iter_global_users(DEFAULT_PAGE_SIZE)
+        users = [normalize_global_user(item) for item in raw_users]
+    else:
+        raw_users = client.list_org_users()
+        users = [normalize_org_user(item) for item in raw_users]
+    if bool(getattr(args, "with_teams", False)):
+        for user in users:
+            user_id = user.get("id")
+            if not user_id:
+                continue
+            team_names = []
+            for team in client.list_user_teams(user_id):
+                team_name = str(team.get("name") or "").strip()
+                if team_name:
+                    team_names.append(team_name)
+            user["teams"] = sorted(team_names)
+    return users
+
+
+def _build_team_export_records(client, args):
+    raw_teams = client.iter_teams(query=None, page_size=DEFAULT_PAGE_SIZE)
+    teams = []
+    for raw_team in raw_teams:
+        team = {
+            "id": str(raw_team.get("id") or ""),
+            "name": str(raw_team.get("name") or ""),
+            "email": str(raw_team.get("email") or ""),
+            "memberCount": str(raw_team.get("memberCount") or 0),
+            "members": [],
+            "admins": [],
+        }
+        if bool(getattr(args, "with_members", False)):
+            raw_members = client.list_team_members(team["id"])
+            for member in raw_members:
+                identity = extract_member_identity(member)
+                if not identity:
+                    continue
+                if identity in team["members"]:
+                    if team_member_admin_state(member) is True:
+                        if identity not in team["admins"]:
+                            team["admins"].append(identity)
+                    continue
+                team["members"].append(identity)
+                if team_member_admin_state(member) is True:
+                    team["admins"].append(identity)
+        teams.append(team)
+    teams.sort(key=lambda item: (item.get("name") or "", item.get("id") or ""))
+    return teams
+
+
+def _normalize_user_record(record):
+    return {
+        "id": str(record.get("id") or ""),
+        "login": str(record.get("login") or ""),
+        "email": str(record.get("email") or ""),
+        "name": str(record.get("name") or ""),
+        "orgRole": normalize_org_role(record.get("orgRole") or ""),
+        "grafanaAdmin": normalize_bool(record.get("grafanaAdmin")),
+        "teams": _normalize_access_identity_list(record.get("teams") or []),
+    }
+
+
+def _normalize_team_record(record):
+    return {
+        "id": str(record.get("id") or ""),
+        "name": str(record.get("name") or ""),
+        "email": str(record.get("email") or ""),
+        "memberCount": str(record.get("memberCount") or 0),
+        "members": _normalize_access_identity_list(record.get("members") or []),
+        "admins": _normalize_access_identity_list(record.get("admins") or []),
+    }
+
+
+
+def _load_json_document(path):
+    if not path.exists():
+        raise GrafanaError("Access export file not found: %s" % path)
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise GrafanaError("Failed to read access export file %s: %s" % (path, exc))
+    try:
+        return json.loads(content)
+    except ValueError as exc:
+        raise GrafanaError("Invalid JSON in access export file %s: %s" % (path, exc))
+
+
+def _write_json_document(path, payload):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        path.write_text(
+            json.dumps(payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        raise GrafanaError("Failed to write access export file %s: %s" % (path, exc))
+
+
+def _assert_not_overwriting(export_dir, filenames, dry_run, overwrite):
+    if dry_run:
+        return
+    for filename in filenames:
+        if (export_dir / filename).exists() and not overwrite:
+            raise GrafanaError(
+                "Refusing to overwrite existing file: %s. Use --overwrite."
+                % (export_dir / filename)
+            )
+
+
+def _normalize_access_import_identity(value):
+    return str(value or "").strip().lower()
+
+
+def _normalize_access_identity_list(values):
+    normalized = []
+    seen = set()
+    for value in values:
+        text = str(value or "").strip()
+        if not text:
+            continue
+        lowered = _normalize_access_import_identity(text)
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        normalized.append(text)
+    return normalized
+
+
+def _load_access_import_bundle(import_dir, expected_filename, expected_kind):
+    bundle_path = Path(import_dir) / expected_filename
+    metadata_path = Path(import_dir) / ACCESS_EXPORT_METADATA_FILENAME
+    raw = _load_json_document(bundle_path)
+    if isinstance(raw, list):
+        records = raw
+        kind = None
+        version = None
+    elif isinstance(raw, dict):
+        records = raw.get("records")
+        if records is None:
+            raise GrafanaError(
+                "Access import bundle is missing a records list: %s" % bundle_path
+            )
+        kind = raw.get("kind")
+        version = raw.get("version")
+    else:
+        raise GrafanaError("Unsupported access import payload in %s." % bundle_path)
+    if not isinstance(records, list):
+        raise GrafanaError("Access import records must be a list in %s." % bundle_path)
+    if version is not None and version > ACCESS_EXPORT_VERSION:
+        raise GrafanaError(
+            "Unsupported %s version %s in %s. Supported <= %s."
+            % (expected_filename, version, bundle_path, ACCESS_EXPORT_VERSION)
+        )
+    if expected_kind is not None and kind not in (None, expected_kind):
+        raise GrafanaError(
+            "Access import kind mismatch for %s: expected %s, got %s."
+            % (bundle_path, expected_kind, kind)
+        )
+    if not metadata_path.exists():
+        metadata = None
+    else:
+        metadata = _load_json_document(metadata_path)
+    return {
+        "records": records,
+        "metadata": metadata,
+        "bundle_path": str(bundle_path),
+        "kind": kind,
+    }
+
+
+def _resolve_access_user_key(record):
+    login = str(record.get("login") or "").strip()
+    email = str(record.get("email") or "").strip()
+    if login:
+        return login
+    if email:
+        return email
+    raise GrafanaError("User import record does not include login or email: %s" % record)
+
+
+def _build_access_user_payload(record):
+    login = str(record.get("login") or "")
+    email = str(record.get("email") or "")
+    if not login or not email:
+        raise GrafanaError(
+            "User import record is missing required login/email fields: %s"
+            % record
+        )
+    return {
+        "name": str(record.get("name") or ""),
+        "email": email,
+        "login": login,
+    }
+
+
+def _lookup_team_memberships_by_identity(client, team_id, include_empty=False):
+    members = {}
+    for item in client.list_team_members(team_id):
+        identity = extract_member_identity(item)
+        if not identity:
+            if not include_empty:
+                continue
+            identity = str(item.get("userId") or item.get("id") or "").strip()
+            if not identity:
+                continue
+        user_id = str(item.get("userId") or item.get("id") or "")
+        members[_normalize_access_import_identity(identity)] = {
+            "identity": identity,
+            "user_id": user_id,
+            "admin": team_member_admin_state(item),
+        }
+    return members
+
+
+def _merge_team_membership_target(members, admins):
+    desired_members = _normalize_access_identity_list(members)
+    desired_admins = _normalize_access_identity_list(admins)
+    desired_all_identities = []
+    seen = set()
+    for identity in desired_members + desired_admins:
+        key = _normalize_access_import_identity(identity)
+        if key in seen:
+            continue
+        seen.add(key)
+        desired_all_identities.append(identity)
+    return desired_all_identities, desired_members, desired_admins
+
+
+def _sync_team_members_for_import(
+    client,
+    team_id,
+    team_name,
+    existing_members,
+    desired_members,
+    desired_admins,
+    include_missing=False,
+    dry_run=False,
+):
+    target_members = _normalize_access_identity_list(desired_members)
+    target_admins = _normalize_access_identity_list(desired_admins)
+    target_all, target_members, target_admins = _merge_team_membership_target(
+        target_members,
+        target_admins,
+    )
+    target_all_keys = set(
+        _normalize_access_import_identity(item) for item in target_all
+    )
+    target_admin_keys = set(
+        _normalize_access_import_identity(item) for item in target_admins
+    )
+    existing_keys = list(existing_members.keys())
+    existing_key_set = set(existing_keys)
+    existing_identity_map = {
+        key: payload.get("identity") or key
+        for key, payload in existing_members.items()
+    }
+
+    summary = {
+        "addedMembers": [],
+        "removedMembers": [],
+        "addedAdmins": [],
+        "removedAdmins": [],
+        "unchangedAdmins": [],
+    }
+
+    # Ensure target members exist.
+    for identity in target_all:
+        lowered = _normalize_access_import_identity(identity)
+        if lowered in existing_key_set:
+            if lowered in target_admin_keys and lowered in existing_members:
+                if existing_members[lowered].get("admin") is True:
+                    summary["unchangedAdmins"].append(
+                        existing_identity_map.get(lowered, identity)
+                    )
+            continue
+        summary["addedMembers"].append(identity)
+        if lowered in target_admin_keys:
+            summary["addedAdmins"].append(identity)
+        if dry_run:
+            continue
+        payload = lookup_org_user_by_identity(client, identity)
+        member_user_id = str(
+            payload.get("userId")
+            or payload.get("id")
+            or payload.get("user")
+            or ""
+        )
+        if not member_user_id:
+            raise GrafanaError(
+                "Team member lookup did not return an id: %s" % identity
+            )
+        client.add_team_member(team_id, member_user_id)
+
+    # Remove memberships that are missing from the import target only in full sync mode.
+    remove_members = []
+    if include_missing:
+        remove_members = [
+            existing_key
+            for existing_key in existing_members
+            if existing_key not in target_all_keys
+        ]
+    for identity_key in remove_members:
+        payload = existing_members.get(identity_key)
+        if not payload:
+            continue
+        user_id = payload.get("user_id")
+        if not user_id:
+            continue
+        if dry_run:
+            summary["removedMembers"].append(payload.get("identity") or identity_key)
+            continue
+        client.remove_team_member(team_id, user_id)
+        summary["removedMembers"].append(payload.get("identity") or identity_key)
+
+    # Keep admin-state synchronized using update endpoint when there is meaningful
+    # state change. This mirrors existing add/remove membership behavior and keeps
+    # API state deterministic.
+    existing_admin_keys = set(
+        key
+        for key, info in existing_members.items()
+        if info.get("admin") is True
+    )
+    for key in target_admin_keys:
+        if key in existing_admin_keys:
+            continue
+        if key in existing_members:
+            summary["addedAdmins"].append(existing_identity_map[key])
+    for key in existing_admin_keys:
+        if key in target_admin_keys:
+            continue
+        summary["removedAdmins"].append(existing_identity_map.get(key, key))
+
+    regular_payload = [
+        raw_identity
+        for raw_identity in target_members
+        if _normalize_access_import_identity(raw_identity) not in target_admin_keys
+    ]
+    admin_payload = [raw_identity for raw_identity in target_admins]
+
+    if not dry_run and (
+        include_missing
+        or summary["addedAdmins"]
+        or summary["removedAdmins"]
+        or summary["addedMembers"]
+        or summary["removedMembers"]
+    ):
+        client.update_team_members(
+            team_id,
+            {
+                "members": regular_payload,
+                "admins": admin_payload,
+            },
+        )
+
+    return summary
+
+
+def _build_user_import_records(import_dir):
+    return _load_access_import_bundle(
+        Path(import_dir),
+        ACCESS_USER_EXPORT_FILENAME,
+        ACCESS_EXPORT_KIND_USERS,
+    )
+
+
+def _build_team_import_records(import_dir):
+    return _load_access_import_bundle(
+        Path(import_dir),
+        ACCESS_TEAM_EXPORT_FILENAME,
+        ACCESS_EXPORT_KIND_TEAMS,
+    )
+
+
+def export_users_with_client(args, client):
+    export_dir = Path(args.export_dir)
+    records = _build_user_export_records(client, args)
+    users_path = export_dir / ACCESS_USER_EXPORT_FILENAME
+    metadata_path = export_dir / ACCESS_EXPORT_METADATA_FILENAME
+    data = {
+        "kind": ACCESS_EXPORT_KIND_USERS,
+        "version": ACCESS_EXPORT_VERSION,
+        "records": records,
+    }
+    metadata = _build_access_export_metadata(
+        source_url=args.url,
+        kind=ACCESS_EXPORT_KIND_USERS,
+        source_count=len(records),
+        source_dir=str(export_dir),
+    )
+    _assert_not_overwriting(
+        export_dir,
+        [ACCESS_USER_EXPORT_FILENAME, ACCESS_EXPORT_METADATA_FILENAME],
+        dry_run=args.dry_run,
+        overwrite=bool(getattr(args, "overwrite", False)),
+    )
+    if not args.dry_run:
+        _write_json_document(users_path, data)
+        _write_json_document(metadata_path, metadata)
+    action = "Would export" if args.dry_run else "Exported"
+    print(
+        "%s %s user(s) from %s -> %s and %s"
+        % (action, len(records), args.url, users_path, metadata_path)
+    )
+    return 0
+
+
+def import_users_with_client(args, client):
+    bundle = _build_user_import_records(args.import_dir)
+    raw_records = bundle.get("records") or []
+    records = []
+    for item in raw_records:
+        if not isinstance(item, dict):
+            raise GrafanaError("Access import entry in %s must be an object." % bundle["bundle_path"])
+        records.append(_normalize_user_record(item))
+
+    created = []
+    updated = []
+    skipped = []
+    processed = 0
+    for index, record in enumerate(records, 1):
+        processed += 1
+        login = str(record.get("login") or "").strip()
+        email = str(record.get("email") or "").strip()
+        if not login and not email:
+            raise GrafanaError(
+                "Access user import record %s in %s lacks login/email."
+                % (index, bundle["bundle_path"])
+            )
+
+        if args.scope == "global":
+            existing = None
+            try:
+                existing = lookup_global_user_by_identity(
+                    client,
+                    login=login or None,
+                    email=email or None,
+                )
+            except GrafanaError:
+                existing = None
+        else:
+            try:
+                existing = lookup_org_user_by_identity(client, login or email)
+            except GrafanaError:
+                existing = None
+
+        if existing is None:
+            if not args.replace_existing:
+                skipped.append(_resolve_access_user_key(record))
+                print("Skipped user %s (%s): missing and --replace-existing was not set." % (login or email, index))
+                continue
+            if args.scope == "org":
+                raise GrafanaError(
+                    "User import cannot create missing org users by login/email: %s"
+                    % (login or email)
+                )
+            payload = _build_access_user_payload(record)
+            payload.setdefault("password", str(record.get("password") or "").strip())
+            if not payload.get("password"):
+                raise GrafanaError(
+                    "Missing password for new user import entry %s: %s"
+                    % (index, login or email)
+                )
+            if args.dry_run:
+                created.append(_resolve_access_user_key(record))
+                print("Would create user %s" % (login or email))
+                continue
+            created_payload = client.create_user(payload)
+            created.append(
+                str(
+                    created_payload.get("id")
+                    if isinstance(created_payload, dict)
+                    else ""
+                )
+            )
+            print("Created user %s" % (login or email))
+            continue
+
+        user_id = str(
+            existing.get("id")
+            or existing.get("userId")
+            or record.get("id")
+            or ""
+        )
+        if not user_id:
+            raise GrafanaError("User import record %s resolved without id: %s" % (index, record))
+
+        if not args.replace_existing:
+            skipped.append(_resolve_access_user_key(record))
+            print("Skipped existing user %s (%s)" % (record.get("login") or record.get("email") or "", index))
+            continue
+
+        desired = record
+        profile_payload = {}
+        if desired.get("login") and desired.get("login") != existing.get("login"):
+            profile_payload["login"] = desired.get("login")
+        if desired.get("email") and desired.get("email") != existing.get("email"):
+            profile_payload["email"] = desired.get("email")
+        if desired.get("name") and desired.get("name") != existing.get("name"):
+            profile_payload["name"] = desired.get("name")
+        if profile_payload:
+            if args.dry_run:
+                print("Would update user %s profile" % (record.get("login") or record.get("email") or ""))
+            else:
+                client.update_user(user_id, profile_payload)
+
+        desired_org_role = normalize_org_role(desired.get("orgRole") or "")
+        if args.scope == "org":
+            existing_org_role = normalize_org_role(existing.get("role") or "")
+        else:
+            existing_org_role = normalize_org_role(existing.get("orgRole") or existing.get("role") or "")
+        if desired_org_role and desired_org_role != existing_org_role:
+            if args.dry_run:
+                print(
+                    "Would update orgRole for user %s -> %s"
+                    % (record.get("login") or record.get("email") or "", desired_org_role)
+                )
+            else:
+                client.update_user_org_role(user_id, desired_org_role)
+
+        desired_admin = normalize_bool(desired.get("grafanaAdmin"))
+        existing_admin = normalize_bool(
+            existing.get("isGrafanaAdmin")
+            or existing.get("isAdmin")
+        )
+        if desired_admin is not None and desired_admin != existing_admin:
+            if args.dry_run:
+                print(
+                    "Would update grafanaAdmin for user %s -> %s"
+                    % (
+                        record.get("login") or record.get("email") or "",
+                        bool_label(desired_admin),
+                    )
+                )
+            else:
+                client.update_user_permissions(user_id, desired_admin)
+
+        updated.append(record)
+
+        if args.scope != "global":
+            target_teams = _normalize_access_identity_list(record.get("teams") or [])
+            if target_teams:
+                if not args.replace_existing:
+                    continue
+                current_members = {}
+                for item in client.list_user_teams(user_id):
+                    team_name = str(item.get("name") or "").strip()
+                    if team_name:
+                        current_members[_normalize_access_import_identity(team_name)] = {
+                            "id": str(item.get("id") or ""),
+                            "name": team_name,
+                        }
+                desired_team_keys = set(
+                    _normalize_access_import_identity(team_name)
+                    for team_name in target_teams
+                )
+                if bool(set(current_members.keys()) - desired_team_keys) and not args.yes:
+                    raise GrafanaError(
+                        "User import would remove team memberships for %s. Add --yes to confirm."
+                        % (record.get("login") or record.get("email") or "")
+                    )
+                for team_name in target_teams:
+                    team_key = _normalize_access_import_identity(team_name)
+                    if team_key not in current_members:
+                        team_payload = lookup_team_by_name(client, team_name)
+                        team_id = str(team_payload.get("id") or "")
+                        if not team_id:
+                            raise GrafanaError(
+                                "Could not resolve target team for user import: %s" % team_name
+                            )
+                        if args.dry_run:
+                            print("Would add user %s to team %s" % (user_id, team_name))
+                        else:
+                            client.add_team_member(team_id, user_id)
+                if args.replace_existing:
+                    for team_key in set(current_members.keys()) - desired_team_keys:
+                        if args.dry_run:
+                            print("Would remove user %s from team %s" % (user_id, current_members[team_key]["name"]))
+                        else:
+                            team_id = current_members[team_key]["id"]
+                            if not team_id:
+                                continue
+                            client.remove_team_member(team_id, user_id)
+
+        print("Updated user %s" % (record.get("login") or record.get("email") or ""))
+
+    print(
+        "Import summary: processed=%s created=%s updated=%s skipped=%s source=%s"
+        % (processed, len(created), len(updated), len(skipped), args.import_dir)
+    )
+    return 0
+
+
+def export_teams_with_client(args, client):
+    export_dir = Path(args.export_dir)
+    records = _build_team_export_records(client, args)
+    teams_path = export_dir / ACCESS_TEAM_EXPORT_FILENAME
+    metadata_path = export_dir / ACCESS_EXPORT_METADATA_FILENAME
+    data = {
+        "kind": ACCESS_EXPORT_KIND_TEAMS,
+        "version": ACCESS_EXPORT_VERSION,
+        "records": records,
+    }
+    metadata = _build_access_export_metadata(
+        source_url=args.url,
+        kind=ACCESS_EXPORT_KIND_TEAMS,
+        source_count=len(records),
+        source_dir=str(export_dir),
+    )
+    _assert_not_overwriting(
+        export_dir,
+        [ACCESS_TEAM_EXPORT_FILENAME, ACCESS_EXPORT_METADATA_FILENAME],
+        dry_run=args.dry_run,
+        overwrite=bool(getattr(args, "overwrite", False)),
+    )
+    if not args.dry_run:
+        _write_json_document(teams_path, data)
+        _write_json_document(metadata_path, metadata)
+    action = "Would export" if args.dry_run else "Exported"
+    print(
+        "%s %s team(s) from %s -> %s and %s"
+        % (action, len(records), args.url, teams_path, metadata_path)
+    )
+    return 0
+
+
+def import_teams_with_client(args, client):
+    bundle = _build_team_import_records(args.import_dir)
+    raw_records = bundle.get("records") or []
+    records = []
+    for item in raw_records:
+        if not isinstance(item, dict):
+            raise GrafanaError("Access import entry in %s must be an object." % bundle["bundle_path"])
+        records.append(_normalize_team_record(item))
+
+    created = 0
+    updated = 0
+    skipped = 0
+    for index, record in enumerate(records, 1):
+        team_name = str(record.get("name") or "").strip()
+        if not team_name:
+            raise GrafanaError(
+                "Access team import record %s in %s is missing name." % (index, bundle["bundle_path"])
+            )
+        existing = None
+        try:
+            existing = lookup_team_by_name(client, team_name)
+        except GrafanaError:
+            existing = None
+
+        if existing is None:
+            created += 1
+            if args.dry_run:
+                print("Would create team %s" % team_name)
+            else:
+                created_payload = client.create_team({"name": team_name, "email": str(record.get("email") or "")})
+                team_id = str(
+                    created_payload.get("teamId")
+                    or created_payload.get("id")
+                    or ""
+                )
+                if not team_id:
+                    raise GrafanaError("Team import did not return team id for %s" % team_name)
+                target_members = _normalize_access_identity_list(record.get("members") or [])
+                target_admins = _normalize_access_identity_list(record.get("admins") or [])
+                if target_members or target_admins:
+                    existing_members = {}
+                    _sync_team_members_for_import(
+                        client,
+                        team_id,
+                        team_name,
+                        existing_members,
+                        target_members,
+                        target_admins,
+                        include_missing=True,
+                        dry_run=args.dry_run,
+                    )
+                print("Created team %s" % team_name)
+            continue
+
+        team_id = str(existing.get("id") or existing.get("teamId") or "")
+        if not team_id:
+            raise GrafanaError("Team %s resolved without id." % team_name)
+
+        if not args.replace_existing:
+            skipped += 1
+            print("Skipped team %s (%s)" % (team_name, index))
+            continue
+        target_members = _normalize_access_identity_list(record.get("members") or [])
+        target_admins = _normalize_access_identity_list(record.get("admins") or [])
+        existing_members = _lookup_team_memberships_by_identity(client, team_id)
+        target_keys = set(
+            _normalize_access_import_identity(item)
+            for item in target_members + target_admins
+        )
+        if set(existing_members.keys()) - target_keys and not args.yes:
+            raise GrafanaError("Team import would remove team memberships for %s. Add --yes to confirm." % team_name)
+
+        if args.dry_run:
+            print("Would update team %s" % team_name)
+        else:
+            _sync_team_members_for_import(
+                client,
+                team_id,
+                team_name,
+                existing_members,
+                target_members,
+                target_admins,
+                include_missing=True,
+                dry_run=args.dry_run,
+            )
+            print("Updated team %s" % team_name)
+        updated += 1
+
+    print(
+        "Import summary: processed=%s created=%s updated=%s skipped=%s source=%s"
+        % (created + updated + skipped, created, updated, skipped, args.import_dir)
+    )
+    return 0
 
 
 def lookup_service_account_id_by_name(client, service_account_name):
@@ -948,6 +1690,10 @@ def dispatch_access_command(args, client, auth_mode):
     if args.resource == "user" and args.command == "list":
         validate_user_list_auth(args, auth_mode)
         return list_users_with_client(args, client)
+    if args.resource == "user" and args.command == "export":
+        return export_users_with_client(args, client)
+    if args.resource == "user" and args.command == "import":
+        return import_users_with_client(args, client)
     if args.resource == "user" and args.command == "add":
         validate_user_add_auth(auth_mode)
         return add_user_with_client(args, client)
@@ -966,6 +1712,10 @@ def dispatch_access_command(args, client, auth_mode):
     if args.resource == "team" and args.command == "delete":
         validate_team_delete_auth(auth_mode)
         return delete_team_with_client(args, client)
+    if args.resource == "team" and args.command == "export":
+        return export_teams_with_client(args, client)
+    if args.resource == "team" and args.command == "import":
+        return import_teams_with_client(args, client)
     if args.resource == "service-account" and args.command == "list":
         return list_service_accounts_with_client(args, client)
     if args.resource == "service-account" and args.command == "add":
