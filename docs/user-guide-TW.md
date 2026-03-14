@@ -1,16 +1,17 @@
-Grafana Utilities 使用指南（繁中版）
+Grafana Utilities 維運指南 (繁體中文)
 ===================================
 
-本指南說明 repository 共用的命令介面。範例以 Rust source-tree 入口為主，但同一套命令設計也適用於安裝後的 CLI 與 Python source-tree 入口：
-- 全域參數先說
-- 每一命令獨立節點
-- 每個旗標有「用途 / 差異 / 情境」
-- 最後補上互斥規則與 SOP
+本指南詳細說明 `grafana-utils` 的命令列介面（CLI）使用方式。本工具集採用的命令設計在不同入口（Rust 二進制檔、Python 模組或安裝後的 CLI）皆保持高度一致：
 
-1) 全域前置
+- **全域參數優先**：通用於所有指令的設定。
+- **功能模組獨立**：依資源類型（Dashboard, Alert, Datasource, Access）劃分。
+- **情境導向設計**：每個 Flag 皆標註了用途、差異與適用情境。
+- **安全第一**：內建互斥規則與 SOP 建議。
+
+1) 全域前置說明
 ------------
 
-先確認你要看的 CLI 介面是同一套版本：
+開始之前，您可以透過以下指令確認各模組的輔助資訊：
 
 ```bash
 cargo run --bin grafana-util -- -h
@@ -28,30 +29,29 @@ grafana-util <domain> <command> [options]
 grafana-access-utils <access-command> [options]
 ```
 
-Rust 入口差異要點：
+### 入口點說明：
+- **`grafana-util`**: 統一調度器（Unified Dispatcher），支援 `dashboard/alert/datasource/access`。
+- **`grafana-access-utils`**: 針對存取控制（Access）的相容啟動器。
+- 部分舊版指令（如 `list-dashboard` 等）在 Rust 版本中仍保持相容。
 
-- `grafana-util` 是 unified dispatcher，支援 `dashboard/alert/datasource/access`。
-- `grafana-access-utils` 是 access 相容 launcher。
-- 部分 legacy command（`list-dashboard`、`export-dashboard`、`list-alert-rules` 等）在 Rust 仍可用。
-
-2) 全域共用參數
+2) 全域通用參數
 ----------------
 
 補充預設值：
 
-- `dashboard` / `datasource` domain 預設 `--url` 為 `http://localhost:3000`。
-- `alert` / `access` domain 預設 `--url` 為 `http://127.0.0.1:3000`。
+- `dashboard` / `datasource` 模組預設 `--url` 為 `http://localhost:3000`。
+- `alert` / `access` 模組預設 `--url` 為 `http://127.0.0.1:3000`。
 
 | 參數 | 用途 | 適用情境 |
 | --- | --- | --- |
-| `--url` | Grafana base URL。各 domain 會有不同預設值（上文） | 幾乎所有 live 操作 |
-| `--token`、`--api-token` | API token；Python 也會回 fallback `GRAFANA_API_TOKEN`；Rust 同理 | Token 驅動腳本、非互動執行 |
-| `--basic-user` | Basic auth 使用者。偏好搭配 `--basic-password` 或 `--prompt-password` | 需要 org 相關權限流轉（all-orgs、team 管理） |
-| `--basic-password` | Basic auth 密碼 | 常配 `--basic-user`；也可改用 `--prompt-password` |
-| `--prompt-token` | 不回顯互動輸入 token | CI / 不想露參數記錄 |
-| `--prompt-password` | 不回顯互動輸入 basic password | 跨機器帳號操作 |
-| `--timeout` | HTTP timeout（預設 30） | API 慢或網路抖動 |
-| `--verify-ssl` | 啟用 TLS 憑證驗證（預設關閉） | 生產環境建議開啟 |
+| `--url` | Grafana Base URL | 幾乎所有線上（Live）操作 |
+| `--token`、`--api-token` | API Token | 適用於自動化腳本、非互動式執行 |
+| `--basic-user` | Basic Auth 使用者名稱 | 執行組織管理（All Orgs）或 Team 管理時必備 |
+| `--basic-password` | Basic Auth 密碼 | 建議搭配 `--prompt-password` 使用以增加安全性 |
+| `--prompt-token` | 互動式輸入 Token | CI / 不想在參數記錄中洩漏 Token |
+| `--prompt-password` | 互動式輸入密碼 | 跨機器帳號操作時建議使用 |
+| `--timeout` | HTTP 請求超時時間 | 處理大規模資料或網路不穩時可調高（預設 30s） |
+| `--verify-ssl` | 啟用 TLS 憑證驗證 | 生產環境建議開啟（預設為關閉） |
 
 ### 命令分區（快速導覽）
 
@@ -60,47 +60,45 @@ Rust 入口差異要點：
 - Datasource：`datasource list`、`datasource export`、`datasource import`、`datasource diff`
 - Access：`access user list`、`access user add`、`access user modify`、`access user delete`、`access user export`、`access user import`、`access user diff`、`access team list`、`access team add`、`access team modify`、`access team delete`、`access team export`、`access team import`、`access team diff`、`access service-account list`、`access service-account add`、`access service-account export`、`access service-account import`、`access service-account diff`、`access service-account delete`、`access service-account token add`、`access service-account token delete`
 
-### 指令支援總覽
+### 指令功能矩陣 (Feature Matrix)
 
-先看這張表，可以最快確認某個 Grafana 資源目前是否支援盤點、檔案匯出匯入、差異比對，然後再往下查各命令細節。
+本表可協助您快速確認各類 Grafana 資源的支援程度，以便選擇合適的指令執行資產盤點或狀態同步。
 
-| 資源 | List | Export | Import | Diff | Inspect | Add | Modify | Delete | 備註 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Dashboard | ✓ | ✓ | ✓ | ✓ | ✓ | - | - | - | 盤點、備份、跨環境還原 |
-| Datasource | ✓ | ✓ | ✓ | ✓ | - | - | - | - | 用於漂移盤點與同儕環境比對 |
-| Alert rules 與 alerting 資源 | ✓ | ✓ | ✓ | ✓ | - | - | - | - | 覆蓋 rule、contact points、mute timings、templates |
-| 使用者（Users） | ✓ | ✓ | ✓ | ✓ | - | ✓ | ✓ | ✓ | 使用者盤點、匯出匯入與差異比對 |
-| Team（group alias） | ✓ | ✓ | ✓ | ✓ | - | ✓ | ✓ | ✓ | Team 盤點、匯出匯入與差異比對 |
-| Service account | ✓ | ✓ | ✓ | ✓ | - | ✓ | ✓ | ✓ | Service account 生命週期、快照匯出匯入與差異比對 |
-| Service account token | ✓ | - | - | - | - | ✓ | - | ✓ | token 的新增與刪除 |
+| 資源類型 | List (列表) | Export (匯出) | Import (匯入) | Diff (差異) | Inspect (分析) | 管理 (Add/Del) | 備註 |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: | --- |
+| **Dashboard** | ✓ | ✓ | ✓ | ✓ | ✓ | - | 適合資產盤點、備份與環境遷移 |
+| **Datasource** | ✓ | ✓ | ✓ | ✓ | - | ✓ | 支援組態漂移檢查與環境同步 |
+| **Alerting** | ✓ | ✓ | ✓ | ✓ | - | - | 涵蓋 Rules, Contact Points, Mute Timings |
+| **User** | ✓ | ✓ | ✓ | ✓ | - | ✓ | 支援全域或組織範圍的使用者盤點 |
+| **Team / Group** | ✓ | ✓ | ✓ | ✓ | - | ✓ | 包含成員關係（Membership）同步 |
+| **Service Account** | ✓ | ✓ | ✓ | ✓ | - | ✓ | 生命週期管理與 Token 簽發 |
+| **SA Token** | ✓ | - | - | - | - | ✓ | Token 建立與撤銷 |
 
-認證互斥規則（Rust parser 會直接拒絕）:
+認證互斥規則（由 Rust Parser 強制執行）:
 
-1. `--token`/`--api-token` 不可與 `--basic-user`/`--basic-password` 同時使用。
-2. `--token`/`--api-token` 不可與 `--prompt-token` 同時使用。
+1. `--token` 不可與 `--basic-user` 同時使用。
+2. `--token` 不可與 `--prompt-token` 同時使用。
 3. `--basic-password` 不可與 `--prompt-password` 同時使用。
-4. `--prompt-password` 需要同時提供 `--basic-user`。
+4. `--prompt-password` 必需同時提供 `--basic-user`。
 
-3) dashboard 命令
+3) dashboard 指令模組
 -----------------
 
-### 3.1 `dashboard export`（legacy `export-dashboard`）
+### 3.1 `dashboard export` (資產匯出)
 
-**用途**：匯出 live dashboards。
+**用途**：將線上環境的儀表板下載為本地 JSON 檔案。
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--export-dir`（預設 `dashboards`） | 匯出根目錄，輸出含 `raw/` 與 `prompt/` | `--flat` 時不保留 dashboard 資料夾階層 |
-| `--page-size`（預設 `500`） | 分頁抓取筆數 | 大庫可調高降低請求次數 |
-| `--org-id` | 指定要匯出的 org id | 與 `--all-orgs` 互斥；通常配合 basic auth |
-| `--all-orgs` | 匯出目前登入身分可見的全部 org | 不支援 API token；需用 Grafana 帳號密碼登入 |
-| `--flat` | 不保留 folder 結構，平鋪輸出 | `--import-folder-uid`/目錄比對流程會更穩定 |
-| `--overwrite` | 覆蓋已存在檔案 | CI 重跑時常用 |
-| `--without-dashboard-raw` | 不輸出 `raw/` | 只要做 UI 匯入時可省空間 |
-| `--without-dashboard-prompt` | 不輸出 `prompt/` | 只要做 API 還原可減少檔案 |
-| `--dry-run` | 僅預覽 export 將產生的索引與檔名 | 實際寫入前驗證目錄與權限 |
-| `--progress` | 顯示 `<current>/<total>` 進度 |
-| `-v`, `--verbose` | 每筆明細輸出，會蓋過 `--progress` |
+| `--export-dir` | 匯出根目錄（預設 `dashboards`） | 輸出將包含 `raw/` 與 `prompt/` |
+| `--page-size` | 分頁抓取筆數（預設 `500`） | 處理大規模庫時可降低請求頻率 |
+| `--org-id` | 指定特定組織 ID | 與 `--all-orgs` 互斥；通常需搭配 Basic Auth |
+| `--all-orgs` | 匯出所有可見組織的資源 | 僅支援 Basic Auth；不支援 API Token |
+| `--flat` | 不保留資料夾結構 | 使目錄比對或大量匯入流程更為穩定 |
+| `--overwrite` | 覆蓋既有檔案 | 適用於 CI/CD 流程或定期備份 |
+| `--dry-run` | 僅預覽匯出路徑 | 在實際寫入磁碟前驗證權限與索引 |
+| `--progress` | 顯示進度提示 | 適合人工執行時觀察 |
+| `-v`, `--verbose` | 詳細日誌輸出 | 會覆蓋進度提示 |
 
 示例命令：
 ```bash
@@ -613,25 +611,36 @@ python3 -m grafana_utils datasource add \
   --dry-run --table
 ```
 
-6) access 命令
+6) Access (存取控制) 指令模組
 -------------
 
-### 6.1 `access user list`
+這是本工具的核心功能，專為大規模環境的**權限治理與狀態同步**設計。
 
-**用途**：列出 users（org/global）。
+### 6.1 使用者管理 (User Operations)
+- `access user list`: 支援 `org` 與 `global` 範圍的權限盤點。
+- `access user export`: 建立使用者快照，包含其組織角色與團隊成員關係。
+- `access user import`: **宣告式還原**使用者狀態。
+- **`--with-teams`**: 匯出/匯入時包含 Team 成員關係同步（還原權限時必備）。
 
-| 參數 | 用途 | 差異 / 情境 |
-| --- | --- | --- |
-| `--scope` | `org` / `global` | 選取列舉範圍 |
-| `--query` | fuzzy 搜尋 login/email/name | 大量名單查詢 |
-| `--login` | 精準 login |
-| `--email` | 精準 email |
-| `--org-role` | 依角色過濾 | 權限盤點 |
-| `--grafana-admin` | `true/false` | 系統管理員篩選 |
-| `--with-teams` | 同步含 team 成員 |
-| `--page` / `--per-page` | 分頁 |
-| `--table` / `--csv` / `--json` | 輸出格式 |
-| `--output-format table/csv/json` | 取代上述三旗標 |
+### 6.2 團隊管理 (Team Operations)
+- `access team import`: 執行確定性（Deterministic）的成員同步。
+- **組態漂移檢查**: 使用 `access team diff` 識別本地快照與線上環境的成員差異。
+- **安全警告**: 若匯入操作會移除現有成員，必需加上 `--yes` 以避免非預期的權限丟失。
+
+---
+
+8) 常見維運情境 SOP (Best Practices)
+------------------
+
+### 8.1 跨環境 Dashboard 遷移 (Promote to Prod)
+1. **備份與提交**: 在來源環境執行 `export` 並將產出的 JSON 提交至 Git 倉庫。
+2. **差異預覽**: 在目標環境執行 `import --dry-run --table --import-dir <DIR>/raw`。
+3. **安全更新**: 確認無誤後，執行 `import --replace-existing` 完成同步。
+
+### 8.2 資產稽核與漂移盤點
+1. **線上掃描**: 定期執行 `dashboard inspect-live --output-format governance-json` 識別孤立資源。
+2. **組態比對**: 利用 `datasource diff` 確保線上資料源配置與標準庫一致。
+3. **權限稽核**: 執行 `access user list --scope global --csv` 產出年度審計報表。
 
 示例命令：
 ```bash
