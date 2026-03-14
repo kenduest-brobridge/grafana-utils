@@ -1,5 +1,9 @@
 """Dashboard import workflow orchestration helpers."""
 
+import argparse
+import json
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
 
 
@@ -38,7 +42,296 @@ def _validate_export_org_match(args, deps, client, import_dir, metadata):
         )
 
 
-def run_import_dashboards(args, deps):
+def _clone_import_args(args, **overrides):
+    values = dict(vars(args))
+    values.update(overrides)
+    return argparse.Namespace(**values)
+
+
+def _resolve_existing_orgs_by_id(client):
+    orgs_by_id = {}
+    for item in client.list_orgs():
+        org_id = _normalize_org_id(item)
+        if org_id:
+            orgs_by_id[org_id] = dict(item)
+    return orgs_by_id
+
+
+def _resolve_created_org_id(created_payload):
+    if not isinstance(created_payload, dict):
+        return None
+    org_id = created_payload.get("orgId")
+    if org_id is None:
+        org_id = created_payload.get("id")
+    if org_id is None:
+        return None
+    text = str(org_id).strip()
+    return text or None
+
+
+def _resolve_multi_org_targets(args, deps, client):
+    import_dir = Path(args.import_dir)
+    selected_org_ids = set(
+        str(item).strip()
+        for item in (getattr(args, "only_org_id", None) or [])
+        if str(item).strip()
+    )
+    create_missing_orgs = bool(getattr(args, "create_missing_orgs", False))
+    dry_run = bool(getattr(args, "dry_run", False))
+    orgs_by_id = _resolve_existing_orgs_by_id(client)
+    targets = []
+    matched_source_org_ids = set()
+    for raw_dir in deps["discover_org_raw_export_dirs"](import_dir):
+        metadata = deps["load_export_metadata"](
+            raw_dir, expected_variant=deps["RAW_EXPORT_SUBDIR"]
+        )
+        source_org_id = deps["resolve_export_org_id"](raw_dir, metadata)
+        if not source_org_id:
+            raise deps["GrafanaError"](
+                "Could not determine one source export orgId from %s while "
+                "--use-export-org is active."
+                % raw_dir
+            )
+        if selected_org_ids and source_org_id not in selected_org_ids:
+            continue
+        matched_source_org_ids.add(source_org_id)
+        source_org_name = deps["resolve_export_org_name"](raw_dir, metadata)
+        dashboard_count = int(metadata.get("dashboardCount") or 0) if metadata else 0
+        target_org_id = source_org_id
+        created_org = False
+        org_action = "exists"
+        preview_only = False
+        if source_org_id not in orgs_by_id:
+            if dry_run:
+                preview_only = True
+                if create_missing_orgs:
+                    org_action = "would-create-org"
+                    target_org_id = "<new>"
+                else:
+                    org_action = "missing-org"
+                    target_org_id = ""
+            elif not create_missing_orgs:
+                raise deps["GrafanaError"](
+                    "Export orgId %s was not found in the destination Grafana org list. "
+                    "Use --create-missing-orgs to create it from the export metadata."
+                    % source_org_id
+                )
+            elif not source_org_name:
+                raise deps["GrafanaError"](
+                    "Cannot create missing destination org for export orgId %s because "
+                    "the raw export does not contain one stable org name."
+                    % source_org_id
+                )
+            else:
+                created_payload = deps["create_organization"](client, source_org_name)
+                target_org_id = _resolve_created_org_id(created_payload)
+                if not target_org_id:
+                    raise deps["GrafanaError"](
+                        "Created organization for export orgId %s did not return a usable id."
+                        % source_org_id
+                    )
+                orgs_by_id[target_org_id] = {
+                    "id": target_org_id,
+                    "name": source_org_name,
+                }
+                created_org = True
+                org_action = "created-org"
+        targets.append(
+            {
+                "raw_dir": raw_dir,
+                "source_org_id": source_org_id,
+                "source_org_name": source_org_name or "",
+                "target_org_id": target_org_id,
+                "created_org": created_org,
+                "org_action": org_action,
+                "preview_only": preview_only,
+                "dashboard_count": dashboard_count,
+            }
+        )
+    if selected_org_ids:
+        missing_org_ids = sorted(selected_org_ids - matched_source_org_ids)
+        if missing_org_ids:
+            raise deps["GrafanaError"](
+                "Selected export orgIds were not found in %s: %s"
+                % (import_dir, ", ".join(missing_org_ids))
+            )
+    if not targets:
+        raise deps["GrafanaError"](
+            "No org-scoped raw exports matched %s under %s."
+            % (
+                "--only-org-id selection"
+                if selected_org_ids
+                else "the combined multi-org export root",
+                import_dir,
+            )
+        )
+    return targets
+
+
+def _run_import_dashboards_by_export_org(args, deps, client):
+    auth_header = client.headers.get("Authorization", "")
+    if not auth_header.startswith("Basic "):
+        raise deps["GrafanaError"](
+            "Dashboard import with --use-export-org does not support API token auth. "
+            "Use Grafana username/password login with --basic-user and --basic-password."
+        )
+    targets = _resolve_multi_org_targets(args, deps, client)
+    if bool(getattr(args, "dry_run", False)) and bool(getattr(args, "json", False)):
+        org_entries = []
+        import_entries = []
+        for target in targets:
+            raw_dir = target["raw_dir"]
+            target_org_id = target["target_org_id"]
+            org_entry = {
+                "sourceOrgId": target["source_org_id"],
+                "sourceOrgName": target["source_org_name"],
+                "orgAction": target["org_action"],
+                "targetOrgId": target_org_id or "",
+                "dashboardCount": target["dashboard_count"],
+                "importDir": str(raw_dir),
+            }
+            org_entries.append(org_entry)
+            import_entry = dict(org_entry)
+            import_entry.update(
+                {
+                    "mode": None,
+                    "folders": [],
+                    "dashboards": [],
+                    "summary": {
+                        "importDir": str(raw_dir),
+                        "dashboardCount": target["dashboard_count"],
+                    },
+                }
+            )
+            if not target["preview_only"]:
+                scoped_args = _clone_import_args(
+                    args,
+                    import_dir=str(raw_dir),
+                    org_id=target_org_id,
+                    use_export_org=False,
+                    only_org_id=None,
+                    create_missing_orgs=False,
+                    require_matching_export_org=False,
+                )
+                stream = StringIO()
+                with redirect_stdout(stream):
+                    _run_import_dashboards_for_single_org(scoped_args, deps)
+                import_entry.update(json.loads(stream.getvalue()))
+            import_entries.append(import_entry)
+        summary = {
+            "orgCount": len(org_entries),
+            "existingOrgCount": len(
+                [item for item in org_entries if item["orgAction"] == "exists"]
+            ),
+            "missingOrgCount": len(
+                [item for item in org_entries if item["orgAction"] == "missing-org"]
+            ),
+            "wouldCreateOrgCount": len(
+                [item for item in org_entries if item["orgAction"] == "would-create-org"]
+            ),
+            "dashboardCount": sum([item["dashboardCount"] for item in org_entries]),
+        }
+        print(
+            json.dumps(
+                {
+                    "mode": "routed-import-preview",
+                    "orgs": org_entries,
+                    "imports": import_entries,
+                    "summary": summary,
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+    if bool(getattr(args, "dry_run", False)) and bool(getattr(args, "table", False)):
+        headers = [
+            "SOURCE_ORG_ID",
+            "SOURCE_ORG_NAME",
+            "ORG_ACTION",
+            "TARGET_ORG_ID",
+            "DASHBOARD_COUNT",
+        ]
+        rows = [
+            [
+                str(item["source_org_id"]),
+                item["source_org_name"] or "-",
+                item["org_action"],
+                item["target_org_id"] or "-",
+                str(item["dashboard_count"]),
+            ]
+            for item in targets
+        ]
+        widths = [len(item) for item in headers]
+        for row in rows:
+            for index, value in enumerate(row):
+                widths[index] = max(widths[index], len(value))
+        def format_row(values):
+            return "  ".join(
+                [
+                    "%-*s" % (widths[index], value)
+                    for index, value in enumerate(values)
+                ]
+            )
+        if not bool(getattr(args, "no_header", False)):
+            print(format_row(headers))
+            print(format_row(["-" * width for width in widths]))
+        for row in rows:
+            print(format_row(row))
+        return 0
+    for target in targets:
+        raw_dir = target["raw_dir"]
+        source_org_id = target["source_org_id"]
+        source_org_name = target["source_org_name"]
+        target_org_id = target["target_org_id"]
+        if bool(getattr(args, "dry_run", False)):
+            print(
+                "Dry-run export orgId=%s name=%s orgAction=%s targetOrgId=%s dashboards=%s from %s"
+                % (
+                    source_org_id,
+                    source_org_name or "-",
+                    target["org_action"],
+                    target_org_id or "-",
+                    target["dashboard_count"],
+                    raw_dir,
+                )
+            )
+            if target["preview_only"]:
+                continue
+        elif not bool(getattr(args, "table", False)):
+            if target["created_org"]:
+                print(
+                    "Created destination org from export orgId=%s name=%s -> targetOrgId=%s"
+                    % (
+                        source_org_id,
+                        source_org_name or "-",
+                        target_org_id,
+                    )
+                )
+            else:
+                print(
+                    "Importing export orgId=%s name=%s -> targetOrgId=%s from %s"
+                    % (
+                        source_org_id,
+                        source_org_name or "-",
+                        target_org_id,
+                        raw_dir,
+                    )
+                )
+        scoped_args = _clone_import_args(
+            args,
+            import_dir=str(raw_dir),
+            org_id=target_org_id,
+            use_export_org=False,
+            only_org_id=None,
+            create_missing_orgs=False,
+            require_matching_export_org=False,
+        )
+        _run_import_dashboards_for_single_org(scoped_args, deps)
+    return 0
+
+
+def _run_import_dashboards_for_single_org(args, deps):
     """Import previously exported raw dashboard JSON files through Grafana's API."""
     grafana_error = deps["GrafanaError"]
     if getattr(args, "table", False) and not args.dry_run:
@@ -399,3 +692,11 @@ def run_import_dashboards(args, deps):
         else:
             print(f"Imported {imported_count} dashboard files from {import_dir}")
     return 0
+
+
+def run_import_dashboards(args, deps):
+    """Import previously exported raw dashboard JSON files through Grafana's API."""
+    client = deps["build_client"](args)
+    if bool(getattr(args, "use_export_org", False)):
+        return _run_import_dashboards_by_export_org(args, deps, client)
+    return _run_import_dashboards_for_single_org(args, deps)

@@ -15,6 +15,7 @@ WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/grafana-util-rust-live.XXXXXX")"
 DASHBOARD_EXPORT_DIR="${WORK_DIR}/dashboards"
 DASHBOARD_DRY_RUN_DIR="${WORK_DIR}/dashboards-dry-run"
 ALERT_EXPORT_DIR="${WORK_DIR}/alerts"
+MULTI_ORG_EXPORT_DIR="${WORK_DIR}/dashboards-all-orgs"
 
 cleanup() {
   docker rm -f "${CONTAINER_NAME}" >/dev/null 2>&1 || true
@@ -43,6 +44,30 @@ api() {
 
   curl --silent --show-error --fail-with-body \
     -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
+    -X "${method}" \
+    "${GRAFANA_URL}${path}"
+}
+
+api_org() {
+  local org_id="$1"
+  local method="$2"
+  local path="$3"
+  local payload="${4:-}"
+
+  if [[ -n "${payload}" ]]; then
+    curl --silent --show-error --fail-with-body \
+      -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
+      -H "X-Grafana-Org-Id: ${org_id}" \
+      -H 'Content-Type: application/json' \
+      -X "${method}" \
+      "${GRAFANA_URL}${path}" \
+      --data-binary "${payload}"
+    return
+  fi
+
+  curl --silent --show-error --fail-with-body \
+    -u "${GRAFANA_USER}:${GRAFANA_PASSWORD}" \
+    -H "X-Grafana-Org-Id: ${org_id}" \
     -X "${method}" \
     "${GRAFANA_URL}${path}"
 }
@@ -154,10 +179,16 @@ seed_datasource() {
 
 seed_dashboard() {
   local title="$1"
-  api POST "/api/dashboards/db" "{
+  local uid="${2:-smoke-dashboard}"
+  local org_id="${3:-}"
+  local api_runner="api"
+  if [[ -n "${org_id}" ]]; then
+    api_runner="api_org ${org_id}"
+  fi
+  ${api_runner} POST "/api/dashboards/db" "{
     \"dashboard\": {
       \"id\": null,
-      \"uid\": \"smoke-dashboard\",
+      \"uid\": \"${uid}\",
       \"title\": \"${title}\",
       \"tags\": [\"smoke\"],
       \"timezone\": \"browser\",
@@ -200,6 +231,23 @@ seed_dashboard() {
   }" >/dev/null
 }
 
+create_org() {
+  local name="$1"
+  api POST "/api/orgs" "{
+    \"name\": \"${name}\"
+  }" | json_field orgId
+}
+
+delete_org() {
+  local org_id="$1"
+  api DELETE "/api/orgs/${org_id}" >/dev/null
+}
+
+find_org_id_by_name() {
+  local name="$1"
+  api GET "/api/orgs" | jq -r --arg name "${name}" '.[] | select(.name == $name) | .id' | tail -n 1
+}
+
 seed_contact_point() {
   api POST "/api/v1/provisioning/contact-points" '{
     "uid": "smoke-webhook",
@@ -222,6 +270,10 @@ alert_bin() {
 run_dashboard_smoke() {
   local diff_log="${WORK_DIR}/dashboard-diff.log"
   local dry_run_log="${WORK_DIR}/dashboard-import-dry-run.log"
+  local routed_dry_run_log="${WORK_DIR}/dashboard-routed-import-dry-run.log"
+  local recreate_dry_run_log="${WORK_DIR}/dashboard-routed-recreate-dry-run.log"
+  local multi_org_org_two_id=""
+  local recreated_org_id=""
   local prompt_file
 
   "$(dashboard_bin)" export \
@@ -281,6 +333,60 @@ run_dashboard_smoke() {
 
   api GET "/api/dashboards/uid/smoke-dashboard" | grep -q '"uid":"smoke-dashboard"' \
     || fail "dashboard import did not recreate the exported dashboard"
+
+  multi_org_org_two_id="$(create_org "Org Two")"
+  [[ -n "${multi_org_org_two_id}" ]] || fail "failed to create Org Two for routed import smoke"
+  seed_dashboard "Org Two Smoke Dashboard" "org-two-smoke-dashboard" "${multi_org_org_two_id}"
+
+  "$(dashboard_bin)" export \
+    --url "${GRAFANA_URL}" \
+    --basic-user "${GRAFANA_USER}" \
+    --basic-password "${GRAFANA_PASSWORD}" \
+    --export-dir "${MULTI_ORG_EXPORT_DIR}" \
+    --overwrite \
+    --all-orgs \
+    --without-dashboard-prompt >/dev/null
+
+  [[ -d "${MULTI_ORG_EXPORT_DIR}/org_1_Main_Org/raw" ]] || fail "multi-org export did not include org 1 raw export"
+  [[ -d "${MULTI_ORG_EXPORT_DIR}/org_${multi_org_org_two_id}_Org_Two/raw" ]] || fail "multi-org export did not include org 2 raw export"
+
+  "$(dashboard_bin)" import \
+    --url "${GRAFANA_URL}" \
+    --basic-user "${GRAFANA_USER}" \
+    --basic-password "${GRAFANA_PASSWORD}" \
+    --import-dir "${MULTI_ORG_EXPORT_DIR}" \
+    --use-export-org \
+    --only-org-id "${multi_org_org_two_id}" \
+    --dry-run | tee "${routed_dry_run_log}" >/dev/null
+  grep -q "orgAction=exists" "${routed_dry_run_log}" || fail "routed dashboard dry-run did not report an existing org"
+  grep -q "org-two-smoke-dashboard" "${routed_dry_run_log}" || fail "routed dashboard dry-run did not preview the selected org dashboard"
+
+  delete_org "${multi_org_org_two_id}"
+
+  "$(dashboard_bin)" import \
+    --url "${GRAFANA_URL}" \
+    --basic-user "${GRAFANA_USER}" \
+    --basic-password "${GRAFANA_PASSWORD}" \
+    --import-dir "${MULTI_ORG_EXPORT_DIR}" \
+    --use-export-org \
+    --only-org-id "${multi_org_org_two_id}" \
+    --create-missing-orgs \
+    --dry-run | tee "${recreate_dry_run_log}" >/dev/null
+  grep -q "orgAction=would-create" "${recreate_dry_run_log}" || fail "routed dashboard dry-run did not preview missing-org creation"
+
+  "$(dashboard_bin)" import \
+    --url "${GRAFANA_URL}" \
+    --basic-user "${GRAFANA_USER}" \
+    --basic-password "${GRAFANA_PASSWORD}" \
+    --import-dir "${MULTI_ORG_EXPORT_DIR}" \
+    --use-export-org \
+    --only-org-id "${multi_org_org_two_id}" \
+    --create-missing-orgs >/dev/null
+
+  recreated_org_id="$(find_org_id_by_name "Org Two")"
+  [[ -n "${recreated_org_id}" ]] || fail "routed dashboard import did not recreate Org Two"
+  api_org "${recreated_org_id}" GET "/api/dashboards/uid/org-two-smoke-dashboard" | grep -q '"uid":"org-two-smoke-dashboard"' \
+    || fail "routed dashboard import did not restore the org-two dashboard"
 }
 
 run_alert_smoke() {

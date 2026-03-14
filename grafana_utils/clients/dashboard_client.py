@@ -172,6 +172,17 @@ class GrafanaClient:
             raise GrafanaError("Unexpected org list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
+    def create_organization(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Create one Grafana organization through POST /api/orgs."""
+        data = self.request_json(
+            "/api/orgs",
+            method="POST",
+            payload=payload,
+        )
+        if not isinstance(data, dict):
+            raise GrafanaError("Unexpected organization create response from Grafana.")
+        return data
+
     def with_org_id(self, org_id: str) -> "GrafanaClient":
         """Return a new client scoped to one explicit Grafana organization."""
         headers = dict(self.headers)

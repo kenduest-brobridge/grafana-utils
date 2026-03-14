@@ -213,12 +213,34 @@ pub struct ImportArgs {
     pub common: CommonCliArgs,
     #[arg(
         long,
+        conflicts_with = "use_export_org",
         help = "Import dashboards into this Grafana org ID instead of the current org. This switches the whole import run to one explicit destination org and requires Basic auth."
     )]
     pub org_id: Option<i64>,
     #[arg(
         long,
-        help = "Import dashboards from this directory. Point this to the raw/ export directory explicitly, not the combined export root."
+        default_value_t = false,
+        conflicts_with = "require_matching_export_org",
+        help = "Import a combined multi-org export root by routing each org-specific raw export back into the matching Grafana org. This requires Basic auth."
+    )]
+    pub use_export_org: bool,
+    #[arg(
+        long = "only-org-id",
+        requires = "use_export_org",
+        conflicts_with = "org_id",
+        help = "With --use-export-org, import only these exported source org IDs. Repeat the flag to select multiple orgs."
+    )]
+    pub only_org_id: Vec<i64>,
+    #[arg(
+        long,
+        default_value_t = false,
+        requires = "use_export_org",
+        help = "With --use-export-org, create a missing destination org when an exported source org ID does not exist in Grafana. The new org is created from the exported org name and then used as the import target."
+    )]
+    pub create_missing_orgs: bool,
+    #[arg(
+        long,
+        help = "Import dashboards from this directory. Use the raw/ export directory for single-org import, or the combined export root when --use-export-org is enabled."
     )]
     pub import_dir: PathBuf,
     #[arg(

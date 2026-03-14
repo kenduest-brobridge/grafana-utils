@@ -214,8 +214,11 @@ Purpose: import dashboards from a `raw/` export into live Grafana.
 
 | Option | Purpose | Difference / scenario |
 | --- | --- | --- |
-| `--import-dir` | Input `raw/` directory | Must point to `raw/`, not the top-level export root |
+| `--import-dir` | Input `raw/` directory or multi-org export root | Use `raw/` for normal import; use the combined export root with `--use-export-org` |
 | `--org-id` | Target org | Org-specific import |
+| `--use-export-org` | Route each exported org back into Grafana | Import a combined `--all-orgs` export root |
+| `--only-org-id` | Restrict `--use-export-org` to selected source orgs | Repeat the flag to import multiple orgs |
+| `--create-missing-orgs` | Create missing destination orgs before routed import | Only for `--use-export-org`; with `--dry-run` it reports `would-create-org` without creating anything |
 | `--import-folder-uid` | Force destination folder uid | Controlled placement |
 | `--ensure-folders` | Create missing folders | Helpful for first-time restore |
 | `--replace-existing` | Overwrite matching dashboards | Standard restore mode |

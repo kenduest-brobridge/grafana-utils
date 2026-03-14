@@ -5,6 +5,31 @@ Historical note:
 - Older entries preserve the reasoning and follow-up state as of the entry date.
 - Active backlog now lives in `TODO.md`, while completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-15 - Add Routed Dashboard Import Live Smoke Coverage
+- Summary: Extended the Rust Docker-backed Grafana smoke script so it now exercises routed dashboard import from a combined multi-org export root in addition to the existing single-org dashboard checks. The script now creates a second org and dashboard, exports dashboards with `--all-orgs`, verifies routed `--use-export-org --only-org-id` dry-run preview, verifies routed `--create-missing-orgs --dry-run` reports a would-create org state after deleting the org, and verifies live routed import recreates the org and restores its dashboard.
+- Tests: Updated the Rust live smoke script coverage and maintainer notes for the new routed dashboard import path.
+- Test Run: `bash -n scripts/test-rust-live-grafana.sh`
+- Validation: Confirmed the script parses after adding the routed import smoke path and confirmed the maintainer notes now describe the additional multi-org dashboard checks. Live Docker execution was not run in this turn.
+- Reason: Live Docker validation was not executed in this turn.
+- Impact: `scripts/test-rust-live-grafana.sh`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. The new coverage is isolated to the opt-in Rust live smoke path, but it now depends on server-admin org APIs remaining stable in the Grafana image used by the script.
+
+## 2026-03-15 - Add Dashboard Import Org-Aware Dry-Run Preview
+- Summary: Extended the Python dashboard routed-import dry-run path so `dashboard import --use-export-org --dry-run` now reports org-level preview state before any dashboard replay happens. The routed dry-run output now shows whether each exported org already exists in Grafana, is missing, or would be created when `--create-missing-orgs` is present, while still avoiding any org creation or dashboard mutation during the preview run.
+- Tests: Updated Python parser and workflow coverage for routed dry-run with `--create-missing-orgs`, missing-org preview without creation, and `would-create-org` preview output.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py`
+- Validation: Confirmed the dashboard Python suite passes and confirmed routed dry-run now returns success for missing-org preview cases, emits org-level preview lines such as `orgAction=missing-org` and `orgAction=would-create-org`, and leaves `created_orgs` plus imported payloads untouched during the dry-run.
+- Impact: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/import_workflow.py`, `tests/test_python_dashboard_cli.py`, `docs/user-guide.md`, `docs/user-guide-TW.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. This is a non-mutating dry-run behavior extension, but downstream tooling that parses routed dry-run text output now needs to tolerate the new org-level preview lines ahead of per-dashboard dry-run details.
+
+## 2026-03-15 - Add Dashboard Import Routing By Exported Org
+- Summary: Extended dashboard import in both Python and Rust so operators can now point `dashboard import` at one combined multi-org export root and replay each org-specific `raw/` subtree into the matching Grafana org. Added `--use-export-org` for routed import, repeatable `--only-org-id` filtering to limit selected source orgs, and `--create-missing-orgs` so a missing destination org can be created from the exported org name before import is remapped into the new target org.
+- Tests: Added Python parser/help/runtime coverage for routed import, org filtering, missing-org creation, and incompatible flag combinations. Added Rust parser/help/runtime coverage for `--use-export-org`, `--only-org-id`, `--create-missing-orgs`, and the routed import request flow.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py`; `cargo test --manifest-path rust/Cargo.toml dashboard --quiet`
+- Validation: Confirmed the Python dashboard suite passes with the new routed import mode and confirmed the Rust dashboard suite passes with the matching CLI and import-handler behavior. `--use-export-org` remains Basic-auth-only, and the later dry-run preview change now lets `--create-missing-orgs --dry-run` report org-level `would-create` state without mutating Grafana.
+- Impact: `grafana_utils/clients/dashboard_client.py`, `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/export_inventory.py`, `grafana_utils/dashboards/import_runtime.py`, `grafana_utils/dashboards/import_workflow.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_import.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/user-guide.md`, `docs/user-guide-TW.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Moderate. Routed import now depends on export org metadata, org enumeration, and optional org creation semantics; the main remaining risk is live Grafana variance around server-admin org APIs and destination-org creation behavior that current unit suites cannot verify against a real instance.
+
 ## 2026-03-15 - Add Safer Access User Password Input
 - Summary: Extended `access user add` and `access user modify` so operators can now supply passwords through safer prompt/file-oriented inputs instead of relying only on cleartext `--password` and `--set-password` flags. Python now resolves user lifecycle passwords from `--password-file` / `--prompt-user-password` and `--set-password-file` / `--prompt-set-password` before dispatch, while Rust mirrors the same CLI surface and request-handler behavior.
 - Tests: Added Python parser/help/runtime-secret coverage for the new password flags and focused Rust parser/help/request-handler coverage for file-based password resolution on user add/modify.

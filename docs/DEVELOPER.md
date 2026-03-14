@@ -554,8 +554,8 @@ Rust live smoke test notes:
 
 - `make test-rust-live` runs `scripts/test-rust-live-grafana.sh`
 - the script defaults to `grafana/grafana:12.4.1` and binds Grafana to a random localhost port unless `GRAFANA_PORT` is set explicitly
-- the script seeds one Prometheus datasource, one dashboard, and one webhook contact point
-- dashboard coverage: export, prompt export datasource rewrite, diff same, diff drifted, dry-run export, dry-run import, delete-and-import restore
+- the script seeds one Prometheus datasource, one dashboard, one additional org-scoped dashboard, and one webhook contact point
+- dashboard coverage: export, prompt export datasource rewrite, diff same, diff drifted, dry-run export, dry-run import, delete-and-import restore, multi-org export, routed `--use-export-org --only-org-id` dry-run preview, routed `--create-missing-orgs --dry-run` preview, and live missing-org recreate/import
 - alerting coverage: export, diff same, diff changed, dry-run import, update import
 - useful overrides: `GRAFANA_IMAGE`, `GRAFANA_PORT`, `GRAFANA_USER`, `GRAFANA_PASSWORD`, `CARGO_BIN`
 

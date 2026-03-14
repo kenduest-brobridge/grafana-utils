@@ -52,6 +52,32 @@ fn make_basic_common_args(base_url: String) -> CommonCliArgs {
     }
 }
 
+fn make_import_args(import_dir: PathBuf) -> ImportArgs {
+    ImportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
+        import_dir,
+        import_folder_uid: None,
+        ensure_folders: false,
+        replace_existing: false,
+        update_existing_only: false,
+        require_matching_folder_path: false,
+        require_matching_export_org: false,
+        import_message: "sync dashboards".to_string(),
+        dry_run: true,
+        table: false,
+        json: false,
+        output_format: None,
+        no_header: false,
+        output_columns: Vec::new(),
+        progress: false,
+        verbose: false,
+    }
+}
+
 fn render_dashboard_subcommand_help(name: &str) -> String {
     let mut command = DashboardCliArgs::command();
     let subcommand = command
@@ -431,12 +457,15 @@ fn export_help_describes_progress_and_verbose_modes() {
 #[test]
 fn import_help_explains_common_operator_flags() {
     let help = render_dashboard_subcommand_help("import");
-    assert!(help.contains("not the combined export root"));
+    assert!(help.contains("Use the raw/ export directory for single-org import"));
     assert!(help.contains("folder missing/match/mismatch state"));
     assert!(help.contains("skipped/blocked"));
     assert!(help.contains("folder check is also shown in table form"));
     assert!(help.contains("source raw folder path matches"));
     assert!(help.contains("--org-id"));
+    assert!(help.contains("--use-export-org"));
+    assert!(help.contains("--only-org-id"));
+    assert!(help.contains("--create-missing-orgs"));
     assert!(help.contains("requires Basic auth"));
     assert!(help.contains("--require-matching-export-org"));
     assert!(help.contains("--output-columns"));
@@ -638,6 +667,32 @@ fn parse_cli_supports_import_org_scope_flag() {
 }
 
 #[test]
+fn parse_cli_supports_import_by_export_org_flags() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "import",
+        "--import-dir",
+        "./dashboards",
+        "--use-export-org",
+        "--only-org-id",
+        "2",
+        "--only-org-id",
+        "5",
+        "--create-missing-orgs",
+    ]);
+
+    match args.command {
+        DashboardCommand::Import(import_args) => {
+            assert!(import_args.use_export_org);
+            assert_eq!(import_args.only_org_id, vec![2, 5]);
+            assert!(import_args.create_missing_orgs);
+            assert_eq!(import_args.org_id, None);
+        }
+        _ => panic!("expected import command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_import_require_matching_export_org_flag() {
     let args = parse_cli_from([
         "grafana-util",
@@ -650,6 +705,48 @@ fn parse_cli_supports_import_require_matching_export_org_flag() {
     match args.command {
         DashboardCommand::Import(import_args) => {
             assert!(import_args.require_matching_export_org);
+        }
+        _ => panic!("expected import command"),
+    }
+}
+
+#[test]
+fn parse_cli_rejects_import_org_id_with_use_export_org() {
+    let error = DashboardCliArgs::try_parse_from([
+        "grafana-util",
+        "import",
+        "--import-dir",
+        "./dashboards",
+        "--org-id",
+        "7",
+        "--use-export-org",
+    ])
+    .unwrap_err();
+
+    assert!(error.to_string().contains("--org-id"));
+    assert!(error.to_string().contains("--use-export-org"));
+}
+
+#[test]
+fn parse_cli_supports_import_use_export_org_flags() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "import",
+        "--import-dir",
+        "./dashboards",
+        "--use-export-org",
+        "--only-org-id",
+        "2",
+        "--only-org-id",
+        "5",
+        "--create-missing-orgs",
+    ]);
+
+    match args.command {
+        DashboardCommand::Import(import_args) => {
+            assert!(import_args.use_export_org);
+            assert_eq!(import_args.only_org_id, vec![2, 5]);
+            assert!(import_args.create_missing_orgs);
         }
         _ => panic!("expected import command"),
     }
@@ -1430,6 +1527,33 @@ fn render_import_dry_run_json_returns_structured_document() {
         "Platform / Infra"
     );
     assert_eq!(value["summary"]["dashboardCount"], 1);
+}
+
+#[test]
+fn render_routed_import_org_table_includes_org_level_columns() {
+    let rows = vec![
+        [
+            "2".to_string(),
+            "Org Two".to_string(),
+            "exists".to_string(),
+            "2".to_string(),
+            "3".to_string(),
+        ],
+        [
+            "9".to_string(),
+            "Ops Org".to_string(),
+            "would-create".to_string(),
+            "<new>".to_string(),
+            "1".to_string(),
+        ],
+    ];
+
+    let lines = super::dashboard_import::render_routed_import_org_table(&rows, true);
+
+    assert!(lines[0].contains("SOURCE_ORG_ID"));
+    assert!(lines[0].contains("ORG_ACTION"));
+    assert!(lines[2].contains("Org Two"));
+    assert!(lines[3].contains("would-create"));
 }
 
 #[test]
@@ -4316,6 +4440,9 @@ fn import_dashboards_with_client_imports_discovered_files() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: Some("new-folder".to_string()),
         ensure_folders: false,
@@ -4356,6 +4483,9 @@ fn import_dashboards_with_org_id_requires_basic_auth() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: Some(7),
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: temp.path().join("raw"),
         import_folder_uid: None,
         ensure_folders: false,
@@ -4382,11 +4512,407 @@ fn import_dashboards_with_org_id_requires_basic_auth() {
 }
 
 #[test]
+fn import_dashboards_with_use_export_org_requires_basic_auth() {
+    let temp = tempdir().unwrap();
+    let mut args = make_import_args(temp.path().join("exports"));
+    args.use_export_org = true;
+
+    let error = import_dashboards_with_org_clients(&args).unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("Dashboard import with --use-export-org requires Basic auth"));
+}
+
+#[test]
+fn import_dashboards_with_create_missing_orgs_during_dry_run_previews_org_creation() {
+    let temp = tempdir().unwrap();
+    let export_root = temp.path().join("exports");
+    let org_nine_raw = export_root.join("org_9_Ops_Org").join("raw");
+    fs::create_dir_all(&org_nine_raw).unwrap();
+    fs::write(
+        org_nine_raw.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        org_nine_raw.join("index.json"),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "ops",
+                "title": "Ops",
+                "path": "ops.json",
+                "format": "grafana-web-import-preserve-uid",
+                "org": "Ops Org",
+                "orgId": "9"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        org_nine_raw.join("ops.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {"id": null, "uid": "ops", "title": "Ops"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let mut args = make_import_args(export_root);
+    args.common = make_basic_common_args("http://127.0.0.1:3000".to_string());
+    args.use_export_org = true;
+    args.create_missing_orgs = true;
+    args.dry_run = true;
+
+    let mut admin_calls = Vec::new();
+    let mut import_calls = Vec::new();
+    let count = super::dashboard_import::import_dashboards_by_export_org_with_request(
+        |method, path, _params, _payload| {
+            admin_calls.push((method.to_string(), path.to_string()));
+            match (method, path) {
+                (reqwest::Method::GET, "/api/orgs") => Ok(Some(json!([]))),
+                _ => Err(super::message(format!("unexpected request {path}"))),
+            }
+        },
+        |target_org_id, scoped_args| {
+            import_calls.push((target_org_id, scoped_args.import_dir.clone()));
+            Ok(0)
+        },
+        |_target_org_id, scoped_args| {
+            Ok(super::dashboard_import::ImportDryRunReport {
+                mode: "create-only".to_string(),
+                import_dir: scoped_args.import_dir.clone(),
+                folder_statuses: Vec::new(),
+                dashboard_records: Vec::new(),
+                skipped_missing_count: 0,
+                skipped_folder_mismatch_count: 0,
+            })
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 0);
+    assert_eq!(admin_calls, vec![("GET".to_string(), "/api/orgs".to_string())]);
+    assert!(import_calls.is_empty());
+}
+
+#[test]
+fn import_dashboards_with_use_export_org_dry_run_filters_selected_orgs_without_creating_missing_targets() {
+    let temp = tempdir().unwrap();
+    let export_root = temp.path().join("exports");
+    let org_two_raw = export_root.join("org_2_Org_Two").join("raw");
+    let org_five_raw = export_root.join("org_5_Org_Five").join("raw");
+    fs::create_dir_all(&org_two_raw).unwrap();
+    fs::create_dir_all(&org_five_raw).unwrap();
+
+    for (raw_dir, org_id, org_name, uid) in [
+        (&org_two_raw, "2", "Org Two", "cpu-two"),
+        (&org_five_raw, "5", "Org Five", "cpu-five"),
+    ] {
+        fs::write(
+            raw_dir.join(EXPORT_METADATA_FILENAME),
+            serde_json::to_string_pretty(&json!({
+                "kind": "grafana-utils-dashboard-export-index",
+                "schemaVersion": TOOL_SCHEMA_VERSION,
+                "variant": "raw",
+                "dashboardCount": 1,
+                "indexFile": "index.json",
+                "format": "grafana-web-import-preserve-uid"
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            raw_dir.join("index.json"),
+            serde_json::to_string_pretty(&json!([
+                {
+                    "uid": uid,
+                    "title": "CPU",
+                    "path": "dash.json",
+                    "format": "grafana-web-import-preserve-uid",
+                    "org": org_name,
+                    "orgId": org_id
+                }
+            ]))
+            .unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            raw_dir.join("dash.json"),
+            serde_json::to_string_pretty(&json!({
+                "dashboard": {"id": null, "uid": uid, "title": "CPU"}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    }
+
+    let mut args = make_import_args(export_root);
+    args.common = make_basic_common_args("http://127.0.0.1:3000".to_string());
+    args.use_export_org = true;
+    args.only_org_id = vec![2, 5];
+    args.dry_run = true;
+
+    let mut admin_calls = Vec::new();
+    let mut import_calls = Vec::new();
+    super::dashboard_import::import_dashboards_by_export_org_with_request(
+        |method, path, _params, _payload| {
+            admin_calls.push((method.to_string(), path.to_string()));
+            match (method, path) {
+                (reqwest::Method::GET, "/api/orgs") => Ok(Some(json!([
+                    {"id": 2, "name": "Org Two"}
+                ]))),
+                _ => Err(super::message(format!("unexpected request {path}"))),
+            }
+        },
+        |target_org_id, scoped_args| {
+            import_calls.push((target_org_id, scoped_args.import_dir.clone(), scoped_args.org_id));
+            Ok(0)
+        },
+        |_target_org_id, scoped_args| {
+            Ok(super::dashboard_import::ImportDryRunReport {
+                mode: "create-only".to_string(),
+                import_dir: scoped_args.import_dir.clone(),
+                folder_statuses: Vec::new(),
+                dashboard_records: Vec::new(),
+                skipped_missing_count: 0,
+                skipped_folder_mismatch_count: 0,
+            })
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(
+        admin_calls,
+        vec![
+            ("GET".to_string(), "/api/orgs".to_string()),
+            ("GET".to_string(), "/api/orgs".to_string()),
+        ]
+    );
+    assert_eq!(import_calls, vec![(2, org_two_raw.clone(), Some(2))]);
+}
+
+#[test]
+fn build_routed_import_dry_run_json_with_request_reports_orgs_and_dashboards() {
+    let temp = tempdir().unwrap();
+    let export_root = temp.path().join("exports");
+    let org_two_raw = export_root.join("org_2_Org_Two").join("raw");
+    let org_nine_raw = export_root.join("org_9_Ops_Org").join("raw");
+    fs::create_dir_all(&org_two_raw).unwrap();
+    fs::create_dir_all(&org_nine_raw).unwrap();
+
+    for (raw_dir, org_id, org_name, uid) in [
+        (&org_two_raw, "2", "Org Two", "cpu-two"),
+        (&org_nine_raw, "9", "Ops Org", "ops-main"),
+    ] {
+        fs::write(
+            raw_dir.join(EXPORT_METADATA_FILENAME),
+            serde_json::to_string_pretty(&json!({
+                "kind": "grafana-utils-dashboard-export-index",
+                "schemaVersion": TOOL_SCHEMA_VERSION,
+                "variant": "raw",
+                "dashboardCount": 1,
+                "indexFile": "index.json",
+                "format": "grafana-web-import-preserve-uid"
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            raw_dir.join("index.json"),
+            serde_json::to_string_pretty(&json!([
+                {
+                    "uid": uid,
+                    "title": "CPU",
+                    "path": "dash.json",
+                    "format": "grafana-web-import-preserve-uid",
+                    "org": org_name,
+                    "orgId": org_id
+                }
+            ]))
+            .unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            raw_dir.join("dash.json"),
+            serde_json::to_string_pretty(&json!({
+                "dashboard": {"id": null, "uid": uid, "title": "CPU"}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    }
+
+    let mut args = make_import_args(export_root);
+    args.common = make_basic_common_args("http://127.0.0.1:3000".to_string());
+    args.use_export_org = true;
+    args.create_missing_orgs = true;
+    args.dry_run = true;
+    args.json = true;
+
+    let payload: Value = serde_json::from_str(
+        &super::dashboard_import::build_routed_import_dry_run_json_with_request(
+            |method, path, _params, _payload| match (method, path) {
+                (reqwest::Method::GET, "/api/orgs") => Ok(Some(json!([
+                    {"id": 2, "name": "Org Two"}
+                ]))),
+                _ => Err(super::message(format!("unexpected request {path}"))),
+            },
+            |target_org_id, scoped_args| {
+                Ok(super::dashboard_import::ImportDryRunReport {
+                    mode: "create-only".to_string(),
+                    import_dir: scoped_args.import_dir.clone(),
+                    folder_statuses: Vec::new(),
+                    dashboard_records: vec![[
+                        if target_org_id == 2 {
+                            "cpu-two".to_string()
+                        } else {
+                            "ops-main".to_string()
+                        },
+                        "missing".to_string(),
+                        "create".to_string(),
+                        "General".to_string(),
+                        "".to_string(),
+                        "".to_string(),
+                        "".to_string(),
+                        scoped_args.import_dir.join("dash.json").display().to_string(),
+                    ]],
+                    skipped_missing_count: 0,
+                    skipped_folder_mismatch_count: 0,
+                })
+            },
+            &args,
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    let org_entries = payload["orgs"].as_array().unwrap();
+    let import_entries = payload["imports"].as_array().unwrap();
+    let existing_org = org_entries
+        .iter()
+        .find(|entry| entry["sourceOrgId"] == json!(2))
+        .unwrap();
+    let missing_org = org_entries
+        .iter()
+        .find(|entry| entry["sourceOrgId"] == json!(9))
+        .unwrap();
+    let existing_import = import_entries
+        .iter()
+        .find(|entry| entry["sourceOrgId"] == json!(2))
+        .unwrap();
+    let missing_import = import_entries
+        .iter()
+        .find(|entry| entry["sourceOrgId"] == json!(9))
+        .unwrap();
+
+    assert_eq!(payload["mode"], "routed-import-preview");
+    assert_eq!(existing_org["orgAction"], "exists");
+    assert_eq!(missing_org["orgAction"], "would-create");
+    assert_eq!(existing_import["dashboards"][0]["uid"], "cpu-two");
+    assert_eq!(missing_import["dashboards"], json!([]));
+    assert_eq!(missing_import["summary"]["dashboardCount"], Value::from(1));
+}
+
+#[test]
+fn import_dashboards_with_use_export_org_dry_run_table_returns_after_org_summary() {
+    let temp = tempdir().unwrap();
+    let export_root = temp.path().join("exports");
+    let org_two_raw = export_root.join("org_2_Org_Two").join("raw");
+    fs::create_dir_all(&org_two_raw).unwrap();
+    fs::write(
+        org_two_raw.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        org_two_raw.join("index.json"),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "cpu-two",
+                "title": "CPU",
+                "path": "dash.json",
+                "format": "grafana-web-import-preserve-uid",
+                "org": "Org Two",
+                "orgId": "2"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        org_two_raw.join("dash.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {"id": null, "uid": "cpu-two", "title": "CPU"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let mut args = make_import_args(export_root);
+    args.common = make_basic_common_args("http://127.0.0.1:3000".to_string());
+    args.use_export_org = true;
+    args.dry_run = true;
+    args.table = true;
+
+    let mut import_calls = Vec::new();
+    let count = super::dashboard_import::import_dashboards_by_export_org_with_request(
+        |method, path, _params, _payload| match (method, path) {
+            (reqwest::Method::GET, "/api/orgs") => Ok(Some(json!([
+                {"id": 2, "name": "Org Two"}
+            ]))),
+            _ => Err(super::message(format!("unexpected request {path}"))),
+        },
+        |target_org_id, scoped_args| {
+            import_calls.push((target_org_id, scoped_args.import_dir.clone()));
+            Ok(0)
+        },
+        |_target_org_id, scoped_args| {
+            Ok(super::dashboard_import::ImportDryRunReport {
+                mode: "create-only".to_string(),
+                import_dir: scoped_args.import_dir.clone(),
+                folder_statuses: Vec::new(),
+                dashboard_records: Vec::new(),
+                skipped_missing_count: 0,
+                skipped_folder_mismatch_count: 0,
+            })
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 0);
+    assert!(import_calls.is_empty());
+}
+
+#[test]
 fn build_import_auth_context_adds_org_header_for_basic_auth_imports() {
     let temp = tempdir().unwrap();
     let args = ImportArgs {
         common: make_basic_common_args("http://127.0.0.1:3000".to_string()),
         org_id: Some(7),
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: temp.path().join("raw"),
         import_folder_uid: None,
         ensure_folders: false,
@@ -4412,6 +4938,119 @@ fn build_import_auth_context_adds_org_header_for_basic_auth_imports() {
         .headers
         .iter()
         .any(|(name, value)| { name == "X-Grafana-Org-Id" && value == "7" }));
+}
+
+#[test]
+fn import_dashboards_with_use_export_org_filters_selected_orgs_and_creates_missing_targets() {
+    let temp = tempdir().unwrap();
+    let export_root = temp.path().join("exports");
+    let org_two_raw = export_root.join("org_2_Org_Two").join("raw");
+    let org_five_raw = export_root.join("org_5_Org_Five").join("raw");
+    fs::create_dir_all(&org_two_raw).unwrap();
+    fs::create_dir_all(&org_five_raw).unwrap();
+
+    for (raw_dir, org_id, org_name, uid) in [
+        (&org_two_raw, "2", "Org Two", "cpu-two"),
+        (&org_five_raw, "5", "Org Five", "cpu-five"),
+    ] {
+        fs::write(
+            raw_dir.join(EXPORT_METADATA_FILENAME),
+            serde_json::to_string_pretty(&json!({
+                "kind": "grafana-utils-dashboard-export-index",
+                "schemaVersion": TOOL_SCHEMA_VERSION,
+                "variant": "raw",
+                "dashboardCount": 1,
+                "indexFile": "index.json",
+                "format": "grafana-web-import-preserve-uid"
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            raw_dir.join("index.json"),
+            serde_json::to_string_pretty(&json!([
+                {
+                    "uid": uid,
+                    "title": "CPU",
+                    "path": "dash.json",
+                    "format": "grafana-web-import-preserve-uid",
+                    "org": org_name,
+                    "orgId": org_id
+                }
+            ]))
+            .unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            raw_dir.join("dash.json"),
+            serde_json::to_string_pretty(&json!({
+                "dashboard": {"id": null, "uid": uid, "title": "CPU"}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    }
+
+    let mut args = make_import_args(export_root.clone());
+    args.common = make_basic_common_args("http://127.0.0.1:3000".to_string());
+    args.use_export_org = true;
+    args.create_missing_orgs = true;
+    args.only_org_id = vec![2];
+    args.dry_run = false;
+
+    let mut admin_calls = Vec::new();
+    let mut import_calls = Vec::new();
+    let count = super::dashboard_import::import_dashboards_by_export_org_with_request(
+        |method: reqwest::Method,
+         path: &str,
+         _params: &[(String, String)],
+         payload: Option<&Value>| {
+            admin_calls.push((method.to_string(), path.to_string()));
+            match (method.clone(), path) {
+                (reqwest::Method::GET, "/api/orgs") => Ok(Some(json!([]))),
+                (reqwest::Method::POST, "/api/orgs") => {
+                    assert_eq!(
+                        payload.and_then(|value| value.as_object()).unwrap().get("name"),
+                        Some(&json!("Org Two"))
+                    );
+                    Ok(Some(json!({"orgId": "9"})))
+                }
+                _ => Err(super::message(format!("unexpected request {method} {path}"))),
+            }
+        },
+        |target_org_id, scoped_args| {
+            import_calls.push((target_org_id, scoped_args.import_dir.clone(), scoped_args.org_id));
+            assert!(!scoped_args.use_export_org);
+            assert!(scoped_args.only_org_id.is_empty());
+            assert!(!scoped_args.create_missing_orgs);
+            Ok(1)
+        },
+        |_target_org_id, scoped_args| {
+            Ok(super::dashboard_import::ImportDryRunReport {
+                mode: "create-only".to_string(),
+                import_dir: scoped_args.import_dir.clone(),
+                folder_statuses: Vec::new(),
+                dashboard_records: Vec::new(),
+                skipped_missing_count: 0,
+                skipped_folder_mismatch_count: 0,
+            })
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 1);
+    assert_eq!(
+        admin_calls,
+        vec![
+            ("GET".to_string(), "/api/orgs".to_string()),
+            ("POST".to_string(), "/api/orgs".to_string()),
+        ]
+    );
+    assert_eq!(
+        import_calls,
+        vec![(9, org_two_raw.clone(), Some(9))]
+    );
 }
 
 #[test]
@@ -4458,6 +5097,9 @@ fn import_dashboards_rejects_mismatched_export_org_with_explicit_org_id() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: Some(2),
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: None,
         ensure_folders: false,
@@ -4528,6 +5170,9 @@ fn import_dashboards_rejects_mismatched_export_org_with_current_token_org() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: None,
         ensure_folders: false,
@@ -4604,6 +5249,9 @@ fn import_dashboards_allows_matching_export_org_with_current_org_lookup() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: None,
         ensure_folders: false,
@@ -4674,6 +5322,9 @@ fn import_dashboards_with_dry_run_skips_post_requests() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: None,
         ensure_folders: false,
@@ -4729,6 +5380,9 @@ fn import_dashboards_rejects_unsupported_export_schema_version() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: None,
         ensure_folders: false,
@@ -4792,6 +5446,9 @@ fn import_dashboards_with_update_existing_only_skips_missing_dashboards() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: None,
         ensure_folders: false,
@@ -4865,6 +5522,9 @@ fn import_dashboards_with_update_existing_only_table_marks_missing_dashboards_as
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: None,
         ensure_folders: false,
@@ -4930,6 +5590,9 @@ fn import_dashboards_replace_existing_preserves_destination_folder() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: None,
         ensure_folders: false,
@@ -5000,6 +5663,9 @@ fn import_dashboards_rejects_ensure_folders_with_import_folder_override() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: Some("override-folder".to_string()),
         ensure_folders: true,
@@ -5055,6 +5721,9 @@ fn import_dashboards_rejects_matching_folder_path_with_import_folder_uid() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: Some("override-folder".to_string()),
         ensure_folders: false,
@@ -5176,6 +5845,9 @@ fn import_dashboards_with_matching_folder_path_skips_live_update_mismatch() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: None,
         ensure_folders: false,
@@ -5241,6 +5913,9 @@ fn import_dashboards_rejects_json_without_dry_run() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: None,
         ensure_folders: false,
@@ -5288,6 +5963,9 @@ fn import_dashboards_reject_output_columns_without_table_output() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: None,
         ensure_folders: false,
@@ -5368,6 +6046,9 @@ fn import_dashboards_with_ensure_folders_creates_missing_folder_chain_from_raw_i
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: None,
         ensure_folders: true,
@@ -5496,6 +6177,9 @@ fn import_dashboards_with_dry_run_and_ensure_folders_checks_folder_inventory() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: None,
         ensure_folders: true,
@@ -5586,6 +6270,9 @@ fn import_dashboards_with_ensure_folders_requires_inventory_manifest() {
     let args = ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
         import_dir: raw_dir,
         import_folder_uid: None,
         ensure_folders: true,

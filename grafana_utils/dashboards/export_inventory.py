@@ -44,6 +44,28 @@ def discover_dashboard_files(
     return files
 
 
+def discover_org_raw_export_dirs(import_dir: Path, raw_export_subdir: str) -> list[Path]:
+    """Find per-org raw export directories under one combined multi-org export root."""
+    if not import_dir.exists():
+        raise GrafanaError(f"Import directory does not exist: {import_dir}")
+    if not import_dir.is_dir():
+        raise GrafanaError(f"Import path is not a directory: {import_dir}")
+    org_raw_dirs = []
+    for child in sorted(import_dir.iterdir()):
+        if not child.is_dir() or not child.name.startswith("org_"):
+            continue
+        raw_dir = child / raw_export_subdir
+        if raw_dir.is_dir():
+            org_raw_dirs.append(raw_dir)
+    if not org_raw_dirs:
+        raise GrafanaError(
+            "Import path %s does not contain any org-scoped %s/ exports. "
+            "Point --import-dir at a combined multi-org export root created with --all-orgs."
+            % (import_dir, raw_export_subdir)
+        )
+    return org_raw_dirs
+
+
 def load_folder_inventory(
     import_dir: Path,
     default_filename: str,
@@ -249,6 +271,39 @@ def resolve_export_org_id(
     metadata: Optional[dict[str, Any]] = None,
 ) -> Optional[str]:
     """Resolve one stable source export orgId from the raw export directory."""
+    return _resolve_export_identity_field(
+        import_dir,
+        folder_inventory_filename,
+        datasource_inventory_filename,
+        field_name="orgId",
+        metadata=metadata,
+    )
+
+
+def resolve_export_org_name(
+    import_dir: Path,
+    folder_inventory_filename: str,
+    datasource_inventory_filename: str,
+    metadata: Optional[dict[str, Any]] = None,
+) -> Optional[str]:
+    """Resolve one stable source export org name from the raw export directory."""
+    return _resolve_export_identity_field(
+        import_dir,
+        folder_inventory_filename,
+        datasource_inventory_filename,
+        field_name="org",
+        metadata=metadata,
+    )
+
+
+def _resolve_export_identity_field(
+    import_dir: Path,
+    folder_inventory_filename: str,
+    datasource_inventory_filename: str,
+    field_name: str,
+    metadata: Optional[dict[str, Any]] = None,
+) -> Optional[str]:
+    """Resolve one stable export identity field from the raw export directory."""
     org_ids = set()
     index_file = "index.json"
     folders_file = folder_inventory_filename
@@ -281,16 +336,15 @@ def resolve_export_org_id(
         for item in items:
             if not isinstance(item, dict):
                 continue
-            org_id = str(item.get("orgId") or "").strip()
-            if org_id:
-                org_ids.add(org_id)
+            value = str(item.get(field_name) or "").strip()
+            if value:
+                org_ids.add(value)
     if not org_ids:
         return None
     if len(org_ids) > 1:
         raise GrafanaError(
-            "Raw export metadata in %s spans multiple orgIds (%s). "
-            "Point --import-dir at one org-specific raw export or remove "
-            "--require-matching-export-org."
-            % (import_dir, ", ".join(sorted(org_ids)))
+            "Raw export metadata in %s spans multiple %s values (%s). "
+            "Point --import-dir at one org-specific raw export."
+            % (import_dir, field_name, ", ".join(sorted(org_ids)))
         )
     return list(org_ids)[0]

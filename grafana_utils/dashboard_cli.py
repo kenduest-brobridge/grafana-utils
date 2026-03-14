@@ -454,7 +454,8 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
         required=True,
         help=(
             "Import dashboards from this directory. "
-            f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly, not the combined export root."
+            f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly for normal imports. "
+            "When --use-export-org is enabled, point this to the combined multi-org export root instead."
         ),
     )
     parser.add_argument(
@@ -464,6 +465,32 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
             "Import dashboards into this explicit Grafana organization ID instead "
             "of the current org context. API token auth is not supported here; "
             "use Grafana username/password login."
+        ),
+    )
+    parser.add_argument(
+        "--use-export-org",
+        action="store_true",
+        help=(
+            "Import from a combined multi-org export root and route each org-specific "
+            "raw export into the matching Grafana orgId recorded in that export. "
+            "API token auth is not supported here; use Grafana username/password login."
+        ),
+    )
+    parser.add_argument(
+        "--only-org-id",
+        action="append",
+        default=None,
+        help=(
+            "With --use-export-org, import only the selected exported orgId values. "
+            "Repeat this flag to include multiple orgs."
+        ),
+    )
+    parser.add_argument(
+        "--create-missing-orgs",
+        action="store_true",
+        help=(
+            "With --use-export-org, create a missing destination Grafana organization "
+            "from the exported org name when the exported orgId does not exist yet."
         ),
     )
     parser.add_argument(
@@ -857,6 +884,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
 
     args = parser.parse_args(argv)
     _normalize_output_format_args(args, parser)
+    _validate_import_routing_args(args, parser)
     _parse_dashboard_import_output_columns(args, parser)
     return args
 
@@ -935,6 +963,25 @@ def _parse_dashboard_import_output_columns(
     except GrafanaError as exc:
         parser.error(str(exc))
 
+
+def _validate_import_routing_args(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+) -> None:
+    if getattr(args, "command", None) != "import-dashboard":
+        return
+    use_export_org = bool(getattr(args, "use_export_org", False))
+    only_org_ids = getattr(args, "only_org_id", None) or []
+    if only_org_ids and not use_export_org:
+        parser.error("--only-org-id requires --use-export-org for import-dashboard.")
+    if bool(getattr(args, "create_missing_orgs", False)) and not use_export_org:
+        parser.error("--create-missing-orgs requires --use-export-org for import-dashboard.")
+    if use_export_org and getattr(args, "org_id", None):
+        parser.error("--use-export-org cannot be combined with --org-id for import-dashboard.")
+    if use_export_org and bool(getattr(args, "require_matching_export_org", False)):
+        parser.error(
+            "--use-export-org cannot be combined with --require-matching-export-org for import-dashboard."
+        )
 
 def resolve_auth(args: argparse.Namespace) -> dict[str, str]:
     try:

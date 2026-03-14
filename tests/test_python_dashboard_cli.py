@@ -222,6 +222,7 @@ class FakeDashboardWorkflowClient:
         self.headers = headers or {"Authorization": "Basic test"}
         self.imported_payloads = []
         self.created_folders = []
+        self.created_orgs = []
 
     def iter_dashboard_summaries(self, page_size):
         return list(self.summaries)
@@ -260,12 +261,77 @@ class FakeDashboardWorkflowClient:
             raise AssertionError("Unexpected org id %s" % key)
         return self.org_clients[key]
 
+    def request_json(self, path, params=None, method="GET", payload=None):
+        if path == "/api/orgs" and method == "POST":
+            next_org_id = 1
+            existing_ids = []
+            for item in self.orgs:
+                item_id = str(item.get("id") or item.get("orgId") or "").strip()
+                if item_id.isdigit():
+                    existing_ids.append(int(item_id))
+            if existing_ids:
+                next_org_id = max(existing_ids) + 1
+            name = str((payload or {}).get("name") or "").strip()
+            created = {"id": next_org_id, "orgId": next_org_id, "name": name}
+            self.created_orgs.append(dict(created))
+            self.orgs.append({"id": next_org_id, "name": name})
+            self.org_clients[str(next_org_id)] = FakeDashboardWorkflowClient(
+                org={"id": next_org_id, "name": name},
+                headers=dict(self.headers),
+            )
+            return created
+        raise AssertionError("Unexpected request %s %s" % (method, path))
+
+    def create_organization(self, payload):
+        return self.request_json("/api/orgs", method="POST", payload=payload)
+
     def import_dashboard(self, payload):
         self.imported_payloads.append(payload)
         return {"status": "success", "uid": payload["dashboard"].get("uid")}
 
 
 class ExporterTests(unittest.TestCase):
+    def _write_multi_org_import_root(self, root_dir, org_exports):
+        for item in org_exports:
+            org_id = str(item["org_id"])
+            org_name = str(item["org_name"])
+            raw_dir = root_dir / ("org_%s_%s" % (org_id, org_name.replace(" ", "_"))) / "raw"
+            raw_dir.mkdir(parents=True, exist_ok=True)
+            exporter.write_json_document(
+                build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=len(item["dashboards"]),
+                    format_name="grafana-web-import-preserve-uid",
+                ),
+                raw_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                [
+                    {
+                        "uid": dashboard["uid"],
+                        "title": dashboard["title"],
+                        "folder": "General",
+                        "org": org_name,
+                        "orgId": org_id,
+                        "path": "%s__%s.json" % (dashboard["title"], dashboard["uid"]),
+                        "format": "grafana-web-import-preserve-uid",
+                    }
+                    for dashboard in item["dashboards"]
+                ],
+                raw_dir / "index.json",
+            )
+            for dashboard in item["dashboards"]:
+                exporter.write_json_document(
+                    {
+                        "dashboard": {
+                            "id": None,
+                            "uid": dashboard["uid"],
+                            "title": dashboard["title"],
+                            "panels": [],
+                        }
+                    },
+                    raw_dir / ("%s__%s.json" % (dashboard["title"], dashboard["uid"])),
+                )
     def _write_minimal_inspection_export(self, import_dir):
         exporter.write_json_document(
             build_export_metadata(
@@ -573,6 +639,9 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("combined", help_text)
         self.assertIn("export root", help_text)
         self.assertIn("--org-id", help_text)
+        self.assertIn("--use-export-org", help_text)
+        self.assertIn("--only-org-id", help_text)
+        self.assertIn("--create-missing-orgs", help_text)
         self.assertIn("API token auth is not supported here", help_text)
         self.assertIn("--require-matching-export-org", help_text)
         self.assertIn("missing/match/mismatch", help_text)
@@ -678,6 +747,99 @@ class ExporterTests(unittest.TestCase):
         )
 
         self.assertTrue(args.require_matching_export_org)
+
+    def test_parse_args_supports_import_by_export_org_flags(self):
+        args = exporter.parse_args(
+            [
+                "import-dashboard",
+                "--import-dir",
+                "dashboards",
+                "--use-export-org",
+                "--only-org-id",
+                "2",
+                "--only-org-id",
+                "5",
+                "--create-missing-orgs",
+            ]
+        )
+
+        self.assertTrue(args.use_export_org)
+        self.assertEqual(args.only_org_id, ["2", "5"])
+        self.assertTrue(args.create_missing_orgs)
+
+    def test_parse_args_rejects_only_org_id_without_use_export_org(self):
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(
+                ["import-dashboard", "--import-dir", "dashboards", "--only-org-id", "2"]
+            )
+
+    def test_parse_args_rejects_create_missing_orgs_without_use_export_org(self):
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    "dashboards",
+                    "--create-missing-orgs",
+                ]
+            )
+
+    def test_parse_args_rejects_use_export_org_with_org_id(self):
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    "dashboards",
+                    "--use-export-org",
+                    "--org-id",
+                    "2",
+                ]
+            )
+
+    def test_parse_args_rejects_use_export_org_with_require_matching_export_org(self):
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    "dashboards",
+                    "--use-export-org",
+                    "--require-matching-export-org",
+                ]
+            )
+
+    def test_parse_args_supports_create_missing_orgs_with_dry_run(self):
+        args = exporter.parse_args(
+            [
+                "import-dashboard",
+                "--import-dir",
+                "dashboards",
+                "--use-export-org",
+                "--create-missing-orgs",
+                "--dry-run",
+            ]
+        )
+
+        self.assertTrue(args.use_export_org)
+        self.assertTrue(args.create_missing_orgs)
+        self.assertTrue(args.dry_run)
+
+    def test_parse_args_supports_use_export_org_with_json_output(self):
+        args = exporter.parse_args(
+            [
+                "import-dashboard",
+                "--import-dir",
+                "dashboards",
+                "--use-export-org",
+                "--dry-run",
+                "--json",
+            ]
+        )
+
+        self.assertTrue(args.use_export_org)
+        self.assertTrue(args.dry_run)
+        self.assertTrue(args.json)
 
     def test_parse_args_supports_preferred_auth_aliases(self):
         args = exporter.parse_args(
@@ -3597,6 +3759,387 @@ class ExporterTests(unittest.TestCase):
             with self.assertRaisesRegex(exporter.GrafanaError, "does not support API token auth"):
                 exporter.import_dashboards(args)
 
+    def test_import_dashboards_by_export_org_rejects_token_auth(self):
+        client = FakeDashboardWorkflowClient(headers={"Authorization": "Bearer token"})
+        args = exporter.parse_args(
+            [
+                "import-dashboard",
+                "--import-dir",
+                "dashboards",
+                "--use-export-org",
+            ]
+        )
+
+        with mock.patch.object(exporter, "build_client", return_value=client):
+            with self.assertRaisesRegex(
+                exporter.GrafanaError,
+                "does not support API token auth",
+            ):
+                exporter.import_dashboards(args)
+
+    def test_import_dashboards_by_export_org_dry_run_reports_missing_destination_org_without_create(self):
+        org_one_client = FakeDashboardWorkflowClient(
+            org={"id": 1, "name": "Main Org."},
+            headers={"Authorization": "Basic test"},
+        )
+        client = FakeDashboardWorkflowClient(
+            orgs=[{"id": 1, "name": "Main Org."}],
+            org_clients={"1": org_one_client},
+            headers={"Authorization": "Basic test"},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root_dir = Path(tmpdir)
+            self._write_multi_org_import_root(
+                root_dir,
+                [
+                    {
+                        "org_id": "2",
+                        "org_name": "Org Two",
+                        "dashboards": [{"uid": "abc", "title": "CPU"}],
+                    }
+                ],
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(root_dir),
+                    "--use-export-org",
+                    "--dry-run",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(client.created_orgs, [])
+            self.assertIn("orgAction=missing-org", stdout.getvalue())
+            self.assertIn("dashboards=1", stdout.getvalue())
+            self.assertEqual(org_one_client.imported_payloads, [])
+
+    def test_import_dashboards_by_export_org_dry_run_filters_selected_orgs(self):
+        org_one_client = FakeDashboardWorkflowClient(
+            dashboards={
+                "abc": {
+                    "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "infra"},
+                }
+            },
+            org={"id": 1, "name": "Main Org."},
+            headers={"Authorization": "Basic test"},
+        )
+        org_two_client = FakeDashboardWorkflowClient(
+            org={"id": 2, "name": "Org Two"},
+            headers={"Authorization": "Basic test"},
+        )
+        client = FakeDashboardWorkflowClient(
+            orgs=[{"id": 1, "name": "Main Org."}, {"id": 2, "name": "Org Two"}],
+            org_clients={"1": org_one_client, "2": org_two_client},
+            headers={"Authorization": "Basic test"},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root_dir = Path(tmpdir)
+            self._write_multi_org_import_root(
+                root_dir,
+                [
+                    {
+                        "org_id": "1",
+                        "org_name": "Main Org.",
+                        "dashboards": [{"uid": "abc", "title": "CPU"}],
+                    },
+                    {
+                        "org_id": "2",
+                        "org_name": "Org Two",
+                        "dashboards": [{"uid": "xyz", "title": "Memory"}],
+                    },
+                ],
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(root_dir),
+                    "--use-export-org",
+                    "--only-org-id",
+                    "2",
+                    "--dry-run",
+                    "--verbose",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(org_one_client.imported_payloads, [])
+            self.assertEqual(org_two_client.imported_payloads, [])
+            self.assertIn("Dry-run export orgId=2", stdout.getvalue())
+            self.assertIn("Memory__xyz.json", stdout.getvalue())
+            self.assertNotIn("CPU__abc.json", stdout.getvalue())
+
+    def test_import_dashboards_by_export_org_dry_run_json_reports_orgs_and_dashboards(self):
+        org_one_client = FakeDashboardWorkflowClient(
+            dashboards={
+                "abc": {
+                    "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "infra"},
+                }
+            },
+            org={"id": 1, "name": "Main Org."},
+            headers={"Authorization": "Basic test"},
+        )
+        client = FakeDashboardWorkflowClient(
+            orgs=[{"id": 1, "name": "Main Org."}],
+            org_clients={"1": org_one_client},
+            headers={"Authorization": "Basic test"},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root_dir = Path(tmpdir)
+            self._write_multi_org_import_root(
+                root_dir,
+                [
+                    {
+                        "org_id": "1",
+                        "org_name": "Main Org.",
+                        "dashboards": [{"uid": "abc", "title": "CPU"}],
+                    },
+                    {
+                        "org_id": "9",
+                        "org_name": "Ops Org",
+                        "dashboards": [{"uid": "ops", "title": "Ops"}],
+                    },
+                ],
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(root_dir),
+                    "--use-export-org",
+                    "--create-missing-orgs",
+                    "--dry-run",
+                    "--json",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            payload = json.loads(stdout.getvalue())
+            self.assertEqual(payload["mode"], "routed-import-preview")
+            self.assertEqual(len(payload["orgs"]), 2)
+            self.assertEqual(payload["orgs"][0]["orgAction"], "exists")
+            self.assertEqual(payload["orgs"][1]["orgAction"], "would-create-org")
+            self.assertEqual(payload["imports"][0]["dashboards"][0]["uid"], "abc")
+            self.assertEqual(payload["imports"][1]["dashboards"], [])
+
+    def test_import_dashboards_by_export_org_dry_run_table_prints_org_summary_table(self):
+        org_one_client = FakeDashboardWorkflowClient(
+            dashboards={
+                "abc": {
+                    "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "infra"},
+                }
+            },
+            org={"id": 1, "name": "Main Org."},
+            headers={"Authorization": "Basic test"},
+        )
+        client = FakeDashboardWorkflowClient(
+            orgs=[{"id": 1, "name": "Main Org."}],
+            org_clients={"1": org_one_client},
+            headers={"Authorization": "Basic test"},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root_dir = Path(tmpdir)
+            self._write_multi_org_import_root(
+                root_dir,
+                [
+                    {
+                        "org_id": "1",
+                        "org_name": "Main Org.",
+                        "dashboards": [{"uid": "abc", "title": "CPU"}],
+                    },
+                    {
+                        "org_id": "9",
+                        "org_name": "Ops Org",
+                        "dashboards": [{"uid": "ops", "title": "Ops"}],
+                    },
+                ],
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(root_dir),
+                    "--use-export-org",
+                    "--create-missing-orgs",
+                    "--dry-run",
+                    "--table",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            text = stdout.getvalue()
+            self.assertIn("SOURCE_ORG_ID", text)
+            self.assertIn("ORG_ACTION", text)
+            self.assertIn("would-create-org", text)
+            self.assertIn("Main Org.", text)
+            self.assertNotIn("Import mode:", text)
+            self.assertNotIn("Dry-run export orgId=", text)
+
+    def test_import_dashboards_by_export_org_rejects_unknown_selected_org(self):
+        org_two_client = FakeDashboardWorkflowClient(
+            org={"id": 2, "name": "Org Two"},
+            headers={"Authorization": "Basic test"},
+        )
+        client = FakeDashboardWorkflowClient(
+            orgs=[{"id": 2, "name": "Org Two"}],
+            org_clients={"2": org_two_client},
+            headers={"Authorization": "Basic test"},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root_dir = Path(tmpdir)
+            self._write_multi_org_import_root(
+                root_dir,
+                [
+                    {
+                        "org_id": "2",
+                        "org_name": "Org Two",
+                        "dashboards": [{"uid": "xyz", "title": "Memory"}],
+                    }
+                ],
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(root_dir),
+                    "--use-export-org",
+                    "--only-org-id",
+                    "5",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                with self.assertRaisesRegex(
+                    exporter.GrafanaError,
+                    "Selected export orgIds were not found",
+                ):
+                    exporter.import_dashboards(args)
+
+    def test_import_dashboards_by_export_org_creates_missing_org_and_remaps_target(self):
+        org_one_client = FakeDashboardWorkflowClient(
+            org={"id": 1, "name": "Main Org."},
+            headers={"Authorization": "Basic test"},
+        )
+        client = FakeDashboardWorkflowClient(
+            orgs=[{"id": 1, "name": "Main Org."}],
+            org_clients={"1": org_one_client},
+            headers={"Authorization": "Basic test"},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root_dir = Path(tmpdir)
+            self._write_multi_org_import_root(
+                root_dir,
+                [
+                    {
+                        "org_id": "9",
+                        "org_name": "Ops Org",
+                        "dashboards": [{"uid": "ops", "title": "Ops"}],
+                    }
+                ],
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(root_dir),
+                    "--use-export-org",
+                    "--create-missing-orgs",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(len(client.created_orgs), 1)
+            self.assertEqual(client.created_orgs[0]["name"], "Ops Org")
+            self.assertEqual(client.created_orgs[0]["orgId"], 2)
+            self.assertIn("targetOrgId=2", stdout.getvalue())
+            self.assertEqual(len(client.org_clients["2"].imported_payloads), 1)
+            self.assertEqual(
+                client.org_clients["2"].imported_payloads[0]["dashboard"]["uid"],
+                "ops",
+            )
+
+    def test_import_dashboards_by_export_org_dry_run_reports_would_create_org(self):
+        org_one_client = FakeDashboardWorkflowClient(
+            org={"id": 1, "name": "Main Org."},
+            headers={"Authorization": "Basic test"},
+        )
+        client = FakeDashboardWorkflowClient(
+            orgs=[{"id": 1, "name": "Main Org."}],
+            org_clients={"1": org_one_client},
+            headers={"Authorization": "Basic test"},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root_dir = Path(tmpdir)
+            self._write_multi_org_import_root(
+                root_dir,
+                [
+                    {
+                        "org_id": "9",
+                        "org_name": "Ops Org",
+                        "dashboards": [{"uid": "ops", "title": "Ops"}],
+                    }
+                ],
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(root_dir),
+                    "--use-export-org",
+                    "--create-missing-orgs",
+                    "--dry-run",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(client.created_orgs, [])
+            self.assertIn("orgAction=would-create-org", stdout.getvalue())
+            self.assertIn("targetOrgId=<new>", stdout.getvalue())
+            self.assertIn("dashboards=1", stdout.getvalue())
+            self.assertEqual(org_one_client.imported_payloads, [])
+
     def test_import_dashboards_rejects_export_org_mismatch_for_token_scope(self):
         client = FakeDashboardWorkflowClient(
             org={"id": 2, "name": "Org Two"},
@@ -3825,7 +4368,7 @@ class ExporterTests(unittest.TestCase):
             with mock.patch.object(exporter, "build_client", return_value=client):
                 with self.assertRaisesRegex(
                     exporter.GrafanaError,
-                    "spans multiple orgIds",
+                    "spans multiple orgId values",
                 ):
                     exporter.import_dashboards(args)
 

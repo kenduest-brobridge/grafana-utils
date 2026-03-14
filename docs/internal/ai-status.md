@@ -5,6 +5,27 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-15 - Task: Add Routed Dashboard Import Live Smoke Coverage
+- State: Done
+- Scope: `scripts/test-rust-live-grafana.sh`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The existing Rust live Grafana smoke script covered single-org dashboard export/import/diff/dry-run and alerting flows, but it did not exercise routed dashboard import from a combined multi-org export root. There was no live smoke path for `--use-export-org`, `--only-org-id`, `--create-missing-orgs`, or the new routed dry-run org preview semantics.
+- Current Update: Extended the Rust live smoke script to create a second org and dashboard, export dashboards with `--all-orgs`, verify routed dry-run preview for one selected org, verify routed `--create-missing-orgs --dry-run` reports a would-create state after deleting that org, and verify live `--use-export-org --create-missing-orgs` recreates the org and restores its dashboard.
+- Result: The checked-in Rust live smoke harness now covers routed multi-org dashboard import preview and recreate behavior in addition to the existing single-org dashboard and alerting checks.
+
+## 2026-03-15 - Task: Add Dashboard Import Org-Aware Dry-Run Preview
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/import_workflow.py`, `tests/test_python_dashboard_cli.py`, `docs/user-guide.md`, `docs/user-guide-TW.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Routed dashboard import already supported `--use-export-org`, `--only-org-id`, and live `--create-missing-orgs`, but dry-run still failed closed for missing destination orgs and refused `--create-missing-orgs --dry-run`. Operators could not preview whether each exported org already existed or would need creation before import.
+- Current Update: Changed routed dry-run so it now emits one org-level preview line per selected exported org, reporting `orgAction=exists`, `orgAction=missing-org`, or `orgAction=would-create-org` plus the source/target org ids and dashboard count. Existing target orgs still run through the current per-dashboard dry-run path, while missing-org cases stay non-mutating and skip live org creation.
+- Result: `dashboard import --use-export-org --dry-run` now previews destination-org existence and would-create behavior without mutating Grafana, both with and without `--create-missing-orgs`.
+
+## 2026-03-15 - Task: Add Dashboard Import Routing By Exported Org
+- State: Done
+- Scope: `grafana_utils/clients/dashboard_client.py`, `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/export_inventory.py`, `grafana_utils/dashboards/import_runtime.py`, `grafana_utils/dashboards/import_workflow.py`, `tests/test_python_dashboard_cli.py`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_import.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/user-guide.md`, `docs/user-guide-TW.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Dashboard import only supported one destination org per run. Operators could target the current org or one explicit `--org-id`, and `--require-matching-export-org` only acted as a safety guard. There was no way to point import at a combined `--all-orgs` export root, filter selected exported orgs, or create missing destination orgs before routed import.
+- Current Update: Added `--use-export-org` to route one combined multi-org export root back into Grafana by each exported orgId, added repeatable `--only-org-id` filtering, and added `--create-missing-orgs` so missing destination orgs can be created from the exported org name before import continues. Kept `--use-export-org` Basic-auth-only, blocked incompatible flag combinations, and later extended routed dry-run so `--create-missing-orgs --dry-run` now previews `would-create` org state instead of failing closed.
+- Result: Dashboard import can now replay multi-org exports back into matching org contexts with explicit filtering and optional destination-org creation, while the existing single-org import workflow remains unchanged.
+
 ## 2026-03-15 - Task: Add Safer Access User Password Input
 - State: Done
 - Scope: `grafana_utils/access/parser.py`, `grafana_utils/access/workflows.py`, `grafana_utils/access_cli.py`, `tests/test_python_access_cli.py`, `rust/src/access_cli_defs.rs`, `rust/src/access_user.rs`, `rust/src/access_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

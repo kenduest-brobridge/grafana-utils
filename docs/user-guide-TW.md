@@ -191,8 +191,11 @@ tempo-prod         tempo-prod         tempo        false
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--import-dir`（必需） | 必須指向 `raw/` 目錄 | 不要指向整個 export root |
+| `--import-dir`（必需） | 指向 `raw/` 目錄或 multi-org export root | 一般匯入用 `raw/`；搭配 `--use-export-org` 時改指向整個匯出根目錄 |
 | `--org-id` | 匯入到目標 org | 搭配 basic auth 使用 |
+| `--use-export-org` | 依 export 內 org 路由回 Grafana | 匯入 `--all-orgs` 產生的整體匯出根目錄 |
+| `--only-org-id` | 限制 `--use-export-org` 只匯入指定 source org | 可重複指定多個 org |
+| `--create-missing-orgs` | 路由匯入前自動建立缺少的目標 org | 僅限 `--use-export-org`；搭配 `--dry-run` 時只預覽 `would-create-org`，不真的建立 |
 | `--import-folder-uid` | 強制匯入到指定 folder uid | 目錄整理統一時使用 |
 | `--ensure-folders` | 遇到缺少 folder 自動建立 | 大批匯入前配合 `--dry-run` 驗證 |
 | `--replace-existing` | 已存在即覆蓋更新 | 跨環境遷移常用 |

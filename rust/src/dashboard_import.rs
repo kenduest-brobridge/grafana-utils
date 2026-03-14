@@ -6,17 +6,22 @@ use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::common::{message, object_field, string_field, value_as_object, Result};
 use crate::http::{JsonHttpClient, JsonHttpClientConfig};
 
 use super::*;
 
-fn validate_import_org_auth(context: &DashboardAuthContext, org_id: Option<i64>) -> Result<()> {
-    if org_id.is_some() && context.auth_mode != "basic" {
+fn validate_import_org_auth(context: &DashboardAuthContext, args: &ImportArgs) -> Result<()> {
+    if args.org_id.is_some() && context.auth_mode != "basic" {
         return Err(message(
             "Dashboard import with --org-id requires Basic auth (--basic-user / --basic-password).",
+        ));
+    }
+    if args.use_export_org && context.auth_mode != "basic" {
+        return Err(message(
+            "Dashboard import with --use-export-org requires Basic auth (--basic-user / --basic-password).",
         ));
     }
     Ok(())
@@ -24,7 +29,7 @@ fn validate_import_org_auth(context: &DashboardAuthContext, org_id: Option<i64>)
 
 pub(crate) fn build_import_auth_context(args: &ImportArgs) -> Result<DashboardAuthContext> {
     let mut context = build_auth_context(&args.common)?;
-    validate_import_org_auth(&context, args.org_id)?;
+    validate_import_org_auth(&context, args)?;
     if let Some(org_id) = args.org_id {
         context
             .headers
@@ -73,6 +78,212 @@ fn load_export_org_ids(
     Ok(org_ids)
 }
 
+fn load_export_org_names(
+    import_dir: &Path,
+    metadata: Option<&ExportMetadata>,
+) -> Result<std::collections::BTreeSet<String>> {
+    let mut org_names = std::collections::BTreeSet::new();
+    let index_file = metadata
+        .map(|item| item.index_file.clone())
+        .unwrap_or_else(|| "index.json".to_string());
+    let index_path = import_dir.join(&index_file);
+    if index_path.is_file() {
+        let raw = fs::read_to_string(&index_path)?;
+        let entries: Vec<VariantIndexEntry> = serde_json::from_str(&raw).map_err(|error| {
+            message(format!(
+                "Invalid dashboard export index in {}: {error}",
+                index_path.display()
+            ))
+        })?;
+        for entry in entries {
+            let org_name = entry.org.trim();
+            if !org_name.is_empty() {
+                org_names.insert(org_name.to_string());
+            }
+        }
+    }
+
+    for folder in load_folder_inventory(import_dir, metadata)? {
+        let org_name = folder.org.trim();
+        if !org_name.is_empty() {
+            org_names.insert(org_name.to_string());
+        }
+    }
+    for datasource in load_datasource_inventory(import_dir, metadata)? {
+        let org_name = datasource.org.trim();
+        if !org_name.is_empty() {
+            org_names.insert(org_name.to_string());
+        }
+    }
+    Ok(org_names)
+}
+
+#[derive(Debug, Clone)]
+struct ExportOrgImportScope {
+    source_org_id: i64,
+    source_org_name: String,
+    import_dir: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ExportOrgTargetPlan {
+    source_org_id: i64,
+    source_org_name: String,
+    target_org_id: Option<i64>,
+    org_action: &'static str,
+    import_dir: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct ImportDryRunReport {
+    pub mode: String,
+    pub import_dir: PathBuf,
+    pub folder_statuses: Vec<FolderInventoryStatus>,
+    pub dashboard_records: Vec<[String; 8]>,
+    pub skipped_missing_count: usize,
+    pub skipped_folder_mismatch_count: usize,
+}
+
+fn org_id_string_from_value(value: Option<&Value>) -> String {
+    match value {
+        Some(Value::String(text)) => text.trim().to_string(),
+        Some(Value::Number(number)) => number.to_string(),
+        _ => String::new(),
+    }
+}
+
+fn parse_export_org_scope(import_root: &Path, raw_dir: &Path) -> Result<ExportOrgImportScope> {
+    let metadata = load_export_metadata(raw_dir, Some(RAW_EXPORT_SUBDIR))?;
+    let export_org_ids = load_export_org_ids(raw_dir, metadata.as_ref())?;
+    if export_org_ids.is_empty() {
+        return Err(message(format!(
+            "Cannot route import by export org for {}: raw export orgId metadata was not found in index.json, folders.json, or datasources.json.",
+            raw_dir.display()
+        )));
+    }
+    if export_org_ids.len() > 1 {
+        return Err(message(format!(
+            "Cannot route import by export org for {}: found multiple export orgIds ({}).",
+            raw_dir.display(),
+            export_org_ids.into_iter().collect::<Vec<String>>().join(", ")
+        )));
+    }
+    let source_org_id_text = export_org_ids.into_iter().next().unwrap_or_default();
+    let source_org_id = source_org_id_text.parse::<i64>().map_err(|_| {
+        message(format!(
+            "Cannot route import by export org for {}: export orgId '{}' is not a valid integer.",
+            raw_dir.display(),
+            source_org_id_text
+        ))
+    })?;
+    let org_names = load_export_org_names(raw_dir, metadata.as_ref())?;
+    if org_names.len() > 1 {
+        return Err(message(format!(
+            "Cannot route import by export org for {}: found multiple export org names ({}).",
+            raw_dir.display(),
+            org_names.into_iter().collect::<Vec<String>>().join(", ")
+        )));
+    }
+    let source_org_name = org_names.into_iter().next().unwrap_or_else(|| {
+        import_root
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("org")
+            .to_string()
+    });
+    Ok(ExportOrgImportScope {
+        source_org_id,
+        source_org_name,
+        import_dir: raw_dir.to_path_buf(),
+    })
+}
+
+fn discover_export_org_import_scopes(args: &ImportArgs) -> Result<Vec<ExportOrgImportScope>> {
+    if !args.use_export_org {
+        return Ok(Vec::new());
+    }
+    if args.import_dir.join(EXPORT_METADATA_FILENAME).is_file() {
+        return Err(message(
+            "Dashboard import with --use-export-org expects the combined export root, not one raw/ export directory.",
+        ));
+    }
+    let selected_org_ids: std::collections::BTreeSet<i64> = args.only_org_id.iter().copied().collect();
+    let mut scopes = Vec::new();
+    for entry in fs::read_dir(&args.import_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let Some(name) = path.file_name().and_then(|item| item.to_str()) else {
+            continue;
+        };
+        if !name.starts_with("org_") {
+            continue;
+        }
+        let raw_dir = path.join(RAW_EXPORT_SUBDIR);
+        if !raw_dir.is_dir() {
+            continue;
+        }
+        let scope = parse_export_org_scope(&path, &raw_dir)?;
+        if !selected_org_ids.is_empty() && !selected_org_ids.contains(&scope.source_org_id) {
+            continue;
+        }
+        scopes.push(scope);
+    }
+    scopes.sort_by(|left, right| left.source_org_id.cmp(&right.source_org_id));
+    if scopes.is_empty() {
+        if selected_org_ids.is_empty() {
+            return Err(message(format!(
+                "Dashboard import with --use-export-org did not find any org-specific raw exports under {}.",
+                args.import_dir.display()
+            )));
+        }
+        return Err(message(format!(
+            "Dashboard import with --use-export-org did not find the selected exported org IDs ({}) under {}.",
+            selected_org_ids
+                .into_iter()
+                .map(|id| id.to_string())
+                .collect::<Vec<String>>()
+                .join(", "),
+            args.import_dir.display()
+        )));
+    }
+    let found_org_ids: std::collections::BTreeSet<i64> =
+        scopes.iter().map(|scope| scope.source_org_id).collect();
+    let missing_org_ids: Vec<String> = selected_org_ids
+        .difference(&found_org_ids)
+        .map(|id| id.to_string())
+        .collect();
+    if !missing_org_ids.is_empty() {
+        return Err(message(format!(
+            "Dashboard import with --use-export-org did not find the selected exported org IDs ({}).",
+            missing_org_ids.join(", ")
+        )));
+    }
+    Ok(scopes)
+}
+
+fn create_org_with_request<F>(mut request_json: F, org_name: &str) -> Result<Map<String, Value>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    match request_json(
+        Method::POST,
+        "/api/orgs",
+        &[],
+        Some(&Value::Object(Map::from_iter(vec![(
+            "name".to_string(),
+            Value::String(org_name.to_string()),
+        )]))),
+    )? {
+        Some(Value::Object(object)) => Ok(object),
+        _ => Err(message(
+            "Unexpected organization create response from Grafana during dashboard import.",
+        )),
+    }
+}
+
 fn resolve_import_target_org_id_with_request<F>(
     mut request_json: F,
     args: &ImportArgs,
@@ -90,7 +301,9 @@ where
 fn validate_matching_export_org_with_request<F>(
     mut request_json: F,
     args: &ImportArgs,
+    import_dir: &Path,
     metadata: Option<&ExportMetadata>,
+    target_org_id_override: Option<i64>,
 ) -> Result<()>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -98,7 +311,7 @@ where
     if !args.require_matching_export_org {
         return Ok(());
     }
-    let export_org_ids = load_export_org_ids(&args.import_dir, metadata)?;
+    let export_org_ids = load_export_org_ids(import_dir, metadata)?;
     if export_org_ids.is_empty() {
         return Err(message(
             "Cannot verify exported org for import: raw export orgId metadata was not found in index.json, folders.json, or datasources.json.",
@@ -114,13 +327,90 @@ where
         )));
     }
     let export_org_id = export_org_ids.into_iter().next().unwrap_or_default();
-    let target_org_id = resolve_import_target_org_id_with_request(&mut request_json, args)?;
+    let target_org_id = match target_org_id_override {
+        Some(org_id) => org_id.to_string(),
+        None => resolve_import_target_org_id_with_request(&mut request_json, args)?,
+    };
     if export_org_id != target_org_id {
         return Err(message(format!(
             "Dashboard import export org mismatch: raw export orgId {export_org_id} does not match target org {target_org_id}. Use matching credentials/org selection or omit --require-matching-export-org."
         )));
     }
     Ok(())
+}
+
+fn resolve_target_org_plan_for_export_scope_with_request<F>(
+    mut request_json: F,
+    args: &ImportArgs,
+    scope: &ExportOrgImportScope,
+) -> Result<ExportOrgTargetPlan>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let orgs = super::dashboard_list::list_orgs_with_request(&mut request_json)?;
+    for org in &orgs {
+        let org_id_text = org_id_string_from_value(org.get("id"));
+        if org_id_text == scope.source_org_id.to_string() {
+            return Ok(ExportOrgTargetPlan {
+                source_org_id: scope.source_org_id,
+                source_org_name: scope.source_org_name.clone(),
+                target_org_id: Some(scope.source_org_id),
+                org_action: "exists",
+                import_dir: scope.import_dir.clone(),
+            });
+        }
+    }
+    if args.dry_run && !args.create_missing_orgs {
+        return Ok(ExportOrgTargetPlan {
+            source_org_id: scope.source_org_id,
+            source_org_name: scope.source_org_name.clone(),
+            target_org_id: None,
+            org_action: "missing",
+            import_dir: scope.import_dir.clone(),
+        });
+    }
+    if !args.create_missing_orgs {
+        return Err(message(format!(
+            "Dashboard import could not find destination Grafana org {} ({}) for --use-export-org. Use --create-missing-orgs to create it first.",
+            scope.source_org_id, scope.source_org_name
+        )));
+    }
+    if scope.source_org_name.trim().is_empty() {
+        return Err(message(format!(
+            "Dashboard import with --create-missing-orgs could not determine an exported org name for source orgId {}.",
+            scope.source_org_id
+        )));
+    }
+    if args.dry_run {
+        return Ok(ExportOrgTargetPlan {
+            source_org_id: scope.source_org_id,
+            source_org_name: scope.source_org_name.clone(),
+            target_org_id: None,
+            org_action: "would-create",
+            import_dir: scope.import_dir.clone(),
+        });
+    }
+    let created = create_org_with_request(&mut request_json, &scope.source_org_name)?;
+    let created_org_id = org_id_string_from_value(created.get("orgId").or_else(|| created.get("id")));
+    if created_org_id.is_empty() {
+        return Err(message(format!(
+            "Grafana did not return a usable orgId after creating destination org '{}' for exported org {}.",
+            scope.source_org_name, scope.source_org_id
+        )));
+    }
+    let parsed_org_id = created_org_id.parse::<i64>().map_err(|_| {
+        message(format!(
+            "Grafana returned non-numeric orgId '{}' after creating destination org '{}' for exported org {}.",
+            created_org_id, scope.source_org_name, scope.source_org_id
+        ))
+    })?;
+    Ok(ExportOrgTargetPlan {
+        source_org_id: scope.source_org_id,
+        source_org_name: scope.source_org_name.clone(),
+        target_org_id: Some(parsed_org_id),
+        org_action: "created",
+        import_dir: scope.import_dir.clone(),
+    })
 }
 
 fn build_compare_document(dashboard: &Map<String, Value>, folder_uid: Option<&str>) -> Value {
@@ -613,6 +903,72 @@ pub(crate) fn render_import_dry_run_table(
     lines
 }
 
+fn build_routed_import_org_row(plan: &ExportOrgTargetPlan, dashboard_count: usize) -> [String; 5] {
+    [
+        plan.source_org_id.to_string(),
+        if plan.source_org_name.is_empty() {
+            "-".to_string()
+        } else {
+            plan.source_org_name.clone()
+        },
+        plan.org_action.to_string(),
+        plan.target_org_id
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "<new>".to_string()),
+        dashboard_count.to_string(),
+    ]
+}
+
+pub(crate) fn render_routed_import_org_table(
+    rows: &[[String; 5]],
+    include_header: bool,
+) -> Vec<String> {
+    let headers = [
+        "SOURCE_ORG_ID",
+        "SOURCE_ORG_NAME",
+        "ORG_ACTION",
+        "TARGET_ORG_ID",
+        "DASHBOARD_COUNT",
+    ];
+    let mut widths = headers.map(str::len);
+    for row in rows {
+        for (index, value) in row.iter().enumerate() {
+            widths[index] = widths[index].max(value.len());
+        }
+    }
+    let format_row = |values: &[String; 5]| -> String {
+        values
+            .iter()
+            .enumerate()
+            .map(|(index, value)| format!("{value:<width$}", width = widths[index]))
+            .collect::<Vec<String>>()
+            .join("  ")
+    };
+    let mut lines = Vec::new();
+    if include_header {
+        let header_values = [
+            headers[0].to_string(),
+            headers[1].to_string(),
+            headers[2].to_string(),
+            headers[3].to_string(),
+            headers[4].to_string(),
+        ];
+        let divider_values = [
+            "-".repeat(widths[0]),
+            "-".repeat(widths[1]),
+            "-".repeat(widths[2]),
+            "-".repeat(widths[3]),
+            "-".repeat(widths[4]),
+        ];
+        lines.push(format_row(&header_values));
+        lines.push(format_row(&divider_values));
+    }
+    for row in rows {
+        lines.push(format_row(row));
+    }
+    lines
+}
+
 fn resolve_dashboard_import_table_columns(
     records: &[[String; 8]],
     selected_columns: Option<&[String]>,
@@ -726,6 +1082,228 @@ pub(crate) fn render_import_dry_run_json(
     Ok(serde_json::to_string_pretty(&payload)?)
 }
 
+fn build_import_dry_run_json_value(report: &ImportDryRunReport) -> Value {
+    let folders = report
+        .folder_statuses
+        .iter()
+        .map(|status| {
+            let (destination, status_label, reason) = match status.kind {
+                FolderInventoryStatusKind::Missing => {
+                    ("missing", "missing", "would-create".to_string())
+                }
+                FolderInventoryStatusKind::Matches => ("exists", "match", String::new()),
+                FolderInventoryStatusKind::Mismatch => {
+                    let mut reasons = Vec::new();
+                    if status.actual_title.as_deref() != Some(status.expected_title.as_str()) {
+                        reasons.push("title");
+                    }
+                    if status.actual_parent_uid != status.expected_parent_uid {
+                        reasons.push("parentUid");
+                    }
+                    if status.actual_path.as_deref() != Some(status.expected_path.as_str()) {
+                        reasons.push("path");
+                    }
+                    ("exists", "mismatch", reasons.join(","))
+                }
+            };
+            serde_json::json!({
+                "uid": status.uid,
+                "destination": destination,
+                "status": status_label,
+                "reason": reason,
+                "expectedPath": status.expected_path,
+                "actualPath": status.actual_path.clone().unwrap_or_default(),
+            })
+        })
+        .collect::<Vec<Value>>();
+    let dashboards = report
+        .dashboard_records
+        .iter()
+        .map(|row| {
+            serde_json::json!({
+                "uid": row[0],
+                "destination": row[1],
+                "action": row[2],
+                "folderPath": row[3],
+                "sourceFolderPath": row[4],
+                "destinationFolderPath": row[5],
+                "reason": row[6],
+                "file": row[7],
+            })
+        })
+        .collect::<Vec<Value>>();
+    serde_json::json!({
+        "mode": report.mode,
+        "folders": folders,
+        "dashboards": dashboards,
+        "summary": {
+            "importDir": report.import_dir.display().to_string(),
+            "folderCount": report.folder_statuses.len(),
+            "missingFolders": report.folder_statuses.iter().filter(|status| status.kind == FolderInventoryStatusKind::Missing).count(),
+            "mismatchedFolders": report.folder_statuses.iter().filter(|status| status.kind == FolderInventoryStatusKind::Mismatch).count(),
+            "dashboardCount": report.dashboard_records.len(),
+            "missingDashboards": report.dashboard_records.iter().filter(|row| row[1] == "missing").count(),
+            "skippedMissingDashboards": report.skipped_missing_count,
+            "skippedFolderMismatchDashboards": report.skipped_folder_mismatch_count,
+        }
+    })
+}
+
+pub(crate) fn build_routed_import_dry_run_json_document(
+    orgs: &[Value],
+    imports: &[Value],
+) -> Result<String> {
+    let payload = serde_json::json!({
+        "mode": "routed-import-preview",
+        "orgs": orgs,
+        "imports": imports,
+        "summary": {
+            "orgCount": orgs.len(),
+            "existingOrgCount": orgs.iter().filter(|entry| entry.get("orgAction") == Some(&Value::String("exists".to_string()))).count(),
+            "missingOrgCount": orgs.iter().filter(|entry| entry.get("orgAction") == Some(&Value::String("missing".to_string()))).count(),
+            "wouldCreateOrgCount": orgs.iter().filter(|entry| entry.get("orgAction") == Some(&Value::String("would-create".to_string()))).count(),
+            "dashboardCount": orgs.iter().map(|entry| entry.get("dashboardCount").and_then(Value::as_u64).unwrap_or(0)).sum::<u64>(),
+        }
+    });
+    Ok(serde_json::to_string_pretty(&payload)?)
+}
+
+pub(crate) fn collect_import_dry_run_report_with_request<F>(
+    mut request_json: F,
+    args: &ImportArgs,
+) -> Result<ImportDryRunReport>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let metadata = load_export_metadata(&args.import_dir, Some(RAW_EXPORT_SUBDIR))?;
+    validate_matching_export_org_with_request(
+        &mut request_json,
+        args,
+        &args.import_dir,
+        metadata.as_ref(),
+        None,
+    )?;
+    let folder_inventory = if args.ensure_folders {
+        load_folder_inventory(&args.import_dir, metadata.as_ref())?
+    } else {
+        Vec::new()
+    };
+    if args.ensure_folders && folder_inventory.is_empty() {
+        let folders_file = metadata
+            .as_ref()
+            .and_then(|item| item.folders_file.as_deref())
+            .unwrap_or(FOLDER_INVENTORY_FILENAME);
+        return Err(message(format!(
+            "Folder inventory file not found for --ensure-folders: {}. Re-export dashboards with raw folder inventory or omit --ensure-folders.",
+            args.import_dir.join(folders_file).display()
+        )));
+    }
+    let folder_statuses = if args.ensure_folders {
+        collect_folder_inventory_statuses_with_request(&mut request_json, &folder_inventory)?
+    } else {
+        Vec::new()
+    };
+    let folders_by_uid: BTreeMap<String, FolderInventoryItem> = folder_inventory
+        .into_iter()
+        .map(|item| (item.uid.clone(), item))
+        .collect();
+    let mut dashboard_files = discover_dashboard_files(&args.import_dir)?;
+    dashboard_files.retain(|path| {
+        path.file_name().and_then(|name| name.to_str()) != Some(FOLDER_INVENTORY_FILENAME)
+    });
+    let effective_replace_existing = args.replace_existing || args.update_existing_only;
+    let mut dashboard_records: Vec<[String; 8]> = Vec::new();
+    for dashboard_file in &dashboard_files {
+        let document = load_json_file(dashboard_file)?;
+        let document_object =
+            value_as_object(&document, "Dashboard payload must be a JSON object.")?;
+        let dashboard = extract_dashboard_object(document_object)?;
+        let uid = string_field(dashboard, "uid", "");
+        let source_folder_path = if args.require_matching_folder_path {
+            Some(resolve_source_dashboard_folder_path(
+                &document,
+                dashboard_file,
+                &args.import_dir,
+                &folders_by_uid,
+            )?)
+        } else {
+            None
+        };
+        let folder_uid_override = determine_import_folder_uid_override_with_request(
+            &mut request_json,
+            &uid,
+            args.import_folder_uid.as_deref(),
+            effective_replace_existing,
+        )?;
+        let payload = build_import_payload(
+            &document,
+            folder_uid_override.as_deref(),
+            effective_replace_existing,
+            &args.import_message,
+        )?;
+        let action = determine_dashboard_import_action_with_request(
+            &mut request_json,
+            &payload,
+            args.replace_existing,
+            args.update_existing_only,
+        )?;
+        let destination_folder_path = if args.require_matching_folder_path {
+            resolve_existing_dashboard_folder_path_with_request(&mut request_json, &uid)?
+        } else {
+            None
+        };
+        let (
+            folder_paths_match,
+            folder_match_reason,
+            normalized_source_folder_path,
+            normalized_destination_folder_path,
+        ) = if args.require_matching_folder_path {
+            build_folder_path_match_result(
+                source_folder_path.as_deref(),
+                destination_folder_path.as_deref(),
+                destination_folder_path.is_some(),
+                true,
+            )
+        } else {
+            (true, "", String::new(), None)
+        };
+        let action = apply_folder_path_guard_to_action(action, folder_paths_match);
+        let folder_path = resolve_dashboard_import_folder_path_with_request(
+            &mut request_json,
+            &payload,
+            &folders_by_uid,
+        )?;
+        dashboard_records.push(build_import_dry_run_record(
+            dashboard_file,
+            &uid,
+            action,
+            &folder_path,
+            &normalized_source_folder_path,
+            normalized_destination_folder_path.as_deref(),
+            &folder_match_reason,
+        ));
+    }
+    Ok(ImportDryRunReport {
+        mode: describe_dashboard_import_mode(args.replace_existing, args.update_existing_only)
+            .to_string(),
+        import_dir: args.import_dir.clone(),
+        folder_statuses,
+        skipped_missing_count: if args.update_existing_only {
+            dashboard_records
+                .iter()
+                .filter(|record| record[2] == "skip-missing")
+                .count()
+        } else {
+            0
+        },
+        skipped_folder_mismatch_count: dashboard_records
+            .iter()
+            .filter(|record| record[2] == "skip-folder-mismatch")
+            .count(),
+        dashboard_records,
+    })
+}
+
 pub(crate) fn format_import_progress_line(
     current: usize,
     total: usize,
@@ -825,7 +1403,13 @@ where
         ));
     }
     let metadata = load_export_metadata(&args.import_dir, Some(RAW_EXPORT_SUBDIR))?;
-    validate_matching_export_org_with_request(&mut request_json, args, metadata.as_ref())?;
+    validate_matching_export_org_with_request(
+        &mut request_json,
+        args,
+        &args.import_dir,
+        metadata.as_ref(),
+        None,
+    )?;
     let folder_inventory = if args.ensure_folders {
         load_folder_inventory(&args.import_dir, metadata.as_ref())?
     } else {
@@ -1208,16 +1792,202 @@ pub fn import_dashboards_with_client(client: &JsonHttpClient, args: &ImportArgs)
     )
 }
 
+pub(crate) fn build_routed_import_dry_run_json_with_request<F, G>(
+    mut request_json: F,
+    mut collect_preview_for_org: G,
+    args: &ImportArgs,
+) -> Result<String>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+    G: FnMut(i64, &ImportArgs) -> Result<ImportDryRunReport>,
+{
+    let scopes = discover_export_org_import_scopes(args)?;
+    let mut orgs = Vec::new();
+    let mut imports = Vec::new();
+    for scope in scopes {
+        let target_plan = resolve_target_org_plan_for_export_scope_with_request(
+            &mut request_json,
+            args,
+            &scope,
+        )?;
+        let dashboard_count = discover_dashboard_files(&target_plan.import_dir)?
+            .into_iter()
+            .filter(|path| {
+                path.file_name().and_then(|name| name.to_str()) != Some(FOLDER_INVENTORY_FILENAME)
+            })
+            .count();
+        orgs.push(serde_json::json!({
+            "sourceOrgId": target_plan.source_org_id,
+            "sourceOrgName": target_plan.source_org_name,
+            "orgAction": target_plan.org_action,
+            "targetOrgId": target_plan.target_org_id,
+            "dashboardCount": dashboard_count,
+            "importDir": target_plan.import_dir.display().to_string(),
+        }));
+        let preview = if let Some(target_org_id) = target_plan.target_org_id {
+            let mut scoped_args = args.clone();
+            scoped_args.org_id = Some(target_org_id);
+            scoped_args.use_export_org = false;
+            scoped_args.only_org_id = Vec::new();
+            scoped_args.create_missing_orgs = false;
+            scoped_args.import_dir = target_plan.import_dir.clone();
+            build_import_dry_run_json_value(&collect_preview_for_org(target_org_id, &scoped_args)?)
+        } else {
+            serde_json::json!({
+                "mode": describe_dashboard_import_mode(args.replace_existing, args.update_existing_only),
+                "folders": [],
+                "dashboards": [],
+                "summary": {
+                    "importDir": target_plan.import_dir.display().to_string(),
+                    "folderCount": 0,
+                    "missingFolders": 0,
+                    "mismatchedFolders": 0,
+                    "dashboardCount": dashboard_count,
+                    "missingDashboards": 0,
+                    "skippedMissingDashboards": 0,
+                    "skippedFolderMismatchDashboards": 0,
+                }
+            })
+        };
+        let mut import_entry = serde_json::Map::new();
+        import_entry.insert(
+            "sourceOrgId".to_string(),
+            Value::from(target_plan.source_org_id),
+        );
+        import_entry.insert(
+            "sourceOrgName".to_string(),
+            Value::from(target_plan.source_org_name.clone()),
+        );
+        import_entry.insert(
+            "orgAction".to_string(),
+            Value::from(target_plan.org_action),
+        );
+        import_entry.insert(
+            "targetOrgId".to_string(),
+            target_plan
+                .target_org_id
+                .map(Value::from)
+                .unwrap_or(Value::Null),
+        );
+        if let Some(preview_object) = preview.as_object() {
+            for (key, value) in preview_object {
+                import_entry.insert(key.clone(), value.clone());
+            }
+        }
+        imports.push(Value::Object(import_entry));
+    }
+    build_routed_import_dry_run_json_document(&orgs, &imports)
+}
+
+pub(crate) fn import_dashboards_by_export_org_with_request<F, G, H>(
+    mut request_json: F,
+    mut import_for_org: G,
+    collect_preview_for_org: H,
+    args: &ImportArgs,
+) -> Result<usize>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+    G: FnMut(i64, &ImportArgs) -> Result<usize>,
+    H: FnMut(i64, &ImportArgs) -> Result<ImportDryRunReport>,
+{
+    let scopes = discover_export_org_import_scopes(args)?;
+    if args.dry_run && args.json {
+        println!(
+            "{}",
+            build_routed_import_dry_run_json_with_request(
+                request_json,
+                collect_preview_for_org,
+                args,
+            )?
+        );
+        return Ok(0);
+    }
+    let mut imported_count = 0;
+    let mut org_rows = Vec::new();
+    let mut resolved_plans = Vec::new();
+    for scope in scopes {
+        let target_plan = resolve_target_org_plan_for_export_scope_with_request(
+            &mut request_json,
+            args,
+            &scope,
+        )?;
+        let dashboard_count = discover_dashboard_files(&target_plan.import_dir)?
+            .into_iter()
+            .filter(|path| {
+                path.file_name().and_then(|name| name.to_str()) != Some(FOLDER_INVENTORY_FILENAME)
+            })
+            .count();
+        org_rows.push(build_routed_import_org_row(&target_plan, dashboard_count));
+        resolved_plans.push(target_plan);
+    }
+    if args.dry_run && args.table {
+        for line in render_routed_import_org_table(&org_rows, !args.no_header) {
+            println!("{line}");
+        }
+        return Ok(0);
+    }
+    for target_plan in resolved_plans {
+        let target_org_id_label = target_plan
+            .target_org_id
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "-".to_string());
+        if !args.table {
+            println!(
+                "Importing export orgId={} name={} orgAction={} targetOrgId={} from {}",
+                target_plan.source_org_id,
+                if target_plan.source_org_name.is_empty() {
+                    "-"
+                } else {
+                    &target_plan.source_org_name
+                },
+                target_plan.org_action,
+                target_org_id_label,
+                target_plan.import_dir.display()
+            );
+        }
+        let Some(target_org_id) = target_plan.target_org_id else {
+            continue;
+        };
+        let mut scoped_args = args.clone();
+        scoped_args.org_id = Some(target_org_id);
+        scoped_args.use_export_org = false;
+        scoped_args.only_org_id = Vec::new();
+        scoped_args.create_missing_orgs = false;
+        scoped_args.import_dir = target_plan.import_dir.clone();
+        imported_count += import_for_org(target_org_id, &scoped_args)?;
+    }
+    Ok(imported_count)
+}
+
 pub(crate) fn import_dashboards_with_org_clients(args: &ImportArgs) -> Result<usize> {
     let context = build_import_auth_context(args)?;
     let client = JsonHttpClient::new(JsonHttpClientConfig {
-        base_url: context.url,
-        headers: context.headers,
+        base_url: context.url.clone(),
+        headers: context.headers.clone(),
         timeout_secs: context.timeout,
         verify_ssl: context.verify_ssl,
     })?;
-    import_dashboards_with_request(
+    if !args.use_export_org {
+        return import_dashboards_with_request(
+            |method, path, params, payload| client.request_json(method, path, params, payload),
+            args,
+        );
+    }
+    import_dashboards_by_export_org_with_request(
         |method, path, params, payload| client.request_json(method, path, params, payload),
+        |target_org_id, scoped_args| {
+            let scoped_client = build_http_client_for_org(&args.common, target_org_id)?;
+            import_dashboards_with_client(&scoped_client, scoped_args)
+        },
+        |target_org_id, scoped_args| {
+            let scoped_client = build_http_client_for_org(&args.common, target_org_id)?;
+            collect_import_dry_run_report_with_request(
+                |method, path, params, payload| {
+                    scoped_client.request_json(method, path, params, payload)
+                },
+                scoped_args,
+            )
+        },
         args,
     )
 }
