@@ -7,10 +7,15 @@ Primary command surface:
 - `grafana-utils access user modify`
 - `grafana-utils access user delete`
 - `grafana-utils access team list`
+- `grafana-utils access team add`
 - `grafana-utils access team modify`
+- `grafana-utils access team delete`
+- `grafana-utils access group ...`
 - `grafana-utils access service-account list`
 - `grafana-utils access service-account add`
+- `grafana-utils access service-account delete`
 - `grafana-utils access service-account token add`
+- `grafana-utils access service-account token delete`
 
 Design notes:
 - org-scoped listing can use token auth or Basic auth
@@ -22,7 +27,6 @@ Design notes:
 """
 
 import argparse
-import base64
 import csv
 import getpass
 import json
@@ -66,8 +70,18 @@ from .access.models import (
     serialize_service_account_token_row,
     serialize_user_row,
 )
+from .access.pending_cli_staging import (
+    add_service_account_delete_cli_args,
+    add_service_account_token_delete_cli_args,
+    add_team_delete_cli_args,
+    normalize_group_alias_argv,
+    resolve_service_account_id,
+    resolve_service_account_token_record,
+    resolve_team_id,
+    validate_destructive_confirmed,
+)
+from .auth_staging import AuthConfigError, resolve_auth_from_namespace
 from .clients.access_client import GrafanaAccessClient
-from .http_transport import build_json_http_transport
 
 
 DEFAULT_URL = "http://127.0.0.1:3000"
@@ -179,9 +193,16 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
     add_common_cli_args(team_modify_parser)
     add_team_modify_cli_args(team_modify_parser)
 
+    team_delete_parser = team_subparsers.add_parser(
+        "delete",
+        help="Delete a Grafana team.",
+    )
+    add_common_cli_args(team_delete_parser)
+    add_team_delete_cli_args(team_delete_parser)
+
     service_account_parser = subparsers.add_parser(
         "service-account",
-        help="List and create Grafana service accounts.",
+        help="List, create, and delete Grafana service accounts.",
     )
     service_account_subparsers = service_account_parser.add_subparsers(dest="command")
     service_account_subparsers.required = True
@@ -200,6 +221,13 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
     add_common_cli_args(service_account_add_parser)
     add_service_account_add_cli_args(service_account_add_parser)
 
+    service_account_delete_parser = service_account_subparsers.add_parser(
+        "delete",
+        help="Delete a Grafana service account.",
+    )
+    add_common_cli_args(service_account_delete_parser)
+    add_service_account_delete_cli_args(service_account_delete_parser)
+
     service_account_token_parser = service_account_subparsers.add_parser(
         "token",
         help="Manage Grafana service-account tokens.",
@@ -215,6 +243,13 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
     )
     add_common_cli_args(service_account_token_add_parser)
     add_service_account_token_add_cli_args(service_account_token_add_parser)
+
+    service_account_token_delete_parser = service_account_token_subparsers.add_parser(
+        "delete",
+        help="Delete a Grafana service-account token.",
+    )
+    add_common_cli_args(service_account_token_delete_parser)
+    add_service_account_token_delete_cli_args(service_account_token_delete_parser)
     return parser
 
 
@@ -714,7 +749,9 @@ def add_service_account_token_add_cli_args(parser: argparse.ArgumentParser) -> N
 
 def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     parser = build_parser()
-    argv = list(sys.argv[1:] if argv is None else argv)
+    argv = normalize_group_alias_argv(
+        list(sys.argv[1:] if argv is None else argv)
+    )
 
     if not argv:
         parser.print_help()
@@ -725,6 +762,10 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         raise SystemExit(0)
 
     if argv == ["team"]:
+        parser._subparsers._group_actions[0].choices["team"].print_help()
+        raise SystemExit(0)
+
+    if argv == ["group"]:
         parser._subparsers._group_actions[0].choices["team"].print_help()
         raise SystemExit(0)
 
@@ -739,94 +780,60 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def env_value(name: str) -> Optional[str]:
-    import os
-
-    value = os.environ.get(name)
-    return value if value else None
-
-
 def resolve_auth(args: argparse.Namespace) -> Tuple[Dict[str, str], str]:
-    cli_token = getattr(args, "api_token", None)
-    cli_username = getattr(args, "username", None)
-    cli_password = getattr(args, "password", None)
-    prompt_password = bool(getattr(args, "prompt_password", False))
-    if cli_username is None:
-        cli_username = getattr(args, "auth_username", None)
-    if cli_password is None:
-        cli_password = getattr(args, "auth_password", None)
-
-    if cli_token and (cli_username or cli_password or prompt_password):
-        raise GrafanaError(
-            "Choose either token auth (--token / --api-token) or Basic auth "
-            "(--basic-user / --username with --basic-password / --password / --prompt-password), not both."
+    try:
+        return resolve_auth_from_namespace(
+            args,
+            prompt_reader=getpass.getpass,
         )
-    if prompt_password and cli_password:
-        raise GrafanaError(
-            "Choose either --basic-password / --password or --prompt-password, not both."
-        )
-    if cli_username and not cli_password:
-        if not prompt_password:
-            raise GrafanaError(
+    except AuthConfigError as exc:
+        message = str(exc)
+        if message == "Choose either token auth or Basic auth, not both.":
+            message = (
+                "Choose either token auth (--token / --api-token) or Basic auth "
+                "(--basic-user / --username with --basic-password / --password / "
+                "--prompt-password), not both."
+            )
+        elif (
+            message
+            == "Choose either an explicit Basic auth password or --prompt-password, not both."
+        ):
+            message = (
+                "Choose either --basic-password / --password or "
+                "--prompt-password, not both."
+            )
+        elif (
+            message
+            == "Basic auth requires both username and password or --prompt-password."
+        ):
+            message = (
                 "Basic auth requires both --basic-user / --username and "
                 "--basic-password / --password or --prompt-password."
             )
-    if cli_password and not cli_username:
-        raise GrafanaError(
-            "Basic auth requires both --basic-user / --username and "
-            "--basic-password / --password or --prompt-password."
-        )
-    if prompt_password and not cli_username:
-        raise GrafanaError(
-            "--prompt-password requires --basic-user / --username."
-        )
-
-    if cli_token:
-        headers = {"Authorization": "Bearer %s" % cli_token}
-        return headers, "token"
-
-    if prompt_password and cli_username:
-        cli_password = getpass.getpass("Grafana Basic auth password: ")
-
-    if cli_username and cli_password:
-        encoded = base64.b64encode(
-            ("%s:%s" % (cli_username, cli_password)).encode("utf-8")
-        ).decode("ascii")
-        headers = {"Authorization": "Basic %s" % encoded}
-        return headers, "basic"
-
-    token = env_value("GRAFANA_API_TOKEN")
-    if token:
-        headers = {"Authorization": "Bearer %s" % token}
-        return headers, "token"
-
-    username = env_value("GRAFANA_USERNAME")
-    password = env_value("GRAFANA_PASSWORD")
-    if username and password:
-        encoded = base64.b64encode(
-            ("%s:%s" % (username, password)).encode("utf-8")
-        ).decode("ascii")
-        headers = {"Authorization": "Basic %s" % encoded}
-        return headers, "basic"
-    if username or password:
-        raise GrafanaError(
-            "Basic auth requires both --basic-user / --username and "
-            "--basic-password / --password or --prompt-password."
-        )
-
-    raise GrafanaError(
-        "Authentication required. Set --token / --api-token / GRAFANA_API_TOKEN "
-        "or --basic-user and --basic-password / --prompt-password / "
-        "GRAFANA_USERNAME and GRAFANA_PASSWORD."
-    )
+        elif message == "--prompt-password requires a Basic auth username.":
+            message = "--prompt-password requires --basic-user / --username."
+        elif (
+            message
+            == "Basic auth environment configuration requires both GRAFANA_USERNAME and GRAFANA_PASSWORD."
+        ):
+            message = (
+                "Basic auth requires both --basic-user / --username and "
+                "--basic-password / --password or --prompt-password."
+            )
+        elif (
+            message
+            == "Authentication required. Provide a token or Basic auth credentials."
+        ):
+            message = (
+                "Authentication required. Set --token / --api-token / "
+                "GRAFANA_API_TOKEN or --basic-user and --basic-password / "
+                "--prompt-password / GRAFANA_USERNAME and GRAFANA_PASSWORD."
+            )
+        raise GrafanaError(message)
 
 
 def build_request_headers(args: argparse.Namespace) -> Tuple[Dict[str, str], str]:
-    headers, auth_mode = resolve_auth(args)
-    org_id = getattr(args, "org_id", None)
-    if org_id:
-        headers["X-Grafana-Org-Id"] = str(org_id)
-    return headers, auth_mode
+    return resolve_auth(args)
 
 
 def validate_user_list_auth(args: argparse.Namespace, auth_mode: str) -> None:
@@ -892,6 +899,18 @@ def validate_team_modify_args(args: argparse.Namespace) -> None:
             "Team modify requires at least one of --add-member, --remove-member, "
             "--add-admin, or --remove-admin."
         )
+
+
+def validate_team_delete_auth(_auth_mode: str) -> None:
+    return None
+
+
+def validate_service_account_delete_auth(_auth_mode: str) -> None:
+    return None
+
+
+def validate_service_account_token_delete_auth(_auth_mode: str) -> None:
+    return None
 
 
 def service_account_role_to_api(value: str) -> str:
@@ -1166,6 +1185,54 @@ def format_user_summary_line(user: Dict[str, Any]) -> str:
     if teams:
         parts.append("teams=%s" % ",".join(teams))
     parts.append("scope=%s" % (user.get("scope") or ""))
+    return " ".join(parts)
+
+
+def format_deleted_team_summary_line(team: Dict[str, Any]) -> str:
+    parts = [
+        "teamId=%s" % (team.get("teamId") or ""),
+        "name=%s" % (team.get("name") or ""),
+    ]
+    email = team.get("email") or ""
+    if email:
+        parts.append("email=%s" % email)
+    message = team.get("message") or ""
+    if message:
+        parts.append("message=%s" % message)
+    return " ".join(parts)
+
+
+def format_deleted_service_account_summary_line(
+    service_account: Dict[str, Any],
+) -> str:
+    parts = [
+        "serviceAccountId=%s" % (service_account.get("serviceAccountId") or ""),
+        "name=%s" % (service_account.get("name") or ""),
+    ]
+    login = service_account.get("login") or ""
+    if login:
+        parts.append("login=%s" % login)
+    role = service_account.get("role") or ""
+    if role:
+        parts.append("role=%s" % role)
+    message = service_account.get("message") or ""
+    if message:
+        parts.append("message=%s" % message)
+    return " ".join(parts)
+
+
+def format_deleted_service_account_token_summary_line(
+    token_payload: Dict[str, Any],
+) -> str:
+    parts = [
+        "serviceAccountId=%s" % (token_payload.get("serviceAccountId") or ""),
+        "serviceAccountName=%s" % (token_payload.get("serviceAccountName") or ""),
+        "tokenId=%s" % (token_payload.get("tokenId") or ""),
+        "tokenName=%s" % (token_payload.get("tokenName") or ""),
+    ]
+    message = token_payload.get("message") or ""
+    if message:
+        parts.append("message=%s" % message)
     return " ".join(parts)
 
 
@@ -1677,6 +1744,99 @@ def add_service_account_token_with_client(
     return 0
 
 
+def delete_team_with_client(
+    args: argparse.Namespace,
+    client: GrafanaAccessClient,
+) -> int:
+    validate_destructive_confirmed(args, "Team delete")
+    team_id = resolve_team_id(client, args.team_id, args.name)
+    team_payload = client.get_team(team_id)
+    delete_payload = client.delete_team(team_id)
+    result = {
+        "teamId": str(team_payload.get("id") or team_id),
+        "name": str(team_payload.get("name") or args.name or ""),
+        "email": str(team_payload.get("email") or ""),
+        "message": str(delete_payload.get("message") or "Team deleted."),
+    }
+
+    if args.json:
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        print(format_deleted_team_summary_line(result))
+    return 0
+
+
+def delete_service_account_with_client(
+    args: argparse.Namespace,
+    client: GrafanaAccessClient,
+) -> int:
+    validate_destructive_confirmed(args, "Service-account delete")
+    service_account_id = resolve_service_account_id(
+        client,
+        args.service_account_id,
+        args.name,
+    )
+    service_account = normalize_service_account(
+        client.get_service_account(service_account_id)
+    )
+    delete_payload = client.delete_service_account(service_account_id)
+    result = serialize_service_account_row(service_account)
+    result["serviceAccountId"] = str(
+        service_account.get("id") or service_account_id
+    )
+    result["message"] = str(
+        delete_payload.get("message") or "Service account deleted."
+    )
+
+    if args.json:
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        print(format_deleted_service_account_summary_line(result))
+    return 0
+
+
+def delete_service_account_token_with_client(
+    args: argparse.Namespace,
+    client: GrafanaAccessClient,
+) -> int:
+    validate_destructive_confirmed(args, "Service-account token delete")
+    service_account_id = resolve_service_account_id(
+        client,
+        args.service_account_id,
+        args.name,
+    )
+    service_account = client.get_service_account(service_account_id)
+    token_items = client.list_service_account_tokens(service_account_id)
+    token_record = resolve_service_account_token_record(
+        token_items,
+        token_id=args.token_id,
+        token_name=args.token_name,
+    )
+    token_id = str(token_record.get("id") or "")
+    if not token_id:
+        raise GrafanaError("Service-account token lookup did not return an id.")
+
+    delete_payload = client.delete_service_account_token(
+        service_account_id,
+        token_id,
+    )
+    result = {
+        "serviceAccountId": str(service_account.get("id") or service_account_id),
+        "serviceAccountName": str(service_account.get("name") or ""),
+        "tokenId": token_id,
+        "tokenName": str(token_record.get("name") or ""),
+        "message": str(
+            delete_payload.get("message") or "Service-account token deleted."
+        ),
+    }
+
+    if args.json:
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+    else:
+        print(format_deleted_service_account_token_summary_line(result))
+    return 0
+
+
 def run(args: argparse.Namespace) -> int:
     headers, auth_mode = build_request_headers(args)
     client = GrafanaAccessClient(
@@ -1703,16 +1863,29 @@ def run(args: argparse.Namespace) -> int:
         return add_team_with_client(args, client)
     if args.resource == "team" and args.command == "modify":
         return modify_team_with_client(args, client)
+    if args.resource == "team" and args.command == "delete":
+        validate_team_delete_auth(auth_mode)
+        return delete_team_with_client(args, client)
     if args.resource == "service-account" and args.command == "list":
         return list_service_accounts_with_client(args, client)
     if args.resource == "service-account" and args.command == "add":
         return add_service_account_with_client(args, client)
+    if args.resource == "service-account" and args.command == "delete":
+        validate_service_account_delete_auth(auth_mode)
+        return delete_service_account_with_client(args, client)
     if (
         args.resource == "service-account"
         and args.command == "token"
         and args.token_command == "add"
     ):
         return add_service_account_token_with_client(args, client)
+    if (
+        args.resource == "service-account"
+        and args.command == "token"
+        and args.token_command == "delete"
+    ):
+        validate_service_account_token_delete_auth(auth_mode)
+        return delete_service_account_token_with_client(args, client)
     raise GrafanaError("Unsupported command.")
 
 

@@ -3,7 +3,12 @@ use clap::{CommandFactory, Parser};
 use serde_json::{json, Value};
 use std::path::Path;
 
-fn live_datasource(id: i64, uid: &str, name: &str, datasource_type: &str) -> serde_json::Map<String, Value> {
+fn live_datasource(
+    id: i64,
+    uid: &str,
+    name: &str,
+    datasource_type: &str,
+) -> serde_json::Map<String, Value> {
     json!({
         "id": id,
         "uid": uid,
@@ -72,7 +77,12 @@ fn resolve_match_allows_update_when_uid_exists_and_replace_existing_is_enabled()
         is_default: true,
         org_id: "1".to_string(),
     };
-    let live = vec![live_datasource(9, "prom-main", "Prometheus Main", "prometheus")];
+    let live = vec![live_datasource(
+        9,
+        "prom-main",
+        "Prometheus Main",
+        "prometheus",
+    )];
 
     let matching = resolve_match(&record, &live, true, false);
 

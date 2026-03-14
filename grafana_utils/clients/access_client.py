@@ -267,6 +267,17 @@ class GrafanaAccessClient:
             )
         return data
 
+    def delete_team(self, team_id: Any) -> Dict[str, Any]:
+        data = self.request_json(
+            "/api/teams/%s" % parse.quote(str(team_id), safe=""),
+            method="DELETE",
+        )
+        if not isinstance(data, dict):
+            raise GrafanaError(
+                "Unexpected team delete response for Grafana team %s." % team_id
+            )
+        return data
+
     def create_team(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         data = self.request_json(
             "/api/teams",
@@ -329,6 +340,44 @@ class GrafanaAccessClient:
             )
         return data
 
+    def get_service_account(self, service_account_id: Any) -> Dict[str, Any]:
+        data = self.request_json(
+            "/api/serviceaccounts/%s" % parse.quote(str(service_account_id), safe="")
+        )
+        if not isinstance(data, dict):
+            raise GrafanaError(
+                "Unexpected service-account lookup response for Grafana service account %s."
+                % service_account_id
+            )
+        return data
+
+    def delete_service_account(self, service_account_id: Any) -> Dict[str, Any]:
+        data = self.request_json(
+            "/api/serviceaccounts/%s" % parse.quote(str(service_account_id), safe=""),
+            method="DELETE",
+        )
+        if not isinstance(data, dict):
+            raise GrafanaError(
+                "Unexpected service-account delete response for Grafana service account %s."
+                % service_account_id
+            )
+        return data
+
+    def list_service_account_tokens(
+        self,
+        service_account_id: Any,
+    ) -> List[Dict[str, Any]]:
+        data = self.request_json(
+            "/api/serviceaccounts/%s/tokens"
+            % parse.quote(str(service_account_id), safe="")
+        )
+        if not isinstance(data, list):
+            raise GrafanaError(
+                "Unexpected service-account token list response for Grafana service account %s."
+                % service_account_id
+            )
+        return [item for item in data if isinstance(item, dict)]
+
     def create_service_account_token(
         self,
         service_account_id: Any,
@@ -343,5 +392,25 @@ class GrafanaAccessClient:
         if not isinstance(data, dict):
             raise GrafanaError(
                 "Unexpected service-account token create response from Grafana."
+            )
+        return data
+
+    def delete_service_account_token(
+        self,
+        service_account_id: Any,
+        token_id: Any,
+    ) -> Dict[str, Any]:
+        data = self.request_json(
+            "/api/serviceaccounts/%s/tokens/%s"
+            % (
+                parse.quote(str(service_account_id), safe=""),
+                parse.quote(str(token_id), safe=""),
+            ),
+            method="DELETE",
+        )
+        if not isinstance(data, dict):
+            raise GrafanaError(
+                "Unexpected service-account token delete response for Grafana service account %s token %s."
+                % (service_account_id, token_id)
             )
         return data

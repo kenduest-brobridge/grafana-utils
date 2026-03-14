@@ -24,10 +24,10 @@ mod dashboard_inspect_analyzer_loki;
 mod dashboard_inspect_analyzer_prometheus;
 #[path = "dashboard_inspect_analyzer_sql.rs"]
 mod dashboard_inspect_analyzer_sql;
-#[path = "dashboard_inspect_render.rs"]
-mod dashboard_inspect_render;
 #[path = "dashboard_inspect_governance.rs"]
 mod dashboard_inspect_governance;
+#[path = "dashboard_inspect_render.rs"]
+mod dashboard_inspect_render;
 #[path = "dashboard_inspect_report.rs"]
 mod dashboard_inspect_report;
 #[path = "dashboard_list.rs"]
@@ -76,12 +76,12 @@ pub(crate) use dashboard_inspect::{
     build_export_inspection_summary, validate_inspect_export_report_args,
 };
 #[cfg(test)]
-pub(crate) use dashboard_inspect_render::{
-    render_csv, render_grouped_query_report, render_grouped_query_table_report,
-};
-#[cfg(test)]
 pub(crate) use dashboard_inspect_governance::{
     build_export_inspection_governance_document, render_governance_table_report,
+};
+#[cfg(test)]
+pub(crate) use dashboard_inspect_render::{
+    render_csv, render_grouped_query_report, render_grouped_query_table_report,
 };
 #[cfg(test)]
 pub(crate) use dashboard_inspect_report::normalize_query_report;

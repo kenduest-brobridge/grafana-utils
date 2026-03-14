@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  python-tests:
+  python-quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,8 +16,8 @@ jobs:
           python-version: "3.12"
       - name: Install Python dependencies
         run: python3 -m pip install --upgrade pip requests
-      - name: Run Python unit tests
-        run: make test-python
+      - name: Run Python quality gate
+        run: make quality-python
 
   rust-quality:
     runs-on: ubuntu-latest
@@ -26,9 +26,5 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - name: Run Rust tests
-        run: make test-rust
-      - name: Check Rust formatting
-        run: make fmt-rust-check
-      - name: Run Rust lint gates
-        run: make lint-rust
+      - name: Run Rust quality gate
+        run: make quality-rust

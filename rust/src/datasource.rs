@@ -3,11 +3,9 @@ use reqwest::Method;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use crate::common::{
-    load_json_object_file, message, string_field, write_json_file, Result,
-};
+use crate::common::{load_json_object_file, message, string_field, write_json_file, Result};
 use crate::dashboard::{
     build_auth_context, build_http_client, build_http_client_for_org, list_datasources,
     CommonCliArgs, DEFAULT_ORG_ID,
@@ -231,7 +229,10 @@ fn build_datasource_export_metadata(count: usize) -> Value {
             "datasourcesFile".to_string(),
             Value::String(DATASOURCE_EXPORT_FILENAME.to_string()),
         ),
-        ("indexFile".to_string(), Value::String("index.json".to_string())),
+        (
+            "indexFile".to_string(),
+            Value::String("index.json".to_string()),
+        ),
         (
             "format".to_string(),
             Value::String("grafana-datasource-inventory-v1".to_string()),
@@ -257,7 +258,10 @@ fn build_data_source_record(datasource: &Map<String, Value>) -> Vec<String> {
     ]
 }
 
-fn render_data_source_table(datasources: &[Map<String, Value>], include_header: bool) -> Vec<String> {
+fn render_data_source_table(
+    datasources: &[Map<String, Value>],
+    include_header: bool,
+) -> Vec<String> {
     let headers = vec![
         "UID".to_string(),
         "NAME".to_string(),
@@ -339,7 +343,10 @@ fn build_export_index(records: &[Map<String, Value>]) -> Value {
             "datasourcesFile".to_string(),
             Value::String(DATASOURCE_EXPORT_FILENAME.to_string()),
         ),
-        ("count".to_string(), Value::Number((records.len() as i64).into())),
+        (
+            "count".to_string(),
+            Value::Number((records.len() as i64).into()),
+        ),
         (
             "items".to_string(),
             Value::Array(
@@ -429,7 +436,7 @@ fn build_export_records(client: &JsonHttpClient) -> Result<Vec<Map<String, Value
         .collect())
 }
 
-fn parse_export_metadata(path: &PathBuf) -> Result<DatasourceExportMetadata> {
+fn parse_export_metadata(path: &Path) -> Result<DatasourceExportMetadata> {
     let value = load_json_object_file(path, "Datasource export metadata")?;
     let object = value
         .as_object()
@@ -452,7 +459,9 @@ fn parse_export_metadata(path: &PathBuf) -> Result<DatasourceExportMetadata> {
     })
 }
 
-fn load_import_records(import_dir: &PathBuf) -> Result<(DatasourceExportMetadata, Vec<DatasourceImportRecord>)> {
+fn load_import_records(
+    import_dir: &Path,
+) -> Result<(DatasourceExportMetadata, Vec<DatasourceImportRecord>)> {
     let metadata_path = import_dir.join(EXPORT_METADATA_FILENAME);
     if !metadata_path.is_file() {
         return Err(message(format!(
@@ -513,7 +522,10 @@ fn load_import_records(import_dir: &PathBuf) -> Result<(DatasourceExportMetadata
     Ok((metadata, records))
 }
 
-fn collect_source_org_ids(import_dir: &PathBuf, metadata: &DatasourceExportMetadata) -> Result<BTreeSet<String>> {
+fn collect_source_org_ids(
+    import_dir: &Path,
+    metadata: &DatasourceExportMetadata,
+) -> Result<BTreeSet<String>> {
     let mut org_ids = BTreeSet::new();
     let datasources_path = import_dir.join(&metadata.datasources_file);
     if datasources_path.is_file() {
@@ -551,7 +563,7 @@ fn collect_source_org_ids(import_dir: &PathBuf, metadata: &DatasourceExportMetad
 fn validate_matching_export_org(
     client: &JsonHttpClient,
     args: &DatasourceImportArgs,
-    import_dir: &PathBuf,
+    import_dir: &Path,
     metadata: &DatasourceExportMetadata,
 ) -> Result<()> {
     if !args.require_matching_export_org {
@@ -566,7 +578,10 @@ fn validate_matching_export_org(
     if source_org_ids.len() > 1 {
         return Err(message(format!(
             "Cannot verify datasource export org: found multiple export orgIds ({}).",
-            source_org_ids.into_iter().collect::<Vec<String>>().join(", ")
+            source_org_ids
+                .into_iter()
+                .collect::<Vec<String>>()
+                .join(", ")
         )));
     }
     let source_org_id = source_org_ids.into_iter().next().unwrap_or_default();
@@ -583,7 +598,12 @@ fn validate_matching_export_org(
     Ok(())
 }
 
-fn resolve_match(record: &DatasourceImportRecord, live: &[Map<String, Value>], replace_existing: bool, update_existing_only: bool) -> MatchResult {
+fn resolve_match(
+    record: &DatasourceImportRecord,
+    live: &[Map<String, Value>],
+    replace_existing: bool,
+    update_existing_only: bool,
+) -> MatchResult {
     let uid_matches = if !record.uid.is_empty() {
         live.iter()
             .filter(|item| string_field(item, "uid", "") == record.uid)
@@ -651,7 +671,10 @@ fn resolve_match(record: &DatasourceImportRecord, live: &[Map<String, Value>], r
 fn build_import_payload(record: &DatasourceImportRecord) -> Value {
     Value::Object(Map::from_iter(vec![
         ("name".to_string(), Value::String(record.name.clone())),
-        ("type".to_string(), Value::String(record.datasource_type.clone())),
+        (
+            "type".to_string(),
+            Value::String(record.datasource_type.clone()),
+        ),
         ("url".to_string(), Value::String(record.url.clone())),
         ("access".to_string(), Value::String(record.access.clone())),
         ("uid".to_string(), Value::String(record.uid.clone())),
@@ -702,7 +725,10 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
             let client = build_http_client(&args.common)?;
             let datasources = list_datasources(&client)?;
             if args.json {
-                println!("{}", serde_json::to_string_pretty(&render_data_source_json(&datasources))?);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&render_data_source_json(&datasources))?
+                );
             } else if args.csv {
                 for line in render_data_source_csv(&datasources) {
                     println!("{line}");
@@ -724,11 +750,23 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
             let index_path = output_dir.join("index.json");
             let metadata_path = output_dir.join(EXPORT_METADATA_FILENAME);
             if !args.dry_run {
-                write_json_file(&datasources_path, &Value::Array(records.clone().into_iter().map(Value::Object).collect()), args.overwrite)?;
+                write_json_file(
+                    &datasources_path,
+                    &Value::Array(records.clone().into_iter().map(Value::Object).collect()),
+                    args.overwrite,
+                )?;
                 write_json_file(&index_path, &build_export_index(&records), args.overwrite)?;
-                write_json_file(&metadata_path, &build_datasource_export_metadata(records.len()), args.overwrite)?;
+                write_json_file(
+                    &metadata_path,
+                    &build_datasource_export_metadata(records.len()),
+                    args.overwrite,
+                )?;
             }
-            let summary_verb = if args.dry_run { "Would export" } else { "Exported" };
+            let summary_verb = if args.dry_run {
+                "Would export"
+            } else {
+                "Exported"
+            };
             println!(
                 "{summary_verb} {} datasource(s). Datasources: {} Index: {} Manifest: {}",
                 records.len(),
@@ -740,16 +778,24 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
         }
         DatasourceGroupCommand::Import(args) => {
             if args.table && !args.dry_run {
-                return Err(message("--table is only supported with --dry-run for datasource import."));
+                return Err(message(
+                    "--table is only supported with --dry-run for datasource import.",
+                ));
             }
             if args.json && !args.dry_run {
-                return Err(message("--json is only supported with --dry-run for datasource import."));
+                return Err(message(
+                    "--json is only supported with --dry-run for datasource import.",
+                ));
             }
             if args.table && args.json {
-                return Err(message("--table and --json are mutually exclusive for datasource import."));
+                return Err(message(
+                    "--table and --json are mutually exclusive for datasource import.",
+                ));
             }
             if args.no_header && !args.table {
-                return Err(message("--no-header is only supported with --dry-run --table for datasource import."));
+                return Err(message(
+                    "--no-header is only supported with --dry-run --table for datasource import.",
+                ));
             }
             let replace_existing = args.replace_existing || args.update_existing_only;
             let client = resolve_target_client(&args.common, args.org_id)?;
@@ -777,7 +823,8 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
             let mut skipped = 0usize;
             let mut blocked = 0usize;
             for (index, record) in records.iter().enumerate() {
-                let matching = resolve_match(record, &live, replace_existing, args.update_existing_only);
+                let matching =
+                    resolve_match(record, &live, replace_existing, args.update_existing_only);
                 let file_ref = format!("{}#{}", metadata.datasources_file, index);
                 if args.dry_run {
                     if args.table || args.json {
@@ -793,7 +840,11 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                     } else {
                         println!(
                             "Dry-run datasource uid={} name={} dest={} action={} file={}",
-                            record.uid, record.name, matching.destination, matching.action, file_ref
+                            record.uid,
+                            record.name,
+                            matching.destination,
+                            matching.action,
+                            file_ref
                         );
                     }
                     match matching.action {
@@ -836,7 +887,11 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                     _ => {
                         return Err(message(format!(
                             "Datasource import blocked for {}: destination={} action={}.",
-                            if record.uid.is_empty() { &record.name } else { &record.uid },
+                            if record.uid.is_empty() {
+                                &record.name
+                            } else {
+                                &record.uid
+                            },
                             matching.destination,
                             matching.action
                         )));
@@ -846,11 +901,26 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
             if args.dry_run {
                 if args.json {
                     let summary = Value::Object(Map::from_iter(vec![
-                        ("datasourceCount".to_string(), Value::Number((records.len() as i64).into())),
-                        ("wouldCreate".to_string(), Value::Number((created as i64).into())),
-                        ("wouldUpdate".to_string(), Value::Number((updated as i64).into())),
-                        ("wouldSkip".to_string(), Value::Number((skipped as i64).into())),
-                        ("wouldBlock".to_string(), Value::Number((blocked as i64).into())),
+                        (
+                            "datasourceCount".to_string(),
+                            Value::Number((records.len() as i64).into()),
+                        ),
+                        (
+                            "wouldCreate".to_string(),
+                            Value::Number((created as i64).into()),
+                        ),
+                        (
+                            "wouldUpdate".to_string(),
+                            Value::Number((updated as i64).into()),
+                        ),
+                        (
+                            "wouldSkip".to_string(),
+                            Value::Number((skipped as i64).into()),
+                        ),
+                        (
+                            "wouldBlock".to_string(),
+                            Value::Number((blocked as i64).into()),
+                        ),
                     ]));
                     println!(
                         "{}",
@@ -877,9 +947,18 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                                                 ("uid".to_string(), Value::String(row[0].clone())),
                                                 ("name".to_string(), Value::String(row[1].clone())),
                                                 ("type".to_string(), Value::String(row[2].clone())),
-                                                ("destination".to_string(), Value::String(row[3].clone())),
-                                                ("action".to_string(), Value::String(row[4].clone())),
-                                                ("orgId".to_string(), Value::String(row[5].clone())),
+                                                (
+                                                    "destination".to_string(),
+                                                    Value::String(row[3].clone()),
+                                                ),
+                                                (
+                                                    "action".to_string(),
+                                                    Value::String(row[4].clone()),
+                                                ),
+                                                (
+                                                    "orgId".to_string(),
+                                                    Value::String(row[5].clone()),
+                                                ),
                                                 ("file".to_string(), Value::String(row[6].clone())),
                                             ]))
                                         })

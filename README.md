@@ -64,6 +64,8 @@ The repo now uses one primary command name with explicit areas underneath it.
 - `grafana-utils access team list ...`
 - `grafana-utils access team add ...`
 - `grafana-utils access team modify ...`
+- `grafana-utils access team delete ...`
+- `grafana-utils access group ...`
 - `grafana-utils access service-account ...`
 
 Compatibility notes:
@@ -454,6 +456,17 @@ python3 python/grafana-utils.py access team add \
   --email platform-operators@example.com \
   --member alice@example.com \
   --admin bob@example.com
+```
+
+Access-management team deletion, org scope with token auth:
+
+```bash
+python3 python/grafana-utils.py access group delete \
+  --url http://127.0.0.1:3000 \
+  --token "$GRAFANA_API_TOKEN" \
+  --name platform-operators \
+  --yes \
+  --json
 ```
 
 Access-management service-account listing, org scope with token auth:
@@ -953,10 +966,13 @@ Current implementation scope:
 - `team list`
 - `team modify`
 - `team add`
+- `team delete`
 - `service-account list`
 - `service-account add`
 - `service-account token add`
-- no `team delete` or `group` alias commands yet
+- `service-account delete`
+- `service-account token delete`
+- `group` compatibility alias for `team`
 
 Initial auth model:
 
@@ -1019,6 +1035,8 @@ The repo root includes a [`Makefile`](Makefile):
 - `make fmt-rust-check`
 - `make lint-rust`
 - `make quality`
+- `make quality-python`
+- `make quality-rust`
 - `make test-rust-live`
 - `make test-access-live`
 - `make test`
@@ -1033,7 +1051,10 @@ Artifact locations:
 
 Basic quality gates:
 
-- `make quality` runs the repo's baseline automated checks
+- `make quality` runs the repo's script-backed baseline automated checks across Python and Rust
+- `make quality-python` runs `scripts/check-python-quality.sh`
+- `make quality-rust` runs `scripts/check-rust-quality.sh`
+- the Python quality script always runs bytecode compilation plus `unittest`, and it only runs optional tools such as `ruff`, `mypy`, and `black --check` when they are installed
 - `make fmt-rust-check` runs `cargo fmt --check`
 - `make lint-rust` runs `cargo clippy --all-targets -- -D warnings`
 
@@ -1198,6 +1219,7 @@ Auth note:
 - for `grafana-utils access team list`, token auth or Basic auth can be used
 - for `grafana-utils access team add`, token auth or Basic auth can be used
 - for `grafana-utils access team modify`, token auth or Basic auth can be used
+- for `grafana-utils access team delete`, token auth or Basic auth can be used
 - for `grafana-utils access service-account ...`, token auth or Basic auth can be used
 
 Username/password example:
@@ -1286,9 +1308,13 @@ python3 python/grafana-utils.py access user delete -h
 python3 python/grafana-utils.py access team list -h
 python3 python/grafana-utils.py access team add -h
 python3 python/grafana-utils.py access team modify -h
+python3 python/grafana-utils.py access team delete -h
+python3 python/grafana-utils.py access group delete -h
 python3 python/grafana-utils.py access service-account list -h
 python3 python/grafana-utils.py access service-account add -h
+python3 python/grafana-utils.py access service-account delete -h
 python3 python/grafana-utils.py access service-account token add -h
+python3 python/grafana-utils.py access service-account token delete -h
 cd rust && cargo test
 cd rust && cargo run --quiet --bin grafana-utils -- -h
 cd rust && cargo run --quiet --bin grafana-utils -- dashboard -h
@@ -1304,9 +1330,13 @@ cd rust && cargo run --quiet --bin grafana-utils -- access user delete -h
 cd rust && cargo run --quiet --bin grafana-utils -- access team list -h
 cd rust && cargo run --quiet --bin grafana-utils -- access team add -h
 cd rust && cargo run --quiet --bin grafana-utils -- access team modify -h
+cd rust && cargo run --quiet --bin grafana-utils -- access team delete -h
+cd rust && cargo run --quiet --bin grafana-utils -- access group delete -h
 cd rust && cargo run --quiet --bin grafana-utils -- access service-account list -h
 cd rust && cargo run --quiet --bin grafana-utils -- access service-account add -h
+cd rust && cargo run --quiet --bin grafana-utils -- access service-account delete -h
 cd rust && cargo run --quiet --bin grafana-utils -- access service-account token add -h
+cd rust && cargo run --quiet --bin grafana-utils -- access service-account token delete -h
 make test-rust-live
 make test-access-live
 ```

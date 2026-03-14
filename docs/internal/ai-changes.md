@@ -1,5 +1,21 @@
 # ai-changes.md
 
+## 2026-03-14 - Wire Quality Gate Scripts
+- Summary: Connected the previously staged quality shell scripts to the real developer entrypoints by routing `make quality`, `make quality-python`, and `make quality-rust` through them, and updated CI to invoke those make targets instead of repeating the Python and Rust checks inline. This makes the script layer the single source of truth for baseline quality behavior.
+- Tests: No new automated unit tests. Validation relied on shell syntax checks plus focused make/script execution.
+- Test Run: `bash -n scripts/check-quality.sh scripts/check-python-quality.sh scripts/check-rust-quality.sh`; `make quality-python`; `make quality-rust`
+- Validation: Confirmed the quality scripts remain shell-parseable, confirmed the Python and Rust quality targets succeed through the new Makefile wiring, and verified CI now references the script-backed make targets instead of duplicating command lists.
+- Impact: `Makefile`, `.github/workflows/ci.yml`, `scripts/check-quality.sh`, `scripts/check-python-quality.sh`, `scripts/check-rust-quality.sh`, `README.md`, `DEVELOPER.md`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. The checks themselves are not broadened here; the main change is centralizing execution through the scripts, so future quality behavior changes should happen in the scripts first and then flow through make and CI automatically.
+
+## 2026-03-14 - Finish Access Delete Commands And Group Alias
+- Summary: Wired the remaining access-management command surface into both Python and Rust by adding `team delete`, `service-account delete`, `service-account token delete`, and the `group` compatibility alias. The Python access CLI now also delegates auth resolution through the shared staging helper while keeping the existing access-specific auth error wording stable.
+- Tests: Extended focused Python access CLI coverage for parser/help behavior, delete command execution, and group alias parsing; extended focused Rust access tests for the new clap variants, delete request flows, and alias routing.
+- Test Run: `python3 -m unittest -v tests/test_python_access_cli.py`; `cargo test --quiet access`
+- Validation: Verified the Python access suite passes after the auth-helper delegation and new destructive commands, and verified the focused Rust access tests pass once the staged delete module is wired into clap/dispatch.
+- Impact: `grafana_utils/access_cli.py`, `grafana_utils/auth_staging.py`, `grafana_utils/access/pending_cli_staging.py`, `grafana_utils/clients/access_client.py`, `tests/test_python_access_cli.py`, `rust/src/access.rs`, `rust/src/access_cli_defs.rs`, `rust/src/access_pending_delete.rs`, `rust/src/access_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Moderate. The new commands are destructive by design but gated behind explicit `--yes`, and the Python auth-helper delegation intentionally preserves old access error messages so future cross-CLI auth consolidation must keep those operator-facing expectations aligned.
+
 ## 2026-03-14 - Add Actionable Governance Risk Metadata
 - Summary: Enriched Python and Rust governance `riskRecords` with additive `category` and `recommendation` fields so inspection governance output is not just descriptive but actionable. The existing four governance findings now map to stable remediation metadata, and the governance table renderers expose those fields directly in the risk section.
 - Tests: Extended focused Python governance unit/CLI tests and Rust governance tests to assert the new JSON fields and the new table columns/content.

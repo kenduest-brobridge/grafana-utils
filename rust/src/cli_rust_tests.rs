@@ -1,6 +1,6 @@
 use super::{dispatch_with_handlers, parse_cli_from, CliArgs, UnifiedCommand};
-use crate::datasource::DatasourceGroupCommand;
 use crate::dashboard::DashboardCommand;
+use crate::datasource::DatasourceGroupCommand;
 use clap::CommandFactory;
 use std::cell::RefCell;
 use std::path::Path;

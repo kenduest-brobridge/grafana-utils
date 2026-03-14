@@ -104,7 +104,10 @@ where
     if export_org_ids.len() > 1 {
         return Err(message(format!(
             "Cannot verify exported org for import: found multiple export orgIds ({}).",
-            export_org_ids.into_iter().collect::<Vec<String>>().join(", ")
+            export_org_ids
+                .into_iter()
+                .collect::<Vec<String>>()
+                .join(", ")
         )));
     }
     let export_org_id = export_org_ids.into_iter().next().unwrap_or_default();

@@ -83,7 +83,7 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(exc.exception.code, 0)
         help_text = stdout.getvalue()
         self.assertIn("grafana-utils datasource", help_text)
-        self.assertIn("{list,export}", help_text)
+        self.assertIn("{list,export,import}", help_text)
 
     def test_parse_args_supports_dashboard_passthrough(self):
         args = unified_cli.parse_args(["diff", "--import-dir", "dashboards/raw"])

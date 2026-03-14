@@ -19,6 +19,7 @@ class FakeDashboardIntegrationClient:
     def __init__(self, dashboards=None, folders=None):
         self.dashboards = dashboards or {}
         self.folders = folders or {}
+        self.headers = {}
         self.created_folders = []
         self.imported_payloads = []
 
@@ -44,6 +45,9 @@ class FakeDashboardIntegrationClient:
     def import_dashboard(self, payload):
         self.imported_payloads.append(payload)
         return {"status": "success", "uid": payload["dashboard"].get("uid")}
+
+    def fetch_current_org(self):
+        return {"id": 1, "name": "Main Org."}
 
 
 class DashboardIntegrationFlowTests(unittest.TestCase):

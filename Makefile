@@ -1,4 +1,4 @@
-.PHONY: help build build-python build-rust build-rust-macos-arm64 build-rust-linux-amd64 build-rust-linux-amd64-zig seed-grafana-sample-data destroy-grafana-sample-data reset-grafana-all-data test test-python test-rust fmt-rust-check lint-rust quality test-rust-live test-access-live
+.PHONY: help build build-python build-rust build-rust-macos-arm64 build-rust-linux-amd64 build-rust-linux-amd64-zig seed-grafana-sample-data destroy-grafana-sample-data reset-grafana-all-data test test-python test-rust fmt-rust-check lint-rust quality quality-python quality-rust test-rust-live test-access-live
 
 PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
@@ -23,7 +23,9 @@ help:
 		'  make test-rust     Run the Rust cargo test suite' \
 		'  make fmt-rust-check  Run cargo fmt --check' \
 		'  make lint-rust     Run cargo clippy with warnings denied' \
-		'  make quality       Run the basic repo quality gates' \
+		'  make quality       Run the repo quality gate scripts' \
+		'  make quality-python  Run the Python quality gate script' \
+		'  make quality-rust  Run the Rust quality gate script' \
 		'  make test-rust-live Start Grafana in Docker and run the Rust live smoke test' \
 		'  make test-access-live Start Grafana in Docker and run the Python access live smoke test'
 
@@ -67,7 +69,13 @@ fmt-rust-check:
 lint-rust:
 	cd $(RUST_DIR) && $(CARGO) clippy --all-targets -- -D warnings
 
-quality: test-python test-rust fmt-rust-check lint-rust
+quality: quality-python quality-rust
+
+quality-python:
+	./scripts/check-python-quality.sh
+
+quality-rust:
+	./scripts/check-rust-quality.sh
 
 test-rust-live:
 	./scripts/test-rust-live-grafana.sh

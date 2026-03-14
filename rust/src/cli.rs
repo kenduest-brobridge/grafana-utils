@@ -7,11 +7,11 @@ use crate::alert::{
     AlertNamespaceArgs,
 };
 use crate::common::Result;
-use crate::datasource::{run_datasource_cli, DatasourceGroupCommand};
 use crate::dashboard::{
     run_dashboard_cli, DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs, ImportArgs,
     InspectExportArgs, InspectLiveArgs, ListArgs, ListDataSourcesArgs,
 };
+use crate::datasource::{run_datasource_cli, DatasourceGroupCommand};
 
 const UNIFIED_HELP_TEXT: &str = "Examples:\n\n  Export dashboards:\n    grafana-utils export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n  Export alerting resources through the unified binary:\n    grafana-utils alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n\n  List org users through the unified binary:\n    grafana-utils access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n\nCompatibility shim remains available:\n  grafana-access-utils ...";
 

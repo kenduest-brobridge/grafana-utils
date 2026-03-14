@@ -97,12 +97,10 @@ fn normalize_family_name(datasource_type: &str) -> String {
     }
 }
 
-fn build_inventory_lookup(
-    summary: &ExportInspectionSummary,
-) -> (
-    BTreeMap<String, (String, String, String)>,
-    BTreeMap<String, (String, String, String)>,
-) {
+type InventoryIdentity = (String, String, String);
+type InventoryLookup = BTreeMap<String, InventoryIdentity>;
+
+fn build_inventory_lookup(summary: &ExportInspectionSummary) -> (InventoryLookup, InventoryLookup) {
     let mut by_uid = BTreeMap::new();
     let mut by_name = BTreeMap::new();
     for datasource in &summary.datasource_inventory {
@@ -240,7 +238,10 @@ pub(crate) fn build_datasource_family_coverage_rows(
     coverage
         .into_iter()
         .map(
-            |(family, (datasource_types, datasource_uids, dashboard_uids, panel_keys, query_count))| {
+            |(
+                family,
+                (datasource_types, datasource_uids, dashboard_uids, panel_keys, query_count),
+            )| {
                 DatasourceFamilyCoverageRow {
                     family,
                     datasource_types: datasource_types.into_iter().collect(),
@@ -261,7 +262,15 @@ pub(crate) fn build_datasource_coverage_rows(
     let (inventory_by_uid, inventory_by_name) = build_inventory_lookup(summary);
     let mut coverage = BTreeMap::<
         String,
-        (String, String, BTreeSet<String>, BTreeSet<String>, BTreeSet<String>, usize, bool),
+        (
+            String,
+            String,
+            BTreeSet<String>,
+            BTreeSet<String>,
+            BTreeSet<String>,
+            usize,
+            bool,
+        ),
     >::new();
     for datasource in &summary.datasource_inventory {
         let key = if datasource.uid.trim().is_empty() {
@@ -309,7 +318,10 @@ pub(crate) fn build_datasource_coverage_rows(
     coverage
         .into_iter()
         .map(
-            |(datasource_uid, (datasource, family, query_fields, dashboards, panels, query_count, orphaned))| {
+            |(
+                datasource_uid,
+                (datasource, family, query_fields, dashboards, panels, query_count, orphaned),
+            )| {
                 DatasourceCoverageRow {
                     datasource_uid,
                     datasource,
@@ -336,7 +348,9 @@ pub(crate) fn build_governance_risk_rows(
     for dashboard in &summary.mixed_dashboards {
         let risk = GovernanceRiskRow {
             kind: "mixed-datasource-dashboard".to_string(),
-            severity: build_risk_metadata("mixed-datasource-dashboard").1.to_string(),
+            severity: build_risk_metadata("mixed-datasource-dashboard")
+                .1
+                .to_string(),
             category: build_risk_metadata("mixed-datasource-dashboard")
                 .0
                 .to_string(),
@@ -368,9 +382,7 @@ pub(crate) fn build_governance_risk_rows(
                 datasource.uid.clone()
             },
             detail: datasource.datasource_type.clone(),
-            recommendation: build_risk_metadata("orphaned-datasource")
-                .2
-                .to_string(),
+            recommendation: build_risk_metadata("orphaned-datasource").2.to_string(),
         };
         if seen.insert(risk.clone()) {
             risks.push(risk);
@@ -402,17 +414,13 @@ pub(crate) fn build_governance_risk_rows(
         if row.metrics.is_empty() && row.measurements.is_empty() && row.buckets.is_empty() {
             let risk = GovernanceRiskRow {
                 kind: "empty-query-analysis".to_string(),
-                severity: build_risk_metadata("empty-query-analysis")
-                    .1
-                    .to_string(),
+                severity: build_risk_metadata("empty-query-analysis").1.to_string(),
                 category: build_risk_metadata("empty-query-analysis").0.to_string(),
                 dashboard_uid: row.dashboard_uid.clone(),
                 panel_id: row.panel_id.clone(),
                 datasource: identity.name,
                 detail: row.query_field.clone(),
-                recommendation: build_risk_metadata("empty-query-analysis")
-                    .2
-                    .to_string(),
+                recommendation: build_risk_metadata("empty-query-analysis").2.to_string(),
             };
             if seen.insert(risk.clone()) {
                 risks.push(risk);
@@ -462,7 +470,10 @@ pub(crate) fn render_governance_table_report(
     import_dir: &str,
     document: &ExportInspectionGovernanceDocument,
 ) -> Vec<String> {
-    let mut lines = vec![format!("Export inspection governance: {import_dir}"), String::new()];
+    let mut lines = vec![
+        format!("Export inspection governance: {import_dir}"),
+        String::new(),
+    ];
 
     lines.push("# Summary".to_string());
     lines.extend(render_simple_table(
@@ -497,7 +508,14 @@ pub(crate) fn render_governance_table_report(
         lines.push("(none)".to_string());
     } else {
         lines.extend(render_simple_table(
-            &["FAMILY", "TYPES", "DATASOURCES", "DASHBOARDS", "PANELS", "QUERIES"],
+            &[
+                "FAMILY",
+                "TYPES",
+                "DATASOURCES",
+                "DASHBOARDS",
+                "PANELS",
+                "QUERIES",
+            ],
             &family_rows,
             true,
         ));
@@ -527,7 +545,14 @@ pub(crate) fn render_governance_table_report(
         lines.push("(none)".to_string());
     } else {
         lines.extend(render_simple_table(
-            &["UID", "DATASOURCE", "FAMILY", "QUERIES", "DASHBOARDS", "ORPHANED"],
+            &[
+                "UID",
+                "DATASOURCE",
+                "FAMILY",
+                "QUERIES",
+                "DASHBOARDS",
+                "ORPHANED",
+            ],
             &datasource_rows,
             true,
         ));

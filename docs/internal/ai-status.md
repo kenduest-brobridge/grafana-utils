@@ -1,5 +1,19 @@
 # ai-status.md
 
+## 2026-03-14 - Task: Wire Quality Gate Scripts
+- State: Done
+- Scope: `Makefile`, `.github/workflows/ci.yml`, `scripts/check-quality.sh`, `scripts/check-python-quality.sh`, `scripts/check-rust-quality.sh`, `README.md`, `DEVELOPER.md`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The repo already had staged quality scripts, but `make quality` still expanded directly to hard-coded test/fmt/clippy targets and CI still duplicated that logic as separate workflow steps. The new scripts existed only as unattached assets, so local and CI quality behavior could drift again.
+- Current Update: Wired `make quality`, `make quality-python`, and `make quality-rust` to the staged scripts, and updated CI to call those targets directly instead of re-declaring the checks inline. Updated maintainer and user docs to describe the new script-backed quality gate path and the optional-tool skip behavior.
+- Result: Local `make` entrypoints and CI now share the same quality gate scripts, so future gate changes can happen in one place instead of being duplicated across shell, Makefile, and workflow YAML.
+
+## 2026-03-14 - Task: Finish Access Delete Commands And Group Alias
+- State: Done
+- Scope: `grafana_utils/access_cli.py`, `grafana_utils/auth_staging.py`, `grafana_utils/access/pending_cli_staging.py`, `grafana_utils/clients/access_client.py`, `tests/test_python_access_cli.py`, `rust/src/access.rs`, `rust/src/access_cli_defs.rs`, `rust/src/access_pending_delete.rs`, `rust/src/access_rust_tests.rs`, `README.md`, `DEVELOPER.md`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The access CLI already handled user CRUD, team list/add/modify, and service-account list/add/token-add, but `team delete`, `service-account delete`, `service-account token delete`, and the `group` compatibility alias were still unfinished. Access auth resolution also still carried its own inline implementation instead of delegating to the new shared staging helper.
+- Current Update: Wired the shared Python auth helper into `access_cli.py` while preserving the existing access-facing error text, added Python and Rust parser/dispatch/client support for `team delete`, `service-account delete`, and `service-account token delete`, and exposed `group` as a compatibility alias for `team`. Extended focused Python and Rust access tests around the new destructive flows and alias parsing.
+- Result: Both runtimes now expose the full planned access command surface except for the still-unimplemented shared TLS flags, and the Python access CLI no longer owns a private copy of the token-vs-Basic auth resolution logic.
+
 ## 2026-03-14 - Task: Add Actionable Governance Risk Metadata
 - State: Done
 - Scope: `grafana_utils/dashboards/inspection_governance.py`, `grafana_utils/dashboards/inspection_governance_render.py`, `tests/test_python_dashboard_inspection_governance.py`, `tests/test_python_dashboard_inspection_cli.py`, `rust/src/dashboard_inspect_governance.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

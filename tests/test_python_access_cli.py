@@ -28,6 +28,7 @@ class FakeAccessClient:
         teams=None,
         team_members_by_team_id=None,
         service_accounts=None,
+        service_account_tokens_by_id=None,
     ):
         self.org_users = [dict(item) for item in (org_users or [])]
         self.global_users = [dict(item) for item in (global_users or [])]
@@ -41,13 +42,22 @@ class FakeAccessClient:
             for key, value in (team_members_by_team_id or {}).items()
         }
         self.service_accounts = [dict(item) for item in (service_accounts or [])]
+        self.service_account_tokens_by_id = {
+            str(key): [dict(item) for item in value]
+            for key, value in (service_account_tokens_by_id or {}).items()
+        }
         self.global_page_sizes = []
         self.team_lookups = []
         self.team_searches = []
         self.team_member_lookups = []
         self.service_account_searches = []
+        self.service_account_gets = []
+        self.service_account_token_lookups = []
         self.created_service_accounts = []
         self.created_service_account_tokens = []
+        self.deleted_teams = []
+        self.deleted_service_accounts = []
+        self.deleted_service_account_tokens = []
         self.created_users = []
         self.user_gets = []
         self.updated_users = []
@@ -95,6 +105,10 @@ class FakeAccessClient:
                 return dict(item)
         return {"id": team_id, "name": ""}
 
+    def delete_team(self, team_id):
+        self.deleted_teams.append(str(team_id))
+        return {"message": "Team deleted"}
+
     def create_team(self, payload):
         self.created_teams.append(dict(payload))
         team_id = str(len(self.teams) + 40)
@@ -136,6 +150,26 @@ class FakeAccessClient:
             "orgId": 1,
         }
 
+    def get_service_account(self, service_account_id):
+        self.service_account_gets.append(str(service_account_id))
+        for item in self.service_accounts:
+            if str(item.get("id")) == str(service_account_id):
+                return dict(item)
+        return {"id": service_account_id, "name": ""}
+
+    def delete_service_account(self, service_account_id):
+        self.deleted_service_accounts.append(str(service_account_id))
+        return {"message": "Service account deleted"}
+
+    def list_service_account_tokens(self, service_account_id):
+        self.service_account_token_lookups.append(str(service_account_id))
+        return [
+            dict(item)
+            for item in self.service_account_tokens_by_id.get(
+                str(service_account_id), []
+            )
+        ]
+
     def create_service_account_token(self, service_account_id, payload):
         self.created_service_account_tokens.append(
             (str(service_account_id), dict(payload))
@@ -146,6 +180,12 @@ class FakeAccessClient:
             "key": "glsa_token",
             "secondsToLive": payload.get("secondsToLive"),
         }
+
+    def delete_service_account_token(self, service_account_id, token_id):
+        self.deleted_service_account_tokens.append(
+            (str(service_account_id), str(token_id))
+        )
+        return {"message": "Service account token deleted"}
 
     def create_user(self, payload):
         self.created_users.append(dict(payload))
@@ -214,7 +254,8 @@ class AccessCliTests(unittest.TestCase):
                 access_utils.parse_args([])
 
         self.assertEqual(exc.exception.code, 0)
-        self.assertIn("{user,team,service-account}", stdout.getvalue())
+        self.assertIn("team", stdout.getvalue())
+        self.assertIn("service-account", stdout.getvalue())
 
     def test_parse_args_user_without_subcommand_prints_user_help(self):
         stdout = io.StringIO()
@@ -233,6 +274,15 @@ class AccessCliTests(unittest.TestCase):
 
         self.assertEqual(exc.exception.code, 0)
         self.assertIn("list", stdout.getvalue())
+
+    def test_parse_args_group_without_subcommand_prints_team_help(self):
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            with self.assertRaises(SystemExit) as exc:
+                access_utils.parse_args(["group"])
+
+        self.assertEqual(exc.exception.code, 0)
+        self.assertIn("delete", stdout.getvalue())
 
     def test_parse_args_service_account_token_without_subcommand_prints_token_help(self):
         stdout = io.StringIO()
@@ -496,6 +546,40 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.remove_admin, ["dave@example.com"])
         self.assertTrue(args.json)
 
+    def test_parse_args_supports_team_delete_mode(self):
+        args = access_utils.parse_args(
+            [
+                "team",
+                "delete",
+                "--name",
+                "Ops",
+                "--yes",
+                "--json",
+            ]
+        )
+
+        self.assertEqual(args.resource, "team")
+        self.assertEqual(args.command, "delete")
+        self.assertEqual(args.name, "Ops")
+        self.assertTrue(args.yes)
+        self.assertTrue(args.json)
+
+    def test_parse_args_supports_group_alias_mode(self):
+        args = access_utils.parse_args(
+            [
+                "group",
+                "delete",
+                "--team-id",
+                "7",
+                "--yes",
+            ]
+        )
+
+        self.assertEqual(args.resource, "team")
+        self.assertEqual(args.command, "delete")
+        self.assertEqual(args.team_id, "7")
+        self.assertTrue(args.yes)
+
     def test_parse_args_supports_preferred_auth_aliases(self):
         args = access_utils.parse_args(
             [
@@ -546,6 +630,47 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.service_account_id, "7")
         self.assertEqual(args.token_name, "robot-token")
         self.assertEqual(args.seconds_to_live, 3600)
+        self.assertTrue(args.json)
+
+    def test_parse_args_supports_service_account_delete(self):
+        args = access_utils.parse_args(
+            [
+                "service-account",
+                "delete",
+                "--service-account-id",
+                "7",
+                "--yes",
+                "--json",
+            ]
+        )
+
+        self.assertEqual(args.resource, "service-account")
+        self.assertEqual(args.command, "delete")
+        self.assertEqual(args.service_account_id, "7")
+        self.assertTrue(args.yes)
+        self.assertTrue(args.json)
+
+    def test_parse_args_supports_service_account_token_delete(self):
+        args = access_utils.parse_args(
+            [
+                "service-account",
+                "token",
+                "delete",
+                "--name",
+                "robot",
+                "--token-name",
+                "robot-token",
+                "--yes",
+                "--json",
+            ]
+        )
+
+        self.assertEqual(args.resource, "service-account")
+        self.assertEqual(args.command, "token")
+        self.assertEqual(args.token_command, "delete")
+        self.assertEqual(args.name, "robot")
+        self.assertEqual(args.token_name, "robot-token")
+        self.assertTrue(args.yes)
         self.assertTrue(args.json)
 
     def test_build_request_headers_adds_org_id(self):
@@ -1113,6 +1238,30 @@ class AccessCliTests(unittest.TestCase):
         with self.assertRaisesRegex(access_utils.GrafanaError, "admin state metadata"):
             access_utils.modify_team_with_client(args, client)
 
+    def test_delete_team_with_client_deletes_by_name(self):
+        client = FakeAccessClient(
+            teams=[
+                {"id": 3, "name": "Ops", "email": "ops@example.com"},
+            ]
+        )
+        args = argparse.Namespace(
+            team_id=None,
+            name="Ops",
+            yes=True,
+            json=True,
+        )
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            result = access_utils.delete_team_with_client(args, client)
+
+        self.assertEqual(result, 0)
+        self.assertEqual(client.team_searches, [("Ops", "iter", 100)])
+        self.assertEqual(client.team_gets, ["3"])
+        self.assertEqual(client.deleted_teams, ["3"])
+        self.assertIn('"teamId": "3"', output.getvalue())
+        self.assertIn('"name": "Ops"', output.getvalue())
+
     def test_list_service_accounts_with_client_renders_json(self):
         client = FakeAccessClient(
             service_accounts=[
@@ -1385,6 +1534,65 @@ class AccessCliTests(unittest.TestCase):
         )
         self.assertIn('"serviceAccountId": "7"', output.getvalue())
         self.assertIn('"name": "robot-token"', output.getvalue())
+
+    def test_delete_service_account_with_client_deletes_by_name(self):
+        client = FakeAccessClient(
+            service_accounts=[
+                {"id": 7, "name": "robot", "login": "sa-robot", "role": "Viewer"},
+            ]
+        )
+        args = argparse.Namespace(
+            service_account_id=None,
+            name="robot",
+            yes=True,
+            json=False,
+        )
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            result = access_utils.delete_service_account_with_client(args, client)
+
+        self.assertEqual(result, 0)
+        self.assertEqual(client.service_account_searches, [("robot", 1, 100)])
+        self.assertEqual(client.service_account_gets, ["7"])
+        self.assertEqual(client.deleted_service_accounts, ["7"])
+        self.assertIn("serviceAccountId=7", output.getvalue())
+        self.assertIn("name=robot", output.getvalue())
+
+    def test_delete_service_account_token_with_client_resolves_token_name(self):
+        client = FakeAccessClient(
+            service_accounts=[
+                {"id": 7, "name": "robot", "login": "sa-robot"},
+            ],
+            service_account_tokens_by_id={
+                "7": [
+                    {"id": 4, "name": "nightly"},
+                    {"id": 5, "name": "adhoc"},
+                ]
+            },
+        )
+        args = argparse.Namespace(
+            service_account_id=None,
+            name="robot",
+            token_id=None,
+            token_name="nightly",
+            yes=True,
+            json=True,
+        )
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            result = access_utils.delete_service_account_token_with_client(
+                args, client
+            )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(client.service_account_searches, [("robot", 1, 100)])
+        self.assertEqual(client.service_account_gets, ["7"])
+        self.assertEqual(client.service_account_token_lookups, ["7"])
+        self.assertEqual(client.deleted_service_account_tokens, [("7", "4")])
+        self.assertIn('"tokenId": "4"', output.getvalue())
+        self.assertIn('"tokenName": "nightly"', output.getvalue())
 
     def test_main_returns_one_on_auth_error(self):
         stderr = io.StringIO()

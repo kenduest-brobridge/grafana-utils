@@ -1,5 +1,8 @@
 use clap::{Args, Command, CommandFactory, Parser, Subcommand, ValueEnum};
 
+use super::access_pending_delete::{
+    ServiceAccountDeleteArgs, ServiceAccountTokenDeleteArgs, TeamDeleteArgs,
+};
 use crate::common::{resolve_auth_headers, Result};
 use crate::http::{JsonHttpClient, JsonHttpClientConfig};
 
@@ -259,12 +262,14 @@ pub struct ServiceAccountTokenAddArgs {
 #[derive(Debug, Clone, Subcommand)]
 pub enum ServiceAccountTokenCommand {
     Add(ServiceAccountTokenAddArgs),
+    Delete(ServiceAccountTokenDeleteArgs),
 }
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum ServiceAccountCommand {
     List(ServiceAccountListArgs),
     Add(ServiceAccountAddArgs),
+    Delete(ServiceAccountDeleteArgs),
     Token {
         #[command(subcommand)]
         command: ServiceAccountTokenCommand,
@@ -276,6 +281,7 @@ pub enum TeamCommand {
     List(TeamListArgs),
     Add(TeamAddArgs),
     Modify(TeamModifyArgs),
+    Delete(TeamDeleteArgs),
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -292,6 +298,7 @@ pub enum AccessCommand {
         #[command(subcommand)]
         command: UserCommand,
     },
+    #[command(visible_alias = "group")]
     Team {
         #[command(subcommand)]
         command: TeamCommand,

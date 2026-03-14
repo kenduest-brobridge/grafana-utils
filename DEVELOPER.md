@@ -25,7 +25,7 @@ Commit message default for this repo:
 - `grafana_utils/dashboards/inspection_workflow.py`: Python dashboard inspect-live and inspect-export orchestration helper that reuses the existing render/analysis functions through dependency injection
 - `grafana_utils/dashboards/import_workflow.py`: Python dashboard import orchestration helper for dry-run, ensure-folder, and live import flows
 - `grafana_utils/alert_cli.py`: packaged alerting resource export/import utility
-- `grafana_utils/access_cli.py`: packaged access-management utility, currently covering `user list`, `user add`, `user modify`, `user delete`, `team list`, `team add`, `team modify`, and initial service-account commands
+- `grafana_utils/access_cli.py`: packaged access-management utility covering user CRUD, team CRUD with `group` alias compatibility, and service-account list/add/delete plus token add/delete
 - `rust/src/access.rs`: Rust access-management orchestration entrypoint and shared request helpers
 - `rust/src/access_cli_defs.rs`: Rust access CLI arg definitions and auth/client builders
 - `rust/src/access_render.rs`: Rust access table/CSV/JSON renderers and row normalization helpers
@@ -91,6 +91,8 @@ Commit message default for this repo:
 - `grafana-utils access team list ...` inspects Grafana teams.
 - `grafana-utils access team add ...` creates an org-scoped Grafana team with optional initial members and admins.
 - `grafana-utils access team modify ...` changes Grafana team membership and admin assignments.
+- `grafana-utils access team delete ...` deletes one Grafana team with explicit confirmation.
+- `grafana-utils access group ...` is a compatibility alias for the `team` command surface.
 - `grafana-utils access service-account ...` handles org-scoped service-account operations.
 - The export subcommand intentionally uses `--export-dir` instead of `--output-dir` to avoid mixing export terminology with import behavior.
 - Dashboard `--token` auth should be treated as already scoped to one current org context. It is valid for current-org list/export/import operations, but it is not the mechanism for explicit org switching.
@@ -139,9 +141,10 @@ Commit message default for this repo:
 
 ### Quality gates
 
-- `make quality` is the baseline local gate and currently runs Python unit tests, Rust unit tests, `cargo fmt --check`, and `cargo clippy --all-targets -- -D warnings`.
-- `.github/workflows/ci.yml` mirrors that baseline split into a Python test job and a Rust quality job so CLI and module changes hit the same minimum checks before merge.
-- The repo does not yet enforce a dedicated Python formatter or type checker; the current baseline is intentionally limited to checks that already pass reliably in the existing toolchain.
+- `make quality` is the baseline local gate and now delegates to `scripts/check-quality.sh`.
+- `make quality-python` delegates to `scripts/check-python-quality.sh`, which always runs Python bytecode compilation plus `unittest` and only runs optional tools such as `ruff`, `mypy`, and `black --check` when they are installed.
+- `make quality-rust` delegates to `scripts/check-rust-quality.sh`, which always runs `cargo test` and conditionally runs `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` when those cargo components are available.
+- `.github/workflows/ci.yml` now calls the same `make quality-python` and `make quality-rust` targets so local and CI quality behavior stays centralized in the scripts instead of being duplicated in workflow YAML.
 
 ### Rust cross-build notes
 
@@ -445,14 +448,13 @@ Rust still keeps a compatibility shim via `cargo run --bin grafana-access-utils 
 - `team list`
 - `team modify`
 - `team add`
+- `team delete`
 - `service-account list`
 - `service-account add`
 - `service-account token add`
-
-Not implemented yet:
-
-- `team delete`
-- any `group` alias commands
+- `service-account delete`
+- `service-account token delete`
+- `group` alias for `team`
 
 Current team creation command shape:
 
@@ -477,6 +479,7 @@ python3 python/grafana-utils.py access team add \
 - `team list` is org-scoped and may use token auth or Basic auth
 - `team modify` is org-scoped and may use token auth or Basic auth
 - `team add` is org-scoped and may use token auth or Basic auth
+- `team delete` is org-scoped and may use token auth or Basic auth
 - service-account commands are org-scoped and may use token auth or Basic auth
 - do not silently fall back from a token-only global request into a weaker behavior; fail early with a clear error instead
 
@@ -559,9 +562,13 @@ grafana-utils access user delete -h
 grafana-utils access team list -h
 grafana-utils access team add -h
 grafana-utils access team modify -h
+grafana-utils access team delete -h
+grafana-utils access group delete -h
 grafana-utils access service-account list -h
 grafana-utils access service-account add -h
+grafana-utils access service-account delete -h
 grafana-utils access service-account token add -h
+grafana-utils access service-account token delete -h
 grafana-utils alert -h
 cargo run --quiet --manifest-path rust/Cargo.toml --bin grafana-utils -- -h
 cargo run --quiet --manifest-path rust/Cargo.toml --bin grafana-utils -- dashboard -h
@@ -579,9 +586,13 @@ cargo run --quiet --manifest-path rust/Cargo.toml --bin grafana-utils -- access 
 cargo run --quiet --manifest-path rust/Cargo.toml --bin grafana-utils -- access team list -h
 cargo run --quiet --manifest-path rust/Cargo.toml --bin grafana-utils -- access team add -h
 cargo run --quiet --manifest-path rust/Cargo.toml --bin grafana-utils -- access team modify -h
+cargo run --quiet --manifest-path rust/Cargo.toml --bin grafana-utils -- access team delete -h
+cargo run --quiet --manifest-path rust/Cargo.toml --bin grafana-utils -- access group delete -h
 cargo run --quiet --manifest-path rust/Cargo.toml --bin grafana-utils -- access service-account list -h
 cargo run --quiet --manifest-path rust/Cargo.toml --bin grafana-utils -- access service-account add -h
+cargo run --quiet --manifest-path rust/Cargo.toml --bin grafana-utils -- access service-account delete -h
 cargo run --quiet --manifest-path rust/Cargo.toml --bin grafana-utils -- access service-account token add -h
+cargo run --quiet --manifest-path rust/Cargo.toml --bin grafana-utils -- access service-account token delete -h
 python3 python/grafana-utils.py -h
 python3 python/grafana-utils.py dashboard -h
 python3 python/grafana-utils.py dashboard list -h

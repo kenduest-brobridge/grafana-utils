@@ -15,9 +15,13 @@
 - implemented access `team list`
 - implemented access `team add`
 - implemented access `team modify`
+- implemented access `team delete`
 - implemented access `service-account list`
 - implemented access `service-account add`
+- implemented access `service-account delete`
 - implemented access `service-account token add`
+- implemented access `service-account token delete`
+- implemented access `group` alias for `team`
 - added unit tests and Docker-backed live validation for the implemented access workflows
 - dashboard CLI also includes `list-data-sources` in both Python and Rust, but that is outside the remaining access-management scope tracked below
 - Rust dashboard internals were split into:
@@ -40,13 +44,12 @@
 
 ### In Progress
 
-- access-management CLI exists in both Python and Rust, but only part of the planned access surface is implemented
-- auth preflight is implemented for current commands, but not yet for the remaining planned mutating commands
-- service-account support exists, but only the initial list/add/token-add slice is implemented
+- access-management CLI exists in both Python and Rust, and the remaining open access work is now limited to shared TLS/auth parameter expansion plus live validation coverage for the newer destructive commands
+- service-account support now includes delete and token-delete, but broader auth/TLS option parity and live validation coverage still need follow-through
+- baseline quality gate scripts now exist and are wired into `make` and CI, but optional Python formatter/lint/static-check coverage still depends on tool availability in the active environment
 
 ### Next
 
-- add basic quality gates for Python and Rust, including test execution plus formatter/lint/static-check coverage where the toolchain is practical
 - split the oversized Python dashboard CLI orchestration paths into smaller helpers so export/import logic is easier to change safely
 - split the oversized Rust dashboard orchestration paths further so live/export/import/inspect flows do not keep accreting in one module
 - consolidate duplicated Python auth resolution logic across dashboard, alert, and access CLIs into shared helpers to reduce behavior drift
@@ -56,10 +59,6 @@
 - define a datasource import/export contract that strips server-managed fields, handles secure settings safely, and keeps Python/Rust payload normalization aligned
 - add datasource import strategies that match the dashboard workflows: create-only, create-or-update, and update-only/skip-missing
 - add cross-language datasource fixtures that cover Prometheus, Loki, InfluxDB, and mixed auth/secret-handling cases so Python and Rust stay behaviorally aligned
-- `team delete`
-- `group` alias for `team`
-- `service-account delete`
-- `service-account token delete`
 - dashboard `prompt` export should surface the original datasource name in Grafana web-import prompts, not only the datasource type label
 - dashboard `prompt` export should align `__requires` names and versions with Grafana external export where possible
 - dashboard `prompt` export should add broader mixed-type and same-type datasource validation coverage beyond the current Prometheus/Loki cases
@@ -86,13 +85,13 @@ Current implementation status:
 - `team list`: done
 - `team add`: done
 - `team modify`: done
-- `team delete`: not started
+- `team delete`: done
 - `service-account list`: done
 - `service-account add`: done
 - `service-account token add`: done
-- `service-account delete`: not started
-- `service-account token delete`: not started
-- `group` alias: not started
+- `service-account delete`: done
+- `service-account token delete`: done
+- `group` alias: done
 
 Recommended user-facing command shape:
 
@@ -158,10 +157,12 @@ Current implementation status:
 - `team list`: token or Basic auth
 - `team add`: token or Basic auth
 - `team modify`: token or Basic auth
+- `team delete`: token or Basic auth
 - `service-account list`: token or Basic auth
 - `service-account add`: token or Basic auth
 - `service-account token add`: token or Basic auth
-- remaining planned commands still need explicit per-command auth preflight
+- `service-account delete`: token or Basic auth
+- `service-account token delete`: token or Basic auth
 
 Rules to keep:
 
@@ -172,20 +173,15 @@ Rules to keep:
 
 ## Priority Order
 
-1. add basic quality gates for Python and Rust
-2. split Python dashboard import/export/inspect orchestration into smaller helpers
-3. split Rust dashboard live/export/import/inspect orchestration into smaller modules
-4. refactor query report extraction behind datasource-type-specific analyzers
-5. add first-class datasource `list`/`export`/`import`/`diff` workflows plus a stable import/export contract
-6. add broader import dependency preflight for datasources/plugins/alert references
-7. reduce repeated dashboard import lookup calls on live Grafana
-8. extend inspection into richer dependency analysis and datasource usage/orphan reports
-9. `team delete`
-10. `service-account delete`
-11. `service-account token delete`
-12. consolidate Python auth resolution into shared helpers
-13. `group` alias
-14. typed datasource reference structs in the Rust dashboard and alert paths
-15. clean repo workflow noise and local scratch artifacts
-16. export package/bundle workflow
-17. semantic alert diff normalization for equivalent values
+1. split Python dashboard import/export/inspect orchestration into smaller helpers
+2. split Rust dashboard live/export/import/inspect orchestration into smaller modules
+3. refactor query report extraction behind datasource-type-specific analyzers
+4. add first-class datasource `list`/`export`/`import`/`diff` workflows plus a stable import/export contract
+5. add broader import dependency preflight for datasources/plugins/alert references
+6. reduce repeated dashboard import lookup calls on live Grafana
+7. extend inspection into richer dependency analysis and datasource usage/orphan reports
+8. consolidate duplicated Python auth resolution logic across dashboard, alert, and access CLIs into shared helpers
+9. typed datasource reference structs in the Rust dashboard and alert paths
+10. clean repo workflow noise and local scratch artifacts
+11. export package/bundle workflow
+12. semantic alert diff normalization for equivalent values

@@ -3798,7 +3798,9 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
         .find(|item| item.kind == "orphaned-datasource")
         .unwrap();
     assert_eq!(orphaned.category, "inventory");
-    assert!(orphaned.recommendation.contains("Remove the unused datasource"));
+    assert!(orphaned
+        .recommendation
+        .contains("Remove the unused datasource"));
     let unknown = document
         .risk_records
         .iter()

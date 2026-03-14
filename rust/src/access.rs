@@ -6,6 +6,8 @@ use crate::http::JsonHttpClient;
 
 #[path = "access_cli_defs.rs"]
 mod access_cli_defs;
+#[path = "access_pending_delete.rs"]
+mod access_pending_delete;
 #[path = "access_render.rs"]
 mod access_render;
 #[path = "access_service_account.rs"]
@@ -23,7 +25,15 @@ pub use access_cli_defs::{
     UserAddArgs, UserCommand, UserDeleteArgs, UserListArgs, UserModifyArgs, DEFAULT_PAGE_SIZE,
     DEFAULT_TIMEOUT, DEFAULT_URL,
 };
+pub use access_pending_delete::{
+    GroupCommandStage, ServiceAccountDeleteArgs, ServiceAccountTokenDeleteArgs, TeamDeleteArgs,
+};
 
+#[cfg(test)]
+pub(crate) use access_pending_delete::{
+    delete_service_account_token_with_request, delete_service_account_with_request,
+    delete_team_with_request,
+};
 #[cfg(test)]
 pub(crate) use access_service_account::{
     add_service_account_token_with_request, add_service_account_with_request,
@@ -112,6 +122,9 @@ where
             TeamCommand::Modify(args) => {
                 let _ = access_team::modify_team_with_request(&mut request_json, &args)?;
             }
+            TeamCommand::Delete(args) => {
+                let _ = access_pending_delete::delete_team_with_request(&mut request_json, &args)?;
+            }
         },
         AccessCommand::ServiceAccount { command } => match command {
             ServiceAccountCommand::List(args) => {
@@ -126,9 +139,21 @@ where
                     &args,
                 )?;
             }
+            ServiceAccountCommand::Delete(args) => {
+                let _ = access_pending_delete::delete_service_account_with_request(
+                    &mut request_json,
+                    &args,
+                )?;
+            }
             ServiceAccountCommand::Token { command } => match command {
                 ServiceAccountTokenCommand::Add(args) => {
                     let _ = access_service_account::add_service_account_token_with_request(
+                        &mut request_json,
+                        &args,
+                    )?;
+                }
+                ServiceAccountTokenCommand::Delete(args) => {
+                    let _ = access_pending_delete::delete_service_account_token_with_request(
                         &mut request_json,
                         &args,
                     )?;
@@ -172,6 +197,10 @@ pub fn run_access_cli(args: AccessCliArgs) -> Result<()> {
                 let client = build_http_client(&inner.common)?;
                 run_access_cli_with_client(&client, args)
             }
+            TeamCommand::Delete(inner) => {
+                let client = build_http_client(&inner.common)?;
+                run_access_cli_with_client(&client, args)
+            }
         },
         AccessCommand::ServiceAccount { command } => match command {
             ServiceAccountCommand::List(inner) => {
@@ -182,8 +211,16 @@ pub fn run_access_cli(args: AccessCliArgs) -> Result<()> {
                 let client = build_http_client(&inner.common)?;
                 run_access_cli_with_client(&client, args)
             }
+            ServiceAccountCommand::Delete(inner) => {
+                let client = build_http_client(&inner.common)?;
+                run_access_cli_with_client(&client, args)
+            }
             ServiceAccountCommand::Token { command } => match command {
                 ServiceAccountTokenCommand::Add(inner) => {
+                    let client = build_http_client(&inner.common)?;
+                    run_access_cli_with_client(&client, args)
+                }
+                ServiceAccountTokenCommand::Delete(inner) => {
                     let client = build_http_client(&inner.common)?;
                     run_access_cli_with_client(&client, args)
                 }

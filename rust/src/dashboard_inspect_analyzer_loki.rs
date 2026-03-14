@@ -14,8 +14,7 @@ fn ordered_unique_push(values: &mut Vec<String>, candidate: &str) {
 }
 
 fn extract_loki_stream_selectors(query_text: &str) -> Vec<String> {
-    let regex =
-        Regex::new(r"\{[^{}]+\}").expect("invalid hard-coded loki stream selector regex");
+    let regex = Regex::new(r"\{[^{}]+\}").expect("invalid hard-coded loki stream selector regex");
     let mut values = Vec::new();
     for matched in regex.find_iter(query_text) {
         ordered_unique_push(&mut values, matched.as_str());
@@ -24,10 +23,8 @@ fn extract_loki_stream_selectors(query_text: &str) -> Vec<String> {
 }
 
 fn extract_loki_label_matchers(query_text: &str) -> Vec<String> {
-    let regex = Regex::new(
-        r#"([A-Za-z_][A-Za-z0-9_]*\s*(?:=|!=|=~|!~)\s*"(?:\\.|[^"\\])*")"#,
-    )
-    .expect("invalid hard-coded loki label matcher regex");
+    let regex = Regex::new(r#"([A-Za-z_][A-Za-z0-9_]*\s*(?:=|!=|=~|!~)\s*"(?:\\.|[^"\\])*")"#)
+        .expect("invalid hard-coded loki label matcher regex");
     let mut values = Vec::new();
     for captures in regex.captures_iter(query_text) {
         if let Some(value) = captures.get(1) {
@@ -85,8 +82,7 @@ fn extract_loki_pipeline_metrics(query_text: &str) -> Vec<String> {
 }
 
 fn extract_loki_range_windows(query_text: &str) -> Vec<String> {
-    let regex =
-        Regex::new(r"\[([^\]]+)\]").expect("invalid hard-coded loki range window regex");
+    let regex = Regex::new(r"\[([^\]]+)\]").expect("invalid hard-coded loki range window regex");
     let mut values = Vec::new();
     for captures in regex.captures_iter(query_text) {
         if let Some(value) = captures.get(1) {
