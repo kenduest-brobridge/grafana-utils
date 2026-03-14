@@ -641,6 +641,7 @@ mod access_pending_delete_rust_tests {
             username: None,
             password: None,
             prompt_password: false,
+            prompt_token: false,
             org_id: None,
             timeout: DEFAULT_TIMEOUT,
             verify_ssl: false,

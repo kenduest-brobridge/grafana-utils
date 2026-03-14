@@ -38,6 +38,12 @@ pub struct CommonCliArgs {
     pub prompt_password: bool,
     #[arg(
         long,
+        default_value_t = false,
+        help = "Prompt for the Grafana API token without echo instead of passing --token on the command line."
+    )]
+    pub prompt_token: bool,
+    #[arg(
+        long,
         help = "Grafana organization id to send through X-Grafana-Org-Id."
     )]
     pub org_id: Option<i64>,
@@ -539,6 +545,7 @@ pub fn build_auth_context(common: &CommonCliArgs) -> Result<AccessAuthContext> {
         common.username.as_deref(),
         common.password.as_deref(),
         common.prompt_password,
+        common.prompt_token,
     )?;
     if let Some(org_id) = common.org_id {
         headers.push(("X-Grafana-Org-Id".to_string(), org_id.to_string()));

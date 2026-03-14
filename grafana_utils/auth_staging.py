@@ -19,9 +19,14 @@ def format_cli_auth_error_message(message: str) -> str:
 
     if message == "Choose either token auth or Basic auth, not both.":
         return (
-            "Choose either token auth (--token / --api-token) or Basic auth "
+            "Choose either token auth (--token / --api-token / --prompt-token) or Basic auth "
             "(--basic-user with --basic-password / --prompt-password), not both."
         )
+    if (
+        message
+        == "Choose either an explicit API token or --prompt-token, not both."
+    ):
+        return "Choose either --token / --api-token or --prompt-token, not both."
     if (
         message
         == "Choose either an explicit Basic auth password or --prompt-password, not both."
@@ -53,7 +58,7 @@ def format_cli_auth_error_message(message: str) -> str:
     ):
         return (
             "Authentication required. Set --token / --api-token / "
-            "GRAFANA_API_TOKEN or --basic-user and --basic-password / "
+            "--prompt-token / GRAFANA_API_TOKEN or --basic-user and --basic-password / "
             "--prompt-password / GRAFANA_USERNAME and GRAFANA_PASSWORD."
         )
     return message
@@ -98,17 +103,26 @@ def add_org_id_header(
 
 def resolve_auth_headers(
     token: Optional[str] = None,
+    prompt_token: bool = False,
     username: Optional[str] = None,
     password: Optional[str] = None,
     prompt_password: bool = False,
     env: Optional[Dict[str, str]] = None,
+    token_prompt_reader=None,
+    password_prompt_reader=None,
     prompt_reader=None,
 ) -> Tuple[Dict[str, str], str]:
     """Resolve Grafana auth headers from explicit flags plus environment."""
 
     prompt_reader = prompt_reader or getpass.getpass
+    token_prompt_reader = token_prompt_reader or prompt_reader
+    password_prompt_reader = password_prompt_reader or prompt_reader
 
-    if token and (username or password or prompt_password):
+    if token and prompt_token:
+        raise AuthConfigError(
+            "Choose either an explicit API token or --prompt-token, not both."
+        )
+    if (token or prompt_token) and (username or password or prompt_password):
         raise AuthConfigError(
             "Choose either token auth or Basic auth, not both."
         )
@@ -127,11 +141,14 @@ def resolve_auth_headers(
     if prompt_password and not username:
         raise AuthConfigError("--prompt-password requires a Basic auth username.")
 
+    if prompt_token:
+        token = token_prompt_reader("Grafana API token: ")
+
     if token:
         return {"Authorization": "Bearer %s" % token}, "token"
 
     if prompt_password and username:
-        password = prompt_reader("Grafana Basic auth password: ")
+        password = password_prompt_reader("Grafana Basic auth password: ")
 
     if username and password:
         return {"Authorization": _encode_basic_auth(username, password)}, "basic"
@@ -160,12 +177,15 @@ def resolve_auth_headers(
 def resolve_auth_from_namespace(
     args: Any,
     token_attr: str = "api_token",
+    prompt_token_attr: str = "prompt_token",
     username_attrs: Optional[Iterable[str]] = None,
     password_attrs: Optional[Iterable[str]] = None,
     prompt_attr: str = "prompt_password",
     org_id_attr: str = "org_id",
     env: Optional[Dict[str, str]] = None,
     prompt_reader=None,
+    token_prompt_reader=None,
+    password_prompt_reader=None,
 ) -> Tuple[Dict[str, str], str]:
     """Resolve auth headers from an argparse namespace-like object."""
 
@@ -176,11 +196,14 @@ def resolve_auth_from_namespace(
 
     headers, auth_mode = resolve_auth_headers(
         token=getattr(args, token_attr, None),
+        prompt_token=bool(getattr(args, prompt_token_attr, False)),
         username=_first_present(args, username_attrs),
         password=_first_present(args, password_attrs),
         prompt_password=bool(getattr(args, prompt_attr, False)),
         env=env,
         prompt_reader=prompt_reader,
+        token_prompt_reader=token_prompt_reader,
+        password_prompt_reader=password_prompt_reader,
     )
     org_id = getattr(args, org_id_attr, None)
     return add_org_id_header(headers, org_id), auth_mode
@@ -190,11 +213,14 @@ def resolve_cli_auth_from_namespace(
     args: Any,
     prompt_reader=None,
     token_attr: str = "api_token",
+    prompt_token_attr: str = "prompt_token",
     username_attrs: Optional[Iterable[str]] = None,
     password_attrs: Optional[Iterable[str]] = None,
     prompt_attr: str = "prompt_password",
     org_id_attr: str = "org_id",
     env: Optional[Dict[str, str]] = None,
+    token_prompt_reader=None,
+    password_prompt_reader=None,
 ) -> Tuple[Dict[str, str], str]:
     """Resolve auth or raise AuthConfigError with CLI-facing wording."""
 
@@ -202,12 +228,15 @@ def resolve_cli_auth_from_namespace(
         return resolve_auth_from_namespace(
             args,
             token_attr=token_attr,
+            prompt_token_attr=prompt_token_attr,
             username_attrs=username_attrs,
             password_attrs=password_attrs,
             prompt_attr=prompt_attr,
             org_id_attr=org_id_attr,
             env=env,
             prompt_reader=prompt_reader,
+            token_prompt_reader=token_prompt_reader,
+            password_prompt_reader=password_prompt_reader,
         )
     except AuthConfigError as exc:
         raise AuthConfigError(format_cli_auth_error_message(str(exc)))

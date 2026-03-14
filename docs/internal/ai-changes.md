@@ -1,5 +1,13 @@
 # ai-changes.md
 
+## 2026-03-14 - Add Prompt Token Auth Flags
+- Summary: Added `--prompt-token` across the shared Python and Rust auth paths so manual CLI runs can enter a bearer token without echo instead of passing it directly on the command line. The new flag mirrors the existing `--prompt-password` ergonomics, stays mutually exclusive with explicit `--token`, and remains mutually exclusive with Basic-auth flags.
+- Tests: Added focused Python parser/auth tests and focused Rust parser/auth tests for prompt-token support, then reran the Python auth suites and Rust prompt-token coverage.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py tests/test_python_alert_cli.py tests/test_python_access_cli.py tests/test_python_auth_staging.py`; `cargo test --manifest-path rust/Cargo.toml prompt_token --quiet`
+- Validation: Confirmed dashboard, alert, and access all accept `--prompt-token`, confirmed the shared auth helpers now return `Bearer <prompted-token>` when prompted, and confirmed the auth validators reject `--token` plus `--prompt-token` or token auth mixed with Basic auth.
+- Impact: `grafana_utils/auth_staging.py`, `grafana_utils/dashboard_cli.py`, `grafana_utils/alert_cli.py`, `grafana_utils/access_cli.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `tests/test_python_access_cli.py`, `tests/test_python_auth_staging.py`, `rust/src/common.rs`, `rust/src/common_rust_tests.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_rust_tests.rs`, `rust/src/alert_cli_defs.rs`, `rust/src/alert_rust_tests.rs`, `rust/src/access_cli_defs.rs`, `rust/src/access_rust_tests.rs`, `rust/src/access_pending_delete.rs`, `README.md`, `README.zh-TW.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is an additive auth-entry path, but the shared validator logic is more complex now, so future auth flag changes should keep prompted token and prompted password rules aligned across Python and Rust.
+
 ## 2026-03-14 - Add Python Prompt Token Support
 - Summary: Added `--prompt-token` across the Python dashboard, alert, and access CLIs so operators can enter a Grafana API token through a non-echoed prompt instead of passing `--token` on the command line. The shared Python auth resolver in `grafana_utils/auth_staging.py` now handles prompted token input alongside the existing explicit token, explicit Basic auth, and prompted Basic-auth paths.
 - Tests: Added prompt-token parser and auth-resolution coverage for dashboard, alert, access, and the shared auth-staging helper, including conflict cases for `--token` plus `--prompt-token`.

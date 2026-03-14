@@ -287,6 +287,14 @@ def add_common_cli_args(
                 "Falls back to GRAFANA_API_TOKEN."
             ),
         )
+        parser.add_argument(
+            "--prompt-token",
+            action="store_true",
+            help=(
+                "Prompt for the Grafana API token without echo instead of "
+                "passing --token on the command line."
+            ),
+        )
     parser.add_argument(
         "--basic-user",
         dest=username_dest,
@@ -813,6 +821,8 @@ def resolve_auth(args: argparse.Namespace) -> Tuple[Dict[str, str], str]:
         return resolve_cli_auth_from_namespace(
             args,
             prompt_reader=getpass.getpass,
+            token_prompt_reader=getpass.getpass,
+            password_prompt_reader=getpass.getpass,
         )
     except AuthConfigError as exc:
         raise GrafanaError(str(exc))

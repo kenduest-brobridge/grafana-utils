@@ -64,21 +64,31 @@ pub fn resolve_auth_headers(
     username: Option<&str>,
     password: Option<&str>,
     prompt_for_password: bool,
+    prompt_for_token: bool,
 ) -> Result<Vec<(String, String)>> {
-    resolve_auth_headers_with_prompt(api_token, username, password, prompt_for_password, || {
-        prompt_password("Grafana Basic auth password: ").map_err(GrafanaCliError::from)
-    })
+    resolve_auth_headers_with_prompt(
+        api_token,
+        username,
+        password,
+        prompt_for_password,
+        prompt_for_token,
+        || prompt_password("Grafana Basic auth password: ").map_err(GrafanaCliError::from),
+        || prompt_password("Grafana API token: ").map_err(GrafanaCliError::from),
+    )
 }
 
-fn resolve_auth_headers_with_prompt<F>(
+fn resolve_auth_headers_with_prompt<F, G>(
     api_token: Option<&str>,
     username: Option<&str>,
     password: Option<&str>,
     prompt_for_password: bool,
-    prompt: F,
+    prompt_for_token: bool,
+    prompt_password_reader: F,
+    prompt_token_reader: G,
 ) -> Result<Vec<(String, String)>>
 where
     F: FnOnce() -> Result<String>,
+    G: FnOnce() -> Result<String>,
 {
     let cli_token = api_token
         .map(str::to_owned)
@@ -90,7 +100,12 @@ where
         .map(str::to_owned)
         .filter(|value| !value.is_empty());
 
-    if cli_token.is_some()
+    if cli_token.is_some() && prompt_for_token {
+        return Err(message(
+            "Choose either --token / --api-token or --prompt-token, not both.",
+        ));
+    }
+    if (cli_token.is_some() || prompt_for_token)
         && (cli_username.is_some() || cli_password.is_some() || prompt_for_password)
     {
         return Err(message(
@@ -119,6 +134,14 @@ where
         return Err(message("--prompt-password requires --basic-user."));
     }
 
+    if prompt_for_token {
+        let token = prompt_token_reader()?;
+        return Ok(vec![(
+            "Authorization".to_string(),
+            format!("Bearer {token}"),
+        )]);
+    }
+
     let token = cli_token.or_else(|| env_value("GRAFANA_API_TOKEN"));
     if let Some(token) = token {
         return Ok(vec![(
@@ -128,7 +151,7 @@ where
     }
 
     if prompt_for_password && cli_username.is_some() {
-        cli_password = Some(prompt()?);
+        cli_password = Some(prompt_password_reader()?);
     }
 
     let username = cli_username.or_else(|| env_value("GRAFANA_USERNAME"));
@@ -149,7 +172,7 @@ where
 
     Err(message(
         "Authentication required. Set --token / --api-token / GRAFANA_API_TOKEN \
-or --basic-user and --basic-password / --prompt-password / \
+or --prompt-token / --basic-user and --basic-password / --prompt-password / \
 GRAFANA_USERNAME and GRAFANA_PASSWORD.",
     ))
 }

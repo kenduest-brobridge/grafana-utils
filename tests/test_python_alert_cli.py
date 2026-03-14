@@ -385,6 +385,12 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertIsNone(args.password)
         self.assertTrue(args.prompt_password)
 
+    def test_parse_args_supports_prompt_token(self):
+        args = alert_utils.parse_args(["--prompt-token"])
+
+        self.assertTrue(args.prompt_token)
+        self.assertIsNone(args.api_token)
+
     def test_build_json_http_transport_defaults_to_requests(self):
         transport = alert_utils.build_json_http_transport(
             base_url="http://127.0.0.1:3000",
@@ -417,6 +423,7 @@ class AlertUtilsTests(unittest.TestCase):
     def test_resolve_auth_supports_token_auth(self):
         args = argparse.Namespace(
             api_token="abc123",
+            prompt_token=False,
             username=None,
             password=None,
         )
@@ -428,6 +435,7 @@ class AlertUtilsTests(unittest.TestCase):
     def test_resolve_auth_supports_basic_auth(self):
         args = argparse.Namespace(
             api_token=None,
+            prompt_token=False,
             username="user",
             password="pass",
             prompt_password=False,
@@ -441,6 +449,7 @@ class AlertUtilsTests(unittest.TestCase):
     def test_resolve_auth_rejects_mixed_token_and_basic_auth(self):
         args = argparse.Namespace(
             api_token="abc123",
+            prompt_token=False,
             username="user",
             password="pass",
             prompt_password=False,
@@ -452,6 +461,7 @@ class AlertUtilsTests(unittest.TestCase):
     def test_resolve_auth_rejects_user_without_password(self):
         args = argparse.Namespace(
             api_token=None,
+            prompt_token=False,
             username="user",
             password=None,
             prompt_password=False,
@@ -466,6 +476,7 @@ class AlertUtilsTests(unittest.TestCase):
     def test_resolve_auth_rejects_password_without_user(self):
         args = argparse.Namespace(
             api_token=None,
+            prompt_token=False,
             username=None,
             password="pass",
             prompt_password=False,
@@ -480,6 +491,7 @@ class AlertUtilsTests(unittest.TestCase):
     def test_resolve_auth_supports_prompt_password(self):
         args = argparse.Namespace(
             api_token=None,
+            prompt_token=False,
             username="user",
             password=None,
             prompt_password=True,
@@ -492,9 +504,25 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(headers["Authorization"], f"Basic {expected}")
         prompt.assert_called_once_with("Grafana Basic auth password: ")
 
+    def test_resolve_auth_supports_prompt_token(self):
+        args = argparse.Namespace(
+            api_token=None,
+            prompt_token=True,
+            username=None,
+            password=None,
+            prompt_password=False,
+        )
+
+        with mock.patch("grafana_utils.alert_cli.getpass.getpass", return_value="token-secret") as prompt:
+            headers = alert_utils.resolve_auth(args)
+
+        self.assertEqual(headers["Authorization"], "Bearer token-secret")
+        prompt.assert_called_once_with("Grafana API token: ")
+
     def test_resolve_auth_supports_env_token_auth(self):
         args = argparse.Namespace(
             api_token=None,
+            prompt_token=False,
             username=None,
             password=None,
             prompt_password=False,
@@ -508,6 +536,7 @@ class AlertUtilsTests(unittest.TestCase):
     def test_resolve_auth_rejects_partial_basic_auth_env(self):
         args = argparse.Namespace(
             api_token=None,
+            prompt_token=False,
             username=None,
             password=None,
             prompt_password=False,
@@ -523,6 +552,7 @@ class AlertUtilsTests(unittest.TestCase):
     def test_resolve_auth_rejects_prompt_without_username(self):
         args = argparse.Namespace(
             api_token=None,
+            prompt_token=False,
             username=None,
             password=None,
             prompt_password=True,
@@ -537,6 +567,7 @@ class AlertUtilsTests(unittest.TestCase):
     def test_resolve_auth_rejects_prompt_with_explicit_password(self):
         args = argparse.Namespace(
             api_token=None,
+            prompt_token=False,
             username="user",
             password="pass",
             prompt_password=True,
@@ -545,6 +576,21 @@ class AlertUtilsTests(unittest.TestCase):
         with self.assertRaisesRegex(
             alert_utils.GrafanaError,
             "Choose either --basic-password or --prompt-password, not both.",
+        ):
+            alert_utils.resolve_auth(args)
+
+    def test_resolve_auth_rejects_explicit_and_prompt_token(self):
+        args = argparse.Namespace(
+            api_token="abc123",
+            prompt_token=True,
+            username=None,
+            password=None,
+            prompt_password=False,
+        )
+
+        with self.assertRaisesRegex(
+            alert_utils.GrafanaError,
+            "Choose either --token / --api-token or --prompt-token, not both.",
         ):
             alert_utils.resolve_auth(args)
 

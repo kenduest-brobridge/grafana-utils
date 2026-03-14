@@ -166,6 +166,14 @@ fn parse_cli_supports_prompt_password() {
 }
 
 #[test]
+fn parse_cli_supports_prompt_token() {
+    let args: AlertCliArgs = parse_cli_from(["grafana-alert-utils", "--prompt-token"]);
+    assert_eq!(args.api_token.as_deref(), None);
+    assert!(args.prompt_token);
+    assert!(!args.prompt_password);
+}
+
+#[test]
 fn help_explains_flat_layout() {
     let help = render_alert_help();
     assert!(help.contains("export"));

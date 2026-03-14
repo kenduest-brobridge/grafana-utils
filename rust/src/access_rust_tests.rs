@@ -35,6 +35,7 @@ fn make_token_common() -> CommonCliArgs {
         username: None,
         password: None,
         prompt_password: false,
+        prompt_token: false,
         org_id: None,
         timeout: 30,
         verify_ssl: false,
@@ -48,6 +49,7 @@ fn make_basic_common() -> CommonCliArgs {
         username: Some("admin".to_string()),
         password: Some("secret".to_string()),
         prompt_password: false,
+        prompt_token: false,
         org_id: None,
         timeout: 30,
         verify_ssl: false,
@@ -228,6 +230,22 @@ fn parse_cli_supports_service_account_token_delete() {
             assert!(token_args.yes);
         }
         _ => panic!("expected service-account token delete"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_prompt_token() {
+    let args = parse_cli_from(["grafana-access-utils", "user", "list", "--prompt-token"]);
+
+    match args.command {
+        AccessCommand::User {
+            command: UserCommand::List(list_args),
+        } => {
+            assert!(list_args.common.prompt_token);
+            assert_eq!(list_args.common.api_token.as_deref(), None);
+            assert!(!list_args.common.prompt_password);
+        }
+        _ => panic!("expected user list"),
     }
 }
 

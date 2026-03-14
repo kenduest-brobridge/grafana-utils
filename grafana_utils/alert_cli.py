@@ -94,6 +94,14 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
         ),
     )
     parser.add_argument(
+        "--prompt-token",
+        action="store_true",
+        help=(
+            "Prompt for the Grafana API token without echo instead of passing "
+            "--token on the command line."
+        ),
+    )
+    parser.add_argument(
         "--basic-user",
         dest="username",
         default=None,
@@ -410,6 +418,8 @@ def resolve_auth(args: argparse.Namespace) -> Dict[str, str]:
         headers, _auth_mode = resolve_cli_auth_from_namespace(
             args,
             prompt_reader=getpass.getpass,
+            token_prompt_reader=getpass.getpass,
+            password_prompt_reader=getpass.getpass,
         )
         return headers
     except AuthConfigError as exc:

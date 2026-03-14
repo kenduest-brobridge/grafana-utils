@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-14 - Task: Add Prompt Token Auth Flags
+- State: Done
+- Scope: `grafana_utils/auth_staging.py`, `grafana_utils/dashboard_cli.py`, `grafana_utils/alert_cli.py`, `grafana_utils/access_cli.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `tests/test_python_access_cli.py`, `tests/test_python_auth_staging.py`, `rust/src/common.rs`, `rust/src/common_rust_tests.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_rust_tests.rs`, `rust/src/alert_cli_defs.rs`, `rust/src/alert_rust_tests.rs`, `rust/src/access_cli_defs.rs`, `rust/src/access_rust_tests.rs`, `rust/src/access_pending_delete.rs`, `README.md`, `README.zh-TW.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The CLI families already supported `--token` and `--prompt-password`, but operators still had to paste API tokens directly onto the command line or rely on env vars. That left token auth less safe for manual use than Basic auth, even though both secrets can leak through shell history or process args.
+- Current Update: Added `--prompt-token` across the shared Python and Rust auth paths, wired the common parsers to accept it, prompted for the token without echo, and tightened validation so prompted token auth stays mutually exclusive with explicit token and Basic auth flags.
+- Result: Operators can now use token auth interactively without exposing the token in shell history or process arguments, using a flag pattern that matches the existing `--prompt-password` behavior.
+
 ## 2026-03-14 - Task: Add Python Prompt Token Support
 - State: Done
 - Scope: `grafana_utils/auth_staging.py`, `grafana_utils/dashboard_cli.py`, `grafana_utils/alert_cli.py`, `grafana_utils/access_cli.py`, `tests/test_python_auth_staging.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `tests/test_python_access_cli.py`, `README.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

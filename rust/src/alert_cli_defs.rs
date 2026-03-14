@@ -42,6 +42,12 @@ pub struct AlertCommonArgs {
         help = "Prompt for the Grafana Basic auth password without echo instead of passing --basic-password on the command line."
     )]
     pub prompt_password: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Prompt for the Grafana API token without echo instead of passing --token on the command line."
+    )]
+    pub prompt_token: bool,
     #[arg(long, default_value_t = DEFAULT_TIMEOUT, help = "HTTP timeout in seconds.")]
     pub timeout: u64,
     #[arg(
@@ -268,6 +274,7 @@ pub struct AlertCliArgs {
     pub username: Option<String>,
     pub password: Option<String>,
     pub prompt_password: bool,
+    pub prompt_token: bool,
     pub output_dir: PathBuf,
     pub import_dir: Option<PathBuf>,
     pub diff_dir: Option<PathBuf>,
@@ -293,6 +300,7 @@ pub fn cli_args_from_common(common: AlertCommonArgs) -> AlertCliArgs {
         username: common.username,
         password: common.password,
         prompt_password: common.prompt_password,
+        prompt_token: common.prompt_token,
         output_dir: PathBuf::from(DEFAULT_OUTPUT_DIR),
         import_dir: None,
         diff_dir: None,
@@ -320,6 +328,7 @@ fn empty_legacy_args() -> AlertLegacyArgs {
             username: None,
             password: None,
             prompt_password: false,
+            prompt_token: false,
             timeout: 0,
             verify_ssl: false,
         },
@@ -437,6 +446,7 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
                 username: legacy.common.username,
                 password: legacy.common.password,
                 prompt_password: legacy.common.prompt_password,
+                prompt_token: legacy.common.prompt_token,
                 output_dir: legacy.output_dir,
                 import_dir: legacy.import_dir,
                 diff_dir: legacy.diff_dir,
@@ -475,6 +485,7 @@ pub fn build_auth_context(args: &AlertCliArgs) -> Result<AlertAuthContext> {
             args.username.as_deref(),
             args.password.as_deref(),
             args.prompt_password,
+            args.prompt_token,
         )?,
     })
 }

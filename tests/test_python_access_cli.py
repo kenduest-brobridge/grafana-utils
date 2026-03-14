@@ -636,6 +636,12 @@ class AccessCliTests(unittest.TestCase):
         self.assertIsNone(args.password)
         self.assertTrue(args.prompt_password)
 
+    def test_parse_args_supports_prompt_token(self):
+        args = access_utils.parse_args(["user", "list", "--prompt-token"])
+
+        self.assertTrue(args.prompt_token)
+        self.assertIsNone(args.api_token)
+
     def test_parse_args_supports_service_account_token_add(self):
         args = access_utils.parse_args(
             [
@@ -704,6 +710,7 @@ class AccessCliTests(unittest.TestCase):
     def test_build_request_headers_adds_org_id(self):
         args = argparse.Namespace(
             api_token="abc123",
+            prompt_token=False,
             username=None,
             password=None,
             org_id="7",
@@ -718,6 +725,7 @@ class AccessCliTests(unittest.TestCase):
     def test_resolve_auth_supports_basic_auth(self):
         args = argparse.Namespace(
             api_token=None,
+            prompt_token=False,
             username="admin",
             password="secret",
             prompt_password=False,
@@ -733,6 +741,7 @@ class AccessCliTests(unittest.TestCase):
 
         args = argparse.Namespace(
             api_token=None,
+            prompt_token=False,
             username=None,
             password=None,
             prompt_password=False,
@@ -755,6 +764,7 @@ class AccessCliTests(unittest.TestCase):
     def test_resolve_auth_rejects_mixed_auth(self):
         args = argparse.Namespace(
             api_token="abc123",
+            prompt_token=False,
             username="admin",
             password="secret",
             prompt_password=False,
@@ -766,6 +776,7 @@ class AccessCliTests(unittest.TestCase):
     def test_resolve_auth_supports_prompt_password(self):
         args = argparse.Namespace(
             api_token=None,
+            prompt_token=False,
             username="admin",
             password=None,
             prompt_password=True,
@@ -778,9 +789,26 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(headers["Authorization"].startswith("Basic "))
         prompt.assert_called_once_with("Grafana Basic auth password: ")
 
+    def test_resolve_auth_supports_prompt_token(self):
+        args = argparse.Namespace(
+            api_token=None,
+            prompt_token=True,
+            username=None,
+            password=None,
+            prompt_password=False,
+        )
+
+        with mock.patch("grafana_utils.access_cli.getpass.getpass", return_value="token-secret") as prompt:
+            headers, auth_mode = access_utils.resolve_auth(args)
+
+        self.assertEqual(auth_mode, "token")
+        self.assertEqual(headers["Authorization"], "Bearer token-secret")
+        prompt.assert_called_once_with("Grafana API token: ")
+
     def test_resolve_auth_rejects_prompt_without_username(self):
         args = argparse.Namespace(
             api_token=None,
+            prompt_token=False,
             username=None,
             password=None,
             prompt_password=True,
@@ -795,6 +823,7 @@ class AccessCliTests(unittest.TestCase):
     def test_resolve_auth_rejects_prompt_with_explicit_password(self):
         args = argparse.Namespace(
             api_token=None,
+            prompt_token=False,
             username="admin",
             password="secret",
             prompt_password=True,
@@ -803,6 +832,21 @@ class AccessCliTests(unittest.TestCase):
         with self.assertRaisesRegex(
             access_utils.GrafanaError,
             "Choose either --basic-password or --prompt-password, not both.",
+        ):
+            access_utils.resolve_auth(args)
+
+    def test_resolve_auth_rejects_explicit_and_prompt_token(self):
+        args = argparse.Namespace(
+            api_token="abc123",
+            prompt_token=True,
+            username=None,
+            password=None,
+            prompt_password=False,
+        )
+
+        with self.assertRaisesRegex(
+            access_utils.GrafanaError,
+            "Choose either --token / --api-token or --prompt-token, not both.",
         ):
             access_utils.resolve_auth(args)
 

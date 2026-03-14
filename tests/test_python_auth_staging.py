@@ -25,6 +25,22 @@ class AuthStagingTests(unittest.TestCase):
         self.assertEqual(auth_mode, "token")
         self.assertEqual(headers["Authorization"], "Bearer abc123")
 
+    def test_resolve_auth_headers_supports_prompt_token(self):
+        prompts = []
+
+        def fake_prompt(prompt):
+            prompts.append(prompt)
+            return "prompted-token"
+
+        headers, auth_mode = auth_staging.resolve_auth_headers(
+            prompt_token=True,
+            token_prompt_reader=fake_prompt,
+        )
+
+        self.assertEqual(auth_mode, "token")
+        self.assertEqual(prompts, ["Grafana API token: "])
+        self.assertEqual(headers["Authorization"], "Bearer prompted-token")
+
     def test_resolve_auth_headers_supports_basic_auth(self):
         headers, auth_mode = auth_staging.resolve_auth_headers(
             username="ops",
@@ -51,6 +67,13 @@ class AuthStagingTests(unittest.TestCase):
                 token="abc123",
                 username="ops",
                 password="secret",
+            )
+
+    def test_resolve_auth_headers_rejects_explicit_and_prompt_token_together(self):
+        with self.assertRaises(auth_staging.AuthConfigError):
+            auth_staging.resolve_auth_headers(
+                token="abc123",
+                prompt_token=True,
             )
 
     def test_resolve_auth_headers_supports_prompt_password(self):
@@ -91,6 +114,7 @@ class AuthStagingTests(unittest.TestCase):
     def test_resolve_cli_auth_from_namespace_rewrites_auth_errors(self):
         args = argparse.Namespace(
             api_token=None,
+            prompt_token=False,
             username=None,
             password=None,
             prompt_password=True,
@@ -113,6 +137,7 @@ class AuthStagingTests(unittest.TestCase):
     def test_resolve_auth_from_namespace_supports_fallback_auth_attrs(self):
         args = argparse.Namespace(
             api_token=None,
+            prompt_token=False,
             username=None,
             password=None,
             auth_username="ops",

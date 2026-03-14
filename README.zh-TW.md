@@ -564,14 +564,24 @@ make test-rust-live
 
 支援的認證方式：
 
-- API token
-- 使用者名稱與密碼
+- `--token` 或環境變數 `GRAFANA_API_TOKEN`
+- `--prompt-token`
+- `--basic-user` / `--basic-password`
+- `--basic-user` / `--prompt-password`
 
 API token 範例：
 
 ```bash
 export GRAFANA_API_TOKEN='your-token'
 python3 python/grafana-utils.py dashboard export --export-dir ./dashboards
+```
+
+互動式輸入 API token 範例：
+
+```bash
+python3 python/grafana-utils.py dashboard export \
+  --prompt-token \
+  --export-dir ./dashboards
 ```
 
 使用者名稱與密碼範例：
@@ -581,6 +591,12 @@ export GRAFANA_USERNAME='your-user'
 export GRAFANA_PASSWORD='your-pass'
 python3 python/grafana-utils.py dashboard export --export-dir ./dashboards
 ```
+
+補充：
+
+- `--prompt-token` 會隱藏 token 輸入，不把值直接放進 shell history 或 process args
+- `--prompt-password` 也是同樣概念，但用於 Basic auth 密碼
+- token auth 與 Basic auth 不能混用
 
 TLS 說明：
 
