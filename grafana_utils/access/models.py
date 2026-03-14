@@ -4,7 +4,7 @@ import argparse
 import csv
 import json
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from .common import (
     DEFAULT_PAGE_SIZE,
@@ -52,7 +52,7 @@ def bool_label(value: Optional[bool]) -> str:
     return ""
 
 
-def normalize_team(item: Dict[str, Any]) -> Dict[str, Any]:
+def normalize_team(item: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": str(item.get("id") or ""),
         "name": str(item.get("name") or ""),
@@ -62,7 +62,7 @@ def normalize_team(item: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def normalize_org_user(item: Dict[str, Any]) -> Dict[str, Any]:
+def normalize_org_user(item: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": item.get("userId") or item.get("id") or "",
         "login": str(item.get("login") or ""),
@@ -75,7 +75,7 @@ def normalize_org_user(item: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def normalize_global_user(item: Dict[str, Any]) -> Dict[str, Any]:
+def normalize_global_user(item: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": item.get("id") or "",
         "login": str(item.get("login") or ""),
@@ -90,7 +90,7 @@ def normalize_global_user(item: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def normalize_service_account(item: Dict[str, Any]) -> Dict[str, Any]:
+def normalize_service_account(item: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": str(item.get("id") or ""),
         "name": str(item.get("name") or ""),
@@ -102,7 +102,7 @@ def normalize_service_account(item: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def user_matches_filters(user: Dict[str, Any], args: argparse.Namespace) -> bool:
+def user_matches_filters(user: dict[str, Any], args: argparse.Namespace) -> bool:
     query = (args.query or "").strip().lower()
     if query:
         haystacks = [
@@ -127,17 +127,17 @@ def user_matches_filters(user: Dict[str, Any], args: argparse.Namespace) -> bool
 
 
 def paginate_users(
-    users: List[Dict[str, Any]],
+    users: list[dict[str, Any]],
     page: int,
     per_page: int,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     start = (page - 1) * per_page
     end = start + per_page
     return users[start:end]
 
 
 def attach_team_memberships(
-    users: List[Dict[str, Any]],
+    users: list[dict[str, Any]],
     client: Any,
 ) -> None:
     for user in users:
@@ -156,7 +156,7 @@ def attach_team_memberships(
 def build_user_rows(
     client: Any,
     args: argparse.Namespace,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     if args.scope == "global":
         raw_users = client.iter_global_users(max(args.per_page, DEFAULT_PAGE_SIZE))
         users = [normalize_global_user(item) for item in raw_users]
@@ -171,7 +171,7 @@ def build_user_rows(
     return paginate_users(users, args.page, args.per_page)
 
 
-def serialize_user_row(user: Dict[str, Any]) -> Dict[str, Any]:
+def serialize_user_row(user: dict[str, Any]) -> dict[str, Any]:
     row = {}
     for field in OUTPUT_FIELDS:
         value = user.get(field)
@@ -184,12 +184,12 @@ def serialize_user_row(user: Dict[str, Any]) -> Dict[str, Any]:
     return row
 
 
-def render_user_json(users: List[Dict[str, Any]]) -> str:
+def render_user_json(users: list[dict[str, Any]]) -> str:
     payload = [serialize_user_row(user) for user in users]
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
-def render_user_csv(users: List[Dict[str, Any]]) -> None:
+def render_user_csv(users: list[dict[str, Any]]) -> None:
     writer = csv.DictWriter(sys.stdout, fieldnames=OUTPUT_FIELDS)
     writer.writeheader()
     for user in users:
@@ -198,7 +198,7 @@ def render_user_csv(users: List[Dict[str, Any]]) -> None:
         writer.writerow(row)
 
 
-def render_user_table(users: List[Dict[str, Any]]) -> List[str]:
+def render_user_table(users: list[dict[str, Any]]) -> list[str]:
     headers = {
         "id": "ID",
         "login": "Login",
@@ -221,7 +221,7 @@ def render_user_table(users: List[Dict[str, Any]]) -> List[str]:
         for row in rows:
             widths[field] = max(widths[field], len(str(row.get(field) or "")))
 
-    def build_row(values: Dict[str, Any]) -> str:
+    def build_row(values: dict[str, Any]) -> str:
         return "  ".join(
             str(values.get(field) or "").ljust(widths[field]) for field in OUTPUT_FIELDS
         )
@@ -232,7 +232,7 @@ def render_user_table(users: List[Dict[str, Any]]) -> List[str]:
 
 
 def service_account_matches_query(
-    service_account: Dict[str, Any],
+    service_account: dict[str, Any],
     query: Optional[str],
 ) -> bool:
     text = str(query or "").strip().lower()
@@ -245,7 +245,7 @@ def service_account_matches_query(
     return any(text in haystack for haystack in haystacks)
 
 
-def team_matches_filters(team: Dict[str, Any], args: argparse.Namespace) -> bool:
+def team_matches_filters(team: dict[str, Any], args: argparse.Namespace) -> bool:
     query = str(args.query or "").strip().lower()
     if query:
         haystacks = [
@@ -260,17 +260,17 @@ def team_matches_filters(team: Dict[str, Any], args: argparse.Namespace) -> bool
 
 
 def paginate_teams(
-    teams: List[Dict[str, Any]],
+    teams: list[dict[str, Any]],
     page: int,
     per_page: int,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     start = (page - 1) * per_page
     end = start + per_page
     return teams[start:end]
 
 
 def attach_team_members(
-    teams: List[Dict[str, Any]],
+    teams: list[dict[str, Any]],
     client: Any,
 ) -> None:
     for team in teams:
@@ -289,7 +289,7 @@ def attach_team_members(
 def build_team_rows(
     client: Any,
     args: argparse.Namespace,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     raw_teams = client.iter_teams(
         query=args.query,
         page_size=max(args.per_page, DEFAULT_PAGE_SIZE),
@@ -302,7 +302,7 @@ def build_team_rows(
     return paginate_teams(teams, args.page, args.per_page)
 
 
-def serialize_team_row(team: Dict[str, Any]) -> Dict[str, Any]:
+def serialize_team_row(team: dict[str, Any]) -> dict[str, Any]:
     row = {}
     for field in TEAM_OUTPUT_FIELDS:
         value = team.get(field)
@@ -313,12 +313,12 @@ def serialize_team_row(team: Dict[str, Any]) -> Dict[str, Any]:
     return row
 
 
-def render_team_json(teams: List[Dict[str, Any]]) -> str:
+def render_team_json(teams: list[dict[str, Any]]) -> str:
     payload = [serialize_team_row(team) for team in teams]
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
-def render_team_csv(teams: List[Dict[str, Any]]) -> None:
+def render_team_csv(teams: list[dict[str, Any]]) -> None:
     writer = csv.DictWriter(sys.stdout, fieldnames=TEAM_OUTPUT_FIELDS)
     writer.writeheader()
     for team in teams:
@@ -327,7 +327,7 @@ def render_team_csv(teams: List[Dict[str, Any]]) -> None:
         writer.writerow(row)
 
 
-def render_team_table(teams: List[Dict[str, Any]]) -> List[str]:
+def render_team_table(teams: list[dict[str, Any]]) -> list[str]:
     headers = {
         "id": "ID",
         "name": "Name",
@@ -347,7 +347,7 @@ def render_team_table(teams: List[Dict[str, Any]]) -> List[str]:
         for row in rows:
             widths[field] = max(widths[field], len(str(row.get(field) or "")))
 
-    def build_row(values: Dict[str, Any]) -> str:
+    def build_row(values: dict[str, Any]) -> str:
         return "  ".join(
             str(values.get(field) or "").ljust(widths[field])
             for field in TEAM_OUTPUT_FIELDS
@@ -358,7 +358,7 @@ def render_team_table(teams: List[Dict[str, Any]]) -> List[str]:
     return [header_row, separator_row] + [build_row(row) for row in rows]
 
 
-def format_team_summary_line(team: Dict[str, Any]) -> str:
+def format_team_summary_line(team: dict[str, Any]) -> str:
     parts = [
         "id=%s" % (team.get("id") or ""),
         "name=%s" % (team.get("name") or ""),
@@ -373,7 +373,7 @@ def format_team_summary_line(team: Dict[str, Any]) -> str:
     return " ".join(parts)
 
 
-def format_team_modify_summary_line(payload: Dict[str, Any]) -> str:
+def format_team_modify_summary_line(payload: dict[str, Any]) -> str:
     parts = [
         "teamId=%s" % (payload.get("teamId") or ""),
         "name=%s" % (payload.get("name") or ""),
@@ -390,7 +390,7 @@ def format_team_modify_summary_line(payload: Dict[str, Any]) -> str:
     return " ".join(parts)
 
 
-def format_team_add_summary_line(payload: Dict[str, Any]) -> str:
+def format_team_add_summary_line(payload: dict[str, Any]) -> str:
     parts = [
         "teamId=%s" % (payload.get("teamId") or ""),
         "name=%s" % (payload.get("name") or ""),
@@ -406,8 +406,8 @@ def format_team_add_summary_line(payload: Dict[str, Any]) -> str:
 
 
 def serialize_service_account_row(
-    service_account: Dict[str, Any],
-) -> Dict[str, Any]:
+    service_account: dict[str, Any],
+) -> dict[str, Any]:
     row = {}
     for field in SERVICE_ACCOUNT_OUTPUT_FIELDS:
         value = service_account.get(field)
@@ -418,7 +418,7 @@ def serialize_service_account_row(
     return row
 
 
-def render_service_account_json(service_accounts: List[Dict[str, Any]]) -> str:
+def render_service_account_json(service_accounts: list[dict[str, Any]]) -> str:
     payload = [
         serialize_service_account_row(service_account)
         for service_account in service_accounts
@@ -426,7 +426,7 @@ def render_service_account_json(service_accounts: List[Dict[str, Any]]) -> str:
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
-def render_service_account_csv(service_accounts: List[Dict[str, Any]]) -> None:
+def render_service_account_csv(service_accounts: list[dict[str, Any]]) -> None:
     writer = csv.DictWriter(sys.stdout, fieldnames=SERVICE_ACCOUNT_OUTPUT_FIELDS)
     writer.writeheader()
     for service_account in service_accounts:
@@ -434,8 +434,8 @@ def render_service_account_csv(service_accounts: List[Dict[str, Any]]) -> None:
 
 
 def render_service_account_table(
-    service_accounts: List[Dict[str, Any]],
-) -> List[str]:
+    service_accounts: list[dict[str, Any]],
+) -> list[str]:
     headers = {
         "id": "ID",
         "name": "Name",
@@ -455,7 +455,7 @@ def render_service_account_table(
         for row in rows:
             widths[field] = max(widths[field], len(str(row.get(field) or "")))
 
-    def build_row(values: Dict[str, Any]) -> str:
+    def build_row(values: dict[str, Any]) -> str:
         return "  ".join(
             str(values.get(field) or "").ljust(widths[field])
             for field in SERVICE_ACCOUNT_OUTPUT_FIELDS
@@ -468,7 +468,7 @@ def render_service_account_table(
     return [header_row, separator_row] + [build_row(row) for row in rows]
 
 
-def format_service_account_summary_line(service_account: Dict[str, Any]) -> str:
+def format_service_account_summary_line(service_account: dict[str, Any]) -> str:
     return " ".join(
         [
             "id=%s" % (service_account.get("id") or ""),
@@ -483,7 +483,7 @@ def format_service_account_summary_line(service_account: Dict[str, Any]) -> str:
     )
 
 
-def serialize_service_account_token_row(payload: Dict[str, Any]) -> Dict[str, Any]:
+def serialize_service_account_token_row(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "serviceAccountId": str(payload.get("serviceAccountId") or ""),
         "name": str(payload.get("name") or ""),
@@ -492,7 +492,7 @@ def serialize_service_account_token_row(payload: Dict[str, Any]) -> Dict[str, An
     }
 
 
-def render_service_account_token_json(payload: Dict[str, Any]) -> str:
+def render_service_account_token_json(payload: dict[str, Any]) -> str:
     return json.dumps(
         serialize_service_account_token_row(payload),
         indent=2,

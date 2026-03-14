@@ -10,7 +10,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from .auth_staging import AuthConfigError, resolve_cli_auth_from_namespace
 from .alerts.common import (
@@ -362,7 +362,7 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
     return parser
 
 
-def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv in (["-h"], ["--help"]):
         parser = build_parser()
@@ -413,7 +413,7 @@ def _normalize_output_format_args(
     args.json = output_format == "json"
 
 
-def resolve_auth(args: argparse.Namespace) -> Dict[str, str]:
+def resolve_auth(args: argparse.Namespace) -> dict[str, str]:
     try:
         headers, _auth_mode = resolve_cli_auth_from_namespace(
             args,
@@ -446,17 +446,17 @@ def write_json(payload: Any, output_path: Path, overwrite: bool) -> None:
     )
 
 
-def load_string_map(path_value: Optional[str], label: str) -> Dict[str, str]:
+def load_string_map(path_value: Optional[str], label: str) -> dict[str, str]:
     """Facade wrapper that keeps the original alert_cli helper signature stable."""
     return load_string_map_impl(path_value, label, load_json_file)
 
 
-def load_panel_id_map(path_value: Optional[str]) -> Dict[str, Dict[str, str]]:
+def load_panel_id_map(path_value: Optional[str]) -> dict[str, dict[str, str]]:
     """Facade wrapper that keeps the original alert_cli helper signature stable."""
     return load_panel_id_map_impl(path_value, load_json_file)
 
 
-def render_compare_json(payload: Dict[str, Any]) -> str:
+def render_compare_json(payload: dict[str, Any]) -> str:
     """Render compare payloads with stable ordering for readable diff output."""
     return json.dumps(
         payload,
@@ -467,8 +467,8 @@ def render_compare_json(payload: Dict[str, Any]) -> str:
 
 
 def print_unified_diff(
-    before_payload: Dict[str, Any],
-    after_payload: Dict[str, Any],
+    before_payload: dict[str, Any],
+    after_payload: dict[str, Any],
     before_label: str,
     after_label: str,
 ) -> None:
@@ -499,13 +499,13 @@ def load_json_file(path: Path) -> Any:
         raise GrafanaError(f"Invalid JSON file: {path}") from exc
 
 
-def build_resource_dirs(raw_dir: Path) -> Dict[str, Path]:
+def build_resource_dirs(raw_dir: Path) -> dict[str, Path]:
     return {
         kind: raw_dir / subdir for kind, subdir in RESOURCE_SUBDIR_BY_KIND.items()
     }
 
 
-def build_rule_output_path(output_dir: Path, rule: Dict[str, Any], flat: bool) -> Path:
+def build_rule_output_path(output_dir: Path, rule: dict[str, Any], flat: bool) -> Path:
     folder_uid = sanitize_path_component(rule.get("folderUID") or "unknown-folder")
     rule_group = sanitize_path_component(rule.get("ruleGroup") or "default-group")
     title = sanitize_path_component(rule.get("title") or "alert-rule")
@@ -518,7 +518,7 @@ def build_rule_output_path(output_dir: Path, rule: Dict[str, Any], flat: bool) -
 
 def build_contact_point_output_path(
     output_dir: Path,
-    contact_point: Dict[str, Any],
+    contact_point: dict[str, Any],
     flat: bool,
 ) -> Path:
     name = sanitize_path_component(contact_point.get("name") or "contact-point")
@@ -529,7 +529,7 @@ def build_contact_point_output_path(
 
 def build_mute_timing_output_path(
     output_dir: Path,
-    mute_timing: Dict[str, Any],
+    mute_timing: dict[str, Any],
     flat: bool,
 ) -> Path:
     name = sanitize_path_component(mute_timing.get("name") or "mute-timing")
@@ -543,7 +543,7 @@ def build_policies_output_path(output_dir: Path) -> Path:
 
 def build_template_output_path(
     output_dir: Path,
-    template: Dict[str, Any],
+    template: dict[str, Any],
     flat: bool,
 ) -> Path:
     name = sanitize_path_component(template.get("name") or "template")
@@ -551,7 +551,7 @@ def build_template_output_path(
     return output_dir / filename if flat else output_dir / name / filename
 
 
-def discover_alert_resource_files(import_dir: Path) -> List[Path]:
+def discover_alert_resource_files(import_dir: Path) -> list[Path]:
     """Find alerting resource JSON files and reject the combined export root."""
     if not import_dir.exists():
         raise GrafanaError(f"Import directory does not exist: {import_dir}")
@@ -580,18 +580,18 @@ TEMPLATE_LIST_FIELDS = ["name"]
 
 
 def build_alert_list_table(
-    rows: List[Dict[str, Any]],
-    fields: List[str],
-    headers: Dict[str, str],
+    rows: list[dict[str, Any]],
+    fields: list[str],
+    headers: dict[str, str],
     include_header: bool = True,
-) -> List[str]:
+) -> list[str]:
     widths = {}
     for field in fields:
         widths[field] = len(headers[field])
         for row in rows:
             widths[field] = max(widths[field], len(str(row.get(field) or "")))
 
-    def build_row(values: Dict[str, Any]) -> str:
+    def build_row(values: dict[str, Any]) -> str:
         return "  ".join(
             str(values.get(field) or "").ljust(widths[field]) for field in fields
         )
@@ -605,18 +605,18 @@ def build_alert_list_table(
     return lines
 
 
-def render_alert_list_csv(rows: List[Dict[str, Any]], fields: List[str]) -> None:
+def render_alert_list_csv(rows: list[dict[str, Any]], fields: list[str]) -> None:
     writer = csv.DictWriter(sys.stdout, fieldnames=fields)
     writer.writeheader()
     for row in rows:
         writer.writerow(row)
 
 
-def render_alert_list_json(rows: List[Dict[str, Any]]) -> str:
+def render_alert_list_json(rows: list[dict[str, Any]]) -> str:
     return json.dumps(rows, indent=2, ensure_ascii=False)
 
 
-def serialize_rule_list_rows(rules: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def serialize_rule_list_rows(rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
     rows = []
     for rule in rules:
         rows.append(
@@ -631,8 +631,8 @@ def serialize_rule_list_rows(rules: List[Dict[str, Any]]) -> List[Dict[str, Any]
 
 
 def serialize_contact_point_list_rows(
-    contact_points: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+    contact_points: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     rows = []
     for item in contact_points:
         rows.append(
@@ -646,8 +646,8 @@ def serialize_contact_point_list_rows(
 
 
 def serialize_mute_timing_list_rows(
-    mute_timings: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+    mute_timings: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     rows = []
     for item in mute_timings:
         intervals = item.get("time_intervals") or []
@@ -661,16 +661,16 @@ def serialize_mute_timing_list_rows(
 
 
 def serialize_template_list_rows(
-    templates: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+    templates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     return [{"name": str(item.get("name") or "")} for item in templates]
 
 
 def export_rule_documents(
     client: GrafanaAlertClient,
-    rules: List[Dict[str, Any]],
-    resource_dirs: Dict[str, Path],
-    root_index: Dict[str, List[Dict[str, str]]],
+    rules: list[dict[str, Any]],
+    resource_dirs: dict[str, Path],
+    root_index: dict[str, list[dict[str, str]]],
     flat: bool,
     overwrite: bool,
 ) -> None:
@@ -697,9 +697,9 @@ def export_rule_documents(
 
 
 def export_contact_point_documents(
-    contact_points: List[Dict[str, Any]],
-    resource_dirs: Dict[str, Path],
-    root_index: Dict[str, List[Dict[str, str]]],
+    contact_points: list[dict[str, Any]],
+    resource_dirs: dict[str, Path],
+    root_index: dict[str, list[dict[str, str]]],
     flat: bool,
     overwrite: bool,
 ) -> None:
@@ -725,9 +725,9 @@ def export_contact_point_documents(
 
 
 def export_mute_timing_documents(
-    mute_timings: List[Dict[str, Any]],
-    resource_dirs: Dict[str, Path],
-    root_index: Dict[str, List[Dict[str, str]]],
+    mute_timings: list[dict[str, Any]],
+    resource_dirs: dict[str, Path],
+    root_index: dict[str, list[dict[str, str]]],
     flat: bool,
     overwrite: bool,
 ) -> None:
@@ -749,9 +749,9 @@ def export_mute_timing_documents(
 
 
 def export_policies_document(
-    policies: Dict[str, Any],
-    resource_dirs: Dict[str, Path],
-    root_index: Dict[str, List[Dict[str, str]]],
+    policies: dict[str, Any],
+    resource_dirs: dict[str, Path],
+    root_index: dict[str, list[dict[str, str]]],
     overwrite: bool,
 ) -> None:
     """Export the single notification policy tree and append its index entry."""
@@ -771,9 +771,9 @@ def export_policies_document(
 
 
 def export_template_documents(
-    templates: List[Dict[str, Any]],
-    resource_dirs: Dict[str, Path],
-    root_index: Dict[str, List[Dict[str, str]]],
+    templates: list[dict[str, Any]],
+    resource_dirs: dict[str, Path],
+    root_index: dict[str, list[dict[str, str]]],
     flat: bool,
     overwrite: bool,
 ) -> None:
@@ -795,8 +795,8 @@ def export_template_documents(
 
 
 def write_resource_indexes(
-    resource_dirs: Dict[str, Path],
-    root_index: Dict[str, List[Dict[str, str]]],
+    resource_dirs: dict[str, Path],
+    root_index: dict[str, list[dict[str, str]]],
 ) -> None:
     """Write per-resource index files under the raw export tree."""
     for kind, subdir in RESOURCE_SUBDIR_BY_KIND.items():
@@ -808,7 +808,7 @@ def write_resource_indexes(
 
 
 def format_export_summary(
-    root_index: Dict[str, List[Dict[str, str]]],
+    root_index: dict[str, list[dict[str, str]]],
     index_path: Path,
 ) -> str:
     """Build the final export summary line shown to operators."""
@@ -901,9 +901,9 @@ def count_policy_documents(kind: str, policies_seen: int) -> int:
 
 def import_rule_document(
     client: GrafanaAlertClient,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     replace_existing: bool,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """Import one alert rule and return the action plus stable identity."""
     uid = str(payload.get("uid") or "")
     if replace_existing and uid:
@@ -922,9 +922,9 @@ def import_rule_document(
 
 def import_contact_point_document(
     client: GrafanaAlertClient,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     replace_existing: bool,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """Import one contact point and return the action plus stable identity."""
     uid = str(payload.get("uid") or "")
     if replace_existing and uid:
@@ -939,9 +939,9 @@ def import_contact_point_document(
 
 def import_mute_timing_document(
     client: GrafanaAlertClient,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     replace_existing: bool,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """Import one mute timing and return the action plus stable identity."""
     name = str(payload.get("name") or "")
     if replace_existing and name:
@@ -956,9 +956,9 @@ def import_mute_timing_document(
 
 def build_template_update_payload(
     client: GrafanaAlertClient,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     replace_existing: bool,
-) -> Tuple[str, Dict[str, Any], bool]:
+) -> tuple[str, dict[str, Any], bool]:
     """Prepare the template payload and report whether the template already exists."""
     name = str(payload.get("name") or "")
     existing_names = {str(item.get("name") or "") for item in client.list_templates()}
@@ -979,9 +979,9 @@ def build_template_update_payload(
 
 def import_template_document(
     client: GrafanaAlertClient,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     replace_existing: bool,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """Import one notification template and return the action plus stable identity."""
     name, template_payload, exists = build_template_update_payload(
         client,
@@ -995,8 +995,8 @@ def import_template_document(
 
 def import_policies_document(
     client: GrafanaAlertClient,
-    payload: Dict[str, Any],
-) -> Tuple[str, str]:
+    payload: dict[str, Any],
+) -> tuple[str, str]:
     """Import the single notification policy tree and return its identity."""
     client.update_notification_policies(payload)
     return "updated", str(payload.get("receiver") or "root")
@@ -1005,9 +1005,9 @@ def import_policies_document(
 def import_resource_document(
     client: GrafanaAlertClient,
     kind: str,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     args: argparse.Namespace,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """Dispatch one import document to the correct per-kind import handler."""
     if kind == RULE_KIND:
         return import_rule_document(client, payload, args.replace_existing)
@@ -1174,7 +1174,7 @@ def list_alert_resources(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     args = parse_args(argv)
     try:
         if getattr(args, "alert_command", "").startswith("list-"):

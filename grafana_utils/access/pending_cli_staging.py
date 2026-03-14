@@ -6,7 +6,7 @@ exact-match identity resolution for the remaining access commands.
 """
 
 import argparse
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Iterable, Optional
 from urllib import parse
 
 from .common import DEFAULT_PAGE_SIZE, GrafanaError
@@ -97,7 +97,7 @@ def add_service_account_token_delete_cli_args(
     )
 
 
-def normalize_group_alias_argv(argv: Iterable[str]) -> List[str]:
+def normalize_group_alias_argv(argv: Iterable[str]) -> list[str]:
     """Map a leading `group` resource alias onto the future `team` surface."""
 
     tokens = list(argv)
@@ -112,11 +112,11 @@ def validate_destructive_confirmed(args: Any, action_label: str) -> None:
 
 
 def _select_exact_match(
-    items: Iterable[Dict[str, Any]],
+    items: Iterable[dict[str, Any]],
     field_name: str,
     expected_value: str,
     item_label: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     matches = []
     for item in items:
         if str(item.get(field_name) or "") == expected_value:
@@ -174,10 +174,10 @@ def resolve_service_account_id(
 
 
 def resolve_service_account_token_record(
-    token_items: Iterable[Dict[str, Any]],
+    token_items: Iterable[dict[str, Any]],
     token_id: Optional[Any] = None,
     token_name: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     if token_id is not None and token_id != "":
         return _select_exact_match(
             token_items,
@@ -197,7 +197,7 @@ def resolve_service_account_token_record(
     )
 
 
-def build_team_delete_request(team_id: Any) -> Dict[str, str]:
+def build_team_delete_request(team_id: Any) -> dict[str, str]:
     quoted_team_id = parse.quote(str(team_id), safe="")
     return {
         "method": "DELETE",
@@ -207,7 +207,7 @@ def build_team_delete_request(team_id: Any) -> Dict[str, str]:
 
 def build_service_account_delete_request(
     service_account_id: Any,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     quoted_service_account_id = parse.quote(str(service_account_id), safe="")
     return {
         "method": "DELETE",
@@ -218,7 +218,7 @@ def build_service_account_delete_request(
 def build_service_account_token_delete_request(
     service_account_id: Any,
     token_id: Any,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     quoted_service_account_id = parse.quote(str(service_account_id), safe="")
     quoted_token_id = parse.quote(str(token_id), safe="")
     return {

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any
 
 from .contract import (
     extract_buckets,
@@ -9,7 +9,7 @@ from .contract import (
 )
 
 
-def extract_flux_pipeline_functions(query: str) -> List[str]:
+def extract_flux_pipeline_functions(query: str) -> list[str]:
     return unique_strings(
         extract_string_values(
             query,
@@ -18,7 +18,7 @@ def extract_flux_pipeline_functions(query: str) -> List[str]:
     )
 
 
-def analyze_query(panel: Dict[str, Any], target: Dict[str, Any], query_field: str, query_text: str) -> Dict[str, Any]:
+def analyze_query(panel: dict[str, Any], target: dict[str, Any], query_field: str, query_text: str) -> dict[str, Any]:
     del panel, target, query_field
     return normalize_query_analysis(
         {

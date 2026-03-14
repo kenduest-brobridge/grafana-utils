@@ -35,6 +35,9 @@ IMPORT_WORKFLOW_MODULE_PATH = (
 INSPECTION_WORKFLOW_MODULE_PATH = (
     REPO_ROOT / "grafana_utils" / "dashboards" / "inspection_workflow.py"
 )
+INSPECTION_DISPATCH_MODULE_PATH = (
+    REPO_ROOT / "grafana_utils" / "dashboards" / "inspection_dispatch.py"
+)
 INSPECTION_ANALYZERS_PACKAGE_PATH = (
     REPO_ROOT / "grafana_utils" / "dashboards" / "inspection_analyzers" / "__init__.py"
 )
@@ -82,6 +85,9 @@ listing_module = importlib.import_module("grafana_utils.dashboards.listing")
 output_support = importlib.import_module("grafana_utils.dashboards.output_support")
 inspection_dispatcher = importlib.import_module(
     "grafana_utils.dashboards.inspection_analyzers.dispatcher"
+)
+inspection_output_dispatch = importlib.import_module(
+    "grafana_utils.dashboards.inspection_dispatch"
 )
 
 
@@ -329,195 +335,204 @@ class ExporterTests(unittest.TestCase):
             import_dir / "Infra" / "CPU_Main__cpu-main.json",
         )
 
-    def test_dashboard_script_parses_as_python36_syntax(self):
+    def test_dashboard_script_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_transport_module_parses_as_python36_syntax(self):
+    def test_transport_module_parses_as_python39_syntax(self):
         source = TRANSPORT_MODULE_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(TRANSPORT_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(TRANSPORT_MODULE_PATH), feature_version=(3, 9))
 
-    def test_dashboard_client_module_parses_as_python36_syntax(self):
+    def test_dashboard_client_module_parses_as_python39_syntax(self):
         source = CLIENT_MODULE_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(CLIENT_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(CLIENT_MODULE_PATH), feature_version=(3, 9))
 
-    def test_dashboard_common_module_parses_as_python36_syntax(self):
+    def test_dashboard_common_module_parses_as_python39_syntax(self):
         source = COMMON_MODULE_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(COMMON_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(COMMON_MODULE_PATH), feature_version=(3, 9))
 
-    def test_dashboard_export_workflow_module_parses_as_python36_syntax(self):
+    def test_dashboard_export_workflow_module_parses_as_python39_syntax(self):
         source = EXPORT_WORKFLOW_MODULE_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(EXPORT_WORKFLOW_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(EXPORT_WORKFLOW_MODULE_PATH), feature_version=(3, 9))
 
-    def test_dashboard_export_inventory_module_parses_as_python36_syntax(self):
+    def test_dashboard_export_inventory_module_parses_as_python39_syntax(self):
         source = EXPORT_INVENTORY_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(
             source,
             filename=str(EXPORT_INVENTORY_MODULE_PATH),
-            feature_version=(3, 6),
+            feature_version=(3, 9),
         )
 
-    def test_dashboard_folder_support_module_parses_as_python36_syntax(self):
+    def test_dashboard_folder_support_module_parses_as_python39_syntax(self):
         source = FOLDER_SUPPORT_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(
             source,
             filename=str(FOLDER_SUPPORT_MODULE_PATH),
-            feature_version=(3, 6),
+            feature_version=(3, 9),
         )
 
-    def test_dashboard_import_support_module_parses_as_python36_syntax(self):
+    def test_dashboard_import_support_module_parses_as_python39_syntax(self):
         source = IMPORT_SUPPORT_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(
             source,
             filename=str(IMPORT_SUPPORT_MODULE_PATH),
-            feature_version=(3, 6),
+            feature_version=(3, 9),
         )
 
-    def test_dashboard_progress_module_parses_as_python36_syntax(self):
+    def test_dashboard_progress_module_parses_as_python39_syntax(self):
         source = PROGRESS_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(
             source,
             filename=str(PROGRESS_MODULE_PATH),
-            feature_version=(3, 6),
+            feature_version=(3, 9),
         )
 
-    def test_dashboard_import_workflow_module_parses_as_python36_syntax(self):
+    def test_dashboard_import_workflow_module_parses_as_python39_syntax(self):
         source = IMPORT_WORKFLOW_MODULE_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(IMPORT_WORKFLOW_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(IMPORT_WORKFLOW_MODULE_PATH), feature_version=(3, 9))
 
-    def test_dashboard_inspection_workflow_module_parses_as_python36_syntax(self):
+    def test_dashboard_inspection_workflow_module_parses_as_python39_syntax(self):
         source = INSPECTION_WORKFLOW_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(
             source,
             filename=str(INSPECTION_WORKFLOW_MODULE_PATH),
-            feature_version=(3, 6),
+            feature_version=(3, 9),
         )
 
-    def test_dashboard_inspection_analyzers_package_parses_as_python36_syntax(self):
+    def test_dashboard_inspection_dispatch_module_parses_as_python39_syntax(self):
+        source = INSPECTION_DISPATCH_MODULE_PATH.read_text(encoding="utf-8")
+
+        ast.parse(
+            source,
+            filename=str(INSPECTION_DISPATCH_MODULE_PATH),
+            feature_version=(3, 9),
+        )
+
+    def test_dashboard_inspection_analyzers_package_parses_as_python39_syntax(self):
         source = INSPECTION_ANALYZERS_PACKAGE_PATH.read_text(encoding="utf-8")
 
         ast.parse(
             source,
             filename=str(INSPECTION_ANALYZERS_PACKAGE_PATH),
-            feature_version=(3, 6),
+            feature_version=(3, 9),
         )
 
-    def test_dashboard_inspection_analyzer_contract_module_parses_as_python36_syntax(self):
+    def test_dashboard_inspection_analyzer_contract_module_parses_as_python39_syntax(self):
         source = INSPECTION_ANALYZER_CONTRACT_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(
             source,
             filename=str(INSPECTION_ANALYZER_CONTRACT_MODULE_PATH),
-            feature_version=(3, 6),
+            feature_version=(3, 9),
         )
 
-    def test_dashboard_inspection_analyzer_dispatcher_module_parses_as_python36_syntax(self):
+    def test_dashboard_inspection_analyzer_dispatcher_module_parses_as_python39_syntax(self):
         source = INSPECTION_ANALYZER_DISPATCHER_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(
             source,
             filename=str(INSPECTION_ANALYZER_DISPATCHER_MODULE_PATH),
-            feature_version=(3, 6),
+            feature_version=(3, 9),
         )
 
-    def test_dashboard_inspection_analyzer_prometheus_module_parses_as_python36_syntax(self):
+    def test_dashboard_inspection_analyzer_prometheus_module_parses_as_python39_syntax(self):
         source = INSPECTION_ANALYZER_PROMETHEUS_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(
             source,
             filename=str(INSPECTION_ANALYZER_PROMETHEUS_MODULE_PATH),
-            feature_version=(3, 6),
+            feature_version=(3, 9),
         )
 
-    def test_dashboard_inspection_analyzer_flux_module_parses_as_python36_syntax(self):
+    def test_dashboard_inspection_analyzer_flux_module_parses_as_python39_syntax(self):
         source = INSPECTION_ANALYZER_FLUX_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(
             source,
             filename=str(INSPECTION_ANALYZER_FLUX_MODULE_PATH),
-            feature_version=(3, 6),
+            feature_version=(3, 9),
         )
 
-    def test_dashboard_inspection_analyzer_sql_module_parses_as_python36_syntax(self):
+    def test_dashboard_inspection_analyzer_sql_module_parses_as_python39_syntax(self):
         source = INSPECTION_ANALYZER_SQL_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(
             source,
             filename=str(INSPECTION_ANALYZER_SQL_MODULE_PATH),
-            feature_version=(3, 6),
+            feature_version=(3, 9),
         )
 
-    def test_dashboard_inspection_analyzer_generic_module_parses_as_python36_syntax(self):
+    def test_dashboard_inspection_analyzer_generic_module_parses_as_python39_syntax(self):
         source = INSPECTION_ANALYZER_GENERIC_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(
             source,
             filename=str(INSPECTION_ANALYZER_GENERIC_MODULE_PATH),
-            feature_version=(3, 6),
+            feature_version=(3, 9),
         )
 
-    def test_dashboard_inspection_report_module_parses_as_python36_syntax(self):
+    def test_dashboard_inspection_report_module_parses_as_python39_syntax(self):
         source = INSPECTION_REPORT_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(
             source,
             filename=str(INSPECTION_REPORT_MODULE_PATH),
-            feature_version=(3, 6),
+            feature_version=(3, 9),
         )
 
-    def test_dashboard_inspection_render_module_parses_as_python36_syntax(self):
+    def test_dashboard_inspection_render_module_parses_as_python39_syntax(self):
         source = INSPECTION_RENDER_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(
             source,
             filename=str(INSPECTION_RENDER_MODULE_PATH),
-            feature_version=(3, 6),
+            feature_version=(3, 9),
         )
 
-    def test_dashboard_inspection_summary_module_parses_as_python36_syntax(self):
+    def test_dashboard_inspection_summary_module_parses_as_python39_syntax(self):
         source = INSPECTION_SUMMARY_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(
             source,
             filename=str(INSPECTION_SUMMARY_MODULE_PATH),
-            feature_version=(3, 6),
+            feature_version=(3, 9),
         )
 
-    def test_dashboard_listing_module_parses_as_python36_syntax(self):
+    def test_dashboard_listing_module_parses_as_python39_syntax(self):
         source = LISTING_MODULE_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(LISTING_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(LISTING_MODULE_PATH), feature_version=(3, 9))
 
-    def test_dashboard_output_support_module_parses_as_python36_syntax(self):
+    def test_dashboard_output_support_module_parses_as_python39_syntax(self):
         source = OUTPUT_SUPPORT_MODULE_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(OUTPUT_SUPPORT_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(OUTPUT_SUPPORT_MODULE_PATH), feature_version=(3, 9))
 
-    def test_dashboard_progress_module_parses_as_python36_syntax(self):
+    def test_dashboard_progress_module_parses_as_python39_syntax(self):
         source = PROGRESS_MODULE_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(PROGRESS_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(PROGRESS_MODULE_PATH), feature_version=(3, 9))
 
-    def test_dashboard_transformer_module_parses_as_python36_syntax(self):
+    def test_dashboard_transformer_module_parses_as_python39_syntax(self):
         source = TRANSFORMER_MODULE_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(TRANSFORMER_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(TRANSFORMER_MODULE_PATH), feature_version=(3, 9))
 
-    def test_dashboard_wrapper_script_parses_as_python36_syntax(self):
+    def test_dashboard_wrapper_script_parses_as_python39_syntax(self):
         source = WRAPPER_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(WRAPPER_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(WRAPPER_PATH), feature_version=(3, 9))
 
     def test_parse_args_requires_subcommand(self):
         with self.assertRaises(SystemExit):

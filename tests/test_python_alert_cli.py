@@ -223,25 +223,25 @@ class FakeAlertClient:
 
 
 class AlertUtilsTests(unittest.TestCase):
-    def test_alert_script_parses_as_python36_syntax(self):
+    def test_alert_script_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_transport_module_parses_as_python36_syntax(self):
+    def test_transport_module_parses_as_python39_syntax(self):
         source = TRANSPORT_MODULE_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(TRANSPORT_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(TRANSPORT_MODULE_PATH), feature_version=(3, 9))
 
-    def test_alert_client_module_parses_as_python36_syntax(self):
+    def test_alert_client_module_parses_as_python39_syntax(self):
         source = CLIENT_MODULE_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(CLIENT_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(CLIENT_MODULE_PATH), feature_version=(3, 9))
 
-    def test_alert_provisioning_module_parses_as_python36_syntax(self):
+    def test_alert_provisioning_module_parses_as_python39_syntax(self):
         source = PROVISIONING_MODULE_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(PROVISIONING_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(PROVISIONING_MODULE_PATH), feature_version=(3, 9))
 
     def test_parse_args_supports_import_mode(self):
         args = alert_utils.parse_args(["--import-dir", "alerts/raw"])

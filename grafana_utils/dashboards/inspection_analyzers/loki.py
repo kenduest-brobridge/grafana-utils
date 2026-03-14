@@ -1,10 +1,10 @@
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 from .contract import normalize_query_analysis, unique_strings
 
 
-def extract_stream_matchers(query: str) -> List[str]:
+def extract_stream_matchers(query: str) -> list[str]:
     if not query:
         return []
     values = []
@@ -17,7 +17,7 @@ def extract_stream_matchers(query: str) -> List[str]:
     return unique_strings(values)
 
 
-def extract_pipeline_stage_names(query: str) -> List[str]:
+def extract_pipeline_stage_names(query: str) -> list[str]:
     if not query:
         return []
     values = []
@@ -36,7 +36,7 @@ def extract_pipeline_stage_names(query: str) -> List[str]:
     return unique_strings(values)
 
 
-def extract_range_and_aggregation_functions(query: str) -> List[str]:
+def extract_range_and_aggregation_functions(query: str) -> list[str]:
     if not query:
         return []
     allowed = {
@@ -77,11 +77,11 @@ def extract_range_and_aggregation_functions(query: str) -> List[str]:
 
 
 def analyze_query(
-    panel: Dict[str, Any],
-    target: Dict[str, Any],
+    panel: dict[str, Any],
+    target: dict[str, Any],
     query_field: str,
     query_text: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     del panel, target, query_field
     return normalize_query_analysis(
         {

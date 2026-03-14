@@ -3,7 +3,7 @@
 import copy
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from ..clients.alert_client import GrafanaAlertClient
 from .common import (
@@ -29,14 +29,14 @@ from .common import (
 )
 
 
-def strip_server_managed_fields(kind: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+def strip_server_managed_fields(kind: str, payload: dict[str, Any]) -> dict[str, Any]:
     normalized = copy.deepcopy(payload)
     for field in SERVER_MANAGED_FIELDS_BY_KIND.get(kind, set()):
         normalized.pop(field, None)
     return normalized
 
 
-def get_rule_linkage(rule: Dict[str, Any]) -> Optional[Dict[str, str]]:
+def get_rule_linkage(rule: dict[str, Any]) -> Optional[dict[str, str]]:
     annotations = rule.get("annotations")
     if not isinstance(annotations, dict):
         return None
@@ -54,7 +54,7 @@ def get_rule_linkage(rule: Dict[str, Any]) -> Optional[Dict[str, str]]:
     return linkage
 
 
-def find_panel_by_id(panels: Any, panel_id: str) -> Optional[Dict[str, Any]]:
+def find_panel_by_id(panels: Any, panel_id: str) -> Optional[dict[str, Any]]:
     if not isinstance(panels, list):
         return None
     for panel in panels:
@@ -79,8 +79,8 @@ def derive_dashboard_slug(value: str) -> str:
 
 def build_linked_dashboard_metadata(
     client: GrafanaAlertClient,
-    rule: Dict[str, Any],
-) -> Optional[Dict[str, str]]:
+    rule: dict[str, Any],
+) -> Optional[dict[str, str]]:
     linkage = get_rule_linkage(rule)
     if not linkage:
         return None
@@ -114,9 +114,9 @@ def build_linked_dashboard_metadata(
 
 
 def filter_dashboard_search_matches(
-    candidates: List[Dict[str, Any]],
-    linked_dashboard: Dict[str, Any],
-) -> List[Dict[str, Any]]:
+    candidates: list[dict[str, Any]],
+    linked_dashboard: dict[str, Any],
+) -> list[dict[str, Any]]:
     dashboard_title = str(linked_dashboard.get("dashboardTitle") or "")
     filtered = [
         item for item in candidates if str(item.get("title") or "") == dashboard_title
@@ -145,7 +145,7 @@ def filter_dashboard_search_matches(
 
 def resolve_dashboard_uid_fallback(
     client: GrafanaAlertClient,
-    linked_dashboard: Dict[str, Any],
+    linked_dashboard: dict[str, Any],
 ) -> str:
     dashboard_title = str(linked_dashboard.get("dashboardTitle") or "").strip()
     if not dashboard_title:
@@ -181,7 +181,7 @@ def load_string_map(
     path_value: Optional[str],
     label: str,
     load_json_file,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     if not path_value:
         return {}
     payload = load_json_file(Path(path_value))
@@ -196,7 +196,7 @@ def load_string_map(
 def load_panel_id_map(
     path_value: Optional[str],
     load_json_file,
-) -> Dict[str, Dict[str, str]]:
+) -> dict[str, dict[str, str]]:
     if not path_value:
         return {}
     payload = load_json_file(Path(path_value))
@@ -216,10 +216,10 @@ def load_panel_id_map(
 
 
 def apply_rule_linkage_maps(
-    payload: Dict[str, Any],
-    dashboard_uid_map: Dict[str, str],
-    panel_id_map: Dict[str, Dict[str, str]],
-) -> Tuple[Optional[Dict[str, Any]], str]:
+    payload: dict[str, Any],
+    dashboard_uid_map: dict[str, str],
+    panel_id_map: dict[str, dict[str, str]],
+) -> tuple[Optional[dict[str, Any]], str]:
     linkage = get_rule_linkage(payload)
     if not linkage:
         return None, ""
@@ -241,9 +241,9 @@ def apply_rule_linkage_maps(
 
 
 def extract_linked_dashboard_metadata(
-    document: Dict[str, Any],
+    document: dict[str, Any],
     dashboard_uid: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     metadata = document.get("metadata")
     linked_dashboard = metadata.get("linkedDashboard") if isinstance(metadata, dict) else None
     if not isinstance(linked_dashboard, dict):
@@ -257,11 +257,11 @@ def extract_linked_dashboard_metadata(
 
 def rewrite_rule_dashboard_linkage(
     client: GrafanaAlertClient,
-    payload: Dict[str, Any],
-    document: Dict[str, Any],
-    dashboard_uid_map: Dict[str, str],
-    panel_id_map: Dict[str, Dict[str, str]],
-) -> Dict[str, Any]:
+    payload: dict[str, Any],
+    document: dict[str, Any],
+    dashboard_uid_map: dict[str, str],
+    panel_id_map: dict[str, dict[str, str]],
+) -> dict[str, Any]:
     normalized, dashboard_uid = apply_rule_linkage_maps(
         payload,
         dashboard_uid_map,
@@ -284,7 +284,7 @@ def rewrite_rule_dashboard_linkage(
     return normalized
 
 
-def build_rule_metadata(rule: Dict[str, Any]) -> Dict[str, Any]:
+def build_rule_metadata(rule: dict[str, Any]) -> dict[str, Any]:
     metadata = {
         "uid": str(rule.get("uid") or ""),
         "title": str(rule.get("title") or ""),
@@ -299,7 +299,7 @@ def build_rule_metadata(rule: Dict[str, Any]) -> Dict[str, Any]:
     return metadata
 
 
-def build_contact_point_metadata(contact_point: Dict[str, Any]) -> Dict[str, str]:
+def build_contact_point_metadata(contact_point: dict[str, Any]) -> dict[str, str]:
     return {
         "uid": str(contact_point.get("uid") or ""),
         "name": str(contact_point.get("name") or ""),
@@ -307,19 +307,19 @@ def build_contact_point_metadata(contact_point: Dict[str, Any]) -> Dict[str, str
     }
 
 
-def build_mute_timing_metadata(mute_timing: Dict[str, Any]) -> Dict[str, str]:
+def build_mute_timing_metadata(mute_timing: dict[str, Any]) -> dict[str, str]:
     return {"name": str(mute_timing.get("name") or "")}
 
 
-def build_policies_metadata(policies: Dict[str, Any]) -> Dict[str, str]:
+def build_policies_metadata(policies: dict[str, Any]) -> dict[str, str]:
     return {"receiver": str(policies.get("receiver") or "")}
 
 
-def build_template_metadata(template: Dict[str, Any]) -> Dict[str, str]:
+def build_template_metadata(template: dict[str, Any]) -> dict[str, str]:
     return {"name": str(template.get("name") or "")}
 
 
-def build_tool_document(kind: str, spec: Dict[str, Any]) -> Dict[str, Any]:
+def build_tool_document(kind: str, spec: dict[str, Any]) -> dict[str, Any]:
     metadata_builders = {
         RULE_KIND: build_rule_metadata,
         CONTACT_POINT_KIND: build_contact_point_metadata,
@@ -337,7 +337,7 @@ def build_tool_document(kind: str, spec: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def build_rule_export_document(rule: Dict[str, Any]) -> Dict[str, Any]:
+def build_rule_export_document(rule: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(rule, dict):
         raise GrafanaError("Unexpected alert-rule payload from Grafana.")
     normalized_rule = strip_server_managed_fields(RULE_KIND, rule)
@@ -350,7 +350,7 @@ def build_rule_export_document(rule: Dict[str, Any]) -> Dict[str, Any]:
     return document
 
 
-def build_contact_point_export_document(contact_point: Dict[str, Any]) -> Dict[str, Any]:
+def build_contact_point_export_document(contact_point: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(contact_point, dict):
         raise GrafanaError("Unexpected contact-point payload from Grafana.")
     return build_tool_document(
@@ -359,7 +359,7 @@ def build_contact_point_export_document(contact_point: Dict[str, Any]) -> Dict[s
     )
 
 
-def build_mute_timing_export_document(mute_timing: Dict[str, Any]) -> Dict[str, Any]:
+def build_mute_timing_export_document(mute_timing: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(mute_timing, dict):
         raise GrafanaError("Unexpected mute-timing payload from Grafana.")
     return build_tool_document(
@@ -368,7 +368,7 @@ def build_mute_timing_export_document(mute_timing: Dict[str, Any]) -> Dict[str, 
     )
 
 
-def build_policies_export_document(policies: Dict[str, Any]) -> Dict[str, Any]:
+def build_policies_export_document(policies: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(policies, dict):
         raise GrafanaError("Unexpected notification policy payload from Grafana.")
     return build_tool_document(
@@ -377,7 +377,7 @@ def build_policies_export_document(policies: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
-def build_template_export_document(template: Dict[str, Any]) -> Dict[str, Any]:
+def build_template_export_document(template: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(template, dict):
         raise GrafanaError("Unexpected template payload from Grafana.")
     return build_tool_document(
@@ -386,7 +386,7 @@ def build_template_export_document(template: Dict[str, Any]) -> Dict[str, Any]:
     )
 
 
-def reject_provisioning_export(document: Dict[str, Any]) -> None:
+def reject_provisioning_export(document: dict[str, Any]) -> None:
     if (
         "groups" in document
         or "contactPoints" in document
@@ -399,7 +399,7 @@ def reject_provisioning_export(document: Dict[str, Any]) -> None:
         )
 
 
-def detect_document_kind(document: Dict[str, Any]) -> str:
+def detect_document_kind(document: dict[str, Any]) -> str:
     kind = document.get("kind")
     if kind in RESOURCE_SUBDIR_BY_KIND:
         return str(kind)
@@ -416,7 +416,7 @@ def detect_document_kind(document: Dict[str, Any]) -> str:
     raise GrafanaError("Cannot determine alerting resource kind from import document.")
 
 
-def extract_tool_spec(document: Dict[str, Any], expected_kind: str) -> Dict[str, Any]:
+def extract_tool_spec(document: dict[str, Any], expected_kind: str) -> dict[str, Any]:
     if document.get("kind") == expected_kind:
         api_version = document.get("apiVersion")
         if api_version not in (None, TOOL_API_VERSION):
@@ -436,7 +436,7 @@ def extract_tool_spec(document: Dict[str, Any], expected_kind: str) -> Dict[str,
     return spec
 
 
-def build_rule_import_payload(document: Dict[str, Any]) -> Dict[str, Any]:
+def build_rule_import_payload(document: dict[str, Any]) -> dict[str, Any]:
     reject_provisioning_export(document)
     payload = strip_server_managed_fields(
         RULE_KIND, extract_tool_spec(document, RULE_KIND)
@@ -453,7 +453,7 @@ def build_rule_import_payload(document: Dict[str, Any]) -> Dict[str, Any]:
     return payload
 
 
-def build_contact_point_import_payload(document: Dict[str, Any]) -> Dict[str, Any]:
+def build_contact_point_import_payload(document: dict[str, Any]) -> dict[str, Any]:
     reject_provisioning_export(document)
     payload = strip_server_managed_fields(
         CONTACT_POINT_KIND, extract_tool_spec(document, CONTACT_POINT_KIND)
@@ -470,7 +470,7 @@ def build_contact_point_import_payload(document: Dict[str, Any]) -> Dict[str, An
     return payload
 
 
-def build_mute_timing_import_payload(document: Dict[str, Any]) -> Dict[str, Any]:
+def build_mute_timing_import_payload(document: dict[str, Any]) -> dict[str, Any]:
     reject_provisioning_export(document)
     payload = strip_server_managed_fields(
         MUTE_TIMING_KIND, extract_tool_spec(document, MUTE_TIMING_KIND)
@@ -487,7 +487,7 @@ def build_mute_timing_import_payload(document: Dict[str, Any]) -> Dict[str, Any]
     return payload
 
 
-def build_policies_import_payload(document: Dict[str, Any]) -> Dict[str, Any]:
+def build_policies_import_payload(document: dict[str, Any]) -> dict[str, Any]:
     reject_provisioning_export(document)
     payload = strip_server_managed_fields(
         POLICIES_KIND, extract_tool_spec(document, POLICIES_KIND)
@@ -497,7 +497,7 @@ def build_policies_import_payload(document: Dict[str, Any]) -> Dict[str, Any]:
     return payload
 
 
-def build_template_import_payload(document: Dict[str, Any]) -> Dict[str, Any]:
+def build_template_import_payload(document: dict[str, Any]) -> dict[str, Any]:
     reject_provisioning_export(document)
     payload = strip_server_managed_fields(
         TEMPLATE_KIND, extract_tool_spec(document, TEMPLATE_KIND)
@@ -512,7 +512,7 @@ def build_template_import_payload(document: Dict[str, Any]) -> Dict[str, Any]:
     return payload
 
 
-def build_import_operation(document: Dict[str, Any]) -> Tuple[str, Dict[str, Any]]:
+def build_import_operation(document: dict[str, Any]) -> tuple[str, dict[str, Any]]:
     if not isinstance(document, dict):
         raise GrafanaError("Unexpected alerting resource document. Expected a JSON object.")
     kind = detect_document_kind(document)
@@ -528,11 +528,11 @@ def build_import_operation(document: Dict[str, Any]) -> Tuple[str, Dict[str, Any
 
 def prepare_rule_payload_for_target(
     client: GrafanaAlertClient,
-    payload: Dict[str, Any],
-    document: Dict[str, Any],
-    dashboard_uid_map: Dict[str, str],
-    panel_id_map: Dict[str, Dict[str, str]],
-) -> Dict[str, Any]:
+    payload: dict[str, Any],
+    document: dict[str, Any],
+    dashboard_uid_map: dict[str, str],
+    panel_id_map: dict[str, dict[str, str]],
+) -> dict[str, Any]:
     return rewrite_rule_dashboard_linkage(
         client,
         payload,
@@ -545,11 +545,11 @@ def prepare_rule_payload_for_target(
 def prepare_import_payload_for_target(
     client: GrafanaAlertClient,
     kind: str,
-    payload: Dict[str, Any],
-    document: Dict[str, Any],
-    dashboard_uid_map: Dict[str, str],
-    panel_id_map: Dict[str, Dict[str, str]],
-) -> Dict[str, Any]:
+    payload: dict[str, Any],
+    document: dict[str, Any],
+    dashboard_uid_map: dict[str, str],
+    panel_id_map: dict[str, dict[str, str]],
+) -> dict[str, Any]:
     if kind == RULE_KIND:
         return prepare_rule_payload_for_target(
             client,
@@ -561,15 +561,15 @@ def prepare_import_payload_for_target(
     return payload
 
 
-def build_compare_document(kind: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+def build_compare_document(kind: str, payload: dict[str, Any]) -> dict[str, Any]:
     return {"kind": kind, "spec": payload}
 
 
-def serialize_compare_document(document: Dict[str, Any]) -> str:
+def serialize_compare_document(document: dict[str, Any]) -> str:
     return json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
-def build_resource_identity(kind: str, payload: Dict[str, Any]) -> str:
+def build_resource_identity(kind: str, payload: dict[str, Any]) -> str:
     if kind == RULE_KIND:
         return str(payload.get("uid") or "unknown")
     if kind == CONTACT_POINT_KIND:
@@ -587,7 +587,7 @@ def build_diff_label(prefix: str, resource_file: Path, kind: str, identity: str)
 
 def determine_rule_import_action(
     client: GrafanaAlertClient,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     replace_existing: bool,
 ) -> str:
     uid = str(payload.get("uid") or "")
@@ -606,7 +606,7 @@ def determine_rule_import_action(
 
 def determine_contact_point_import_action(
     client: GrafanaAlertClient,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     replace_existing: bool,
 ) -> str:
     uid = str(payload.get("uid") or "")
@@ -620,7 +620,7 @@ def determine_contact_point_import_action(
 
 def determine_mute_timing_import_action(
     client: GrafanaAlertClient,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     replace_existing: bool,
 ) -> str:
     name = str(payload.get("name") or "")
@@ -634,7 +634,7 @@ def determine_mute_timing_import_action(
 
 def determine_template_import_action(
     client: GrafanaAlertClient,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     replace_existing: bool,
 ) -> str:
     name = str(payload.get("name") or "")
@@ -649,7 +649,7 @@ def determine_template_import_action(
 def determine_import_action(
     client: GrafanaAlertClient,
     kind: str,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     replace_existing: bool,
 ) -> str:
     if kind == RULE_KIND:
@@ -666,8 +666,8 @@ def determine_import_action(
 def fetch_live_compare_document(
     client: GrafanaAlertClient,
     kind: str,
-    payload: Dict[str, Any],
-) -> Optional[Dict[str, Any]]:
+    payload: dict[str, Any],
+) -> Optional[dict[str, Any]]:
     if kind == RULE_KIND:
         uid = str(payload.get("uid") or "")
         if not uid:
@@ -728,7 +728,7 @@ def fetch_live_compare_document(
     )
 
 
-def build_empty_root_index() -> Dict[str, Any]:
+def build_empty_root_index() -> dict[str, Any]:
     return {
         "schemaVersion": TOOL_SCHEMA_VERSION,
         "apiVersion": TOOL_API_VERSION,

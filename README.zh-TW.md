@@ -20,7 +20,7 @@
 相容性：
 
 - 支援 RHEL 8 與更新版本
-- Python 入口腳本維持 Python 3.6 語法可解析，方便 RHEL 8 環境使用
+- Python 入口腳本現在以 Python 3.9+ 作為語法與執行環境基線
 
 ## 目錄
 
@@ -500,7 +500,7 @@ python3 -m pip install .
 python3 -m pip install --user .
 ```
 
-Python 3.8+ 若要安裝可選的 HTTP/2 依賴：
+Python 3.9+ 若要安裝可選的 HTTP/2 依賴：
 
 ```bash
 python3 -m pip install '.[http2]'

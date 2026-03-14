@@ -5,7 +5,7 @@ import difflib
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from urllib import parse
 
 from ..clients.dashboard_client import GrafanaClient

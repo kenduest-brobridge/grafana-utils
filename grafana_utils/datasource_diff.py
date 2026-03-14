@@ -3,7 +3,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Optional
 
 from .clients.dashboard_client import GrafanaClient
 from .datasource_contract import normalize_datasource_record
@@ -28,8 +28,7 @@ COMPARE_FIELDS = (
 )
 
 
-def load_json_document(path):
-    # type: (Path) -> Any
+def load_json_document(path: Path) -> Any:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
@@ -38,8 +37,7 @@ def load_json_document(path):
         raise GrafanaError("Invalid JSON in %s: %s" % (path, exc))
 
 
-def load_datasource_diff_bundle(import_dir):
-    # type: (Path) -> Dict[str, Any]
+def load_datasource_diff_bundle(import_dir: Path) -> dict[str, Any]:
     if not import_dir.exists():
         raise GrafanaError("Diff directory does not exist: %s" % import_dir)
     if not import_dir.is_dir():
@@ -110,8 +108,9 @@ def load_datasource_diff_bundle(import_dir):
     }
 
 
-def build_live_datasource_diff_records(client):
-    # type: (GrafanaClient) -> List[Dict[str, str]]
+def build_live_datasource_diff_records(
+    client: GrafanaClient,
+) -> list[dict[str, str]]:
     org = client.fetch_current_org()
     return [
         normalize_datasource_record(build_datasource_inventory_record(item, org))
@@ -119,8 +118,7 @@ def build_live_datasource_diff_records(client):
     ]
 
 
-def resolve_datasource_identity(record):
-    # type: (Dict[str, str]) -> str
+def resolve_datasource_identity(record: dict[str, str]) -> str:
     uid = str(record.get("uid") or "").strip()
     if uid:
         return uid
@@ -130,8 +128,9 @@ def resolve_datasource_identity(record):
     return "<unnamed-datasource>"
 
 
-def _index_records(records):
-    # type: (List[Dict[str, str]]) -> Dict[str, Dict[str, List[Tuple[int, Dict[str, str]]]]]
+def _index_records(
+    records: list[dict[str, str]],
+) -> dict[str, dict[str, list[tuple[int, dict[str, str]]]]]:
     by_uid = {}
     by_name = {}
     for index, record in enumerate(records):
@@ -144,8 +143,10 @@ def _index_records(records):
     return {"by_uid": by_uid, "by_name": by_name}
 
 
-def _resolve_live_match(local_record, live_index):
-    # type: (Dict[str, str], Dict[str, Dict[str, List[Tuple[int, Dict[str, str]]]]]) -> Dict[str, Any]
+def _resolve_live_match(
+    local_record: dict[str, str],
+    live_index: dict[str, dict[str, list[tuple[int, dict[str, str]]]]],
+) -> dict[str, Any]:
     uid = str(local_record.get("uid") or "")
     name = str(local_record.get("name") or "")
     if uid:
@@ -175,8 +176,10 @@ def _resolve_live_match(local_record, live_index):
     return {"status": "missing-live"}
 
 
-def _resolve_compare_fields(local_record, match_key):
-    # type: (Optional[Dict[str, str]], Optional[str]) -> Tuple[str, ...]
+def _resolve_compare_fields(
+    local_record: Optional[dict[str, str]],
+    match_key: Optional[str],
+) -> tuple[str, ...]:
     fields = list(COMPARE_FIELDS)
     if (
         match_key == "name"
@@ -188,8 +191,12 @@ def _resolve_compare_fields(local_record, match_key):
     return tuple(fields)
 
 
-def build_datasource_diff_item(local_record, live_record, status, match_key):
-    # type: (Optional[Dict[str, str]], Optional[Dict[str, str]], str, Optional[str]) -> Dict[str, Any]
+def build_datasource_diff_item(
+    local_record: Optional[dict[str, str]],
+    live_record: Optional[dict[str, str]],
+    status: str,
+    match_key: Optional[str],
+) -> dict[str, Any]:
     changed_fields = []
     local_values = {}
     live_values = {}
@@ -215,12 +222,14 @@ def build_datasource_diff_item(local_record, live_record, status, match_key):
     }
 
 
-def compare_datasource_inventory(bundle_records, live_records):
-    # type: (List[Dict[str, str]], List[Dict[str, str]]) -> Dict[str, Any]
+def compare_datasource_inventory(
+    bundle_records: list[dict[str, str]],
+    live_records: list[dict[str, str]],
+) -> dict[str, Any]:
     normalized_bundle = [normalize_datasource_record(item) for item in bundle_records]
     normalized_live = [normalize_datasource_record(item) for item in live_records]
     live_index = _index_records(normalized_live)
-    matched_live_indexes = set()  # type: Set[int]
+    matched_live_indexes: set[int] = set()
     items = []
 
     for local_record in normalized_bundle:
@@ -278,6 +287,8 @@ def compare_datasource_inventory(bundle_records, live_records):
     }
 
 
-def compare_datasource_bundle_to_live(bundle, live_records):
-    # type: (Dict[str, Any], List[Dict[str, str]]) -> Dict[str, Any]
+def compare_datasource_bundle_to_live(
+    bundle: dict[str, Any],
+    live_records: list[dict[str, str]],
+) -> dict[str, Any]:
     return compare_datasource_inventory(bundle.get("records") or [], live_records)

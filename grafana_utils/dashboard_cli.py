@@ -34,7 +34,7 @@ import getpass
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from .clients.dashboard_client import GrafanaClient
 from .auth_staging import AuthConfigError, resolve_cli_auth_from_namespace
@@ -755,7 +755,7 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Export or import Grafana dashboards.",
         epilog=(
@@ -891,7 +891,7 @@ def _parse_dashboard_import_output_columns(
         parser.error(str(exc))
 
 
-def resolve_auth(args: argparse.Namespace) -> Dict[str, str]:
+def resolve_auth(args: argparse.Namespace) -> dict[str, str]:
     try:
         headers, _auth_mode = resolve_cli_auth_from_namespace(
             args,
@@ -902,7 +902,7 @@ def resolve_auth(args: argparse.Namespace) -> Dict[str, str]:
         return headers
     except AuthConfigError as exc:
         raise GrafanaError(str(exc))
-def _build_export_workflow_deps() -> Dict[str, Any]:
+def _build_export_workflow_deps() -> dict[str, Any]:
     return build_export_workflow_deps_from_runtime(
         {
             "GrafanaError": GrafanaError,
@@ -945,7 +945,7 @@ def list_data_sources(args: argparse.Namespace) -> int:
     return run_list_data_sources(args, build_client=build_client)
 
 
-def _build_inspection_workflow_deps() -> Dict[str, Any]:
+def _build_inspection_workflow_deps() -> dict[str, Any]:
     return build_inspection_workflow_deps_from_runtime(
         {
             "DATASOURCE_INVENTORY_FILENAME": DATASOURCE_INVENTORY_FILENAME,
@@ -975,7 +975,7 @@ def inspect_export(args: argparse.Namespace) -> int:
     return run_inspect_export(args, _build_inspection_workflow_deps())
 
 
-def _build_import_workflow_deps() -> Dict[str, Any]:
+def _build_import_workflow_deps() -> dict[str, Any]:
     return build_import_workflow_deps_from_runtime(
         {
             "DEFAULT_UNKNOWN_UID": DEFAULT_UNKNOWN_UID,
@@ -997,7 +997,7 @@ def import_dashboards(args: argparse.Namespace) -> int:
     return run_import_dashboards(args, _build_import_workflow_deps())
 
 
-def _build_diff_workflow_deps() -> Dict[str, Any]:
+def _build_diff_workflow_deps() -> dict[str, Any]:
     return {
         "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
         "build_client": build_client,
@@ -1045,7 +1045,7 @@ def build_client(args: argparse.Namespace) -> GrafanaClient:
     )
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     args = parse_args(argv)
     try:
         if args.command == "list-dashboard":

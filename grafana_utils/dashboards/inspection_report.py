@@ -2,7 +2,7 @@
 
 from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from .common import (
     DEFAULT_DASHBOARD_TITLE,
@@ -117,8 +117,8 @@ INSPECT_LIVE_HELP_FULL_EXAMPLES = (
 
 def build_export_inspection_report_document(
     import_dir: Path,
-    deps: Dict[str, Any],
-) -> Dict[str, Any]:
+    deps: dict[str, Any],
+) -> dict[str, Any]:
     """Analyze one raw export directory and emit one per-query inspection record."""
     metadata = deps["load_export_metadata"](
         import_dir, expected_variant=deps["RAW_EXPORT_SUBDIR"]
@@ -195,8 +195,8 @@ def build_export_inspection_report_document(
 
 def describe_export_datasource_ref(
     ref: Any,
-    datasources_by_uid: Dict[str, Dict[str, str]],
-    datasources_by_name: Dict[str, Dict[str, str]],
+    datasources_by_uid: dict[str, dict[str, str]],
+    datasources_by_name: dict[str, dict[str, str]],
 ) -> str:
     """Render one exported datasource reference into a stable label."""
     if ref is None:
@@ -232,10 +232,10 @@ def describe_export_datasource_ref(
 
 
 def describe_panel_datasource(
-    panel: Dict[str, Any],
-    target: Dict[str, Any],
-    datasources_by_uid: Dict[str, Dict[str, str]],
-    datasources_by_name: Dict[str, Dict[str, str]],
+    panel: dict[str, Any],
+    target: dict[str, Any],
+    datasources_by_uid: dict[str, dict[str, str]],
+    datasources_by_name: dict[str, dict[str, str]],
 ) -> str:
     """Resolve one panel/query datasource label from target or panel scope."""
     target_ref = target.get("datasource")
@@ -255,9 +255,9 @@ def describe_panel_datasource(
 
 
 def describe_panel_datasource_uid(
-    panel: Dict[str, Any],
-    target: Dict[str, Any],
-    datasources_by_name: Dict[str, Dict[str, str]],
+    panel: dict[str, Any],
+    target: dict[str, Any],
+    datasources_by_name: dict[str, dict[str, str]],
 ) -> str:
     """Resolve one best-effort datasource uid for a panel/query target."""
     for ref in (target.get("datasource"), panel.get("datasource")):
@@ -274,14 +274,14 @@ def describe_panel_datasource_uid(
                 return str(datasources_by_name[name].get("uid") or "")
     return ""
 def build_query_report_record(
-    dashboard: Dict[str, Any],
+    dashboard: dict[str, Any],
     folder_path: str,
-    panel: Dict[str, Any],
-    target: Dict[str, Any],
+    panel: dict[str, Any],
+    target: dict[str, Any],
     dashboard_file: Path,
-    datasources_by_uid: Dict[str, Dict[str, str]],
-    datasources_by_name: Dict[str, Dict[str, str]],
-) -> Dict[str, Any]:
+    datasources_by_uid: dict[str, dict[str, str]],
+    datasources_by_name: dict[str, dict[str, str]],
+) -> dict[str, Any]:
     """Build one canonical per-query inspection row."""
     query_field, query_text = build_query_field_and_text(target)
     analysis = dispatch_query_analysis(
@@ -328,7 +328,7 @@ def build_query_report_record(
     return normalized
 
 
-def parse_report_columns(value: Optional[str]) -> Optional[List[str]]:
+def parse_report_columns(value: Optional[str]) -> Optional[list[str]]:
     """Parse one report column list into canonical inspection field ids."""
     if value is None:
         return None
@@ -367,10 +367,10 @@ def parse_report_columns(value: Optional[str]) -> Optional[List[str]]:
 
 
 def filter_export_inspection_report_document(
-    document: Dict[str, Any],
+    document: dict[str, Any],
     datasource_label: Optional[str] = None,
     panel_id: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Filter one flat inspection report document to narrower query rows."""
     if not datasource_label and not panel_id:
         return document
@@ -394,8 +394,8 @@ def filter_export_inspection_report_document(
 
 
 def build_grouped_export_inspection_report_document(
-    document: Dict[str, Any]
-) -> Dict[str, Any]:
+    document: dict[str, Any]
+) -> dict[str, Any]:
     """Normalize one flat inspection report into dashboard-first grouped form."""
     query_records = list(document.get("queries") or [])
     dashboards = OrderedDict()

@@ -7,7 +7,7 @@ name = "grafana-util"
 version = "0.1.0"
 description = "Grafana dashboard and alerting export/import utilities."
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [{ name = "kendlee" }]
 dependencies = [
@@ -16,7 +16,7 @@ dependencies = [
 
 [project.optional-dependencies]
 http2 = [
-  "httpx[http2]>=0.27,<1; python_version >= '3.8'",
+  "httpx[http2]>=0.27,<1",
 ]
 
 [project.scripts]

@@ -3,7 +3,7 @@
 
 import argparse
 import sys
-from typing import List, Optional
+from typing import Optional
 
 from . import access_cli, alert_cli, dashboard_cli, datasource_cli
 
@@ -131,7 +131,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
+def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser = build_parser()
     argv = list(sys.argv[1:] if argv is None else argv)
 
@@ -184,7 +184,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
     raise AssertionError("argparse should have exited for unsupported command")
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     args = parse_args(argv)
     if args.entrypoint == "dashboard":
         return dashboard_cli.main(args.forwarded_argv)
@@ -195,5 +195,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.entrypoint == "datasource":
         return datasource_cli.main(args.forwarded_argv)
     raise RuntimeError("Unsupported unified CLI entrypoint.")
+
+
 if __name__ == "__main__":
     sys.exit(main())

@@ -1,6 +1,6 @@
 """Access-management focused Grafana API client helpers."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from urllib import parse
 
 from ..access.common import GrafanaApiError, GrafanaError
@@ -18,7 +18,7 @@ class GrafanaAccessClient:
     def __init__(
         self,
         base_url: str,
-        headers: Dict[str, str],
+        headers: dict[str, str],
         timeout: int,
         verify_ssl: bool,
         transport: Optional[JsonHttpTransport] = None,
@@ -33,9 +33,9 @@ class GrafanaAccessClient:
     def request_json(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
         method: str = "GET",
-        payload: Optional[Dict[str, Any]] = None,
+        payload: Optional[dict[str, Any]] = None,
     ) -> Any:
         try:
             return self.transport.request_json(
@@ -49,13 +49,13 @@ class GrafanaAccessClient:
         except HttpTransportError as exc:
             raise GrafanaError(str(exc)) from exc
 
-    def list_org_users(self) -> List[Dict[str, Any]]:
+    def list_org_users(self) -> list[dict[str, Any]]:
         data = self.request_json("/api/org/users")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected org user list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
-    def iter_global_users(self, page_size: int) -> List[Dict[str, Any]]:
+    def iter_global_users(self, page_size: int) -> list[dict[str, Any]]:
         users = []
         page = 1
         while True:
@@ -73,7 +73,7 @@ class GrafanaAccessClient:
             page += 1
         return users
 
-    def list_user_teams(self, user_id: Any) -> List[Dict[str, Any]]:
+    def list_user_teams(self, user_id: Any) -> list[dict[str, Any]]:
         data = self.request_json(
             "/api/users/%s/teams" % parse.quote(str(user_id), safe="")
         )
@@ -83,7 +83,7 @@ class GrafanaAccessClient:
             )
         return [item for item in data if isinstance(item, dict)]
 
-    def get_user(self, user_id: Any) -> Dict[str, Any]:
+    def get_user(self, user_id: Any) -> dict[str, Any]:
         data = self.request_json(
             "/api/users/%s" % parse.quote(str(user_id), safe="")
         )
@@ -93,7 +93,7 @@ class GrafanaAccessClient:
             )
         return data
 
-    def create_user(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def create_user(self, payload: dict[str, Any]) -> dict[str, Any]:
         data = self.request_json(
             "/api/admin/users",
             method="POST",
@@ -103,7 +103,7 @@ class GrafanaAccessClient:
             raise GrafanaError("Unexpected user create response from Grafana.")
         return data
 
-    def update_user(self, user_id: Any, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def update_user(self, user_id: Any, payload: dict[str, Any]) -> dict[str, Any]:
         data = self.request_json(
             "/api/users/%s" % parse.quote(str(user_id), safe=""),
             method="PUT",
@@ -115,7 +115,7 @@ class GrafanaAccessClient:
             )
         return data
 
-    def update_user_password(self, user_id: Any, password: str) -> Dict[str, Any]:
+    def update_user_password(self, user_id: Any, password: str) -> dict[str, Any]:
         data = self.request_json(
             "/api/admin/users/%s/password" % parse.quote(str(user_id), safe=""),
             method="PUT",
@@ -128,7 +128,7 @@ class GrafanaAccessClient:
             )
         return data
 
-    def update_user_org_role(self, user_id: Any, role: str) -> Dict[str, Any]:
+    def update_user_org_role(self, user_id: Any, role: str) -> dict[str, Any]:
         data = self.request_json(
             "/api/org/users/%s" % parse.quote(str(user_id), safe=""),
             method="PATCH",
@@ -144,7 +144,7 @@ class GrafanaAccessClient:
         self,
         user_id: Any,
         is_grafana_admin: bool,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         data = self.request_json(
             "/api/admin/users/%s/permissions" % parse.quote(str(user_id), safe=""),
             method="PUT",
@@ -157,7 +157,7 @@ class GrafanaAccessClient:
             )
         return data
 
-    def delete_global_user(self, user_id: Any) -> Dict[str, Any]:
+    def delete_global_user(self, user_id: Any) -> dict[str, Any]:
         data = self.request_json(
             "/api/admin/users/%s" % parse.quote(str(user_id), safe=""),
             method="DELETE",
@@ -169,7 +169,7 @@ class GrafanaAccessClient:
             )
         return data
 
-    def delete_org_user(self, user_id: Any) -> Dict[str, Any]:
+    def delete_org_user(self, user_id: Any) -> dict[str, Any]:
         data = self.request_json(
             "/api/org/users/%s" % parse.quote(str(user_id), safe=""),
             method="DELETE",
@@ -185,7 +185,7 @@ class GrafanaAccessClient:
         query: Optional[str],
         page: int,
         per_page: int,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         data = self.request_json(
             "/api/serviceaccounts/search",
             params={
@@ -210,7 +210,7 @@ class GrafanaAccessClient:
         query: Optional[str],
         page: int,
         per_page: int,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         data = self.request_json(
             "/api/teams/search",
             params={
@@ -230,7 +230,7 @@ class GrafanaAccessClient:
         self,
         query: Optional[str],
         page_size: int,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         teams = []
         page = 1
         while True:
@@ -247,7 +247,7 @@ class GrafanaAccessClient:
             page += 1
         return teams
 
-    def list_team_members(self, team_id: Any) -> List[Dict[str, Any]]:
+    def list_team_members(self, team_id: Any) -> list[dict[str, Any]]:
         data = self.request_json(
             "/api/teams/%s/members" % parse.quote(str(team_id), safe="")
         )
@@ -257,7 +257,7 @@ class GrafanaAccessClient:
             )
         return [item for item in data if isinstance(item, dict)]
 
-    def get_team(self, team_id: Any) -> Dict[str, Any]:
+    def get_team(self, team_id: Any) -> dict[str, Any]:
         data = self.request_json(
             "/api/teams/%s" % parse.quote(str(team_id), safe="")
         )
@@ -267,7 +267,7 @@ class GrafanaAccessClient:
             )
         return data
 
-    def delete_team(self, team_id: Any) -> Dict[str, Any]:
+    def delete_team(self, team_id: Any) -> dict[str, Any]:
         data = self.request_json(
             "/api/teams/%s" % parse.quote(str(team_id), safe=""),
             method="DELETE",
@@ -278,7 +278,7 @@ class GrafanaAccessClient:
             )
         return data
 
-    def create_team(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def create_team(self, payload: dict[str, Any]) -> dict[str, Any]:
         data = self.request_json(
             "/api/teams",
             method="POST",
@@ -288,7 +288,7 @@ class GrafanaAccessClient:
             raise GrafanaError("Unexpected team create response from Grafana.")
         return data
 
-    def add_team_member(self, team_id: Any, user_id: Any) -> Dict[str, Any]:
+    def add_team_member(self, team_id: Any, user_id: Any) -> dict[str, Any]:
         data = self.request_json(
             "/api/teams/%s/members" % parse.quote(str(team_id), safe=""),
             method="POST",
@@ -300,7 +300,7 @@ class GrafanaAccessClient:
             )
         return data
 
-    def remove_team_member(self, team_id: Any, user_id: Any) -> Dict[str, Any]:
+    def remove_team_member(self, team_id: Any, user_id: Any) -> dict[str, Any]:
         data = self.request_json(
             "/api/teams/%s/members/%s"
             % (
@@ -315,7 +315,7 @@ class GrafanaAccessClient:
             )
         return data
 
-    def update_team_members(self, team_id: Any, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def update_team_members(self, team_id: Any, payload: dict[str, Any]) -> dict[str, Any]:
         data = self.request_json(
             "/api/teams/%s/members" % parse.quote(str(team_id), safe=""),
             method="PUT",
@@ -328,7 +328,7 @@ class GrafanaAccessClient:
             )
         return data
 
-    def create_service_account(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def create_service_account(self, payload: dict[str, Any]) -> dict[str, Any]:
         data = self.request_json(
             "/api/serviceaccounts",
             method="POST",
@@ -340,7 +340,7 @@ class GrafanaAccessClient:
             )
         return data
 
-    def get_service_account(self, service_account_id: Any) -> Dict[str, Any]:
+    def get_service_account(self, service_account_id: Any) -> dict[str, Any]:
         data = self.request_json(
             "/api/serviceaccounts/%s" % parse.quote(str(service_account_id), safe="")
         )
@@ -351,7 +351,7 @@ class GrafanaAccessClient:
             )
         return data
 
-    def delete_service_account(self, service_account_id: Any) -> Dict[str, Any]:
+    def delete_service_account(self, service_account_id: Any) -> dict[str, Any]:
         data = self.request_json(
             "/api/serviceaccounts/%s" % parse.quote(str(service_account_id), safe=""),
             method="DELETE",
@@ -366,7 +366,7 @@ class GrafanaAccessClient:
     def list_service_account_tokens(
         self,
         service_account_id: Any,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         data = self.request_json(
             "/api/serviceaccounts/%s/tokens"
             % parse.quote(str(service_account_id), safe="")
@@ -381,8 +381,8 @@ class GrafanaAccessClient:
     def create_service_account_token(
         self,
         service_account_id: Any,
-        payload: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
         data = self.request_json(
             "/api/serviceaccounts/%s/tokens"
             % parse.quote(str(service_account_id), safe=""),
@@ -399,7 +399,7 @@ class GrafanaAccessClient:
         self,
         service_account_id: Any,
         token_id: Any,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         data = self.request_json(
             "/api/serviceaccounts/%s/tokens/%s"
             % (

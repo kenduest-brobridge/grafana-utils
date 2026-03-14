@@ -3,7 +3,6 @@
 
 import getpass
 import sys
-from typing import Dict, List, Optional, Tuple
 
 from .access.common import GrafanaError
 from .access.models import (

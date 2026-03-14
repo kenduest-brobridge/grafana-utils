@@ -3,7 +3,7 @@
 import csv
 import json
 import sys
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Optional
 
 from ..clients.dashboard_client import GrafanaClient
 from .common import (
@@ -26,7 +26,7 @@ from .transformer import (
 )
 
 
-def format_dashboard_summary_line(summary: Dict[str, Any]) -> str:
+def format_dashboard_summary_line(summary: dict[str, Any]) -> str:
     """Render one live dashboard summary in a compact operator-readable form."""
     record = build_dashboard_summary_record(summary)
     line = (
@@ -38,7 +38,7 @@ def format_dashboard_summary_line(summary: Dict[str, Any]) -> str:
     return line
 
 
-def build_dashboard_summary_record(summary: Dict[str, Any]) -> Dict[str, str]:
+def build_dashboard_summary_record(summary: dict[str, Any]) -> dict[str, str]:
     """Normalize a dashboard summary into a stable output record."""
     folder = str(summary.get("folderTitle") or DEFAULT_FOLDER_TITLE)
     record = {
@@ -57,7 +57,7 @@ def build_dashboard_summary_record(summary: Dict[str, Any]) -> Dict[str, str]:
     return record
 
 
-def build_folder_path(folder: Dict[str, Any], fallback_title: str) -> str:
+def build_folder_path(folder: dict[str, Any], fallback_title: str) -> str:
     """Build a readable folder tree path from Grafana folder metadata."""
     parents = folder.get("parents")
     titles = []
@@ -77,8 +77,8 @@ def build_folder_path(folder: Dict[str, Any], fallback_title: str) -> str:
 
 def attach_dashboard_folder_paths(
     client: GrafanaClient,
-    summaries: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+    summaries: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     """Attach a resolved folder tree path to each dashboard summary when possible."""
     folder_paths = {}
     for summary in summaries:
@@ -104,8 +104,8 @@ def attach_dashboard_folder_paths(
 
 def describe_datasource_ref(
     ref: Any,
-    datasources_by_uid: Dict[str, Dict[str, Any]],
-    datasources_by_name: Dict[str, Dict[str, Any]],
+    datasources_by_uid: dict[str, dict[str, Any]],
+    datasources_by_name: dict[str, dict[str, Any]],
 ) -> Optional[str]:
     """Resolve one datasource reference into a display label when possible."""
     if ref is None or is_builtin_datasource_ref(ref):
@@ -159,8 +159,8 @@ def describe_datasource_ref(
 
 def resolve_datasource_uid(
     ref: Any,
-    datasources_by_uid: Dict[str, Dict[str, Any]],
-    datasources_by_name: Dict[str, Dict[str, Any]],
+    datasources_by_uid: dict[str, dict[str, Any]],
+    datasources_by_name: dict[str, dict[str, Any]],
 ) -> Optional[str]:
     """Resolve one datasource reference into a concrete datasource UID when possible."""
     if ref is None or is_builtin_datasource_ref(ref):
@@ -209,12 +209,12 @@ def resolve_datasource_uid(
 
 
 def resolve_dashboard_source_metadata(
-    payload: Dict[str, Any],
-    extract_dashboard_object: Callable[[Dict[str, Any], str], Dict[str, Any]],
+    payload: dict[str, Any],
+    extract_dashboard_object: Callable[[dict[str, Any], str], dict[str, Any]],
     datasource_error: type,
-    datasources_by_uid: Dict[str, Dict[str, Any]],
-    datasources_by_name: Dict[str, Dict[str, Any]],
-) -> Tuple[List[str], List[str]]:
+    datasources_by_uid: dict[str, dict[str, Any]],
+    datasources_by_name: dict[str, dict[str, Any]],
+) -> tuple[list[str], list[str]]:
     """Collect sorted datasource display names and concrete UIDs from one dashboard payload."""
     dashboard = extract_dashboard_object(
         payload,
@@ -257,10 +257,10 @@ def resolve_dashboard_source_metadata(
 
 def attach_dashboard_sources(
     client: GrafanaClient,
-    summaries: List[Dict[str, Any]],
-    extract_dashboard_object: Callable[[Dict[str, Any], str], Dict[str, Any]],
+    summaries: list[dict[str, Any]],
+    extract_dashboard_object: Callable[[dict[str, Any], str], dict[str, Any]],
     datasource_error: type,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Attach sorted datasource display names to each dashboard summary."""
     datasources_by_uid, datasources_by_name = build_datasource_catalog(
         client.list_datasources()
@@ -289,8 +289,8 @@ def attach_dashboard_sources(
 
 def attach_dashboard_org(
     client: GrafanaClient,
-    summaries: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+    summaries: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     """Attach the current Grafana organization to each dashboard summary."""
     org = client.fetch_current_org()
     org_name = str(org.get("name") or DEFAULT_ORG_NAME)
@@ -305,9 +305,9 @@ def attach_dashboard_org(
 
 
 def render_dashboard_summary_table(
-    summaries: List[Dict[str, Any]],
+    summaries: list[dict[str, Any]],
     include_header: bool = True,
-) -> List[str]:
+) -> list[str]:
     """Render dashboard summaries as a fixed-width table."""
     headers = ["UID", "NAME", "FOLDER", "FOLDER_UID", "FOLDER_PATH", "ORG", "ORG_ID"]
     if summaries and "sources" in summaries[0]:
@@ -331,7 +331,7 @@ def render_dashboard_summary_table(
         for index, value in enumerate(row):
             widths[index] = max(widths[index], len(value))
 
-    def format_row(values: List[str]) -> str:
+    def format_row(values: list[str]) -> str:
         return "  ".join(
             value.ljust(widths[index]) for index, value in enumerate(values)
         )
@@ -343,7 +343,7 @@ def render_dashboard_summary_table(
     return lines
 
 
-def render_dashboard_summary_csv(summaries: List[Dict[str, Any]]) -> None:
+def render_dashboard_summary_csv(summaries: list[dict[str, Any]]) -> None:
     """Render dashboard summaries as CSV records."""
     fieldnames = ["uid", "name", "folder", "folderUid", "path", "org", "orgId"]
     if summaries and "sources" in summaries[0]:
@@ -356,7 +356,7 @@ def render_dashboard_summary_csv(summaries: List[Dict[str, Any]]) -> None:
         writer.writerow(build_dashboard_summary_record(summary))
 
 
-def render_dashboard_summary_json(summaries: List[Dict[str, Any]]) -> str:
+def render_dashboard_summary_json(summaries: list[dict[str, Any]]) -> str:
     """Render dashboard summaries as JSON."""
     records = []
     for summary in summaries:
@@ -372,7 +372,7 @@ def render_dashboard_summary_json(summaries: List[Dict[str, Any]]) -> str:
 def list_dashboards(
     args: Any,
     build_client: Callable[[Any], GrafanaClient],
-    extract_dashboard_object: Callable[[Dict[str, Any], str], Dict[str, Any]],
+    extract_dashboard_object: Callable[[dict[str, Any], str], dict[str, Any]],
     datasource_error: type,
 ) -> int:
     """List live dashboard summaries without exporting dashboard JSON."""
@@ -432,7 +432,7 @@ def list_dashboards(
     return 0
 
 
-def format_data_source_line(datasource: Dict[str, Any]) -> str:
+def format_data_source_line(datasource: dict[str, Any]) -> str:
     """Render one datasource in a compact operator-readable form."""
     record = build_data_source_record(datasource)
     return (
@@ -440,7 +440,7 @@ def format_data_source_line(datasource: Dict[str, Any]) -> str:
     ).format(**record)
 
 
-def build_data_source_record(datasource: Dict[str, Any]) -> Dict[str, str]:
+def build_data_source_record(datasource: dict[str, Any]) -> dict[str, str]:
     """Normalize one datasource into a stable output record."""
     return {
         "uid": str(datasource.get("uid") or ""),
@@ -452,9 +452,9 @@ def build_data_source_record(datasource: Dict[str, Any]) -> Dict[str, str]:
 
 
 def build_datasource_inventory_record(
-    datasource: Dict[str, Any],
-    org: Dict[str, Any],
-) -> Dict[str, str]:
+    datasource: dict[str, Any],
+    org: dict[str, Any],
+) -> dict[str, str]:
     """Normalize one datasource inventory record for raw export metadata."""
     record = build_data_source_record(datasource)
     record["access"] = str(datasource.get("access") or "")
@@ -464,9 +464,9 @@ def build_datasource_inventory_record(
 
 
 def render_data_source_table(
-    datasources: List[Dict[str, Any]],
+    datasources: list[dict[str, Any]],
     include_header: bool = True,
-) -> List[str]:
+) -> list[str]:
     """Render datasource summaries as a fixed-width table."""
     headers = ["UID", "NAME", "TYPE", "URL", "IS_DEFAULT"]
     rows = []
@@ -485,7 +485,7 @@ def render_data_source_table(
         for index, value in enumerate(row):
             widths[index] = max(widths[index], len(value))
 
-    def format_row(values: List[str]) -> str:
+    def format_row(values: list[str]) -> str:
         return "  ".join(
             value.ljust(widths[index]) for index, value in enumerate(values)
         )
@@ -497,7 +497,7 @@ def render_data_source_table(
     return lines
 
 
-def render_data_source_csv(datasources: List[Dict[str, Any]]) -> None:
+def render_data_source_csv(datasources: list[dict[str, Any]]) -> None:
     """Render datasource summaries as CSV records."""
     writer = csv.DictWriter(
         sys.stdout,
@@ -509,7 +509,7 @@ def render_data_source_csv(datasources: List[Dict[str, Any]]) -> None:
         writer.writerow(build_data_source_record(datasource))
 
 
-def render_data_source_json(datasources: List[Dict[str, Any]]) -> str:
+def render_data_source_json(datasources: list[dict[str, Any]]) -> str:
     """Render datasource summaries as JSON."""
     return json.dumps(
         [build_data_source_record(item) for item in datasources],

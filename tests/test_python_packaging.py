@@ -23,6 +23,11 @@ class PackagingTests(unittest.TestCase):
 
         self.assertIn('requests>=2.27,<3', content)
 
+    def test_pyproject_requires_python39_or_newer(self):
+        content = PYPROJECT_PATH.read_text(encoding="utf-8")
+
+        self.assertIn('requires-python = ">=3.9"', content)
+
     def test_pyproject_finds_package_submodules(self):
         content = PYPROJECT_PATH.read_text(encoding="utf-8")
 

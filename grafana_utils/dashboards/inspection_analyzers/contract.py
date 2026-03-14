@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict, List, Set
+from typing import Any
 
 
 DATASOURCE_FAMILY_PROMETHEUS = "prometheus"
@@ -10,7 +10,7 @@ DATASOURCE_FAMILY_UNKNOWN = "unknown"
 QUERY_ANALYSIS_FIELDS = ("metrics", "measurements", "buckets")
 
 
-def extract_string_values(query: str, pattern: str) -> List[str]:
+def extract_string_values(query: str, pattern: str) -> list[str]:
     if not query:
         return []
     values = []
@@ -25,8 +25,8 @@ def extract_string_values(query: str, pattern: str) -> List[str]:
     return values
 
 
-def unique_strings(values: List[str]) -> List[str]:
-    seen = set()  # type: Set[str]
+def unique_strings(values: list[str]) -> list[str]:
+    seen: set[str] = set()
     ordered = []
     for value in values:
         text = str(value or "").strip()
@@ -37,7 +37,7 @@ def unique_strings(values: List[str]) -> List[str]:
     return ordered
 
 
-def normalize_query_analysis(result: Dict[str, Any]) -> Dict[str, List[str]]:
+def normalize_query_analysis(result: dict[str, Any]) -> dict[str, list[str]]:
     normalized = {}
     for field in QUERY_ANALYSIS_FIELDS:
         value = (result or {}).get(field)
@@ -50,7 +50,7 @@ def normalize_query_analysis(result: Dict[str, Any]) -> Dict[str, List[str]]:
     return normalized
 
 
-def build_query_field_and_text(target: Dict[str, Any]) -> List[str]:
+def build_query_field_and_text(target: dict[str, Any]) -> list[str]:
     for field in (
         "expr",
         "expression",
@@ -131,7 +131,7 @@ PROMETHEUS_RESERVED_WORDS = {
 }
 
 
-def extract_metric_names(query: str) -> List[str]:
+def extract_metric_names(query: str) -> list[str]:
     if not query:
         return []
     sanitized_query = re.sub(r'"[^"]*"', '""', query)
@@ -155,7 +155,7 @@ def extract_metric_names(query: str) -> List[str]:
     return unique_strings(values)
 
 
-def extract_measurements(query: str) -> List[str]:
+def extract_measurements(query: str) -> list[str]:
     return unique_strings(
         extract_string_values(
             query,
@@ -168,7 +168,7 @@ def extract_measurements(query: str) -> List[str]:
     )
 
 
-def extract_buckets(query: str) -> List[str]:
+def extract_buckets(query: str) -> list[str]:
     return unique_strings(
         extract_string_values(
             query,
@@ -181,7 +181,7 @@ def extract_buckets(query: str) -> List[str]:
     )
 
 
-def build_default_query_analysis(target: Dict[str, Any], query_text: str) -> Dict[str, List[str]]:
+def build_default_query_analysis(target: dict[str, Any], query_text: str) -> dict[str, list[str]]:
     del target
     return normalize_query_analysis(
         {

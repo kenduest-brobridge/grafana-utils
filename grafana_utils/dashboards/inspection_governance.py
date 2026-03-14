@@ -1,9 +1,9 @@
 """Dashboard inspection governance document helpers."""
 
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Iterable, Optional
 
 
-def _unique_strings(values: Iterable[Any]) -> List[str]:
+def _unique_strings(values: Iterable[Any]) -> list[str]:
     seen = set()
     normalized = []
     for value in values:
@@ -16,8 +16,8 @@ def _unique_strings(values: Iterable[Any]) -> List[str]:
 
 
 def _resolve_datasource_inventory(
-    summary_document: Dict[str, Any]
-) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]]]:
+    summary_document: dict[str, Any]
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     by_uid = {}
     by_name = {}
     for item in summary_document.get("datasourceInventory") or []:
@@ -34,10 +34,10 @@ def _resolve_datasource_inventory(
 
 
 def _resolve_datasource_identity(
-    query_record: Dict[str, Any],
-    datasource_by_uid: Dict[str, Dict[str, Any]],
-    datasource_by_name: Dict[str, Dict[str, Any]],
-) -> Tuple[str, str, str]:
+    query_record: dict[str, Any],
+    datasource_by_uid: dict[str, dict[str, Any]],
+    datasource_by_name: dict[str, dict[str, Any]],
+) -> tuple[str, str, str]:
     datasource_uid = str(query_record.get("datasourceUid") or "").strip()
     datasource_label = str(query_record.get("datasource") or "").strip()
     inventory = None
@@ -75,7 +75,7 @@ def _normalize_family_name(datasource_type: str) -> str:
     return aliases.get(name, name)
 
 
-def _build_query_analysis_state(record: Dict[str, Any]) -> str:
+def _build_query_analysis_state(record: dict[str, Any]) -> str:
     for field in ("metrics", "measurements", "buckets"):
         values = record.get(field)
         if isinstance(values, list) and values:
@@ -90,7 +90,7 @@ def _build_governance_risk_record(
     panel_id: str,
     datasource: str,
     detail: str,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     category = "coverage"
     recommendation = "Review this governance finding."
     if kind == "mixed-datasource-dashboard":
@@ -129,9 +129,9 @@ def _build_governance_risk_record(
 
 
 def build_datasource_family_coverage_records(
-    summary_document: Dict[str, Any],
-    report_document: Dict[str, Any],
-) -> List[Dict[str, Any]]:
+    summary_document: dict[str, Any],
+    report_document: dict[str, Any],
+) -> list[dict[str, Any]]:
     datasource_by_uid, datasource_by_name = _resolve_datasource_inventory(
         summary_document
     )
@@ -183,9 +183,9 @@ def build_datasource_family_coverage_records(
 
 
 def build_datasource_coverage_records(
-    summary_document: Dict[str, Any],
-    report_document: Dict[str, Any],
-) -> List[Dict[str, Any]]:
+    summary_document: dict[str, Any],
+    report_document: dict[str, Any],
+) -> list[dict[str, Any]]:
     datasource_by_uid, datasource_by_name = _resolve_datasource_inventory(
         summary_document
     )
@@ -257,9 +257,9 @@ def build_datasource_coverage_records(
 
 
 def build_governance_risk_records(
-    summary_document: Dict[str, Any],
-    report_document: Dict[str, Any],
-) -> List[Dict[str, str]]:
+    summary_document: dict[str, Any],
+    report_document: dict[str, Any],
+) -> list[dict[str, str]]:
     datasource_by_uid, datasource_by_name = _resolve_datasource_inventory(
         summary_document
     )
@@ -346,9 +346,9 @@ def build_governance_risk_records(
 
 
 def build_export_inspection_governance_document(
-    summary_document: Dict[str, Any],
-    report_document: Dict[str, Any],
-) -> Dict[str, Any]:
+    summary_document: dict[str, Any],
+    report_document: dict[str, Any],
+) -> dict[str, Any]:
     family_records = build_datasource_family_coverage_records(
         summary_document, report_document
     )

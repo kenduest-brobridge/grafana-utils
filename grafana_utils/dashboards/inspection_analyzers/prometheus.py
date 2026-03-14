@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 from .contract import (
     PROMETHEUS_RESERVED_WORDS,
@@ -11,7 +11,7 @@ from .contract import (
 )
 
 
-def extract_prometheus_metric_names(query: str) -> List[str]:
+def extract_prometheus_metric_names(query: str) -> list[str]:
     if not query:
         return []
     values = extract_string_values(
@@ -49,7 +49,7 @@ def extract_prometheus_metric_names(query: str) -> List[str]:
     return unique_strings(values)
 
 
-def analyze_query(panel: Dict[str, Any], target: Dict[str, Any], query_field: str, query_text: str) -> Dict[str, Any]:
+def analyze_query(panel: dict[str, Any], target: dict[str, Any], query_field: str, query_text: str) -> dict[str, Any]:
     del panel, target, query_field
     return normalize_query_analysis(
         {

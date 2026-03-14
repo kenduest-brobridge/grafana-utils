@@ -5,7 +5,7 @@ import difflib
 import json
 from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from .common import GrafanaApiError, GrafanaError
 from .export_inventory import (
@@ -39,7 +39,7 @@ IMPORT_DRY_RUN_COLUMN_ALIASES = {
 }
 
 
-def load_json_file(path: Path) -> Dict[str, Any]:
+def load_json_file(path: Path) -> dict[str, Any]:
     """Read one dashboard document from disk and require a top-level JSON object."""
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
@@ -53,7 +53,7 @@ def load_json_file(path: Path) -> Dict[str, Any]:
     return raw
 
 
-def extract_dashboard_object(document: Dict[str, Any], error_message: str) -> Dict[str, Any]:
+def extract_dashboard_object(document: dict[str, Any], error_message: str) -> dict[str, Any]:
     """Return the dashboard object from either the wrapped or plain export shape."""
     dashboard = document.get("dashboard", document)
     if not isinstance(dashboard, dict):
@@ -62,11 +62,11 @@ def extract_dashboard_object(document: Dict[str, Any], error_message: str) -> Di
 
 
 def build_import_payload(
-    document: Dict[str, Any],
+    document: dict[str, Any],
     folder_uid_override: Optional[str],
     replace_existing: bool,
     message: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build the POST /api/dashboards/db payload from either export shape we write."""
     if "__inputs" in document:
         raise GrafanaError(
@@ -100,7 +100,7 @@ def load_export_metadata(
     root_index_kind: str,
     tool_schema_version: int,
     expected_variant: Optional[str] = None,
-) -> Optional[Dict[str, Any]]:
+) -> Optional[dict[str, Any]]:
     """Load the optional export manifest and validate its schema version when present."""
     return load_export_metadata_from_export(
         import_dir,
@@ -112,7 +112,7 @@ def load_export_metadata(
 
 
 def validate_export_metadata(
-    metadata: Dict[str, Any],
+    metadata: dict[str, Any],
     metadata_path: Path,
     root_index_kind: str,
     tool_schema_version: int,
@@ -129,9 +129,9 @@ def validate_export_metadata(
 
 
 def build_compare_document(
-    dashboard: Dict[str, Any],
+    dashboard: dict[str, Any],
     folder_uid: Optional[str],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build the normalized comparison shape shared by import dry-run and diff."""
     compare_document = {"dashboard": copy.deepcopy(dashboard)}
     if folder_uid:
@@ -140,9 +140,9 @@ def build_compare_document(
 
 
 def build_local_compare_document(
-    document: Dict[str, Any],
+    document: dict[str, Any],
     folder_uid_override: Optional[str],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Normalize one local raw export into the shape compared against Grafana."""
     payload = build_import_payload(
         document=document,
@@ -154,26 +154,26 @@ def build_local_compare_document(
 
 
 def build_remote_compare_document(
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     folder_uid_override: Optional[str],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Normalize one live dashboard wrapper into the same diff shape as local files."""
     dashboard = build_preserved_web_import_document(payload)
     return build_compare_document(dashboard, folder_uid_override)
 
 
-def serialize_compare_document(document: Dict[str, Any]) -> str:
+def serialize_compare_document(document: dict[str, Any]) -> str:
     """Serialize normalized compare data so nested JSON can be compared stably."""
     return json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
 def build_compare_diff_lines(
-    remote_compare: Dict[str, Any],
-    local_compare: Dict[str, Any],
+    remote_compare: dict[str, Any],
+    local_compare: dict[str, Any],
     uid: str,
     dashboard_file: Path,
     context_lines: int,
-) -> List[str]:
+) -> list[str]:
     """Render a unified diff for one dashboard comparison."""
     remote_lines = json.dumps(
         remote_compare,
@@ -199,7 +199,7 @@ def build_compare_diff_lines(
     )
 
 
-def resolve_dashboard_uid_for_import(document: Dict[str, Any]) -> str:
+def resolve_dashboard_uid_for_import(document: dict[str, Any]) -> str:
     """Return the stable dashboard UID used by dry-run and diff workflows."""
     payload = build_import_payload(
         document=document,
@@ -215,7 +215,7 @@ def resolve_dashboard_uid_for_import(document: Dict[str, Any]) -> str:
 
 def determine_dashboard_import_action(
     client: Any,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     replace_existing: bool,
     update_existing_only: bool = False,
 ) -> str:
@@ -278,7 +278,7 @@ def build_dashboard_import_dry_run_record(
     source_folder_path: Optional[str] = None,
     destination_folder_path: Optional[str] = None,
     reason: Optional[str] = None,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     destination = "unknown"
     action_label = action or "unknown"
     if action == "would-create":
@@ -310,7 +310,7 @@ def build_dashboard_import_dry_run_record(
 
 def parse_dashboard_import_dry_run_columns(
     value: Optional[str],
-) -> Optional[List[str]]:
+) -> Optional[list[str]]:
     """Parse one import dry-run column list into canonical dashboard import field ids."""
     if value is None:
         return None
@@ -337,13 +337,13 @@ def parse_dashboard_import_dry_run_columns(
     return columns
 
 
-def _render_table(headers: List[str], rows: List[List[str]], include_header: bool) -> List[str]:
+def _render_table(headers: list[str], rows: list[list[str]], include_header: bool) -> list[str]:
     widths = [len(header) for header in headers]
     for row in rows:
         for index, value in enumerate(row):
             widths[index] = max(widths[index], len(value))
 
-    def format_row(values: List[str]) -> str:
+    def format_row(values: list[str]) -> str:
         return "  ".join(
             value.ljust(widths[index]) for index, value in enumerate(values)
         )
@@ -356,10 +356,10 @@ def _render_table(headers: List[str], rows: List[List[str]], include_header: boo
 
 
 def render_dashboard_import_dry_run_table(
-    records: List[Dict[str, str]],
+    records: list[dict[str, str]],
     include_header: bool = True,
-    selected_columns: Optional[List[str]] = None,
-) -> List[str]:
+    selected_columns: Optional[list[str]] = None,
+) -> list[str]:
     columns = list(selected_columns or ["uid", "destination", "action"])
     if selected_columns is None:
         if any(record.get("folderPath") for record in records):
@@ -381,8 +381,8 @@ def render_dashboard_import_dry_run_table(
 
 def render_dashboard_import_dry_run_json(
     mode: str,
-    folder_records: List[Dict[str, str]],
-    dashboard_records: List[Dict[str, str]],
+    folder_records: list[dict[str, str]],
+    dashboard_records: list[dict[str, str]],
     import_dir: Path,
     skipped_missing_count: int,
     skipped_folder_mismatch_count: int,
@@ -439,9 +439,9 @@ def render_dashboard_import_dry_run_json(
 
 
 def render_folder_inventory_dry_run_table(
-    records: List[Dict[str, str]],
+    records: list[dict[str, str]],
     include_header: bool = True,
-) -> List[str]:
+) -> list[str]:
     headers = ["UID", "DESTINATION", "STATUS", "REASON", "EXPECTED_PATH", "ACTUAL_PATH"]
     rows = []
     for record in records:

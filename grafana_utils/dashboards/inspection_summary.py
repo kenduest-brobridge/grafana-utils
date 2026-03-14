@@ -2,7 +2,7 @@
 
 from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from .common import (
     DEFAULT_DASHBOARD_TITLE,
@@ -16,9 +16,9 @@ from .inspection_report import (
 
 
 def summarize_datasource_inventory_usage(
-    datasource: Dict[str, str],
-    usage_by_label: Dict[str, Dict[str, Any]],
-) -> Dict[str, int]:
+    datasource: dict[str, str],
+    usage_by_label: dict[str, dict[str, Any]],
+) -> dict[str, int]:
     """Summarize one datasource inventory row against datasource usage records."""
     labels = []
     uid = str(datasource.get("uid") or "").strip()
@@ -39,7 +39,7 @@ def summarize_datasource_inventory_usage(
     }
 
 
-def build_orphaned_datasource_record(record: Dict[str, Any]) -> Dict[str, str]:
+def build_orphaned_datasource_record(record: dict[str, Any]) -> dict[str, str]:
     """Keep one stable orphaned datasource summary record for governance views."""
     return {
         "uid": str(record.get("uid") or ""),
@@ -55,8 +55,8 @@ def build_orphaned_datasource_record(record: Dict[str, Any]) -> Dict[str, str]:
 
 def build_export_inspection_document(
     import_dir: Path,
-    deps: Dict[str, Any],
-) -> Dict[str, Any]:
+    deps: dict[str, Any],
+) -> dict[str, Any]:
     """Analyze one raw export directory and summarize dashboard structure."""
     metadata = deps["load_export_metadata"](
         import_dir, expected_variant=deps["RAW_EXPORT_SUBDIR"]
@@ -227,9 +227,9 @@ def build_export_inspection_document(
 
 
 def render_export_inspection_summary(
-    document: Dict[str, Any],
+    document: dict[str, Any],
     import_dir: Path,
-) -> List[str]:
+) -> list[str]:
     """Render a compact human-readable export inspection summary."""
     summary = document.get("summary") or {}
     folder_records = list(document.get("folders") or [])
@@ -324,10 +324,10 @@ def render_export_inspection_summary(
 
 
 def render_export_inspection_tables(
-    document: Dict[str, Any],
+    document: dict[str, Any],
     import_dir: Path,
     include_header: bool = True,
-) -> List[str]:
+) -> list[str]:
     """Render export inspection as multiple compact table sections."""
     summary = document.get("summary") or {}
     folder_records = list(document.get("folders") or [])

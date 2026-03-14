@@ -1,6 +1,6 @@
 """Shared datasource import/export normalization helpers."""
 
-from typing import Any, Dict
+from typing import Any
 
 DATASOURCE_CONTRACT_FIELDS = (
     "uid",
@@ -27,7 +27,7 @@ def normalize_datasource_bool(value: Any) -> bool:
     return normalized in ("true", "1", "yes")
 
 
-def normalize_datasource_record(record: Dict[str, Any]) -> Dict[str, str]:
+def normalize_datasource_record(record: dict[str, Any]) -> dict[str, str]:
     return {
         "uid": normalize_datasource_string(record.get("uid")),
         "name": normalize_datasource_string(record.get("name")),
@@ -43,7 +43,7 @@ def normalize_datasource_record(record: Dict[str, Any]) -> Dict[str, str]:
 
 
 def validate_datasource_contract_record(
-    record: Dict[str, Any],
+    record: dict[str, Any],
     context_label: str,
 ) -> None:
     extra_fields = sorted(

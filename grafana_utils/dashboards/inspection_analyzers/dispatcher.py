@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Iterable, Optional
 
 from . import flux, generic, loki, prometheus, sql
 from .contract import (
@@ -31,7 +31,7 @@ def iter_datasource_ref_parts(ref: Any) -> Iterable[str]:
         text = str(ref.get(key) or "").strip().lower()
         if text:
             yield text
-def iter_inventory_datasource_parts(ref: Any, datasources_by_uid: Optional[Dict[str, Dict[str, str]]], datasources_by_name: Optional[Dict[str, Dict[str, str]]]) -> Iterable[str]:
+def iter_inventory_datasource_parts(ref: Any, datasources_by_uid: Optional[dict[str, dict[str, str]]], datasources_by_name: Optional[dict[str, dict[str, str]]]) -> Iterable[str]:
     datasource = None
     if isinstance(ref, dict):
         uid = str(ref.get("uid") or "").strip()
@@ -46,7 +46,7 @@ def iter_inventory_datasource_parts(ref: Any, datasources_by_uid: Optional[Dict[
         datasource_type = str(datasource.get("type") or "").strip().lower()
         if datasource_type:
             yield datasource_type
-def resolve_query_analyzer_family(panel: Dict[str, Any], target: Dict[str, Any], query_field: str, query_text: str, datasources_by_uid: Optional[Dict[str, Dict[str, str]]] = None, datasources_by_name: Optional[Dict[str, Dict[str, str]]] = None) -> str:
+def resolve_query_analyzer_family(panel: dict[str, Any], target: dict[str, Any], query_field: str, query_text: str, datasources_by_uid: Optional[dict[str, dict[str, str]]] = None, datasources_by_name: Optional[dict[str, dict[str, str]]] = None) -> str:
     hints = []
     for ref in (target.get("datasource"), panel.get("datasource")):
         hints.extend(list(iter_datasource_ref_parts(ref)))
@@ -64,13 +64,13 @@ def resolve_query_analyzer_family(panel: Dict[str, Any], target: Dict[str, Any],
         return DATASOURCE_FAMILY_SQL
     return DATASOURCE_FAMILY_UNKNOWN
 def dispatch_query_analysis(
-    panel: Dict[str, Any],
-    target: Dict[str, Any],
+    panel: dict[str, Any],
+    target: dict[str, Any],
     query_field: str,
     query_text: str,
-    datasources_by_uid: Optional[Dict[str, Dict[str, str]]] = None,
-    datasources_by_name: Optional[Dict[str, Dict[str, str]]] = None,
-) -> Dict[str, Any]:
+    datasources_by_uid: Optional[dict[str, dict[str, str]]] = None,
+    datasources_by_name: Optional[dict[str, dict[str, str]]] = None,
+) -> dict[str, Any]:
     family = resolve_query_analyzer_family(
         panel,
         target,

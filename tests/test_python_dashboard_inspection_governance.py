@@ -21,9 +21,9 @@ inspection_governance_render = importlib.import_module(
 
 
 class DashboardInspectionGovernanceTests(unittest.TestCase):
-    def _assert_parses_as_python36(self, path):
+    def _assert_parses_as_python39(self, path):
         source = path.read_text(encoding="utf-8")
-        ast.parse(source, filename=str(path), feature_version=(3, 6))
+        ast.parse(source, filename=str(path), feature_version=(3, 9))
 
     def _build_fixture_documents(self):
         summary_document = {
@@ -106,9 +106,9 @@ class DashboardInspectionGovernanceTests(unittest.TestCase):
         }
         return summary_document, report_document
 
-    def test_governance_modules_parse_as_python36_syntax(self):
-        self._assert_parses_as_python36(GOVERNANCE_MODULE)
-        self._assert_parses_as_python36(GOVERNANCE_RENDER_MODULE)
+    def test_governance_modules_parse_as_python39_syntax(self):
+        self._assert_parses_as_python39(GOVERNANCE_MODULE)
+        self._assert_parses_as_python39(GOVERNANCE_RENDER_MODULE)
 
     def test_build_export_inspection_governance_document_summarizes_families_and_risks(self):
         summary_document, report_document = self._build_fixture_documents()

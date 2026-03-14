@@ -17,13 +17,13 @@ unified_cli = importlib.import_module("grafana_utils.unified_cli")
 
 
 class UnifiedCliTests(unittest.TestCase):
-    def test_unified_script_parses_as_python36_syntax(self):
+    def test_unified_script_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
-        ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_unified_wrapper_script_parses_as_python36_syntax(self):
+    def test_unified_wrapper_script_parses_as_python39_syntax(self):
         source = WRAPPER_PATH.read_text(encoding="utf-8")
-        ast.parse(source, filename=str(WRAPPER_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(WRAPPER_PATH), feature_version=(3, 9))
 
     def test_parse_args_without_command_prints_top_level_help(self):
         stdout = io.StringIO()

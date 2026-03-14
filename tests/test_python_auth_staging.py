@@ -15,9 +15,9 @@ auth_staging = importlib.import_module("grafana_utils.auth_staging")
 
 
 class AuthStagingTests(unittest.TestCase):
-    def test_module_parses_as_python36_syntax(self):
+    def test_module_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
-        ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
     def test_resolve_auth_headers_supports_token_auth(self):
         headers, auth_mode = auth_staging.resolve_auth_headers(token="abc123")

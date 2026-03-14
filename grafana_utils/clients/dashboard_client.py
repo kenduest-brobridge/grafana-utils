@@ -1,6 +1,6 @@
 """Dashboard-focused Grafana API client helpers."""
 
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Optional
 from urllib import parse
 
 from ..dashboards.common import GrafanaApiError, GrafanaError
@@ -18,7 +18,7 @@ class GrafanaClient:
     def __init__(
         self,
         base_url: str,
-        headers: Dict[str, str],
+        headers: dict[str, str],
         timeout: int,
         verify_ssl: bool,
         transport: Optional[JsonHttpTransport] = None,
@@ -37,9 +37,9 @@ class GrafanaClient:
     def request_json(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
         method: str = "GET",
-        payload: Optional[Dict[str, Any]] = None,
+        payload: Optional[dict[str, Any]] = None,
     ) -> Any:
         """Send one request to Grafana and decode the JSON response."""
         try:
@@ -54,10 +54,10 @@ class GrafanaClient:
         except HttpTransportError as exc:
             raise GrafanaError(str(exc)) from exc
 
-    def iter_dashboard_summaries(self, page_size: int) -> List[Dict[str, Any]]:
+    def iter_dashboard_summaries(self, page_size: int) -> list[dict[str, Any]]:
         """List dashboards through Grafana search pagination and deduplicate by UID."""
-        dashboards: List[Dict[str, Any]] = []
-        seen_uids: Set[str] = set()
+        dashboards: list[dict[str, Any]] = []
+        seen_uids: set[str] = set()
         page = 1
 
         while True:
@@ -83,7 +83,7 @@ class GrafanaClient:
 
         return dashboards
 
-    def fetch_folder_if_exists(self, uid: str) -> Optional[Dict[str, Any]]:
+    def fetch_folder_if_exists(self, uid: str) -> Optional[dict[str, Any]]:
         """Fetch one folder payload or return None when the folder UID is missing."""
         try:
             data = self.request_json(f"/api/folders/{parse.quote(uid, safe='')}")
@@ -100,9 +100,9 @@ class GrafanaClient:
         uid: str,
         title: str,
         parent_uid: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create one folder through POST /api/folders."""
-        payload: Dict[str, Any] = {"uid": uid, "title": title}
+        payload: dict[str, Any] = {"uid": uid, "title": title}
         if parent_uid:
             payload["parentUid"] = parent_uid
         data = self.request_json(
@@ -114,7 +114,7 @@ class GrafanaClient:
             raise GrafanaError("Unexpected folder create response from Grafana.")
         return data
 
-    def fetch_dashboard(self, uid: str) -> Dict[str, Any]:
+    def fetch_dashboard(self, uid: str) -> dict[str, Any]:
         """Fetch the full dashboard wrapper for a single Grafana UID."""
         data = self.fetch_dashboard_if_exists(uid)
         if data is None:
@@ -127,7 +127,7 @@ class GrafanaClient:
             raise GrafanaError("Unexpected dashboard payload for UID %s." % uid)
         return data
 
-    def fetch_dashboard_if_exists(self, uid: str) -> Optional[Dict[str, Any]]:
+    def fetch_dashboard_if_exists(self, uid: str) -> Optional[dict[str, Any]]:
         """Fetch the full dashboard wrapper or return None when the UID is missing."""
         data = None
         try:
@@ -140,7 +140,7 @@ class GrafanaClient:
             raise GrafanaError("Unexpected dashboard payload for UID %s." % uid)
         return data
 
-    def import_dashboard(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def import_dashboard(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Create or update a dashboard through POST /api/dashboards/db."""
         data = self.request_json(
             "/api/dashboards/db",
@@ -151,21 +151,21 @@ class GrafanaClient:
             raise GrafanaError("Unexpected dashboard import response from Grafana.")
         return data
 
-    def list_datasources(self) -> List[Dict[str, Any]]:
+    def list_datasources(self) -> list[dict[str, Any]]:
         """List datasource objects used when building prompt-style exports."""
         data = self.request_json("/api/datasources")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected datasource list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
-    def fetch_current_org(self) -> Dict[str, Any]:
+    def fetch_current_org(self) -> dict[str, Any]:
         """Fetch the current Grafana organization for the authenticated caller."""
         data = self.request_json("/api/org")
         if not isinstance(data, dict):
             raise GrafanaError("Unexpected current org response from Grafana.")
         return data
 
-    def list_orgs(self) -> List[Dict[str, Any]]:
+    def list_orgs(self) -> list[dict[str, Any]]:
         """List Grafana organizations visible to the current authenticated caller."""
         data = self.request_json("/api/orgs")
         if not isinstance(data, list):

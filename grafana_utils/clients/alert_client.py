@@ -1,6 +1,6 @@
 """Alerting-focused Grafana API client helpers."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from urllib import parse
 
 from ..alerts.common import GrafanaApiError, GrafanaError
@@ -18,7 +18,7 @@ class GrafanaAlertClient:
     def __init__(
         self,
         base_url: str,
-        headers: Dict[str, str],
+        headers: dict[str, str],
         timeout: int,
         verify_ssl: bool,
         transport: Optional[JsonHttpTransport] = None,
@@ -33,9 +33,9 @@ class GrafanaAlertClient:
     def request_json(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
         method: str = "GET",
-        payload: Optional[Dict[str, Any]] = None,
+        payload: Optional[dict[str, Any]] = None,
     ) -> Any:
         """Send one request to Grafana and decode the JSON response body."""
         try:
@@ -50,13 +50,13 @@ class GrafanaAlertClient:
         except HttpTransportError as exc:
             raise GrafanaError(str(exc)) from exc
 
-    def list_alert_rules(self) -> List[Dict[str, Any]]:
+    def list_alert_rules(self) -> list[dict[str, Any]]:
         data = self.request_json("/api/v1/provisioning/alert-rules")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected alert-rule list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
-    def search_dashboards(self, query: str) -> List[Dict[str, Any]]:
+    def search_dashboards(self, query: str) -> list[dict[str, Any]]:
         data = self.request_json(
             "/api/search",
             params={"type": "dash-db", "query": query, "limit": 500},
@@ -65,13 +65,13 @@ class GrafanaAlertClient:
             raise GrafanaError("Unexpected dashboard search response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
-    def get_dashboard(self, uid: str) -> Dict[str, Any]:
+    def get_dashboard(self, uid: str) -> dict[str, Any]:
         data = self.request_json("/api/dashboards/uid/%s" % parse.quote(uid, safe=""))
         if not isinstance(data, dict):
             raise GrafanaError("Unexpected dashboard payload for UID %s." % uid)
         return data
 
-    def get_alert_rule(self, uid: str) -> Dict[str, Any]:
+    def get_alert_rule(self, uid: str) -> dict[str, Any]:
         data = self.request_json(
             "/api/v1/provisioning/alert-rules/%s" % parse.quote(uid, safe="")
         )
@@ -79,7 +79,7 @@ class GrafanaAlertClient:
             raise GrafanaError("Unexpected alert-rule payload for UID %s." % uid)
         return data
 
-    def create_alert_rule(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def create_alert_rule(self, payload: dict[str, Any]) -> dict[str, Any]:
         data = self.request_json(
             "/api/v1/provisioning/alert-rules",
             method="POST",
@@ -89,7 +89,7 @@ class GrafanaAlertClient:
             raise GrafanaError("Unexpected alert-rule create response from Grafana.")
         return data
 
-    def update_alert_rule(self, uid: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def update_alert_rule(self, uid: str, payload: dict[str, Any]) -> dict[str, Any]:
         data = self.request_json(
             "/api/v1/provisioning/alert-rules/%s" % parse.quote(uid, safe=""),
             method="PUT",
@@ -99,13 +99,13 @@ class GrafanaAlertClient:
             raise GrafanaError("Unexpected alert-rule update response from Grafana.")
         return data
 
-    def list_contact_points(self) -> List[Dict[str, Any]]:
+    def list_contact_points(self) -> list[dict[str, Any]]:
         data = self.request_json("/api/v1/provisioning/contact-points")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected contact-point list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
-    def create_contact_point(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def create_contact_point(self, payload: dict[str, Any]) -> dict[str, Any]:
         data = self.request_json(
             "/api/v1/provisioning/contact-points",
             method="POST",
@@ -115,7 +115,7 @@ class GrafanaAlertClient:
             raise GrafanaError("Unexpected contact-point create response from Grafana.")
         return data
 
-    def update_contact_point(self, uid: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def update_contact_point(self, uid: str, payload: dict[str, Any]) -> dict[str, Any]:
         data = self.request_json(
             "/api/v1/provisioning/contact-points/%s" % parse.quote(uid, safe=""),
             method="PUT",
@@ -125,13 +125,13 @@ class GrafanaAlertClient:
             raise GrafanaError("Unexpected contact-point update response from Grafana.")
         return data
 
-    def list_mute_timings(self) -> List[Dict[str, Any]]:
+    def list_mute_timings(self) -> list[dict[str, Any]]:
         data = self.request_json("/api/v1/provisioning/mute-timings")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected mute-timing list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
-    def create_mute_timing(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def create_mute_timing(self, payload: dict[str, Any]) -> dict[str, Any]:
         data = self.request_json(
             "/api/v1/provisioning/mute-timings",
             method="POST",
@@ -141,7 +141,7 @@ class GrafanaAlertClient:
             raise GrafanaError("Unexpected mute-timing create response from Grafana.")
         return data
 
-    def update_mute_timing(self, name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def update_mute_timing(self, name: str, payload: dict[str, Any]) -> dict[str, Any]:
         data = self.request_json(
             "/api/v1/provisioning/mute-timings/%s" % parse.quote(name, safe=""),
             method="PUT",
@@ -151,13 +151,13 @@ class GrafanaAlertClient:
             raise GrafanaError("Unexpected mute-timing update response from Grafana.")
         return data
 
-    def get_notification_policies(self) -> Dict[str, Any]:
+    def get_notification_policies(self) -> dict[str, Any]:
         data = self.request_json("/api/v1/provisioning/policies")
         if not isinstance(data, dict):
             raise GrafanaError("Unexpected notification policy response from Grafana.")
         return data
 
-    def update_notification_policies(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def update_notification_policies(self, payload: dict[str, Any]) -> dict[str, Any]:
         data = self.request_json(
             "/api/v1/provisioning/policies",
             method="PUT",
@@ -169,7 +169,7 @@ class GrafanaAlertClient:
             )
         return data
 
-    def list_templates(self) -> List[Dict[str, Any]]:
+    def list_templates(self) -> list[dict[str, Any]]:
         data = self.request_json("/api/v1/provisioning/templates")
         if data is None:
             return []
@@ -177,7 +177,7 @@ class GrafanaAlertClient:
             raise GrafanaError("Unexpected template list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
-    def get_template(self, name: str) -> Dict[str, Any]:
+    def get_template(self, name: str) -> dict[str, Any]:
         data = self.request_json(
             "/api/v1/provisioning/templates/%s" % parse.quote(name, safe="")
         )
@@ -185,7 +185,7 @@ class GrafanaAlertClient:
             raise GrafanaError("Unexpected template payload for name %s." % name)
         return data
 
-    def update_template(self, name: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def update_template(self, name: str, payload: dict[str, Any]) -> dict[str, Any]:
         body = dict(payload)
         body.pop("name", None)
         data = self.request_json(

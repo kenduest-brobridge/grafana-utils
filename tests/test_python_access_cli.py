@@ -229,29 +229,29 @@ class FakeAccessClient:
 
 
 class AccessCliTests(unittest.TestCase):
-    def test_access_script_parses_as_python36_syntax(self):
+    def test_access_script_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
-        ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_access_client_module_parses_as_python36_syntax(self):
+    def test_access_client_module_parses_as_python39_syntax(self):
         source = CLIENT_MODULE_PATH.read_text(encoding="utf-8")
-        ast.parse(source, filename=str(CLIENT_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(CLIENT_MODULE_PATH), feature_version=(3, 9))
 
-    def test_access_parser_module_parses_as_python36_syntax(self):
+    def test_access_parser_module_parses_as_python39_syntax(self):
         source = PARSER_MODULE_PATH.read_text(encoding="utf-8")
-        ast.parse(source, filename=str(PARSER_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(PARSER_MODULE_PATH), feature_version=(3, 9))
 
-    def test_access_workflows_module_parses_as_python36_syntax(self):
+    def test_access_workflows_module_parses_as_python39_syntax(self):
         source = WORKFLOWS_MODULE_PATH.read_text(encoding="utf-8")
-        ast.parse(source, filename=str(WORKFLOWS_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(WORKFLOWS_MODULE_PATH), feature_version=(3, 9))
 
-    def test_access_models_module_parses_as_python36_syntax(self):
+    def test_access_models_module_parses_as_python39_syntax(self):
         source = MODELS_MODULE_PATH.read_text(encoding="utf-8")
-        ast.parse(source, filename=str(MODELS_MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(MODELS_MODULE_PATH), feature_version=(3, 9))
 
-    def test_access_wrapper_script_parses_as_python36_syntax(self):
+    def test_access_wrapper_script_parses_as_python39_syntax(self):
         source = WRAPPER_PATH.read_text(encoding="utf-8")
-        ast.parse(source, filename=str(WRAPPER_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(WRAPPER_PATH), feature_version=(3, 9))
 
     def test_access_wrapper_script_uses_unified_main(self):
         source = WRAPPER_PATH.read_text(encoding="utf-8")

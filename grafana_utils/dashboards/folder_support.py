@@ -1,7 +1,7 @@
 """Dashboard folder inventory and import-folder helper functions."""
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from .common import (
     DEFAULT_FOLDER_TITLE,
@@ -21,10 +21,10 @@ from .listing import build_folder_path
 
 
 def build_folder_inventory_record(
-    folder: Dict[str, Any],
-    org: Dict[str, Any],
+    folder: dict[str, Any],
+    org: dict[str, Any],
     fallback_title: str,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     uid = str(folder.get("uid") or "")
     title = str(folder.get("title") or fallback_title or uid or DEFAULT_FOLDER_TITLE)
     parents = folder.get("parents")
@@ -45,9 +45,9 @@ def build_folder_inventory_record(
 
 def collect_folder_inventory(
     client: Any,
-    org: Dict[str, Any],
-    summaries: List[Dict[str, Any]],
-) -> List[Dict[str, str]]:
+    org: dict[str, Any],
+    summaries: list[dict[str, Any]],
+) -> list[dict[str, str]]:
     folders_by_uid = {}
     pending = []
     for summary in summaries:
@@ -83,8 +83,8 @@ def collect_folder_inventory(
 def load_folder_inventory(
     import_dir: Path,
     folder_inventory_filename: str,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> List[Dict[str, str]]:
+    metadata: Optional[dict[str, Any]] = None,
+) -> list[dict[str, str]]:
     return load_folder_inventory_from_export(
         import_dir,
         folder_inventory_filename,
@@ -95,8 +95,8 @@ def load_folder_inventory(
 def load_datasource_inventory(
     import_dir: Path,
     datasource_inventory_filename: str,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> List[Dict[str, str]]:
+    metadata: Optional[dict[str, Any]] = None,
+) -> list[dict[str, str]]:
     return load_datasource_inventory_from_export(
         import_dir,
         datasource_inventory_filename,
@@ -106,7 +106,7 @@ def load_datasource_inventory(
 
 def ensure_folder_inventory(
     client: Any,
-    folders: List[Dict[str, str]],
+    folders: list[dict[str, str]],
 ) -> int:
     created_count = 0
     sorted_folders = sorted(
@@ -132,8 +132,8 @@ def ensure_folder_inventory(
 
 def inspect_folder_inventory(
     client: Any,
-    folders: List[Dict[str, str]],
-) -> List[Dict[str, str]]:
+    folders: list[dict[str, str]],
+) -> list[dict[str, str]]:
     records = []
     sorted_folders = sorted(
         folders,
@@ -178,9 +178,9 @@ def inspect_folder_inventory(
 def resolve_folder_inventory_requirements(
     args: Any,
     import_dir: Path,
-    metadata: Optional[Dict[str, Any]],
+    metadata: Optional[dict[str, Any]],
     folder_inventory_filename: str,
-) -> List[Dict[str, str]]:
+) -> list[dict[str, str]]:
     """Load the optional folder inventory and enforce explicit operator intent."""
     folder_inventory = load_folder_inventory(
         import_dir,
@@ -202,8 +202,8 @@ def resolve_folder_inventory_requirements(
 
 
 def build_folder_inventory_lookup(
-    folders: List[Dict[str, str]],
-) -> Dict[str, Dict[str, str]]:
+    folders: list[dict[str, str]],
+) -> dict[str, dict[str, str]]:
     return build_folder_inventory_lookup_from_export(folders)
 
 
@@ -212,11 +212,11 @@ def build_import_dashboard_folder_path(dashboard_file: Path, import_dir: Path) -
 
 
 def resolve_folder_inventory_record_for_dashboard(
-    document: Dict[str, Any],
+    document: dict[str, Any],
     dashboard_file: Path,
     import_dir: Path,
-    folder_lookup: Dict[str, Dict[str, str]],
-) -> Optional[Dict[str, str]]:
+    folder_lookup: dict[str, dict[str, str]],
+) -> Optional[dict[str, str]]:
     return resolve_folder_inventory_record_for_dashboard_from_export(
         document,
         dashboard_file,
@@ -230,7 +230,7 @@ def resolve_folder_inventory_record_for_dashboard(
 def build_live_folder_inventory_record(
     client: Any,
     uid: str,
-) -> Optional[Dict[str, str]]:
+) -> Optional[dict[str, str]]:
     if not uid:
         return None
     folder = client.fetch_folder_if_exists(uid)
@@ -276,8 +276,8 @@ def build_live_folder_inventory_record(
 
 def determine_folder_inventory_status(
     client: Any,
-    expected_folder: Optional[Dict[str, str]],
-) -> Dict[str, str]:
+    expected_folder: Optional[dict[str, str]],
+) -> dict[str, str]:
     if expected_folder is None:
         return {"status": "unknown", "details": ""}
     if str(expected_folder.get("builtin") or "") == "true":
@@ -299,11 +299,11 @@ def determine_folder_inventory_status(
 
 def resolve_dashboard_import_folder_path(
     client: Any,
-    payload: Dict[str, Any],
-    document: Dict[str, Any],
+    payload: dict[str, Any],
+    document: dict[str, Any],
     dashboard_file: Path,
     import_dir: Path,
-    folder_inventory_lookup: Dict[str, Dict[str, str]],
+    folder_inventory_lookup: dict[str, dict[str, str]],
 ) -> str:
     """Resolve the effective destination folder path for one dashboard import."""
     folder_uid = str(payload.get("folderUid") or "").strip()

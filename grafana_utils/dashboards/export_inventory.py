@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from .common import DEFAULT_FOLDER_TITLE, DEFAULT_FOLDER_UID, GrafanaError
 
@@ -14,7 +14,7 @@ def discover_dashboard_files(
     export_metadata_filename: str,
     folder_inventory_filename: str,
     datasource_inventory_filename: str,
-) -> List[Path]:
+) -> list[Path]:
     """Find dashboard JSON files for import and reject ambiguous combined roots."""
     if not import_dir.exists():
         raise GrafanaError(f"Import directory does not exist: {import_dir}")
@@ -47,8 +47,8 @@ def discover_dashboard_files(
 def load_folder_inventory(
     import_dir: Path,
     default_filename: str,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> List[Dict[str, str]]:
+    metadata: Optional[dict[str, Any]] = None,
+) -> list[dict[str, str]]:
     folders_file = default_filename
     if isinstance(metadata, dict):
         folders_file = str(metadata.get("foldersFile") or default_filename)
@@ -83,8 +83,8 @@ def load_folder_inventory(
 def load_datasource_inventory(
     import_dir: Path,
     default_filename: str,
-    metadata: Optional[Dict[str, Any]] = None,
-) -> List[Dict[str, str]]:
+    metadata: Optional[dict[str, Any]] = None,
+) -> list[dict[str, str]]:
     datasources_file = default_filename
     if isinstance(metadata, dict):
         datasources_file = str(metadata.get("datasourcesFile") or default_filename)
@@ -123,8 +123,8 @@ def load_datasource_inventory(
 
 
 def build_folder_inventory_lookup(
-    folders: List[Dict[str, str]],
-) -> Dict[str, Dict[str, str]]:
+    folders: list[dict[str, str]],
+) -> dict[str, dict[str, str]]:
     lookup = {}
     for folder in folders:
         uid = str(folder.get("uid") or "")
@@ -140,14 +140,14 @@ def build_import_dashboard_folder_path(dashboard_file: Path, import_dir: Path) -
 
 
 def resolve_folder_inventory_record_for_dashboard(
-    document: Dict[str, Any],
+    document: dict[str, Any],
     dashboard_file: Path,
     import_dir: Path,
-    folder_lookup: Dict[str, Dict[str, str]],
+    folder_lookup: dict[str, dict[str, str]],
     default_folder_uid: str = DEFAULT_FOLDER_UID,
     default_folder_title: str = DEFAULT_FOLDER_TITLE,
-) -> Optional[Dict[str, str]]:
-    def build_general_record() -> Dict[str, str]:
+) -> Optional[dict[str, str]]:
+    def build_general_record() -> dict[str, str]:
         return {
             "uid": default_folder_uid,
             "title": default_folder_title,
@@ -183,7 +183,7 @@ def resolve_folder_inventory_record_for_dashboard(
 
 
 def validate_export_metadata(
-    metadata: Dict[str, Any],
+    metadata: dict[str, Any],
     metadata_path: Path,
     root_index_kind: str,
     tool_schema_version: int,
@@ -217,7 +217,7 @@ def load_export_metadata(
     root_index_kind: str,
     tool_schema_version: int,
     expected_variant: Optional[str] = None,
-) -> Optional[Dict[str, Any]]:
+) -> Optional[dict[str, Any]]:
     """Load the optional export manifest and validate its schema version when present."""
     metadata_path = import_dir / export_metadata_filename
     if not metadata_path.is_file():
@@ -246,7 +246,7 @@ def resolve_export_org_id(
     import_dir: Path,
     folder_inventory_filename: str,
     datasource_inventory_filename: str,
-    metadata: Optional[Dict[str, Any]] = None,
+    metadata: Optional[dict[str, Any]] = None,
 ) -> Optional[str]:
     """Resolve one stable source export orgId from the raw export directory."""
     org_ids = set()

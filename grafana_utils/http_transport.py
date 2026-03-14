@@ -2,7 +2,7 @@
 """Replaceable JSON HTTP transport adapters for the Grafana CLI tools."""
 
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 from urllib import parse
 
 
@@ -32,9 +32,9 @@ class JsonHttpTransport:
     def request_json(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
         method: str = "GET",
-        payload: Optional[Dict[str, Any]] = None,
+        payload: Optional[dict[str, Any]] = None,
     ) -> Any:
         raise NotImplementedError
 
@@ -45,7 +45,7 @@ class BaseJsonHttpTransport(JsonHttpTransport):
     def __init__(
         self,
         base_url: str,
-        headers: Dict[str, str],
+        headers: dict[str, str],
         timeout: int,
         verify_ssl: bool,
     ) -> None:
@@ -57,7 +57,7 @@ class BaseJsonHttpTransport(JsonHttpTransport):
     def build_url(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
     ) -> str:
         query = ""
         if params:
@@ -97,7 +97,7 @@ class RequestsJsonHttpTransport(BaseJsonHttpTransport):
     def __init__(
         self,
         base_url: str,
-        headers: Dict[str, str],
+        headers: dict[str, str],
         timeout: int,
         verify_ssl: bool,
     ) -> None:
@@ -115,9 +115,9 @@ class RequestsJsonHttpTransport(BaseJsonHttpTransport):
     def request_json(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
         method: str = "GET",
-        payload: Optional[Dict[str, Any]] = None,
+        payload: Optional[dict[str, Any]] = None,
     ) -> Any:
         url = self.build_url(path, params)
         try:
@@ -146,7 +146,7 @@ class HttpxJsonHttpTransport(BaseJsonHttpTransport):
     def __init__(
         self,
         base_url: str,
-        headers: Dict[str, str],
+        headers: dict[str, str],
         timeout: int,
         verify_ssl: bool,
     ) -> None:
@@ -168,9 +168,9 @@ class HttpxJsonHttpTransport(BaseJsonHttpTransport):
     def request_json(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: Optional[dict[str, Any]] = None,
         method: str = "GET",
-        payload: Optional[Dict[str, Any]] = None,
+        payload: Optional[dict[str, Any]] = None,
     ) -> Any:
         url = self.build_url(path, params)
         try:
@@ -193,7 +193,7 @@ class HttpxJsonHttpTransport(BaseJsonHttpTransport):
 
 def build_json_http_transport(
     base_url: str,
-    headers: Dict[str, str],
+    headers: dict[str, str],
     timeout: int,
     verify_ssl: bool,
     transport_name: str = DEFAULT_HTTP_TRANSPORT,

@@ -30,9 +30,9 @@ class FakeAccessLookupClient:
 
 
 class PendingCliStagingTests(unittest.TestCase):
-    def test_module_parses_as_python36_syntax(self):
+    def test_module_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
-        ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 6))
+        ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
     def test_team_delete_parser_requires_identity(self):
         parser = argparse.ArgumentParser(prog="team delete")

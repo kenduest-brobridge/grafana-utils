@@ -5,7 +5,7 @@ and tested before it is wired into the existing import workflow.
 """
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from .common import DEFAULT_FOLDER_TITLE, DEFAULT_FOLDER_UID
 from .folder_support import (
@@ -31,10 +31,10 @@ def normalize_folder_path(
 
 
 def resolve_source_dashboard_folder_path(
-    document: Dict[str, Any],
+    document: dict[str, Any],
     dashboard_file: Path,
     import_dir: Path,
-    folder_inventory_lookup: Dict[str, Dict[str, str]],
+    folder_inventory_lookup: dict[str, dict[str, str]],
     default_folder_title: str = DEFAULT_FOLDER_TITLE,
 ) -> str:
     """Resolve the raw dashboard's source folder path from inventory or file layout."""
@@ -98,7 +98,7 @@ def build_folder_path_match_result(
     destination_exists: bool,
     require_matching_folder_path: bool,
     default_folder_title: str = DEFAULT_FOLDER_TITLE,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Compare source and destination folder paths for an optional update guard."""
     normalized_source = normalize_folder_path(source_folder_path, default_folder_title)
     normalized_destination = None
@@ -155,7 +155,7 @@ def build_folder_path_match_result(
 
 def apply_folder_path_guard_to_action(
     action: str,
-    match_result: Dict[str, Any],
+    match_result: dict[str, Any],
 ) -> str:
     """Rewrite update actions when a required folder-path comparison does not match."""
     if action != "would-update":

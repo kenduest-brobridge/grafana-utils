@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 from .contract import extract_string_values, normalize_query_analysis, unique_strings
 
@@ -26,7 +26,7 @@ def normalize_sql_identifier(value: str) -> str:
     return ".".join(parts)
 
 
-def extract_sql_source_references(query: str) -> List[str]:
+def extract_sql_source_references(query: str) -> list[str]:
     query = strip_sql_comments(query)
     if not query:
         return []
@@ -54,7 +54,7 @@ def extract_sql_source_references(query: str) -> List[str]:
     return unique_strings(references)
 
 
-def extract_sql_query_shape_hints(query: str) -> List[str]:
+def extract_sql_query_shape_hints(query: str) -> list[str]:
     lowered = strip_sql_comments(query).lower()
     hints = []
     for hint, pattern in (
@@ -80,7 +80,7 @@ def extract_sql_query_shape_hints(query: str) -> List[str]:
     return unique_strings(hints)
 
 
-def analyze_query(panel: Dict[str, Any], target: Dict[str, Any], query_field: str, query_text: str) -> Dict[str, Any]:
+def analyze_query(panel: dict[str, Any], target: dict[str, Any], query_field: str, query_text: str) -> dict[str, Any]:
     del panel, target, query_field
     return normalize_query_analysis(
         {

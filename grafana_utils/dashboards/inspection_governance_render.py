@@ -1,6 +1,6 @@
 """Dashboard inspection governance render helpers."""
 
-from typing import Any, Dict, Iterable, List
+from typing import Any, Iterable
 
 
 def _stringify_cell(value: Any) -> str:
@@ -11,7 +11,7 @@ def _stringify_cell(value: Any) -> str:
     return str(value or "")
 
 
-def _render_table(headers: List[str], rows: List[List[str]]) -> List[str]:
+def _render_table(headers: list[str], rows: list[list[str]]) -> list[str]:
     widths = [len(header) for header in headers]
     for row in rows:
         for index, value in enumerate(row):
@@ -29,10 +29,10 @@ def _render_table(headers: List[str], rows: List[List[str]]) -> List[str]:
 
 def _render_named_section(
     title: str,
-    headers: List[str],
-    records: Iterable[Dict[str, Any]],
-    columns: List[str],
-) -> List[str]:
+    headers: list[str],
+    records: Iterable[dict[str, Any]],
+    columns: list[str],
+) -> list[str]:
     rows = []
     for record in records:
         rows.append([_stringify_cell(record.get(column)) for column in columns])
@@ -45,8 +45,8 @@ def _render_named_section(
 
 
 def render_export_inspection_governance_tables(
-    document: Dict[str, Any], import_dir: str
-) -> List[str]:
+    document: dict[str, Any], import_dir: str
+) -> list[str]:
     """Render one governance document as compact table sections."""
     summary = document.get("summary") or {}
     lines = ["Export inspection governance: %s" % import_dir, ""]

@@ -4,7 +4,7 @@ import csv
 import io
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from .common import (
     DEFAULT_DASHBOARD_TITLE,
@@ -18,7 +18,7 @@ from .inspection_report import (
 )
 
 
-def format_report_column_value(record: Dict[str, Any], column_id: str) -> str:
+def format_report_column_value(record: dict[str, Any], column_id: str) -> str:
     """Format one report cell from the canonical inspection row model."""
     value = record.get(column_id)
     if isinstance(value, list):
@@ -27,8 +27,8 @@ def format_report_column_value(record: Dict[str, Any], column_id: str) -> str:
 
 
 def render_export_inspection_report_csv(
-    document: Dict[str, Any],
-    selected_columns: Optional[List[str]] = None,
+    document: dict[str, Any],
+    selected_columns: Optional[list[str]] = None,
     include_header: bool = True,
 ) -> str:
     """Render one full per-query inspection report as CSV."""
@@ -58,17 +58,17 @@ def render_export_inspection_report_csv(
 
 
 def render_export_inspection_table_section(
-    headers: List[str],
-    rows: List[List[str]],
+    headers: list[str],
+    rows: list[list[str]],
     include_header: bool = True,
-) -> List[str]:
+) -> list[str]:
     """Render one simple left-aligned table section."""
     widths = [len(header) for header in headers]
     for row in rows:
         for index, value in enumerate(row):
             widths[index] = max(widths[index], len(value))
 
-    def format_row(values: List[str]) -> str:
+    def format_row(values: list[str]) -> str:
         return "  ".join(
             value.ljust(widths[index]) for index, value in enumerate(values)
         )
@@ -82,11 +82,11 @@ def render_export_inspection_table_section(
 
 
 def render_export_inspection_report_tables(
-    document: Dict[str, Any],
+    document: dict[str, Any],
     import_dir: Path,
     include_header: bool = True,
-    selected_columns: Optional[List[str]] = None,
-) -> List[str]:
+    selected_columns: Optional[list[str]] = None,
+) -> list[str]:
     """Render one full per-query inspection report as a table."""
     summary = document.get("summary") or {}
     query_records = list(document.get("queries") or [])
@@ -128,9 +128,9 @@ def render_export_inspection_report_tables(
 
 
 def render_export_inspection_grouped_report(
-    document: Dict[str, Any],
+    document: dict[str, Any],
     import_dir: Path,
-) -> List[str]:
+) -> list[str]:
     """Render one per-query inspection report grouped by dashboard and panel."""
     summary = document.get("summary") or {}
     dashboard_records = list(document.get("dashboards") or [])
@@ -202,11 +202,11 @@ def render_export_inspection_grouped_report(
 
 
 def render_export_inspection_tree_tables(
-    document: Dict[str, Any],
+    document: dict[str, Any],
     import_dir: Path,
     include_header: bool = True,
-    selected_columns: Optional[List[str]] = None,
-) -> List[str]:
+    selected_columns: Optional[list[str]] = None,
+) -> list[str]:
     """Render one grouped report as dashboard-first sections with per-dashboard tables."""
     summary = document.get("summary") or {}
     dashboard_records = list(document.get("dashboards") or [])

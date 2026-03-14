@@ -7,7 +7,7 @@ packages them in a reusable form for dashboard, alert, and access CLIs.
 
 import base64
 import getpass
-from typing import Any, Dict, Iterable, Optional, Tuple
+from typing import Any, Iterable, Optional
 
 
 class AuthConfigError(RuntimeError):
@@ -72,7 +72,7 @@ def _first_present(args: Any, names: Iterable[str]) -> Optional[str]:
     return None
 
 
-def _env_value(env: Optional[Dict[str, str]], name: str) -> Optional[str]:
+def _env_value(env: Optional[dict[str, str]], name: str) -> Optional[str]:
     if env is None:
         import os
 
@@ -90,9 +90,9 @@ def _encode_basic_auth(username: str, password: str) -> str:
 
 
 def add_org_id_header(
-    headers: Dict[str, str],
+    headers: dict[str, str],
     org_id: Optional[Any],
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Return a copy of *headers* with X-Grafana-Org-Id added when present."""
 
     resolved = dict(headers)
@@ -107,11 +107,11 @@ def resolve_auth_headers(
     username: Optional[str] = None,
     password: Optional[str] = None,
     prompt_password: bool = False,
-    env: Optional[Dict[str, str]] = None,
+    env: Optional[dict[str, str]] = None,
     token_prompt_reader=None,
     password_prompt_reader=None,
     prompt_reader=None,
-) -> Tuple[Dict[str, str], str]:
+) -> tuple[dict[str, str], str]:
     """Resolve Grafana auth headers from explicit flags plus environment."""
 
     prompt_reader = prompt_reader or getpass.getpass
@@ -182,11 +182,11 @@ def resolve_auth_from_namespace(
     password_attrs: Optional[Iterable[str]] = None,
     prompt_attr: str = "prompt_password",
     org_id_attr: str = "org_id",
-    env: Optional[Dict[str, str]] = None,
+    env: Optional[dict[str, str]] = None,
     prompt_reader=None,
     token_prompt_reader=None,
     password_prompt_reader=None,
-) -> Tuple[Dict[str, str], str]:
+) -> tuple[dict[str, str], str]:
     """Resolve auth headers from an argparse namespace-like object."""
 
     if username_attrs is None:
@@ -218,10 +218,10 @@ def resolve_cli_auth_from_namespace(
     password_attrs: Optional[Iterable[str]] = None,
     prompt_attr: str = "prompt_password",
     org_id_attr: str = "org_id",
-    env: Optional[Dict[str, str]] = None,
+    env: Optional[dict[str, str]] = None,
     token_prompt_reader=None,
     password_prompt_reader=None,
-) -> Tuple[Dict[str, str], str]:
+) -> tuple[dict[str, str], str]:
     """Resolve auth or raise AuthConfigError with CLI-facing wording."""
 
     try:

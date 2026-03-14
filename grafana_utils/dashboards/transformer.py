@@ -2,7 +2,7 @@
 
 import copy
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Optional
 
 from .common import (
     BUILTIN_DATASOURCE_NAMES,
@@ -13,11 +13,11 @@ from .common import (
 
 
 def build_datasource_catalog(
-    datasources: List[Dict[str, Any]],
-) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]]]:
+    datasources: list[dict[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     """Index datasources by both uid and name because dashboards use either form."""
-    by_uid: Dict[str, Dict[str, Any]] = {}
-    by_name: Dict[str, Dict[str, Any]] = {}
+    by_uid: dict[str, dict[str, Any]] = {}
+    by_name: dict[str, dict[str, Any]] = {}
     for datasource in datasources:
         uid = datasource.get("uid")
         name = datasource.get("name")
@@ -62,7 +62,7 @@ def is_builtin_datasource_ref(value: Any) -> bool:
     return False
 
 
-def collect_datasource_refs(node: Any, refs: List[Any]) -> None:
+def collect_datasource_refs(node: Any, refs: list[Any]) -> None:
     """Walk the full dashboard tree and collect every datasource reference in place."""
     if isinstance(node, dict):
         for key, value in node.items():
@@ -103,7 +103,7 @@ def build_resolved_datasource(
     label: str,
     ds_type: str,
     input_label: Optional[str] = None,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Create the normalized datasource descriptor used by prompt export helpers."""
     resolved = {"key": key, "label": label, "type": ds_type}
     if isinstance(input_label, str) and input_label:
@@ -112,11 +112,11 @@ def build_resolved_datasource(
 
 
 def lookup_datasource(
-    datasources_by_uid: Dict[str, Dict[str, Any]],
-    datasources_by_name: Dict[str, Dict[str, Any]],
+    datasources_by_uid: dict[str, dict[str, Any]],
+    datasources_by_name: dict[str, dict[str, Any]],
     uid: Optional[str] = None,
     name: Optional[str] = None,
-) -> Optional[Dict[str, Any]]:
+) -> Optional[dict[str, Any]]:
     """Resolve a datasource by UID first, then by datasource name."""
     if isinstance(uid, str) and uid:
         datasource = datasources_by_uid.get(uid)
@@ -129,7 +129,7 @@ def lookup_datasource(
 
 def resolve_datasource_type_alias(
     ref: str,
-    datasources_by_uid: Dict[str, Dict[str, Any]],
+    datasources_by_uid: dict[str, dict[str, Any]],
 ) -> Optional[str]:
     """Resolve datasource plugin aliases such as 'prometheus' or 'prom'."""
     ref_lower = ref.lower()
@@ -146,9 +146,9 @@ def resolve_datasource_type_alias(
 
 def resolve_string_datasource_ref(
     ref: str,
-    datasources_by_uid: Dict[str, Dict[str, Any]],
-    datasources_by_name: Dict[str, Dict[str, Any]],
-) -> Dict[str, str]:
+    datasources_by_uid: dict[str, dict[str, Any]],
+    datasources_by_name: dict[str, dict[str, Any]],
+) -> dict[str, str]:
     """Resolve string datasource references stored as names, UIDs, or type aliases."""
     datasource = lookup_datasource(
         datasources_by_uid,
@@ -186,7 +186,7 @@ def resolve_placeholder_object_ref(
     uid: Any,
     name: Any,
     ds_type: Any,
-) -> Optional[Dict[str, str]]:
+) -> Optional[dict[str, str]]:
     """Resolve object refs that already point at a datasource placeholder token."""
     if not isinstance(ds_type, str) or not ds_type:
         return None
@@ -209,10 +209,10 @@ def resolve_placeholder_object_ref(
 
 
 def resolve_object_datasource_ref(
-    ref: Dict[str, Any],
-    datasources_by_uid: Dict[str, Dict[str, Any]],
-    datasources_by_name: Dict[str, Dict[str, Any]],
-) -> Optional[Dict[str, str]]:
+    ref: dict[str, Any],
+    datasources_by_uid: dict[str, dict[str, Any]],
+    datasources_by_name: dict[str, dict[str, Any]],
+) -> Optional[dict[str, str]]:
     """Resolve object datasource refs stored as {'type': ..., 'uid': ...}."""
     uid = ref.get("uid")
     name = ref.get("name")
@@ -261,9 +261,9 @@ def resolve_object_datasource_ref(
 
 def resolve_datasource_ref(
     ref: Any,
-    datasources_by_uid: Dict[str, Dict[str, Any]],
-    datasources_by_name: Dict[str, Dict[str, Any]],
-) -> Optional[Dict[str, str]]:
+    datasources_by_uid: dict[str, dict[str, Any]],
+    datasources_by_name: dict[str, dict[str, Any]],
+) -> Optional[dict[str, str]]:
     """Normalize Grafana datasource references into stable keys for __inputs generation."""
     if ref is None or is_builtin_datasource_ref(ref):
         return None
@@ -289,9 +289,9 @@ def resolve_datasource_ref(
 
 def replace_datasource_refs_in_dashboard(
     node: Any,
-    ref_mapping: Dict[str, Dict[str, str]],
-    datasources_by_uid: Dict[str, Dict[str, Any]],
-    datasources_by_name: Dict[str, Dict[str, Any]],
+    ref_mapping: dict[str, dict[str, str]],
+    datasources_by_uid: dict[str, dict[str, Any]],
+    datasources_by_name: dict[str, dict[str, Any]],
 ) -> None:
     """Replace resolved datasource references with the generated __inputs placeholders."""
     if isinstance(node, dict):
@@ -332,7 +332,7 @@ def replace_datasource_refs_in_dashboard(
 
 
 def ensure_datasource_template_variable(
-    dashboard: Dict[str, Any],
+    dashboard: dict[str, Any],
     datasource_type: str,
 ) -> None:
     """Create Grafana's conventional $datasource variable if one does not already exist."""
@@ -365,8 +365,8 @@ def ensure_datasource_template_variable(
 
 
 def rewrite_panel_datasources_to_template_variable(
-    panels: List[Dict[str, Any]],
-    placeholder_names: Set[str],
+    panels: list[dict[str, Any]],
+    placeholder_names: set[str],
 ) -> None:
     """Collapse panel datasource placeholders down to the shared $datasource variable."""
     for panel in panels:
@@ -390,11 +390,11 @@ def rewrite_panel_datasources_to_template_variable(
 
 
 def allocate_input_mapping(
-    resolved: Dict[str, str],
-    ref_mapping: Dict[str, Dict[str, str]],
-    type_counts: Dict[str, int],
+    resolved: dict[str, str],
+    ref_mapping: dict[str, dict[str, str]],
+    type_counts: dict[str, int],
     key: Optional[str] = None,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Create or reuse one __inputs mapping entry for a resolved datasource ref."""
     mapping_key = key or resolved["key"]
     mapping = ref_mapping.get(mapping_key)
@@ -417,10 +417,10 @@ def allocate_input_mapping(
 
 
 def rewrite_template_variable_query(
-    variable: Dict[str, Any],
-    mapping: Dict[str, str],
-    datasource_var_types: Dict[str, str],
-    datasource_var_placeholders: Set[str],
+    variable: dict[str, Any],
+    mapping: dict[str, str],
+    datasource_var_types: dict[str, str],
+    datasource_var_placeholders: set[str],
 ) -> None:
     """Rewrite one datasource template variable into importer-friendly prompt form."""
     var_name = variable.get("name")
@@ -439,10 +439,10 @@ def rewrite_template_variable_query(
 
 
 def rewrite_template_variable_datasource(
-    variable: Dict[str, Any],
-    datasource_var_types: Dict[str, str],
-    datasource_var_placeholders: Set[str],
-    datasource_var_input_names: Dict[str, str],
+    variable: dict[str, Any],
+    datasource_var_types: dict[str, str],
+    datasource_var_placeholders: set[str],
+    datasource_var_input_names: dict[str, str],
 ) -> None:
     """Rewrite datasource selectors that point at datasource template variables."""
     datasource = variable.get("datasource")
@@ -478,12 +478,12 @@ def rewrite_template_variable_datasource(
 
 
 def prepare_templating_for_external_import(
-    dashboard: Dict[str, Any],
-    ref_mapping: Dict[str, Dict[str, str]],
-    type_counts: Dict[str, int],
-    datasources_by_uid: Dict[str, Dict[str, Any]],
-    datasources_by_name: Dict[str, Dict[str, Any]],
-) -> Set[str]:
+    dashboard: dict[str, Any],
+    ref_mapping: dict[str, dict[str, str]],
+    type_counts: dict[str, int],
+    datasources_by_uid: dict[str, dict[str, Any]],
+    datasources_by_name: dict[str, dict[str, Any]],
+) -> set[str]:
     """Rewrite datasource template variables so exported dashboards prompt on import."""
     templating = dashboard.get("templating")
     if not isinstance(templating, dict):
@@ -492,9 +492,9 @@ def prepare_templating_for_external_import(
     if not isinstance(variables, list):
         return set()
 
-    datasource_var_types: Dict[str, str] = {}
-    datasource_var_placeholders: Set[str] = set()
-    datasource_var_input_names: Dict[str, str] = {}
+    datasource_var_types: dict[str, str] = {}
+    datasource_var_placeholders: set[str] = set()
+    datasource_var_input_names: dict[str, str] = {}
 
     for variable in variables:
         if not isinstance(variable, dict):
@@ -543,7 +543,7 @@ def prepare_templating_for_external_import(
     return set(datasource_var_types)
 
 
-def collect_panel_types(panels: List[Dict[str, Any]], panel_types: Set[str]) -> None:
+def collect_panel_types(panels: list[dict[str, Any]], panel_types: set[str]) -> None:
     """Gather panel plugin ids so __requires mirrors what Grafana exports."""
     for panel in panels:
         panel_type = panel.get("type")
@@ -558,8 +558,8 @@ def collect_panel_types(panels: List[Dict[str, Any]], panel_types: Set[str]) -> 
 
 
 def build_input_definitions(
-    ref_mapping: Dict[str, Dict[str, str]],
-) -> List[Dict[str, str]]:
+    ref_mapping: dict[str, dict[str, str]],
+) -> list[dict[str, str]]:
     """Build Grafana's __inputs block from the resolved datasource mapping table."""
     return [
         {
@@ -575,9 +575,9 @@ def build_input_definitions(
 
 
 def build_requires_block(
-    ref_mapping: Dict[str, Dict[str, str]],
-    panel_types: Set[str],
-) -> List[Dict[str, str]]:
+    ref_mapping: dict[str, dict[str, str]],
+    panel_types: set[str],
+) -> list[dict[str, str]]:
     """Build Grafana's __requires block for Grafana itself, datasources, and panels."""
     requires = [{"type": "grafana", "id": "grafana", "name": "Grafana", "version": ""}]
     requires.extend(
@@ -601,7 +601,7 @@ def build_requires_block(
     return requires
 
 
-def build_preserved_web_import_document(payload: Dict[str, Any]) -> Dict[str, Any]:
+def build_preserved_web_import_document(payload: dict[str, Any]) -> dict[str, Any]:
     """Keep the dashboard JSON Grafana expects for web import, but clear the numeric id."""
     dashboard = payload.get("dashboard", payload)
     if not isinstance(dashboard, dict):
@@ -612,18 +612,18 @@ def build_preserved_web_import_document(payload: Dict[str, Any]) -> Dict[str, An
 
 
 def build_external_export_document(
-    payload: Dict[str, Any],
-    datasource_catalog: Tuple[Dict[str, Dict[str, Any]], Dict[str, Dict[str, Any]]],
-) -> Dict[str, Any]:
+    payload: dict[str, Any],
+    datasource_catalog: tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]],
+) -> dict[str, Any]:
     """Convert a fetched dashboard into Grafana's web-import prompt format."""
     dashboard = build_preserved_web_import_document(payload)
 
     datasources_by_uid, datasources_by_name = datasource_catalog
-    refs: List[Any] = []
+    refs: list[Any] = []
     collect_datasource_refs(dashboard, refs)
 
-    ref_mapping: Dict[str, Dict[str, str]] = {}
-    type_counts: Dict[str, int] = {}
+    ref_mapping: dict[str, dict[str, str]] = {}
+    type_counts: dict[str, int] = {}
     prepare_templating_for_external_import(
         dashboard,
         ref_mapping=ref_mapping,
@@ -663,7 +663,7 @@ def build_external_export_document(
 
     dashboard["__inputs"] = build_input_definitions(ref_mapping)
 
-    panel_types: Set[str] = set()
+    panel_types: set[str] = set()
     panels = dashboard.get("panels")
     if isinstance(panels, list):
         collect_panel_types(

@@ -3,7 +3,7 @@
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 
 def sanitize_path_component(value: str) -> str:
@@ -16,7 +16,7 @@ def sanitize_path_component(value: str) -> str:
 
 def build_output_path(
     output_dir: Path,
-    summary: Dict[str, Any],
+    summary: dict[str, Any],
     flat: bool,
     default_folder_title: str,
     default_dashboard_title: str,
@@ -36,7 +36,7 @@ def build_output_path(
 
 def build_all_orgs_output_dir(
     output_dir: Path,
-    org: Dict[str, Any],
+    org: dict[str, Any],
     default_unknown_uid: str,
 ) -> Path:
     """Return one org-prefixed export directory for multi-org dashboard exports."""
@@ -49,7 +49,7 @@ def build_export_variant_dirs(
     output_dir: Path,
     raw_export_subdir: str,
     prompt_export_subdir: str,
-) -> Tuple[Path, Path]:
+) -> tuple[Path, Path]:
     """Return the raw/ and prompt/ export directories for one dashboard export root."""
     return output_dir / raw_export_subdir, output_dir / prompt_export_subdir
 
@@ -70,7 +70,7 @@ def ensure_dashboard_write_target(
 
 
 def write_dashboard(
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     output_path: Path,
     overwrite: bool,
     error_cls: Any,
@@ -93,11 +93,11 @@ def write_json_document(payload: Any, output_path: Path) -> None:
 
 
 def build_dashboard_index_item(
-    summary: Dict[str, Any],
+    summary: dict[str, Any],
     uid: str,
     default_org_name: str,
     default_org_id: str,
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """Build the shared root index metadata for one exported dashboard."""
     return {
         "uid": uid,
@@ -109,10 +109,10 @@ def build_dashboard_index_item(
 
 
 def build_variant_index(
-    index_items: List[Dict[str, str]],
+    index_items: list[dict[str, str]],
     path_key: str,
     format_name: str,
-) -> List[Dict[str, str]]:
+) -> list[dict[str, str]]:
     """Build one variant-specific index file from the shared root index items."""
     return [
         {
@@ -130,12 +130,12 @@ def build_variant_index(
 
 
 def build_root_export_index(
-    index_items: List[Dict[str, str]],
+    index_items: list[dict[str, str]],
     raw_index_path: Optional[Path],
     prompt_index_path: Optional[Path],
     tool_schema_version: int,
     root_index_kind: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build the versioned root manifest for one dashboard export run."""
     return {
         "schemaVersion": tool_schema_version,
@@ -156,7 +156,7 @@ def build_export_metadata(
     format_name: Optional[str] = None,
     folders_file: Optional[str] = None,
     datasources_file: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Describe one export directory in a small, versioned manifest."""
     metadata = {
         "schemaVersion": tool_schema_version,

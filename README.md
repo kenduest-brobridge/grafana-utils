@@ -20,7 +20,7 @@ The repository is useful when you need to:
 Compatibility:
 
 - supported on RHEL 8 and later
-- Python entrypoints stay parseable on Python 3.6 syntax for RHEL 8 environments
+- Python entrypoints now target Python 3.9+ syntax and runtime support
 
 ## Contents
 
@@ -1034,7 +1034,7 @@ Install into a user-local environment:
 python3 -m pip install --user .
 ```
 
-Optional HTTP/2 dependencies on Python 3.8+:
+Optional HTTP/2 dependencies on Python 3.9+:
 
 ```bash
 python3 -m pip install '.[http2]'
