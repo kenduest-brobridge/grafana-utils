@@ -1,5 +1,117 @@
 # Changelog
 
+## 2026-03-15
+
+- `9d6e00e` Add safer access user password input
+  - Added safer password input options for `access user add` and `access user modify` in both Python and Rust.
+  - Added `--password-file` and `--prompt-user-password` for new-user creation without requiring cleartext passwords directly on the command line.
+  - Added `--set-password-file` and `--prompt-set-password` for password rotation and recovery flows on existing users.
+  - Updated Python and Rust tests to cover the new password flag surface, help text, and secret resolution behavior.
+  - Refreshed README, user guides, repo guidance, and internal trace docs to reflect the safer password workflows and access support matrix changes.
+
+- `329203a` Add access org management
+  - Added first-class `access org` list, add, modify, delete, export, and import workflows in both Python and Rust.
+  - Added org snapshot bundles using `orgs.json` plus `export-metadata.json` so operators can back up and replay organization state.
+  - Added org membership replay during import so org exports can restore or update user membership and org-role assignments.
+  - Clarified and preserved the existing `access user` org-targeting behavior for create-time org placement, org-role updates, and org-scoped user removal.
+  - Updated access tests and maintainer docs to cover the new org command surface and behavior.
+
+## 2026-03-14
+
+- `c0574cd` Block datasource UID-drift updates
+  - Added stricter datasource import validation so name-matched records with conflicting UIDs are no longer updated implicitly.
+  - Reduced the risk of mutating the wrong live datasource when export metadata and target instance state disagree.
+  - Kept Python and Rust datasource behavior aligned for this guardrail.
+  - Updated tests and docs to make the drift-handling rule explicit.
+
+- `f3d471e` Add prompt-token auth flow
+  - Added prompt-driven token input so operators can avoid passing Grafana tokens directly on the command line.
+  - Extended auth resolution paths across the Python CLIs and matching Rust surfaces.
+  - Improved secret-handling ergonomics without changing the existing explicit token flag behavior.
+  - Updated CLI help and tests to cover the new prompt-based auth path.
+
+- `4586b10` Add datasource import workflow
+  - Added live datasource import support so exported datasource bundles can now be replayed back into Grafana.
+  - Reused the normalized datasource contract for create, update, and dry-run review flows.
+  - Expanded Python and Rust command coverage so datasource management now includes inventory, diff, and import.
+  - Updated operator docs to describe the datasource reconciliation workflow.
+
+- `744c024` Wire inspection governance reports
+  - Added governance-style dashboard inspection reporting so exported analysis can highlight actionable risk findings.
+  - Extended the inspection output model beyond raw extraction summaries into policy-oriented reporting.
+  - Improved review workflows for dashboard estates with datasource and query hygiene concerns.
+  - Added tests around the new governance report rendering paths.
+
+- `54c9b86` Trim dashboard CLI wrappers and extend dry-run output
+  - Removed more compatibility wrapper logic from the Python dashboard facade to keep orchestration code thinner.
+  - Extended dashboard and datasource dry-run review output so import results are easier to scan.
+  - Continued the ongoing split of helper ownership into dedicated workflow/runtime modules.
+  - Preserved existing user-facing behavior while improving internal maintainability.
+
+## 2026-03-13
+
+- `a363416` Improve dashboard dry-run import output
+  - Refined dashboard import dry-run output so operators can review planned actions more clearly before applying them.
+  - Added better structured reporting for folder, action, and reconciliation context.
+  - Improved import review without changing live mutation behavior.
+  - Updated tests to lock in the revised dry-run output shape.
+
+- `368b1e2` Add dashboard export inspection command
+  - Added a first-class dashboard inspection command to analyze exported dashboard bundles.
+  - Created a foundation for datasource usage summaries, query extraction, and governance checks over exported content.
+  - Expanded the CLI beyond backup/restore into post-export analysis workflows.
+  - Added supporting tests and docs for the new inspection surface.
+
+- `2e078b1` Record raw datasource inventory in dashboard exports
+  - Started writing datasource inventory metadata alongside dashboard export artifacts.
+  - Made downstream diff, audit, and inspection workflows less dependent on re-reading every raw dashboard file.
+  - Improved exported bundle completeness for governance and migration review.
+  - Kept the export structure compatible with the broader dashboard workflow.
+
+- `41dceaf` Add live dashboard inspection command
+  - Extended inspection so operators can analyze dashboards directly from a live Grafana instance instead of only from exported files.
+  - Reused the inspection reporting model across live and exported input sources.
+  - Improved operational usability for teams that want fast read-only inspection without a prior export step.
+  - Added tests to cover the live inspection entrypoint behavior.
+
+- `31c40ae` Add datasource CLI and dashboard governance helpers
+  - Added the initial datasource CLI surface and related governance helper plumbing.
+  - Expanded the project scope from dashboards, alerts, and access into datasource administration.
+  - Introduced shared helper paths needed for datasource inventory and follow-on import/diff work.
+  - Updated docs and tests to reflect the new datasource domain.
+
+## 2026-03-12
+
+- `fce9af6` Add Grafana access utility team modification
+  - Added team update support to the access CLI so operators can modify existing Grafana teams directly.
+  - Expanded the access-management surface beyond listing and creation into lifecycle maintenance.
+  - Updated tests to cover the new team mutation behavior and CLI handling.
+  - Kept the Python and Rust access roadmap aligned around the same operator workflows.
+
+- `af6161a` Add Grafana access utility user update and delete
+  - Added user modification and deletion flows to the access CLI.
+  - Completed more of the expected user lifecycle surface for Grafana access administration.
+  - Improved the usefulness of the access tool for day-two operations, not just discovery and creation.
+  - Added focused tests and doc updates for the new commands.
+
+- `ae658c1` Consolidate Python and Rust CLIs under grafana-utils
+  - Unified the Python and Rust command shape under the shared `grafana-utils` entrypoint.
+  - Reduced fragmentation between separate binaries and moved the project toward one consistent CLI surface.
+  - Updated packaging, docs, and tests to reflect the consolidated command model.
+  - Improved long-term maintainability by aligning command discovery across implementations.
+
+- `df43c39` Reshape alert CLI commands and remove legacy shim
+  - Reworked alert command structure into clearer export/import/diff-oriented subcommands.
+  - Removed older compatibility shims that were keeping the alert surface harder to reason about.
+  - Improved consistency between alert workflows and the rest of the repository's command design.
+  - Updated tests and docs to reflect the modernized alert CLI layout.
+
+- `67fa1e4` Align dashboard prompt export with Grafana external export
+  - Adjusted prompt-style dashboard exports so they better match Grafana's external export expectations.
+  - Improved datasource placeholder labeling and portability for re-import workflows.
+  - Reduced friction when using exported dashboards as migration-ready artifacts.
+  - Updated tests and docs to capture the refined export contract.
+
 ## 2026-03-11
 
 - `2972101` Add Grafana dry-run and diff workflows
