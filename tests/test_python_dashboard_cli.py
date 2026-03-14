@@ -879,11 +879,17 @@ class ExporterTests(unittest.TestCase):
             panel={"datasource": {"type": "loki", "uid": "loki-main"}},
             target={"datasource": {"type": "loki", "uid": "loki-main"}},
             query_field="logql",
-            query_text='{job="varlogs"} |= "error"',
+            query_text='sum by (job) (count_over_time({job="varlogs",app=~"api|web"} |= "error" | json [5m]))',
         )
 
-        self.assertEqual(analysis["metrics"], [])
-        self.assertEqual(analysis["measurements"], [])
+        self.assertEqual(
+            analysis["metrics"],
+            ["sum", "count_over_time", "filter_eq", "json"],
+        )
+        self.assertEqual(
+            analysis["measurements"],
+            ['job="varlogs"', 'app=~"api|web"'],
+        )
         self.assertEqual(analysis["buckets"], [])
 
     def test_dispatch_query_analysis_uses_generic_fallback_analyzer(self):
@@ -946,6 +952,18 @@ class ExporterTests(unittest.TestCase):
         )
 
         self.assertTrue(args.ensure_folders)
+
+    def test_parse_args_supports_require_matching_folder_path(self):
+        args = exporter.parse_args(
+            [
+                "import-dashboard",
+                "--import-dir",
+                "dashboards/raw",
+                "--require-matching-folder-path",
+            ]
+        )
+
+        self.assertTrue(args.require_matching_folder_path)
 
     def test_describe_dashboard_import_mode(self):
         self.assertEqual(
@@ -1532,6 +1550,18 @@ class ExporterTests(unittest.TestCase):
                                 ],
                             },
                             {
+                                "id": 8_1,
+                                "title": "Loki Query",
+                                "type": "logs",
+                                "datasource": {"type": "loki", "uid": "loki-main"},
+                                "targets": [
+                                    {
+                                        "refId": "B2",
+                                        "logql": 'sum by (job) (count_over_time({job="varlogs",app=~"api|web"} |= "error" | json [5m]))',
+                                    }
+                                ],
+                            },
+                            {
                                 "id": 9,
                                 "title": "SQL Query",
                                 "type": "table",
@@ -1563,9 +1593,18 @@ class ExporterTests(unittest.TestCase):
             self.assertEqual(payload["queries"][1]["metrics"], ["from", "filter"])
             self.assertEqual(payload["queries"][1]["measurements"], ["cpu"])
             self.assertEqual(payload["queries"][1]["buckets"], ["prod"])
-            self.assertEqual(payload["queries"][2]["metrics"], ["select", "where"])
-            self.assertEqual(payload["queries"][2]["measurements"], ["metrics.cpu"])
+            self.assertEqual(
+                payload["queries"][2]["metrics"],
+                ["sum", "count_over_time", "filter_eq", "json"],
+            )
+            self.assertEqual(
+                payload["queries"][2]["measurements"],
+                ['job="varlogs"', 'app=~"api|web"'],
+            )
             self.assertEqual(payload["queries"][2]["buckets"], [])
+            self.assertEqual(payload["queries"][3]["metrics"], ["select", "where"])
+            self.assertEqual(payload["queries"][3]["measurements"], ["metrics.cpu"])
+            self.assertEqual(payload["queries"][3]["buckets"], [])
 
     def test_render_dashboard_summary_table_uses_headers_and_defaults(self):
         lines = exporter.render_dashboard_summary_table(
@@ -3343,7 +3382,8 @@ class ExporterTests(unittest.TestCase):
                 stdout.getvalue().splitlines(),
                 [
                     "Import mode: create-only",
-                    "xyz  missing      create  General      %s" % (import_dir / "memory__xyz.json"),
+                    "xyz  missing      create  General      General             %s"
+                    % (import_dir / "memory__xyz.json"),
                     "Dry-run checked 1 dashboard files from %s" % import_dir,
                 ],
             )
@@ -3610,6 +3650,153 @@ class ExporterTests(unittest.TestCase):
             self.assertEqual(result, 0)
             output = stdout.getvalue()
             self.assertIn("Platform / Ops", output)
+
+    def test_import_dashboards_rejects_matching_folder_path_with_import_folder_uid(self):
+        client = FakeDashboardWorkflowClient()
+        args = exporter.parse_args(
+            [
+                "import-dashboard",
+                "--import-dir",
+                "dashboards/raw",
+                "--require-matching-folder-path",
+                "--import-folder-uid",
+                "dest-folder",
+            ]
+        )
+
+        with mock.patch.object(exporter, "build_client", return_value=client):
+            with self.assertRaisesRegex(
+                exporter.GrafanaError,
+                "--require-matching-folder-path cannot be combined with --import-folder-uid",
+            ):
+                exporter.import_dashboards(args)
+
+    def test_import_dashboards_dry_run_matching_folder_path_marks_mismatch_as_skipped(self):
+        client = FakeDashboardWorkflowClient(
+            dashboards={
+                "abc": {
+                    "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "dest-folder"},
+                }
+            },
+            folders={
+                "dest-folder": {
+                    "uid": "dest-folder",
+                    "title": "Ops",
+                    "parents": [{"uid": "platform", "title": "Platform"}],
+                }
+            },
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                {
+                    "dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "source-folder"},
+                },
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(import_dir),
+                    "--dry-run",
+                    "--replace-existing",
+                    "--table",
+                    "--require-matching-folder-path",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            output = stdout.getvalue()
+            self.assertIn("skip-folder-mismatch", output)
+            self.assertIn("SOURCE_FOLDER_PATH", output)
+            self.assertIn("DESTINATION_FOLDER_PATH", output)
+            self.assertIn("General", output)
+            self.assertIn("Platform / Ops", output)
+            self.assertIn(
+                "Dry-run checked 1 dashboard files from %s; would skip 1 folder-mismatched dashboards"
+                % import_dir,
+                output,
+            )
+
+    def test_import_dashboards_matching_folder_path_skips_live_update_mismatch(self):
+        client = FakeDashboardWorkflowClient(
+            dashboards={
+                "abc": {
+                    "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "dest-folder"},
+                }
+            },
+            folders={
+                "dest-folder": {
+                    "uid": "dest-folder",
+                    "title": "Ops",
+                    "parents": [{"uid": "platform", "title": "Platform"}],
+                }
+            },
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                exporter.build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                    format_name="grafana-web-import-preserve-uid",
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                {
+                    "dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "source-folder"},
+                },
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(import_dir),
+                    "--replace-existing",
+                    "--require-matching-folder-path",
+                    "--verbose",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(client.imported_payloads, [])
+            self.assertEqual(
+                stdout.getvalue().splitlines(),
+                [
+                    "Import mode: create-or-update",
+                    "Skipped import uid=abc dest=exists action=skip-folder-mismatch sourceFolderPath=General destinationFolderPath=Platform / Ops file=%s"
+                    % (import_dir / "cpu__abc.json"),
+                    "Imported 0 dashboard files from %s; skipped 1 folder-mismatched dashboards"
+                    % import_dir,
+                ],
+            )
 
     def test_import_dashboards_rejects_table_without_dry_run(self):
         client = FakeDashboardWorkflowClient()

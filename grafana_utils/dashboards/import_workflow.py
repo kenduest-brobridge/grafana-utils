@@ -18,6 +18,13 @@ def run_import_dashboards(args, deps):
         raise grafana_error(
             "--no-header is only supported with --dry-run --table for import-dashboard."
         )
+    if (
+        getattr(args, "require_matching_folder_path", False)
+        and getattr(args, "import_folder_uid", None) is not None
+    ):
+        raise grafana_error(
+            "--require-matching-folder-path cannot be combined with --import-folder-uid."
+        )
     client = deps["build_client"](args)
     import_dir = Path(args.import_dir)
     metadata = deps["load_export_metadata"](
@@ -32,6 +39,7 @@ def run_import_dashboards(args, deps):
     dry_run_records = []
     imported_count = 0
     skipped_missing_count = 0
+    skipped_folder_mismatch_count = 0
     effective_replace_existing = bool(
         getattr(args, "replace_existing", False)
         or getattr(args, "update_existing_only", False)
@@ -120,6 +128,12 @@ def run_import_dashboards(args, deps):
             document, "Dashboard payload must be a JSON object."
         )
         dashboard_uid = str(dashboard.get("uid") or "")
+        source_folder_path = deps["resolve_source_dashboard_folder_path"](
+            document,
+            dashboard_file,
+            import_dir,
+            folder_inventory_lookup,
+        )
         folder_uid_override = deps["determine_import_folder_uid_override"](
             client,
             dashboard_uid,
@@ -141,6 +155,10 @@ def run_import_dashboards(args, deps):
             folder_inventory_lookup,
         )
         uid = payload["dashboard"].get("uid") or deps["DEFAULT_UNKNOWN_UID"]
+        destination_folder_path = deps["resolve_existing_dashboard_folder_path"](
+            client,
+            str(uid),
+        )
         if args.dry_run:
             action = deps["determine_dashboard_import_action"](
                 client,
@@ -148,6 +166,15 @@ def run_import_dashboards(args, deps):
                 effective_replace_existing,
                 update_existing_only=bool(getattr(args, "update_existing_only", False)),
             )
+            match_result = deps["build_folder_path_match_result"](
+                source_folder_path=source_folder_path,
+                destination_folder_path=destination_folder_path,
+                destination_exists=bool(destination_folder_path is not None),
+                require_matching_folder_path=bool(
+                    getattr(args, "require_matching_folder_path", False)
+                ),
+            )
+            action = deps["apply_folder_path_guard_to_action"](action, match_result)
             if getattr(args, "table", False) or json_output:
                 dry_run_records.append(
                     deps["build_dashboard_import_dry_run_record"](
@@ -155,6 +182,8 @@ def run_import_dashboards(args, deps):
                         str(uid),
                         action,
                         folder_path=folder_path,
+                        source_folder_path=match_result.get("source_folder_path"),
+                        destination_folder_path=match_result.get("destination_folder_path"),
                     )
                 )
                 continue
@@ -170,13 +199,24 @@ def run_import_dashboards(args, deps):
             )
             continue
 
-        if bool(getattr(args, "update_existing_only", False)):
+        if bool(getattr(args, "update_existing_only", False)) or bool(
+            getattr(args, "require_matching_folder_path", False)
+        ):
             action = deps["determine_dashboard_import_action"](
                 client,
                 payload,
                 effective_replace_existing,
-                update_existing_only=True,
+                update_existing_only=bool(getattr(args, "update_existing_only", False)),
             )
+            match_result = deps["build_folder_path_match_result"](
+                source_folder_path=source_folder_path,
+                destination_folder_path=destination_folder_path,
+                destination_exists=bool(destination_folder_path is not None),
+                require_matching_folder_path=bool(
+                    getattr(args, "require_matching_folder_path", False)
+                ),
+            )
+            action = deps["apply_folder_path_guard_to_action"](action, match_result)
             if action == "would-skip-missing":
                 skipped_missing_count += 1
                 if getattr(args, "verbose", False):
@@ -187,6 +227,24 @@ def run_import_dashboards(args, deps):
                 elif getattr(args, "progress", False):
                     print(
                         "Skipping dashboard %s/%s: %s dest=missing action=skip-missing"
+                        % (index, total_dashboards, uid)
+                    )
+                continue
+            if action == "would-skip-folder-mismatch":
+                skipped_folder_mismatch_count += 1
+                if getattr(args, "verbose", False):
+                    print(
+                        "Skipped import uid=%s dest=exists action=skip-folder-mismatch sourceFolderPath=%s destinationFolderPath=%s file=%s"
+                        % (
+                            uid,
+                            match_result.get("source_folder_path") or "-",
+                            match_result.get("destination_folder_path") or "-",
+                            dashboard_file,
+                        )
+                    )
+                elif getattr(args, "progress", False):
+                    print(
+                        "Skipping dashboard %s/%s: %s dest=exists action=skip-folder-mismatch"
                         % (index, total_dashboards, uid)
                     )
                 continue
@@ -214,6 +272,13 @@ def run_import_dashboards(args, deps):
                     if record.get("action") == "skip-missing"
                 ]
             )
+        skipped_folder_mismatch_count = len(
+            [
+                record
+                for record in dry_run_records
+                if record.get("action") == "skip-folder-mismatch"
+            ]
+        )
         if json_output:
             print(
                 deps["render_dashboard_import_dry_run_json"](
@@ -222,6 +287,7 @@ def run_import_dashboards(args, deps):
                     dry_run_records,
                     import_dir,
                     skipped_missing_count,
+                    skipped_folder_mismatch_count,
                 )
             )
         elif getattr(args, "table", False):
@@ -232,18 +298,56 @@ def run_import_dashboards(args, deps):
                 print(line)
         if json_output:
             pass
+        elif (
+            getattr(args, "update_existing_only", False)
+            and skipped_missing_count
+            and skipped_folder_mismatch_count
+        ):
+            print(
+                "Dry-run checked %s dashboard files from %s; would skip %s missing dashboards and %s folder-mismatched dashboards"
+                % (
+                    len(dashboard_files),
+                    import_dir,
+                    skipped_missing_count,
+                    skipped_folder_mismatch_count,
+                )
+            )
         elif getattr(args, "update_existing_only", False) and skipped_missing_count:
             print(
                 "Dry-run checked %s dashboard files from %s; would skip %s missing dashboards"
                 % (len(dashboard_files), import_dir, skipped_missing_count)
             )
+        elif skipped_folder_mismatch_count:
+            print(
+                "Dry-run checked %s dashboard files from %s; would skip %s folder-mismatched dashboards"
+                % (len(dashboard_files), import_dir, skipped_folder_mismatch_count)
+            )
         else:
             print(f"Dry-run checked {len(dashboard_files)} dashboard files from {import_dir}")
     else:
-        if getattr(args, "update_existing_only", False) and skipped_missing_count:
+        if (
+            getattr(args, "update_existing_only", False)
+            and skipped_missing_count
+            and skipped_folder_mismatch_count
+        ):
+            print(
+                "Imported %s dashboard files from %s; skipped %s missing dashboards and %s folder-mismatched dashboards"
+                % (
+                    imported_count,
+                    import_dir,
+                    skipped_missing_count,
+                    skipped_folder_mismatch_count,
+                )
+            )
+        elif getattr(args, "update_existing_only", False) and skipped_missing_count:
             print(
                 "Imported %s dashboard files from %s; skipped %s missing dashboards"
                 % (imported_count, import_dir, skipped_missing_count)
+            )
+        elif skipped_folder_mismatch_count:
+            print(
+                "Imported %s dashboard files from %s; skipped %s folder-mismatched dashboards"
+                % (imported_count, import_dir, skipped_folder_mismatch_count)
             )
         else:
             print(f"Imported {imported_count} dashboard files from {import_dir}")

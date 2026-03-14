@@ -250,6 +250,8 @@ def build_dashboard_import_dry_run_record(
     uid: str,
     action: str,
     folder_path: Optional[str] = None,
+    source_folder_path: Optional[str] = None,
+    destination_folder_path: Optional[str] = None,
 ) -> Dict[str, str]:
     destination = "unknown"
     action_label = action or "unknown"
@@ -265,11 +267,16 @@ def build_dashboard_import_dry_run_record(
     elif action == "would-fail-existing":
         destination = "exists"
         action_label = "blocked-existing"
+    elif action == "would-skip-folder-mismatch":
+        destination = "exists"
+        action_label = "skip-folder-mismatch"
     return {
         "uid": uid,
         "destination": destination,
         "action": action_label,
         "folderPath": str(folder_path or ""),
+        "sourceFolderPath": str(source_folder_path or ""),
+        "destinationFolderPath": str(destination_folder_path or ""),
         "file": str(dashboard_file),
     }
 
@@ -298,14 +305,26 @@ def render_dashboard_import_dry_run_table(
 ) -> List[str]:
     headers = ["UID", "DESTINATION", "ACTION"]
     include_folder = any(record.get("folderPath") for record in records)
+    include_source_folder = any(record.get("sourceFolderPath") for record in records)
+    include_destination_folder = any(
+        record.get("destinationFolderPath") for record in records
+    )
     if include_folder:
         headers.append("FOLDER_PATH")
+    if include_source_folder:
+        headers.append("SOURCE_FOLDER_PATH")
+    if include_destination_folder:
+        headers.append("DESTINATION_FOLDER_PATH")
     headers.append("FILE")
     rows = []
     for record in records:
         row = [record["uid"], record["destination"], record["action"]]
         if include_folder:
             row.append(record.get("folderPath") or "")
+        if include_source_folder:
+            row.append(record.get("sourceFolderPath") or "")
+        if include_destination_folder:
+            row.append(record.get("destinationFolderPath") or "")
         row.append(record["file"])
         rows.append(row)
     return _render_table(headers, rows, include_header)
@@ -317,6 +336,7 @@ def render_dashboard_import_dry_run_json(
     dashboard_records: List[Dict[str, str]],
     import_dir: Path,
     skipped_missing_count: int,
+    skipped_folder_mismatch_count: int,
 ) -> str:
     """Render one JSON document for dry-run import output."""
     payload = {
@@ -338,6 +358,8 @@ def render_dashboard_import_dry_run_json(
                 "destination": record.get("destination") or "",
                 "action": record.get("action") or "",
                 "folderPath": record.get("folderPath") or "",
+                "sourceFolderPath": record.get("sourceFolderPath") or "",
+                "destinationFolderPath": record.get("destinationFolderPath") or "",
                 "file": record.get("file") or "",
             }
             for record in dashboard_records
@@ -360,6 +382,7 @@ def render_dashboard_import_dry_run_json(
                 ]
             ),
             "skippedMissingDashboards": skipped_missing_count,
+            "skippedFolderMismatchDashboards": skipped_folder_mismatch_count,
         },
     }
     return json.dumps(payload, indent=2, sort_keys=False, ensure_ascii=False)

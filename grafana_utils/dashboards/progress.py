@@ -61,6 +61,9 @@ def print_dashboard_import_progress(
         elif action == "would-skip-missing":
             destination = "missing"
             action_label = "skip-missing"
+        elif action == "would-skip-folder-mismatch":
+            destination = "exists"
+            action_label = "skip-folder-mismatch"
         elif action in ("would-update", "would-fail-existing"):
             destination = "exists"
             if action == "would-update":

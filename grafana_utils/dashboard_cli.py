@@ -68,6 +68,12 @@ from .dashboards.folder_support import (
     resolve_folder_inventory_record_for_dashboard,
     resolve_folder_inventory_requirements as resolve_folder_inventory_requirements_from_folder_support,
 )
+from .dashboards.folder_path_match import (
+    apply_folder_path_guard_to_action,
+    build_folder_path_match_result,
+    resolve_existing_dashboard_folder_path,
+    resolve_source_dashboard_folder_path,
+)
 from .dashboards.import_support import (
     build_compare_diff_lines,
     build_import_payload,
@@ -412,6 +418,15 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
         "--import-message",
         default="Imported by grafana-utils",
         help="Version-history message to attach to each imported dashboard revision in Grafana.",
+    )
+    parser.add_argument(
+        "--require-matching-folder-path",
+        action="store_true",
+        help=(
+            "Only update an existing dashboard when the source raw folder path matches "
+            "the destination Grafana folder path exactly. Missing dashboards still "
+            "follow the active create/skip mode."
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -1157,6 +1172,7 @@ def _build_import_workflow_deps() -> Dict[str, Any]:
         "build_client": build_client,
         "build_dashboard_import_dry_run_record": build_dashboard_import_dry_run_record,
         "build_folder_inventory_lookup": build_folder_inventory_lookup,
+        "build_folder_path_match_result": build_folder_path_match_result,
         "build_import_payload": build_import_payload,
         "describe_dashboard_import_mode": describe_dashboard_import_mode,
         "determine_dashboard_import_action": determine_dashboard_import_action,
@@ -1168,10 +1184,13 @@ def _build_import_workflow_deps() -> Dict[str, Any]:
         "load_export_metadata": load_export_metadata,
         "load_json_file": load_json_file,
         "print_dashboard_import_progress": print_dashboard_import_progress,
+        "apply_folder_path_guard_to_action": apply_folder_path_guard_to_action,
         "render_dashboard_import_dry_run_json": render_dashboard_import_dry_run_json,
         "render_dashboard_import_dry_run_table": render_dashboard_import_dry_run_table,
         "render_folder_inventory_dry_run_table": render_folder_inventory_dry_run_table,
+        "resolve_existing_dashboard_folder_path": resolve_existing_dashboard_folder_path,
         "resolve_dashboard_import_folder_path": resolve_dashboard_import_folder_path,
+        "resolve_source_dashboard_folder_path": resolve_source_dashboard_folder_path,
         "resolve_folder_inventory_requirements": resolve_folder_inventory_requirements,
     }
 
