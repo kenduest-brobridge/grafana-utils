@@ -68,7 +68,8 @@ Commit message default for this repo:
 
 - `grafana_utils.unified_cli` only dispatches and normalizes top-level command entrypoints; it does not implement domain business logic.
 - `grafana_utils.dashboard_cli`, `grafana_utils.alert_cli`, `grafana_utils.access_cli`, and `grafana_utils.datasource_cli` are stable facades: parser wiring, output-mode normalization, auth/client bootstrap, and dispatch stay here, while heavier execution remains in dedicated workflow/parser modules.
-- [Overview for maintainers](docs/overview-python.md) provides a longer architecture walkthrough for maintainers.
+- [Python overview for maintainers](docs/overview-python.md) provides a longer architecture walkthrough.
+- [Rust overview for maintainers](docs/overview-rust.md) provides a longer architecture walkthrough.
 
 ## Python Baseline
 

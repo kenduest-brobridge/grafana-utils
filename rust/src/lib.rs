@@ -1,3 +1,4 @@
+#![doc = include_str!("../../docs/overview-rust.md")]
 pub mod access;
 pub mod alert;
 pub mod cli;

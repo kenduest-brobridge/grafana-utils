@@ -71,7 +71,7 @@ The repo now uses one primary command name with explicit areas underneath it.
 Maintainer architecture overviews:
 
 - Python architecture: [`docs/overview-python.md`](docs/overview-python.md)
-- Rust architecture: [`rust/overview-rust.md`](rust/overview-rust.md)
+- Rust architecture: [`docs/overview-rust.md`](docs/overview-rust.md)
 
 Compatibility notes:
 
@@ -1387,4 +1387,4 @@ make test-access-live
 - Traditional Chinese README: [`README.zh-TW.md`](README.zh-TW.md)
 - recent change history: [`CHANGELOG.md`](CHANGELOG.md)
 - maintainer and implementation notes: [`DEVELOPER.md`](DEVELOPER.md)
-- architecture overviews: [`Python`](docs/overview-python.md), [`Rust`](rust/overview-rust.md)
+- architecture overviews: [`Python`](docs/overview-python.md), [`Rust`](docs/overview-rust.md)
