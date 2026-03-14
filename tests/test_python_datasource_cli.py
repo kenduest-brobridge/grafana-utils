@@ -12,6 +12,8 @@ from unittest import mock
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = REPO_ROOT / "grafana_utils" / "datasource_cli.py"
+PARSER_MODULE_PATH = REPO_ROOT / "grafana_utils" / "datasource" / "parser.py"
+WORKFLOWS_MODULE_PATH = REPO_ROOT / "grafana_utils" / "datasource" / "workflows.py"
 FIXTURE_PATH = REPO_ROOT / "tests" / "fixtures" / "datasource_contract_cases.json"
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -63,6 +65,14 @@ class DatasourceCliTests(unittest.TestCase):
     def test_datasource_module_parses_as_python36_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 6))
+
+    def test_datasource_parser_module_parses_as_python36_syntax(self):
+        source = PARSER_MODULE_PATH.read_text(encoding="utf-8")
+        ast.parse(source, filename=str(PARSER_MODULE_PATH), feature_version=(3, 6))
+
+    def test_datasource_workflows_module_parses_as_python36_syntax(self):
+        source = WORKFLOWS_MODULE_PATH.read_text(encoding="utf-8")
+        ast.parse(source, filename=str(WORKFLOWS_MODULE_PATH), feature_version=(3, 6))
 
     def test_parse_args_supports_list_mode(self):
         args = datasource_cli.parse_args(["list", "--json"])

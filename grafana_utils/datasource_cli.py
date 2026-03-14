@@ -1,327 +1,76 @@
 #!/usr/bin/env python3
-"""Grafana datasource list/export/import/diff utility."""
+"""Stable facade for the Python datasource CLI."""
 
-import argparse
-import csv
-import difflib
-import json
 import sys
-from collections import OrderedDict
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-from urllib import parse
 
-from .clients.dashboard_client import GrafanaClient
 from .dashboard_cli import (
     DEFAULT_TIMEOUT,
     DEFAULT_URL,
     GrafanaError,
     HelpFullAction,
     add_common_cli_args,
-    build_client as build_dashboard_client,
-    build_data_source_record,
-    build_datasource_inventory_record,
-    render_data_source_table,
     resolve_auth,
-    write_json_document,
+)
+from .datasource.parser import (
+    DATASOURCE_EXPORT_FILENAME,
+    DEFAULT_EXPORT_DIR,
+    EXPORT_METADATA_FILENAME,
+    HELP_FULL_EXAMPLES,
+    IMPORT_DRY_RUN_COLUMN_ALIASES,
+    IMPORT_DRY_RUN_COLUMN_HEADERS,
+    IMPORT_DRY_RUN_OUTPUT_FORMAT_CHOICES,
+    LIST_OUTPUT_FORMAT_CHOICES,
+    ROOT_INDEX_KIND,
+    TOOL_SCHEMA_VERSION,
+    add_diff_cli_args,
+    add_export_cli_args,
+    add_import_cli_args,
+    add_list_cli_args,
+    build_parser,
+)
+from .datasource import workflows as datasource_workflows
+from .datasource.workflows import (
+    _print_datasource_unified_diff,
+    _serialize_datasource_diff_record,
+    build_client,
+    build_effective_import_client,
+    build_existing_datasource_lookups,
+    build_export_index,
+    build_export_metadata,
+    build_export_records,
+    build_import_payload,
+    determine_datasource_action,
+    determine_import_mode,
+    diff_datasources,
+    dispatch_datasource_command,
+    export_datasources,
+    exporter_api_error_type,
+    fetch_datasource_by_uid_if_exists,
+    import_datasources,
+    list_datasources,
+    load_import_bundle,
+    load_json_document,
+    parse_import_dry_run_columns,
+    render_data_source_csv,
+    render_data_source_json,
+    render_import_dry_run_json,
+    render_import_dry_run_table,
+    resolve_datasource_match,
+    resolve_export_org_id,
+    validate_export_org_match,
+)
+from .datasource_contract import (
+    normalize_datasource_record,
+    validate_datasource_contract_record,
 )
 from .datasource_diff import (
     build_live_datasource_diff_records,
     compare_datasource_bundle_to_live,
     load_datasource_diff_bundle,
 )
-from .datasource_contract import normalize_datasource_record
-from .datasource_contract import validate_datasource_contract_record
 
 
-DEFAULT_EXPORT_DIR = "datasources"
-DATASOURCE_EXPORT_FILENAME = "datasources.json"
-EXPORT_METADATA_FILENAME = "export-metadata.json"
-ROOT_INDEX_KIND = "grafana-utils-datasource-export-index"
-TOOL_SCHEMA_VERSION = 1
-LIST_OUTPUT_FORMAT_CHOICES = ("table", "csv", "json")
-IMPORT_DRY_RUN_OUTPUT_FORMAT_CHOICES = ("text", "table", "json")
-IMPORT_DRY_RUN_COLUMN_HEADERS = OrderedDict(
-    [
-        ("uid", "UID"),
-        ("name", "NAME"),
-        ("type", "TYPE"),
-        ("destination", "DESTINATION"),
-        ("action", "ACTION"),
-        ("orgId", "ORG_ID"),
-        ("file", "FILE"),
-    ]
-)
-IMPORT_DRY_RUN_COLUMN_ALIASES = {
-    "uid": "uid",
-    "name": "name",
-    "type": "type",
-    "destination": "destination",
-    "action": "action",
-    "org_id": "orgId",
-    "file": "file",
-}
-
-HELP_FULL_EXAMPLES = (
-    "Extended Examples:\n\n"
-    "  Export datasource inventory for the current org:\n"
-    "    grafana-utils datasource export --url http://localhost:3000 "
-    "--basic-user admin --basic-password admin --export-dir ./datasources --overwrite\n\n"
-    "  Dry-run datasource import for the current org:\n"
-    "    grafana-utils datasource import --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --import-dir ./datasources --dry-run --table\n\n"
-    "  Compare an exported datasource inventory against live Grafana:\n"
-    "    grafana-utils datasource diff --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --diff-dir ./datasources\n\n"
-    "  List datasource inventory as JSON for scripting:\n"
-    "    grafana-utils datasource list --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --json"
-)
-
-
-def add_list_cli_args(parser: argparse.ArgumentParser) -> None:
-    output_group = parser.add_mutually_exclusive_group()
-    output_group.add_argument(
-        "--table",
-        action="store_true",
-        help="Render datasource summaries as a table.",
-    )
-    output_group.add_argument(
-        "--csv",
-        action="store_true",
-        help="Render datasource summaries as CSV.",
-    )
-    output_group.add_argument(
-        "--json",
-        action="store_true",
-        help="Render datasource summaries as JSON.",
-    )
-    parser.add_argument(
-        "--no-header",
-        action="store_true",
-        help="Do not print table headers when rendering the default table output.",
-    )
-    parser.add_argument(
-        "--output-format",
-        choices=LIST_OUTPUT_FORMAT_CHOICES,
-        default=None,
-        help=(
-            "Alternative single-flag output selector for datasource list output. "
-            "Use table, csv, or json. This cannot be combined with --table, "
-            "--csv, or --json."
-        ),
-    )
-
-
-def add_export_cli_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--export-dir",
-        default=DEFAULT_EXPORT_DIR,
-        help=(
-            "Directory to write exported datasource inventory into. Export writes "
-            "datasources.json plus index/manifest files at that root."
-        ),
-    )
-    parser.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="Replace existing export files in the target directory instead of failing.",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Preview the datasource export files that would be written without changing disk.",
-    )
-
-
-def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--import-dir",
-        required=True,
-        help=(
-            "Import datasource inventory from this directory. Point this to the "
-            "datasource export root that contains datasources.json and export-metadata.json."
-        ),
-    )
-    parser.add_argument(
-        "--org-id",
-        default=None,
-        help=(
-            "Import datasources into this explicit Grafana organization ID instead "
-            "of the current org context. Requires Basic auth."
-        ),
-    )
-    parser.add_argument(
-        "--require-matching-export-org",
-        action="store_true",
-        help=(
-            "Require the datasource export's recorded orgId to match the target "
-            "Grafana org before dry-run or live import."
-        ),
-    )
-    parser.add_argument(
-        "--replace-existing",
-        action="store_true",
-        help="Update an existing destination datasource when the imported datasource already exists.",
-    )
-    parser.add_argument(
-        "--update-existing-only",
-        action="store_true",
-        help="Only update existing destination datasources. Missing datasources are skipped instead of created.",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Preview what datasource import would do without changing Grafana.",
-    )
-    parser.add_argument(
-        "--table",
-        action="store_true",
-        help="For --dry-run only, render a compact table instead of per-datasource log lines.",
-    )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="For --dry-run only, render one JSON document with mode, actions, and summary counts.",
-    )
-    parser.add_argument(
-        "--no-header",
-        action="store_true",
-        help="For --dry-run --table only, omit the table header row.",
-    )
-    parser.add_argument(
-        "--output-format",
-        choices=IMPORT_DRY_RUN_OUTPUT_FORMAT_CHOICES,
-        default=None,
-        help=(
-            "Alternative single-flag output selector for datasource import "
-            "dry-run output. Use text, table, or json. This cannot be "
-            "combined with --table or --json."
-        ),
-    )
-    parser.add_argument(
-        "--output-columns",
-        default=None,
-        help=(
-            "For --dry-run --table only, render only these comma-separated columns. "
-            "Supported values: uid, name, type, destination, action, org_id, file."
-        ),
-    )
-    parser.add_argument(
-        "--progress",
-        action="store_true",
-        help="Show concise per-datasource import progress in <current>/<total> form while processing records.",
-    )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="Show detailed per-datasource import output. Overrides --progress output.",
-    )
-
-
-def add_diff_cli_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--diff-dir",
-        required=True,
-        help=(
-            "Compare datasource inventory from this directory against live Grafana. "
-            "Point this to the datasource export root that contains datasources.json "
-            "and export-metadata.json."
-        ),
-    )
-
-
-def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog=prog or "grafana-utils datasource",
-        description="List, export, import, or diff Grafana datasource inventory.",
-        epilog=(
-            "Examples:\n\n"
-            "  grafana-utils datasource list --url http://localhost:3000 --json\n"
-            "  grafana-utils datasource export --url http://localhost:3000 "
-            "--export-dir ./datasources --overwrite\n"
-            "  grafana-utils datasource import --url http://localhost:3000 "
-            "--import-dir ./datasources --dry-run --table\n"
-            "  grafana-utils datasource diff --url http://localhost:3000 "
-            "--diff-dir ./datasources"
-        ),
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    subparsers = parser.add_subparsers(dest="command")
-    subparsers.required = True
-
-    list_parser = subparsers.add_parser(
-        "list",
-        help="List live Grafana datasource inventory.",
-    )
-    add_common_cli_args(list_parser)
-    add_list_cli_args(list_parser)
-    list_parser.set_defaults(_help_full_examples=HELP_FULL_EXAMPLES)
-    list_parser.add_argument(
-        "--help-full",
-        nargs=0,
-        action=HelpFullAction,
-        help="Show normal help plus extended datasource examples.",
-    )
-
-    export_parser = subparsers.add_parser(
-        "export",
-        help="Export live Grafana datasource inventory as normalized JSON files.",
-    )
-    add_common_cli_args(export_parser)
-    add_export_cli_args(export_parser)
-    export_parser.set_defaults(_help_full_examples=HELP_FULL_EXAMPLES)
-    export_parser.add_argument(
-        "--help-full",
-        nargs=0,
-        action=HelpFullAction,
-        help="Show normal help plus extended datasource examples.",
-    )
-
-    import_parser = subparsers.add_parser(
-        "import",
-        help="Import datasource inventory JSON through the Grafana API.",
-    )
-    add_common_cli_args(import_parser)
-    add_import_cli_args(import_parser)
-    import_parser.set_defaults(_help_full_examples=HELP_FULL_EXAMPLES)
-    import_parser.add_argument(
-        "--help-full",
-        nargs=0,
-        action=HelpFullAction,
-        help="Show normal help plus extended datasource examples.",
-    )
-
-    diff_parser = subparsers.add_parser(
-        "diff",
-        help="Compare exported datasource inventory with the current Grafana state.",
-    )
-    add_common_cli_args(diff_parser)
-    add_diff_cli_args(diff_parser)
-    diff_parser.set_defaults(_help_full_examples=HELP_FULL_EXAMPLES)
-    diff_parser.add_argument(
-        "--help-full",
-        nargs=0,
-        action=HelpFullAction,
-        help="Show normal help plus extended datasource examples.",
-    )
-
-    return parser
-
-
-def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
-    parser = build_parser()
-    args = parser.parse_args(argv)
-    _normalize_output_format_args(args, parser)
-    _parse_import_output_columns(args, parser)
-    return args
-
-
-def _normalize_output_format_args(
-    args: argparse.Namespace,
-    parser: argparse.ArgumentParser,
-) -> None:
+def _normalize_output_format_args(args, parser):
     output_format = getattr(args, "output_format", None)
     if output_format is None:
         return
@@ -345,10 +94,7 @@ def _normalize_output_format_args(
         args.json = output_format == "json"
 
 
-def _parse_import_output_columns(
-    args: argparse.Namespace,
-    parser: argparse.ArgumentParser,
-) -> None:
+def _parse_import_output_columns(args, parser):
     if getattr(args, "command", None) != "import":
         return
     value = getattr(args, "output_columns", None)
@@ -364,713 +110,49 @@ def _parse_import_output_columns(
         parser.error(str(exc))
 
 
-def build_client(args: argparse.Namespace) -> GrafanaClient:
-    """Build the datasource API client from parsed CLI arguments."""
-    return build_dashboard_client(args)
+def parse_args(argv=None):
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    _normalize_output_format_args(args, parser)
+    _parse_import_output_columns(args, parser)
+    return args
 
 
-def build_export_index(
-    datasource_records: List[Dict[str, str]],
-    datasources_file: str,
-) -> Dict[str, Any]:
-    return {
-        "kind": ROOT_INDEX_KIND,
-        "schemaVersion": TOOL_SCHEMA_VERSION,
-        "datasourcesFile": datasources_file,
-        "count": len(datasource_records),
-        "items": [
-            {
-                "uid": record.get("uid") or "",
-                "name": record.get("name") or "",
-                "type": record.get("type") or "",
-                "org": record.get("org") or "",
-                "orgId": record.get("orgId") or "",
-            }
-            for record in datasource_records
-        ],
-    }
+def _sync_facade_overrides():
+    datasource_workflows.build_client = build_client
 
 
-def build_export_metadata(
-    datasource_count: int,
-    datasources_file: str,
-) -> Dict[str, Any]:
-    return {
-        "schemaVersion": TOOL_SCHEMA_VERSION,
-        "kind": ROOT_INDEX_KIND,
-        "variant": "root",
-        "resource": "datasource",
-        "datasourceCount": datasource_count,
-        "datasourcesFile": datasources_file,
-        "indexFile": "index.json",
-        "format": "grafana-datasource-inventory-v1",
-    }
+def list_datasources(args):
+    _sync_facade_overrides()
+    return datasource_workflows.list_datasources(args)
 
 
-def build_export_records(
-    client: GrafanaClient,
-) -> List[Dict[str, str]]:
-    org = client.fetch_current_org()
-    return [
-        build_datasource_inventory_record(item, org)
-        for item in client.list_datasources()
-    ]
+def export_datasources(args):
+    _sync_facade_overrides()
+    return datasource_workflows.export_datasources(args)
 
 
-def fetch_datasource_by_uid_if_exists(
-    client: GrafanaClient,
-    uid: str,
-) -> Optional[Dict[str, Any]]:
-    if not uid:
-        return None
-    try:
-        data = client.request_json(
-            "/api/datasources/uid/%s" % parse.quote(uid, safe="")
-        )
-    except Exception as exc:
-        if isinstance(exc, exporter_api_error_type()):
-            if exc.status_code == 404:
-                return None
-        raise
-    if not isinstance(data, dict):
-        raise GrafanaError("Unexpected datasource payload for UID %s." % uid)
-    return data
+def import_datasources(args):
+    _sync_facade_overrides()
+    return datasource_workflows.import_datasources(args)
 
 
-def exporter_api_error_type():
-    from .dashboards.common import GrafanaApiError
-
-    return GrafanaApiError
-
-
-def load_json_document(path: Path) -> Any:
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except OSError as exc:
-        raise GrafanaError("Failed to read %s: %s" % (path, exc))
-    except ValueError as exc:
-        raise GrafanaError("Invalid JSON in %s: %s" % (path, exc))
+def diff_datasources(args):
+    _sync_facade_overrides()
+    return datasource_workflows.diff_datasources(args)
 
 
-def load_import_bundle(import_dir: Path) -> Dict[str, Any]:
-    if not import_dir.exists():
-        raise GrafanaError("Import directory does not exist: %s" % import_dir)
-    if not import_dir.is_dir():
-        raise GrafanaError("Import path is not a directory: %s" % import_dir)
-    metadata_path = import_dir / EXPORT_METADATA_FILENAME
-    datasources_path = import_dir / DATASOURCE_EXPORT_FILENAME
-    index_path = import_dir / "index.json"
-    if not metadata_path.is_file():
-        raise GrafanaError("Datasource import metadata is missing: %s" % metadata_path)
-    if not datasources_path.is_file():
-        raise GrafanaError("Datasource import file is missing: %s" % datasources_path)
-    if not index_path.is_file():
-        raise GrafanaError("Datasource import index is missing: %s" % index_path)
-    metadata = load_json_document(metadata_path)
-    if not isinstance(metadata, dict):
-        raise GrafanaError(
-            "Datasource import metadata must be a JSON object: %s" % metadata_path
-        )
-    if metadata.get("kind") != ROOT_INDEX_KIND:
-        raise GrafanaError(
-            "Unexpected datasource export manifest kind in %s: %r"
-            % (metadata_path, metadata.get("kind"))
-        )
-    if metadata.get("schemaVersion") != TOOL_SCHEMA_VERSION:
-        raise GrafanaError(
-            "Unsupported datasource export schemaVersion %r in %s. Expected %s."
-            % (metadata.get("schemaVersion"), metadata_path, TOOL_SCHEMA_VERSION)
-        )
-    if metadata.get("resource") != "datasource":
-        raise GrafanaError(
-            "Datasource import metadata in %s does not describe datasource inventory."
-            % metadata_path
-        )
-    raw_records = load_json_document(datasources_path)
-    if not isinstance(raw_records, list):
-        raise GrafanaError(
-            "Datasource import file must contain a JSON array: %s" % datasources_path
-        )
-    records = []
-    for item in raw_records:
-        if not isinstance(item, dict):
-            raise GrafanaError(
-                "Datasource import entry must be a JSON object: %s" % datasources_path
-            )
-        try:
-            validate_datasource_contract_record(
-                item,
-                "Datasource import entry in %s" % datasources_path,
-            )
-        except ValueError as exc:
-            raise GrafanaError(str(exc))
-        records.append(normalize_datasource_record(item))
-    index_document = load_json_document(index_path)
-    if not isinstance(index_document, dict):
-        raise GrafanaError(
-            "Datasource import index must be a JSON object: %s" % index_path
-        )
-    return {
-        "metadata": metadata,
-        "records": records,
-        "index": index_document,
-        "datasources_path": datasources_path,
-    }
+def dispatch_datasource_command(args):
+    _sync_facade_overrides()
+    return datasource_workflows.dispatch_datasource_command(args)
 
 
-def resolve_export_org_id(bundle: Dict[str, Any]) -> Optional[str]:
-    org_ids = set()
-    index_document = bundle.get("index")
-    if isinstance(index_document, dict):
-        for item in index_document.get("items") or []:
-            if isinstance(item, dict):
-                org_id = str(item.get("orgId") or "").strip()
-                if org_id:
-                    org_ids.add(org_id)
-    for record in bundle.get("records") or []:
-        org_id = str(record.get("orgId") or "").strip()
-        if org_id:
-            org_ids.add(org_id)
-    if not org_ids:
-        return None
-    if len(org_ids) > 1:
-        raise GrafanaError(
-            "Datasource export metadata spans multiple orgIds (%s). Remove "
-            "--require-matching-export-org or point --import-dir at one org-specific export."
-            % ", ".join(sorted(org_ids))
-        )
-    return list(org_ids)[0]
-
-
-def build_effective_import_client(
-    args: argparse.Namespace,
-    client: GrafanaClient,
-) -> GrafanaClient:
-    org_id = getattr(args, "org_id", None)
-    auth_header = client.headers.get("Authorization", "")
-    if org_id and not auth_header.startswith("Basic "):
-        raise GrafanaError(
-            "Datasource org switching requires Basic auth. Use --basic-user and --basic-password."
-        )
-    if org_id:
-        return client.with_org_id(str(org_id))
-    return client
-
-
-def validate_export_org_match(
-    args: argparse.Namespace,
-    client: GrafanaClient,
-    bundle: Dict[str, Any],
-) -> str:
-    target_org = client.fetch_current_org()
-    target_org_id = str(target_org.get("id") or "").strip()
-    if not target_org_id:
-        raise GrafanaError("Grafana did not return a usable target org id.")
-    if not bool(getattr(args, "require_matching_export_org", False)):
-        return target_org_id
-    source_org_id = resolve_export_org_id(bundle)
-    if not source_org_id:
-        raise GrafanaError(
-            "Could not determine one source export orgId while "
-            "--require-matching-export-org is active."
-        )
-    if source_org_id != target_org_id:
-        raise GrafanaError(
-            "Raw export orgId %s does not match target Grafana org id %s. "
-            "Remove --require-matching-export-org to allow cross-org import."
-            % (source_org_id, target_org_id)
-        )
-    return target_org_id
-
-
-def build_existing_datasource_lookups(
-    client: GrafanaClient,
-) -> Dict[str, Dict[str, List[Dict[str, Any]]]]:
-    by_uid = {}
-    by_name = {}
-    for datasource in client.list_datasources():
-        uid = str(datasource.get("uid") or "")
-        name = str(datasource.get("name") or "")
-        if uid:
-            by_uid.setdefault(uid, []).append(datasource)
-        if name:
-            by_name.setdefault(name, []).append(datasource)
-    return {"by_uid": by_uid, "by_name": by_name}
-
-
-def resolve_datasource_match(
-    record: Dict[str, str],
-    lookups: Dict[str, Dict[str, List[Dict[str, Any]]]],
-) -> Dict[str, Any]:
-    uid = str(record.get("uid") or "")
-    name = str(record.get("name") or "")
-    if uid:
-        matches = lookups["by_uid"].get(uid) or []
-        if len(matches) > 1:
-            return {"state": "ambiguous", "target": None}
-        if len(matches) == 1:
-            return {"state": "exists-uid", "target": matches[0]}
-    if name:
-        matches = lookups["by_name"].get(name) or []
-        if len(matches) > 1:
-            return {"state": "ambiguous", "target": None}
-        if len(matches) == 1:
-            return {"state": "exists-name", "target": matches[0]}
-    return {"state": "missing", "target": None}
-
-
-def determine_import_mode(args: argparse.Namespace) -> str:
-    if bool(getattr(args, "update_existing_only", False)):
-        return "update-or-skip-missing"
-    if bool(getattr(args, "replace_existing", False)):
-        return "create-or-update"
-    return "create-only"
-
-
-def determine_datasource_action(
-    args: argparse.Namespace,
-    record: Dict[str, str],
-    match: Dict[str, Any],
-) -> str:
-    state = match["state"]
-    existing = match.get("target")
-    if state == "ambiguous":
-        return "would-fail-ambiguous"
-    if existing is not None:
-        existing_uid = str(existing.get("uid") or "")
-        incoming_uid = str(record.get("uid") or "")
-        if (
-            state == "exists-name"
-            and existing_uid
-            and incoming_uid
-            and existing_uid != incoming_uid
-        ):
-            return "would-fail-uid-mismatch"
-        existing_type = str(existing.get("type") or "")
-        incoming_type = str(record.get("type") or "")
-        if existing_type and incoming_type and existing_type != incoming_type:
-            return "would-fail-plugin-type-change"
-    if state == "missing":
-        if bool(getattr(args, "update_existing_only", False)):
-            return "would-skip-missing"
-        return "would-create"
-    if bool(getattr(args, "replace_existing", False)) or bool(
-        getattr(args, "update_existing_only", False)
-    ):
-        return "would-update"
-    return "would-fail-existing"
-
-
-def build_import_payload(
-    record: Dict[str, str],
-    existing: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
-    payload = {
-        "name": record.get("name") or "",
-        "type": record.get("type") or "",
-        "access": record.get("access") or "",
-        "url": record.get("url") or "",
-        "isDefault": str(record.get("isDefault") or "").lower() == "true",
-    }
-    uid = record.get("uid") or ""
-    if uid:
-        payload["uid"] = uid
-    if existing is not None:
-        datasource_id = existing.get("id")
-        if datasource_id is not None:
-            payload["id"] = datasource_id
-    return payload
-
-
-def parse_import_dry_run_columns(value: Optional[str]) -> Optional[List[str]]:
-    if value is None:
-        return None
-    columns = []
-    for item in str(value).split(","):
-        column = item.strip()
-        if column:
-            columns.append(IMPORT_DRY_RUN_COLUMN_ALIASES.get(column, column))
-    if not columns:
-        raise GrafanaError(
-            "--output-columns requires one or more comma-separated datasource import dry-run column ids."
-        )
-    unsupported = [
-        column for column in columns if column not in IMPORT_DRY_RUN_COLUMN_HEADERS
-    ]
-    if unsupported:
-        raise GrafanaError(
-            "Unsupported datasource import dry-run column(s): %s. Supported values: %s."
-            % (", ".join(unsupported), ", ".join(sorted(IMPORT_DRY_RUN_COLUMN_ALIASES.keys())))
-        )
-    return columns
-
-
-def render_import_dry_run_table(
-    records: List[Dict[str, str]],
-    include_header: bool,
-    selected_columns: Optional[List[str]] = None,
-) -> List[str]:
-    columns = list(
-        selected_columns
-        or ["uid", "name", "type", "destination", "action", "orgId", "file"]
-    )
-    headers = [IMPORT_DRY_RUN_COLUMN_HEADERS[column] for column in columns]
-    rows = [
-        [item.get(column) or "" for column in columns]
-        for item in records
-    ]
-    widths = [len(value) for value in headers]
-    for row in rows:
-        for index, value in enumerate(row):
-            widths[index] = max(widths[index], len(value))
-
-    def render_row(values: List[str]) -> str:
-        return "  ".join(values[index].ljust(widths[index]) for index in range(len(values)))
-
-    lines = []
-    if include_header:
-        lines.append(render_row(headers))
-        lines.append(render_row(["-" * width for width in widths]))
-    for row in rows:
-        lines.append(render_row(row))
-    return lines
-
-
-def render_import_dry_run_json(
-    mode: str,
-    records: List[Dict[str, str]],
-    target_org_id: str,
-) -> str:
-    summary = {
-        "datasourceCount": len(records),
-        "createCount": len([item for item in records if item["action"] == "would-create"]),
-        "updateCount": len([item for item in records if item["action"] == "would-update"]),
-        "skipCount": len(
-            [item for item in records if item["action"] == "would-skip-missing"]
-        ),
-        "blockedCount": len(
-            [
-                item
-                for item in records
-                if item["action"]
-                in (
-                    "would-fail-existing",
-                    "would-fail-ambiguous",
-                    "would-fail-plugin-type-change",
-                    "would-fail-uid-mismatch",
-                )
-            ]
-        ),
-    }
-    source_org_id = ""
-    if records:
-        source_org_id = str(records[0].get("sourceOrgId") or "")
-    return json.dumps(
-        {
-            "mode": mode,
-            "sourceOrgId": source_org_id,
-            "targetOrgId": target_org_id,
-            "datasources": records,
-            "summary": summary,
-        },
-        indent=2,
-        sort_keys=False,
-    )
-
-
-def render_data_source_csv(datasources: List[Dict[str, Any]]) -> None:
-    writer = csv.DictWriter(
-        sys.stdout,
-        fieldnames=["uid", "name", "type", "url", "isDefault"],
-        lineterminator="\n",
-    )
-    writer.writeheader()
-    for datasource in datasources:
-        writer.writerow(build_data_source_record(datasource))
-
-
-def render_data_source_json(datasources: List[Dict[str, Any]]) -> str:
-    return json.dumps(
-        [build_data_source_record(item) for item in datasources],
-        indent=2,
-        sort_keys=False,
-    )
-
-
-def list_datasources(args: argparse.Namespace) -> int:
-    client = build_client(args)
-    datasources = client.list_datasources()
-    if args.csv:
-        render_data_source_csv(datasources)
-        return 0
-    if args.json:
-        print(render_data_source_json(datasources))
-        return 0
-    for line in render_data_source_table(
-        datasources,
-        include_header=not bool(getattr(args, "no_header", False)),
-    ):
-        print(line)
-    print("")
-    print(f"Listed {len(datasources)} data source(s) from {args.url}")
-    return 0
-
-
-def export_datasources(args: argparse.Namespace) -> int:
-    client = build_client(args)
-    records = build_export_records(client)
-    output_dir = Path(args.export_dir)
-    datasources_path = output_dir / DATASOURCE_EXPORT_FILENAME
-    index_path = output_dir / "index.json"
-    metadata_path = output_dir / EXPORT_METADATA_FILENAME
-
-    existing_paths = [path for path in [datasources_path, index_path, metadata_path] if path.exists()]
-    if existing_paths and not args.overwrite:
-        raise GrafanaError(
-            "Refusing to overwrite existing file: %s. Use --overwrite."
-            % existing_paths[0]
-        )
-
-    index_document = build_export_index(records, DATASOURCE_EXPORT_FILENAME)
-    metadata_document = build_export_metadata(
-        datasource_count=len(records),
-        datasources_file=DATASOURCE_EXPORT_FILENAME,
-    )
-    if not args.dry_run:
-        write_json_document(records, datasources_path)
-        write_json_document(index_document, index_path)
-        write_json_document(metadata_document, metadata_path)
-    summary_verb = "Would export" if args.dry_run else "Exported"
-    print(
-        "%s %s datasource(s). Datasources: %s Index: %s Manifest: %s"
-        % (
-            summary_verb,
-            len(records),
-            datasources_path,
-            index_path,
-            metadata_path,
-        )
-    )
-    return 0
-
-
-def _serialize_datasource_diff_record(record: Optional[Dict[str, str]]) -> str:
-    if record is None:
-        return "{}"
-    return json.dumps(record, sort_keys=True, indent=2)
-
-
-def _print_datasource_unified_diff(
-    remote_record: Optional[Dict[str, str]],
-    local_record: Optional[Dict[str, str]],
-    remote_label: str,
-    local_label: str,
-) -> None:
-    remote_lines = _serialize_datasource_diff_record(remote_record).splitlines(True)
-    local_lines = _serialize_datasource_diff_record(local_record).splitlines(True)
-    for line in difflib.unified_diff(
-        remote_lines,
-        local_lines,
-        fromfile=remote_label,
-        tofile=local_label,
-    ):
-        sys.stdout.write(line)
-    if remote_lines or local_lines:
-        sys.stdout.write("\n")
-
-
-def diff_datasources(args: argparse.Namespace) -> int:
-    client = build_client(args)
-    bundle = load_datasource_diff_bundle(Path(args.diff_dir))
-    live_records = build_live_datasource_diff_records(client)
-    report = compare_datasource_bundle_to_live(bundle, live_records)
-    diff_dir = Path(args.diff_dir)
-
-    for item in report["items"]:
-        identity = item["identity"]
-        status = item["status"]
-        if status == "match":
-            print("Diff same %s -> datasource=%s" % (diff_dir, identity))
-            continue
-        if status == "different":
-            print(
-                "Diff different %s -> datasource=%s fields=%s"
-                % (diff_dir, identity, ",".join(item["changedFields"]))
-            )
-        elif status == "missing-live":
-            print("Diff missing-live %s -> datasource=%s" % (diff_dir, identity))
-        elif status == "extra-live":
-            print("Diff extra-live %s -> datasource=%s" % (diff_dir, identity))
-        elif status == "ambiguous-live-uid":
-            print("Diff ambiguous-live-uid %s -> datasource=%s" % (diff_dir, identity))
-        elif status == "ambiguous-live-name":
-            print("Diff ambiguous-live-name %s -> datasource=%s" % (diff_dir, identity))
-        else:
-            print("Diff %s %s -> datasource=%s" % (status, diff_dir, identity))
-        _print_datasource_unified_diff(
-            item.get("live"),
-            item.get("local"),
-            "remote/%s" % identity,
-            "local/%s" % identity,
-        )
-
-    diff_count = report["summary"]["diffCount"]
-    bundle_count = report["summary"]["bundleCount"]
-    print(
-        "Diff checked %s datasource(s); %s difference(s) found."
-        % (bundle_count, diff_count)
-    )
-    if diff_count:
-        print(
-            "Found %s datasource difference(s) across %s exported datasource(s)."
-            % (diff_count, bundle_count)
-        )
-        return 1
-
-    print("No datasource differences across %s exported datasource(s)." % bundle_count)
-    return 0
-
-
-def import_datasources(args: argparse.Namespace) -> int:
-    if getattr(args, "table", False) and not args.dry_run:
-        raise GrafanaError("--table is only supported with --dry-run for datasource import.")
-    if getattr(args, "json", False) and not args.dry_run:
-        raise GrafanaError("--json is only supported with --dry-run for datasource import.")
-    if getattr(args, "table", False) and getattr(args, "json", False):
-        raise GrafanaError("--table and --json are mutually exclusive for datasource import.")
-    if getattr(args, "no_header", False) and not getattr(args, "table", False):
-        raise GrafanaError(
-            "--no-header is only supported with --dry-run --table for datasource import."
-        )
-    client = build_effective_import_client(args, build_client(args))
-    bundle = load_import_bundle(Path(args.import_dir))
-    target_org_id = validate_export_org_match(args, client, bundle)
-    lookups = build_existing_datasource_lookups(client)
-    mode = determine_import_mode(args)
-    records = []
-    imported_count = 0
-    skipped_missing_count = 0
-    total = len(bundle["records"])
-    if not getattr(args, "json", False):
-        print("Import mode: %s" % mode)
-    for index, record in enumerate(bundle["records"], 1):
-        match = resolve_datasource_match(record, lookups)
-        action = determine_datasource_action(args, record, match)
-        dry_run_record = {
-            "uid": record.get("uid") or "",
-            "name": record.get("name") or "",
-            "type": record.get("type") or "",
-            "destination": match["state"],
-            "action": action,
-            "orgId": target_org_id,
-            "sourceOrgId": record.get("orgId") or "",
-            "file": "%s#%s" % (bundle["datasources_path"], index - 1),
-        }
-        if args.dry_run:
-            records.append(dry_run_record)
-            if getattr(args, "table", False) or getattr(args, "json", False):
-                continue
-            print(
-                "Dry-run datasource uid=%s name=%s dest=%s action=%s file=%s"
-                % (
-                    dry_run_record["uid"] or "-",
-                    dry_run_record["name"] or "-",
-                    dry_run_record["destination"],
-                    dry_run_record["action"],
-                    dry_run_record["file"],
-                )
-            )
-            continue
-        if action == "would-skip-missing":
-            skipped_missing_count += 1
-            if getattr(args, "verbose", False):
-                print(
-                    "Skipped datasource uid=%s name=%s dest=missing action=skip-missing"
-                    % (record.get("uid") or "-", record.get("name") or "-")
-                )
-            elif getattr(args, "progress", False):
-                print(
-                    "Skipping datasource %s/%s: %s"
-                    % (index, total, record.get("uid") or record.get("name") or "-")
-                )
-            continue
-        if action in (
-            "would-fail-existing",
-            "would-fail-ambiguous",
-            "would-fail-plugin-type-change",
-            "would-fail-uid-mismatch",
-        ):
-            raise GrafanaError(
-                "Datasource import blocked for uid=%s name=%s action=%s"
-                % (record.get("uid") or "-", record.get("name") or "-", action)
-            )
-        payload = build_import_payload(record, match.get("target"))
-        if action == "would-update":
-            datasource_id = payload.get("id")
-            if datasource_id is None:
-                raise GrafanaError(
-                    "Datasource import could not determine destination datasource id for update."
-                )
-            client.request_json(
-                "/api/datasources/%s" % datasource_id,
-                method="PUT",
-                payload=payload,
-            )
-        else:
-            client.request_json("/api/datasources", method="POST", payload=payload)
-        imported_count += 1
-        if getattr(args, "verbose", False):
-            print(
-                "Imported datasource uid=%s name=%s action=%s"
-                % (
-                    record.get("uid") or "-",
-                    record.get("name") or "-",
-                    "update" if action == "would-update" else "create",
-                )
-            )
-        elif getattr(args, "progress", False):
-            print(
-                "Importing datasource %s/%s: %s"
-                % (index, total, record.get("uid") or record.get("name") or "-")
-            )
-    if args.dry_run:
-        if getattr(args, "json", False):
-            print(render_import_dry_run_json(mode, records, target_org_id))
-            return 0
-        if getattr(args, "table", False):
-            for line in render_import_dry_run_table(
-                records,
-                include_header=not bool(getattr(args, "no_header", False)),
-                selected_columns=getattr(args, "output_columns", None),
-            ):
-                print(line)
-        print(
-            "Dry-run checked %s datasource(s) from %s"
-            % (len(records), args.import_dir)
-        )
-        return 0
-    if skipped_missing_count:
-        print(
-            "Imported %s datasource(s) from %s; skipped %s missing destination datasources"
-            % (imported_count, args.import_dir, skipped_missing_count)
-        )
-    else:
-        print("Imported %s datasource(s) from %s" % (imported_count, args.import_dir))
-    return 0
-
-
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv=None):
     args = parse_args(argv)
     try:
-        if args.command == "list":
-            return list_datasources(args)
-        if args.command == "export":
-            return export_datasources(args)
-        if args.command == "import":
-            return import_datasources(args)
-        return diff_datasources(args)
+        return dispatch_datasource_command(args)
     except GrafanaError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
+        print("Error: %s" % exc, file=sys.stderr)
         return 1
 
 
@@ -1081,16 +163,35 @@ __all__ = [
     "ROOT_INDEX_KIND",
     "TOOL_SCHEMA_VERSION",
     "build_client",
+    "build_effective_import_client",
+    "build_existing_datasource_lookups",
     "build_export_index",
     "build_export_metadata",
     "build_export_records",
+    "build_import_payload",
+    "build_live_datasource_diff_records",
     "build_parser",
-    "export_datasources",
+    "compare_datasource_bundle_to_live",
+    "determine_datasource_action",
+    "determine_import_mode",
     "diff_datasources",
+    "dispatch_datasource_command",
+    "export_datasources",
+    "fetch_datasource_by_uid_if_exists",
     "import_datasources",
     "list_datasources",
+    "load_datasource_diff_bundle",
+    "load_import_bundle",
     "main",
+    "normalize_datasource_record",
     "parse_args",
+    "parse_import_dry_run_columns",
     "render_data_source_csv",
     "render_data_source_json",
+    "render_import_dry_run_json",
+    "render_import_dry_run_table",
+    "resolve_datasource_match",
+    "resolve_export_org_id",
+    "validate_datasource_contract_record",
+    "validate_export_org_match",
 ]
