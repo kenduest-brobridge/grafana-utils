@@ -475,6 +475,34 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(headers["Authorization"], f"Basic {expected}")
         prompt.assert_called_once_with("Grafana Basic auth password: ")
 
+    def test_resolve_auth_supports_env_token_auth(self):
+        args = argparse.Namespace(
+            api_token=None,
+            username=None,
+            password=None,
+            prompt_password=False,
+        )
+
+        with mock.patch.dict("os.environ", {"GRAFANA_API_TOKEN": "env-token"}, clear=True):
+            headers = alert_utils.resolve_auth(args)
+
+        self.assertEqual(headers["Authorization"], "Bearer env-token")
+
+    def test_resolve_auth_rejects_partial_basic_auth_env(self):
+        args = argparse.Namespace(
+            api_token=None,
+            username=None,
+            password=None,
+            prompt_password=False,
+        )
+
+        with mock.patch.dict("os.environ", {"GRAFANA_USERNAME": "env-user"}, clear=True):
+            with self.assertRaisesRegex(
+                alert_utils.GrafanaError,
+                "Basic auth requires both --basic-user / --username and --basic-password / --password or --prompt-password.",
+            ):
+                alert_utils.resolve_auth(args)
+
     def test_resolve_auth_rejects_prompt_without_username(self):
         args = argparse.Namespace(
             api_token=None,

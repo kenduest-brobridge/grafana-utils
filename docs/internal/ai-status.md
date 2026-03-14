@@ -1,5 +1,12 @@
 # ai-status.md
 
+## 2026-03-14 - Task: Consolidate Shared Python Auth Helper
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/alert_cli.py`, `grafana_utils/auth_staging.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The Python dashboard and alert CLIs still each carried their own inline token-vs-Basic auth resolution logic even though `grafana_utils/auth_staging.py` already existed and access had started delegating through it. The auth rules matched, but operator-facing error wording still lived separately inside each CLI.
+- Current Update: Rewired `dashboard_cli.py` and `alert_cli.py` to resolve auth through the shared staging helper while preserving each CLI's existing auth error messages and prompt behavior. Extended focused dashboard and alert auth tests to cover the shared helper path plus env-backed and partial-env validation.
+- Result: All three Python CLI families now share one auth-resolution implementation path, while dashboard and alert keep their established CLI-facing validation text and auth fallback behavior.
+
 ## 2026-03-14 - Task: Wire Quality Gate Scripts
 - State: Done
 - Scope: `Makefile`, `.github/workflows/ci.yml`, `scripts/check-quality.sh`, `scripts/check-python-quality.sh`, `scripts/check-rust-quality.sh`, `README.md`, `DEVELOPER.md`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

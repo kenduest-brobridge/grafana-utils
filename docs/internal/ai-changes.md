@@ -1,5 +1,13 @@
 # ai-changes.md
 
+## 2026-03-14 - Consolidate Shared Python Auth Helper
+- Summary: Replaced the duplicated dashboard and alert auth resolvers with delegation through `grafana_utils/auth_staging.py`, matching the earlier access direction. The change keeps the existing dashboard/alert auth rules, prompt flow, and operator-facing validation wording stable while removing another copy of the token-vs-Basic auth implementation.
+- Tests: Extended focused Python dashboard and alert auth coverage for the shared helper path, including env-backed success/failure behavior.
+- Test Run: `python3 -m unittest -v tests/test_python_dashboard_cli.py tests/test_python_alert_cli.py`
+- Validation: Confirmed both CLIs still accept token auth, explicit Basic auth, and prompt-password Basic auth, and still reject mixed or partial auth inputs with the same CLI-facing messages after the helper consolidation.
+- Impact: `grafana_utils/dashboard_cli.py`, `grafana_utils/alert_cli.py`, `grafana_utils/auth_staging.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is intended to be behavior-preserving, but future auth-helper changes must continue preserving the dashboard and alert CLI message text expected by the current unit tests.
+
 ## 2026-03-14 - Wire Quality Gate Scripts
 - Summary: Connected the previously staged quality shell scripts to the real developer entrypoints by routing `make quality`, `make quality-python`, and `make quality-rust` through them, and updated CI to invoke those make targets instead of repeating the Python and Rust checks inline. This makes the script layer the single source of truth for baseline quality behavior.
 - Tests: No new automated unit tests. Validation relied on shell syntax checks plus focused make/script execution.
