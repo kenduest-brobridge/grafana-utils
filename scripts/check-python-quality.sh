@@ -90,7 +90,7 @@ run_step "python bytecode compile check" \
   "$PYTHON_BIN" -m compileall -q "${PYTHON_QUALITY_PATHS[@]}"
 
 run_step "python unittest suite" \
-  "$PYTHON_BIN" -m unittest -v
+  "$PYTHON_BIN" -m unittest -v -b
 
 run_optional_python_module ruff "ruff lint" \
   check "${PYTHON_QUALITY_PATHS[@]}"
