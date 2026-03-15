@@ -335,6 +335,30 @@ fn parse_cli_supports_sync_group_command() {
 }
 
 #[test]
+fn parse_cli_supports_sync_shortcut_alias_sy() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "sy",
+        "summary",
+        "--desired-file",
+        "./desired.json",
+        "--output",
+        "json",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Sync { command } => match command {
+            SyncGroupCommand::Summary(inner) => {
+                assert_eq!(inner.desired_file, Path::new("./desired.json"));
+                assert_eq!(inner.output, SyncOutputFormat::Json);
+            }
+            _ => panic!("expected sync summary"),
+        },
+        _ => panic!("expected sync alias sy"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_sync_plan_group_command() {
     let args: CliArgs = parse_cli_from([
         "grafana-util",

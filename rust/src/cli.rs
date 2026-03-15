@@ -94,7 +94,10 @@ pub enum UnifiedCommand {
         #[command(subcommand)]
         command: DatasourceGroupCommand,
     },
-    #[command(about = "Sync [summary|preflight|plan|apply|review|assess].")]
+    #[command(
+        about = "Sync [summary|preflight|plan|apply|review|assess].",
+        alias = "sy"
+    )]
     Sync {
         #[command(subcommand)]
         command: SyncGroupCommand,
