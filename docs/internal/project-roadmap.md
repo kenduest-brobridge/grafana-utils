@@ -1,7 +1,7 @@
 # Project Roadmap
 
-Date: 2026-03-13
-Source: Derived from `docs/internal/project-value-assessment.md` and current repo state.
+Date: 2026-03-15
+Source: Derived from `docs/internal/project-value-assessment.md`, `TODO.md`, and current repo state.
 
 ## Purpose
 
@@ -14,186 +14,185 @@ It is not a raw backlog dump. It is a prioritization document for deciding what 
 The project should continue to position itself as:
 
 - a Grafana migration, inspection, diff, and governance CLI
+- a practical bridge between imperative Grafana operations and safer reviewable workflows
 
 The project should not drift into:
 
 - a generic all-in-one Grafana platform
 - a full replacement for Terraform or native provisioning
-- a dashboard-only exporter with loosely related extra commands
+- a browser-heavy product that eclipses the CLI's core operator value
 
 ## Planning Principles
 
 - Prefer features that improve migration safety, inspection depth, and governance value.
-- Prefer work that reduces long-term complexity before adding large new surfaces.
-- Keep Python and Rust behavior aligned through shared contracts and fixtures.
-- Avoid roadmap items that broaden scope without strengthening the core operator value.
+- Prefer work that compounds the current Python + Rust architecture instead of fragmenting it.
+- Keep Python and Rust behavior aligned through shared contracts, fixtures, and docs where the public workflow is shared.
+- Treat secret handling, dry-run accuracy, and explicit preflight checks as first-class safety requirements.
+- Add higher-level workflows only when they clearly reduce manual Grafana maintenance for real operators.
 
 ## Current State
 
 Current strengths:
 
-- Python and Rust both have strong test coverage
-- CI now enforces a basic quality gate
-- export / import / diff / inspect workflows already exist
-- dashboard inspection capabilities are growing in useful ways
+- Python and Rust both expose meaningful dashboard, datasource, alert, and access command surfaces.
+- export / import / diff / inspect workflows already exist and are useful in real operator scenarios.
+- inspection and query-analysis capabilities already provide more governance value than a basic backup/restore tool.
+- datasource import/export now has an explicit normalized contract rather than loose best-effort replay.
 
 Current constraints:
 
-- dashboard workflows are still the main complexity center
-- Python and Rust dual maintenance increases coordination cost
-- datasource lifecycle support is still incomplete
-- access-management follow-through is now mostly about parity gaps in TLS/auth options and destructive-command live validation rather than missing core commands
+- dashboard and inspection workflows are still the main complexity center.
+- Python and Rust dual maintenance increases coordination cost.
+- environment-to-environment promotion still needs more explicit workflow support.
+- datasource secret handling is intentionally conservative and does not yet integrate with external secret stores.
 
 ## Roadmap Overview
 
-### Phase 1: Stabilize And Simplify Core Dashboard Workflows
+### Phase 1: Finish Inspection And Dependency Governance
 
 Target outcome:
 
-- dashboard export/import/inspect remain the core strength of the repo, but with lower maintenance cost and clearer module boundaries
+- operators can answer dependency, blast-radius, and query-governance questions directly from CLI output without custom scripts
 
 Priority items:
 
-- continue splitting oversized Python dashboard orchestration into smaller helpers
-- continue keeping Rust dashboard live/export/import/inspect flows separated by responsibility
-- keep one stable inspection summary/report model across render modes
-- reduce repeated live Grafana lookups during dashboard import and dry-run paths
-- clean repo workflow noise so scratch outputs do not pollute normal review paths
+- reduce Python/Rust inspect-live and inspect-export drift by keeping one stable summary/report schema
+- deepen datasource usage and orphan-detection reporting
+- add a first-class resource dependency graph export such as `graph --output-format dot|svg|json`
+- refactor query extraction behind datasource-type-specific analyzers so Prometheus, Loki, Flux/Influx, SQL, and future families can evolve independently
+- add management-friendly report rendering such as static HTML inspection output when it reuses the same canonical report model
 
 Why this phase comes first:
 
-- the dashboard surface is already the most valuable and the most complex
-- reducing complexity now makes later feature work cheaper and safer
+- inspection is already one of the repo's strongest differentiators
+- dependency visibility and governance reporting directly strengthen the current value proposition without forcing a broader platform scope
 
 Definition of done for this phase:
 
-- dashboard orchestration is no longer concentrated in one or two oversized modules
-- inspection renderers share canonical intermediate models instead of ad hoc parallel paths
-- import and dry-run behavior is easier to change without touching unrelated code
-- common local scratch output no longer pollutes routine status/review workflows
-
-Explicit non-goals for this phase:
-
-- no broad new Grafana resource families yet
-- no major packaging or distribution redesign
-
-### Phase 2: Deepen Inspection And Governance Value
-
-Target outcome:
-
-- the project becomes materially more useful for understanding and governing Grafana state, not only moving it
-
-Priority items:
-
-- extend inspection into richer dependency analysis
-- add datasource usage and orphan-detection report modes
-- refactor query extraction behind datasource-type-specific analyzers
-- improve query-family coverage for Prometheus, Loki, Flux/Influx, SQL, and future datasource families where practical
-- keep report output useful for both humans and automation
-
-Why this phase matters:
-
-- inspection is one of the strongest differentiators in the repo
-- governance features increase long-term value beyond one-time migration tasks
-
-Definition of done for this phase:
-
-- operators can answer datasource dependency questions without custom scripts
-- inspection reports support common governance and cleanup workflows
-- query analysis logic is modular enough to evolve per datasource family
+- operators can see dashboard-to-datasource dependency summaries and common blast radius views from built-in commands
+- report modes stay aligned across Python and Rust where they represent the same public contract
+- richer report outputs reuse the same underlying inspection data instead of creating parallel ad hoc pipelines
 
 Explicit non-goals for this phase:
 
 - no attempt to parse every possible query language exhaustively
-- no UI/dashboard product layer on top of inspection
+- no separate web product or always-on service layer
 
-### Phase 3: Add First-Class Datasource Lifecycle Support
+### Phase 2: Add Environment Promotion And Preflight Safety
 
 Target outcome:
 
-- the repo can manage datasource resources with the same seriousness already applied to dashboards and alerts
+- promoting dashboards, alerts, and datasource state across environments becomes safer, more explicit, and less manual
 
 Priority items:
 
-- add datasource `list`, `export`, `import`, and `diff` workflows
-- define a stable datasource import/export contract
-- strip server-managed fields consistently
-- handle secure settings with explicit rules
-- support clear import modes such as create-only, create-or-update, and update-existing-only
-- add cross-language fixtures that lock Python/Rust normalization together
+- add a first-class promotion workflow such as `promote --from <env> --to <env>` around the existing export/import/diff foundations
+- expand import preflight for datasources, plugins, alert/contact references, library panels, and other common prerequisites
+- improve UID/name remapping support for datasource and dashboard promotion cases
+- keep dry-run and diff outputs trustworthy enough for team review before mutation
+- evaluate bundle/package workflows that snapshot dashboards, alerts, datasource inventory, and metadata together when that clearly improves portability
 
 Why this phase matters:
 
-- datasource state is central to migration and governance
-- dashboards alone are not enough for credible environment portability
+- environment promotion is one of the most common high-value operator workflows after basic export/import exists
+- better preflight prevents bad writes before they reach production Grafana
 
 Definition of done for this phase:
 
-- datasource resources can be exported, compared, and replayed through a stable contract
-- Python and Rust produce compatible normalized results
-- sensitive fields are handled predictably and safely
+- operators can promote common Grafana resources between environments with explicit rewrite/preflight visibility
+- promotion flows can detect common blockers before mutation starts
+- cross-environment remapping rules are documented and testable rather than hidden in ad hoc scripts
 
 Explicit non-goals for this phase:
 
-- no secret-management abstraction beyond the minimum needed for safe import/export behavior
-- no attempt to cover every vendor-specific datasource quirk immediately
+- no general deployment orchestrator
+- no attempt to own every environment-management concern outside Grafana resource migration
 
-### Phase 4: Strengthen Migration Safety And Preflight Checks
-
-Target outcome:
-
-- imports become safer and more predictable before they mutate target Grafana environments
-
-Priority items:
-
-- add broader dependency preflight for datasources, plugins, and alert/contact references
-- improve reporting for missing prerequisites before import starts
-- keep diff and dry-run outputs trustworthy enough for review workflows
-- consider bundle/package workflows that snapshot dashboards, alerts, datasources, and metadata together
-
-Why this phase matters:
-
-- migration safety is one of the repo's core promises
-- preflight is high leverage because it prevents bad writes before they happen
-
-Definition of done for this phase:
-
-- operators can detect common migration blockers before mutation
-- dry-run and preflight outputs are credible enough to use in team review workflows
-- bundle/package support exists only if it clearly improves repeatable migration
-
-Explicit non-goals for this phase:
-
-- no broad policy engine
-- no deployment orchestration outside the CLI's core scope
-
-### Phase 5: Keep Access Surface Stable Pragmatically
+### Phase 3: Introduce GitOps-Oriented Declarative Sync
 
 Target outcome:
 
-- access-management support stays usable and aligned without distracting from the project's core migration and inspection value
+- the repo supports a constrained declarative sync workflow that uses Git-managed state as the review surface while preserving the project's safety-first CLI behavior
 
 Priority items:
 
-- finish shared TLS/auth option parity such as `--insecure` and `--ca-cert`
-- keep per-command auth preflight explicit and tested
-- extend live validation coverage for destructive access commands
-- preserve `group` alias and compatibility entrypoint behavior without letting them drive new scope
+- design a declarative sync command such as `grafana-util sync` around an explicit export/import/diff contract
+- define a narrow supported state model for dashboards, datasources, folders, and selected alert resources
+- require reviewable plan/dry-run output before live mutation
+- keep sync semantics compatible with existing normalized export formats wherever practical
+- document where declarative sync complements rather than replaces Terraform/native Grafana provisioning
 
 Why this phase is later:
 
-- useful, but less differentiating than migration/inspection/datasource work
-- should stay in maintenance mode rather than consuming roadmap focus now that the planned command surface exists
+- this is strategically valuable, but it should be built on top of already-safe promotion and preflight primitives
+- a GitOps surface without clear constraints would risk turning the repo into a vague platform
 
 Definition of done for this phase:
 
-- the current access command surface remains stable and matches the established command model
-- auth and TLS requirements are explicit and tested
-- destructive flows have enough live validation coverage to catch drift early
+- operators can declare a supported subset of Grafana state in versioned files and reconcile drift through one explicit workflow
+- sync results are reviewable, predictable, and fail closed on unsupported ambiguity
+- the feature reuses existing contracts instead of inventing a second incompatible resource model
 
 Explicit non-goals for this phase:
 
-- no ambition to become a full Grafana identity-management suite
+- no claim to replace full Terraform-style resource management
+- no broad always-reconcile controller or daemon
+
+### Phase 4: Strengthen Secret Handling For Datasource And Access Workflows
+
+Target outcome:
+
+- sensitive values are handled more safely during datasource and access operations without weakening the repo's explicit operator controls
+
+Priority items:
+
+- evaluate external secret provider integration for datasource import workflows
+- support placeholder-based secret references in reviewed config or bundle inputs
+- preserve the current fail-closed behavior for unsupported secret-bearing datasource mutations
+- keep password/token file and prompt-based flows aligned across Python and Rust
+
+Why this phase matters:
+
+- secret handling remains one of the main blockers for safer datasource lifecycle automation
+- better secret injection makes promotion and declarative sync materially more usable in real environments
+
+Definition of done for this phase:
+
+- datasource workflows can reference secrets without encouraging plaintext storage in exported artifacts
+- unsafe secret-loss cases remain explicit and blocked by default
+- the repo still keeps a narrow, auditable secret contract instead of smuggling opaque blobs through exports
+
+Explicit non-goals for this phase:
+
+- no secret-management abstraction that hides risk behind silent magic
+- no promise to round-trip every datasource vendor's secure settings automatically
+
+### Phase 5: Explore Assisted Analysis And Local Runtime Extensions
+
+Target outcome:
+
+- the project can optionally offer higher-level analysis surfaces without making them a core requirement for safe CLI use
+
+Priority items:
+
+- evaluate AI-assisted query analysis or `inspect --ai-fix` style suggestions only on top of the existing analyzer outputs
+- keep any assisted recommendations explainable and optional rather than silently mutating resources
+- explore Rust-to-WASM packaging only if it cleanly reuses the existing Rust analysis core and stays local/offline-first
+
+Why this phase is last:
+
+- these ideas can be valuable, but they are additive multipliers rather than core blockers
+- the foundation should first be strong in deterministic migration, governance, promotion, and secret safety
+
+Definition of done for this phase:
+
+- assisted analysis is strictly optional and grounded in existing report models
+- any local browser/WASM packaging reuses the Rust core instead of forking logic into a separate implementation
+
+Explicit non-goals for this phase:
+
+- no dependency on an online AI service for baseline CLI correctness
+- no separate SaaS direction
 
 ## Cross-Cutting Work
 
@@ -201,37 +200,38 @@ These items should continue across phases instead of waiting for one specific mi
 
 - keep CI aligned with local quality commands
 - keep Python and Rust help text, contracts, and fixtures synchronized
+- reduce oversized orchestration modules before they become the default place for every new feature
 - update maintainer docs when behavior or architecture changes materially
-- resist scope creep that does not reinforce migration, inspection, diff, or governance value
+- resist scope creep that does not reinforce migration, inspection, diff, promotion, or governance value
 
 ## Priority Order Right Now
 
 If only a small number of items can be advanced next, the recommended order is:
 
-1. finish dashboard complexity reduction
-2. deepen inspection and governance reporting
-3. add first-class datasource lifecycle workflows
-4. improve migration preflight and package safety
-5. keep the access-management surface stable and low-drag
+1. finish inspection/dependency reporting and shared report contracts
+2. add environment promotion and stronger preflight checks
+3. design a constrained GitOps/declarative sync workflow
+4. integrate safer secret-reference handling for datasource workflows
+5. keep assisted analysis and WASM packaging exploratory until the core workflow layers are stable
 
 ## Success Metrics
 
 The roadmap is working if these become true:
 
-- dashboard and alert migrations require less manual repair
-- inspection reports replace one-off operator scripts for common governance questions
-- datasource dependencies become understandable from CLI output alone for common cases
+- dashboard and alert migrations require less manual repair between environments
+- inspection reports replace one-off operator scripts for common governance and blast-radius questions
+- promotion and sync workflows stay reviewable and fail closed when the target state is ambiguous
+- datasource secret handling is safer without weakening explicit operator control
 - Python and Rust stay aligned without frequent parity regressions
-- feature growth does not cause orchestration complexity to spike again
 
 ## Bottom Line
 
-The project should grow by going deeper on its strongest use cases, not by becoming broader for its own sake.
+The project should grow by going deeper on its strongest use cases, then carefully layering higher-level automation on top.
 
 The best direction is:
 
-- safer migration
-- stronger inspection
-- clearer governance visibility
+- stronger inspection and dependency visibility
+- safer environment promotion
+- constrained GitOps-style reconciliation
+- clearer secret handling
 - stable cross-language behavior
-- lower orchestration complexity
