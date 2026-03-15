@@ -48,6 +48,17 @@ Run the smallest relevant test target first, then the full suite when behavior c
 
 For external command usage and operator examples, prefer `README.md`, `README.zh-TW.md`, `docs/user-guide.md`, and `docs/user-guide-TW.md` instead of expanding usage examples here.
 
+## Versioning And Release Policy
+
+- Treat `dev` as the preview branch and `main` as the release branch.
+- On `dev`, Python package versions must use `X.Y.Z.devN` in `pyproject.toml`.
+- On `dev`, Rust package versions must use `X.Y.Z-dev.N` in `rust/Cargo.toml`.
+- On `main`, both Python and Rust package versions must use plain release versions `X.Y.Z` with no dev suffix.
+- Formal releases must use Git tags in the form `vX.Y.Z`, created from `main`.
+- Release tags must match the plain release version already present in both `pyproject.toml` and `rust/Cargo.toml`.
+- Preview GitLab artifacts come from the `dev` and `main` branches; release GitLab artifacts come only from `vX.Y.Z` tags.
+- When changing versions, update Python and Rust package metadata together and keep the branch/tag policy above consistent.
+
 ## Coding Style & Naming Conventions
 
 - Target Python syntax compatible with RHEL 8 environments; keep scripts parseable by Python 3.6 grammar.
