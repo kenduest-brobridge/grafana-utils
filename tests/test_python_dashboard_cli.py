@@ -7,7 +7,7 @@ import json
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -5644,6 +5644,13 @@ class ExporterTests(unittest.TestCase):
             with self.assertRaisesRegex(exporter.GrafanaError, "--json is only supported with --dry-run"):
                 exporter.import_dashboards(args)
 
+    def test_import_dashboards_parse_args_supports_error_policy_continue(self):
+        args = exporter.parse_args(
+            ["import-dashboard", "--import-dir", "dashboards/raw", "--error-policy", "continue"]
+        )
+
+        self.assertEqual(args.error_policy, "continue")
+
     def test_import_dashboards_rejects_table_with_json(self):
         client = FakeDashboardWorkflowClient()
         args = exporter.parse_args(
@@ -6014,6 +6021,46 @@ class ExporterTests(unittest.TestCase):
             self.assertEqual(payload["dashboards"][0]["folderPath"], "Platform / Infra")
             self.assertEqual(payload["dashboards"][1]["uid"], "xyz")
             self.assertEqual(payload["dashboards"][1]["action"], "create")
+
+    def test_import_dashboards_continue_policy_keeps_processing_after_item_error(self):
+        client = FakeDashboardWorkflowClient()
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=2,
+                    format_name="grafana-web-import-preserve-uid",
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            (import_dir / "bad.json").write_text("{bad-json", encoding="utf-8")
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []}},
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--import-dir",
+                    str(import_dir),
+                    "--error-policy",
+                    "continue",
+                ]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                stdout = io.StringIO()
+                stderr = io.StringIO()
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 1)
+            self.assertEqual(len(client.imported_payloads), 1)
+            self.assertIn("Imported 1 dashboard files", stdout.getvalue())
+            self.assertIn("failed 1 dashboard files", stdout.getvalue())
+            self.assertIn("Continuing after dashboard import error", stderr.getvalue())
 
     def test_import_dashboards_progress_is_opt_in(self):
         client = FakeDashboardWorkflowClient()

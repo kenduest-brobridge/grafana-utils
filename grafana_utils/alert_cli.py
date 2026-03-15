@@ -32,6 +32,11 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .auth_staging import AuthConfigError, resolve_cli_auth_from_namespace
+from .batch_error_policy import (
+    add_error_policy_argument,
+    append_item_failure,
+    should_continue_on_item_error,
+)
 from .alerts.common import (
     CONTACT_POINT_KIND,
     CONTACT_POINTS_SUBDIR,
@@ -324,6 +329,7 @@ def build_legacy_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
             "target panel ID for linked alert-rule repair during import."
         ),
     )
+    add_error_policy_argument(parser, "alerting resource")
     parser.set_defaults(alert_command=None)
     return parser
 
@@ -351,6 +357,7 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
     )
     add_common_args(export_parser)
     add_export_args(export_parser)
+    add_error_policy_argument(export_parser, "alerting resource")
     export_parser.set_defaults(
         alert_command="export",
         import_dir=None,
@@ -378,6 +385,7 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
     )
     add_common_args(import_parser)
     add_import_args(import_parser, diff_mode=False)
+    add_error_policy_argument(import_parser, "alerting resource")
     import_parser.set_defaults(alert_command="import")
 
     diff_parser = subparsers.add_parser(
@@ -393,6 +401,7 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
     )
     add_common_args(diff_parser)
     add_import_args(diff_parser, diff_mode=True)
+    add_error_policy_argument(diff_parser, "alerting resource")
     diff_parser.set_defaults(alert_command="diff")
 
     for command_name, help_text in (
@@ -747,27 +756,45 @@ def export_rule_documents(
     root_index: dict[str, list[dict[str, str]]],
     flat: bool,
     overwrite: bool,
+    args: argparse.Namespace,
+    failures: list[dict[str, str]],
 ) -> None:
     """Export alert rules and append rule entries to the root index."""
     for rule in rules:
-        normalized_rule = copy.deepcopy(rule)
-        linked_dashboard = build_linked_dashboard_metadata(client, rule)
-        if linked_dashboard:
-            normalized_rule["__linkedDashboardMetadata__"] = linked_dashboard
-        document = build_rule_export_document(normalized_rule)
-        spec = document["spec"]
-        output_path = build_rule_output_path(resource_dirs[RULE_KIND], spec, flat)
-        write_json(document, output_path, overwrite)
-        item = {
-            "kind": RULE_KIND,
-            "uid": str(spec.get("uid") or ""),
-            "title": str(spec.get("title") or ""),
-            "folderUID": str(spec.get("folderUID") or ""),
-            "ruleGroup": str(spec.get("ruleGroup") or ""),
-            "path": str(output_path),
-        }
-        root_index[RULES_SUBDIR].append(item)
-        print(f"Exported alert rule {item['uid'] or 'unknown'} -> {output_path}")
+        try:
+            normalized_rule = copy.deepcopy(rule)
+            linked_dashboard = build_linked_dashboard_metadata(client, rule)
+            if linked_dashboard:
+                normalized_rule["__linkedDashboardMetadata__"] = linked_dashboard
+            document = build_rule_export_document(normalized_rule)
+            spec = document["spec"]
+            output_path = build_rule_output_path(resource_dirs[RULE_KIND], spec, flat)
+            write_json(document, output_path, overwrite)
+            item = {
+                "kind": RULE_KIND,
+                "uid": str(spec.get("uid") or ""),
+                "title": str(spec.get("title") or ""),
+                "folderUID": str(spec.get("folderUID") or ""),
+                "ruleGroup": str(spec.get("ruleGroup") or ""),
+                "path": str(output_path),
+            }
+            root_index[RULES_SUBDIR].append(item)
+            print(f"Exported alert rule {item['uid'] or 'unknown'} -> {output_path}")
+        except Exception as exc:
+            if not should_continue_on_item_error(args):
+                raise
+            failure = append_item_failure(
+                failures,
+                RULE_KIND,
+                str(rule.get("uid") or rule.get("title") or "unknown"),
+                str(rule.get("uid") or rule.get("title") or "unknown"),
+                exc,
+            )
+            print(
+                "Continuing after alerting resource export error kind=%s id=%s: %s"
+                % (failure["kind"], failure["identity"], failure["error"]),
+                file=sys.stderr,
+            )
 
 
 def export_contact_point_documents(
@@ -776,26 +803,44 @@ def export_contact_point_documents(
     root_index: dict[str, list[dict[str, str]]],
     flat: bool,
     overwrite: bool,
+    args: argparse.Namespace,
+    failures: list[dict[str, str]],
 ) -> None:
     """Export contact points and append contact-point entries to the root index."""
     for contact_point in contact_points:
-        document = build_contact_point_export_document(contact_point)
-        spec = document["spec"]
-        output_path = build_contact_point_output_path(
-            resource_dirs[CONTACT_POINT_KIND], spec, flat
-        )
-        write_json(document, output_path, overwrite)
-        item = {
-            "kind": CONTACT_POINT_KIND,
-            "uid": str(spec.get("uid") or ""),
-            "name": str(spec.get("name") or ""),
-            "type": str(spec.get("type") or ""),
-            "path": str(output_path),
-        }
-        root_index[CONTACT_POINTS_SUBDIR].append(item)
-        print(
-            f"Exported contact point {item['uid'] or item['name'] or 'unknown'} -> {output_path}"
-        )
+        try:
+            document = build_contact_point_export_document(contact_point)
+            spec = document["spec"]
+            output_path = build_contact_point_output_path(
+                resource_dirs[CONTACT_POINT_KIND], spec, flat
+            )
+            write_json(document, output_path, overwrite)
+            item = {
+                "kind": CONTACT_POINT_KIND,
+                "uid": str(spec.get("uid") or ""),
+                "name": str(spec.get("name") or ""),
+                "type": str(spec.get("type") or ""),
+                "path": str(output_path),
+            }
+            root_index[CONTACT_POINTS_SUBDIR].append(item)
+            print(
+                f"Exported contact point {item['uid'] or item['name'] or 'unknown'} -> {output_path}"
+            )
+        except Exception as exc:
+            if not should_continue_on_item_error(args):
+                raise
+            failure = append_item_failure(
+                failures,
+                CONTACT_POINT_KIND,
+                str(contact_point.get("uid") or contact_point.get("name") or "unknown"),
+                str(contact_point.get("uid") or contact_point.get("name") or "unknown"),
+                exc,
+            )
+            print(
+                "Continuing after alerting resource export error kind=%s id=%s: %s"
+                % (failure["kind"], failure["identity"], failure["error"]),
+                file=sys.stderr,
+            )
 
 
 def export_mute_timing_documents(
@@ -804,22 +849,40 @@ def export_mute_timing_documents(
     root_index: dict[str, list[dict[str, str]]],
     flat: bool,
     overwrite: bool,
+    args: argparse.Namespace,
+    failures: list[dict[str, str]],
 ) -> None:
     """Export mute timings and append mute-timing entries to the root index."""
     for mute_timing in mute_timings:
-        document = build_mute_timing_export_document(mute_timing)
-        spec = document["spec"]
-        output_path = build_mute_timing_output_path(
-            resource_dirs[MUTE_TIMING_KIND], spec, flat
-        )
-        write_json(document, output_path, overwrite)
-        item = {
-            "kind": MUTE_TIMING_KIND,
-            "name": str(spec.get("name") or ""),
-            "path": str(output_path),
-        }
-        root_index[MUTE_TIMINGS_SUBDIR].append(item)
-        print(f"Exported mute timing {item['name'] or 'unknown'} -> {output_path}")
+        try:
+            document = build_mute_timing_export_document(mute_timing)
+            spec = document["spec"]
+            output_path = build_mute_timing_output_path(
+                resource_dirs[MUTE_TIMING_KIND], spec, flat
+            )
+            write_json(document, output_path, overwrite)
+            item = {
+                "kind": MUTE_TIMING_KIND,
+                "name": str(spec.get("name") or ""),
+                "path": str(output_path),
+            }
+            root_index[MUTE_TIMINGS_SUBDIR].append(item)
+            print(f"Exported mute timing {item['name'] or 'unknown'} -> {output_path}")
+        except Exception as exc:
+            if not should_continue_on_item_error(args):
+                raise
+            failure = append_item_failure(
+                failures,
+                MUTE_TIMING_KIND,
+                str(mute_timing.get("name") or "unknown"),
+                str(mute_timing.get("name") or "unknown"),
+                exc,
+            )
+            print(
+                "Continuing after alerting resource export error kind=%s id=%s: %s"
+                % (failure["kind"], failure["identity"], failure["error"]),
+                file=sys.stderr,
+            )
 
 
 def export_policies_document(
@@ -827,21 +890,39 @@ def export_policies_document(
     resource_dirs: dict[str, Path],
     root_index: dict[str, list[dict[str, str]]],
     overwrite: bool,
+    args: argparse.Namespace,
+    failures: list[dict[str, str]],
 ) -> None:
     """Export the single notification policy tree and append its index entry."""
-    policies_document = build_policies_export_document(policies)
-    policies_path = build_policies_output_path(resource_dirs[POLICIES_KIND])
-    write_json(policies_document, policies_path, overwrite)
-    policies_item = {
-        "kind": POLICIES_KIND,
-        "receiver": str(policies_document["spec"].get("receiver") or ""),
-        "path": str(policies_path),
-    }
-    root_index[POLICIES_SUBDIR].append(policies_item)
-    print(
-        "Exported notification policies "
-        f"{policies_item['receiver'] or 'unknown'} -> {policies_path}"
-    )
+    try:
+        policies_document = build_policies_export_document(policies)
+        policies_path = build_policies_output_path(resource_dirs[POLICIES_KIND])
+        write_json(policies_document, policies_path, overwrite)
+        policies_item = {
+            "kind": POLICIES_KIND,
+            "receiver": str(policies_document["spec"].get("receiver") or ""),
+            "path": str(policies_path),
+        }
+        root_index[POLICIES_SUBDIR].append(policies_item)
+        print(
+            "Exported notification policies "
+            f"{policies_item['receiver'] or 'unknown'} -> {policies_path}"
+        )
+    except Exception as exc:
+        if not should_continue_on_item_error(args):
+            raise
+        failure = append_item_failure(
+            failures,
+            POLICIES_KIND,
+            str(policies.get("receiver") or "root"),
+            str(policies.get("receiver") or "root"),
+            exc,
+        )
+        print(
+            "Continuing after alerting resource export error kind=%s id=%s: %s"
+            % (failure["kind"], failure["identity"], failure["error"]),
+            file=sys.stderr,
+        )
 
 
 def export_template_documents(
@@ -850,22 +931,40 @@ def export_template_documents(
     root_index: dict[str, list[dict[str, str]]],
     flat: bool,
     overwrite: bool,
+    args: argparse.Namespace,
+    failures: list[dict[str, str]],
 ) -> None:
     """Export notification templates and append template entries to the root index."""
     for template in templates:
-        document = build_template_export_document(template)
-        spec = document["spec"]
-        output_path = build_template_output_path(
-            resource_dirs[TEMPLATE_KIND], spec, flat
-        )
-        write_json(document, output_path, overwrite)
-        item = {
-            "kind": TEMPLATE_KIND,
-            "name": str(spec.get("name") or ""),
-            "path": str(output_path),
-        }
-        root_index[TEMPLATES_SUBDIR].append(item)
-        print(f"Exported template {item['name'] or 'unknown'} -> {output_path}")
+        try:
+            document = build_template_export_document(template)
+            spec = document["spec"]
+            output_path = build_template_output_path(
+                resource_dirs[TEMPLATE_KIND], spec, flat
+            )
+            write_json(document, output_path, overwrite)
+            item = {
+                "kind": TEMPLATE_KIND,
+                "name": str(spec.get("name") or ""),
+                "path": str(output_path),
+            }
+            root_index[TEMPLATES_SUBDIR].append(item)
+            print(f"Exported template {item['name'] or 'unknown'} -> {output_path}")
+        except Exception as exc:
+            if not should_continue_on_item_error(args):
+                raise
+            failure = append_item_failure(
+                failures,
+                TEMPLATE_KIND,
+                str(template.get("name") or "unknown"),
+                str(template.get("name") or "unknown"),
+                exc,
+            )
+            print(
+                "Continuing after alerting resource export error kind=%s id=%s: %s"
+                % (failure["kind"], failure["identity"], failure["error"]),
+                file=sys.stderr,
+            )
 
 
 def write_resource_indexes(
@@ -916,6 +1015,7 @@ def export_alerting_resources(args: argparse.Namespace) -> int:
     templates = client.list_templates()
 
     root_index = build_empty_root_index()
+    failures = []
     export_rule_documents(
         client,
         rules,
@@ -923,6 +1023,8 @@ def export_alerting_resources(args: argparse.Namespace) -> int:
         root_index,
         flat=args.flat,
         overwrite=args.overwrite,
+        args=args,
+        failures=failures,
     )
     export_contact_point_documents(
         contact_points,
@@ -930,6 +1032,8 @@ def export_alerting_resources(args: argparse.Namespace) -> int:
         root_index,
         flat=args.flat,
         overwrite=args.overwrite,
+        args=args,
+        failures=failures,
     )
     export_mute_timing_documents(
         mute_timings,
@@ -937,12 +1041,16 @@ def export_alerting_resources(args: argparse.Namespace) -> int:
         root_index,
         flat=args.flat,
         overwrite=args.overwrite,
+        args=args,
+        failures=failures,
     )
     export_policies_document(
         policies,
         resource_dirs,
         root_index,
         overwrite=args.overwrite,
+        args=args,
+        failures=failures,
     )
     export_template_documents(
         templates,
@@ -950,12 +1058,22 @@ def export_alerting_resources(args: argparse.Namespace) -> int:
         root_index,
         flat=args.flat,
         overwrite=args.overwrite,
+        args=args,
+        failures=failures,
     )
     write_resource_indexes(resource_dirs, root_index)
 
     index_path = output_dir / "index.json"
     write_json(root_index, index_path, overwrite=True)
-    print(format_export_summary(root_index, index_path))
+    exported_count = sum(len(root_index[subdir]) for subdir in RESOURCE_SUBDIR_BY_KIND.values())
+    summary = format_export_summary(root_index, index_path)
+    if failures:
+        print(
+            "%s failed=%s exported=%s"
+            % (summary, len(failures), exported_count)
+        )
+        return 1
+    print(summary)
     return 0
 
 
@@ -1102,39 +1220,68 @@ def import_alerting_resources(args: argparse.Namespace) -> int:
     policies_seen = 0
     dashboard_uid_map = load_string_map(args.dashboard_uid_map, "Dashboard UID map")
     panel_id_map = load_panel_id_map(args.panel_id_map)
+    failures = []
+    imported_count = 0
 
     for resource_file in resource_files:
-        document = load_json_file(resource_file)
-        kind, payload = build_import_operation(document)
-        payload = prepare_import_payload_for_target(
-            client,
-            kind,
-            payload,
-            document,
-            dashboard_uid_map,
-            panel_id_map,
-        )
-        policies_seen = count_policy_documents(kind, policies_seen)
-        identity = build_resource_identity(kind, payload)
-        if args.dry_run:
-            action = determine_import_action(
+        try:
+            document = load_json_file(resource_file)
+            kind, payload = build_import_operation(document)
+            payload = prepare_import_payload_for_target(
                 client,
                 kind,
                 payload,
-                args.replace_existing,
+                document,
+                dashboard_uid_map,
+                panel_id_map,
             )
-            print(f"Dry-run {resource_file} -> kind={kind} id={identity} action={action}")
-            continue
-
-        action, identity = import_resource_document(client, kind, payload, args)
-
-        print(f"Imported {resource_file} -> kind={kind} id={identity} action={action}")
+            policies_seen = count_policy_documents(kind, policies_seen)
+            identity = build_resource_identity(kind, payload)
+            if args.dry_run:
+                action = determine_import_action(
+                    client,
+                    kind,
+                    payload,
+                    args.replace_existing,
+                )
+                print(f"Dry-run {resource_file} -> kind={kind} id={identity} action={action}")
+            else:
+                action, identity = import_resource_document(client, kind, payload, args)
+                imported_count += 1
+                print(f"Imported {resource_file} -> kind={kind} id={identity} action={action}")
+        except Exception as exc:
+            if not should_continue_on_item_error(args):
+                raise
+            failure = append_item_failure(
+                failures,
+                "alerting-resource",
+                str(resource_file.name),
+                str(resource_file),
+                exc,
+            )
+            print(
+                "Continuing after alerting resource import error file=%s: %s"
+                % (failure["source"], failure["error"]),
+                file=sys.stderr,
+            )
 
     if args.dry_run:
-        print(f"Dry-run checked {len(resource_files)} alerting resource files from {import_dir}")
+        if failures:
+            print(
+                "Dry-run checked %s alerting resource files from %s; failed %s file(s)"
+                % (len(resource_files), import_dir, len(failures))
+            )
+        else:
+            print(f"Dry-run checked {len(resource_files)} alerting resource files from {import_dir}")
     else:
-        print(f"Imported {len(resource_files)} alerting resource files from {import_dir}")
-    return 0
+        if failures:
+            print(
+                "Imported %s alerting resource files from %s; failed %s file(s)"
+                % (imported_count, import_dir, len(failures))
+            )
+        else:
+            print(f"Imported {len(resource_files)} alerting resource files from {import_dir}")
+    return 1 if failures else 0
 
 
 def diff_alerting_resources(args: argparse.Namespace) -> int:
@@ -1146,52 +1293,75 @@ def diff_alerting_resources(args: argparse.Namespace) -> int:
     dashboard_uid_map = load_string_map(args.dashboard_uid_map, "Dashboard UID map")
     panel_id_map = load_panel_id_map(args.panel_id_map)
     differences = 0
+    failures = []
 
     for resource_file in resource_files:
-        document = load_json_file(resource_file)
-        kind, payload = build_import_operation(document)
-        payload = prepare_import_payload_for_target(
-            client,
-            kind,
-            payload,
-            document,
-            dashboard_uid_map,
-            panel_id_map,
-        )
-        policies_seen = count_policy_documents(kind, policies_seen)
-        identity = build_resource_identity(kind, payload)
-        local_compare = build_compare_document(kind, payload)
-        remote_compare = fetch_live_compare_document(client, kind, payload)
-        if remote_compare is None:
-            print(f"Diff missing-remote {resource_file} -> kind={kind} id={identity}")
+        try:
+            document = load_json_file(resource_file)
+            kind, payload = build_import_operation(document)
+            payload = prepare_import_payload_for_target(
+                client,
+                kind,
+                payload,
+                document,
+                dashboard_uid_map,
+                panel_id_map,
+            )
+            policies_seen = count_policy_documents(kind, policies_seen)
+            identity = build_resource_identity(kind, payload)
+            local_compare = build_compare_document(kind, payload)
+            remote_compare = fetch_live_compare_document(client, kind, payload)
+            if remote_compare is None:
+                print(f"Diff missing-remote {resource_file} -> kind={kind} id={identity}")
+                print_unified_diff(
+                    {},
+                    local_compare,
+                    build_diff_label("remote", resource_file, kind, identity),
+                    build_diff_label("local", resource_file, kind, identity),
+                )
+                differences += 1
+                continue
+
+            if serialize_compare_document(local_compare) == serialize_compare_document(
+                remote_compare
+            ):
+                print(f"Diff same {resource_file} -> kind={kind} id={identity}")
+                continue
+
+            print(f"Diff different {resource_file} -> kind={kind} id={identity}")
             print_unified_diff(
-                {},
+                remote_compare,
                 local_compare,
                 build_diff_label("remote", resource_file, kind, identity),
                 build_diff_label("local", resource_file, kind, identity),
             )
             differences += 1
-            continue
+        except Exception as exc:
+            if not should_continue_on_item_error(args):
+                raise
+            failure = append_item_failure(
+                failures,
+                "alerting-resource",
+                str(resource_file.name),
+                str(resource_file),
+                exc,
+            )
+            print(
+                "Continuing after alerting resource diff error file=%s: %s"
+                % (failure["source"], failure["error"]),
+                file=sys.stderr,
+            )
 
-        if serialize_compare_document(local_compare) == serialize_compare_document(
-            remote_compare
-        ):
-            print(f"Diff same {resource_file} -> kind={kind} id={identity}")
-            continue
-
-        print(f"Diff different {resource_file} -> kind={kind} id={identity}")
-        print_unified_diff(
-            remote_compare,
-            local_compare,
-            build_diff_label("remote", resource_file, kind, identity),
-            build_diff_label("local", resource_file, kind, identity),
-        )
-        differences += 1
-
-    if differences:
+    if differences or failures:
+        if not failures:
+            print(
+                "Found "
+                f"{differences} alerting differences across {len(resource_files)} files."
+            )
+            return 1
         print(
-            "Found "
-            f"{differences} alerting differences across {len(resource_files)} files."
+            "Found %s alerting differences across %s files; failed %s file(s)."
+            % (differences, len(resource_files), len(failures))
         )
         return 1
 

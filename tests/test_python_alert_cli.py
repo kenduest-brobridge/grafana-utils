@@ -7,7 +7,7 @@ import json
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -273,13 +273,22 @@ class AlertUtilsTests(unittest.TestCase):
 
     def test_parse_args_supports_import_subcommand(self):
         args = alert_utils.parse_args(
-            ["import", "--import-dir", "alerts/raw", "--replace-existing", "--dry-run"]
+            [
+                "import",
+                "--import-dir",
+                "alerts/raw",
+                "--replace-existing",
+                "--dry-run",
+                "--error-policy",
+                "continue",
+            ]
         )
 
         self.assertEqual(args.alert_command, "import")
         self.assertEqual(args.import_dir, "alerts/raw")
         self.assertTrue(args.replace_existing)
         self.assertTrue(args.dry_run)
+        self.assertEqual(args.error_policy, "continue")
 
     def test_parse_args_supports_diff_subcommand(self):
         args = alert_utils.parse_args(["diff", "--diff-dir", "alerts/raw"])
@@ -1276,6 +1285,33 @@ class AlertUtilsTests(unittest.TestCase):
             with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
                 with self.assertRaises(alert_utils.GrafanaError):
                     alert_utils.import_alerting_resources(args)
+
+    def test_import_alerting_resources_continue_policy_keeps_processing_after_item_error(self):
+        args = alert_utils.parse_args(
+            ["--import-dir", "unused", "--replace-existing", "--error-policy", "continue"]
+        )
+        fake_client = FakeAlertClient(existing_rules={"rule-uid": sample_rule()})
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args.import_dir = tmpdir
+            bad_path = Path(tmpdir) / "bad.json"
+            bad_path.write_text("{not-json", encoding="utf-8")
+            rule_path = Path(tmpdir) / "rule.json"
+            alert_utils.write_json(
+                alert_utils.build_rule_export_document(sample_rule()),
+                rule_path,
+                overwrite=True,
+            )
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+                with redirect_stdout(stdout), redirect_stderr(stderr):
+                    result = alert_utils.import_alerting_resources(args)
+
+            self.assertEqual(result, 1)
+            self.assertEqual(len(fake_client.updated_rules), 1)
+            self.assertIn("failed 1 file(s)", stdout.getvalue())
+            self.assertIn("Continuing after alerting resource import error", stderr.getvalue())
 
 
 if __name__ == "__main__":

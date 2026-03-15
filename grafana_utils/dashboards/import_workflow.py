@@ -2,9 +2,12 @@
 
 import argparse
 import json
+import sys
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
+
+from ..batch_error_policy import append_item_failure, should_continue_on_item_error
 
 
 def _normalize_org_id(org):
@@ -378,6 +381,7 @@ def _run_import_dashboards_for_single_org(args, deps):
     imported_count = 0
     skipped_missing_count = 0
     skipped_folder_mismatch_count = 0
+    failures = []
     effective_replace_existing = bool(
         getattr(args, "replace_existing", False)
         or getattr(args, "update_existing_only", False)
@@ -461,146 +465,163 @@ def _run_import_dashboards_for_single_org(args, deps):
         )
     total_dashboards = len(dashboard_files)
     for index, dashboard_file in enumerate(dashboard_files, 1):
-        document = deps["load_json_file"](dashboard_file)
-        dashboard = deps["extract_dashboard_object"](
-            document, "Dashboard payload must be a JSON object."
-        )
-        dashboard_uid = str(dashboard.get("uid") or "")
-        source_folder_path = deps["resolve_source_dashboard_folder_path"](
-            document,
-            dashboard_file,
-            import_dir,
-            folder_inventory_lookup,
-        )
-        folder_uid_override = deps["determine_import_folder_uid_override"](
-            client,
-            dashboard_uid,
-            args.import_folder_uid,
-            preserve_existing_folder=effective_replace_existing,
-        )
-        payload = deps["build_import_payload"](
-            document=document,
-            folder_uid_override=folder_uid_override,
-            replace_existing=effective_replace_existing,
-            message=args.import_message,
-        )
-        folder_path = deps["resolve_dashboard_import_folder_path"](
-            client,
-            payload,
-            document,
-            dashboard_file,
-            import_dir,
-            folder_inventory_lookup,
-        )
-        uid = payload["dashboard"].get("uid") or deps["DEFAULT_UNKNOWN_UID"]
-        destination_folder_path = deps["resolve_existing_dashboard_folder_path"](
-            client,
-            str(uid),
-        )
-        if args.dry_run:
-            action = deps["determine_dashboard_import_action"](
+        uid = deps["DEFAULT_UNKNOWN_UID"]
+        try:
+            document = deps["load_json_file"](dashboard_file)
+            dashboard = deps["extract_dashboard_object"](
+                document, "Dashboard payload must be a JSON object."
+            )
+            dashboard_uid = str(dashboard.get("uid") or "")
+            source_folder_path = deps["resolve_source_dashboard_folder_path"](
+                document,
+                dashboard_file,
+                import_dir,
+                folder_inventory_lookup,
+            )
+            folder_uid_override = deps["determine_import_folder_uid_override"](
+                client,
+                dashboard_uid,
+                args.import_folder_uid,
+                preserve_existing_folder=effective_replace_existing,
+            )
+            payload = deps["build_import_payload"](
+                document=document,
+                folder_uid_override=folder_uid_override,
+                replace_existing=effective_replace_existing,
+                message=args.import_message,
+            )
+            folder_path = deps["resolve_dashboard_import_folder_path"](
                 client,
                 payload,
-                effective_replace_existing,
-                update_existing_only=bool(getattr(args, "update_existing_only", False)),
+                document,
+                dashboard_file,
+                import_dir,
+                folder_inventory_lookup,
             )
-            match_result = deps["build_folder_path_match_result"](
-                source_folder_path=source_folder_path,
-                destination_folder_path=destination_folder_path,
-                destination_exists=bool(destination_folder_path is not None),
-                require_matching_folder_path=bool(
-                    getattr(args, "require_matching_folder_path", False)
-                ),
+            uid = payload["dashboard"].get("uid") or deps["DEFAULT_UNKNOWN_UID"]
+            destination_folder_path = deps["resolve_existing_dashboard_folder_path"](
+                client,
+                str(uid),
             )
-            action = deps["apply_folder_path_guard_to_action"](action, match_result)
-            if getattr(args, "table", False) or json_output:
-                dry_run_records.append(
-                    deps["build_dashboard_import_dry_run_record"](
-                        dashboard_file,
-                        str(uid),
-                        action,
-                        folder_path=folder_path,
-                        source_folder_path=match_result.get("source_folder_path"),
-                        destination_folder_path=match_result.get("destination_folder_path"),
-                        reason=match_result.get("reason"),
+            if args.dry_run:
+                action = deps["determine_dashboard_import_action"](
+                    client,
+                    payload,
+                    effective_replace_existing,
+                    update_existing_only=bool(getattr(args, "update_existing_only", False)),
+                )
+                match_result = deps["build_folder_path_match_result"](
+                    source_folder_path=source_folder_path,
+                    destination_folder_path=destination_folder_path,
+                    destination_exists=bool(destination_folder_path is not None),
+                    require_matching_folder_path=bool(
+                        getattr(args, "require_matching_folder_path", False)
+                    ),
+                )
+                action = deps["apply_folder_path_guard_to_action"](action, match_result)
+                if getattr(args, "table", False) or json_output:
+                    dry_run_records.append(
+                        deps["build_dashboard_import_dry_run_record"](
+                            dashboard_file,
+                            str(uid),
+                            action,
+                            folder_path=folder_path,
+                            source_folder_path=match_result.get("source_folder_path"),
+                            destination_folder_path=match_result.get("destination_folder_path"),
+                            reason=match_result.get("reason"),
+                        )
                     )
+                    continue
+                deps["print_dashboard_import_progress"](
+                    args,
+                    index,
+                    total_dashboards,
+                    dashboard_file,
+                    str(uid),
+                    action=action,
+                    folder_path=folder_path,
+                    dry_run=True,
                 )
                 continue
+
+            if bool(getattr(args, "update_existing_only", False)) or bool(
+                getattr(args, "require_matching_folder_path", False)
+            ):
+                action = deps["determine_dashboard_import_action"](
+                    client,
+                    payload,
+                    effective_replace_existing,
+                    update_existing_only=bool(getattr(args, "update_existing_only", False)),
+                )
+                match_result = deps["build_folder_path_match_result"](
+                    source_folder_path=source_folder_path,
+                    destination_folder_path=destination_folder_path,
+                    destination_exists=bool(destination_folder_path is not None),
+                    require_matching_folder_path=bool(
+                        getattr(args, "require_matching_folder_path", False)
+                    ),
+                )
+                action = deps["apply_folder_path_guard_to_action"](action, match_result)
+                if action == "would-skip-missing":
+                    skipped_missing_count += 1
+                    if getattr(args, "verbose", False):
+                        print(
+                            "Skipped import uid=%s dest=missing action=skip-missing file=%s"
+                            % (uid, dashboard_file)
+                        )
+                    elif getattr(args, "progress", False):
+                        print(
+                            "Skipping dashboard %s/%s: %s dest=missing action=skip-missing"
+                            % (index, total_dashboards, uid)
+                        )
+                    continue
+                if action == "would-skip-folder-mismatch":
+                    skipped_folder_mismatch_count += 1
+                    if getattr(args, "verbose", False):
+                        print(
+                            "Skipped import uid=%s dest=exists action=skip-folder-mismatch sourceFolderPath=%s destinationFolderPath=%s file=%s"
+                            % (
+                                uid,
+                                match_result.get("source_folder_path") or "-",
+                                match_result.get("destination_folder_path") or "-",
+                                dashboard_file,
+                            )
+                        )
+                    elif getattr(args, "progress", False):
+                        print(
+                            "Skipping dashboard %s/%s: %s dest=exists action=skip-folder-mismatch"
+                            % (index, total_dashboards, uid)
+                        )
+                    continue
+
+            result = client.import_dashboard(payload)
+            status = result.get("status", "unknown")
+            uid = result.get("uid") or uid
+            imported_count += 1
             deps["print_dashboard_import_progress"](
                 args,
                 index,
                 total_dashboards,
                 dashboard_file,
                 str(uid),
-                action=action,
-                folder_path=folder_path,
-                dry_run=True,
+                status=str(status),
+                dry_run=False,
             )
-            continue
-
-        if bool(getattr(args, "update_existing_only", False)) or bool(
-            getattr(args, "require_matching_folder_path", False)
-        ):
-            action = deps["determine_dashboard_import_action"](
-                client,
-                payload,
-                effective_replace_existing,
-                update_existing_only=bool(getattr(args, "update_existing_only", False)),
+        except Exception as exc:
+            if not should_continue_on_item_error(args):
+                raise
+            failure = append_item_failure(
+                failures,
+                "dashboard",
+                str(uid),
+                str(dashboard_file),
+                exc,
             )
-            match_result = deps["build_folder_path_match_result"](
-                source_folder_path=source_folder_path,
-                destination_folder_path=destination_folder_path,
-                destination_exists=bool(destination_folder_path is not None),
-                require_matching_folder_path=bool(
-                    getattr(args, "require_matching_folder_path", False)
-                ),
+            print(
+                "Continuing after dashboard import error file=%s uid=%s: %s"
+                % (failure["source"], failure["identity"], failure["error"]),
+                file=sys.stderr,
             )
-            action = deps["apply_folder_path_guard_to_action"](action, match_result)
-            if action == "would-skip-missing":
-                skipped_missing_count += 1
-                if getattr(args, "verbose", False):
-                    print(
-                        "Skipped import uid=%s dest=missing action=skip-missing file=%s"
-                        % (uid, dashboard_file)
-                    )
-                elif getattr(args, "progress", False):
-                    print(
-                        "Skipping dashboard %s/%s: %s dest=missing action=skip-missing"
-                        % (index, total_dashboards, uid)
-                    )
-                continue
-            if action == "would-skip-folder-mismatch":
-                skipped_folder_mismatch_count += 1
-                if getattr(args, "verbose", False):
-                    print(
-                        "Skipped import uid=%s dest=exists action=skip-folder-mismatch sourceFolderPath=%s destinationFolderPath=%s file=%s"
-                        % (
-                            uid,
-                            match_result.get("source_folder_path") or "-",
-                            match_result.get("destination_folder_path") or "-",
-                            dashboard_file,
-                        )
-                    )
-                elif getattr(args, "progress", False):
-                    print(
-                        "Skipping dashboard %s/%s: %s dest=exists action=skip-folder-mismatch"
-                        % (index, total_dashboards, uid)
-                    )
-                continue
-
-        result = client.import_dashboard(payload)
-        status = result.get("status", "unknown")
-        uid = result.get("uid") or uid
-        imported_count += 1
-        deps["print_dashboard_import_progress"](
-            args,
-            index,
-            total_dashboards,
-            dashboard_file,
-            str(uid),
-            status=str(status),
-            dry_run=False,
-        )
 
     if args.dry_run:
         if getattr(args, "update_existing_only", False):
@@ -619,7 +640,7 @@ def _run_import_dashboards_for_single_org(args, deps):
             ]
         )
         if json_output:
-            print(
+            payload = json.loads(
                 deps["render_dashboard_import_dry_run_json"](
                     mode,
                     folder_dry_run_records,
@@ -629,6 +650,9 @@ def _run_import_dashboards_for_single_org(args, deps):
                     skipped_folder_mismatch_count,
                 )
             )
+            payload["summary"]["failed"] = len(failures)
+            payload["failures"] = failures
+            print(json.dumps(payload, indent=2, sort_keys=False, ensure_ascii=False))
         elif getattr(args, "table", False):
             for line in deps["render_dashboard_import_dry_run_table"](
                 dry_run_records,
@@ -643,7 +667,7 @@ def _run_import_dashboards_for_single_org(args, deps):
             and skipped_missing_count
             and skipped_folder_mismatch_count
         ):
-            print(
+            message = (
                 "Dry-run checked %s dashboard files from %s; would skip %s missing dashboards and %s folder-mismatched dashboards"
                 % (
                     len(dashboard_files),
@@ -652,25 +676,40 @@ def _run_import_dashboards_for_single_org(args, deps):
                     skipped_folder_mismatch_count,
                 )
             )
+            if failures:
+                message += "; failed %s dashboard files" % len(failures)
+            print(message)
         elif getattr(args, "update_existing_only", False) and skipped_missing_count:
-            print(
+            message = (
                 "Dry-run checked %s dashboard files from %s; would skip %s missing dashboards"
                 % (len(dashboard_files), import_dir, skipped_missing_count)
             )
+            if failures:
+                message += "; failed %s dashboard files" % len(failures)
+            print(message)
         elif skipped_folder_mismatch_count:
-            print(
+            message = (
                 "Dry-run checked %s dashboard files from %s; would skip %s folder-mismatched dashboards"
                 % (len(dashboard_files), import_dir, skipped_folder_mismatch_count)
             )
+            if failures:
+                message += "; failed %s dashboard files" % len(failures)
+            print(message)
         else:
-            print(f"Dry-run checked {len(dashboard_files)} dashboard files from {import_dir}")
+            if failures:
+                print(
+                    "Dry-run checked %s dashboard files from %s; failed %s dashboard files"
+                    % (len(dashboard_files), import_dir, len(failures))
+                )
+            else:
+                print(f"Dry-run checked {len(dashboard_files)} dashboard files from {import_dir}")
     else:
         if (
             getattr(args, "update_existing_only", False)
             and skipped_missing_count
             and skipped_folder_mismatch_count
         ):
-            print(
+            message = (
                 "Imported %s dashboard files from %s; skipped %s missing dashboards and %s folder-mismatched dashboards"
                 % (
                     imported_count,
@@ -679,19 +718,34 @@ def _run_import_dashboards_for_single_org(args, deps):
                     skipped_folder_mismatch_count,
                 )
             )
+            if failures:
+                message += "; failed %s dashboard files" % len(failures)
+            print(message)
         elif getattr(args, "update_existing_only", False) and skipped_missing_count:
-            print(
+            message = (
                 "Imported %s dashboard files from %s; skipped %s missing dashboards"
                 % (imported_count, import_dir, skipped_missing_count)
             )
+            if failures:
+                message += "; failed %s dashboard files" % len(failures)
+            print(message)
         elif skipped_folder_mismatch_count:
-            print(
+            message = (
                 "Imported %s dashboard files from %s; skipped %s folder-mismatched dashboards"
                 % (imported_count, import_dir, skipped_folder_mismatch_count)
             )
+            if failures:
+                message += "; failed %s dashboard files" % len(failures)
+            print(message)
         else:
-            print(f"Imported {imported_count} dashboard files from {import_dir}")
-    return 0
+            if failures:
+                print(
+                    "Imported %s dashboard files from %s; failed %s dashboard files"
+                    % (imported_count, import_dir, len(failures))
+                )
+            else:
+                print(f"Imported {imported_count} dashboard files from {import_dir}")
+    return 1 if failures else 0
 
 
 def run_import_dashboards(args, deps):

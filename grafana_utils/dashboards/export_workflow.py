@@ -1,6 +1,9 @@
 """Dashboard export workflow orchestration helpers."""
 
 from pathlib import Path
+import sys
+
+from ..batch_error_policy import append_item_failure, should_continue_on_item_error
 
 
 def run_export_dashboards(args, deps):
@@ -78,8 +81,10 @@ def run_export_dashboards(args, deps):
 
     index_items = []
     processed_dashboards = 0
+    exported_dashboards = 0
     folder_inventory = []
     datasource_inventory = []
+    failures = []
     for (
         _,
         scoped_client,
@@ -96,81 +101,98 @@ def run_export_dashboards(args, deps):
         for summary in summaries:
             processed_dashboards += 1
             uid = str(summary["uid"])
-            deps["print_dashboard_export_progress_summary"](
-                args,
-                processed_dashboards,
-                total_dashboards,
-                uid,
-                dry_run=bool(args.dry_run),
-            )
-            payload = scoped_client.fetch_dashboard(uid)
-            item = deps["build_dashboard_index_item"](summary, uid)
-            if export_raw:
-                raw_document = deps["build_preserved_web_import_document"](payload)
-                raw_path = deps["build_output_path"](raw_dir, summary, args.flat)
-                if args.dry_run:
-                    deps["ensure_dashboard_write_target"](
-                        raw_path,
-                        args.overwrite,
-                        create_parents=False,
-                    )
-                    deps["print_dashboard_export_progress"](
-                        args,
-                        processed_dashboards,
-                        total_dashboards,
-                        uid,
-                        "raw",
-                        raw_path,
-                        dry_run=True,
-                    )
-                else:
-                    deps["write_dashboard"](raw_document, raw_path, args.overwrite)
-                    deps["print_dashboard_export_progress"](
-                        args,
-                        processed_dashboards,
-                        total_dashboards,
-                        uid,
-                        "raw",
-                        raw_path,
-                        dry_run=False,
-                    )
-                item["raw_path"] = str(raw_path)
-            if export_prompt:
-                assert datasource_catalog is not None
-                prompt_document = deps["build_external_export_document"](
-                    payload, datasource_catalog
+            try:
+                deps["print_dashboard_export_progress_summary"](
+                    args,
+                    processed_dashboards,
+                    total_dashboards,
+                    uid,
+                    dry_run=bool(args.dry_run),
                 )
-                prompt_path = deps["build_output_path"](prompt_dir, summary, args.flat)
-                if args.dry_run:
-                    deps["ensure_dashboard_write_target"](
-                        prompt_path,
-                        args.overwrite,
-                        create_parents=False,
+                payload = scoped_client.fetch_dashboard(uid)
+                item = deps["build_dashboard_index_item"](summary, uid)
+                if export_raw:
+                    raw_document = deps["build_preserved_web_import_document"](payload)
+                    raw_path = deps["build_output_path"](raw_dir, summary, args.flat)
+                    if args.dry_run:
+                        deps["ensure_dashboard_write_target"](
+                            raw_path,
+                            args.overwrite,
+                            create_parents=False,
+                        )
+                        deps["print_dashboard_export_progress"](
+                            args,
+                            processed_dashboards,
+                            total_dashboards,
+                            uid,
+                            "raw",
+                            raw_path,
+                            dry_run=True,
+                        )
+                    else:
+                        deps["write_dashboard"](raw_document, raw_path, args.overwrite)
+                        deps["print_dashboard_export_progress"](
+                            args,
+                            processed_dashboards,
+                            total_dashboards,
+                            uid,
+                            "raw",
+                            raw_path,
+                            dry_run=False,
+                        )
+                    item["raw_path"] = str(raw_path)
+                if export_prompt:
+                    assert datasource_catalog is not None
+                    prompt_document = deps["build_external_export_document"](
+                        payload, datasource_catalog
                     )
-                    deps["print_dashboard_export_progress"](
-                        args,
-                        processed_dashboards,
-                        total_dashboards,
-                        uid,
-                        "prompt",
-                        prompt_path,
-                        dry_run=True,
-                    )
-                else:
-                    deps["write_dashboard"](prompt_document, prompt_path, args.overwrite)
-                    deps["print_dashboard_export_progress"](
-                        args,
-                        processed_dashboards,
-                        total_dashboards,
-                        uid,
-                        "prompt",
-                        prompt_path,
-                        dry_run=False,
-                    )
-                item["prompt_path"] = str(prompt_path)
-            index_items.append(item)
+                    prompt_path = deps["build_output_path"](prompt_dir, summary, args.flat)
+                    if args.dry_run:
+                        deps["ensure_dashboard_write_target"](
+                            prompt_path,
+                            args.overwrite,
+                            create_parents=False,
+                        )
+                        deps["print_dashboard_export_progress"](
+                            args,
+                            processed_dashboards,
+                            total_dashboards,
+                            uid,
+                            "prompt",
+                            prompt_path,
+                            dry_run=True,
+                        )
+                    else:
+                        deps["write_dashboard"](prompt_document, prompt_path, args.overwrite)
+                        deps["print_dashboard_export_progress"](
+                            args,
+                            processed_dashboards,
+                            total_dashboards,
+                            uid,
+                            "prompt",
+                            prompt_path,
+                            dry_run=False,
+                        )
+                    item["prompt_path"] = str(prompt_path)
+                index_items.append(item)
+                exported_dashboards += 1
+            except Exception as exc:
+                if not should_continue_on_item_error(args):
+                    raise
+                failure = append_item_failure(
+                    failures,
+                    "dashboard",
+                    uid,
+                    str(uid),
+                    exc,
+                )
+                print(
+                    "Continuing after dashboard export error uid=%s: %s"
+                    % (failure["identity"], failure["error"]),
+                    file=sys.stderr,
+                )
 
-    if not index_items:
+    if not index_items and not failures:
         print("No dashboards found.", file=deps["sys"].stderr)
         return 0
 
@@ -236,7 +258,7 @@ def run_export_dashboards(args, deps):
         deps["write_json_document"](root_index, index_path)
         deps["write_json_document"](root_metadata, root_metadata_path)
     summary_verb = "Would export" if args.dry_run else "Exported"
-    summary_parts = [f"{summary_verb} {len(index_items)} dashboards."]
+    summary_parts = [f"{summary_verb} {exported_dashboards} dashboards."]
     if raw_index_path is not None:
         summary_parts.append(f"Raw index: {raw_index_path}")
     if raw_metadata_path is not None:
@@ -249,5 +271,7 @@ def run_export_dashboards(args, deps):
         summary_parts.append(f"Prompt manifest: {prompt_metadata_path}")
     summary_parts.append(f"Root index: {index_path}")
     summary_parts.append(f"Root manifest: {root_metadata_path}")
+    if failures:
+        summary_parts.append("Failed: %s" % len(failures))
     print(" ".join(summary_parts))
-    return 0
+    return 1 if failures else 0

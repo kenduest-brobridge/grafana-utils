@@ -45,6 +45,7 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 
+from .batch_error_policy import add_error_policy_argument
 from .clients.dashboard_client import GrafanaClient
 from .auth_staging import AuthConfigError, resolve_cli_auth_from_namespace
 from .dashboards.common import (
@@ -970,6 +971,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     )
     add_common_cli_args(export_parser)
     add_export_cli_args(export_parser)
+    add_error_policy_argument(export_parser, "dashboard")
 
     list_parser = subparsers.add_parser(
         "list-dashboard",
@@ -1021,6 +1023,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     )
     add_common_cli_args(import_parser)
     add_import_cli_args(import_parser)
+    add_error_policy_argument(import_parser, "dashboard")
 
     diff_parser = subparsers.add_parser(
         "diff",
@@ -1039,6 +1042,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     )
     add_common_cli_args(diff_parser)
     add_diff_cli_args(diff_parser)
+    add_error_policy_argument(diff_parser, "dashboard")
 
     promote_plan_parser = subparsers.add_parser(
         "promote-plan",
