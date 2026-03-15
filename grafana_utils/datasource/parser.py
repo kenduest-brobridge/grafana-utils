@@ -23,6 +23,7 @@ from ..dashboard_cli import (
     HelpFullAction,
     add_common_cli_args,
 )
+
 DEFAULT_EXPORT_DIR = "datasources"
 DATASOURCE_EXPORT_FILENAME = "datasources.json"
 EXPORT_METADATA_FILENAME = "export-metadata.json"
@@ -59,24 +60,24 @@ HELP_FULL_EXAMPLES = (
     "--basic-user admin --basic-password admin --export-dir ./datasources --overwrite\n\n"
     "  Dry-run a live datasource create without changing Grafana:\n"
     "    grafana-util datasource add --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --name prometheus-main --type prometheus "
+    '--token "$GRAFANA_API_TOKEN" --name prometheus-main --type prometheus '
     "--datasource-url http://prometheus:9090 --dry-run --table\n\n"
     "  Dry-run a live datasource modify by UID:\n"
     "    grafana-util datasource modify --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --uid prom-main "
+    '--token "$GRAFANA_API_TOKEN" --uid prom-main '
     "--set-url http://prometheus-v2:9090 --dry-run --json\n\n"
     "  Dry-run a live datasource delete by UID:\n"
     "    grafana-util datasource delete --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --uid prom-main --dry-run --json\n\n"
+    '--token "$GRAFANA_API_TOKEN" --uid prom-main --dry-run --json\n\n'
     "  Dry-run datasource import for the current org:\n"
     "    grafana-util datasource import --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --import-dir ./datasources --dry-run --table\n\n"
+    '--token "$GRAFANA_API_TOKEN" --import-dir ./datasources --dry-run --table\n\n'
     "  Compare an exported datasource inventory against live Grafana:\n"
     "    grafana-util datasource diff --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --diff-dir ./datasources\n\n"
+    '--token "$GRAFANA_API_TOKEN" --diff-dir ./datasources\n\n'
     "  List datasource inventory as JSON for scripting:\n"
     "    grafana-util datasource list --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --json"
+    '--token "$GRAFANA_API_TOKEN" --json'
 )
 ROOT_HELP_EXAMPLES = (
     "Examples:\n\n"
@@ -110,7 +111,7 @@ EXPORT_HELP_EXAMPLES = (
 IMPORT_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  grafana-util datasource import --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --import-dir ./datasources --dry-run --table\n"
+    '--token "$GRAFANA_API_TOKEN" --import-dir ./datasources --dry-run --table\n'
     "  grafana-util datasource import --url http://localhost:3000 "
     "--basic-user admin --basic-password admin --import-dir ./datasources "
     "--use-export-org --only-org-id 2 --create-missing-orgs --dry-run --json"
@@ -118,31 +119,31 @@ IMPORT_HELP_EXAMPLES = (
 DIFF_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  grafana-util datasource diff --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --diff-dir ./datasources"
+    '--token "$GRAFANA_API_TOKEN" --diff-dir ./datasources'
 )
 ADD_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  grafana-util datasource add --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --name prometheus-main --type prometheus "
+    '--token "$GRAFANA_API_TOKEN" --name prometheus-main --type prometheus '
     "--datasource-url http://prometheus:9090 --dry-run --table\n"
     "  grafana-util datasource add --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --uid loki-main --name loki-main --type loki "
+    '--token "$GRAFANA_API_TOKEN" --uid loki-main --name loki-main --type loki '
     "--datasource-url http://loki:3100 --http-header X-Scope-OrgID=tenant-a --dry-run --json"
 )
 MODIFY_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  grafana-util datasource modify --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --uid prom-main --set-url http://prometheus-v2:9090 "
+    '--token "$GRAFANA_API_TOKEN" --uid prom-main --set-url http://prometheus-v2:9090 '
     "--dry-run --json\n"
     "  grafana-util datasource modify --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --uid prom-main --set-default true --dry-run --table"
+    '--token "$GRAFANA_API_TOKEN" --uid prom-main --set-default true --dry-run --table'
 )
 DELETE_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  grafana-util datasource delete --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --uid prom-main --dry-run --json\n"
+    '--token "$GRAFANA_API_TOKEN" --uid prom-main --dry-run --json\n'
     "  grafana-util datasource delete --url http://localhost:3000 "
-    "--token \"$GRAFANA_API_TOKEN\" --name prometheus-main --dry-run --table"
+    '--token "$GRAFANA_API_TOKEN" --name prometheus-main --dry-run --table'
 )
 
 
@@ -673,6 +674,8 @@ def add_delete_cli_args(parser):
             "--table or --json."
         ),
     )
+
+
 def build_parser(prog=None):
     parser = argparse.ArgumentParser(
         prog=prog or "grafana-util datasource",

@@ -51,11 +51,28 @@ run_optional_python_module() {
   run_step "$label" "$PYTHON_BIN" -m "$module_name" "$@"
 }
 
+has_mypy_config() {
+  if [ -f "mypy.ini" ] || [ -f "setup.cfg" ]; then
+    return 0
+  fi
+  if [ -f "pyproject.toml" ] && grep -Eq '^\[tool\.mypy(\.|])' pyproject.toml; then
+    return 0
+  fi
+  return 1
+}
+
 collect_python_quality_paths() {
   local path
+  local has_python_files
 
   for path in grafana_utils tests python; do
-    if [ -e "$path" ]; then
+    if [ ! -e "$path" ]; then
+      continue
+    fi
+    has_python_files="$(
+      find "$path" -type f \( -name '*.py' -o -name '*.pyi' \) ! -path '*/__pycache__/*' -print -quit
+    )"
+    if [ -n "$has_python_files" ]; then
       PYTHON_QUALITY_PATHS+=("$path")
     fi
   done
@@ -78,8 +95,12 @@ run_step "python unittest suite" \
 run_optional_python_module ruff "ruff lint" \
   check "${PYTHON_QUALITY_PATHS[@]}"
 
-run_optional_python_module mypy "mypy type check" \
-  "${PYTHON_QUALITY_PATHS[@]}"
+if has_mypy_config; then
+  run_optional_python_module mypy "mypy type check" \
+    "${PYTHON_QUALITY_PATHS[@]}"
+else
+  warn "skipping mypy type check; no mypy configuration was found"
+fi
 
 run_optional_python_module black "black format check" \
   --check "${PYTHON_QUALITY_PATHS[@]}"

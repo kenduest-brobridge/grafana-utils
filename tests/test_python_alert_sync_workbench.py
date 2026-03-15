@@ -30,7 +30,10 @@ class AlertSyncWorkbenchTests(unittest.TestCase):
                     "uid": "logs-high",
                     "title": "Logs High",
                     "managedFields": ["condition", "contactPoints"],
-                    "body": {"condition": "B > 10", "contactPoints": ["pagerduty-primary"]},
+                    "body": {
+                        "condition": "B > 10",
+                        "contactPoints": ["pagerduty-primary"],
+                    },
                 },
                 {
                     "kind": "alert",

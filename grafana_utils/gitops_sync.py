@@ -16,7 +16,7 @@ Caveats:
 
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, Mapping, Optional, Tuple
 
 from .alert_sync_workbench import assess_alert_sync_specs
 from .dashboard_cli import GrafanaError
@@ -159,7 +159,8 @@ def build_resource_index(specs):
         key = (spec.kind, spec.identity)
         if key in index:
             raise GrafanaError(
-                "Duplicate sync identity detected for %s %s." % (spec.kind, spec.identity)
+                "Duplicate sync identity detected for %s %s."
+                % (spec.kind, spec.identity)
             )
         index[key] = spec
     return index
@@ -242,14 +243,14 @@ def _build_prune_operation(spec, allow_prune):
         return SyncOperation(
             kind=spec.kind,
             identity=spec.identity,
-        title=spec.title,
-        action="would-delete",
-        reason="missing-from-desired-state",
-        changed_fields=(),
-        managed_fields=tuple(spec.managed_fields),
-        desired=None,
-        live=deepcopy(spec.body),
-        source_path=spec.source_path,
+            title=spec.title,
+            action="would-delete",
+            reason="missing-from-desired-state",
+            changed_fields=(),
+            managed_fields=tuple(spec.managed_fields),
+            desired=None,
+            live=deepcopy(spec.body),
+            source_path=spec.source_path,
         )
     return SyncOperation(
         kind=spec.kind,

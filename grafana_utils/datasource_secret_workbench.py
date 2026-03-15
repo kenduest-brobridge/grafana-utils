@@ -9,7 +9,7 @@ only supported resolution input is an explicit in-memory placeholder map.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence
+from typing import Mapping, Optional, Sequence
 
 from .dashboard_cli import GrafanaError
 

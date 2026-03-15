@@ -1,7 +1,5 @@
 """Dashboard inspection dependency assembly helpers."""
 
-from typing import Any
-
 from .export_inventory import discover_dashboard_files, load_export_metadata
 from .folder_support import (
     build_folder_inventory_lookup,
@@ -158,17 +156,13 @@ class InspectionWorkflowDeps(object):
         self.render_export_inspection_grouped_report = (
             render_export_inspection_grouped_report
         )
-        self.render_export_inspection_report_csv = (
-            render_export_inspection_report_csv
-        )
+        self.render_export_inspection_report_csv = render_export_inspection_report_csv
         self.render_export_inspection_report_tables = (
             render_export_inspection_report_tables
         )
         self.render_export_inspection_summary = render_export_inspection_summary
         self.render_export_inspection_tables = render_export_inspection_tables
-        self.render_export_inspection_tree_tables = (
-            render_export_inspection_tree_tables
-        )
+        self.render_export_inspection_tree_tables = render_export_inspection_tree_tables
         self.write_json_document = write_json_document
 
         self._default_org_name = config["DEFAULT_ORG_NAME"]

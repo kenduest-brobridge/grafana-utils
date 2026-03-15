@@ -84,7 +84,11 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
             "Infra",
             [
                 {"userId": 7, "userLogin": "alice", "permission": 2},
-                {"serviceAccountId": 11, "serviceAccountName": "robot", "permission": 4},
+                {
+                    "serviceAccountId": 11,
+                    "serviceAccountName": "robot",
+                    "permission": 4,
+                },
             ],
         )
         diff = permission_workbench.build_permission_diff_document(expected, actual)
@@ -105,7 +109,9 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
             self.build_permissions(),
         )
         output = "\n".join(permission_workbench.render_permission_export_text(document))
-        self.assertIn("Permission export: dashboard uid=cpu-main title=CPU Main", output)
+        self.assertIn(
+            "Permission export: dashboard uid=cpu-main title=CPU Main", output
+        )
         self.assertIn(
             "Counts: 4 permissions, 1 users, 1 teams, 1 service-accounts, 1 roles",
             output,
@@ -129,7 +135,9 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
                 "roles": ["Viewer"],
             },
         )
-        self.assertEqual(document["kind"], permission_workbench.PERMISSION_PREFLIGHT_KIND)
+        self.assertEqual(
+            document["kind"], permission_workbench.PERMISSION_PREFLIGHT_KIND
+        )
         self.assertEqual(document["summary"]["checkCount"], 4)
         self.assertEqual(document["summary"]["missingCount"], 2)
         checks = {row["subjectKey"]: row for row in document["checks"]}
@@ -154,13 +162,19 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
             "CPU Main",
             [
                 {"userId": 7, "userLogin": "alice", "permission": 2},
-                {"serviceAccountId": 11, "serviceAccountName": "robot", "permission": 4},
+                {
+                    "serviceAccountId": 11,
+                    "serviceAccountName": "robot",
+                    "permission": 4,
+                },
             ],
         )
         document = permission_workbench.build_permission_promotion_document(
             expected, actual
         )
-        self.assertEqual(document["kind"], permission_workbench.PERMISSION_PROMOTION_KIND)
+        self.assertEqual(
+            document["kind"], permission_workbench.PERMISSION_PROMOTION_KIND
+        )
         self.assertEqual(document["summary"]["wouldAddCount"], 1)
         self.assertEqual(document["summary"]["wouldChangeCount"], 1)
         self.assertEqual(document["summary"]["wouldLeaveExtraCount"], 1)
@@ -181,7 +195,9 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
                 "roles": ["Viewer"],
             },
         )
-        output = "\n".join(permission_workbench.render_permission_preflight_text(document))
+        output = "\n".join(
+            permission_workbench.render_permission_preflight_text(document)
+        )
         self.assertIn("Permission preflight summary", output)
         self.assertIn("Checks: 4 total, 2 ok, 2 missing, 2 blocking", output)
         self.assertIn("- user alice permission=view status=ok", output)
@@ -226,7 +242,9 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
         document = permission_workbench.build_permission_bundle_diff_document(
             expected, actual
         )
-        self.assertEqual(document["kind"], permission_workbench.PERMISSION_BUNDLE_DIFF_KIND)
+        self.assertEqual(
+            document["kind"], permission_workbench.PERMISSION_BUNDLE_DIFF_KIND
+        )
         self.assertEqual(document["summary"]["resourceCount"], 3)
         self.assertEqual(document["summary"]["changedCount"], 1)
         self.assertEqual(document["summary"]["missingLiveCount"], 1)
@@ -238,11 +256,15 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
         )
         output = "\n".join(permission_workbench.render_permission_bundle_text(document))
         self.assertIn("Permission bundle summary", output)
-        self.assertIn("Counts: 2 resources, 1 dashboards, 1 folders, 3 permissions", output)
+        self.assertIn(
+            "Counts: 2 resources, 1 dashboards, 1 folders, 3 permissions", output
+        )
         self.assertIn("- dashboard uid=cpu-main title=CPU Main permissions=1", output)
         self.assertIn("- folder uid=infra title=Infra permissions=2", output)
 
-    def test_build_permission_remap_document_summarizes_uid_title_and_path_rewrites(self):
+    def test_build_permission_remap_document_summarizes_uid_title_and_path_rewrites(
+        self,
+    ):
         bundle = permission_workbench.build_permission_bundle_document(
             self.build_bundle_resources()
         )

@@ -23,7 +23,9 @@ from .dashboard_cli import (
     add_common_cli_args,
     build_client as build_dashboard_client,
 )
-from .datasource.live_mutation_safe import build_add_payload as build_datasource_add_payload
+from .datasource.live_mutation_safe import (
+    build_add_payload as build_datasource_add_payload,
+)
 from .datasource.workflows import build_modify_datasource_payload
 from .alert_sync_workbench import (
     assess_alert_sync_specs,
@@ -420,7 +422,9 @@ def fetch_live_resource_specs(client, page_size=500):
         uid = _normalize_string(folder.get("uid"))
         if not uid:
             continue
-        title = _normalize_string(folder.get("title"),)
+        title = _normalize_string(
+            folder.get("title"),
+        )
         body = {"title": title or uid}
         parent_uid = _normalize_string(folder.get("parentUid"))
         if parent_uid:
@@ -499,7 +503,9 @@ def run_plan(args):
         )
     else:
         if not getattr(args, "live_file", None):
-            raise GrafanaError("Sync plan requires --live-file unless --fetch-live is used.")
+            raise GrafanaError(
+                "Sync plan requires --live-file unless --fetch-live is used."
+            )
         live_specs = _require_resource_list(
             load_json_document(args.live_file),
             "Live sync input",
@@ -709,13 +715,17 @@ def _apply_folder_operation(client, operation, allow_folder_delete):
     if operation.action == "would-create":
         return client.create_folder(
             uid=operation.identity,
-            title=_normalize_string(body.get("title"), operation.title or operation.identity),
+            title=_normalize_string(
+                body.get("title"), operation.title or operation.identity
+            ),
             parent_uid=_normalize_string(body.get("parentUid")) or None,
         )
     if operation.action == "would-update":
         payload = {
             "uid": operation.identity,
-            "title": _normalize_string(body.get("title"), operation.title or operation.identity),
+            "title": _normalize_string(
+                body.get("title"), operation.title or operation.identity
+            ),
         }
         parent_uid = _normalize_string(body.get("parentUid"))
         if parent_uid:
@@ -747,7 +757,9 @@ def _apply_dashboard_operation(client, operation):
         )
     body = _copy_mapping(operation.desired, "Dashboard desired body")
     body["uid"] = operation.identity
-    body["title"] = _normalize_string(body.get("title"), operation.title or operation.identity)
+    body["title"] = _normalize_string(
+        body.get("title"), operation.title or operation.identity
+    )
     body.pop("id", None)
     payload = {
         "dashboard": body,
@@ -761,8 +773,12 @@ def _apply_dashboard_operation(client, operation):
 
 def _apply_datasource_operation(client, operation):
     body = _copy_mapping(operation.desired, "Datasource desired body")
-    body["uid"] = _normalize_string(body.get("uid"), operation.identity) or operation.identity
-    body["name"] = _normalize_string(body.get("name"), operation.title or operation.identity)
+    body["uid"] = (
+        _normalize_string(body.get("uid"), operation.identity) or operation.identity
+    )
+    body["name"] = _normalize_string(
+        body.get("name"), operation.title or operation.identity
+    )
     if operation.action == "would-create":
         payload = build_datasource_add_payload(body)
         return client.request_json("/api/datasources", method="POST", payload=payload)

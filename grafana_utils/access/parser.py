@@ -2,7 +2,6 @@
 
 import argparse
 import sys
-from typing import List, Optional
 
 from ..batch_error_policy import add_error_policy_argument
 from ..http_transport import DEFAULT_HTTP_TRANSPORT, HTTP_TRANSPORT_CHOICES
@@ -30,7 +29,9 @@ ACCESS_EXPORT_METADATA_FILENAME = "export-metadata.json"
 ACCESS_EXPORT_KIND_USERS = "grafana-utils-access-user-export-index"
 ACCESS_EXPORT_KIND_TEAMS = "grafana-utils-access-team-export-index"
 ACCESS_EXPORT_KIND_ORGS = "grafana-utils-access-org-export-index"
-ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS = "grafana-utils-access-service-account-export-index"
+ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS = (
+    "grafana-utils-access-service-account-export-index"
+)
 ACCESS_EXPORT_VERSION = 1
 SCOPE_CHOICES = ("org", "global")
 LIST_OUTPUT_FORMAT_CHOICES = ("text", "table", "csv", "json")
@@ -97,9 +98,7 @@ def add_access_export_cli_args(parser, default_export_dir, resource="user"):
     parser.add_argument(
         "--overwrite",
         action="store_true",
-        help=(
-            "Overwrite existing export files instead of failing."
-        ),
+        help=("Overwrite existing export files instead of failing."),
     )
     parser.add_argument(
         "--dry-run",
@@ -154,7 +153,8 @@ def add_access_diff_cli_args(parser, resource, default_scope=DEFAULT_SCOPE):
         "--diff-dir",
         required=True,
         help=(
-            "Diff directory that contains %s and %s." % (
+            "Diff directory that contains %s and %s."
+            % (
                 access_export_filename(resource),
                 ACCESS_EXPORT_METADATA_FILENAME,
             )
@@ -166,7 +166,8 @@ def add_access_diff_cli_args(parser, resource, default_scope=DEFAULT_SCOPE):
             choices=SCOPE_CHOICES,
             default=default_scope,
             help=(
-                "Match against global or org user listing (default: %s)." % default_scope
+                "Match against global or org user listing (default: %s)."
+                % default_scope
             ),
         )
     add_error_policy_argument(parser, "%s diff" % resource)
@@ -183,11 +184,15 @@ def build_parser(prog=None):
             ),
             (
                 "Export organizations with memberships",
-                ["grafana-util access org export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./access-orgs --with-users --overwrite"],
+                [
+                    "grafana-util access org export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./access-orgs --with-users --overwrite"
+                ],
             ),
             (
                 "Preview a service-account import as JSON",
-                ["grafana-util access service-account import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-service-accounts --replace-existing --dry-run --output-format json"],
+                [
+                    "grafana-util access service-account import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-service-accounts --replace-existing --dry-run --output-format json"
+                ],
             ),
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -205,7 +210,9 @@ def build_parser(prog=None):
         ),
         (
             "Export global users with team memberships",
-            ["grafana-util access user export --url http://localhost:3000 --basic-user admin --basic-password admin --scope global --with-teams --export-dir ./access-users --overwrite"],
+            [
+                "grafana-util access user export --url http://localhost:3000 --basic-user admin --basic-password admin --scope global --with-teams --export-dir ./access-users --overwrite"
+            ],
         ),
     )
     user_subparsers = user_parser.add_subparsers(dest="command")
@@ -221,7 +228,9 @@ def build_parser(prog=None):
         ),
         (
             "List global users with team memberships as JSON",
-            ["grafana-util access user list --url http://localhost:3000 --scope global --with-teams --output-format json"],
+            [
+                "grafana-util access user list --url http://localhost:3000 --scope global --with-teams --output-format json"
+            ],
         ),
     )
     add_common_cli_args(list_parser)
@@ -233,7 +242,9 @@ def build_parser(prog=None):
         "Export Grafana users to JSON files.",
         (
             "Export global users into a dedicated directory",
-            ["grafana-util access user export --url http://localhost:3000 --basic-user admin --basic-password admin --scope global --export-dir ./access-users --overwrite"],
+            [
+                "grafana-util access user export --url http://localhost:3000 --basic-user admin --basic-password admin --scope global --export-dir ./access-users --overwrite"
+            ],
         ),
     )
     add_common_cli_args(
@@ -265,7 +276,9 @@ def build_parser(prog=None):
         "Import Grafana users from a JSON export.",
         (
             "Preview a global-user import before writing",
-            ["grafana-util access user import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-users --scope global --replace-existing --dry-run"],
+            [
+                "grafana-util access user import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-users --scope global --replace-existing --dry-run"
+            ],
         ),
     )
     add_common_cli_args(
@@ -274,7 +287,9 @@ def build_parser(prog=None):
         username_dest="auth_username",
         password_dest="auth_password",
     )
-    add_access_import_cli_args(user_import_parser, resource="user", default_scope=DEFAULT_SCOPE)
+    add_access_import_cli_args(
+        user_import_parser, resource="user", default_scope=DEFAULT_SCOPE
+    )
 
     user_diff_parser = _add_parser_with_examples(
         user_subparsers,
@@ -282,7 +297,9 @@ def build_parser(prog=None):
         "Diff Grafana users against a previously exported users.json file.",
         (
             "Compare exported users with live Grafana",
-            ["grafana-util access user diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./access-users --scope global"],
+            [
+                "grafana-util access user diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./access-users --scope global"
+            ],
         ),
     )
     add_common_cli_args(
@@ -291,7 +308,9 @@ def build_parser(prog=None):
         username_dest="auth_username",
         password_dest="auth_password",
     )
-    add_access_diff_cli_args(user_diff_parser, resource="user", default_scope=DEFAULT_SCOPE)
+    add_access_diff_cli_args(
+        user_diff_parser, resource="user", default_scope=DEFAULT_SCOPE
+    )
 
     add_parser = _add_parser_with_examples(
         user_subparsers,
@@ -299,7 +318,9 @@ def build_parser(prog=None):
         "Create a Grafana user through the global admin API.",
         (
             "Create one global user and assign an org role",
-            ["grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --email alice@example.com --name \"Alice Example\" --password secret123 --org-role Editor"],
+            [
+                'grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --email alice@example.com --name "Alice Example" --password secret123 --org-role Editor'
+            ],
         ),
     )
     add_common_cli_args(
@@ -316,7 +337,9 @@ def build_parser(prog=None):
         "Modify a Grafana user through the global admin APIs.",
         (
             "Rename a user and update the org role",
-            ["grafana-util access user modify --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --set-email alice2@example.com --set-name \"Alice Two\" --set-org-role Admin"],
+            [
+                'grafana-util access user modify --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --set-email alice2@example.com --set-name "Alice Two" --set-org-role Admin'
+            ],
         ),
     )
     add_common_cli_args(
@@ -333,11 +356,15 @@ def build_parser(prog=None):
         "Delete a Grafana user from the org or globally.",
         (
             "Remove a user from the current org",
-            ["grafana-util access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --email alice@example.com --scope org --yes"],
+            [
+                "grafana-util access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --email alice@example.com --scope org --yes"
+            ],
         ),
         (
             "Delete a global user account",
-            ["grafana-util access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --scope global --yes"],
+            [
+                "grafana-util access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --scope global --yes"
+            ],
         ),
     )
     add_common_cli_args(
@@ -353,11 +380,15 @@ def build_parser(prog=None):
         "List Grafana teams.",
         (
             "List teams with member details",
-            ["grafana-util access team list --url http://localhost:3000 --with-members --table"],
+            [
+                "grafana-util access team list --url http://localhost:3000 --with-members --table"
+            ],
         ),
         (
             "Preview a team import",
-            ["grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --dry-run"],
+            [
+                "grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --dry-run"
+            ],
         ),
     )
     team_subparsers = team_parser.add_subparsers(dest="command")
@@ -369,7 +400,9 @@ def build_parser(prog=None):
         "List Grafana teams from the org-scoped API.",
         (
             "List teams with members in table form",
-            ["grafana-util access team list --url http://localhost:3000 --with-members --table"],
+            [
+                "grafana-util access team list --url http://localhost:3000 --with-members --table"
+            ],
         ),
     )
     add_common_cli_args(team_list_parser)
@@ -381,7 +414,9 @@ def build_parser(prog=None):
         "Create a Grafana team and optionally seed members and admins.",
         (
             "Create a team and seed one member",
-            ["grafana-util access team add --url http://localhost:3000 --basic-user admin --basic-password admin --name \"Platform Ops\" --email platform@example.com --member alice@example.com"],
+            [
+                'grafana-util access team add --url http://localhost:3000 --basic-user admin --basic-password admin --name "Platform Ops" --email platform@example.com --member alice@example.com'
+            ],
         ),
     )
     add_common_cli_args(team_add_parser)
@@ -393,7 +428,9 @@ def build_parser(prog=None):
         "Modify Grafana team members and team admins.",
         (
             "Replace one team membership set",
-            ["grafana-util access team modify --url http://localhost:3000 --basic-user admin --basic-password admin --name \"Platform Ops\" --add-member alice@example.com --add-admin lead@example.com"],
+            [
+                'grafana-util access team modify --url http://localhost:3000 --basic-user admin --basic-password admin --name "Platform Ops" --add-member alice@example.com --add-admin lead@example.com'
+            ],
         ),
     )
     add_common_cli_args(team_modify_parser)
@@ -405,7 +442,9 @@ def build_parser(prog=None):
         "Export Grafana teams and membership to JSON files.",
         (
             "Export teams with member details",
-            ["grafana-util access team export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./access-teams --overwrite"],
+            [
+                "grafana-util access team export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./access-teams --overwrite"
+            ],
         ),
     )
     add_common_cli_args(team_export_parser)
@@ -427,7 +466,9 @@ def build_parser(prog=None):
         "Import Grafana teams and membership from a JSON export.",
         (
             "Preview a team import",
-            ["grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --dry-run"],
+            [
+                "grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --dry-run"
+            ],
         ),
     )
     add_common_cli_args(
@@ -443,7 +484,9 @@ def build_parser(prog=None):
         "Diff Grafana teams against a previously exported teams.json file.",
         (
             "Compare exported teams with Grafana",
-            ["grafana-util access team diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./access-teams"],
+            [
+                "grafana-util access team diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./access-teams"
+            ],
         ),
     )
     add_common_cli_args(
@@ -459,7 +502,9 @@ def build_parser(prog=None):
         "Delete a Grafana team.",
         (
             "Delete one team by name",
-            ["grafana-util access team delete --url http://localhost:3000 --basic-user admin --basic-password admin --name \"Platform Ops\" --yes"],
+            [
+                'grafana-util access team delete --url http://localhost:3000 --basic-user admin --basic-password admin --name "Platform Ops" --yes'
+            ],
         ),
     )
     add_common_cli_args(team_delete_parser)
@@ -471,11 +516,15 @@ def build_parser(prog=None):
         "List and manage Grafana organizations.",
         (
             "List organizations with org-user memberships",
-            ["grafana-util access org list --url http://localhost:3000 --basic-user admin --basic-password admin --with-users --table"],
+            [
+                "grafana-util access org list --url http://localhost:3000 --basic-user admin --basic-password admin --with-users --table"
+            ],
         ),
         (
             "Preview an organization import",
-            ["grafana-util access org import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-orgs --replace-existing --dry-run"],
+            [
+                "grafana-util access org import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-orgs --replace-existing --dry-run"
+            ],
         ),
     )
     org_subparsers = org_parser.add_subparsers(dest="command")
@@ -487,7 +536,9 @@ def build_parser(prog=None):
         "List Grafana organizations from the admin API.",
         (
             "List organizations with memberships",
-            ["grafana-util access org list --url http://localhost:3000 --basic-user admin --basic-password admin --with-users --table"],
+            [
+                "grafana-util access org list --url http://localhost:3000 --basic-user admin --basic-password admin --with-users --table"
+            ],
         ),
     )
     add_common_cli_args(
@@ -505,7 +556,9 @@ def build_parser(prog=None):
         "Create a Grafana organization.",
         (
             "Create one organization",
-            ["grafana-util access org add --url http://localhost:3000 --basic-user admin --basic-password admin --name \"Org Two\""],
+            [
+                'grafana-util access org add --url http://localhost:3000 --basic-user admin --basic-password admin --name "Org Two"'
+            ],
         ),
     )
     add_common_cli_args(
@@ -523,7 +576,9 @@ def build_parser(prog=None):
         "Rename a Grafana organization.",
         (
             "Rename one organization by id",
-            ["grafana-util access org modify --url http://localhost:3000 --basic-user admin --basic-password admin --org-id 2 --set-name \"Org Two Renamed\""],
+            [
+                'grafana-util access org modify --url http://localhost:3000 --basic-user admin --basic-password admin --org-id 2 --set-name "Org Two Renamed"'
+            ],
         ),
     )
     add_common_cli_args(
@@ -541,7 +596,9 @@ def build_parser(prog=None):
         "Delete a Grafana organization.",
         (
             "Delete one organization by id",
-            ["grafana-util access org delete --url http://localhost:3000 --basic-user admin --basic-password admin --org-id 4 --yes"],
+            [
+                "grafana-util access org delete --url http://localhost:3000 --basic-user admin --basic-password admin --org-id 4 --yes"
+            ],
         ),
     )
     add_common_cli_args(
@@ -559,7 +616,9 @@ def build_parser(prog=None):
         "Export Grafana organizations to JSON files.",
         (
             "Export organizations with org-user memberships",
-            ["grafana-util access org export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./access-orgs --with-users --overwrite"],
+            [
+                "grafana-util access org export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./access-orgs --with-users --overwrite"
+            ],
         ),
     )
     add_common_cli_args(
@@ -582,7 +641,9 @@ def build_parser(prog=None):
         "Import Grafana organizations from a JSON export.",
         (
             "Preview an organization import",
-            ["grafana-util access org import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-orgs --replace-existing --dry-run"],
+            [
+                "grafana-util access org import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-orgs --replace-existing --dry-run"
+            ],
         ),
     )
     add_common_cli_args(
@@ -600,11 +661,15 @@ def build_parser(prog=None):
         "List, create, export, import, diff, and delete Grafana service accounts.",
         (
             "List service accounts as a table",
-            ["grafana-util access service-account list --url http://localhost:3000 --table"],
+            [
+                "grafana-util access service-account list --url http://localhost:3000 --table"
+            ],
         ),
         (
             "Create a service-account token",
-            ["grafana-util access service-account token add --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --token-name ci-token --seconds-to-live 86400"],
+            [
+                "grafana-util access service-account token add --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --token-name ci-token --seconds-to-live 86400"
+            ],
         ),
     )
     service_account_subparsers = service_account_parser.add_subparsers(dest="command")
@@ -616,7 +681,9 @@ def build_parser(prog=None):
         "List Grafana service accounts.",
         (
             "List service accounts as a table",
-            ["grafana-util access service-account list --url http://localhost:3000 --table"],
+            [
+                "grafana-util access service-account list --url http://localhost:3000 --table"
+            ],
         ),
     )
     add_common_cli_args(service_account_list_parser)
@@ -628,7 +695,9 @@ def build_parser(prog=None):
         "Create a Grafana service account.",
         (
             "Create an editor service account",
-            ["grafana-util access service-account add --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --role Editor"],
+            [
+                "grafana-util access service-account add --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --role Editor"
+            ],
         ),
     )
     add_common_cli_args(service_account_add_parser)
@@ -640,7 +709,9 @@ def build_parser(prog=None):
         "Export Grafana service accounts to JSON files.",
         (
             "Export service accounts",
-            ["grafana-util access service-account export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./access-service-accounts --overwrite"],
+            [
+                "grafana-util access service-account export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./access-service-accounts --overwrite"
+            ],
         ),
     )
     add_common_cli_args(service_account_export_parser)
@@ -656,7 +727,9 @@ def build_parser(prog=None):
         "Import Grafana service accounts from a JSON export.",
         (
             "Preview a service-account import as a table",
-            ["grafana-util access service-account import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-service-accounts --replace-existing --dry-run --output-format table"],
+            [
+                "grafana-util access service-account import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-service-accounts --replace-existing --dry-run --output-format table"
+            ],
         ),
     )
     add_common_cli_args(service_account_import_parser)
@@ -688,7 +761,9 @@ def build_parser(prog=None):
         "Diff Grafana service accounts against a previously exported snapshot.",
         (
             "Compare exported service accounts with Grafana",
-            ["grafana-util access service-account diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./access-service-accounts"],
+            [
+                "grafana-util access service-account diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./access-service-accounts"
+            ],
         ),
     )
     add_common_cli_args(service_account_diff_parser)
@@ -703,7 +778,9 @@ def build_parser(prog=None):
         "Delete a Grafana service account.",
         (
             "Delete one service account by name",
-            ["grafana-util access service-account delete --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --yes"],
+            [
+                "grafana-util access service-account delete --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --yes"
+            ],
         ),
     )
     add_common_cli_args(service_account_delete_parser)
@@ -715,11 +792,15 @@ def build_parser(prog=None):
         "Manage Grafana service-account tokens.",
         (
             "Create one token for a service account",
-            ["grafana-util access service-account token add --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --token-name ci-token --seconds-to-live 86400"],
+            [
+                "grafana-util access service-account token add --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --token-name ci-token --seconds-to-live 86400"
+            ],
         ),
         (
             "Delete one service-account token",
-            ["grafana-util access service-account token delete --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --token-name ci-token --yes"],
+            [
+                "grafana-util access service-account token delete --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --token-name ci-token --yes"
+            ],
         ),
     )
     service_account_token_subparsers = service_account_token_parser.add_subparsers(
@@ -733,7 +814,9 @@ def build_parser(prog=None):
         "Create a Grafana service-account token.",
         (
             "Create one service-account token",
-            ["grafana-util access service-account token add --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --token-name ci-token --seconds-to-live 86400"],
+            [
+                "grafana-util access service-account token add --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --token-name ci-token --seconds-to-live 86400"
+            ],
         ),
     )
     add_common_cli_args(service_account_token_add_parser)
@@ -745,7 +828,9 @@ def build_parser(prog=None):
         "Delete a Grafana service-account token.",
         (
             "Delete one service-account token",
-            ["grafana-util access service-account token delete --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --token-name ci-token --yes"],
+            [
+                "grafana-util access service-account token delete --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --token-name ci-token --yes"
+            ],
         ),
     )
     add_common_cli_args(service_account_token_delete_parser)
@@ -837,8 +922,7 @@ def add_common_cli_args(
         choices=HTTP_TRANSPORT_CHOICES,
         default=DEFAULT_HTTP_TRANSPORT,
         help=(
-            "Select the HTTP transport implementation. "
-            "Use auto, requests, or httpx."
+            "Select the HTTP transport implementation. " "Use auto, requests, or httpx."
         ),
     )
 
@@ -1400,9 +1484,7 @@ def add_service_account_add_cli_args(parser):
         "--role",
         default=DEFAULT_SERVICE_ACCOUNT_ROLE,
         choices=["Viewer", "Editor", "Admin", "None"],
-        help=(
-            "Service-account org role (default: %s)." % DEFAULT_SERVICE_ACCOUNT_ROLE
-        ),
+        help=("Service-account org role (default: %s)." % DEFAULT_SERVICE_ACCOUNT_ROLE),
     )
     identity_group.add_argument(
         "--disabled",
@@ -1465,9 +1547,7 @@ def access_export_filename(resource):
 
 def parse_args(argv=None):
     parser = build_parser()
-    argv = normalize_group_alias_argv(
-        list(sys.argv[1:] if argv is None else argv)
-    )
+    argv = normalize_group_alias_argv(list(sys.argv[1:] if argv is None else argv))
 
     if not argv:
         parser.print_help()
@@ -1494,7 +1574,9 @@ def parse_args(argv=None):
         raise SystemExit(0)
 
     if argv == ["service-account", "token"]:
-        parser._subparsers._group_actions[0].choices["service-account"]._subparsers._group_actions[0].choices["token"].print_help()
+        parser._subparsers._group_actions[0].choices[
+            "service-account"
+        ]._subparsers._group_actions[0].choices["token"].print_help()
         raise SystemExit(0)
 
     args = parser.parse_args(argv)
@@ -1506,8 +1588,10 @@ def _normalize_output_format_args(args, parser):
     output_format = getattr(args, "output_format", None)
     if output_format is None:
         return
-    if bool(getattr(args, "table", False)) or bool(getattr(args, "csv", False)) or bool(
-        getattr(args, "json", False)
+    if (
+        bool(getattr(args, "table", False))
+        or bool(getattr(args, "csv", False))
+        or bool(getattr(args, "json", False))
     ):
         parser.error(
             "--output-format cannot be combined with --table, --csv, or --json for access list commands."

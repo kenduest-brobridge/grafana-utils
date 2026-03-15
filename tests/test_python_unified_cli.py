@@ -65,7 +65,9 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertIn("grafana-util dashboard", help_text)
         self.assertNotIn("list-data-sources", help_text)
         self.assertIn("Examples:", help_text)
-        self.assertIn("grafana-util dashboard list --url http://localhost:3000 --table", help_text)
+        self.assertIn(
+            "grafana-util dashboard list --url http://localhost:3000 --table", help_text
+        )
 
     def test_parse_args_alert_without_subcommand_prints_alert_help(self):
         stdout = io.StringIO()
@@ -111,14 +113,18 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(exc.exception.code, 0)
         help_text = stdout.getvalue()
         self.assertIn("grafana-util sync", help_text)
-        self.assertIn("{plan,review,preflight,assess-alerts,bundle-preflight,apply}", help_text)
+        self.assertIn(
+            "{plan,review,preflight,assess-alerts,bundle-preflight,apply}", help_text
+        )
 
     def test_parse_args_rejects_top_level_legacy_dashboard_alias(self):
         with self.assertRaises(SystemExit):
             unified_cli.parse_args(["diff", "--import-dir", "dashboards/raw"])
 
     def test_parse_args_supports_dashboard_namespace(self):
-        args = unified_cli.parse_args(["dashboard", "export", "--export-dir", "dashboards"])
+        args = unified_cli.parse_args(
+            ["dashboard", "export", "--export-dir", "dashboards"]
+        )
 
         self.assertEqual(args.entrypoint, "dashboard")
         self.assertEqual(
@@ -136,9 +142,7 @@ class UnifiedCliTests(unittest.TestCase):
         )
 
     def test_parse_args_supports_dashboard_list_data_sources_to_datasource_list(self):
-        args = unified_cli.parse_args(
-            ["dashboard", "list-data-sources", "--table"]
-        )
+        args = unified_cli.parse_args(["dashboard", "list-data-sources", "--table"])
 
         self.assertEqual(args.entrypoint, "datasource")
         self.assertEqual(args.forwarded_argv, ["list", "--table"])
@@ -234,7 +238,14 @@ class UnifiedCliTests(unittest.TestCase):
 
     def test_parse_args_supports_datasource_modify_namespace(self):
         args = unified_cli.parse_args(
-            ["datasource", "modify", "--uid", "prom-main", "--set-url", "http://prometheus-v2:9090"]
+            [
+                "datasource",
+                "modify",
+                "--uid",
+                "prom-main",
+                "--set-url",
+                "http://prometheus-v2:9090",
+            ]
         )
 
         self.assertEqual(args.entrypoint, "datasource")
@@ -244,7 +255,9 @@ class UnifiedCliTests(unittest.TestCase):
         )
 
     def test_main_dispatches_dashboard_namespace(self):
-        with mock.patch.object(unified_cli.dashboard_cli, "main", return_value=7) as mocked:
+        with mock.patch.object(
+            unified_cli.dashboard_cli, "main", return_value=7
+        ) as mocked:
             result = unified_cli.main(["dashboard", "list", "--json"])
 
         self.assertEqual(result, 7)
@@ -260,7 +273,14 @@ class UnifiedCliTests(unittest.TestCase):
 
     def test_parse_args_supports_sync_namespace(self):
         args = unified_cli.parse_args(
-            ["sync", "plan", "--desired-file", "./desired.json", "--live-file", "./live.json"]
+            [
+                "sync",
+                "plan",
+                "--desired-file",
+                "./desired.json",
+                "--live-file",
+                "./live.json",
+            ]
         )
 
         self.assertEqual(args.entrypoint, "sync")
@@ -271,7 +291,14 @@ class UnifiedCliTests(unittest.TestCase):
 
     def test_parse_args_supports_sync_shortcut(self):
         args = unified_cli.parse_args(
-            ["sy", "plan", "--desired-file", "./desired.json", "--live-file", "./live.json"]
+            [
+                "sy",
+                "plan",
+                "--desired-file",
+                "./desired.json",
+                "--live-file",
+                "./live.json",
+            ]
         )
 
         self.assertEqual(args.entrypoint, "sync")
@@ -296,7 +323,9 @@ class UnifiedCliTests(unittest.TestCase):
             unified_cli.parse_args(["unknown-command"])
 
     def test_main_dispatches_dashboard_shortcut(self):
-        with mock.patch.object(unified_cli.dashboard_cli, "main", return_value=7) as mocked:
+        with mock.patch.object(
+            unified_cli.dashboard_cli, "main", return_value=7
+        ) as mocked:
             result = unified_cli.main(["db", "diff", "--import-dir", "dashboards/raw"])
 
         self.assertEqual(result, 7)
@@ -321,28 +350,36 @@ class UnifiedCliTests(unittest.TestCase):
         )
 
     def test_main_dispatches_access_passthrough(self):
-        with mock.patch.object(unified_cli.access_cli, "main", return_value=5) as mocked:
+        with mock.patch.object(
+            unified_cli.access_cli, "main", return_value=5
+        ) as mocked:
             result = unified_cli.main(["access", "team", "list", "--json"])
 
         self.assertEqual(result, 5)
         mocked.assert_called_once_with(["team", "list", "--json"])
 
     def test_main_dispatches_access_shortcut(self):
-        with mock.patch.object(unified_cli.access_cli, "main", return_value=5) as mocked:
+        with mock.patch.object(
+            unified_cli.access_cli, "main", return_value=5
+        ) as mocked:
             result = unified_cli.main(["ac", "team", "list", "--json"])
 
         self.assertEqual(result, 5)
         mocked.assert_called_once_with(["team", "list", "--json"])
 
     def test_main_dispatches_datasource_passthrough(self):
-        with mock.patch.object(unified_cli.datasource_cli, "main", return_value=9) as mocked:
+        with mock.patch.object(
+            unified_cli.datasource_cli, "main", return_value=9
+        ) as mocked:
             result = unified_cli.main(["datasource", "list", "--json"])
 
         self.assertEqual(result, 9)
         mocked.assert_called_once_with(["list", "--json"])
 
     def test_main_dispatches_datasource_shortcut(self):
-        with mock.patch.object(unified_cli.datasource_cli, "main", return_value=9) as mocked:
+        with mock.patch.object(
+            unified_cli.datasource_cli, "main", return_value=9
+        ) as mocked:
             result = unified_cli.main(["ds", "add", "--name", "Prometheus Main"])
 
         self.assertEqual(result, 9)
@@ -351,7 +388,14 @@ class UnifiedCliTests(unittest.TestCase):
     def test_main_dispatches_sync_passthrough(self):
         with mock.patch.object(unified_cli.sync_cli, "main", return_value=4) as mocked:
             result = unified_cli.main(
-                ["sync", "plan", "--desired-file", "./desired.json", "--live-file", "./live.json"]
+                [
+                    "sync",
+                    "plan",
+                    "--desired-file",
+                    "./desired.json",
+                    "--live-file",
+                    "./live.json",
+                ]
             )
 
         self.assertEqual(result, 4)
@@ -362,7 +406,14 @@ class UnifiedCliTests(unittest.TestCase):
     def test_main_dispatches_sync_shortcut(self):
         with mock.patch.object(unified_cli.sync_cli, "main", return_value=4) as mocked:
             result = unified_cli.main(
-                ["sy", "plan", "--desired-file", "./desired.json", "--live-file", "./live.json"]
+                [
+                    "sy",
+                    "plan",
+                    "--desired-file",
+                    "./desired.json",
+                    "--live-file",
+                    "./live.json",
+                ]
             )
 
         self.assertEqual(result, 4)

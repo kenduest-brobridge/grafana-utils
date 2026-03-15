@@ -338,7 +338,9 @@ def render_dashboard_summary_table(
 
     lines = []
     if include_header:
-        lines.extend([format_row(headers), format_row(["-" * width for width in widths])])
+        lines.extend(
+            [format_row(headers), format_row(["-" * width for width in widths])]
+        )
     lines.extend(format_row(row) for row in rows)
     return lines
 
@@ -426,19 +428,21 @@ def list_dashboards(
     ):
         print(line)
     print("")
-    print("Listed {count} dashboard summaries from {url}".format(
-        count=len(summaries),
-        url=args.url,
-    ))
+    print(
+        "Listed {count} dashboard summaries from {url}".format(
+            count=len(summaries),
+            url=args.url,
+        )
+    )
     return 0
 
 
 def format_data_source_line(datasource: dict[str, Any]) -> str:
     """Render one datasource in a compact operator-readable form."""
     record = build_data_source_record(datasource)
-    return (
-        "uid={uid} name={name} type={type} url={url} isDefault={isDefault}"
-    ).format(**record)
+    return ("uid={uid} name={name} type={type} url={url} isDefault={isDefault}").format(
+        **record
+    )
 
 
 def build_data_source_record(datasource: dict[str, Any]) -> dict[str, str]:
@@ -493,7 +497,9 @@ def render_data_source_table(
 
     lines = []
     if include_header:
-        lines.extend([format_row(headers), format_row(["-" * width for width in widths])])
+        lines.extend(
+            [format_row(headers), format_row(["-" * width for width in widths])]
+        )
     lines.extend(format_row(row) for row in rows)
     return lines
 
@@ -538,8 +544,10 @@ def list_data_sources(
     ):
         print(line)
     print("")
-    print("Listed {count} data source(s) from {url}".format(
-        count=len(datasources),
-        url=args.url,
-    ))
+    print(
+        "Listed {count} data source(s) from {url}".format(
+            count=len(datasources),
+            url=args.url,
+        )
+    )
     return 0

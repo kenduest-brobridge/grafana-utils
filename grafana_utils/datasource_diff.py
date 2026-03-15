@@ -8,7 +8,8 @@ from typing import Any, Optional
 from .clients.dashboard_client import GrafanaClient
 from .datasource_contract import normalize_datasource_record
 from .datasource_contract import validate_datasource_contract_record
-from .dashboard_cli import GrafanaError, build_datasource_inventory_record
+from .dashboard_cli import GrafanaError
+from .dashboards.listing import build_datasource_inventory_record
 
 
 DATASOURCE_EXPORT_FILENAME = "datasources.json"

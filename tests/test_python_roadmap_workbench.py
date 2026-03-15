@@ -177,12 +177,16 @@ class RoadmapWorkbenchTests(unittest.TestCase):
         self.assertIn("datasource:unused-main", node_ids)
 
         datasource_nodes = {
-            item["id"]: item for item in document["nodes"] if item["type"] == "datasource"
+            item["id"]: item
+            for item in document["nodes"]
+            if item["type"] == "datasource"
         }
         self.assertEqual(
             datasource_nodes["datasource:prom-main"]["datasourceType"], "prometheus"
         )
-        self.assertEqual(datasource_nodes["datasource:unused-main"]["referenceCount"], 0)
+        self.assertEqual(
+            datasource_nodes["datasource:unused-main"]["referenceCount"], 0
+        )
 
         edges = {
             (item["source"], item["relation"], item["target"]): item
@@ -193,9 +197,9 @@ class RoadmapWorkbenchTests(unittest.TestCase):
             edges,
         )
         self.assertEqual(
-            edges[
-                ("panel:cpu-main:8", "queries-datasource", "datasource:logs-main")
-            ]["queryCount"],
+            edges[("panel:cpu-main:8", "queries-datasource", "datasource:logs-main")][
+                "queryCount"
+            ],
             2,
         )
 
@@ -223,7 +227,9 @@ class RoadmapWorkbenchTests(unittest.TestCase):
             dot,
         )
 
-    def test_build_dependency_graph_governance_summary_reports_blast_radius_and_orphans(self):
+    def test_build_dependency_graph_governance_summary_reports_blast_radius_and_orphans(
+        self,
+    ):
         document = roadmap_workbench.build_dependency_graph_document(
             self.build_summary_document(),
             self.build_report_document(),
@@ -240,7 +246,9 @@ class RoadmapWorkbenchTests(unittest.TestCase):
         }
         self.assertEqual(blast_radius["logs-main"]["dashboardCount"], 1)
         self.assertEqual(blast_radius["logs-main"]["panelCount"], 1)
-        self.assertEqual(blast_radius["prom-main"]["panelNodeIds"], ["panel:cpu-main:7"])
+        self.assertEqual(
+            blast_radius["prom-main"]["panelNodeIds"], ["panel:cpu-main:7"]
+        )
 
         orphaned = summary["orphanedDatasources"]
         self.assertEqual(len(orphaned), 1)
@@ -263,11 +271,15 @@ class RoadmapWorkbenchTests(unittest.TestCase):
         self.assertEqual(document["summary"]["itemCount"], 2)
         self.assertEqual(document["summary"]["updateCount"], 2)
         dashboard_item = [
-            item for item in document["planItems"] if item["resourceType"] == "dashboard"
+            item
+            for item in document["planItems"]
+            if item["resourceType"] == "dashboard"
         ][0]
         self.assertEqual(dashboard_item["targetUid"], "prod-cpu-main")
         datasource_item = [
-            item for item in document["planItems"] if item["resourceType"] == "datasource"
+            item
+            for item in document["planItems"]
+            if item["resourceType"] == "datasource"
         ][0]
         self.assertEqual(datasource_item["targetUid"], "prom-prod")
         self.assertEqual(
@@ -303,7 +315,9 @@ class RoadmapWorkbenchTests(unittest.TestCase):
         self.assertEqual(preflight["summary"]["checkCount"], 6)
         self.assertEqual(preflight["summary"]["missingCount"], 4)
         self.assertEqual(preflight["summary"]["blockingCount"], 4)
-        checks = {(item["kind"], item["resourceUid"]): item for item in preflight["checks"]}
+        checks = {
+            (item["kind"], item["resourceUid"]): item for item in preflight["checks"]
+        }
         self.assertEqual(checks[("datasource", "prom-prod")]["status"], "missing")
         self.assertEqual(checks[("plugin", "grafana-piechart-panel")]["status"], "ok")
         self.assertEqual(checks[("plugin", "grafana-clock-panel")]["status"], "missing")
@@ -323,9 +337,15 @@ class RoadmapWorkbenchTests(unittest.TestCase):
         )
         output = "\n".join(roadmap_workbench.render_promotion_plan_text(document))
         self.assertIn("Promotion plan: staging -> production", output)
-        self.assertIn("Items: 2 total, 0 create, 2 update, 2 preflight-required", output)
-        self.assertIn("- dashboard uid=cpu-main target=prod-cpu-main action=update", output)
-        self.assertIn("- datasource uid=prom-main target=prom-prod action=update", output)
+        self.assertIn(
+            "Items: 2 total, 0 create, 2 update, 2 preflight-required", output
+        )
+        self.assertIn(
+            "- dashboard uid=cpu-main target=prod-cpu-main action=update", output
+        )
+        self.assertIn(
+            "- datasource uid=prom-main target=prom-prod action=update", output
+        )
 
     def test_render_preflight_check_text_renders_summary_and_status_rows(self):
         plan_document = roadmap_workbench.build_promotion_plan_document(

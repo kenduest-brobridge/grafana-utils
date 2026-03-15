@@ -13,7 +13,8 @@ Architecture:
 
 import argparse
 import sys
-from typing import Any, Dict, Optional
+from types import ModuleType
+from typing import Optional
 
 from . import access_cli, alert_cli, dashboard_cli, datasource_cli, sync_cli
 
@@ -60,13 +61,13 @@ SYNC_COMMAND_HELP = {
     "bundle-preflight": "Build one staged bundle-level preflight document from local JSON inputs.",
     "apply": "Build a gated non-live apply intent from a reviewed plan.",
 }
-ENTRYPOINT_MODULE_DISPATCH = {
+ENTRYPOINT_MODULE_DISPATCH: dict[str, ModuleType] = {
     "dashboard": dashboard_cli,
     "alert": alert_cli,
     "access": access_cli,
     "datasource": datasource_cli,
     "sync": sync_cli,
-}  # type: Dict[str, Any]
+}
 ENTRYPOINT_ALIASES = {
     "db": "dashboard",
     "ds": "datasource",
@@ -91,15 +92,17 @@ UNIFIED_TOP_LEVEL_HELP = (
     "  grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./dashboards --overwrite\n"
     "  grafana-util dashboard list --url http://localhost:3000 --table\n"
     "  grafana-util dashboard inspect-export --import-dir ./dashboards/raw --view query --layout tree --format table\n"
-    "  grafana-util alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n"
+    '  grafana-util alert export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-dir ./alerts --overwrite\n'
     "  grafana-util access org list --url http://localhost:3000 --basic-user admin --basic-password admin --with-users --table\n"
     "  grafana-util access team list --url http://localhost:3000 --basic-user admin --basic-password admin --table\n"
     "  grafana-util sync plan --desired-file ./desired.json --live-file ./live.json"
 )
 
+
 def _print_unified_group_help() -> None:
     """Print dedicated top-level grouped help for the Python unified CLI."""
     print(UNIFIED_TOP_LEVEL_HELP)
+
 
 def _print_dashboard_group_help() -> None:
     """Print dedicated dashboard command help for the legacy/top-level entry path."""
@@ -141,7 +144,7 @@ def build_parser() -> argparse.ArgumentParser:
             "--view query --layout tree --format table\n\n"
             "  Export alerting resources from the current org with an API token:\n"
             "    grafana-util alert export --url http://localhost:3000 "
-            "--token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n\n"
+            '--token "$GRAFANA_API_TOKEN" --output-dir ./alerts --overwrite\n\n'
             "  List Grafana organizations with memberships:\n"
             "    grafana-util access org list --url http://localhost:3000 "
             "--basic-user admin --basic-password admin --with-users --table\n\n"
@@ -202,6 +205,7 @@ def build_parser() -> argparse.ArgumentParser:
         sync_subparsers.add_parser(command, help=help_text, add_help=False)
     return parser
 
+
 def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     """Resolve command entrypoint and delegate argument normalization.
 
@@ -247,7 +251,9 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
                 forwarded_argv=[mapped] + argv[2:],
             )
         parser.parse_args(argv)
-        raise AssertionError("argparse should have exited for unsupported dashboard command")
+        raise AssertionError(
+            "argparse should have exited for unsupported dashboard command"
+        )
 
     if command == "alert":
         if len(argv) == 1 or argv[1] in ("-h", "--help"):
@@ -299,9 +305,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     args = parse_args(argv)
     module = ENTRYPOINT_MODULE_DISPATCH.get(args.entrypoint)
     if module is None:
-        raise RuntimeError(
-            "Unsupported unified CLI entrypoint: %s" % args.entrypoint
-        )
+        raise RuntimeError("Unsupported unified CLI entrypoint: %s" % args.entrypoint)
     return module.main(args.forwarded_argv)
 
 

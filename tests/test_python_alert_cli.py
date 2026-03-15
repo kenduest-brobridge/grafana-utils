@@ -21,6 +21,48 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 transport_module = importlib.import_module("grafana_utils.http_transport")
 alert_utils = importlib.import_module("grafana_utils.alert_cli")
+alerts_common = importlib.import_module("grafana_utils.alerts.common")
+alerts_provisioning = importlib.import_module("grafana_utils.alerts.provisioning")
+
+for _module, _names in (
+    (
+        alerts_common,
+        (
+            "CONTACT_POINT_KIND",
+            "GrafanaApiError",
+            "GrafanaError",
+            "MUTE_TIMING_KIND",
+            "POLICIES_KIND",
+            "ROOT_INDEX_KIND",
+            "RULE_KIND",
+            "TEMPLATE_KIND",
+            "TOOL_API_VERSION",
+            "TOOL_SCHEMA_VERSION",
+        ),
+    ),
+    (
+        alerts_provisioning,
+        (
+            "build_contact_point_export_document",
+            "build_contact_point_import_payload",
+            "build_import_operation",
+            "build_mute_timing_export_document",
+            "build_mute_timing_import_payload",
+            "build_policies_export_document",
+            "build_rule_export_document",
+            "build_rule_import_payload",
+            "build_template_export_document",
+            "build_template_import_payload",
+            "rewrite_rule_dashboard_linkage",
+        ),
+    ),
+    (
+        transport_module,
+        ("build_json_http_transport",),
+    ),
+):
+    for _name in _names:
+        setattr(alert_utils, _name, getattr(_module, _name))
 
 
 def sample_rule(**overrides):
@@ -115,7 +157,7 @@ def sample_policies(**overrides):
 def sample_template(**overrides):
     template = {
         "name": "codex.message",
-        "template": "{{ define \"codex.message\" }}Hello{{ end }}",
+        "template": '{{ define "codex.message" }}Hello{{ end }}',
         "version": "template-version-1",
         "provenance": "api",
     }
@@ -159,7 +201,9 @@ class FakeAlertClient:
     def get_alert_rule(self, uid):
         self.rule_lookups.append(uid)
         if uid not in self.existing_rules:
-            raise alert_utils.GrafanaApiError(404, f"https://grafana/{uid}", "not found")
+            raise alert_utils.GrafanaApiError(
+                404, f"https://grafana/{uid}", "not found"
+            )
         return dict(self.existing_rules[uid])
 
     def create_alert_rule(self, payload):
@@ -207,7 +251,9 @@ class FakeAlertClient:
         for item in self.templates:
             if str(item.get("name")) == name:
                 return dict(item)
-        raise alert_utils.GrafanaApiError(404, f"https://grafana/templates/{name}", "not found")
+        raise alert_utils.GrafanaApiError(
+            404, f"https://grafana/templates/{name}", "not found"
+        )
 
     def update_template(self, name, payload):
         self.updated_templates.append((name, dict(payload)))
@@ -215,7 +261,9 @@ class FakeAlertClient:
 
     def get_dashboard(self, uid):
         if uid not in self.dashboard_by_uid:
-            raise alert_utils.GrafanaApiError(404, f"https://grafana/d/{uid}", "not found")
+            raise alert_utils.GrafanaApiError(
+                404, f"https://grafana/d/{uid}", "not found"
+            )
         return dict(self.dashboard_by_uid[uid])
 
     def search_dashboards(self, query):
@@ -241,7 +289,9 @@ class AlertUtilsTests(unittest.TestCase):
     def test_alert_provisioning_module_parses_as_python39_syntax(self):
         source = PROVISIONING_MODULE_PATH.read_text(encoding="utf-8")
 
-        ast.parse(source, filename=str(PROVISIONING_MODULE_PATH), feature_version=(3, 9))
+        ast.parse(
+            source, filename=str(PROVISIONING_MODULE_PATH), feature_version=(3, 9)
+        )
 
     def test_parse_args_supports_import_mode(self):
         args = alert_utils.parse_args(["--import-dir", "alerts/raw"])
@@ -335,8 +385,12 @@ class AlertUtilsTests(unittest.TestCase):
         help_text = alert_utils.build_parser().format_help()
 
         self.assertIn("Examples:", help_text)
-        self.assertIn("grafana-util alert export --url https://grafana.example.com", help_text)
-        self.assertIn("grafana-util alert import --url https://grafana.example.com", help_text)
+        self.assertIn(
+            "grafana-util alert export --url https://grafana.example.com", help_text
+        )
+        self.assertIn(
+            "grafana-util alert import --url https://grafana.example.com", help_text
+        )
         self.assertIn("export", help_text)
         self.assertIn("import", help_text)
         self.assertIn("diff", help_text)
@@ -444,7 +498,8 @@ class AlertUtilsTests(unittest.TestCase):
 
         expected = (
             "HttpxJsonHttpTransport"
-            if transport_module.httpx_is_available() and transport_module.http2_is_available()
+            if transport_module.httpx_is_available()
+            and transport_module.http2_is_available()
             else "RequestsJsonHttpTransport"
         )
         self.assertEqual(type(transport).__name__, expected)
@@ -535,7 +590,9 @@ class AlertUtilsTests(unittest.TestCase):
             prompt_password=False,
         )
 
-        with self.assertRaisesRegex(alert_utils.GrafanaError, "Choose either token auth"):
+        with self.assertRaisesRegex(
+            alert_utils.GrafanaError, "Choose either token auth"
+        ):
             alert_utils.resolve_auth(args)
 
     def test_resolve_auth_rejects_user_without_password(self):
@@ -577,7 +634,9 @@ class AlertUtilsTests(unittest.TestCase):
             prompt_password=True,
         )
 
-        with mock.patch("grafana_utils.alert_cli.getpass.getpass", return_value="secret") as prompt:
+        with mock.patch(
+            "grafana_utils.alert_cli.getpass.getpass", return_value="secret"
+        ) as prompt:
             headers = alert_utils.resolve_auth(args)
 
         expected = base64.b64encode(b"user:secret").decode("ascii")
@@ -593,7 +652,9 @@ class AlertUtilsTests(unittest.TestCase):
             prompt_password=False,
         )
 
-        with mock.patch("grafana_utils.alert_cli.getpass.getpass", return_value="token-secret") as prompt:
+        with mock.patch(
+            "grafana_utils.alert_cli.getpass.getpass", return_value="token-secret"
+        ) as prompt:
             headers = alert_utils.resolve_auth(args)
 
         self.assertEqual(headers["Authorization"], "Bearer token-secret")
@@ -608,7 +669,9 @@ class AlertUtilsTests(unittest.TestCase):
             prompt_password=False,
         )
 
-        with mock.patch.dict("os.environ", {"GRAFANA_API_TOKEN": "env-token"}, clear=True):
+        with mock.patch.dict(
+            "os.environ", {"GRAFANA_API_TOKEN": "env-token"}, clear=True
+        ):
             headers = alert_utils.resolve_auth(args)
 
         self.assertEqual(headers["Authorization"], "Bearer env-token")
@@ -622,7 +685,9 @@ class AlertUtilsTests(unittest.TestCase):
             prompt_password=False,
         )
 
-        with mock.patch.dict("os.environ", {"GRAFANA_USERNAME": "env-user"}, clear=True):
+        with mock.patch.dict(
+            "os.environ", {"GRAFANA_USERNAME": "env-user"}, clear=True
+        ):
             with self.assertRaisesRegex(
                 alert_utils.GrafanaError,
                 "Basic auth requires both --basic-user and --basic-password or --prompt-password.",
@@ -758,7 +823,9 @@ class AlertUtilsTests(unittest.TestCase):
 
         self.assertEqual(
             path,
-            Path("alerts/raw/mute-timings/weekday_maintenance/weekday_maintenance.json"),
+            Path(
+                "alerts/raw/mute-timings/weekday_maintenance/weekday_maintenance.json"
+            ),
         )
 
     def test_build_resource_dirs(self):
@@ -872,7 +939,9 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(payload["folderUID"], "infra-folder")
         self.assertNotIn("id", payload)
 
-    def test_build_import_operation_accepts_legacy_tool_document_without_schema_version(self):
+    def test_build_import_operation_accepts_legacy_tool_document_without_schema_version(
+        self,
+    ):
         document = alert_utils.build_rule_export_document(sample_rule())
         document.pop("schemaVersion")
 
@@ -1011,7 +1080,9 @@ class AlertUtilsTests(unittest.TestCase):
 
     def test_build_mute_timing_import_payload_requires_expected_fields(self):
         with self.assertRaises(alert_utils.GrafanaError):
-            alert_utils.build_mute_timing_import_payload({"name": "weekday-maintenance"})
+            alert_utils.build_mute_timing_import_payload(
+                {"name": "weekday-maintenance"}
+            )
 
     def test_build_template_import_payload_requires_expected_fields(self):
         with self.assertRaises(alert_utils.GrafanaError):
@@ -1047,7 +1118,9 @@ class AlertUtilsTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             args.output_dir = tmpdir
-            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+            with mock.patch.object(
+                alert_utils, "build_client", return_value=fake_client
+            ):
                 result = alert_utils.export_alerting_resources(args)
 
             self.assertEqual(result, 0)
@@ -1081,10 +1154,14 @@ class AlertUtilsTests(unittest.TestCase):
                 (raw_dir / "policies" / "notification-policies.json").exists()
             )
             self.assertTrue(
-                (raw_dir / "templates" / "codex.message" / "codex.message.json").exists()
+                (
+                    raw_dir / "templates" / "codex.message" / "codex.message.json"
+                ).exists()
             )
             root_index = alert_utils.load_json_file(Path(tmpdir) / "index.json")
-            self.assertEqual(root_index["schemaVersion"], alert_utils.TOOL_SCHEMA_VERSION)
+            self.assertEqual(
+                root_index["schemaVersion"], alert_utils.TOOL_SCHEMA_VERSION
+            )
             self.assertEqual(root_index["kind"], alert_utils.ROOT_INDEX_KIND)
             self.assertEqual(len(root_index["rules"]), 1)
             self.assertEqual(len(root_index["contact-points"]), 1)
@@ -1107,7 +1184,9 @@ class AlertUtilsTests(unittest.TestCase):
                 overwrite=True,
             )
             stdout = io.StringIO()
-            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+            with mock.patch.object(
+                alert_utils, "build_client", return_value=fake_client
+            ):
                 with redirect_stdout(stdout):
                     result = alert_utils.import_alerting_resources(args)
 
@@ -1129,7 +1208,9 @@ class AlertUtilsTests(unittest.TestCase):
                 overwrite=True,
             )
             stdout = io.StringIO()
-            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+            with mock.patch.object(
+                alert_utils, "build_client", return_value=fake_client
+            ):
                 with redirect_stdout(stdout):
                     result = alert_utils.diff_alerting_resources(args)
 
@@ -1151,7 +1232,9 @@ class AlertUtilsTests(unittest.TestCase):
                 overwrite=True,
             )
             stdout = io.StringIO()
-            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+            with mock.patch.object(
+                alert_utils, "build_client", return_value=fake_client
+            ):
                 with redirect_stdout(stdout):
                     result = alert_utils.diff_alerting_resources(args)
 
@@ -1175,7 +1258,9 @@ class AlertUtilsTests(unittest.TestCase):
                 rule_path,
                 overwrite=True,
             )
-            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+            with mock.patch.object(
+                alert_utils, "build_client", return_value=fake_client
+            ):
                 result = alert_utils.import_alerting_resources(args)
 
             self.assertEqual(result, 0)
@@ -1184,7 +1269,9 @@ class AlertUtilsTests(unittest.TestCase):
             self.assertEqual(len(fake_client.updated_rules), 1)
             self.assertEqual(fake_client.updated_rules[0][0], "rule-uid")
 
-    def test_import_alerting_resources_updates_existing_contact_point_when_requested(self):
+    def test_import_alerting_resources_updates_existing_contact_point_when_requested(
+        self,
+    ):
         args = alert_utils.parse_args(["--import-dir", "unused", "--replace-existing"])
         fake_client = FakeAlertClient(contact_points=[sample_contact_point()])
 
@@ -1196,7 +1283,9 @@ class AlertUtilsTests(unittest.TestCase):
                 path,
                 overwrite=True,
             )
-            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+            with mock.patch.object(
+                alert_utils, "build_client", return_value=fake_client
+            ):
                 result = alert_utils.import_alerting_resources(args)
 
             self.assertEqual(result, 0)
@@ -1204,7 +1293,9 @@ class AlertUtilsTests(unittest.TestCase):
             self.assertEqual(len(fake_client.updated_contact_points), 1)
             self.assertEqual(fake_client.updated_contact_points[0][0], "cp-uid")
 
-    def test_import_alerting_resources_updates_existing_mute_timing_when_requested(self):
+    def test_import_alerting_resources_updates_existing_mute_timing_when_requested(
+        self,
+    ):
         args = alert_utils.parse_args(["--import-dir", "unused", "--replace-existing"])
         fake_client = FakeAlertClient(mute_timings=[sample_mute_timing()])
 
@@ -1216,7 +1307,9 @@ class AlertUtilsTests(unittest.TestCase):
                 path,
                 overwrite=True,
             )
-            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+            with mock.patch.object(
+                alert_utils, "build_client", return_value=fake_client
+            ):
                 result = alert_utils.import_alerting_resources(args)
 
             self.assertEqual(result, 0)
@@ -1238,12 +1331,16 @@ class AlertUtilsTests(unittest.TestCase):
                 path,
                 overwrite=True,
             )
-            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+            with mock.patch.object(
+                alert_utils, "build_client", return_value=fake_client
+            ):
                 result = alert_utils.import_alerting_resources(args)
 
             self.assertEqual(result, 0)
             self.assertEqual(len(fake_client.updated_policies), 1)
-            self.assertEqual(fake_client.updated_policies[0]["receiver"], "Webhook Main")
+            self.assertEqual(
+                fake_client.updated_policies[0]["receiver"], "Webhook Main"
+            )
 
     def test_import_alerting_resources_updates_existing_template_when_requested(self):
         args = alert_utils.parse_args(["--import-dir", "unused", "--replace-existing"])
@@ -1257,7 +1354,9 @@ class AlertUtilsTests(unittest.TestCase):
                 path,
                 overwrite=True,
             )
-            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+            with mock.patch.object(
+                alert_utils, "build_client", return_value=fake_client
+            ):
                 result = alert_utils.import_alerting_resources(args)
 
             self.assertEqual(result, 0)
@@ -1279,7 +1378,9 @@ class AlertUtilsTests(unittest.TestCase):
                 path,
                 overwrite=True,
             )
-            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+            with mock.patch.object(
+                alert_utils, "build_client", return_value=fake_client
+            ):
                 with self.assertRaises(alert_utils.GrafanaError):
                     alert_utils.import_alerting_resources(args)
 
@@ -1326,13 +1427,23 @@ class AlertUtilsTests(unittest.TestCase):
                 second,
                 overwrite=True,
             )
-            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+            with mock.patch.object(
+                alert_utils, "build_client", return_value=fake_client
+            ):
                 with self.assertRaises(alert_utils.GrafanaError):
                     alert_utils.import_alerting_resources(args)
 
-    def test_import_alerting_resources_continue_policy_keeps_processing_after_item_error(self):
+    def test_import_alerting_resources_continue_policy_keeps_processing_after_item_error(
+        self,
+    ):
         args = alert_utils.parse_args(
-            ["--import-dir", "unused", "--replace-existing", "--error-policy", "continue"]
+            [
+                "--import-dir",
+                "unused",
+                "--replace-existing",
+                "--error-policy",
+                "continue",
+            ]
         )
         fake_client = FakeAlertClient(existing_rules={"rule-uid": sample_rule()})
 
@@ -1348,14 +1459,18 @@ class AlertUtilsTests(unittest.TestCase):
             )
             stdout = io.StringIO()
             stderr = io.StringIO()
-            with mock.patch.object(alert_utils, "build_client", return_value=fake_client):
+            with mock.patch.object(
+                alert_utils, "build_client", return_value=fake_client
+            ):
                 with redirect_stdout(stdout), redirect_stderr(stderr):
                     result = alert_utils.import_alerting_resources(args)
 
             self.assertEqual(result, 1)
             self.assertEqual(len(fake_client.updated_rules), 1)
             self.assertIn("failed 1 file(s)", stdout.getvalue())
-            self.assertIn("Continuing after alerting resource import error", stderr.getvalue())
+            self.assertIn(
+                "Continuing after alerting resource import error", stderr.getvalue()
+            )
 
 
 if __name__ == "__main__":

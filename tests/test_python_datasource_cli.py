@@ -18,6 +18,26 @@ FIXTURE_PATH = REPO_ROOT / "tests" / "fixtures" / "datasource_contract_cases.jso
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 datasource_cli = importlib.import_module("grafana_utils.datasource_cli")
+datasource_workflows = importlib.import_module("grafana_utils.datasource.workflows")
+datasource_contract = importlib.import_module("grafana_utils.datasource_contract")
+
+for _module, _names in (
+    (
+        datasource_workflows,
+        (
+            "build_export_index",
+            "build_import_payload",
+            "exporter_api_error_type",
+            "load_import_bundle",
+        ),
+    ),
+    (
+        datasource_contract,
+        ("normalize_datasource_record",),
+    ),
+):
+    for _name in _names:
+        setattr(datasource_cli, _name, getattr(_module, _name))
 
 
 class FakeDatasourceClient(object):
@@ -157,7 +177,9 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertFalse(args.json)
 
     def test_parse_args_supports_export_mode(self):
-        args = datasource_cli.parse_args(["export", "--export-dir", "./datasources", "--overwrite"])
+        args = datasource_cli.parse_args(
+            ["export", "--export-dir", "./datasources", "--overwrite"]
+        )
 
         self.assertEqual(args.command, "export")
         self.assertEqual(args.export_dir, "./datasources")
@@ -321,7 +343,14 @@ class DatasourceCliTests(unittest.TestCase):
 
     def test_parse_args_supports_import_output_format(self):
         args = datasource_cli.parse_args(
-            ["import", "--import-dir", "./datasources", "--dry-run", "--output-format", "json"]
+            [
+                "import",
+                "--import-dir",
+                "./datasources",
+                "--dry-run",
+                "--output-format",
+                "json",
+            ]
         )
 
         self.assertEqual(args.output_format, "json")
@@ -411,7 +440,14 @@ class DatasourceCliTests(unittest.TestCase):
     def test_parse_args_rejects_output_format_with_legacy_import_flags(self):
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(
-                ["import", "--import-dir", "./datasources", "--output-format", "table", "--json"]
+                [
+                    "import",
+                    "--import-dir",
+                    "./datasources",
+                    "--output-format",
+                    "table",
+                    "--json",
+                ]
             )
 
     def test_parse_args_rejects_import_output_columns_without_table_output(self):
@@ -676,7 +712,7 @@ class DatasourceCliTests(unittest.TestCase):
                 "--datasource-url",
                 "http://prometheus:9090",
                 "--json-data",
-                "{\"httpMethod\": \"POST\"}",
+                '{"httpMethod": "POST"}',
             ]
         )
         client = FakeDatasourceClient(datasources=[])
@@ -687,9 +723,13 @@ class DatasourceCliTests(unittest.TestCase):
                 result = datasource_cli.add_datasource(args)
 
         self.assertEqual(result, 0)
-        self.assertIn("Created datasource uid=prom-main name=Prometheus Main", stdout.getvalue())
+        self.assertIn(
+            "Created datasource uid=prom-main name=Prometheus Main", stdout.getvalue()
+        )
         self.assertEqual(client.imported_payloads[0]["method"], "POST")
-        self.assertEqual(client.imported_payloads[0]["payload"]["jsonData"], {"httpMethod": "POST"})
+        self.assertEqual(
+            client.imported_payloads[0]["payload"]["jsonData"], {"httpMethod": "POST"}
+        )
 
     def test_add_datasource_live_posts_common_auth_and_header_fields(self):
         args = datasource_cli.parse_args(
@@ -762,9 +802,9 @@ class DatasourceCliTests(unittest.TestCase):
                 "--type",
                 "prometheus",
                 "--json-data",
-                "{\"httpMethod\": \"POST\"}",
+                '{"httpMethod": "POST"}',
                 "--secure-json-data",
-                "{\"token\": \"abc123\"}",
+                '{"token": "abc123"}',
                 "--http-header",
                 "X-Scope-OrgID=tenant-a",
             ]
@@ -795,7 +835,14 @@ class DatasourceCliTests(unittest.TestCase):
             ["delete", "--uid", "prom-main", "--dry-run", "--json"]
         )
         client = FakeDatasourceClient(
-            datasources=[{"id": 7, "uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"}]
+            datasources=[
+                {
+                    "id": 7,
+                    "uid": "prom-main",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                }
+            ]
         )
 
         with mock.patch.object(datasource_cli, "build_client", return_value=client):
@@ -811,7 +858,14 @@ class DatasourceCliTests(unittest.TestCase):
     def test_delete_datasource_live_calls_delete_endpoint(self):
         args = datasource_cli.parse_args(["delete", "--uid", "prom-main"])
         client = FakeDatasourceClient(
-            datasources=[{"id": 7, "uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"}]
+            datasources=[
+                {
+                    "id": 7,
+                    "uid": "prom-main",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                }
+            ]
         )
 
         with mock.patch.object(datasource_cli, "build_client", return_value=client):
@@ -820,7 +874,10 @@ class DatasourceCliTests(unittest.TestCase):
                 result = datasource_cli.delete_datasource(args)
 
         self.assertEqual(result, 0)
-        self.assertIn("Deleted datasource uid=prom-main name=Prometheus Main id=7", stdout.getvalue())
+        self.assertIn(
+            "Deleted datasource uid=prom-main name=Prometheus Main id=7",
+            stdout.getvalue(),
+        )
         self.assertEqual(client.deleted_paths, ["/api/datasources/7"])
 
     def test_modify_datasource_dry_run_renders_table(self):
@@ -883,9 +940,9 @@ class DatasourceCliTests(unittest.TestCase):
                 "--server-name",
                 "prometheus.internal",
                 "--json-data",
-                "{\"httpMethod\": \"POST\"}",
+                '{"httpMethod": "POST"}',
                 "--secure-json-data",
-                "{\"token\": \"abc123\"}",
+                '{"token": "abc123"}',
             ]
         )
         client = FakeDatasourceClient(
@@ -910,7 +967,10 @@ class DatasourceCliTests(unittest.TestCase):
                 result = datasource_cli.modify_datasource(args)
 
         self.assertEqual(result, 0)
-        self.assertIn("Modified datasource uid=prom-main name=Prometheus Main id=7", stdout.getvalue())
+        self.assertIn(
+            "Modified datasource uid=prom-main name=Prometheus Main id=7",
+            stdout.getvalue(),
+        )
         payload = client.imported_payloads[0]["payload"]
         self.assertEqual(client.imported_payloads[0]["method"], "PUT")
         self.assertEqual(client.imported_payloads[0]["path"], "/api/datasources/7")
@@ -940,7 +1000,9 @@ class DatasourceCliTests(unittest.TestCase):
             },
         )
 
-    def test_modify_datasource_can_reuse_existing_basic_auth_user_for_password_only(self):
+    def test_modify_datasource_can_reuse_existing_basic_auth_user_for_password_only(
+        self,
+    ):
         args = datasource_cli.parse_args(
             [
                 "modify",
@@ -968,12 +1030,16 @@ class DatasourceCliTests(unittest.TestCase):
 
         payload = client.imported_payloads[0]["payload"]
         self.assertEqual(payload["basicAuthUser"], "metrics-user")
-        self.assertEqual(payload["secureJsonData"], {"basicAuthPassword": "metrics-pass"})
+        self.assertEqual(
+            payload["secureJsonData"], {"basicAuthPassword": "metrics-pass"}
+        )
 
     def test_modify_datasource_rejects_when_no_changes_are_requested(self):
         args = datasource_cli.parse_args(["modify", "--uid", "prom-main"])
 
-        with self.assertRaisesRegex(datasource_cli.GrafanaError, "requires at least one change flag"):
+        with self.assertRaisesRegex(
+            datasource_cli.GrafanaError, "requires at least one change flag"
+        ):
             datasource_cli.modify_datasource(args)
 
     def test_modify_datasource_rejects_invalid_json_data(self):
@@ -987,7 +1053,9 @@ class DatasourceCliTests(unittest.TestCase):
             ]
         )
 
-        with self.assertRaisesRegex(datasource_cli.GrafanaError, "must decode to a JSON object"):
+        with self.assertRaisesRegex(
+            datasource_cli.GrafanaError, "must decode to a JSON object"
+        ):
             datasource_cli.modify_datasource(args)
 
     def test_modify_datasource_rejects_json_data_key_conflicts_with_header_flags(self):
@@ -997,13 +1065,15 @@ class DatasourceCliTests(unittest.TestCase):
                 "--uid",
                 "prom-main",
                 "--json-data",
-                "{\"httpHeaderName1\": \"X-Existing\"}",
+                '{"httpHeaderName1": "X-Existing"}',
                 "--http-header",
                 "X-Scope-OrgID=tenant-a",
             ]
         )
 
-        with self.assertRaisesRegex(datasource_cli.GrafanaError, "would overwrite existing key"):
+        with self.assertRaisesRegex(
+            datasource_cli.GrafanaError, "would overwrite existing key"
+        ):
             datasource_cli.modify_datasource(args)
 
     def test_modify_datasource_rejects_missing_target_without_live_write(self):
@@ -1043,7 +1113,9 @@ class DatasourceCliTests(unittest.TestCase):
             ]
         )
 
-        with self.assertRaisesRegex(datasource_cli.GrafanaError, "must decode to a JSON object"):
+        with self.assertRaisesRegex(
+            datasource_cli.GrafanaError, "must decode to a JSON object"
+        ):
             datasource_cli.add_datasource(args)
 
     def test_add_datasource_rejects_basic_auth_password_without_user(self):
@@ -1059,7 +1131,9 @@ class DatasourceCliTests(unittest.TestCase):
             ]
         )
 
-        with self.assertRaisesRegex(datasource_cli.GrafanaError, "requires --basic-auth-user"):
+        with self.assertRaisesRegex(
+            datasource_cli.GrafanaError, "requires --basic-auth-user"
+        ):
             datasource_cli.add_datasource(args)
 
     def test_add_datasource_rejects_invalid_http_header_format(self):
@@ -1087,13 +1161,15 @@ class DatasourceCliTests(unittest.TestCase):
                 "--type",
                 "prometheus",
                 "--json-data",
-                "{\"httpHeaderName1\": \"X-Existing\"}",
+                '{"httpHeaderName1": "X-Existing"}',
                 "--http-header",
                 "X-Scope-OrgID=tenant-a",
             ]
         )
 
-        with self.assertRaisesRegex(datasource_cli.GrafanaError, "would overwrite existing key"):
+        with self.assertRaisesRegex(
+            datasource_cli.GrafanaError, "would overwrite existing key"
+        ):
             datasource_cli.add_datasource(args)
 
     def test_export_datasources_writes_normalized_files(self):
@@ -1167,8 +1243,13 @@ class DatasourceCliTests(unittest.TestCase):
                 (Path(tmpdir) / "index.json").read_text(encoding="utf-8")
             )
             self.assertEqual(index_document["kind"], datasource_cli.ROOT_INDEX_KIND)
-            self.assertEqual(index_document["schemaVersion"], datasource_cli.TOOL_SCHEMA_VERSION)
-            self.assertEqual(index_document["datasourcesFile"], datasource_cli.DATASOURCE_EXPORT_FILENAME)
+            self.assertEqual(
+                index_document["schemaVersion"], datasource_cli.TOOL_SCHEMA_VERSION
+            )
+            self.assertEqual(
+                index_document["datasourcesFile"],
+                datasource_cli.DATASOURCE_EXPORT_FILENAME,
+            )
             self.assertEqual(index_document["count"], 2)
 
             metadata_document = json.loads(
@@ -1274,9 +1355,15 @@ class DatasourceCliTests(unittest.TestCase):
             self.assertIn("across 2 org(s)", stdout.getvalue())
             org_one_dir = Path(tmpdir) / "org_1_Main_Org"
             org_two_dir = Path(tmpdir) / "org_2_Org_Two"
-            self.assertTrue((org_one_dir / datasource_cli.DATASOURCE_EXPORT_FILENAME).exists())
-            self.assertTrue((org_two_dir / datasource_cli.DATASOURCE_EXPORT_FILENAME).exists())
-            root_index = json.loads((Path(tmpdir) / "index.json").read_text(encoding="utf-8"))
+            self.assertTrue(
+                (org_one_dir / datasource_cli.DATASOURCE_EXPORT_FILENAME).exists()
+            )
+            self.assertTrue(
+                (org_two_dir / datasource_cli.DATASOURCE_EXPORT_FILENAME).exists()
+            )
+            root_index = json.loads(
+                (Path(tmpdir) / "index.json").read_text(encoding="utf-8")
+            )
             self.assertEqual(root_index["variant"], "all-orgs-root")
             self.assertEqual(root_index["count"], 2)
 
@@ -1292,7 +1379,9 @@ class DatasourceCliTests(unittest.TestCase):
         for case in self._load_contract_cases():
             with self.subTest(case=case["name"]):
                 self.assertEqual(
-                    datasource_cli.build_import_payload(case["expectedNormalizedRecord"]),
+                    datasource_cli.build_import_payload(
+                        case["expectedNormalizedRecord"]
+                    ),
                     case["expectedImportPayload"],
                 )
 
@@ -1344,7 +1433,14 @@ class DatasourceCliTests(unittest.TestCase):
 
     def test_export_datasources_dry_run_does_not_write_files(self):
         args = datasource_cli.parse_args(
-            ["export", "--export-dir", "ignored", "--dry-run", "--url", "http://127.0.0.1:3000"]
+            [
+                "export",
+                "--export-dir",
+                "ignored",
+                "--dry-run",
+                "--url",
+                "http://127.0.0.1:3000",
+            ]
         )
         client = FakeDatasourceClient(
             datasources=[
@@ -1368,9 +1464,13 @@ class DatasourceCliTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             self.assertIn("Would export 1 datasource(s).", stdout.getvalue())
-            self.assertFalse((Path(tmpdir) / datasource_cli.DATASOURCE_EXPORT_FILENAME).exists())
+            self.assertFalse(
+                (Path(tmpdir) / datasource_cli.DATASOURCE_EXPORT_FILENAME).exists()
+            )
             self.assertFalse((Path(tmpdir) / "index.json").exists())
-            self.assertFalse((Path(tmpdir) / datasource_cli.EXPORT_METADATA_FILENAME).exists())
+            self.assertFalse(
+                (Path(tmpdir) / datasource_cli.EXPORT_METADATA_FILENAME).exists()
+            )
 
     def test_import_datasources_rejects_export_org_mismatch_for_token_scope(self):
         args = datasource_cli.parse_args(
@@ -1638,12 +1738,16 @@ class DatasourceCliTests(unittest.TestCase):
                     and (payload or {}).get("uid") == "broken"
                 ):
                     raise datasource_cli.GrafanaError("broken datasource")
-                return original_request_json(path, params=params, method=method, payload=payload)
+                return original_request_json(
+                    path, params=params, method=method, payload=payload
+                )
 
             stdout = io.StringIO()
             stderr = io.StringIO()
             with mock.patch.object(datasource_cli, "build_client", return_value=client):
-                with mock.patch.object(client, "request_json", side_effect=flaky_request_json):
+                with mock.patch.object(
+                    client, "request_json", side_effect=flaky_request_json
+                ):
                     with redirect_stdout(stdout), redirect_stderr(stderr):
                         result = datasource_cli.import_datasources(args)
 
@@ -2068,7 +2172,10 @@ class DatasourceCliTests(unittest.TestCase):
 
         self.assertEqual(result, 0)
         self.assertIn("Diff same", stdout.getvalue())
-        self.assertIn("No datasource differences across 1 exported datasource(s).", stdout.getvalue())
+        self.assertIn(
+            "No datasource differences across 1 exported datasource(s).",
+            stdout.getvalue(),
+        )
 
     def test_diff_datasources_returns_one_when_inventory_differs(self):
         client = FakeDatasourceClient(
@@ -2132,9 +2239,14 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("Diff different", stdout.getvalue())
         self.assertIn("--- remote/prom_uid", stdout.getvalue())
         self.assertIn("+++ local/prom_uid", stdout.getvalue())
-        self.assertIn("Found 1 datasource difference(s) across 1 exported datasource(s).", stdout.getvalue())
+        self.assertIn(
+            "Found 1 datasource difference(s) across 1 exported datasource(s).",
+            stdout.getvalue(),
+        )
 
-    def test_import_datasources_dry_run_table_output_columns_limits_rendered_fields(self):
+    def test_import_datasources_dry_run_table_output_columns_limits_rendered_fields(
+        self,
+    ):
         args = datasource_cli.parse_args(
             [
                 "import",

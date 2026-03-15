@@ -13,7 +13,9 @@ from .inspection_dispatch import (
 def materialize_live_inspection_export(client, page_size, raw_dir, deps):
     """Write one temporary raw-export-like directory for live dashboard inspection."""
     raw_dir.mkdir(parents=True, exist_ok=True)
-    summaries = deps.attach_dashboard_org(client, client.iter_dashboard_summaries(page_size))
+    summaries = deps.attach_dashboard_org(
+        client, client.iter_dashboard_summaries(page_size)
+    )
     org = client.fetch_current_org()
     folder_inventory = deps.collect_folder_inventory(client, org, summaries)
     datasource_inventory = [

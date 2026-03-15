@@ -10,7 +10,7 @@ Caveats:
 """
 
 from dataclasses import dataclass
-from typing import Iterable, Mapping, Optional, Sequence
+from typing import Optional, Sequence
 
 from .dashboard_cli import GrafanaError
 
@@ -90,10 +90,14 @@ def collect_provider_references(secure_json_data):
     if secure_json_data is None:
         return []
     if not isinstance(secure_json_data, dict):
-        raise GrafanaError("Provider-backed secureJsonData input must be a JSON object.")
+        raise GrafanaError(
+            "Provider-backed secureJsonData input must be a JSON object."
+        )
     references = []
     for field_name in sorted(secure_json_data):
-        references.append(parse_provider_reference(secure_json_data[field_name], field_name))
+        references.append(
+            parse_provider_reference(secure_json_data[field_name], field_name)
+        )
     return references
 
 

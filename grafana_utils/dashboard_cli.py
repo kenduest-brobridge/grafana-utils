@@ -51,11 +51,9 @@ from .auth_staging import AuthConfigError, resolve_cli_auth_from_namespace
 from .dashboards.common import (
     DEFAULT_DASHBOARD_TITLE,
     DEFAULT_FOLDER_TITLE,
-    DEFAULT_FOLDER_UID,
     DEFAULT_ORG_ID,
     DEFAULT_ORG_NAME,
     DEFAULT_UNKNOWN_UID,
-    GrafanaApiError,
     GrafanaError,
 )
 from .dashboards.export_workflow import run_export_dashboards
@@ -65,48 +63,17 @@ from .dashboards.export_runtime import (
 from .dashboards.diff_workflow import run_diff_dashboards
 from .dashboards.export_inventory import (
     discover_dashboard_files as discover_dashboard_files_from_export,
-    resolve_export_org_id as resolve_export_org_id_from_export_inventory,
-)
-from .dashboards.folder_support import (
-    build_folder_inventory_lookup,
-    build_folder_inventory_record,
-    build_import_dashboard_folder_path,
-    build_live_folder_inventory_record,
-    collect_folder_inventory,
-    determine_folder_inventory_status,
-    ensure_folder_inventory,
-    inspect_folder_inventory,
-    load_datasource_inventory as load_datasource_inventory_from_folder_support,
-    load_folder_inventory as load_folder_inventory_from_folder_support,
-    resolve_dashboard_import_folder_path,
-    resolve_folder_inventory_record_for_dashboard,
-    resolve_folder_inventory_requirements as resolve_folder_inventory_requirements_from_folder_support,
-)
-from .dashboards.folder_path_match import (
-    apply_folder_path_guard_to_action,
-    build_folder_path_match_result,
-    resolve_existing_dashboard_folder_path,
-    resolve_source_dashboard_folder_path,
 )
 from .dashboards.import_support import (
     build_compare_diff_lines,
     build_local_compare_document,
     build_remote_compare_document,
-    build_dashboard_import_dry_run_record,
-    build_import_payload,
-    describe_dashboard_import_mode,
-    determine_dashboard_import_action,
-    determine_import_folder_uid_override,
     extract_dashboard_object,
     load_json_file,
     load_export_metadata as import_support_load_export_metadata,
     parse_dashboard_import_dry_run_columns,
-    render_dashboard_import_dry_run_json,
-    render_dashboard_import_dry_run_table,
-    render_folder_inventory_dry_run_table,
     resolve_dashboard_uid_for_import,
     serialize_compare_document,
-    validate_export_metadata as import_support_validate_export_metadata,
 )
 from .dashboards.import_workflow import run_import_dashboards
 from .dashboards.import_runtime import (
@@ -115,64 +82,23 @@ from .dashboards.import_runtime import (
 from .dashboards.inspection_runtime import (
     InspectionWorkflowDeps,
     build_inspection_workflow_deps as build_inspection_workflow_deps_from_runtime,
-    iter_dashboard_panels as iter_dashboard_panels_from_runtime,
 )
 from .dashboards.inspection_report import (
     INSPECT_EXPORT_HELP_FULL_EXAMPLES,
     INSPECT_LIVE_HELP_FULL_EXAMPLES,
     INSPECT_REPORT_FORMAT_CHOICES,
     REPORT_COLUMN_ALIASES,
-    build_export_inspection_report_document,
-    build_grouped_export_inspection_report_document,
-    filter_export_inspection_report_document,
-    parse_report_columns,
-    render_export_inspection_grouped_report,
-    render_export_inspection_report_csv,
-    render_export_inspection_report_tables,
-    render_export_inspection_tree_tables,
 )
 from .dashboards.listing import (
-    attach_dashboard_folder_paths,
-    attach_dashboard_org,
-    attach_dashboard_sources as attach_dashboard_sources_from_listing,
-    build_dashboard_summary_record,
-    build_data_source_record,
-    build_datasource_inventory_record,
-    build_folder_path,
-    describe_datasource_ref,
-    format_dashboard_summary_line,
-    format_data_source_line,
+    build_data_source_record as build_data_source_record,
+    build_datasource_inventory_record as build_datasource_inventory_record,
     list_dashboards as run_list_dashboards,
     list_data_sources as run_list_data_sources,
-    render_dashboard_summary_csv,
-    render_dashboard_summary_json,
-    render_dashboard_summary_table,
-    render_data_source_csv,
-    render_data_source_json,
-    render_data_source_table,
-    resolve_dashboard_source_metadata as resolve_dashboard_source_metadata_from_listing,
-    resolve_datasource_uid,
+    render_data_source_table as render_data_source_table,
 )
 from .dashboards.output_support import (
-    build_all_orgs_output_dir as build_all_orgs_output_dir_from_output_support,
-    build_dashboard_index_item as build_dashboard_index_item_from_output_support,
-    build_export_metadata as build_export_metadata_from_output_support,
-    build_export_variant_dirs as build_export_variant_dirs_from_output_support,
-    build_output_path as build_output_path_from_output_support,
-    build_root_export_index as build_root_export_index_from_output_support,
     build_variant_index,
-    ensure_dashboard_write_target as ensure_dashboard_write_target_from_output_support,
-    sanitize_path_component,
-    write_dashboard as write_dashboard_from_output_support,
-    write_json_document,
-)
-from .dashboards.progress import (
-    print_dashboard_export_progress,
-    print_dashboard_export_progress_summary,
-    print_dashboard_import_progress,
-)
-from .dashboards.inspection_workflow import (
-    materialize_live_inspection_export as run_materialize_live_inspection_export,
+    write_json_document as write_json_document,
 )
 from .dashboards.inspection_workflow import run_inspect_export, run_inspect_live
 from .roadmap_contracts import (
@@ -181,17 +107,9 @@ from .roadmap_contracts import (
     render_preflight_check_text,
     render_promotion_plan_text,
 )
-from .dashboards.transformer import (
-    build_datasource_catalog,
-    build_external_export_document,
-    build_preserved_web_import_document,
-    collect_datasource_refs,
-    is_builtin_datasource_ref,
-)
 from .http_transport import (
     DEFAULT_HTTP_TRANSPORT,
     HTTP_TRANSPORT_CHOICES,
-    build_json_http_transport,
 )
 
 
@@ -311,8 +229,7 @@ def add_common_cli_args(
         choices=HTTP_TRANSPORT_CHOICES,
         default=DEFAULT_HTTP_TRANSPORT,
         help=(
-            "Select the HTTP transport implementation. "
-            "Use auto, requests, or httpx."
+            "Select the HTTP transport implementation. " "Use auto, requests, or httpx."
         ),
     )
 
@@ -959,7 +876,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
             "  Export dashboards with an API token:\n"
             "    export GRAFANA_API_TOKEN='your-token'\n"
             "    grafana-util dashboard export --url http://localhost:3000 "
-            "--token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n"
+            '--token "$GRAFANA_API_TOKEN" --export-dir ./dashboards --overwrite\n\n'
             "  Compare raw dashboard exports against local Grafana:\n"
             "    grafana-util dashboard diff --url http://localhost:3000 "
             "--basic-user admin --basic-password admin --import-dir ./dashboards/raw"
@@ -982,7 +899,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
             "  Export dashboards with an API token:\n"
             "    export GRAFANA_API_TOKEN='your-token'\n"
             "    grafana-util dashboard export --url http://localhost:3000 "
-            "--token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n"
+            '--token "$GRAFANA_API_TOKEN" --export-dir ./dashboards --overwrite\n\n'
             "  Export into a flat directory layout instead of per-folder subdirectories:\n"
             "    grafana-util dashboard export --url http://localhost:3000 "
             "--basic-user admin --basic-password admin --export-dir ./dashboards --flat"
@@ -1137,16 +1054,16 @@ INSPECT_EXPORT_HELP_EXAMPLES = (
 INSPECT_LIVE_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  Inspect live dashboards as a report JSON document:\n"
-    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
+    '    grafana-util dashboard inspect-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" '
     "--view query --format json\n\n"
     "  Inspect live dashboards as dependency graph DOT:\n"
-    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
+    '    grafana-util dashboard inspect-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" '
     "--output-format graph-dot\n\n"
     "  Filter to one panel in dashboard/panel/query tree output:\n"
-    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
+    '    grafana-util dashboard inspect-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" '
     "--view query --layout tree --format text --report-filter-panel-id 7\n\n"
     "  Show full inspect help with extended report examples:\n"
-    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --help-full"
+    '    grafana-util dashboard inspect-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --help-full'
 )
 
 
@@ -1160,8 +1077,10 @@ def _normalize_output_format_args(
     if command in ("list-dashboard", "list-data-sources"):
         if output_format is None:
             return
-        if bool(getattr(args, "table", False)) or bool(getattr(args, "csv", False)) or bool(
-            getattr(args, "json", False)
+        if (
+            bool(getattr(args, "table", False))
+            or bool(getattr(args, "csv", False))
+            or bool(getattr(args, "json", False))
         ):
             parser.error(
                 "--output-format cannot be combined with --table, --csv, or --json for dashboard list commands."
@@ -1223,7 +1142,9 @@ def _resolve_inspect_output_format_from_view_args(
     layout: Optional[str],
 ) -> str:
     normalized_view = view or "summary"
-    normalized_format = format_name or ("text" if normalized_view != "query" else "table")
+    normalized_format = format_name or (
+        "text" if normalized_view != "query" else "table"
+    )
     normalized_layout = layout or "flat"
 
     if normalized_view == "summary":
@@ -1302,9 +1223,13 @@ def _validate_import_routing_args(
     if only_org_ids and not use_export_org:
         parser.error("--only-org-id requires --use-export-org for import-dashboard.")
     if bool(getattr(args, "create_missing_orgs", False)) and not use_export_org:
-        parser.error("--create-missing-orgs requires --use-export-org for import-dashboard.")
+        parser.error(
+            "--create-missing-orgs requires --use-export-org for import-dashboard."
+        )
     if use_export_org and getattr(args, "org_id", None):
-        parser.error("--use-export-org cannot be combined with --org-id for import-dashboard.")
+        parser.error(
+            "--use-export-org cannot be combined with --org-id for import-dashboard."
+        )
     if use_export_org and bool(getattr(args, "require_matching_export_org", False)):
         parser.error(
             "--use-export-org cannot be combined with --require-matching-export-org for import-dashboard."
@@ -1316,9 +1241,13 @@ def _load_json_object_file(path_value: str, description: str) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
-        raise GrafanaError("Failed to read %s %s: %s" % (description, path, exc)) from exc
+        raise GrafanaError(
+            "Failed to read %s %s: %s" % (description, path, exc)
+        ) from exc
     except json.JSONDecodeError as exc:
-        raise GrafanaError("Invalid JSON in %s %s: %s" % (description, path, exc)) from exc
+        raise GrafanaError(
+            "Invalid JSON in %s %s: %s" % (description, path, exc)
+        ) from exc
     if not isinstance(payload, dict):
         raise GrafanaError("%s must contain a JSON object: %s" % (description, path))
     return payload
@@ -1327,6 +1256,7 @@ def _load_json_object_file(path_value: str, description: str) -> dict[str, Any]:
 def _render_json_document(document: dict[str, Any]) -> int:
     print(json.dumps(document, indent=2, sort_keys=False, ensure_ascii=False))
     return 0
+
 
 def resolve_auth(args: argparse.Namespace) -> dict[str, str]:
     try:
@@ -1339,6 +1269,8 @@ def resolve_auth(args: argparse.Namespace) -> dict[str, str]:
         return headers
     except AuthConfigError as exc:
         raise GrafanaError(str(exc))
+
+
 def _build_export_workflow_deps() -> dict[str, Any]:
     return build_export_workflow_deps_from_runtime(
         {
@@ -1407,6 +1339,7 @@ def inspect_live(args: argparse.Namespace) -> int:
     """Inspect live Grafana dashboards by reusing the raw-export inspection pipeline."""
     return run_inspect_live(args, _build_inspection_workflow_deps())
 
+
 def inspect_export(args: argparse.Namespace) -> int:
     """Inspect one raw export directory and summarize dashboards, folders, and datasources."""
     return run_inspect_export(args, _build_inspection_workflow_deps())
@@ -1439,7 +1372,9 @@ def promote_plan(args: argparse.Namespace) -> int:
             else {}
         ),
     }
-    document = build_promotion_plan_document(source_bundle, target_inventory, options=options)
+    document = build_promotion_plan_document(
+        source_bundle, target_inventory, options=options
+    )
     if getattr(args, "output_format", "text") == "json":
         return _render_json_document(document)
     for line in render_promotion_plan_text(document):
@@ -1452,7 +1387,9 @@ def preflight_plan(args: argparse.Namespace) -> int:
     plan_document = _load_json_object_file(args.plan_file, "promotion plan")
     availability = {}
     if getattr(args, "availability_file", None):
-        availability = _load_json_object_file(args.availability_file, "availability document")
+        availability = _load_json_object_file(
+            args.availability_file, "availability document"
+        )
     document = build_preflight_check_document(plan_document, availability=availability)
     if getattr(args, "output_format", "text") == "json":
         return _render_json_document(document)

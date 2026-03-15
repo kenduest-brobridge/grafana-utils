@@ -99,10 +99,11 @@ def resolve_inspect_dispatch_args(args, deps, grafana_error):
             "--report-filter-panel-id is only supported with --report or report-like --output-format."
         )
     if report_columns is not None and report_format in GOVERNANCE_REPORT_FORMATS:
-        raise grafana_error(
-            "--report-columns is not supported with governance output."
-        )
-    if report_columns is not None and report_format not in REPORT_FORMATS_WITH_COLUMN_SUPPORT:
+        raise grafana_error("--report-columns is not supported with governance output.")
+    if (
+        report_columns is not None
+        and report_format not in REPORT_FORMATS_WITH_COLUMN_SUPPORT
+    ):
         raise grafana_error(
             "--report-columns is only supported with report-table, report-csv, report-tree-table, or the equivalent --report modes."
         )
@@ -196,7 +197,11 @@ def _render_report_output(import_dir, deps, settings):
             report_document,
         )
         if report_format == "graph-json":
-            print(json.dumps(graph_document, indent=2, sort_keys=False, ensure_ascii=False))
+            print(
+                json.dumps(
+                    graph_document, indent=2, sort_keys=False, ensure_ascii=False
+                )
+            )
             return 0
         if report_format == "graph-dot":
             print(deps.render_dependency_graph_dot(graph_document))

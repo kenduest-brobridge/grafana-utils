@@ -64,7 +64,9 @@ def collect_folder_inventory(
         folder = client.fetch_folder_if_exists(folder_uid)
         if not folder:
             continue
-        folders_by_uid[folder_uid] = build_folder_inventory_record(folder, org, item["title"])
+        folders_by_uid[folder_uid] = build_folder_inventory_record(
+            folder, org, item["title"]
+        )
         parents = folder.get("parents")
         if isinstance(parents, list):
             for parent in parents:
@@ -312,7 +314,9 @@ def resolve_dashboard_import_folder_path(
 
     live_folder = client.fetch_folder_if_exists(folder_uid)
     if isinstance(live_folder, dict):
-        return build_folder_path(live_folder, str(live_folder.get("title") or folder_uid))
+        return build_folder_path(
+            live_folder, str(live_folder.get("title") or folder_uid)
+        )
 
     inventory_record = folder_inventory_lookup.get(folder_uid)
     if inventory_record is None:

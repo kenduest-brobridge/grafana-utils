@@ -135,7 +135,9 @@ class GrafanaClient:
         """Fetch the full dashboard wrapper or return None when the UID is missing."""
         data = None
         try:
-            data = self.request_json("/api/dashboards/uid/%s" % parse.quote(uid, safe=""))
+            data = self.request_json(
+                "/api/dashboards/uid/%s" % parse.quote(uid, safe="")
+            )
         except GrafanaApiError as exc:
             if exc.status_code == 404:
                 return None

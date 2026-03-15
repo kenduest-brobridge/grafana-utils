@@ -41,9 +41,7 @@ def get_rule_linkage(rule: dict[str, Any]) -> Optional[dict[str, str]]:
     if not isinstance(annotations, dict):
         return None
 
-    dashboard_uid = str(
-        annotations.get(LINKED_DASHBOARD_ANNOTATION_KEY) or ""
-    ).strip()
+    dashboard_uid = str(annotations.get(LINKED_DASHBOARD_ANNOTATION_KEY) or "").strip()
     if not dashboard_uid:
         return None
 
@@ -125,7 +123,9 @@ def filter_dashboard_search_matches(
     folder_title = str(linked_dashboard.get("folderTitle") or "")
     if folder_title:
         folder_matches = [
-            item for item in filtered if str(item.get("folderTitle") or "") == folder_title
+            item
+            for item in filtered
+            if str(item.get("folderTitle") or "") == folder_title
         ]
         if folder_matches:
             filtered = folder_matches
@@ -227,7 +227,9 @@ def apply_rule_linkage_maps(
     source_dashboard_uid = linkage["dashboardUid"]
     dashboard_uid = dashboard_uid_map.get(source_dashboard_uid, source_dashboard_uid)
     source_panel_id = linkage.get("panelId", "")
-    mapped_panel_id = panel_id_map.get(source_dashboard_uid, {}).get(source_panel_id, "")
+    mapped_panel_id = panel_id_map.get(source_dashboard_uid, {}).get(
+        source_panel_id, ""
+    )
 
     normalized = copy.deepcopy(payload)
     annotations = normalized.setdefault("annotations", {})
@@ -245,7 +247,9 @@ def extract_linked_dashboard_metadata(
     dashboard_uid: str,
 ) -> dict[str, Any]:
     metadata = document.get("metadata")
-    linked_dashboard = metadata.get("linkedDashboard") if isinstance(metadata, dict) else None
+    linked_dashboard = (
+        metadata.get("linkedDashboard") if isinstance(metadata, dict) else None
+    )
     if not isinstance(linked_dashboard, dict):
         raise GrafanaError(
             "Alert rule references dashboard UID %r, but that dashboard "
@@ -350,7 +354,9 @@ def build_rule_export_document(rule: dict[str, Any]) -> dict[str, Any]:
     return document
 
 
-def build_contact_point_export_document(contact_point: dict[str, Any]) -> dict[str, Any]:
+def build_contact_point_export_document(
+    contact_point: dict[str, Any],
+) -> dict[str, Any]:
     if not isinstance(contact_point, dict):
         raise GrafanaError("Unexpected contact-point payload from Grafana.")
     return build_tool_document(
@@ -432,7 +438,9 @@ def extract_tool_spec(document: dict[str, Any], expected_kind: str) -> dict[str,
     else:
         spec = document
     if not isinstance(spec, dict):
-        raise GrafanaError("%s import document is missing a valid spec object." % expected_kind)
+        raise GrafanaError(
+            "%s import document is missing a valid spec object." % expected_kind
+        )
     return spec
 
 
@@ -506,15 +514,16 @@ def build_template_import_payload(document: dict[str, Any]) -> dict[str, Any]:
     missing = [field for field in required_fields if field not in payload]
     if missing:
         raise GrafanaError(
-            "Template import document is missing required fields: "
-            + ", ".join(missing)
+            "Template import document is missing required fields: " + ", ".join(missing)
         )
     return payload
 
 
 def build_import_operation(document: dict[str, Any]) -> tuple[str, dict[str, Any]]:
     if not isinstance(document, dict):
-        raise GrafanaError("Unexpected alerting resource document. Expected a JSON object.")
+        raise GrafanaError(
+            "Unexpected alerting resource document. Expected a JSON object."
+        )
     kind = detect_document_kind(document)
     builders = {
         RULE_KIND: build_rule_import_payload,
@@ -566,7 +575,9 @@ def build_compare_document(kind: str, payload: dict[str, Any]) -> dict[str, Any]
 
 
 def serialize_compare_document(document: dict[str, Any]) -> str:
-    return json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return json.dumps(
+        document, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
 
 
 def build_resource_identity(kind: str, payload: dict[str, Any]) -> str:

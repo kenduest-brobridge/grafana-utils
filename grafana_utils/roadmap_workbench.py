@@ -219,7 +219,7 @@ def _build_datasource_node_id(datasource_uid: str) -> str:
 
 
 def _resolve_datasource_inventory(
-    summary_document: dict[str, Any]
+    summary_document: dict[str, Any],
 ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     by_uid = {}
     by_name = {}
@@ -252,9 +252,12 @@ def _resolve_query_datasource_record(
         )
     if inventory is not None:
         return {
-            "uid": _normalize_text(inventory.get("uid"), datasource_uid or datasource_label),
+            "uid": _normalize_text(
+                inventory.get("uid"), datasource_uid or datasource_label
+            ),
             "name": _normalize_text(
-                inventory.get("name"), datasource_label or datasource_uid or "Unknown datasource"
+                inventory.get("name"),
+                datasource_label or datasource_uid or "Unknown datasource",
             ),
             "type": _normalize_text(inventory.get("type"), "unknown"),
         }
@@ -375,9 +378,15 @@ def build_dependency_graph_document(
             datasourceType=datasource_type,
         )
 
-        ensure_edge(dashboard_node_id, panel_node_id, "contains-panel", dashboard_uid, panel_id)
         ensure_edge(
-            panel_node_id, datasource_node_id, "queries-datasource", dashboard_uid, panel_id
+            dashboard_node_id, panel_node_id, "contains-panel", dashboard_uid, panel_id
+        )
+        ensure_edge(
+            panel_node_id,
+            datasource_node_id,
+            "queries-datasource",
+            dashboard_uid,
+            panel_id,
         )
 
     nodes = sorted(nodes_by_id.values(), key=lambda item: (item["type"], item["id"]))
@@ -392,9 +401,13 @@ def build_dependency_graph_document(
         "summary": {
             "nodeCount": len(nodes),
             "edgeCount": len(edges),
-            "dashboardCount": len([node for node in nodes if node["type"] == "dashboard"]),
+            "dashboardCount": len(
+                [node for node in nodes if node["type"] == "dashboard"]
+            ),
             "panelCount": len([node for node in nodes if node["type"] == "panel"]),
-            "datasourceCount": len([node for node in nodes if node["type"] == "datasource"]),
+            "datasourceCount": len(
+                [node for node in nodes if node["type"] == "datasource"]
+            ),
         },
         "nodes": nodes,
         "edges": edges,
@@ -409,7 +422,9 @@ def _escape_dot_string(value: Any) -> str:
 def render_dependency_graph_dot(document: dict[str, Any]) -> str:
     """Render the dependency graph contract as a deterministic DOT document."""
     if str(document.get("kind") or "").strip() != DEPENDENCY_GRAPH_KIND:
-        raise ValueError("Dependency graph document kind is not supported for DOT rendering.")
+        raise ValueError(
+            "Dependency graph document kind is not supported for DOT rendering."
+        )
     lines = [
         "digraph grafana_dependency_graph {",
         '  rankdir="LR";',
@@ -428,9 +443,7 @@ def render_dependency_graph_dot(document: dict[str, Any]) -> str:
         label = _escape_dot_string(node.get("label") or node.get("id") or "")
         node_type = str(node.get("type") or "").strip()
         shape = shape_by_type.get(node_type, "box")
-        lines.append(
-            '  "%s" [label="%s", shape="%s"];' % (node_id, label, shape)
-        )
+        lines.append('  "%s" [label="%s", shape="%s"];' % (node_id, label, shape))
     for edge in document.get("edges") or []:
         if not isinstance(edge, dict):
             continue
@@ -442,7 +455,8 @@ def render_dependency_graph_dot(document: dict[str, Any]) -> str:
         if query_count > 1:
             edge_label = "%s (%s)" % (relation, query_count)
         lines.append(
-            '  "%s" -> "%s" [label="%s"];' % (
+            '  "%s" -> "%s" [label="%s"];'
+            % (
                 source,
                 target,
                 _escape_dot_string(edge_label),
@@ -501,7 +515,9 @@ def build_dependency_graph_governance_summary(
         for datasource_id in datasource_ids:
             datasource_to_panels.setdefault(datasource_id, set()).add(panel_id)
             if dashboard_id:
-                datasource_to_dashboards.setdefault(datasource_id, set()).add(dashboard_id)
+                datasource_to_dashboards.setdefault(datasource_id, set()).add(
+                    dashboard_id
+                )
 
     orphaned_datasources = []
     blast_radius = []
@@ -589,7 +605,7 @@ def render_dependency_graph_governance_text(document: dict[str, Any]) -> List[st
 
 
 def _build_dashboard_bundle_lookup(
-    bundle_document: dict[str, Any]
+    bundle_document: dict[str, Any],
 ) -> Dict[str, dict[str, Any]]:
     lookup: Dict[str, dict[str, Any]] = {}
     for item in bundle_document.get("dashboards") or []:
@@ -603,7 +619,7 @@ def _build_dashboard_bundle_lookup(
 
 
 def _build_datasource_bundle_lookup(
-    bundle_document: dict[str, Any]
+    bundle_document: dict[str, Any],
 ) -> Dict[str, dict[str, Any]]:
     lookup: Dict[str, dict[str, Any]] = {}
     for item in bundle_document.get("datasources") or []:
@@ -643,7 +659,8 @@ def build_promotion_plan_document(
     for source_uid, source_dashboard in sorted(source_dashboards.items()):
         target_uid = _normalize_text(dashboard_uid_map.get(source_uid), source_uid)
         target_name = _normalize_text(
-            dashboard_name_map.get(source_uid), _normalize_text(source_dashboard.get("title"))
+            dashboard_name_map.get(source_uid),
+            _normalize_text(source_dashboard.get("title")),
         )
         target_dashboard = target_dashboards.get(target_uid)
         action = "create"
@@ -653,7 +670,9 @@ def build_promotion_plan_document(
             {
                 "resourceType": "dashboard",
                 "sourceUid": source_uid,
-                "sourceName": _normalize_text(source_dashboard.get("title"), source_uid),
+                "sourceName": _normalize_text(
+                    source_dashboard.get("title"), source_uid
+                ),
                 "targetUid": target_uid,
                 "targetName": target_name or target_uid,
                 "action": action,
@@ -685,7 +704,9 @@ def build_promotion_plan_document(
                 "targetName": target_name or source_name or target_uid,
                 "action": action,
                 "requiresPreflight": require_preflight,
-                "datasourceType": _normalize_text(source_datasource.get("type"), "unknown"),
+                "datasourceType": _normalize_text(
+                    source_datasource.get("type"), "unknown"
+                ),
             }
         )
 
@@ -721,7 +742,9 @@ def build_preflight_check_document(
 ) -> dict[str, Any]:
     """Build a staged preflight summary from a promotion plan and availability hints."""
     if str(plan_document.get("kind") or "").strip() != PROMOTION_PLAN_KIND:
-        raise ValueError("Promotion plan document kind is not supported for preflight checks.")
+        raise ValueError(
+            "Promotion plan document kind is not supported for preflight checks."
+        )
     availability = dict(availability or {})
     available_datasource_uids = set(availability.get("datasourceUids") or [])
     available_plugin_ids = set(availability.get("pluginIds") or [])
@@ -738,10 +761,17 @@ def build_preflight_check_document(
         if item.get("resourceType") == "datasource":
             datasource_uid = _normalize_text(item.get("targetUid"))
             status = "ok"
-            detail = "Target datasource is already mapped or will be created by this plan."
-            if item.get("action") != "create" and datasource_uid not in available_datasource_uids:
+            detail = (
+                "Target datasource is already mapped or will be created by this plan."
+            )
+            if (
+                item.get("action") != "create"
+                and datasource_uid not in available_datasource_uids
+            ):
                 status = "missing"
-                detail = "Target datasource is not available in the destination inventory."
+                detail = (
+                    "Target datasource is not available in the destination inventory."
+                )
             checks.append(
                 {
                     "kind": "datasource",
@@ -807,7 +837,9 @@ def build_preflight_check_document(
         "summary": {
             "checkCount": len(checks),
             "okCount": len([item for item in checks if item["status"] == "ok"]),
-            "missingCount": len([item for item in checks if item["status"] == "missing"]),
+            "missingCount": len(
+                [item for item in checks if item["status"] == "missing"]
+            ),
             "blockingCount": len([item for item in checks if item["status"] != "ok"]),
         },
         "checks": checks,
@@ -817,7 +849,9 @@ def build_preflight_check_document(
 def render_promotion_plan_text(document: dict[str, Any]) -> List[str]:
     """Render a staged promotion plan as a deterministic text summary."""
     if str(document.get("kind") or "").strip() != PROMOTION_PLAN_KIND:
-        raise ValueError("Promotion plan document kind is not supported for text rendering.")
+        raise ValueError(
+            "Promotion plan document kind is not supported for text rendering."
+        )
     summary = document.get("summary") or {}
     lines = [
         "Promotion plan: %s -> %s"
@@ -853,7 +887,9 @@ def render_promotion_plan_text(document: dict[str, Any]) -> List[str]:
 def render_preflight_check_text(document: dict[str, Any]) -> List[str]:
     """Render staged preflight results as a deterministic text summary."""
     if str(document.get("kind") or "").strip() != PREFLIGHT_CHECK_KIND:
-        raise ValueError("Preflight check document kind is not supported for text rendering.")
+        raise ValueError(
+            "Preflight check document kind is not supported for text rendering."
+        )
     summary = document.get("summary") or {}
     lines = [
         "Promotion preflight summary",

@@ -48,43 +48,34 @@ from .alerts.common import (
     POLICIES_SUBDIR,
     RAW_EXPORT_SUBDIR,
     RESOURCE_SUBDIR_BY_KIND,
-    ROOT_INDEX_KIND,
     RULE_KIND,
     RULES_SUBDIR,
     TEMPLATE_KIND,
     TEMPLATES_SUBDIR,
-    TOOL_API_VERSION,
-    TOOL_SCHEMA_VERSION,
 )
 from .alerts.provisioning import (
     build_compare_document,
     build_contact_point_export_document,
-    build_contact_point_import_payload,
     build_diff_label,
     build_empty_root_index,
     build_import_operation,
     build_linked_dashboard_metadata,
     build_mute_timing_export_document,
-    build_mute_timing_import_payload,
     build_policies_export_document,
     build_resource_identity,
     build_rule_export_document,
-    build_rule_import_payload,
     build_template_export_document,
-    build_template_import_payload,
     determine_import_action,
     fetch_live_compare_document,
     load_panel_id_map as load_panel_id_map_impl,
     load_string_map as load_string_map_impl,
     prepare_import_payload_for_target,
-    rewrite_rule_dashboard_linkage,
     serialize_compare_document,
 )
 from .clients.alert_client import GrafanaAlertClient
 from .http_transport import (
     DEFAULT_HTTP_TRANSPORT,
     HTTP_TRANSPORT_CHOICES,
-    build_json_http_transport,
 )
 
 
@@ -180,8 +171,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
         choices=HTTP_TRANSPORT_CHOICES,
         default=DEFAULT_HTTP_TRANSPORT,
         help=(
-            "Select the HTTP transport implementation. "
-            "Use auto, requests, or httpx."
+            "Select the HTTP transport implementation. " "Use auto, requests, or httpx."
         ),
     )
 
@@ -289,9 +279,17 @@ def add_import_args(parser: argparse.ArgumentParser, diff_mode: bool = False) ->
         ),
     )
     if diff_mode:
-        parser.set_defaults(replace_existing=False, dry_run=False, output_dir=DEFAULT_OUTPUT_DIR, flat=False, overwrite=False)
+        parser.set_defaults(
+            replace_existing=False,
+            dry_run=False,
+            output_dir=DEFAULT_OUTPUT_DIR,
+            flat=False,
+            overwrite=False,
+        )
     else:
-        parser.set_defaults(diff_dir=None, output_dir=DEFAULT_OUTPUT_DIR, flat=False, overwrite=False)
+        parser.set_defaults(
+            diff_dir=None, output_dir=DEFAULT_OUTPUT_DIR, flat=False, overwrite=False
+        )
 
 
 def build_legacy_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
@@ -370,7 +368,7 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
         epilog=build_subcommand_examples(
             (
                 "Export alerting resources into raw files",
-                "grafana-util alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite",
+                'grafana-util alert export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-dir ./alerts --overwrite',
             ),
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -503,10 +501,14 @@ def _normalize_output_format_args(
 ) -> None:
     """Convert `--output-format` aliases into exclusive output-mode booleans."""
     output_format = getattr(args, "output_format", None)
-    if output_format is None or not str(getattr(args, "alert_command", "")).startswith("list-"):
+    if output_format is None or not str(getattr(args, "alert_command", "")).startswith(
+        "list-"
+    ):
         return
-    if bool(getattr(args, "table", False)) or bool(getattr(args, "csv", False)) or bool(
-        getattr(args, "json", False)
+    if (
+        bool(getattr(args, "table", False))
+        or bool(getattr(args, "csv", False))
+        or bool(getattr(args, "json", False))
     ):
         parser.error(
             "--output-format cannot be combined with --table, --csv, or --json for alert list commands."
@@ -561,12 +563,15 @@ def load_panel_id_map(path_value: Optional[str]) -> dict[str, dict[str, str]]:
 
 def render_compare_json(payload: dict[str, Any]) -> str:
     """Render compare payloads with stable ordering for readable diff output."""
-    return json.dumps(
-        payload,
-        indent=2,
-        sort_keys=True,
-        ensure_ascii=False,
-    ) + "\n"
+    return (
+        json.dumps(
+            payload,
+            indent=2,
+            sort_keys=True,
+            ensure_ascii=False,
+        )
+        + "\n"
+    )
 
 
 def print_unified_diff(
@@ -603,9 +608,7 @@ def load_json_file(path: Path) -> Any:
 
 
 def build_resource_dirs(raw_dir: Path) -> dict[str, Path]:
-    return {
-        kind: raw_dir / subdir for kind, subdir in RESOURCE_SUBDIR_BY_KIND.items()
-    }
+    return {kind: raw_dir / subdir for kind, subdir in RESOURCE_SUBDIR_BY_KIND.items()}
 
 
 def build_rule_output_path(output_dir: Path, rule: dict[str, Any], flat: bool) -> Path:
@@ -667,9 +670,7 @@ def discover_alert_resource_files(import_dir: Path) -> list[Path]:
         )
 
     files = [
-        path
-        for path in sorted(import_dir.rglob("*.json"))
-        if path.name != "index.json"
+        path for path in sorted(import_dir.rglob("*.json")) if path.name != "index.json"
     ]
     if not files:
         raise GrafanaError(f"No alerting resource JSON files found in {import_dir}")
@@ -1085,13 +1086,12 @@ def export_alerting_resources(args: argparse.Namespace) -> int:
 
     index_path = output_dir / "index.json"
     write_json(root_index, index_path, overwrite=True)
-    exported_count = sum(len(root_index[subdir]) for subdir in RESOURCE_SUBDIR_BY_KIND.values())
+    exported_count = sum(
+        len(root_index[subdir]) for subdir in RESOURCE_SUBDIR_BY_KIND.values()
+    )
     summary = format_export_summary(root_index, index_path)
     if failures:
-        print(
-            "%s failed=%s exported=%s"
-            % (summary, len(failures), exported_count)
-        )
+        print("%s failed=%s exported=%s" % (summary, len(failures), exported_count))
         return 1
     print(summary)
     return 0
@@ -1143,7 +1143,9 @@ def import_contact_point_document(
         existing = {str(item.get("uid") or "") for item in client.list_contact_points()}
         if uid in existing:
             result = client.update_contact_point(uid, payload)
-            return "updated", str(result.get("uid") or uid or payload.get("name") or "unknown")
+            return "updated", str(
+                result.get("uid") or uid or payload.get("name") or "unknown"
+            )
 
     result = client.create_contact_point(payload)
     return "created", str(result.get("uid") or uid or payload.get("name") or "unknown")
@@ -1176,9 +1178,7 @@ def build_template_update_payload(
     existing_names = {str(item.get("name") or "") for item in client.list_templates()}
     exists = name in existing_names
     if exists and not replace_existing:
-        raise GrafanaError(
-            f"Template {name!r} already exists. Use --replace-existing."
-        )
+        raise GrafanaError(f"Template {name!r} already exists. Use --replace-existing.")
 
     template_payload = dict(payload)
     if exists:
@@ -1264,11 +1264,15 @@ def import_alerting_resources(args: argparse.Namespace) -> int:
                     payload,
                     args.replace_existing,
                 )
-                print(f"Dry-run {resource_file} -> kind={kind} id={identity} action={action}")
+                print(
+                    f"Dry-run {resource_file} -> kind={kind} id={identity} action={action}"
+                )
             else:
                 action, identity = import_resource_document(client, kind, payload, args)
                 imported_count += 1
-                print(f"Imported {resource_file} -> kind={kind} id={identity} action={action}")
+                print(
+                    f"Imported {resource_file} -> kind={kind} id={identity} action={action}"
+                )
         except Exception as exc:
             if not should_continue_on_item_error(args):
                 raise
@@ -1292,7 +1296,9 @@ def import_alerting_resources(args: argparse.Namespace) -> int:
                 % (len(resource_files), import_dir, len(failures))
             )
         else:
-            print(f"Dry-run checked {len(resource_files)} alerting resource files from {import_dir}")
+            print(
+                f"Dry-run checked {len(resource_files)} alerting resource files from {import_dir}"
+            )
     else:
         if failures:
             print(
@@ -1300,7 +1306,9 @@ def import_alerting_resources(args: argparse.Namespace) -> int:
                 % (imported_count, import_dir, len(failures))
             )
         else:
-            print(f"Imported {len(resource_files)} alerting resource files from {import_dir}")
+            print(
+                f"Imported {len(resource_files)} alerting resource files from {import_dir}"
+            )
     return 1 if failures else 0
 
 
@@ -1332,7 +1340,9 @@ def diff_alerting_resources(args: argparse.Namespace) -> int:
             local_compare = build_compare_document(kind, payload)
             remote_compare = fetch_live_compare_document(client, kind, payload)
             if remote_compare is None:
-                print(f"Diff missing-remote {resource_file} -> kind={kind} id={identity}")
+                print(
+                    f"Diff missing-remote {resource_file} -> kind={kind} id={identity}"
+                )
                 print_unified_diff(
                     {},
                     local_compare,
@@ -1434,7 +1444,9 @@ def list_alert_resources(args: argparse.Namespace) -> int:
     if args.csv:
         render_alert_list_csv(rows, fields)
         return 0
-    for line in build_alert_list_table(rows, fields, headers, include_header=not args.no_header):
+    for line in build_alert_list_table(
+        rows, fields, headers, include_header=not args.no_header
+    ):
         print(line)
     return 0
 

@@ -6,7 +6,11 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from tests.test_python_dashboard_cli import FakeDashboardWorkflowClient, build_export_metadata, exporter
+from tests.test_python_dashboard_cli import (
+    FakeDashboardWorkflowClient,
+    build_export_metadata,
+    exporter,
+)
 
 
 class DashboardInspectionTests(unittest.TestCase):
@@ -66,7 +70,9 @@ class DashboardInspectionTests(unittest.TestCase):
             ),
             import_dir / exporter.EXPORT_METADATA_FILENAME,
         )
-        exporter.write_json_document([], import_dir / exporter.FOLDER_INVENTORY_FILENAME)
+        exporter.write_json_document(
+            [], import_dir / exporter.FOLDER_INVENTORY_FILENAME
+        )
         exporter.write_json_document(
             {"dashboard": dashboard, "meta": {}},
             import_dir
@@ -74,8 +80,8 @@ class DashboardInspectionTests(unittest.TestCase):
             / (
                 "%s__%s.json"
                 % (
-                str(dashboard.get("title") or "Dashboard").replace(" ", "_"),
-                str(dashboard.get("uid") or "dashboard"),
+                    str(dashboard.get("title") or "Dashboard").replace(" ", "_"),
+                    str(dashboard.get("uid") or "dashboard"),
                 )
             ),
         )
@@ -296,10 +302,14 @@ class DashboardInspectionTests(unittest.TestCase):
                         "orgId": "1",
                     },
                 ],
-                index=[{"uid": "abc", "title": "CPU", "path": "General", "kind": "raw"}],
+                index=[
+                    {"uid": "abc", "title": "CPU", "path": "General", "kind": "raw"}
+                ],
             )
 
-            args = exporter.parse_args(["inspect-export", "--import-dir", str(import_dir)])
+            args = exporter.parse_args(
+                ["inspect-export", "--import-dir", str(import_dir)]
+            )
             result, output = self.run_inspect(args)
 
             self.assertEqual(result, 0)
@@ -381,7 +391,9 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertEqual(payload["summary"]["orphanedDatasourceCount"], 1)
             self.assertEqual(payload["folders"][0]["path"], "General")
             self.assertEqual(payload["datasources"][0]["name"], "prom-main")
-            self.assertEqual(payload["datasourceInventory"][0]["name"], "Prometheus Main")
+            self.assertEqual(
+                payload["datasourceInventory"][0]["name"], "Prometheus Main"
+            )
             self.assertEqual(payload["datasourceInventory"][0]["referenceCount"], 1)
             self.assertEqual(payload["orphanedDatasources"][0]["uid"], "unused-main")
             self.assertEqual(payload["orphanedDatasources"][0]["name"], "Unused Main")
@@ -562,13 +574,21 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertEqual(payload["queries"][0]["dashboardUid"], "infra-main")
             self.assertEqual(payload["queries"][0]["panelId"], "7")
             self.assertEqual(payload["queries"][0]["datasourceUid"], "prom-main")
-            self.assertEqual(payload["queries"][0]["metrics"], ["node_cpu_seconds_total"])
+            self.assertEqual(
+                payload["queries"][0]["metrics"], ["node_cpu_seconds_total"]
+            )
             self.assertEqual(payload["queries"][1]["buckets"], ["prod"])
             self.assertEqual(payload["queries"][1]["measurements"], ["cpu"])
 
     def test_parse_args_supports_governance_report_formats(self):
         args = exporter.parse_args(
-            ["inspect-export", "--import-dir", "dashboards/raw", "--report", "governance"]
+            [
+                "inspect-export",
+                "--import-dir",
+                "dashboards/raw",
+                "--report",
+                "governance",
+            ]
         )
         self.assertEqual(args.report, "governance")
 
@@ -623,7 +643,7 @@ class DashboardInspectionTests(unittest.TestCase):
                                 {
                                     "refId": "A",
                                     "expr": (
-                                        'sum by (instance) (rate(node_cpu_seconds_total'
+                                        "sum by (instance) (rate(node_cpu_seconds_total"
                                         '{job=~"node|api",mode!="idle"}[5m]))'
                                     ),
                                 },
@@ -631,7 +651,7 @@ class DashboardInspectionTests(unittest.TestCase):
                                     "refId": "B",
                                     "expr": (
                                         'up{job="prometheus_build_info"} '
-                                        '/ ignoring(job) group_left(instance) '
+                                        "/ ignoring(job) group_left(instance) "
                                         'kube_pod_info{pod=~"node_cpu_seconds_total|api"}'
                                     ),
                                 },
@@ -652,9 +672,13 @@ class DashboardInspectionTests(unittest.TestCase):
             payload = json.loads(output)
 
             self.assertEqual(result, 0)
-            self.assertEqual(payload["queries"][0]["metrics"], ["node_cpu_seconds_total"])
+            self.assertEqual(
+                payload["queries"][0]["metrics"], ["node_cpu_seconds_total"]
+            )
             self.assertEqual(payload["queries"][1]["metrics"], ["up", "kube_pod_info"])
-            self.assertEqual(payload["queries"][2]["metrics"], ["prometheus_build_info"])
+            self.assertEqual(
+                payload["queries"][2]["metrics"], ["prometheus_build_info"]
+            )
 
     def test_inspect_export_renders_query_report_table(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -671,7 +695,9 @@ class DashboardInspectionTests(unittest.TestCase):
                             "title": "CPU Usage",
                             "type": "timeseries",
                             "datasource": {"type": "prometheus", "uid": "prom-main"},
-                            "targets": [{"refId": "A", "expr": "node_cpu_seconds_total"}],
+                            "targets": [
+                                {"refId": "A", "expr": "node_cpu_seconds_total"}
+                            ],
                         }
                     ],
                 },
@@ -779,9 +805,7 @@ class DashboardInspectionTests(unittest.TestCase):
             payload = json.loads(output)
 
             self.assertEqual(result, 0)
-            self.assertEqual(
-                payload["kind"], "grafana-utils-resource-dependency-graph"
-            )
+            self.assertEqual(payload["kind"], "grafana-utils-resource-dependency-graph")
             self.assertEqual(payload["summary"]["dashboardCount"], 2)
             node_ids = {item["id"] for item in payload["nodes"]}
             self.assertIn("datasource:unused-main", node_ids)
@@ -826,7 +850,9 @@ class DashboardInspectionTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             self.assertEqual(payload["summary"]["orphanedDatasourceCount"], 1)
-            self.assertEqual(payload["orphanedDatasources"][0]["datasourceUid"], "unused-main")
+            self.assertEqual(
+                payload["orphanedDatasources"][0]["datasourceUid"], "unused-main"
+            )
             self.assertEqual(payload["datasourceBlastRadius"][0]["dashboardCount"], 1)
 
     def test_inspect_export_renders_tree_and_tree_table_reports(self):
@@ -870,7 +896,13 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertIn("Panel 7 title=CPU Usage", tree_output)
 
             table_args = exporter.parse_args(
-                ["inspect-export", "--import-dir", str(import_dir), "--report", "tree-table"]
+                [
+                    "inspect-export",
+                    "--import-dir",
+                    str(import_dir),
+                    "--report",
+                    "tree-table",
+                ]
             )
             table_result, table_output = self.run_inspect(table_args)
             self.assertEqual(table_result, 0)
@@ -964,7 +996,9 @@ class DashboardInspectionTests(unittest.TestCase):
                 ["inspect-export", "--import-dir", str(import_dir), "--report", "csv"]
             )
             _, csv_output = self.run_inspect(csv_args)
-            self.assertIn("dashboard_uid,dashboard_title,folder_path,panel_id", csv_output)
+            self.assertIn(
+                "dashboard_uid,dashboard_title,folder_path,panel_id", csv_output
+            )
             self.assertIn("infra-main,Infra Main,General,7", csv_output)
 
             table_args = exporter.parse_args(
@@ -1017,7 +1051,10 @@ class DashboardInspectionTests(unittest.TestCase):
                             "targets": [
                                 {
                                     "refId": "A",
-                                    "datasource": {"type": "prometheus", "uid": "prom-main"},
+                                    "datasource": {
+                                        "type": "prometheus",
+                                        "uid": "prom-main",
+                                    },
                                     "expr": "up",
                                 },
                                 {
@@ -1068,7 +1105,10 @@ class DashboardInspectionTests(unittest.TestCase):
                                 "id": 7,
                                 "title": "CPU Panel",
                                 "type": "timeseries",
-                                "datasource": {"type": "prometheus", "uid": "prom-main"},
+                                "datasource": {
+                                    "type": "prometheus",
+                                    "uid": "prom-main",
+                                },
                                 "targets": [{"refId": "A", "expr": "up"}],
                             }
                         ],
@@ -1123,11 +1163,23 @@ class DashboardInspectionTests(unittest.TestCase):
                 "--no-header is only supported with --table, table-like --report, or compatible --output-format values",
             ),
             (
-                ["inspect-export", "--import-dir", "dashboards/raw", "--table", "--json"],
+                [
+                    "inspect-export",
+                    "--import-dir",
+                    "dashboards/raw",
+                    "--table",
+                    "--json",
+                ],
                 "--table and --json are mutually exclusive",
             ),
             (
-                ["inspect-export", "--import-dir", "dashboards/raw", "--report", "--table"],
+                [
+                    "inspect-export",
+                    "--import-dir",
+                    "dashboards/raw",
+                    "--report",
+                    "--table",
+                ],
                 "--report cannot be combined with --table or --json",
             ),
             (
@@ -1142,7 +1194,13 @@ class DashboardInspectionTests(unittest.TestCase):
                 "--output-format cannot be combined with --json, --table, or --report",
             ),
             (
-                ["inspect-export", "--import-dir", "dashboards/raw", "--report-columns", "dashboardUid,datasource"],
+                [
+                    "inspect-export",
+                    "--import-dir",
+                    "dashboards/raw",
+                    "--report-columns",
+                    "dashboardUid,datasource",
+                ],
                 "--report-columns is only supported with --report or report-like --output-format",
             ),
             (

@@ -71,7 +71,9 @@ def normalize_permission_subject(record: dict[str, Any]) -> dict[str, str]:
             "subjectKey": "user:%s" % user_id,
             "subjectId": user_id,
             "subjectName": _normalize_text(
-                record.get("userLogin") or record.get("userName") or record.get("login"),
+                record.get("userLogin")
+                or record.get("userName")
+                or record.get("login"),
                 user_id,
             ),
         }
@@ -80,7 +82,9 @@ def normalize_permission_subject(record: dict[str, Any]) -> dict[str, str]:
             "subjectType": "team",
             "subjectKey": "team:%s" % team_id,
             "subjectId": team_id,
-            "subjectName": _normalize_text(record.get("team") or record.get("teamName"), team_id),
+            "subjectName": _normalize_text(
+                record.get("team") or record.get("teamName"), team_id
+            ),
         }
     if service_account_id:
         return {
@@ -180,10 +184,14 @@ def build_permission_diff_document(
 ) -> dict[str, Any]:
     """Compare two staged permission export documents."""
     expected_map = {
-        row["subjectKey"]: row for row in expected_document.get("permissions") or [] if isinstance(row, dict)
+        row["subjectKey"]: row
+        for row in expected_document.get("permissions") or []
+        if isinstance(row, dict)
     }
     actual_map = {
-        row["subjectKey"]: row for row in actual_document.get("permissions") or [] if isinstance(row, dict)
+        row["subjectKey"]: row
+        for row in actual_document.get("permissions") or []
+        if isinstance(row, dict)
     }
     diff_rows = []
     for key in sorted(set(expected_map) | set(actual_map)):
@@ -233,9 +241,15 @@ def build_permission_diff_document(
         "summary": {
             "rowCount": len(diff_rows),
             "sameCount": len([row for row in diff_rows if row["status"] == "same"]),
-            "changedCount": len([row for row in diff_rows if row["status"] == "changed"]),
-            "missingLiveCount": len([row for row in diff_rows if row["status"] == "missing-live"]),
-            "extraLiveCount": len([row for row in diff_rows if row["status"] == "extra-live"]),
+            "changedCount": len(
+                [row for row in diff_rows if row["status"] == "changed"]
+            ),
+            "missingLiveCount": len(
+                [row for row in diff_rows if row["status"] == "missing-live"]
+            ),
+            "extraLiveCount": len(
+                [row for row in diff_rows if row["status"] == "extra-live"]
+            ),
         },
         "rows": diff_rows,
     }
@@ -305,7 +319,10 @@ def build_permission_preflight_document(
         elif subject_type == "team" and subject_id not in available_teams:
             status = "missing"
             detail = "Target Grafana team is missing."
-        elif subject_type == "service-account" and subject_id not in available_service_accounts:
+        elif (
+            subject_type == "service-account"
+            and subject_id not in available_service_accounts
+        ):
             status = "missing"
             detail = "Target Grafana service account is missing."
         elif subject_type == "role" and subject_id not in available_roles:
@@ -327,7 +344,9 @@ def build_permission_preflight_document(
         "summary": {
             "checkCount": len(checks),
             "okCount": len([item for item in checks if item["status"] == "ok"]),
-            "missingCount": len([item for item in checks if item["status"] == "missing"]),
+            "missingCount": len(
+                [item for item in checks if item["status"] == "missing"]
+            ),
             "blockingCount": len([item for item in checks if item["status"] != "ok"]),
         },
         "checks": checks,
@@ -345,17 +364,27 @@ def build_permission_promotion_document(
         "kind": PERMISSION_PROMOTION_KIND,
         "schemaVersion": PERMISSION_PROMOTION_SCHEMA_VERSION,
         "summary": {
-            "sameCount": int((diff_document.get("summary") or {}).get("sameCount") or 0),
-            "changedCount": int((diff_document.get("summary") or {}).get("changedCount") or 0),
+            "sameCount": int(
+                (diff_document.get("summary") or {}).get("sameCount") or 0
+            ),
+            "changedCount": int(
+                (diff_document.get("summary") or {}).get("changedCount") or 0
+            ),
             "missingLiveCount": int(
                 (diff_document.get("summary") or {}).get("missingLiveCount") or 0
             ),
             "extraLiveCount": int(
                 (diff_document.get("summary") or {}).get("extraLiveCount") or 0
             ),
-            "wouldAddCount": len([row for row in rows if row.get("status") == "missing-live"]),
-            "wouldChangeCount": len([row for row in rows if row.get("status") == "changed"]),
-            "wouldLeaveExtraCount": len([row for row in rows if row.get("status") == "extra-live"]),
+            "wouldAddCount": len(
+                [row for row in rows if row.get("status") == "missing-live"]
+            ),
+            "wouldChangeCount": len(
+                [row for row in rows if row.get("status") == "changed"]
+            ),
+            "wouldLeaveExtraCount": len(
+                [row for row in rows if row.get("status") == "extra-live"]
+            ),
         },
         "rows": rows,
     }
@@ -419,10 +448,18 @@ def build_permission_bundle_document(
         "summary": {
             "resourceCount": len(documents),
             "dashboardCount": len(
-                [item for item in documents if (item.get("resource") or {}).get("kind") == "dashboard"]
+                [
+                    item
+                    for item in documents
+                    if (item.get("resource") or {}).get("kind") == "dashboard"
+                ]
             ),
             "folderCount": len(
-                [item for item in documents if (item.get("resource") or {}).get("kind") == "folder"]
+                [
+                    item
+                    for item in documents
+                    if (item.get("resource") or {}).get("kind") == "folder"
+                ]
             ),
             "permissionCount": sum(
                 int((item.get("summary") or {}).get("permissionCount") or 0)
@@ -500,7 +537,9 @@ def build_permission_bundle_diff_document(
         "summary": {
             "resourceCount": len(resource_rows),
             "sameCount": len([row for row in resource_rows if row["status"] == "same"]),
-            "changedCount": len([row for row in resource_rows if row["status"] == "changed"]),
+            "changedCount": len(
+                [row for row in resource_rows if row["status"] == "changed"]
+            ),
             "missingLiveCount": len(
                 [row for row in resource_rows if row["status"] == "missing-live"]
             ),
@@ -566,7 +605,9 @@ def build_permission_remap_document(
         target_title = _normalize_text(title_map.get(key), source_title)
         target_path = _normalize_text(path_map.get(key))
         remapped = (
-            target_uid != source_uid or target_title != source_title or bool(target_path)
+            target_uid != source_uid
+            or target_title != source_title
+            or bool(target_path)
         )
         rows.append(
             {

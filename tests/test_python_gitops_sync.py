@@ -72,7 +72,9 @@ class GitopsSyncTests(unittest.TestCase):
             },
         ]
 
-        plan = gitops_sync.build_sync_plan(desired, live, allow_prune=False, dry_run=True)
+        plan = gitops_sync.build_sync_plan(
+            desired, live, allow_prune=False, dry_run=True
+        )
         actions = {
             (operation.kind, operation.identity): operation.action
             for operation in plan.operations
@@ -97,7 +99,9 @@ class GitopsSyncTests(unittest.TestCase):
         self.assertEqual(document["summary"]["alert_candidate"], 1)
         self.assertEqual(document["summary"]["alert_plan_only"], 0)
         self.assertEqual(document["summary"]["alert_blocked"], 0)
-        self.assertEqual(document["alertAssessment"]["alerts"][0]["status"], "candidate")
+        self.assertEqual(
+            document["alertAssessment"]["alerts"][0]["status"], "candidate"
+        )
         alert_operation = {
             (operation["kind"], operation["identity"]): operation
             for operation in document["operations"]

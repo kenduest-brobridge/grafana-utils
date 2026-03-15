@@ -5,7 +5,9 @@ import unittest
 
 datasource_client = importlib.import_module("grafana_utils.clients.datasource_client")
 GrafanaError = importlib.import_module("grafana_utils.dashboards.common").GrafanaError
-GrafanaApiError = importlib.import_module("grafana_utils.dashboards.common").GrafanaApiError
+GrafanaApiError = importlib.import_module(
+    "grafana_utils.dashboards.common"
+).GrafanaApiError
 
 
 class StubTransport(object):
@@ -39,7 +41,11 @@ class DatasourceClientTests(unittest.TestCase):
             encoding="utf-8",
         ).read()
         try:
-            ast.parse(source, filename="grafana_utils/clients/datasource_client.py", feature_version=(3, 9))
+            ast.parse(
+                source,
+                filename="grafana_utils/clients/datasource_client.py",
+                feature_version=(3, 9),
+            )
         finally:
             pass
 
@@ -90,7 +96,9 @@ class DatasourceClientTests(unittest.TestCase):
             transport=transport,
         )
 
-        response = client.create_datasource({"name": "Prometheus Main", "type": "prometheus"})
+        response = client.create_datasource(
+            {"name": "Prometheus Main", "type": "prometheus"}
+        )
 
         self.assertEqual(response["id"], 7)
         self.assertEqual(transport.calls[0]["method"], "POST")

@@ -31,7 +31,13 @@ def iter_datasource_ref_parts(ref: Any) -> Iterable[str]:
         text = str(ref.get(key) or "").strip().lower()
         if text:
             yield text
-def iter_inventory_datasource_parts(ref: Any, datasources_by_uid: Optional[dict[str, dict[str, str]]], datasources_by_name: Optional[dict[str, dict[str, str]]]) -> Iterable[str]:
+
+
+def iter_inventory_datasource_parts(
+    ref: Any,
+    datasources_by_uid: Optional[dict[str, dict[str, str]]],
+    datasources_by_name: Optional[dict[str, dict[str, str]]],
+) -> Iterable[str]:
     datasource = None
     if isinstance(ref, dict):
         uid = str(ref.get("uid") or "").strip()
@@ -46,11 +52,26 @@ def iter_inventory_datasource_parts(ref: Any, datasources_by_uid: Optional[dict[
         datasource_type = str(datasource.get("type") or "").strip().lower()
         if datasource_type:
             yield datasource_type
-def resolve_query_analyzer_family(panel: dict[str, Any], target: dict[str, Any], query_field: str, query_text: str, datasources_by_uid: Optional[dict[str, dict[str, str]]] = None, datasources_by_name: Optional[dict[str, dict[str, str]]] = None) -> str:
+
+
+def resolve_query_analyzer_family(
+    panel: dict[str, Any],
+    target: dict[str, Any],
+    query_field: str,
+    query_text: str,
+    datasources_by_uid: Optional[dict[str, dict[str, str]]] = None,
+    datasources_by_name: Optional[dict[str, dict[str, str]]] = None,
+) -> str:
     hints = []
     for ref in (target.get("datasource"), panel.get("datasource")):
         hints.extend(list(iter_datasource_ref_parts(ref)))
-        hints.extend(list(iter_inventory_datasource_parts(ref, datasources_by_uid, datasources_by_name)))
+        hints.extend(
+            list(
+                iter_inventory_datasource_parts(
+                    ref, datasources_by_uid, datasources_by_name
+                )
+            )
+        )
     field_hint = str(query_field or "").strip().lower()
     hints.append(field_hint)
     text = str(query_text or "").strip().lower()
@@ -58,11 +79,26 @@ def resolve_query_analyzer_family(panel: dict[str, Any], target: dict[str, Any],
         return DATASOURCE_FAMILY_LOKI
     if "prometheus" in hints or "prom" in hints or field_hint == "expr":
         return DATASOURCE_FAMILY_PROMETHEUS
-    if "flux" in hints or "influxdb" in hints or "influx" in hints or "_measurement" in text or "from(bucket:" in text or "from (bucket:" in text:
+    if (
+        "flux" in hints
+        or "influxdb" in hints
+        or "influx" in hints
+        or "_measurement" in text
+        or "from(bucket:" in text
+        or "from (bucket:" in text
+    ):
         return DATASOURCE_FAMILY_FLUX
-    if "mysql" in hints or "postgres" in hints or "postgresql" in hints or "mssql" in hints or field_hint in ("rawsql", "sql"):
+    if (
+        "mysql" in hints
+        or "postgres" in hints
+        or "postgresql" in hints
+        or "mssql" in hints
+        or field_hint in ("rawsql", "sql")
+    ):
         return DATASOURCE_FAMILY_SQL
     return DATASOURCE_FAMILY_UNKNOWN
+
+
 def dispatch_query_analysis(
     panel: dict[str, Any],
     target: dict[str, Any],

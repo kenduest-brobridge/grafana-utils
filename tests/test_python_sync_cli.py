@@ -17,7 +17,14 @@ sync_cli = importlib.import_module("grafana_utils.sync_cli")
 
 
 class FakeSyncGrafanaClient(object):
-    def __init__(self, folders=None, dashboards=None, datasources=None, plugins=None, contact_points=None):
+    def __init__(
+        self,
+        folders=None,
+        dashboards=None,
+        datasources=None,
+        plugins=None,
+        contact_points=None,
+    ):
         self._folders = list(folders or [])
         self._dashboards = list(dashboards or [])
         self._datasources = list(datasources or [])
@@ -147,7 +154,9 @@ class SyncCliTests(unittest.TestCase):
             self.assertEqual(document["summary"]["alert_plan_only"], 0)
             self.assertEqual(document["summary"]["alert_blocked"], 0)
             self.assertEqual(document["alertAssessment"]["alerts"], [])
-            self.assertEqual(json.loads(plan_path.read_text(encoding="utf-8")), document)
+            self.assertEqual(
+                json.loads(plan_path.read_text(encoding="utf-8")), document
+            )
 
     def test_plan_can_fetch_live_state_from_grafana(self):
         desired = [
@@ -190,7 +199,9 @@ class SyncCliTests(unittest.TestCase):
             desired_path.write_text(json.dumps(desired), encoding="utf-8")
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                with unittest.mock.patch.object(sync_cli, "build_client", return_value=client):
+                with unittest.mock.patch.object(
+                    sync_cli, "build_client", return_value=client
+                ):
                     result = sync_cli.main(
                         [
                             "plan",
@@ -241,7 +252,9 @@ class SyncCliTests(unittest.TestCase):
             document = json.loads(stdout.getvalue())
             self.assertEqual(document["summary"]["alert_plan_only"], 1)
             self.assertEqual(document["summary"]["alert_blocked"], 0)
-            self.assertEqual(document["alertAssessment"]["alerts"][0]["status"], "plan-only")
+            self.assertEqual(
+                document["alertAssessment"]["alerts"][0]["status"], "plan-only"
+            )
             self.assertEqual(
                 document["operations"][0]["managedFields"],
                 ["condition", "contactPoints"],
@@ -304,7 +317,9 @@ class SyncCliTests(unittest.TestCase):
             desired_path.write_text(json.dumps(desired), encoding="utf-8")
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                with unittest.mock.patch.object(sync_cli, "build_client", return_value=client):
+                with unittest.mock.patch.object(
+                    sync_cli, "build_client", return_value=client
+                ):
                     result = sync_cli.main(
                         [
                             "preflight",
@@ -319,7 +334,10 @@ class SyncCliTests(unittest.TestCase):
             self.assertEqual(result, 0)
             output = stdout.getvalue()
             self.assertIn("datasource identity=prom-main status=ok", output)
-            self.assertIn("alert-contact-point identity=cpu-high->pagerduty-primary status=ok", output)
+            self.assertIn(
+                "alert-contact-point identity=cpu-high->pagerduty-primary status=ok",
+                output,
+            )
 
     def test_assess_alerts_renders_json(self):
         alerts = [
@@ -353,7 +371,13 @@ class SyncCliTests(unittest.TestCase):
     def test_bundle_preflight_renders_json(self):
         source_bundle = {
             "environment": "staging",
-            "dashboards": [{"uid": "cpu-main", "title": "CPU Main", "datasourceUids": ["prom-main"]}],
+            "dashboards": [
+                {
+                    "uid": "cpu-main",
+                    "title": "CPU Main",
+                    "datasourceUids": ["prom-main"],
+                }
+            ],
             "datasources": [
                 {
                     "uid": "prom-main",
@@ -372,7 +396,10 @@ class SyncCliTests(unittest.TestCase):
                     "kind": "alert",
                     "uid": "cpu-high",
                     "managedFields": ["condition", "contactPoints"],
-                    "body": {"condition": "A > 90", "contactPoints": ["pagerduty-primary"]},
+                    "body": {
+                        "condition": "A > 90",
+                        "contactPoints": ["pagerduty-primary"],
+                    },
                 }
             ],
         }
@@ -414,21 +441,34 @@ class SyncCliTests(unittest.TestCase):
             self.assertEqual(document["summary"]["providerBlockingCount"], 0)
             self.assertEqual(document["summary"]["secretBlockingCount"], 0)
             self.assertEqual(
-                document["providerAssessment"]["plans"][0]["providers"][0]["providerName"],
+                document["providerAssessment"]["plans"][0]["providers"][0][
+                    "providerName"
+                ],
                 "vault",
             )
 
     def test_bundle_preflight_can_fetch_live_availability(self):
         source_bundle = {
             "environment": "staging",
-            "dashboards": [{"uid": "cpu-main", "title": "CPU Main", "datasourceUids": ["prom-main"]}],
-            "datasources": [{"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"}],
+            "dashboards": [
+                {
+                    "uid": "cpu-main",
+                    "title": "CPU Main",
+                    "datasourceUids": ["prom-main"],
+                }
+            ],
+            "datasources": [
+                {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"}
+            ],
             "alerts": [
                 {
                     "kind": "alert",
                     "uid": "cpu-high",
                     "managedFields": ["condition", "contactPoints"],
-                    "body": {"condition": "A > 90", "contactPoints": ["pagerduty-primary"]},
+                    "body": {
+                        "condition": "A > 90",
+                        "contactPoints": ["pagerduty-primary"],
+                    },
                 }
             ],
         }
@@ -445,7 +485,9 @@ class SyncCliTests(unittest.TestCase):
             target_path.write_text(json.dumps(target_inventory), encoding="utf-8")
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                with unittest.mock.patch.object(sync_cli, "build_client", return_value=client):
+                with unittest.mock.patch.object(
+                    sync_cli, "build_client", return_value=client
+                ):
                     result = sync_cli.main(
                         [
                             "bundle-preflight",
@@ -483,7 +525,11 @@ class SyncCliTests(unittest.TestCase):
             ],
         }
         target_inventory = {"environment": "prod", "dashboards": [], "datasources": []}
-        availability = {"pluginIds": ["loki"], "datasourceUids": [], "contactPoints": []}
+        availability = {
+            "pluginIds": ["loki"],
+            "datasourceUids": [],
+            "contactPoints": [],
+        }
         with tempfile.TemporaryDirectory() as tmpdir:
             source_path = Path(tmpdir) / "source.json"
             target_path = Path(tmpdir) / "target.json"
@@ -619,9 +665,7 @@ class SyncCliTests(unittest.TestCase):
                     ]
                 )
             plan_document = json.loads(stdout.getvalue())
-            reviewed_document = json.loads(
-                json.dumps(plan_document)
-            )
+            reviewed_document = json.loads(json.dumps(plan_document))
             reviewed_document["reviewed"] = True
             reviewed_document["dryRun"] = False
             reviewed_path.write_text(
@@ -691,7 +735,9 @@ class SyncCliTests(unittest.TestCase):
             plan_path.write_text(json.dumps(reviewed_document), encoding="utf-8")
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                with unittest.mock.patch.object(sync_cli, "build_client", return_value=client):
+                with unittest.mock.patch.object(
+                    sync_cli, "build_client", return_value=client
+                ):
                     result = sync_cli.main(
                         [
                             "apply",
@@ -709,7 +755,12 @@ class SyncCliTests(unittest.TestCase):
             self.assertEqual(document["mode"], "live-apply")
             self.assertEqual(document["appliedCount"], 2)
             self.assertIn(
-                {"kind": "create-folder", "uid": "ops", "title": "Operations", "parentUid": None},
+                {
+                    "kind": "create-folder",
+                    "uid": "ops",
+                    "title": "Operations",
+                    "parentUid": None,
+                },
                 client.calls,
             )
             self.assertTrue(

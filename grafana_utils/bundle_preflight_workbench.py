@@ -12,7 +12,10 @@ from .datasource_secret_workbench import (
     collect_secret_placeholders,
     iter_secret_placeholder_names,
 )
-from .roadmap_contracts import build_preflight_check_document, build_promotion_plan_document
+from .roadmap_contracts import (
+    build_preflight_check_document,
+    build_promotion_plan_document,
+)
 from .sync_preflight_workbench import build_sync_preflight_document
 
 BUNDLE_PREFLIGHT_KIND = "grafana-utils-bundle-preflight"
@@ -52,7 +55,8 @@ def _require_string_list(values, label):
 def _build_secret_assessment(datasources, availability):
     available_secret_names = set(
         _require_string_list(
-            availability.get("secretPlaceholderNames") or availability.get("secretNames"),
+            availability.get("secretPlaceholderNames")
+            or availability.get("secretNames"),
             "secretPlaceholderNames",
         )
     )
@@ -61,7 +65,9 @@ def _build_secret_assessment(datasources, availability):
     for item in datasources:
         if not isinstance(item, Mapping):
             continue
-        placeholders = collect_secret_placeholders(item.get("secureJsonDataPlaceholders"))
+        placeholders = collect_secret_placeholders(
+            item.get("secureJsonDataPlaceholders")
+        )
         if not placeholders:
             continue
         placeholder_names = list(iter_secret_placeholder_names(placeholders))
@@ -110,7 +116,8 @@ def _build_secret_assessment(datasources, availability):
 def _build_provider_assessment(datasources, availability):
     available_provider_names = set(
         _require_string_list(
-            availability.get("providerNames") or availability.get("secretProviderNames"),
+            availability.get("providerNames")
+            or availability.get("secretProviderNames"),
             "providerNames",
         )
     )

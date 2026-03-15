@@ -53,7 +53,10 @@ class BundlePreflightWorkbenchTests(unittest.TestCase):
                     "uid": "cpu-high",
                     "title": "CPU High",
                     "managedFields": ["condition", "contactPoints"],
-                    "body": {"condition": "A > 90", "contactPoints": ["pagerduty-primary"]},
+                    "body": {
+                        "condition": "A > 90",
+                        "contactPoints": ["pagerduty-primary"],
+                    },
                 }
             ],
         }

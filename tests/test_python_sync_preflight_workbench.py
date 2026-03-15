@@ -17,7 +17,9 @@ class SyncPreflightWorkbenchTests(unittest.TestCase):
         source = MODULE_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_build_sync_preflight_document_reports_missing_plugin_and_alert_blocks(self):
+    def test_build_sync_preflight_document_reports_missing_plugin_and_alert_blocks(
+        self,
+    ):
         document = sync_preflight_workbench.build_sync_preflight_document(
             [
                 {
@@ -31,7 +33,10 @@ class SyncPreflightWorkbenchTests(unittest.TestCase):
                     "uid": "cpu-high",
                     "title": "CPU High",
                     "managedFields": ["condition"],
-                    "body": {"condition": "A > 90", "contactPoints": ["pagerduty-primary"]},
+                    "body": {
+                        "condition": "A > 90",
+                        "contactPoints": ["pagerduty-primary"],
+                    },
                 },
             ],
             availability={
@@ -47,7 +52,9 @@ class SyncPreflightWorkbenchTests(unittest.TestCase):
         self.assertEqual(document["summary"]["checkCount"], 4)
         self.assertEqual(document["summary"]["blockingCount"], 3)
         checks = {(item["kind"], item["identity"]): item for item in document["checks"]}
-        self.assertEqual(checks[("datasource", "prom-main")]["status"], "create-planned")
+        self.assertEqual(
+            checks[("datasource", "prom-main")]["status"], "create-planned"
+        )
         self.assertEqual(checks[("plugin", "prometheus")]["status"], "missing")
         self.assertEqual(checks[("alert-live-apply", "cpu-high")]["status"], "blocked")
         self.assertEqual(
@@ -67,7 +74,9 @@ class SyncPreflightWorkbenchTests(unittest.TestCase):
             ],
             availability={"datasourceUids": ["prom-main"]},
         )
-        output = "\n".join(sync_preflight_workbench.render_sync_preflight_text(document))
+        output = "\n".join(
+            sync_preflight_workbench.render_sync_preflight_text(document)
+        )
         self.assertIn("Sync preflight summary", output)
         self.assertIn("Checks: 1 total, 1 ok, 0 blocking", output)
         self.assertIn(

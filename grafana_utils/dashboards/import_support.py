@@ -53,7 +53,9 @@ def load_json_file(path: Path) -> dict[str, Any]:
     return raw
 
 
-def extract_dashboard_object(document: dict[str, Any], error_message: str) -> dict[str, Any]:
+def extract_dashboard_object(
+    document: dict[str, Any], error_message: str
+) -> dict[str, Any]:
     """Return the dashboard object from either the wrapped or plain export shape."""
     dashboard = document.get("dashboard", document)
     if not isinstance(dashboard, dict):
@@ -164,7 +166,9 @@ def build_remote_compare_document(
 
 def serialize_compare_document(document: dict[str, Any]) -> str:
     """Serialize normalized compare data so nested JSON can be compared stably."""
-    return json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return json.dumps(
+        document, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
 
 
 def build_compare_diff_lines(
@@ -337,7 +341,9 @@ def parse_dashboard_import_dry_run_columns(
     return columns
 
 
-def _render_table(headers: list[str], rows: list[list[str]], include_header: bool) -> list[str]:
+def _render_table(
+    headers: list[str], rows: list[list[str]], include_header: bool
+) -> list[str]:
     widths = [len(header) for header in headers]
     for row in rows:
         for index, value in enumerate(row):
@@ -350,7 +356,9 @@ def _render_table(headers: list[str], rows: list[list[str]], include_header: boo
 
     lines = []
     if include_header:
-        lines.extend([format_row(headers), format_row(["-" * width for width in widths])])
+        lines.extend(
+            [format_row(headers), format_row(["-" * width for width in widths])]
+        )
     lines.extend(format_row(row) for row in rows)
     return lines
 
@@ -418,10 +426,18 @@ def render_dashboard_import_dry_run_json(
             "importDir": str(import_dir),
             "folderCount": len(folder_records),
             "missingFolders": len(
-                [record for record in folder_records if record.get("status") == "missing"]
+                [
+                    record
+                    for record in folder_records
+                    if record.get("status") == "missing"
+                ]
             ),
             "mismatchedFolders": len(
-                [record for record in folder_records if record.get("status") == "mismatch"]
+                [
+                    record
+                    for record in folder_records
+                    if record.get("status") == "mismatch"
+                ]
             ),
             "dashboardCount": len(dashboard_records),
             "missingDashboards": len(

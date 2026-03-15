@@ -11,7 +11,7 @@ Caveats:
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
+from typing import Mapping
 
 from .dashboard_cli import GrafanaError
 from .gitops_sync import normalize_resource_spec
@@ -63,8 +63,12 @@ def _require_string_list(values, label):
 
 def _build_datasource_checks(spec, availability):
     checks = []
-    available_uids = set(_require_string_list(availability.get("datasourceUids"), "datasourceUids"))
-    required_plugins = set(_require_string_list(availability.get("pluginIds"), "pluginIds"))
+    available_uids = set(
+        _require_string_list(availability.get("datasourceUids"), "datasourceUids")
+    )
+    required_plugins = set(
+        _require_string_list(availability.get("pluginIds"), "pluginIds")
+    )
     datasource_type = _normalize_text(spec.body.get("type"), "unknown")
 
     if spec.identity in available_uids:
@@ -114,8 +118,12 @@ def _build_datasource_checks(spec, availability):
 def _build_dashboard_checks(spec, availability):
     checks = []
     body = _require_mapping(spec.body, "dashboard body")
-    datasource_uids = _require_string_list(body.get("datasourceUids"), "dashboard datasourceUids")
-    available_uids = set(_require_string_list(availability.get("datasourceUids"), "datasourceUids"))
+    datasource_uids = _require_string_list(
+        body.get("datasourceUids"), "dashboard datasourceUids"
+    )
+    available_uids = set(
+        _require_string_list(availability.get("datasourceUids"), "datasourceUids")
+    )
     for datasource_uid in datasource_uids:
         status = "ok" if datasource_uid in available_uids else "missing"
         checks.append(
@@ -145,7 +153,9 @@ def _build_alert_checks(spec, availability):
         )
     ]
     body = _require_mapping(spec.body, "alert body")
-    contact_points = _require_string_list(body.get("contactPoints"), "alert contactPoints")
+    contact_points = _require_string_list(
+        body.get("contactPoints"), "alert contactPoints"
+    )
     available_contact_points = set(
         _require_string_list(availability.get("contactPoints"), "contactPoints")
     )

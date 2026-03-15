@@ -78,12 +78,16 @@ def assess_alert_sync_specs(alert_specs):
         spec = _require_mapping(raw_spec, "Alert sync spec")
         if _normalize_text(spec.get("kind")).lower() != "alert":
             raise GrafanaError("Alert sync assessment only supports kind=alert.")
-        identity = _normalize_text(spec.get("uid") or spec.get("name") or spec.get("title"))
+        identity = _normalize_text(
+            spec.get("uid") or spec.get("name") or spec.get("title")
+        )
         if not identity:
             raise GrafanaError("Alert sync spec requires uid, name, or title.")
         title = _normalize_text(spec.get("title") or spec.get("name"), identity)
         managed_fields = _normalize_managed_fields(spec.get("managedFields") or [])
-        body = _require_mapping(spec.get("body") or spec.get("spec") or {}, "Alert body")
+        body = _require_mapping(
+            spec.get("body") or spec.get("spec") or {}, "Alert body"
+        )
 
         if "condition" not in managed_fields:
             assessments.append(
@@ -139,9 +143,15 @@ def assess_alert_sync_specs(alert_specs):
         "schemaVersion": ALERT_SYNC_SCHEMA_VERSION,
         "summary": {
             "alertCount": len(assessments),
-            "candidateCount": len([item for item in assessments if item.status == "candidate"]),
-            "planOnlyCount": len([item for item in assessments if item.status == "plan-only"]),
-            "blockedCount": len([item for item in assessments if item.status == "blocked"]),
+            "candidateCount": len(
+                [item for item in assessments if item.status == "candidate"]
+            ),
+            "planOnlyCount": len(
+                [item for item in assessments if item.status == "plan-only"]
+            ),
+            "blockedCount": len(
+                [item for item in assessments if item.status == "blocked"]
+            ),
         },
         "alerts": [
             {

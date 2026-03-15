@@ -49,7 +49,9 @@ def extract_prometheus_metric_names(query: str) -> list[str]:
     return unique_strings(values)
 
 
-def analyze_query(panel: dict[str, Any], target: dict[str, Any], query_field: str, query_text: str) -> dict[str, Any]:
+def analyze_query(
+    panel: dict[str, Any], target: dict[str, Any], query_field: str, query_text: str
+) -> dict[str, Any]:
     del panel, target, query_field
     return normalize_query_analysis(
         {
