@@ -103,6 +103,60 @@ grafana-util dashboard import \
   --dry-run --table
 ```
 
+### Rust `sync` Workflow
+
+The Rust binary also exposes a staged `sync` workflow for reviewable local JSON contracts before any live mutation:
+
+Canonical demo fixtures live in `tests/fixtures/`:
+- `tests/fixtures/rust_sync_demo_desired.json`
+- `tests/fixtures/rust_sync_demo_live.json`
+- `tests/fixtures/rust_sync_demo_availability.json`
+- `tests/fixtures/rust_sync_demo_bundle.json`
+- `tests/fixtures/rust_sync_demo_target_inventory.json`
+
+```bash
+grafana-util sync summary --desired-file ./tests/fixtures/rust_sync_demo_desired.json
+grafana-util sync plan --desired-file ./tests/fixtures/rust_sync_demo_desired.json --live-file ./tests/fixtures/rust_sync_demo_live.json --output json
+grafana-util sync review --plan-file ./plan.json --review-token reviewed-sync-plan --output json
+grafana-util sync preflight --desired-file ./tests/fixtures/rust_sync_demo_desired.json --availability-file ./tests/fixtures/rust_sync_demo_availability.json
+grafana-util sync bundle-preflight --source-bundle ./tests/fixtures/rust_sync_demo_bundle.json --target-inventory ./tests/fixtures/rust_sync_demo_target_inventory.json --availability-file ./tests/fixtures/rust_sync_demo_availability.json
+grafana-util sync apply --plan-file ./reviewed-plan.json --approve --output json
+```
+
+Operator model:
+- `summary` normalizes the desired managed slice.
+- `plan` computes create/update/delete/noop/unmanaged operations plus alert assessment.
+- `review` marks the plan reviewed and carries trace/lineage metadata forward.
+- `preflight` and `bundle-preflight` surface blocking dependencies before apply.
+- `apply` emits a gated apply-intent document first; add `--execute-live` only after review and preflight checks are already in place.
+
+Short output examples:
+
+```text
+Sync summary
+Resources: 3 total, 1 dashboards, 1 datasources, 1 folders, 0 alerts
+```
+
+```text
+Sync plan
+Summary: create=1 update=1 delete=0 noop=1 unmanaged=0
+Alerts: candidate=0 plan-only=0 blocked=0
+Review: required=true reviewed=false
+```
+
+```text
+Sync preflight summary
+Resources: 3 total
+Checks: 4 total, 3 ok, 0 create-planned, 1 blocking
+Blocking split: dependency=1 policy=0
+```
+
+```text
+Sync apply intent
+Summary: create=1 update=1 delete=0 executable=2
+Review: required=true reviewed=true approved=true
+```
+
 ---
 
 ## 📄 Documentation

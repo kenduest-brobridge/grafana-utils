@@ -3,11 +3,40 @@ use super::{
     render_sync_summary_text, run_sync_apply_operations, run_sync_cli, SyncApplyArgs, SyncCliArgs,
     SyncGroupCommand, SyncOutputFormat, SyncReviewArgs, SyncSummaryArgs, DEFAULT_REVIEW_TOKEN,
 };
+use crate::sync_bundle_preflight::{
+    build_sync_bundle_preflight_document, render_sync_bundle_preflight_text,
+};
+use crate::sync_preflight::{build_sync_preflight_document, render_sync_preflight_text};
 use clap::Parser;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::fs;
 use std::path::Path;
 use tempfile::tempdir;
+
+fn load_sync_preflight_cases() -> Value {
+    serde_json::from_str(include_str!("../../tests/fixtures/rust_sync_preflight_cases.json"))
+        .unwrap()
+}
+
+fn sync_preflight_case(name: &str) -> Value {
+    load_sync_preflight_cases()["preflightCases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|case| case["name"] == name)
+        .cloned()
+        .unwrap_or_else(|| panic!("missing sync preflight case {name}"))
+}
+
+fn sync_bundle_preflight_case(name: &str) -> Value {
+    load_sync_preflight_cases()["bundlePreflightCases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|case| case["name"] == name)
+        .cloned()
+        .unwrap_or_else(|| panic!("missing sync bundle-preflight case {name}"))
+}
 
 #[test]
 fn parse_sync_cli_supports_summary_command() {
@@ -2060,6 +2089,55 @@ fn run_sync_cli_preflight_rejects_non_object_availability_file() {
 }
 
 #[test]
+fn run_sync_cli_preflight_fixture_case_renders_dependency_and_policy_summary() {
+    let case = sync_preflight_case("dependency_and_policy_summary");
+    let desired_specs = case["desiredSpecs"].as_array().unwrap().clone();
+    let availability = case["availability"].clone();
+    let expected_summary = case["expectedSummary"].as_object().unwrap();
+    let expected_text = case["expectedTextSubstrings"].as_array().unwrap();
+
+    let document = build_sync_preflight_document(&desired_specs, Some(&availability)).unwrap();
+    let rendered = render_sync_preflight_text(&document).unwrap().join("\n");
+
+    assert_eq!(
+        document["summary"]["resourceCount"],
+        expected_summary["resourceCount"]
+    );
+    assert_eq!(
+        document["summary"]["checkCount"],
+        expected_summary["checkCount"]
+    );
+    assert_eq!(document["summary"]["okCount"], expected_summary["okCount"]);
+    assert_eq!(
+        document["summary"]["createPlannedCount"],
+        expected_summary["createPlannedCount"]
+    );
+    assert_eq!(
+        document["summary"]["missingCount"],
+        expected_summary["missingCount"]
+    );
+    assert_eq!(
+        document["summary"]["blockingCount"],
+        expected_summary["blockingCount"]
+    );
+    assert_eq!(
+        document["summary"]["dependencyBlockingCount"],
+        expected_summary["dependencyBlockingCount"]
+    );
+    assert_eq!(
+        document["summary"]["policyBlockingCount"],
+        expected_summary["policyBlockingCount"]
+    );
+    assert_eq!(
+        document["summary"]["alertPolicyCount"],
+        expected_summary["alertPolicyCount"]
+    );
+    for fragment in expected_text {
+        assert!(rendered.contains(fragment.as_str().unwrap()));
+    }
+}
+
+#[test]
 fn run_sync_cli_assess_alerts_accepts_local_input() {
     let temp = tempdir().unwrap();
     let alerts_file = temp.path().join("alerts.json");
@@ -2136,4 +2214,60 @@ fn run_sync_cli_bundle_preflight_accepts_local_bundle_inputs() {
     };
 
     assert!(result.is_ok());
+}
+
+#[test]
+fn run_sync_cli_bundle_preflight_fixture_case_renders_sync_and_provider_summary() {
+    let case = sync_bundle_preflight_case("sync_and_provider_summary");
+    let source_bundle = case["sourceBundle"].clone();
+    let target_inventory = case["targetInventory"].clone();
+    let availability = case["availability"].clone();
+    let expected_summary = case["expectedSummary"].as_object().unwrap();
+    let expected_text = case["expectedTextSubstrings"].as_array().unwrap();
+
+    let document = build_sync_bundle_preflight_document(
+        &source_bundle,
+        &target_inventory,
+        Some(&availability),
+    )
+    .unwrap();
+    let rendered = render_sync_bundle_preflight_text(&document)
+        .unwrap()
+        .join("\n");
+
+    assert_eq!(
+        document["summary"]["resourceCount"],
+        expected_summary["resourceCount"]
+    );
+    assert_eq!(
+        document["summary"]["syncCheckCount"],
+        expected_summary["syncCheckCount"]
+    );
+    assert_eq!(
+        document["summary"]["syncBlockingCount"],
+        expected_summary["syncBlockingCount"]
+    );
+    assert_eq!(
+        document["summary"]["syncDependencyBlockingCount"],
+        expected_summary["syncDependencyBlockingCount"]
+    );
+    assert_eq!(
+        document["summary"]["syncPolicyBlockingCount"],
+        expected_summary["syncPolicyBlockingCount"]
+    );
+    assert_eq!(
+        document["summary"]["alertPolicyCount"],
+        expected_summary["alertPolicyCount"]
+    );
+    assert_eq!(
+        document["summary"]["providerBlockingCount"],
+        expected_summary["providerBlockingCount"]
+    );
+    assert_eq!(
+        document["summary"]["totalBlockingCount"],
+        expected_summary["totalBlockingCount"]
+    );
+    for fragment in expected_text {
+        assert!(rendered.contains(fragment.as_str().unwrap()));
+    }
 }

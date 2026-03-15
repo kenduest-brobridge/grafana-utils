@@ -199,12 +199,37 @@ pub fn build_sync_bundle_preflight_document(
         .and_then(|summary| summary.get("blockingCount"))
         .and_then(Value::as_i64)
         .unwrap_or(0);
+    let sync_check_count = sync_preflight
+        .get("summary")
+        .and_then(Value::as_object)
+        .and_then(|summary| summary.get("checkCount"))
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+    let sync_dependency_blocking_count = sync_preflight
+        .get("summary")
+        .and_then(Value::as_object)
+        .and_then(|summary| summary.get("dependencyBlockingCount"))
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+    let sync_policy_blocking_count = sync_preflight
+        .get("summary")
+        .and_then(Value::as_object)
+        .and_then(|summary| summary.get("policyBlockingCount"))
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+    let alert_policy_count = sync_preflight
+        .get("summary")
+        .and_then(Value::as_object)
+        .and_then(|summary| summary.get("alertPolicyCount"))
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
     let provider_blocking_count = provider_assessment
         .get("summary")
         .and_then(Value::as_object)
         .and_then(|summary| summary.get("blockingCount"))
         .and_then(Value::as_i64)
         .unwrap_or(0);
+    let total_blocking_count = sync_blocking_count + provider_blocking_count;
     Ok(Value::Object(Map::from_iter(vec![
         (
             "kind".to_string(),
@@ -222,12 +247,32 @@ pub fn build_sync_bundle_preflight_document(
                     Value::Number((desired_specs.len() as i64).into()),
                 ),
                 (
+                    "syncCheckCount".to_string(),
+                    Value::Number(sync_check_count.into()),
+                ),
+                (
                     "syncBlockingCount".to_string(),
                     Value::Number(sync_blocking_count.into()),
                 ),
                 (
+                    "syncDependencyBlockingCount".to_string(),
+                    Value::Number(sync_dependency_blocking_count.into()),
+                ),
+                (
+                    "syncPolicyBlockingCount".to_string(),
+                    Value::Number(sync_policy_blocking_count.into()),
+                ),
+                (
+                    "alertPolicyCount".to_string(),
+                    Value::Number(alert_policy_count.into()),
+                ),
+                (
                     "providerBlockingCount".to_string(),
                     Value::Number(provider_blocking_count.into()),
+                ),
+                (
+                    "totalBlockingCount".to_string(),
+                    Value::Number(total_blocking_count.into()),
                 ),
             ])),
         ),
@@ -254,6 +299,13 @@ pub fn render_sync_bundle_preflight_text(document: &Value) -> Result<Vec<String>
                 .unwrap_or(0)
         ),
         format!(
+            "Sync checks: {} total",
+            summary
+                .get("syncCheckCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0)
+        ),
+        format!(
             "Sync blocking: {}",
             summary
                 .get("syncBlockingCount")
@@ -261,9 +313,34 @@ pub fn render_sync_bundle_preflight_text(document: &Value) -> Result<Vec<String>
                 .unwrap_or(0)
         ),
         format!(
+            "Blocking split: dependency={} policy={}",
+            summary
+                .get("syncDependencyBlockingCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
+            summary
+                .get("syncPolicyBlockingCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0)
+        ),
+        format!(
+            "Alert policy: {} plan-only resources",
+            summary
+                .get("alertPolicyCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0)
+        ),
+        format!(
             "Provider blocking: {}",
             summary
                 .get("providerBlockingCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0)
+        ),
+        format!(
+            "Total blocking: {}",
+            summary
+                .get("totalBlockingCount")
                 .and_then(Value::as_i64)
                 .unwrap_or(0)
         ),

@@ -1,11 +1,18 @@
 use crate::sync_contracts::{
     build_sync_apply_intent_document, build_sync_plan_document, build_sync_summary_document,
-    normalize_resource_spec, summarize_resource_specs, SYNC_APPLY_INTENT_KIND, SYNC_SUMMARY_KIND,
+    normalize_resource_spec, summarize_resource_specs, SYNC_APPLY_INTENT_KIND,
 };
 use crate::sync_preflight::{
     build_sync_preflight_document, render_sync_preflight_text, SYNC_PREFLIGHT_KIND,
 };
-use serde_json::json;
+use serde_json::{json, Value};
+
+fn load_contract_cases() -> Value {
+    serde_json::from_str(include_str!(
+        "../../tests/fixtures/rust_sync_contract_cases.json"
+    ))
+    .unwrap()
+}
 
 #[test]
 fn normalize_resource_spec_requires_alert_managed_fields() {
@@ -25,49 +32,48 @@ fn normalize_resource_spec_requires_alert_managed_fields() {
 
 #[test]
 fn build_sync_summary_document_counts_normalized_resource_kinds() {
-    let raw_specs = vec![
-        json!({
-            "kind": "folder",
-            "uid": "ops",
-            "title": "Operations",
-            "body": {"title": "Operations"},
-            "sourcePath": "folders/ops.json"
-        }),
-        json!({
-            "kind": "datasource",
-            "uid": "prom-main",
-            "name": "Prometheus Main",
-            "body": {"type": "prometheus"},
-            "sourcePath": "datasources/prom-main.json"
-        }),
-        json!({
-            "kind": "dashboard",
-            "uid": "cpu-main",
-            "title": "CPU Main",
-            "body": {"datasourceUids": ["prom-main"]},
-            "sourcePath": "dashboards/cpu-main.json"
-        }),
-        json!({
-            "kind": "alert",
-            "uid": "cpu-high",
-            "title": "CPU High",
-            "managedFields": ["condition", "contactPoints"],
-            "body": {"condition": "A > 90", "contactPoints": ["pagerduty-primary"]},
-            "sourcePath": "alerts/cpu-high.json"
-        }),
-    ];
+    let cases = load_contract_cases();
+    let summary_case = cases.get("summaryCase").and_then(Value::as_object).unwrap();
+    let raw_specs = summary_case
+        .get("rawSpecs")
+        .and_then(Value::as_array)
+        .unwrap()
+        .clone();
+    let expected = summary_case
+        .get("expectedSummary")
+        .and_then(Value::as_object)
+        .unwrap();
 
     let document = build_sync_summary_document(&raw_specs).unwrap();
 
-    assert_eq!(document["kind"], json!(SYNC_SUMMARY_KIND));
-    assert_eq!(document["summary"]["resourceCount"], json!(4));
-    assert_eq!(document["summary"]["dashboardCount"], json!(1));
-    assert_eq!(document["summary"]["datasourceCount"], json!(1));
-    assert_eq!(document["summary"]["folderCount"], json!(1));
-    assert_eq!(document["summary"]["alertCount"], json!(1));
+    assert_eq!(document["kind"], expected.get("kind").cloned().unwrap());
+    assert_eq!(
+        document["schemaVersion"],
+        expected.get("schemaVersion").cloned().unwrap()
+    );
+    assert_eq!(
+        document["summary"]["resourceCount"],
+        expected.get("resourceCount").cloned().unwrap()
+    );
+    assert_eq!(
+        document["summary"]["dashboardCount"],
+        expected.get("dashboardCount").cloned().unwrap()
+    );
+    assert_eq!(
+        document["summary"]["datasourceCount"],
+        expected.get("datasourceCount").cloned().unwrap()
+    );
+    assert_eq!(
+        document["summary"]["folderCount"],
+        expected.get("folderCount").cloned().unwrap()
+    );
+    assert_eq!(
+        document["summary"]["alertCount"],
+        expected.get("alertCount").cloned().unwrap()
+    );
     assert_eq!(
         document["resources"][3]["managedFields"],
-        json!(["condition", "contactPoints"])
+        expected.get("alertManagedFields").cloned().unwrap()
     );
 }
 
@@ -254,4 +260,121 @@ fn build_sync_apply_intent_document_filters_non_mutating_operations() {
             item["action"].as_str(),
             Some("would-create" | "would-update" | "would-delete")
         )));
+}
+
+#[test]
+fn build_sync_plan_document_exposes_scope_and_prune_contract() {
+    let cases = load_contract_cases();
+    let plan_case = cases.get("planCase").and_then(Value::as_object).unwrap();
+    let desired_specs = plan_case
+        .get("desiredSpecs")
+        .and_then(Value::as_array)
+        .unwrap()
+        .clone();
+    let live_specs = plan_case
+        .get("liveSpecs")
+        .and_then(Value::as_array)
+        .unwrap()
+        .clone();
+    let allow_prune = plan_case
+        .get("allowPrune")
+        .and_then(Value::as_bool)
+        .unwrap();
+    let expected = plan_case
+        .get("expectedPlan")
+        .and_then(Value::as_object)
+        .unwrap();
+
+    let document = build_sync_plan_document(&desired_specs, &live_specs, allow_prune).unwrap();
+
+    assert_eq!(
+        document["scope"]["managedResourceKinds"],
+        expected["scope"]["managedResourceKinds"].clone()
+    );
+    assert_eq!(
+        document["scope"]["alertOwnership"]["mode"],
+        expected["scope"]["alertOwnershipMode"].clone()
+    );
+    assert_eq!(document["kind"], expected.get("kind").cloned().unwrap());
+    assert_eq!(
+        document["schemaVersion"],
+        expected.get("schemaVersion").cloned().unwrap()
+    );
+    assert_eq!(
+        document["allowPrune"],
+        expected.get("allowPrune").cloned().unwrap()
+    );
+    assert_eq!(
+        document["scope"]["prune"]["enabled"],
+        expected["scope"]["pruneEnabled"].clone()
+    );
+    assert_eq!(
+        document["scope"]["prune"]["liveOnlyAction"],
+        expected["scope"]["liveOnlyAction"].clone()
+    );
+    assert_eq!(
+        document["scope"]["prune"]["whenDisabledAction"],
+        expected["scope"]["whenDisabledAction"].clone()
+    );
+    assert_eq!(
+        document["scope"]["liveApplyContract"]["nonMutatingActions"],
+        expected["scope"]["nonMutatingActions"].clone()
+    );
+    assert_eq!(
+        document["summary"]["unmanaged"],
+        expected["summary"]["unmanaged"].clone()
+    );
+    assert!(document["operations"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["identity"] == expected["unmanagedIdentity"]
+            && item["action"] == expected["scope"]["liveOnlyAction"]));
+}
+
+#[test]
+fn build_sync_apply_intent_document_preserves_scope_and_prune_contract() {
+    let cases = load_contract_cases();
+    let apply_case = cases.get("applyCase").and_then(Value::as_object).unwrap();
+    let plan = apply_case.get("reviewedPlan").cloned().unwrap();
+    let approve = apply_case
+        .get("approve")
+        .and_then(Value::as_bool)
+        .unwrap();
+    let expected = apply_case
+        .get("expectedIntent")
+        .and_then(Value::as_object)
+        .unwrap();
+
+    let intent = build_sync_apply_intent_document(&plan, approve).unwrap();
+
+    assert_eq!(intent["kind"], expected.get("kind").cloned().unwrap());
+    assert_eq!(
+        intent["schemaVersion"],
+        expected.get("schemaVersion").cloned().unwrap()
+    );
+    assert_eq!(intent["allowPrune"], expected.get("allowPrune").cloned().unwrap());
+    assert_eq!(
+        intent["scope"]["prune"]["enabled"],
+        expected.get("pruneEnabled").cloned().unwrap()
+    );
+    assert_eq!(
+        intent["scope"]["prune"]["liveOnlyAction"],
+        expected.get("liveOnlyAction").cloned().unwrap()
+    );
+    assert_eq!(
+        intent["scope"]["liveApplyContract"]["nonMutatingActions"],
+        expected.get("nonMutatingActions").cloned().unwrap()
+    );
+    assert_eq!(
+        intent["operations"].as_array().unwrap().len(),
+        expected
+            .get("operationCount")
+            .and_then(Value::as_u64)
+            .unwrap() as usize
+    );
+    assert_eq!(
+        intent["operations"][0]["identity"],
+        expected.get("firstIdentity").cloned().unwrap()
+    );
 }

@@ -322,6 +322,42 @@ fn build_alert_assessment_document(operations: &[Value]) -> Value {
     })
 }
 
+fn build_sync_scope_document(allow_prune: bool) -> Value {
+    let managed_kinds = RESOURCE_KINDS
+        .iter()
+        .map(|kind| Value::String((*kind).to_string()))
+        .collect::<Vec<Value>>();
+    let prune_mode = if allow_prune {
+        "delete-missing-live-resources"
+    } else {
+        "retain-live-resources-as-unmanaged"
+    };
+    let live_only_action = if allow_prune {
+        "would-delete"
+    } else {
+        "unmanaged"
+    };
+    serde_json::json!({
+        "managedResourceKinds": managed_kinds,
+        "alertOwnership": {
+            "mode": "managed-fields-only",
+            "requiredField": "managedFields",
+            "planOnlyFields": ["contactPoints", "annotations"],
+        },
+        "prune": {
+            "enabled": allow_prune,
+            "mode": prune_mode,
+            "liveOnlyAction": live_only_action,
+            "whenDisabledAction": "unmanaged",
+        },
+        "liveApplyContract": {
+            "documentMode": "reviewable-intent-first",
+            "mutatingActions": ["would-create", "would-update", "would-delete"],
+            "nonMutatingActions": ["noop", "unmanaged"],
+        },
+    })
+}
+
 pub fn build_sync_plan_document(
     desired_specs: &[Value],
     live_specs: &[Value],
@@ -420,6 +456,7 @@ pub fn build_sync_plan_document(
             "alert_plan_only": alert_assessment["summary"]["planOnlyCount"],
             "alert_blocked": alert_assessment["summary"]["blockedCount"],
         },
+        "scope": build_sync_scope_document(allow_prune),
         "alertAssessment": alert_assessment,
         "operations": operations,
     }))
@@ -473,6 +510,10 @@ pub fn build_sync_apply_intent_document(plan_document: &Value, approve: bool) ->
         "allowPrune": plan.get("allowPrune").cloned().unwrap_or(Value::Bool(false)),
         "approved": true,
         "summary": plan.get("summary").cloned().unwrap_or(Value::Null),
+        "scope": plan
+            .get("scope")
+            .cloned()
+            .unwrap_or_else(|| build_sync_scope_document(false)),
         "alertAssessment": plan.get("alertAssessment").cloned().unwrap_or(Value::Null),
         "operations": executable_operations,
     }))

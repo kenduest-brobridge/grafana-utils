@@ -197,13 +197,36 @@ pub fn build_sync_preflight_document(
             other => return Err(message(format!("Unsupported sync preflight kind {other}."))),
         }
     }
+    let check_count = checks.len();
+    let ok_count = checks.iter().filter(|item| item.status == "ok").count();
+    let create_planned_count = checks
+        .iter()
+        .filter(|item| item.status == "create-planned")
+        .count();
+    let missing_count = checks.iter().filter(|item| item.status == "missing").count();
+    let blocking_count = checks.iter().filter(|item| item.blocking).count();
+    let policy_blocking_count = checks
+        .iter()
+        .filter(|item| item.blocking && item.kind == "alert-live-apply")
+        .count();
+    let dependency_blocking_count = blocking_count.saturating_sub(policy_blocking_count);
+    let alert_policy_count = checks
+        .iter()
+        .filter(|item| item.kind == "alert-live-apply")
+        .count();
     Ok(serde_json::json!({
         "kind": SYNC_PREFLIGHT_KIND,
         "schemaVersion": SYNC_PREFLIGHT_SCHEMA_VERSION,
         "summary": {
-            "checkCount": checks.len(),
-            "okCount": checks.iter().filter(|item| item.status == "ok").count(),
-            "blockingCount": checks.iter().filter(|item| item.blocking).count(),
+            "resourceCount": specs.len(),
+            "checkCount": check_count,
+            "okCount": ok_count,
+            "createPlannedCount": create_planned_count,
+            "missingCount": missing_count,
+            "blockingCount": blocking_count,
+            "dependencyBlockingCount": dependency_blocking_count,
+            "policyBlockingCount": policy_blocking_count,
+            "alertPolicyCount": alert_policy_count,
         },
         "checks": checks.iter().map(|item| {
             serde_json::json!({
@@ -226,20 +249,55 @@ pub fn render_sync_preflight_text(document: &Value) -> Result<Vec<String>> {
     let mut lines = vec![
         "Sync preflight summary".to_string(),
         format!(
-            "Checks: {} total, {} ok, {} blocking",
+            "Resources: {} total",
+            summary
+                .get("resourceCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0)
+        ),
+        format!(
+            "Checks: {} total, {} ok, {} create-planned, {} blocking",
             summary
                 .get("checkCount")
                 .and_then(Value::as_i64)
                 .unwrap_or(0),
             summary.get("okCount").and_then(Value::as_i64).unwrap_or(0),
             summary
+                .get("createPlannedCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
+            summary
                 .get("blockingCount")
                 .and_then(Value::as_i64)
                 .unwrap_or(0)
-        ),
+        )
+    ];
+    let dependency_blocking = summary
+        .get("dependencyBlockingCount")
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+    let policy_blocking = summary
+        .get("policyBlockingCount")
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+    lines.push(format!(
+        "Blocking split: dependency={} policy={}",
+        dependency_blocking, policy_blocking
+    ));
+    let alert_policy_count = summary
+        .get("alertPolicyCount")
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+    if alert_policy_count > 0 {
+        lines.push(format!(
+            "Alert policy: {} alert resources remain plan-only for live apply",
+            alert_policy_count
+        ));
+    }
+    lines.extend([
         String::new(),
         "# Checks".to_string(),
-    ];
+    ]);
     if let Some(items) = document.get("checks").and_then(Value::as_array) {
         for item in items {
             if let Some(object) = item.as_object() {

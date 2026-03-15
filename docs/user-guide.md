@@ -94,6 +94,134 @@ Authentication exclusivity rules:
 3. `--basic-password` cannot be combined with `--prompt-password`.
 4. `--prompt-password` requires `--basic-user`.
 
+### Rust `sync` staged workflow
+
+Purpose: model a constrained Grafana-managed state slice as local JSON, review the resulting plan, and keep preflight checks explicit before any later live apply.
+
+Managed scope today:
+- `folder`
+- `dashboard`
+- `datasource`
+- partial `alert` ownership through `managedFields`
+
+Workflow:
+1. `summary` validates and normalizes the desired JSON resource list.
+2. `plan` compares desired vs live JSON and emits a staged plan with create/update/delete/noop/unmanaged counts.
+3. `review` marks that staged plan reviewed and preserves `traceId` / lineage metadata.
+4. `preflight` or `bundle-preflight` checks availability and policy blockers before apply.
+5. `apply` emits a gated apply-intent document. Add `--execute-live` only when you want the Rust binary to call Grafana for supported operations.
+
+Canonical demo fixtures:
+- `tests/fixtures/rust_sync_demo_desired.json`
+- `tests/fixtures/rust_sync_demo_live.json`
+- `tests/fixtures/rust_sync_demo_availability.json`
+- `tests/fixtures/rust_sync_demo_bundle.json`
+- `tests/fixtures/rust_sync_demo_target_inventory.json`
+
+These files are the maintained examples for the commands below, so later docs and tests can reuse the same staged input set instead of copying JSON into multiple places.
+
+Example command:
+```bash
+grafana-util sync summary --desired-file ./tests/fixtures/rust_sync_demo_desired.json
+```
+
+Example output:
+```text
+Sync summary
+Resources: 3 total, 1 dashboards, 1 datasources, 1 folders, 0 alerts
+```
+
+Example command:
+```bash
+grafana-util sync plan --desired-file ./tests/fixtures/rust_sync_demo_desired.json --live-file ./tests/fixtures/rust_sync_demo_live.json
+```
+
+Example output:
+```text
+Sync plan
+Summary: create=1 update=2 delete=0 noop=0 unmanaged=0
+Alerts: candidate=0 plan-only=0 blocked=0
+Review: required=true reviewed=false
+```
+
+How to read it:
+- `create` means the resource is missing from live JSON and would be added.
+- `update` means the identity exists but the managed body differs.
+- `unmanaged` is used for live-only resources when `--allow-prune` is not set.
+- `delete` is used for live-only resources only when you deliberately pass `--allow-prune`.
+
+Example command:
+```bash
+grafana-util sync review --plan-file ./plan.json --review-token reviewed-sync-plan --reviewed-by ops-bot --output json
+```
+
+Example output:
+```json
+{
+  "kind": "grafana-utils-sync-plan",
+  "reviewed": true,
+  "traceId": "sync-trace-example",
+  "stage": "review",
+  "stepIndex": 2
+}
+```
+
+How to read it:
+- `reviewed=true` is required before apply.
+- `traceId`, `stage`, and `stepIndex` keep staged artifacts linked across review, preflight, and apply.
+
+Example command:
+```bash
+grafana-util sync preflight --desired-file ./tests/fixtures/rust_sync_demo_desired.json --availability-file ./tests/fixtures/rust_sync_demo_availability.json
+```
+
+Example output:
+```text
+Sync preflight summary
+Resources: 3 total
+Checks: 3 total, 3 ok, 0 create-planned, 0 blocking
+Blocking split: dependency=0 policy=0
+
+# Checks
+- folder identity=ops status=ok detail=Folder sync does not require extra staged preflight checks.
+- datasource identity=prom-main status=ok detail=Datasource already exists in the destination inventory.
+- plugin identity=prometheus status=ok detail=Datasource plugin type is available.
+```
+
+Example command:
+```bash
+grafana-util sync bundle-preflight --source-bundle ./tests/fixtures/rust_sync_demo_bundle.json --target-inventory ./tests/fixtures/rust_sync_demo_target_inventory.json --availability-file ./tests/fixtures/rust_sync_demo_availability.json
+```
+
+Example output:
+```text
+Sync bundle preflight summary
+Resources: 3 total
+Sync checks: 4 total
+Sync blocking: 0
+Blocking split: dependency=0 policy=0
+Alert policy: 0 plan-only resources
+Provider blocking: 0
+Total blocking: 0
+```
+
+Example command:
+```bash
+grafana-util sync apply --plan-file ./reviewed-plan.json --approve
+```
+
+Example output:
+```text
+Sync apply intent
+Summary: create=1 update=2 delete=0 executable=3
+Review: required=true reviewed=true approved=true
+```
+
+Notes:
+- `apply` without `--approve` fails closed.
+- `--preflight-file` and `--bundle-preflight-file` can block apply when they report blocking checks.
+- `--execute-live` is narrower than the staged contract today; alerts still stay out of live apply.
+
 3) Dashboard Commands
 ---------------------
 

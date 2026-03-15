@@ -31,6 +31,10 @@ Commit message default for this repo:
 - `grafana_utils/datasource/parser.py`: Python datasource argparse wiring, dry-run output-column parsing metadata, and help/example scaffolding
 - `grafana_utils/datasource/workflows.py`: Python datasource export/import/diff workflow logic, bundle loading, and live-vs-export reconciliation helpers
 - Rust staged sync contract imports should prefer `crate::sync_contracts`; `sync_workbench` remains only as a compatibility path for older internal references and change-history continuity.
+- `rust/src/sync.rs`: Rust `sync` CLI/orchestration layer, including staged artifact IO, lineage validation, preflight/apply gating, and the current limited live-apply bridge
+- `rust/src/sync_preflight.rs`: Rust pure preflight contract for datasource/plugin/dashboard/alert dependency checks
+- `rust/src/sync_bundle_preflight.rs`: Rust bundle-level aggregate preflight contract that combines sync checks, alert assessment, and datasource provider availability
+- `rust/src/sync_workbench.rs`: Rust staged summary/plan/apply-intent compatibility implementation re-exported through `crate::sync_contracts`
 - `grafana_utils/dashboards/export_workflow.py`: Python dashboard export orchestration helper that keeps the CLI-facing export workflow out of `dashboard_cli.py`
 - `grafana_utils/dashboards/export_inventory.py`: Python dashboard raw-export discovery, inventory loading, and export metadata validation helpers shared by diff/import/inspect paths
 - `grafana_utils/dashboards/inspection_report.py`: Python dashboard inspection report model, column/mode constants, query-row normalization, and flat/grouped report renderers shared by `inspect-export` and `inspect-live`
@@ -84,6 +88,30 @@ Commit message default for this repo:
 - `grafana_utils.dashboard_cli`, `grafana_utils.alert_cli`, `grafana_utils.access_cli`, and `grafana_utils.datasource_cli` are stable facades: parser wiring, output-mode normalization, auth/client bootstrap, and dispatch stay here, while heavier execution remains in dedicated workflow/parser modules.
 - [Python overview for maintainers](docs/overview-python.md) provides a longer architecture walkthrough.
 - [Rust overview for maintainers](docs/overview-rust.md) provides a longer architecture walkthrough.
+
+## Rust Sync Maintenance Contract
+
+- Treat Rust `sync` as local/document-first even though it now has optional live fetch and a limited live apply path. The stable review surface is still the staged JSON artifact chain: `summary -> plan -> review -> preflight/bundle-preflight -> apply`.
+- `crate::sync_contracts` is the preferred import surface for summary/plan/apply-intent builders. `sync_workbench` remains only as the backing compatibility module.
+- `sync.rs` owns CLI parsing, file IO, trace/lineage propagation, validator calls, and live bridges. Avoid moving reusable contract logic into `sync.rs` if it can live in `sync_contracts`, `sync_preflight`, or `sync_bundle_preflight`.
+- [Rust sync artifact note](docs/internal/rust-sync-artifacts.md) is the canonical maintainer reference for staged artifact kinds plus the fixture files that docs/tests should reuse.
+- Lineage metadata is part of the contract, not decorative output:
+  - `traceId` identifies one staged flow.
+  - `stage`, `stepIndex`, and `parentTraceId` constrain which artifacts can be combined.
+  - `apply` must reject reviewed plans or preflight artifacts whose lineage does not match the current plan trace.
+- Managed scope is intentionally narrow:
+  - supported resource kinds are `dashboard`, `datasource`, `folder`, and partial `alert`
+  - alert specs must carry `managedFields`
+  - `unmanaged` means live-only and outside explicit prune intent
+  - `would-delete` means prune has been explicitly allowed for that managed scope
+- Keep preflight fail-closed:
+  - blocking dependency or policy checks should stop `apply`
+  - bundle-preflight should remain the place where cross-resource sync/provider checks aggregate into one reviewable summary
+- Prefer fixture-driven Rust sync coverage when the contract grows:
+  - demo inputs should live under `tests/fixtures/rust_sync_demo_*.json`
+  - contract fixtures should live under `tests/fixtures/rust_sync_*_cases.json`
+  - tests should load those files with `include_str!(...)` instead of duplicating the same large JSON literals across suites
+- When maintainer docs or examples mention Rust `sync`, describe it as staged and review-driven first. Do not imply that it is a general full Grafana takeover or fully symmetric with Terraform/native provisioning.
 
 ## Python Baseline
 
