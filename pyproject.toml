@@ -8,8 +8,8 @@ version = "0.1.0"
 description = "Grafana dashboard and alerting export/import utilities."
 readme = "README.md"
 requires-python = ">=3.9"
-license = "MIT"
-authors = [{ name = "kendlee" }]
+license = "Apache-2.0"
+authors = [{ name = "kenduest" }]
 dependencies = [
   "requests>=2.27,<3",
 ]
