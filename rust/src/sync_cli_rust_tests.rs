@@ -14,8 +14,10 @@ use std::path::Path;
 use tempfile::tempdir;
 
 fn load_sync_preflight_cases() -> Value {
-    serde_json::from_str(include_str!("../../tests/fixtures/rust_sync_preflight_cases.json"))
-        .unwrap()
+    serde_json::from_str(include_str!(
+        "../../tests/fixtures/rust_sync_preflight_cases.json"
+    ))
+    .unwrap()
 }
 
 fn sync_preflight_case(name: &str) -> Value {

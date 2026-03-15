@@ -203,7 +203,10 @@ pub fn build_sync_preflight_document(
         .iter()
         .filter(|item| item.status == "create-planned")
         .count();
-    let missing_count = checks.iter().filter(|item| item.status == "missing").count();
+    let missing_count = checks
+        .iter()
+        .filter(|item| item.status == "missing")
+        .count();
     let blocking_count = checks.iter().filter(|item| item.blocking).count();
     let policy_blocking_count = checks
         .iter()
@@ -270,7 +273,7 @@ pub fn render_sync_preflight_text(document: &Value) -> Result<Vec<String>> {
                 .get("blockingCount")
                 .and_then(Value::as_i64)
                 .unwrap_or(0)
-        )
+        ),
     ];
     let dependency_blocking = summary
         .get("dependencyBlockingCount")
@@ -294,10 +297,7 @@ pub fn render_sync_preflight_text(document: &Value) -> Result<Vec<String>> {
             alert_policy_count
         ));
     }
-    lines.extend([
-        String::new(),
-        "# Checks".to_string(),
-    ]);
+    lines.extend([String::new(), "# Checks".to_string()]);
     if let Some(items) = document.get("checks").and_then(Value::as_array) {
         for item in items {
             if let Some(object) = item.as_object() {

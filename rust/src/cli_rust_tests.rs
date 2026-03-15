@@ -144,14 +144,14 @@ fn parse_cli_supports_dashboard_group_inspect_live_command() {
 }
 
 #[test]
-fn parse_cli_supports_legacy_dashboard_command() {
-    let args: CliArgs = parse_cli_from(["grafana-util", "list", "--json"]);
+fn parse_cli_supports_dashboard_namespace_command() {
+    let args: CliArgs = parse_cli_from(["grafana-util", "dashboard", "list", "--json"]);
 
     match args.command {
-        UnifiedCommand::List(inner) => {
+        UnifiedCommand::Dashboard { command: super::DashboardGroupCommand::List(inner) } => {
             assert!(inner.json);
         }
-        _ => panic!("expected legacy list"),
+        _ => panic!("expected dashboard list"),
     }
 }
 
@@ -179,14 +179,17 @@ fn parse_cli_supports_alert_group() {
 }
 
 #[test]
-fn parse_cli_supports_legacy_alert_alias() {
-    let args: CliArgs = parse_cli_from(["grafana-util", "list-alert-rules", "--json"]);
+fn parse_cli_supports_alert_list_rules_command() {
+    let args: CliArgs = parse_cli_from(["grafana-util", "alert", "list-rules", "--json"]);
 
     match args.command {
-        UnifiedCommand::ListAlertRules(inner) => {
-            assert!(inner.json);
-        }
-        _ => panic!("expected list-alert-rules"),
+        UnifiedCommand::Alert(inner) => match inner.command {
+            Some(crate::alert::AlertGroupCommand::ListRules(alert_inner)) => {
+                assert!(alert_inner.json);
+            }
+            _ => panic!("expected alert list-rules"),
+        },
+        _ => panic!("expected alert list-rules"),
     }
 }
 
@@ -225,10 +228,10 @@ fn unified_help_mentions_alert_access_and_all_org_examples() {
     assert!(help.contains("grafana-util sync preflight"));
     assert!(help.contains("--basic-user admin --basic-password admin --all-orgs"));
     assert!(help.contains("grafana-util dashboard inspect-export"));
-    assert!(help.contains("Run datasource list, export, import, and diff workflows."));
-    assert!(help.contains("Run local/document-only sync summary and preflight workflows."));
-    assert!(help.contains("Compatibility alias; prefer `grafana-util dashboard export`."));
-    assert!(help.contains("Compatibility alias; prefer `grafana-util alert export`."));
+    assert!(help.contains("Datasource [list|add|modify|delete|export|import|diff]."));
+    assert!(help.contains("Sync [summary|preflight|plan|apply|review|assess]."));
+    assert!(help.contains("Dashboard [list|export|import|diff|inspect-export|inspect-live]."));
+    assert!(help.contains("Alert [export|import|diff|list-rules|list-contact-points|list-mute-timings|list-templates]."));
     assert!(!help.contains("Compatibility shim remains available"));
     assert!(!help.contains("grafana-access-utils"));
 }

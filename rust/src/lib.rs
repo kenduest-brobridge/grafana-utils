@@ -30,6 +30,6 @@ mod bundle_preflight_rust_tests;
 #[cfg(test)]
 mod datasource_provider_rust_tests;
 #[cfg(test)]
-mod sync_schema_rust_tests;
-#[cfg(test)]
 mod sync_rust_tests;
+#[cfg(test)]
+mod sync_schema_rust_tests;

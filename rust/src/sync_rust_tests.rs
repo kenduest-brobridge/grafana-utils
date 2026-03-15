@@ -337,10 +337,7 @@ fn build_sync_apply_intent_document_preserves_scope_and_prune_contract() {
     let cases = load_contract_cases();
     let apply_case = cases.get("applyCase").and_then(Value::as_object).unwrap();
     let plan = apply_case.get("reviewedPlan").cloned().unwrap();
-    let approve = apply_case
-        .get("approve")
-        .and_then(Value::as_bool)
-        .unwrap();
+    let approve = apply_case.get("approve").and_then(Value::as_bool).unwrap();
     let expected = apply_case
         .get("expectedIntent")
         .and_then(Value::as_object)
@@ -353,7 +350,10 @@ fn build_sync_apply_intent_document_preserves_scope_and_prune_contract() {
         intent["schemaVersion"],
         expected.get("schemaVersion").cloned().unwrap()
     );
-    assert_eq!(intent["allowPrune"], expected.get("allowPrune").cloned().unwrap());
+    assert_eq!(
+        intent["allowPrune"],
+        expected.get("allowPrune").cloned().unwrap()
+    );
     assert_eq!(
         intent["scope"]["prune"]["enabled"],
         expected.get("pruneEnabled").cloned().unwrap()

@@ -74,7 +74,10 @@ fn attach_lineage(
     object.insert("stage".to_string(), Value::String(stage.to_string()));
     object.insert("stepIndex".to_string(), Value::Number(step_index.into()));
     if let Some(parent) = parent_trace_id {
-        object.insert("parentTraceId".to_string(), Value::String(parent.to_string()));
+        object.insert(
+            "parentTraceId".to_string(),
+            Value::String(parent.to_string()),
+        );
     }
     Value::Object(object)
 }
@@ -200,9 +203,7 @@ fn rust_sync_schema_index_matches_schema_files() {
         let id = entry.get("id").and_then(Value::as_str).unwrap();
         let staged = entry.get("staged").and_then(Value::as_bool).unwrap();
 
-        let absolute = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("..")
-            .join(path);
+        let absolute = Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join(path);
         assert!(
             absolute.exists(),
             "schema path from index does not exist: {}",
@@ -215,9 +216,12 @@ fn rust_sync_schema_index_matches_schema_files() {
             .unwrap_or_else(|| panic!("schema kind from index not found: {kind}"));
         assert_eq!(schema.get("$id").and_then(Value::as_str), Some(id));
         if staged {
-            assert!(schema.get("required").and_then(Value::as_array).unwrap().iter().any(
-                |field| field.as_str() == Some("traceId")
-            ));
+            assert!(schema
+                .get("required")
+                .and_then(Value::as_array)
+                .unwrap()
+                .iter()
+                .any(|field| field.as_str() == Some("traceId")));
         }
     }
 }
@@ -225,7 +229,9 @@ fn rust_sync_schema_index_matches_schema_files() {
 #[test]
 fn rust_sync_summary_document_matches_summary_schema_contract() {
     let contract_cases = load_contract_cases();
-    let raw_specs = contract_cases["summaryCase"]["rawSpecs"].as_array().unwrap();
+    let raw_specs = contract_cases["summaryCase"]["rawSpecs"]
+        .as_array()
+        .unwrap();
     let schema = load_schema("summary");
     let document = build_sync_summary_document(raw_specs).unwrap();
 
@@ -235,7 +241,9 @@ fn rust_sync_summary_document_matches_summary_schema_contract() {
 #[test]
 fn rust_sync_plan_document_matches_plan_schema_contract() {
     let contract_cases = load_contract_cases();
-    let desired_specs = contract_cases["planCase"]["desiredSpecs"].as_array().unwrap();
+    let desired_specs = contract_cases["planCase"]["desiredSpecs"]
+        .as_array()
+        .unwrap();
     let live_specs = contract_cases["planCase"]["liveSpecs"].as_array().unwrap();
     let allow_prune = contract_cases["planCase"]["allowPrune"].as_bool().unwrap();
     let schema = load_schema("plan");
@@ -283,8 +291,12 @@ fn rust_sync_bundle_preflight_document_matches_bundle_schema_contract() {
     let availability = case.get("availability").cloned().unwrap();
     let schema = load_schema("bundle-preflight");
     let document = attach_lineage(
-        &build_sync_bundle_preflight_document(&source_bundle, &target_inventory, Some(&availability))
-            .unwrap(),
+        &build_sync_bundle_preflight_document(
+            &source_bundle,
+            &target_inventory,
+            Some(&availability),
+        )
+        .unwrap(),
         "sync-trace-schema-test",
         "bundle-preflight",
         2,
