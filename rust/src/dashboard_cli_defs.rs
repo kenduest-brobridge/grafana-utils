@@ -12,8 +12,6 @@ use super::{
 
 const DASHBOARD_LIST_HELP_EXAMPLES: &str =
     "Examples:\n\n  Table output with folder paths:\n    grafana-util dashboard list --url http://localhost:3000 --table --show-folder-path\n\n  JSON output for scripting:\n    grafana-util dashboard list --url http://localhost:3000 --output-format json\n\n  CSV output without a header row:\n    grafana-util dashboard list --url http://localhost:3000 --csv --no-header";
-const DASHBOARD_LIST_DATASOURCES_HELP_EXAMPLES: &str =
-    "Examples:\n\n  Preferred datasource namespace:\n    grafana-util datasource list --url http://localhost:3000 --table\n\n  Compatibility dashboard form:\n    grafana-util dashboard list-data-sources --url http://localhost:3000 --table";
 const DASHBOARD_EXPORT_HELP_EXAMPLES: &str =
     "Examples:\n\n  Export dashboards into raw/ and prompt/ variants:\n    grafana-util dashboard export --url http://localhost:3000 --export-dir ./dashboards --overwrite\n\n  Export every visible org into per-org directories:\n    grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./dashboards --overwrite";
 const DASHBOARD_IMPORT_HELP_EXAMPLES: &str =
@@ -530,16 +528,19 @@ pub struct InspectExportArgs {
     #[arg(
         long,
         value_delimiter = ',',
+        help_heading = "Output Options",
         help = "For query-table output, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
     )]
     pub report_columns: Vec<String>,
     #[arg(
         long,
+        help_heading = "Output Options",
         help = "For --report output or report-like --output-format values, include only rows whose datasource label exactly matches this value."
     )]
     pub report_filter_datasource: Option<String>,
     #[arg(
         long,
+        help_heading = "Output Options",
         help = "For --report output or report-like --output-format values, include only rows whose panel id exactly matches this value."
     )]
     pub report_filter_panel_id: Option<String>,
@@ -642,16 +643,19 @@ pub struct InspectLiveArgs {
     #[arg(
         long,
         value_delimiter = ',',
+        help_heading = "Output Options",
         help = "For query-table output, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
     )]
     pub report_columns: Vec<String>,
     #[arg(
         long,
+        help_heading = "Output Options",
         help = "For --report output or report-like --output-format values, include only rows whose datasource label exactly matches this value."
     )]
     pub report_filter_datasource: Option<String>,
     #[arg(
         long,
+        help_heading = "Output Options",
         help = "For --report output or report-like --output-format values, include only rows whose panel id exactly matches this value."
     )]
     pub report_filter_panel_id: Option<String>,
@@ -674,27 +678,18 @@ pub struct InspectLiveArgs {
 pub enum DashboardCommand {
     #[command(
         name = "list",
-        visible_alias = "list-dashboard",
         about = "List dashboard summaries without writing export files.",
         after_help = DASHBOARD_LIST_HELP_EXAMPLES
     )]
     List(ListArgs),
     #[command(
-        name = "list-data-sources",
-        about = "List Grafana data sources.",
-        after_help = DASHBOARD_LIST_DATASOURCES_HELP_EXAMPLES
-    )]
-    ListDataSources(ListDataSourcesArgs),
-    #[command(
         name = "export",
-        visible_alias = "export-dashboard",
         about = "Export dashboards to raw/ and prompt/ JSON files.",
         after_help = DASHBOARD_EXPORT_HELP_EXAMPLES
     )]
     Export(ExportArgs),
     #[command(
         name = "import",
-        visible_alias = "import-dashboard",
         about = "Import dashboard JSON files through the Grafana API.",
         after_help = DASHBOARD_IMPORT_HELP_EXAMPLES
     )]
@@ -923,12 +918,6 @@ pub(crate) fn try_normalize_dashboard_cli_args(
 ) -> std::result::Result<DashboardCliArgs, String> {
     match &mut args.command {
         DashboardCommand::List(list_args) => normalize_simple_output_format(
-            &mut list_args.table,
-            &mut list_args.csv,
-            &mut list_args.json,
-            list_args.output_format,
-        ),
-        DashboardCommand::ListDataSources(list_args) => normalize_simple_output_format(
             &mut list_args.table,
             &mut list_args.csv,
             &mut list_args.json,

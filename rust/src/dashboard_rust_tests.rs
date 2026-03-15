@@ -303,47 +303,6 @@ fn parse_cli_supports_list_output_format_csv() {
 }
 
 #[test]
-fn parse_cli_supports_list_data_sources_mode() {
-    let args = parse_cli_from([
-        "grafana-util",
-        "list-data-sources",
-        "--url",
-        "https://grafana.example.com",
-        "--table",
-    ]);
-
-    match args.command {
-        DashboardCommand::ListDataSources(list_args) => {
-            assert_eq!(list_args.common.url, "https://grafana.example.com");
-            assert!(list_args.table);
-            assert!(!list_args.csv);
-            assert!(!list_args.json);
-            assert!(!list_args.no_header);
-        }
-        _ => panic!("expected list-data-sources command"),
-    }
-}
-
-#[test]
-fn parse_cli_supports_list_data_sources_output_format_json() {
-    let args = parse_cli_from([
-        "grafana-util",
-        "list-data-sources",
-        "--output-format",
-        "json",
-    ]);
-
-    match args.command {
-        DashboardCommand::ListDataSources(list_args) => {
-            assert!(list_args.json);
-            assert!(!list_args.table);
-            assert!(!list_args.csv);
-        }
-        _ => panic!("expected list-data-sources command"),
-    }
-}
-
-#[test]
 fn parse_cli_supports_preferred_auth_aliases() {
     let args = parse_cli_from([
         "grafana-util",
@@ -1269,6 +1228,29 @@ fn inspect_help_mentions_view_format_and_layout_flags() {
 }
 
 #[test]
+fn inspect_export_output_flags_are_grouped() {
+    let help = render_dashboard_subcommand_help("inspect-export");
+    let output_idx = help
+        .find("Output Options:")
+        .expect("missing Output Options section");
+    assert!(
+        help.find("--report-columns")
+            .expect("missing --report-columns")
+            > output_idx
+    );
+    assert!(
+        help.find("--report-filter-datasource")
+            .expect("missing --report-filter-datasource")
+            > output_idx
+    );
+    assert!(
+        help.find("--report-filter-panel-id")
+            .expect("missing --report-filter-panel-id")
+            > output_idx
+    );
+}
+
+#[test]
 fn normalize_dashboard_cli_args_rejects_inspect_format_without_view() {
     let error = DashboardCliArgs::try_parse_from([
         "grafana-util",
@@ -1313,6 +1295,29 @@ fn inspect_live_help_mentions_report_and_panel_filter_flags() {
     assert!(help.contains("--report-filter-panel-id"));
     assert!(help.contains("--help-full"));
     assert!(!help.contains("Extended Examples:"));
+}
+
+#[test]
+fn inspect_live_output_flags_are_grouped() {
+    let help = render_dashboard_subcommand_help("inspect-live");
+    let output_idx = help
+        .find("Output Options:")
+        .expect("missing Output Options section");
+    assert!(
+        help.find("--report-columns")
+            .expect("missing --report-columns")
+            > output_idx
+    );
+    assert!(
+        help.find("--report-filter-datasource")
+            .expect("missing --report-filter-datasource")
+            > output_idx
+    );
+    assert!(
+        help.find("--report-filter-panel-id")
+            .expect("missing --report-filter-panel-id")
+            > output_idx
+    );
 }
 
 #[test]
@@ -1447,27 +1452,19 @@ fn parse_cli_rejects_conflicting_list_org_scope_flags() {
 }
 
 #[test]
-fn parse_cli_supports_legacy_list_alias() {
-    let args = parse_cli_from(["grafana-util", "list-dashboard", "--json"]);
-
-    match args.command {
-        DashboardCommand::List(list_args) => assert!(list_args.json),
-        _ => panic!("expected list command"),
-    }
-}
-
-#[test]
-fn parse_cli_rejects_conflicting_list_data_sources_output_modes() {
+fn parse_cli_rejects_unrecognized_command_list_data_sources() {
     let error = DashboardCliArgs::try_parse_from([
         "grafana-util",
         "list-data-sources",
-        "--table",
-        "--json",
+        "--url",
+        "https://grafana.example.com",
     ])
     .unwrap_err();
 
-    assert!(error.to_string().contains("--table"));
-    assert!(error.to_string().contains("--json"));
+    assert!(error.to_string().contains("list-data-sources"));
+    assert!(error
+        .to_string()
+        .contains("unrecognized subcommand"));
 }
 
 #[test]

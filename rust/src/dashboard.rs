@@ -1,8 +1,7 @@
 //! Dashboard domain orchestrator.
 //!
 //! Purpose:
-//! - Own the dashboard command surface (`list`, `list-data-sources`, `export`,
-//!   `import`, `diff`, `inspect`).
+//! - Own the dashboard command surface (`list`, `export`, `import`, `diff`, `inspect`).
 //! - Re-export shared parser and helper APIs from sibling modules for consumers.
 //! - Keep transport setup, normalization, and execution branching in this module.
 //!
@@ -216,10 +215,6 @@ pub fn run_dashboard_cli_with_client(
             let _ = list_dashboards_with_client(client, &list_args)?;
             Ok(())
         }
-        DashboardCommand::ListDataSources(list_data_sources_args) => {
-            let _ = list_data_sources_with_client(client, &list_data_sources_args)?;
-            Ok(())
-        }
         DashboardCommand::Export(export_args) => {
             let _ = export_dashboards_with_client(client, &export_args)?;
             Ok(())
@@ -270,11 +265,6 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
     match args.command {
         DashboardCommand::List(list_args) => {
             let _ = list_dashboards_with_org_clients(&list_args)?;
-            Ok(())
-        }
-        DashboardCommand::ListDataSources(list_data_sources_args) => {
-            let client = build_http_client(&list_data_sources_args.common)?;
-            let _ = list_data_sources_with_client(&client, &list_data_sources_args)?;
             Ok(())
         }
         DashboardCommand::Export(export_args) => {

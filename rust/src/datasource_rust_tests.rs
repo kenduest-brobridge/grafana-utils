@@ -185,6 +185,42 @@ fn parse_datasource_list_supports_output_format_json() {
 }
 
 #[test]
+fn parse_datasource_list_supports_table_mode() {
+    let args = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util",
+        "list",
+        "--url",
+        "https://grafana.example.com",
+        "--table",
+    ]);
+
+    match args.command {
+        super::DatasourceGroupCommand::List(inner) => {
+            assert_eq!(inner.common.url, "https://grafana.example.com");
+            assert!(inner.table);
+            assert!(!inner.csv);
+            assert!(!inner.json);
+            assert!(!inner.no_header);
+        }
+        _ => panic!("expected datasource list"),
+    }
+}
+
+#[test]
+fn parse_datasource_list_rejects_conflicting_output_modes() {
+    let error = DatasourceCliArgs::try_parse_from([
+        "grafana-util",
+        "list",
+        "--table",
+        "--json",
+    ])
+    .unwrap_err();
+
+    assert!(error.to_string().contains("--table"));
+    assert!(error.to_string().contains("--json"));
+}
+
+#[test]
 fn parse_datasource_add_supports_output_format_table() {
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
