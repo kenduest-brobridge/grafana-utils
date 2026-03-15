@@ -64,6 +64,24 @@ ALERT_COMMAND_HELP = {
     "list-alert-mute-timings": "List live Grafana mute timings.",
     "list-alert-templates": "List live Grafana notification templates.",
 }
+DEPRECATED_DIRECT_DASHBOARD_COMMAND_HELP = {
+    "export": "Compatibility direct form. Prefer `grafana-util dashboard export`.",
+    "list": "Compatibility direct form. Prefer `grafana-util dashboard list`.",
+    "list-data-sources": "Compatibility form. Prefer `grafana-util datasource list`.",
+    "import": "Compatibility direct form. Prefer `grafana-util dashboard import`.",
+    "diff": "Compatibility direct form. Prefer `grafana-util dashboard diff`.",
+    "inspect-export": "Compatibility direct form. Prefer `grafana-util dashboard inspect-export`.",
+    "inspect-live": "Compatibility direct form. Prefer `grafana-util dashboard inspect-live`.",
+}
+DEPRECATED_ALERT_COMMAND_HELP = {
+    "export-alert": "Compatibility direct form. Prefer `grafana-util alert export`.",
+    "import-alert": "Compatibility direct form. Prefer `grafana-util alert import`.",
+    "diff-alert": "Compatibility direct form. Prefer `grafana-util alert diff`.",
+    "list-alert-rules": "Compatibility direct form. Prefer `grafana-util alert list-rules`.",
+    "list-alert-contact-points": "Compatibility direct form. Prefer `grafana-util alert list-contact-points`.",
+    "list-alert-mute-timings": "Compatibility direct form. Prefer `grafana-util alert list-mute-timings`.",
+    "list-alert-templates": "Compatibility direct form. Prefer `grafana-util alert list-templates`.",
+}
 DATASOURCE_COMMAND_HELP = {
     "list": "List live Grafana datasource inventory.",
     "add": "Create one live Grafana datasource through the Grafana API.",
@@ -82,7 +100,6 @@ LEGACY_ALERT_COMMAND_MAP = {
     "list-alert-templates": "list-templates",
 }
 
-
 def _print_dashboard_group_help() -> None:
     """Print dedicated dashboard command help for the legacy/top-level entry path."""
     print(
@@ -90,7 +107,7 @@ def _print_dashboard_group_help() -> None:
         "Commands:\n"
         "  export             Export dashboards into raw/ and prompt/ variants.\n"
         "  list               List live dashboard summaries from Grafana.\n"
-        "  list-data-sources  List live Grafana data sources.\n"
+        "  list-data-sources  Compatibility command; prefer `grafana-util datasource list`.\n"
         "  import             Import dashboards from exported raw JSON files.\n"
         "  diff               Compare exported raw dashboards with the current Grafana state.\n"
         "  inspect-export     Analyze a raw dashboard export directory offline.\n"
@@ -126,18 +143,20 @@ def build_parser() -> argparse.ArgumentParser:
     dashboard_subparsers = dashboard_parser.add_subparsers(dest="dashboard_command")
     dashboard_subparsers.required = False
     for command, help_text in DASHBOARD_COMMAND_HELP.items():
+        if command == "list-data-sources":
+            help_text = "Compatibility command. Prefer `grafana-util datasource list`."
         dashboard_subparsers.add_parser(command, help=help_text, add_help=False)
 
-    for command, help_text in DASHBOARD_COMMAND_HELP.items():
-        subparsers.add_parser(command, help="%s (legacy direct form)." % help_text, add_help=False)
+    for command, help_text in DEPRECATED_DIRECT_DASHBOARD_COMMAND_HELP.items():
+        subparsers.add_parser(command, help=help_text, add_help=False)
 
     subparsers.add_parser(
         "alert",
         help="Run the alerting resource CLI under grafana-util alert ...",
         add_help=False,
     )
-    for command, help_text in ALERT_COMMAND_HELP.items():
-        subparsers.add_parser(command, help="%s (legacy direct form)." % help_text, add_help=False)
+    for command, help_text in DEPRECATED_ALERT_COMMAND_HELP.items():
+        subparsers.add_parser(command, help=help_text, add_help=False)
     subparsers.add_parser(
         "access",
         help="Run the access-management CLI under grafana-util access ...",
@@ -153,7 +172,6 @@ def build_parser() -> argparse.ArgumentParser:
     for command, help_text in DATASOURCE_COMMAND_HELP.items():
         datasource_subparsers.add_parser(command, help=help_text, add_help=False)
     return parser
-
 
 def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     """Resolve command entrypoint and delegate argument normalization.
@@ -189,7 +207,10 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         if mapped:
             # Map modern dashboard subcommands (export/list/import/...) onto the
             # legacy argv shape consumed by dashboard_cli.
-            return argparse.Namespace(entrypoint="dashboard", forwarded_argv=[mapped] + argv[2:])
+            return argparse.Namespace(
+                entrypoint="dashboard",
+                forwarded_argv=[mapped] + argv[2:],
+            )
         parser.parse_args(argv)
         raise AssertionError("argparse should have exited for unsupported dashboard command")
 
@@ -215,15 +236,24 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
             raise SystemExit(0)
         # Keep datasource facade entrypoint aligned with dashboard-style split:
         # parse + normalize first, then delegate to workflow layer.
-        return argparse.Namespace(entrypoint="datasource", forwarded_argv=argv[1:])
+        return argparse.Namespace(
+            entrypoint="datasource",
+            forwarded_argv=argv[1:],
+        )
 
     mapped = LEGACY_DASHBOARD_COMMAND_MAP.get(command)
     if mapped:
-        return argparse.Namespace(entrypoint="dashboard", forwarded_argv=[mapped] + argv[1:])
+        return argparse.Namespace(
+            entrypoint="dashboard",
+            forwarded_argv=[mapped] + argv[1:],
+        )
 
     mapped = LEGACY_ALERT_COMMAND_MAP.get(command)
     if mapped:
-        return argparse.Namespace(entrypoint="alert", forwarded_argv=[mapped] + argv[1:])
+        return argparse.Namespace(
+            entrypoint="alert",
+            forwarded_argv=[mapped] + argv[1:],
+        )
 
     parser.parse_args(argv)
     raise AssertionError("argparse should have exited for unsupported command")

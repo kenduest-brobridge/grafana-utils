@@ -37,7 +37,10 @@ pub enum DashboardGroupCommand {
         about = "List dashboard summaries without writing export files."
     )]
     List(ListArgs),
-    #[command(name = "list-data-sources", about = "List Grafana data sources.")]
+    #[command(
+        name = "list-data-sources",
+        about = "Compatibility command for datasource inventory; prefer `grafana-util datasource list`."
+    )]
     ListDataSources(ListDataSourcesArgs),
     #[command(
         visible_alias = "export-dashboard",
@@ -69,52 +72,58 @@ pub enum UnifiedCommand {
         #[command(subcommand)]
         command: DatasourceGroupCommand,
     },
-    #[command(about = "List dashboard summaries without writing export files.")]
+    #[command(about = "Compatibility direct form; prefer `grafana-util dashboard list`.")]
     List(ListArgs),
-    #[command(name = "list-data-sources", about = "List Grafana data sources.")]
+    #[command(
+        name = "list-data-sources",
+        about = "Compatibility direct form; prefer `grafana-util datasource list`."
+    )]
     ListDataSources(ListDataSourcesArgs),
-    #[command(about = "Export dashboards to raw/ and prompt/ JSON files.")]
+    #[command(about = "Compatibility direct form; prefer `grafana-util dashboard export`.")]
     Export(ExportArgs),
-    #[command(about = "Import dashboard JSON files through the Grafana API.")]
+    #[command(about = "Compatibility direct form; prefer `grafana-util dashboard import`.")]
     Import(ImportArgs),
-    #[command(about = "Compare local raw dashboard files against live Grafana dashboards.")]
+    #[command(about = "Compatibility direct form; prefer `grafana-util dashboard diff`.")]
     Diff(DiffArgs),
-    #[command(about = "Analyze a raw dashboard export directory and summarize its structure.")]
+    #[command(about = "Compatibility direct form; prefer `grafana-util dashboard inspect-export`.")]
     InspectExport(InspectExportArgs),
-    #[command(about = "Analyze live Grafana dashboards without writing a persistent export.")]
+    #[command(about = "Compatibility direct form; prefer `grafana-util dashboard inspect-live`.")]
     InspectLive(InspectLiveArgs),
     #[command(about = "Export, import, or diff Grafana alerting resources.")]
     Alert(AlertNamespaceArgs),
     #[command(
         name = "export-alert",
-        about = "Export alerting resources into raw/ JSON files."
+        about = "Compatibility direct form; prefer `grafana-util alert export`."
     )]
     ExportAlert(AlertExportArgs),
     #[command(
         name = "import-alert",
-        about = "Import alerting resource JSON files through the Grafana API."
+        about = "Compatibility direct form; prefer `grafana-util alert import`."
     )]
     ImportAlert(AlertImportArgs),
     #[command(
         name = "diff-alert",
-        about = "Compare local alerting export files against live Grafana resources."
+        about = "Compatibility direct form; prefer `grafana-util alert diff`."
     )]
     DiffAlert(AlertDiffArgs),
-    #[command(name = "list-alert-rules", about = "List live Grafana alert rules.")]
+    #[command(
+        name = "list-alert-rules",
+        about = "Compatibility direct form; prefer `grafana-util alert list-rules`."
+    )]
     ListAlertRules(AlertListArgs),
     #[command(
         name = "list-alert-contact-points",
-        about = "List live Grafana alert contact points."
+        about = "Compatibility direct form; prefer `grafana-util alert list-contact-points`."
     )]
     ListAlertContactPoints(AlertListArgs),
     #[command(
         name = "list-alert-mute-timings",
-        about = "List live Grafana mute timings."
+        about = "Compatibility direct form; prefer `grafana-util alert list-mute-timings`."
     )]
     ListAlertMuteTimings(AlertListArgs),
     #[command(
         name = "list-alert-templates",
-        about = "List live Grafana notification templates."
+        about = "Compatibility direct form; prefer `grafana-util alert list-templates`."
     )]
     ListAlertTemplates(AlertListArgs),
     #[command(about = "List and manage Grafana users, teams, and service accounts.")]

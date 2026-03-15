@@ -38,6 +38,10 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertIn("alert", help_text)
         self.assertIn("access", help_text)
         self.assertIn("datasource", help_text)
+        self.assertIn("Compatibility direct form. Prefer `grafana-util", help_text)
+        self.assertIn("dashboard export`.", help_text)
+        self.assertIn("export-alert", help_text)
+        self.assertIn("Compatibility direct form. Prefer `grafana-util alert", help_text)
 
     def test_parse_args_dashboard_without_subcommand_prints_dashboard_help(self):
         stdout = io.StringIO()
@@ -49,6 +53,7 @@ class UnifiedCliTests(unittest.TestCase):
         help_text = stdout.getvalue()
         self.assertIn("grafana-util dashboard", help_text)
         self.assertIn("list-data-sources", help_text)
+        self.assertIn("prefer `grafana-util datasource list`", help_text)
 
     def test_parse_args_alert_without_subcommand_prints_alert_help(self):
         stdout = io.StringIO()
@@ -72,7 +77,7 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(exc.exception.code, 0)
         help_text = stdout.getvalue()
         self.assertIn("grafana-util access", help_text)
-        self.assertIn("{user,team,service-account}", help_text)
+        self.assertIn("{user,team,org,service-account}", help_text)
 
     def test_parse_args_datasource_without_subcommand_prints_datasource_help(self):
         stdout = io.StringIO()

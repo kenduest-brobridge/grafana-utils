@@ -209,6 +209,8 @@ fn unified_help_mentions_alert_access_and_shims() {
     assert!(help.contains("grafana-util access user list"));
     assert!(help.contains("grafana-access-utils"));
     assert!(help.contains("Run datasource list, export, import, and diff workflows."));
+    assert!(help.contains("Compatibility direct form; prefer `grafana-util dashboard export`."));
+    assert!(help.contains("Compatibility direct form; prefer `grafana-util alert export`."));
 }
 
 #[test]

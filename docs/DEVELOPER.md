@@ -99,8 +99,8 @@ Commit message default for this repo:
 - Alert workflows no longer ship a separate `grafana-alert-utils` entrypoint; use `grafana-util alert ...`.
 - `grafana-util` is now the primary entrypoint for dashboard, datasource, alert, and access workflows.
 - Use `python3 -m grafana_utils dashboard list ...` to inspect live dashboard summaries.
-- Use `python3 -m grafana_utils dashboard list-data-sources ...` to inspect live Grafana data sources.
-- Use `python3 -m grafana_utils datasource list ...` for the first-class datasource inventory CLI.
+- Use `python3 -m grafana_utils datasource list ...` as the preferred live Grafana datasource inventory CLI.
+- Keep `python3 -m grafana_utils dashboard list-data-sources ...` only as a compatibility path while older automation migrates.
 - Use `python3 -m grafana_utils dashboard inspect-live ...` to inspect live Grafana dashboards through the same summary/report renderers used for raw exports.
 - Use `python3 -m grafana_utils dashboard export ...` for export.
 - Use `python3 -m grafana_utils dashboard import ...` for import.
@@ -141,7 +141,7 @@ Commit message default for this repo:
 - `list-data-sources --no-header` suppresses the table header line while keeping the same column layout.
 - `list-data-sources --csv` emits header `uid,name,type,url,isDefault`.
 - `list-data-sources --json` emits an array of objects with keys `uid`, `name`, `type`, `url`, and `isDefault`.
-- `datasource list` mirrors the same human/CSV/JSON output contract as `dashboard list-data-sources` so the standalone datasource surface stays familiar.
+- `datasource list` is the preferred datasource inventory surface and mirrors the same human/CSV/JSON output contract as the older `dashboard list-data-sources` compatibility path.
 - `datasource export` writes one normalized datasource inventory rooted at `datasources.json`, `index.json`, and `export-metadata.json`, and each exported record carries `uid`, `name`, `type`, `access`, `url`, `isDefault`, `org`, and `orgId`.
 - `datasource export --org-id <ID>` rebuilds the datasource client with `X-Grafana-Org-Id` and is Basic-auth-only because explicit org export is a server-admin-style workflow rather than a token-bound current-org workflow.
 - `datasource export --all-orgs` lists `/api/orgs`, rebuilds one scoped export client per org, writes each org into an `org_<id>_<name>/` subtree, and also writes one aggregate root `index.json` / `export-metadata.json` without a top-level `datasources.json`.

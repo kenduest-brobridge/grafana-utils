@@ -77,6 +77,72 @@ HELP_FULL_EXAMPLES = (
     "    grafana-util datasource list --url http://localhost:3000 "
     "--token \"$GRAFANA_API_TOKEN\" --json"
 )
+ROOT_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  grafana-util datasource list --url http://localhost:3000 --json\n"
+    "  grafana-util datasource add --url http://localhost:3000 --name prometheus-main "
+    "--type prometheus --datasource-url http://prometheus:9090 --dry-run --table\n"
+    "  grafana-util datasource modify --url http://localhost:3000 --uid prom-main "
+    "--set-url http://prometheus-v2:9090 --dry-run --json\n"
+    "  grafana-util datasource delete --url http://localhost:3000 --uid prom-main "
+    "--dry-run --json\n"
+    "  grafana-util datasource export --url http://localhost:3000 "
+    "--export-dir ./datasources --overwrite\n"
+    "  grafana-util datasource import --url http://localhost:3000 "
+    "--import-dir ./datasources --dry-run --table\n"
+    "  grafana-util datasource diff --url http://localhost:3000 "
+    "--diff-dir ./datasources"
+)
+LIST_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  grafana-util datasource list --url http://localhost:3000 --json\n"
+    "  grafana-util datasource list --url http://localhost:3000 --table --no-header\n"
+    "  grafana-util datasource list --url http://localhost:3000 --output-format csv"
+)
+EXPORT_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  grafana-util datasource export --url http://localhost:3000 "
+    "--basic-user admin --basic-password admin --export-dir ./datasources --overwrite\n"
+    "  grafana-util datasource export --url http://localhost:3000 "
+    "--basic-user admin --basic-password admin --all-orgs --export-dir ./datasources"
+)
+IMPORT_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  grafana-util datasource import --url http://localhost:3000 "
+    "--token \"$GRAFANA_API_TOKEN\" --import-dir ./datasources --dry-run --table\n"
+    "  grafana-util datasource import --url http://localhost:3000 "
+    "--basic-user admin --basic-password admin --import-dir ./datasources "
+    "--use-export-org --only-org-id 2 --create-missing-orgs --dry-run --json"
+)
+DIFF_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  grafana-util datasource diff --url http://localhost:3000 "
+    "--token \"$GRAFANA_API_TOKEN\" --diff-dir ./datasources"
+)
+ADD_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  grafana-util datasource add --url http://localhost:3000 "
+    "--token \"$GRAFANA_API_TOKEN\" --name prometheus-main --type prometheus "
+    "--datasource-url http://prometheus:9090 --dry-run --table\n"
+    "  grafana-util datasource add --url http://localhost:3000 "
+    "--token \"$GRAFANA_API_TOKEN\" --uid loki-main --name loki-main --type loki "
+    "--datasource-url http://loki:3100 --http-header X-Scope-OrgID=tenant-a --dry-run --json"
+)
+MODIFY_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  grafana-util datasource modify --url http://localhost:3000 "
+    "--token \"$GRAFANA_API_TOKEN\" --uid prom-main --set-url http://prometheus-v2:9090 "
+    "--dry-run --json\n"
+    "  grafana-util datasource modify --url http://localhost:3000 "
+    "--token \"$GRAFANA_API_TOKEN\" --uid prom-main --set-default true --dry-run --table"
+)
+DELETE_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  grafana-util datasource delete --url http://localhost:3000 "
+    "--token \"$GRAFANA_API_TOKEN\" --uid prom-main --dry-run --json\n"
+    "  grafana-util datasource delete --url http://localhost:3000 "
+    "--token \"$GRAFANA_API_TOKEN\" --name prometheus-main --dry-run --table"
+)
 
 
 def add_list_cli_args(parser):
@@ -578,22 +644,7 @@ def build_parser(prog=None):
     parser = argparse.ArgumentParser(
         prog=prog or "grafana-util datasource",
         description="List, export, import, or diff Grafana datasource inventory.",
-        epilog=(
-            "Examples:\n\n"
-            "  grafana-util datasource list --url http://localhost:3000 --json\n"
-            "  grafana-util datasource add --url http://localhost:3000 --name prometheus-main "
-            "--type prometheus --datasource-url http://prometheus:9090 --dry-run --table\n"
-            "  grafana-util datasource modify --url http://localhost:3000 --uid prom-main "
-            "--set-url http://prometheus-v2:9090 --dry-run --json\n"
-            "  grafana-util datasource delete --url http://localhost:3000 --uid prom-main "
-            "--dry-run --json\n"
-            "  grafana-util datasource export --url http://localhost:3000 "
-            "--export-dir ./datasources --overwrite\n"
-            "  grafana-util datasource import --url http://localhost:3000 "
-            "--import-dir ./datasources --dry-run --table\n"
-            "  grafana-util datasource diff --url http://localhost:3000 "
-            "--diff-dir ./datasources"
-        ),
+        epilog=ROOT_HELP_EXAMPLES,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     subparsers = parser.add_subparsers(dest="command")
@@ -602,6 +653,8 @@ def build_parser(prog=None):
     list_parser = subparsers.add_parser(
         "list",
         help="List live Grafana datasource inventory.",
+        epilog=LIST_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_common_cli_args(list_parser)
     add_list_cli_args(list_parser)
@@ -616,6 +669,8 @@ def build_parser(prog=None):
     export_parser = subparsers.add_parser(
         "export",
         help="Export live Grafana datasource inventory as normalized JSON files.",
+        epilog=EXPORT_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_common_cli_args(export_parser)
     add_export_cli_args(export_parser)
@@ -630,6 +685,8 @@ def build_parser(prog=None):
     import_parser = subparsers.add_parser(
         "import",
         help="Import datasource inventory JSON through the Grafana API.",
+        epilog=IMPORT_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_common_cli_args(import_parser)
     add_import_cli_args(import_parser)
@@ -644,6 +701,8 @@ def build_parser(prog=None):
     diff_parser = subparsers.add_parser(
         "diff",
         help="Compare exported datasource inventory with the current Grafana state.",
+        epilog=DIFF_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_common_cli_args(diff_parser)
     add_diff_cli_args(diff_parser)
@@ -658,6 +717,8 @@ def build_parser(prog=None):
     add_parser = subparsers.add_parser(
         "add",
         help="Create one live Grafana datasource through the Grafana API.",
+        epilog=ADD_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_common_cli_args(add_parser)
     add_add_cli_args(add_parser)
@@ -672,6 +733,8 @@ def build_parser(prog=None):
     modify_parser = subparsers.add_parser(
         "modify",
         help="Modify one live Grafana datasource through the Grafana API.",
+        epilog=MODIFY_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_common_cli_args(modify_parser)
     add_modify_cli_args(modify_parser)
@@ -686,6 +749,8 @@ def build_parser(prog=None):
     delete_parser = subparsers.add_parser(
         "delete",
         help="Delete one live Grafana datasource through the Grafana API.",
+        epilog=DELETE_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_common_cli_args(delete_parser)
     add_delete_cli_args(delete_parser)

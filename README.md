@@ -4,6 +4,15 @@ Language: **English** | [繁體中文版](README.zh-TW.md)
 
 `grafana-utils` is an operator-focused toolkit designed for Grafana administrators and SREs.
 
+## Project Status
+
+This project is still in active development.
+
+- Expect ongoing CLI, workflow, and documentation refinement.
+- Bug reports, edge cases, and operator feedback are welcome.
+- Please use GitHub issues or pull requests for reporting and discussion.
+- Maintainer: `Kenduest`
+
 ### 💡 The Philosophy: Why This Tool?
 
 **"Official tools are for users. Grafana Utilities is for admins."**

@@ -1,7 +1,7 @@
 Grafana Utilities User Guide
 ============================
 
-This guide documents the shared command surface used by the repository. The examples use the Rust source-tree entrypoint, but the same command model also applies to the installed CLI and the Python source-tree entrypoint.
+This guide documents the shared command surface used by the repository. Use `grafana-util ...` as the primary command shape throughout this manual; the same CLI model applies across the packaged Python CLI and the Rust binary.
 
 1) Before You Start
 -------------------
@@ -9,12 +9,12 @@ This guide documents the shared command surface used by the repository. The exam
 Confirm the CLI surface first so the flags in the document match your local checkout:
 
 ```bash
-cargo run --bin grafana-util -- -h
-cargo run --bin grafana-util -- dashboard -h
-cargo run --bin grafana-util -- alert -h
-cargo run --bin grafana-util -- datasource -h
-cargo run --bin grafana-util -- access -h
-cargo run --bin grafana-access-utils -- -h
+grafana-util -h
+grafana-util dashboard -h
+grafana-util alert -h
+grafana-util datasource -h
+grafana-util access -h
+grafana-access-utils -h
 ```
 
 Installed entrypoints:
@@ -24,11 +24,12 @@ grafana-util <domain> <command> [options]
 grafana-access-utils <access-command> [options]
 ```
 
-Rust-specific notes:
+CLI notes:
 
 - `grafana-util` is the primary unified CLI.
 - `grafana-access-utils` is a compatibility launcher for access workflows.
-- Legacy commands such as `list-dashboard` and `export-dashboard` may still exist, but new automation should use the modern subcommand layout.
+- Legacy direct commands such as `list-dashboard`, `export-dashboard`, and `export-alert` still exist for compatibility, but new automation should use the modern namespaced subcommand layout.
+- `dashboard list-data-sources` also remains available for compatibility, but new datasource inventory workflows should use `datasource list`.
 
 2) Global Options
 -----------------
@@ -66,7 +67,7 @@ Default URLs:
 
 ### Command Domains
 
-- Dashboard: `dashboard export`, `dashboard list`, `dashboard list-data-sources`, `dashboard import`, `dashboard diff`, `dashboard inspect-export`, `dashboard inspect-live`
+- Dashboard: `dashboard export`, `dashboard list`, `dashboard import`, `dashboard diff`, `dashboard inspect-export`, `dashboard inspect-live`
 - Alert: `alert export`, `alert import`, `alert diff`, `alert list-rules`, `alert list-contact-points`, `alert list-mute-timings`, `alert list-templates`
 - Datasource: `datasource list`, `datasource export`, `datasource import`, `datasource diff`
 - Access: `access org list`, `access org add`, `access org modify`, `access org delete`, `access org export`, `access org import`, `access user list`, `access user add`, `access user modify`, `access user delete`, `access user export`, `access user import`, `access user diff`, `access team list`, `access team add`, `access team modify`, `access team delete`, `access team export`, `access team import`, `access team diff`, `access service-account list`, `access service-account add`, `access service-account export`, `access service-account import`, `access service-account diff`, `access service-account delete`, `access service-account token add`, `access service-account token delete`
@@ -116,7 +117,7 @@ Purpose: export live dashboards into `raw/` and `prompt/` variants.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite
+grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite
 ```
 
 Example output:
@@ -146,12 +147,12 @@ Purpose: list live dashboards without writing files.
 | `--table` | Table output | Best for operators |
 | `--csv` | CSV output | Best for spreadsheets |
 | `--json` | JSON output | Best for automation |
-| `--output-format table|csv|json` | Single output selector | Replaces the legacy trio |
+| `--output-format table\|csv\|json` | Single output selector | Replaces the legacy trio |
 | `--no-header` | Hide table header row | Cleaner scripting |
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- dashboard list --url http://localhost:3000 --basic-user admin --basic-password admin --with-sources --table
+grafana-util dashboard list --url http://localhost:3000 --basic-user admin --basic-password admin --with-sources --table
 ```
 
 Example output:
@@ -169,7 +170,7 @@ How to read it:
 
 Example command (JSON):
 ```bash
-cargo run --bin grafana-util -- dashboard list --url http://localhost:3000 --token <TOKEN> --json
+grafana-util dashboard list --url http://localhost:3000 --token <TOKEN> --json
 ```
 
 ```json
@@ -183,21 +184,21 @@ cargo run --bin grafana-util -- dashboard list --url http://localhost:3000 --tok
 ]
 ```
 
-### 3.3 `dashboard list-data-sources`
+### 3.3 `dashboard list-data-sources` (compatibility shim; prefer `datasource list`)
 
-Purpose: list the datasources currently referenced in Grafana dashboard flows.
+Purpose: preserve the older dashboard-scoped datasource inventory path while steering new scripts and runbooks to `datasource list`.
 
 | Option | Purpose | Difference / scenario |
 | --- | --- | --- |
 | `--table` | Table output | Human inspection |
 | `--csv` | CSV output | Spreadsheet workflows |
 | `--json` | JSON output | Automation |
-| `--output-format table|csv|json` | Unified output selector | Replaces the legacy trio |
+| `--output-format table\|csv\|json` | Unified output selector | Replaces the legacy trio |
 | `--no-header` | Hide table header | Cleaner scripting |
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- dashboard list-data-sources --url http://localhost:3000 --basic-user admin --basic-password admin --table
+grafana-util datasource list --url http://localhost:3000 --basic-user admin --basic-password admin --table
 ```
 
 Example output:
@@ -207,6 +208,12 @@ prom-main          prometheus-main    prometheus   true
 loki-prod          loki-prod          loki         false
 tempo-prod         tempo-prod         tempo        false
 ```
+
+Preferred path:
+- Use section `5.1 datasource list` for new automation, saved examples, and operator documentation.
+
+Preferred path:
+- Use section `5.1 datasource list` for new automation, saved examples, and operator documentation.
 
 ### 3.4 `dashboard import` (legacy `import-dashboard`)
 
@@ -229,7 +236,7 @@ Purpose: import dashboards from a `raw/` export into live Grafana.
 | `--dry-run` | Preview only | Always recommended first |
 | `--table` | Dry-run table output | Best operator summary |
 | `--json` | Dry-run JSON output | Best for automation |
-| `--output-format text|table|json` | Dry-run output mode | Unified selector |
+| `--output-format text\|table\|json` | Dry-run output mode | Unified selector |
 | `--output-columns` | Column whitelist | Tailored dry-run tables |
 | `--no-header` | Hide table header | Cleaner scripting |
 | `--progress` | Show import progress | Large restores |
@@ -237,7 +244,7 @@ Purpose: import dashboards from a `raw/` export into live Grafana.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw --replace-existing --dry-run --table
+grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw --replace-existing --dry-run --table
 ```
 
 Example output:
@@ -266,7 +273,7 @@ Purpose: compare local exported dashboards against live Grafana.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw
+grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw
 ```
 
 Example output:
@@ -304,7 +311,7 @@ Purpose: analyze exported dashboards offline without calling Grafana.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- dashboard inspect-export --import-dir ./dashboards/raw --output-format report-table
+grafana-util dashboard inspect-export --import-dir ./dashboards/raw --output-format report-table
 ```
 
 Example output:
@@ -330,7 +337,7 @@ Purpose: run the same report logic directly against live dashboards.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- dashboard inspect-live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format governance-json
+grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format governance-json
 ```
 
 Example output:
@@ -360,7 +367,7 @@ Purpose: export alerting resources into `raw/` JSON files.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- alert export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./alerts --overwrite
+grafana-util alert export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./alerts --overwrite
 ```
 
 Example output:
@@ -385,7 +392,7 @@ Purpose: import alerting resources from a `raw/` directory.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- alert import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./alerts/raw --replace-existing --dry-run
+grafana-util alert import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./alerts/raw --replace-existing --dry-run
 ```
 
 Example output:
@@ -411,7 +418,7 @@ Purpose: compare local alert exports against live Grafana.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- alert diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./alerts/raw
+grafana-util alert diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./alerts/raw
 ```
 
 Example output:
@@ -437,12 +444,12 @@ Common output options:
 | `--table` | Table output | Operators |
 | `--csv` | CSV output | Spreadsheet export |
 | `--json` | JSON output | Automation |
-| `--output-format table|csv|json` | Unified output selector | Replaces the legacy trio |
+| `--output-format table\|csv\|json` | Unified output selector | Replaces the legacy trio |
 | `--no-header` | Hide table header | Cleaner scripting |
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- alert list-rules --url http://localhost:3000 --basic-user admin --basic-password admin --table
+grafana-util alert list-rules --url http://localhost:3000 --basic-user admin --basic-password admin --table
 ```
 
 Example output:
@@ -486,12 +493,12 @@ Purpose: list live datasource inventory.
 | `--table` | Table output | Operators |
 | `--csv` | CSV output | Spreadsheet export |
 | `--json` | JSON output | Automation |
-| `--output-format table|csv|json` | Unified output selector | Replaces the legacy trio |
+| `--output-format table\|csv\|json` | Unified output selector | Replaces the legacy trio |
 | `--no-header` | Hide table header | Cleaner scripting |
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- datasource list --url http://localhost:3000 --token <TOKEN> --table
+grafana-util datasource list --url http://localhost:3000 --token <TOKEN> --table
 ```
 
 Example output:
@@ -516,7 +523,7 @@ Purpose: export datasource inventory as normalized JSON.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./datasources --overwrite
+grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./datasources --overwrite
 ```
 
 Example output:
@@ -546,7 +553,7 @@ Purpose: import datasource inventory into live Grafana.
 | `--dry-run` | Preview only | Recommended first |
 | `--table` | Dry-run table output | Operator summary |
 | `--json` | Dry-run JSON output | Automation |
-| `--output-format text|table|json` | Dry-run output selector | Unified selector |
+| `--output-format text\|table\|json` | Dry-run output selector | Unified selector |
 | `--output-columns` | Column whitelist | Tailored dry-run views |
 | `--no-header` | Hide table header | Cleaner scripting |
 | `--progress` | Show import progress | Large imports |
@@ -554,7 +561,7 @@ Purpose: import datasource inventory into live Grafana.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --replace-existing --dry-run --table
+grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --replace-existing --dry-run --table
 ```
 
 Example output:
@@ -581,7 +588,7 @@ Purpose: compare exported datasource inventory with live Grafana.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- datasource diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./datasources
+grafana-util datasource diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./datasources
 ```
 
 Example output:
@@ -689,11 +696,11 @@ Purpose: list users in org or global scope.
 | `--with-teams` | Include team membership | Team visibility |
 | `--page`, `--per-page` | Pagination | Large user sets |
 | `--table`, `--csv`, `--json` | Output mode | Human vs automation |
-| `--output-format table|csv|json` | Unified output selector | Replaces the legacy trio |
+| `--output-format table\|csv\|json` | Unified output selector | Replaces the legacy trio |
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access user list --url http://localhost:3000 --basic-user admin --basic-password admin --scope global --table
+grafana-util access user list --url http://localhost:3000 --basic-user admin --basic-password admin --scope global --table
 ```
 
 Example output:
@@ -726,7 +733,7 @@ Purpose: create a user.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login bob --email bob@example.com --name "Bob Lin" --password '<SECRET>' --org-role Editor --json
+grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login bob --email bob@example.com --name "Bob Lin" --password '<SECRET>' --org-role Editor --json
 ```
 
 Safer alternatives:
@@ -735,7 +742,7 @@ Safer alternatives:
 
 Example with a password file:
 ```bash
-cargo run --bin grafana-util -- access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login bob --email bob@example.com --name "Bob Lin" --password-file ./secrets/bob-password.txt --org-role Editor --json
+grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login bob --email bob@example.com --name "Bob Lin" --password-file ./secrets/bob-password.txt --org-role Editor --json
 ```
 
 Example output:
@@ -769,7 +776,7 @@ Purpose: update an existing user.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access user modify --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --set-email alice@example.com --set-org-role Editor --json
+grafana-util access user modify --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --set-email alice@example.com --set-org-role Editor --json
 ```
 
 Safer alternatives:
@@ -777,7 +784,7 @@ Safer alternatives:
 
 Example with an interactive password prompt:
 ```bash
-cargo run --bin grafana-util -- access user modify --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --prompt-set-password --set-org-role Editor --json
+grafana-util access user modify --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --prompt-set-password --set-org-role Editor --json
 ```
 
 Example output:
@@ -803,7 +810,7 @@ Purpose: delete a user.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --login temp-user --scope global --yes --json
+grafana-util access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --login temp-user --scope global --yes --json
 ```
 
 Example output:
@@ -830,7 +837,7 @@ Purpose: export users and role/team membership snapshots for migration.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access user export --url http://localhost:3000 --token <TOKEN> --export-dir ./access-users --scope org --with-teams
+grafana-util access user export --url http://localhost:3000 --token <TOKEN> --export-dir ./access-users --scope org --with-teams
 ```
 
 Example output:
@@ -853,7 +860,7 @@ Purpose: import users from exported snapshot files.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access user import --url http://localhost:3000 --token <TOKEN> --import-dir ./access-users --replace-existing --dry-run --output-format table
+grafana-util access user import --url http://localhost:3000 --token <TOKEN> --import-dir ./access-users --replace-existing --dry-run --output-format table
 ```
 
 Example output:
@@ -884,7 +891,7 @@ Purpose: compare an exported users snapshot with live users.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access user diff --url http://localhost:3000 --token <TOKEN> --diff-dir ./access-users --scope org
+grafana-util access user diff --url http://localhost:3000 --token <TOKEN> --diff-dir ./access-users --scope org
 ```
 
 Example output:
@@ -904,7 +911,7 @@ Purpose: compare an exported teams snapshot with live teams and memberships.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access team diff --url http://localhost:3000 --token <TOKEN> --diff-dir ./access-teams
+grafana-util access team diff --url http://localhost:3000 --token <TOKEN> --diff-dir ./access-teams
 ```
 
 Example output:
@@ -925,11 +932,11 @@ Purpose: list teams.
 | `--with-members` | Include members | Team audits |
 | `--page`, `--per-page` | Pagination | Large orgs |
 | `--table`, `--csv`, `--json` | Output mode | Human vs automation |
-| `--output-format table|csv|json` | Unified output selector | Replaces the legacy trio |
+| `--output-format table\|csv\|json` | Unified output selector | Replaces the legacy trio |
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access team list --url http://localhost:3000 --token <TOKEN> --with-members --table
+grafana-util access team list --url http://localhost:3000 --token <TOKEN> --with-members --table
 ```
 
 Example output:
@@ -953,7 +960,7 @@ Purpose: create a team.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access team add --url http://localhost:3000 --token <TOKEN> --name platform-team --email platform@example.com --member alice --member bob --admin alice --json
+grafana-util access team add --url http://localhost:3000 --token <TOKEN> --name platform-team --email platform@example.com --member alice --member bob --admin alice --json
 ```
 
 Example output:
@@ -979,7 +986,7 @@ Purpose: adjust team members and admins.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access team modify --url http://localhost:3000 --token <TOKEN> --name platform-team --add-member carol --remove-member bob --remove-admin alice --json
+grafana-util access team modify --url http://localhost:3000 --token <TOKEN> --name platform-team --add-member carol --remove-member bob --remove-admin alice --json
 ```
 
 Example output:
@@ -1005,7 +1012,7 @@ Purpose: delete a team.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access team delete --url http://localhost:3000 --token <TOKEN> --name platform-team --yes --json
+grafana-util access team delete --url http://localhost:3000 --token <TOKEN> --name platform-team --yes --json
 ```
 
 Example output:
@@ -1030,7 +1037,7 @@ Purpose: export teams and member/admin membership snapshots for migration.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access team export --url http://localhost:3000 --token <TOKEN> --export-dir ./access-teams --with-members
+grafana-util access team export --url http://localhost:3000 --token <TOKEN> --export-dir ./access-teams --with-members
 ```
 
 Example output:
@@ -1052,7 +1059,7 @@ Purpose: import teams and synchronize memberships from exported snapshots.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access team import --url http://localhost:3000 --token <TOKEN> --import-dir ./access-teams --replace-existing --dry-run --output-format table
+grafana-util access team import --url http://localhost:3000 --token <TOKEN> --import-dir ./access-teams --replace-existing --dry-run --output-format table
 ```
 
 Example output:
@@ -1075,11 +1082,11 @@ Purpose: list service accounts.
 | `--query` | Fuzzy name search | Discovery |
 | `--page`, `--per-page` | Pagination | Large estates |
 | `--table`, `--csv`, `--json` | Output mode | Human vs automation |
-| `--output-format table|csv|json` | Unified output selector | Replaces the legacy trio |
+| `--output-format table\|csv\|json` | Unified output selector | Replaces the legacy trio |
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access service-account list --url http://localhost:3000 --token <TOKEN> --table
+grafana-util access service-account list --url http://localhost:3000 --token <TOKEN> --table
 ```
 
 Example output:
@@ -1096,13 +1103,13 @@ Purpose: create a service account.
 | Option | Purpose | Difference / scenario |
 | --- | --- | --- |
 | `--name` | Service account name | Required |
-| `--role` | `Viewer|Editor|Admin|None` | Default `Viewer` |
+| `--role` | `Viewer\|Editor\|Admin\|None` | Default `Viewer` |
 | `--disabled` | Disabled flag | Textual boolean in Rust CLI |
 | `--json` | JSON output | Automation |
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access service-account add --url http://localhost:3000 --token <TOKEN> --name deploy-bot --role Editor --json
+grafana-util access service-account add --url http://localhost:3000 --token <TOKEN> --name deploy-bot --role Editor --json
 ```
 
 Example output:
@@ -1127,7 +1134,7 @@ Purpose: export service-account snapshots for backup, reconciliation, or cross-e
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access service-account export --url http://localhost:3000 --token <TOKEN> --export-dir ./access-service-accounts --overwrite
+grafana-util access service-account export --url http://localhost:3000 --token <TOKEN> --export-dir ./access-service-accounts --overwrite
 ```
 
 Example output:
@@ -1147,11 +1154,11 @@ Purpose: replay service-account snapshot files into Grafana.
 | `--import-dir` | Directory containing `service-accounts.json` and `export-metadata.json` | Must match export layout |
 | `--replace-existing` | Create missing service accounts and update existing ones | Required for replay |
 | `--dry-run` | Preview create/update/skip decisions without writing | Recommended first pass |
-| `--table`, `--json`, `--output-format text|table|json` | Dry-run output mode | Summary vs machine-readable review |
+| `--table`, `--json`, `--output-format text\|table\|json` | Dry-run output mode | Summary vs machine-readable review |
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access service-account import --url http://localhost:3000 --token <TOKEN> --import-dir ./access-service-accounts --replace-existing --dry-run --output-format table
+grafana-util access service-account import --url http://localhost:3000 --token <TOKEN> --import-dir ./access-service-accounts --replace-existing --dry-run --output-format table
 ```
 
 Example output:
@@ -1176,7 +1183,7 @@ Purpose: compare service-account snapshot files with live Grafana state.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access service-account diff --url http://localhost:3000 --token <TOKEN> --diff-dir ./access-service-accounts
+grafana-util access service-account diff --url http://localhost:3000 --token <TOKEN> --diff-dir ./access-service-accounts
 ```
 
 Example output:
@@ -1199,7 +1206,7 @@ Purpose: delete a service account.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access service-account delete --url http://localhost:3000 --token <TOKEN> --name deploy-bot --yes --json
+grafana-util access service-account delete --url http://localhost:3000 --token <TOKEN> --name deploy-bot --yes --json
 ```
 
 Example output:
@@ -1224,7 +1231,7 @@ Purpose: create a service-account token.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access service-account token add --url http://localhost:3000 --token <TOKEN> --name deploy-bot --token-name ci-token --seconds-to-live 86400 --json
+grafana-util access service-account token add --url http://localhost:3000 --token <TOKEN> --name deploy-bot --token-name ci-token --seconds-to-live 86400 --json
 ```
 
 Example output:
@@ -1251,7 +1258,7 @@ Purpose: delete a service-account token.
 
 Example command:
 ```bash
-cargo run --bin grafana-util -- access service-account token delete --url http://localhost:3000 --token <TOKEN> --name deploy-bot --token-name ci-token --yes --json
+grafana-util access service-account token delete --url http://localhost:3000 --token <TOKEN> --name deploy-bot --token-name ci-token --yes --json
 ```
 
 Example output:
@@ -1301,33 +1308,33 @@ Example output:
 -----------------------
 
 ```bash
-cargo run --bin grafana-util -- dashboard export --url <URL> --basic-user <USER> --basic-password <PASS> --export-dir <DIR> [--overwrite] [--all-orgs]
-cargo run --bin grafana-util -- dashboard list --url <URL> --basic-user <USER> --basic-password <PASS> [--table|--csv|--json]
-cargo run --bin grafana-util -- dashboard import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw --replace-existing [--dry-run]
-cargo run --bin grafana-util -- dashboard diff --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw
+grafana-util dashboard export --url <URL> --basic-user <USER> --basic-password <PASS> --export-dir <DIR> [--overwrite] [--all-orgs]
+grafana-util dashboard list --url <URL> --basic-user <USER> --basic-password <PASS> [--table|--csv|--json]
+grafana-util dashboard import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw --replace-existing [--dry-run]
+grafana-util dashboard diff --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw
 
-cargo run --bin grafana-util -- alert export --url <URL> --basic-user <USER> --basic-password <PASS> --output-dir <DIR> [--overwrite]
-cargo run --bin grafana-util -- alert import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw --replace-existing [--dry-run]
-cargo run --bin grafana-util -- alert diff --url <URL> --basic-user <USER> --basic-password <PASS> --diff-dir <DIR>/raw
+grafana-util alert export --url <URL> --basic-user <USER> --basic-password <PASS> --output-dir <DIR> [--overwrite]
+grafana-util alert import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw --replace-existing [--dry-run]
+grafana-util alert diff --url <URL> --basic-user <USER> --basic-password <PASS> --diff-dir <DIR>/raw
 
-cargo run --bin grafana-util -- datasource list --url <URL> --token <TOKEN> [--table|--csv|--json]
+grafana-util datasource list --url <URL> --token <TOKEN> [--table|--csv|--json]
 python3 -m grafana_utils datasource add --url <URL> --token <TOKEN> --name <NAME> --type <TYPE> [--uid <UID>] [--access proxy|direct] [--datasource-url <URL>] [--basic-auth] [--basic-auth-user <USER>] [--basic-auth-password <PASS>] [--user <USER>] [--password <PASS>] [--with-credentials] [--http-header NAME=VALUE] [--tls-skip-verify] [--server-name <NAME>] [--json-data <JSON>] [--secure-json-data <JSON>] [--dry-run] [--table|--json|--output-format text|table|json]
-cargo run --bin grafana-util -- datasource export --url <URL> --basic-user <USER> --basic-password <PASS> --export-dir <DIR> [--overwrite] [--org-id <ORG_ID>|--all-orgs]
-cargo run --bin grafana-util -- datasource import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR> --replace-existing [--org-id <ORG_ID>] [--use-export-org [--only-org-id <ORG_ID>]... [--create-missing-orgs]] [--dry-run]
-cargo run --bin grafana-util -- datasource diff --url <URL> --basic-user <USER> --basic-password <PASS> --diff-dir <DIR>
+grafana-util datasource export --url <URL> --basic-user <USER> --basic-password <PASS> --export-dir <DIR> [--overwrite] [--org-id <ORG_ID>|--all-orgs]
+grafana-util datasource import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR> --replace-existing [--org-id <ORG_ID>] [--use-export-org [--only-org-id <ORG_ID>]... [--create-missing-orgs]] [--dry-run]
+grafana-util datasource diff --url <URL> --basic-user <USER> --basic-password <PASS> --diff-dir <DIR>
 
-cargo run --bin grafana-util -- access user list --url <URL> --basic-user <USER> --basic-password <PASS> --scope global --table
-cargo run --bin grafana-util -- access team list --url <URL> --token <TOKEN> --table
-cargo run --bin grafana-util -- access user export --url <URL> --token <TOKEN> --export-dir ./access-users
-cargo run --bin grafana-util -- access team export --url <URL> --token <TOKEN> --export-dir ./access-teams
-cargo run --bin grafana-util -- access user import --url <URL> --token <TOKEN> --import-dir ./access-users --replace-existing --dry-run --output-format table
-cargo run --bin grafana-util -- access team import --url <URL> --token <TOKEN> --import-dir ./access-teams --replace-existing --dry-run --output-format table
-cargo run --bin grafana-util -- access user diff --url <URL> --token <TOKEN> --diff-dir ./access-users
-cargo run --bin grafana-util -- access team diff --url <URL> --token <TOKEN> --diff-dir ./access-teams
-cargo run --bin grafana-util -- access service-account export --url <URL> --token <TOKEN> --export-dir ./access-service-accounts [--overwrite]
-cargo run --bin grafana-util -- access service-account import --url <URL> --token <TOKEN> --import-dir ./access-service-accounts --replace-existing [--dry-run] [--output-format text|table|json]
-cargo run --bin grafana-util -- access service-account diff --url <URL> --token <TOKEN> --diff-dir ./access-service-accounts
-cargo run --bin grafana-util -- access service-account list --url <URL> --token <TOKEN> --table
+grafana-util access user list --url <URL> --basic-user <USER> --basic-password <PASS> --scope global --table
+grafana-util access team list --url <URL> --token <TOKEN> --table
+grafana-util access user export --url <URL> --token <TOKEN> --export-dir ./access-users
+grafana-util access team export --url <URL> --token <TOKEN> --export-dir ./access-teams
+grafana-util access user import --url <URL> --token <TOKEN> --import-dir ./access-users --replace-existing --dry-run --output-format table
+grafana-util access team import --url <URL> --token <TOKEN> --import-dir ./access-teams --replace-existing --dry-run --output-format table
+grafana-util access user diff --url <URL> --token <TOKEN> --diff-dir ./access-users
+grafana-util access team diff --url <URL> --token <TOKEN> --diff-dir ./access-teams
+grafana-util access service-account export --url <URL> --token <TOKEN> --export-dir ./access-service-accounts [--overwrite]
+grafana-util access service-account import --url <URL> --token <TOKEN> --import-dir ./access-service-accounts --replace-existing [--dry-run] [--output-format text|table|json]
+grafana-util access service-account diff --url <URL> --token <TOKEN> --diff-dir ./access-service-accounts
+grafana-util access service-account list --url <URL> --token <TOKEN> --table
 ```
 
 10) Output and Org Control Matrix

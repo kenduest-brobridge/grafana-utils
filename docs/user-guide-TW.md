@@ -1,10 +1,10 @@
 Grafana Utilities 維運指南 (繁體中文)
 ===================================
 
-本指南詳細說明 `grafana-utils` 的命令列介面（CLI）使用方式。本工具集採用的命令設計在不同入口（Rust 二進制檔、Python 模組或安裝後的 CLI）皆保持高度一致：
+本指南以**共同 CLI 介面**為主，統一使用 `grafana-util ...` 作為範例命令寫法。相同的命令模型適用於安裝後的 CLI，以及專案內不同實作所提供的對應入口：
 
 - **全域參數優先**：通用於所有指令的設定。
-- **功能模組獨立**：依資源類型（Dashboard, Alert, Datasource, Access）劃分。
+- **功能模組獨立**：依資源類型（Dashboard、Alert、Datasource、Access）劃分。
 - **情境導向設計**：每個 Flag 皆標註了用途、差異與適用情境。
 - **安全第一**：內建互斥規則與 SOP 建議。
 
@@ -14,12 +14,12 @@ Grafana Utilities 維運指南 (繁體中文)
 開始之前，您可以透過以下指令確認各模組的輔助資訊：
 
 ```bash
-cargo run --bin grafana-util -- -h
-cargo run --bin grafana-util -- dashboard -h
-cargo run --bin grafana-util -- alert -h
-cargo run --bin grafana-util -- datasource -h
-cargo run --bin grafana-util -- access -h
-cargo run --bin grafana-access-utils -- -h
+grafana-util -h
+grafana-util dashboard -h
+grafana-util alert -h
+grafana-util datasource -h
+grafana-util access -h
+grafana-access-utils -h
 ```
 
 安裝後可直接使用：
@@ -32,7 +32,8 @@ grafana-access-utils <access-command> [options]
 ### 入口點說明：
 - **`grafana-util`**: 統一調度器（Unified Dispatcher），支援 `dashboard/alert/datasource/access`。
 - **`grafana-access-utils`**: 針對存取控制（Access）的相容啟動器。
-- 部分舊版指令（如 `list-dashboard` 等）在 Rust 版本中仍保持相容。
+- 部分舊版直達指令（如 `list-dashboard`、`export-dashboard`、`export-alert`）仍保留相容。
+- `dashboard list-data-sources` 也仍可使用，但新的 datasource 盤點作業流程應優先改用 `datasource list`。
 
 2) 全域通用參數
 ----------------
@@ -55,7 +56,7 @@ grafana-access-utils <access-command> [options]
 
 ### 命令分區（快速導覽）
 
-- Dashboard：`dashboard export`、`dashboard list`、`dashboard list-data-sources`、`dashboard import`、`dashboard diff`、`dashboard inspect-export`、`dashboard inspect-live`
+- Dashboard：`dashboard export`、`dashboard list`、`dashboard import`、`dashboard diff`、`dashboard inspect-export`、`dashboard inspect-live`
 - Alert：`alert export`、`alert import`、`alert diff`、`alert list-rules`、`alert list-contact-points`、`alert list-mute-timings`、`alert list-templates`
 - Datasource：`datasource list`、`datasource export`、`datasource import`、`datasource diff`
 - Access：`access org list`、`access org add`、`access org modify`、`access org delete`、`access org export`、`access org import`、`access user list`、`access user add`、`access user modify`、`access user delete`、`access user export`、`access user import`、`access user diff`、`access team list`、`access team add`、`access team modify`、`access team delete`、`access team export`、`access team import`、`access team diff`、`access service-account list`、`access service-account add`、`access service-account export`、`access service-account import`、`access service-account diff`、`access service-account delete`、`access service-account token add`、`access service-account token delete`
@@ -64,8 +65,8 @@ grafana-access-utils <access-command> [options]
 
 本表可協助您快速確認各類 Grafana 資源的支援程度，以便選擇合適的指令執行資產盤點或狀態同步。
 
-| 資源類型 | List (列表) | Export (匯出) | Import (匯入) | Diff (差異) | Inspect (分析) | Add | Modify | Delete | 備註 |
-| --- | :---: | :---: | :---: | :---: | :---: | :---: | --- |
+| 資源類型 | List（列表） | Export（匯出） | Import（匯入） | Diff（差異比對） | Inspect（分析） | Add（新增） | Modify（修改） | Delete（刪除） | 備註 |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | --- |
 | **Dashboard** | Yes | Yes | Yes | Yes | Yes | No | No | No | 適合資產盤點、備份與環境遷移 |
 | **Datasource** | Yes | Yes | Yes | Yes | No | No | No | No | 支援組態漂移檢查與環境同步 |
 | **Alerting** | Yes | Yes | Yes | Yes | No | No | No | No | 涵蓋 Rules, Contact Points, Mute Timings |
@@ -75,7 +76,7 @@ grafana-access-utils <access-command> [options]
 | **Service Account** | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes | 生命週期管理與 Token 簽發 |
 | **SA Token** | Yes | No | No | No | No | Yes | No | Yes | Token 建立與撤銷 |
 
-認證互斥規則（由 Rust Parser 強制執行）:
+認證互斥規則（由 CLI parser 強制執行）：
 
 1. `--token` 不可與 `--basic-user` 同時使用。
 2. `--token` 不可與 `--prompt-token` 同時使用。
@@ -101,12 +102,12 @@ grafana-access-utils <access-command> [options]
 | `--progress` | 顯示進度提示 | 適合人工執行時觀察 |
 | `-v`, `--verbose` | 詳細日誌輸出 | 會覆蓋進度提示 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite
+grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite
 ```
 
-示例輸出：
+範例輸出：
 ```text
 Exported raw    cpu-main -> dashboards/raw/Infra/CPU__cpu-main.json
 Exported prompt cpu-main -> dashboards/prompt/Infra/CPU__cpu-main.json
@@ -117,7 +118,7 @@ Dashboard export completed: 2 dashboard(s), 4 file(s) written
 
 ### 3.2 `dashboard list`（legacy `list-dashboard`）
 
-**用途**：列出 live dashboards。
+**用途**：列出線上的 dashboards。
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
@@ -128,15 +129,15 @@ Dashboard export completed: 2 dashboard(s), 4 file(s) written
 | `--table` | 表格輸出（預設） | 人工閱讀 |
 | `--csv` | CSV | 外部報表 |
 | `--json` | JSON | 自動比對 / 自動化 |
-| `--output-format table|csv|json` | 單一輸出旗標取代三旗標 | 互斥關係與 parser 一致 |
+| `--output-format table\|csv\|json` | 單一輸出旗標取代三旗標 | 互斥關係與 parser 一致 |
 | `--no-header` | 表格不顯示欄位列 | 只取輸出內容時方便 diff |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- dashboard list --url http://localhost:3000 --basic-user admin --basic-password admin --with-sources --table
+grafana-util dashboard list --url http://localhost:3000 --basic-user admin --basic-password admin --with-sources --table
 ```
 
-示例輸出：
+範例輸出：
 ```text
 UID              TITLE            FOLDER   TAGS        DATASOURCES
 cpu-main         CPU Overview     Infra    ops,linux   prometheus-main
@@ -144,9 +145,9 @@ mem-main         Memory Overview  Infra    ops,linux   prometheus-main
 latency-main     API Latency      Apps     api,prod    loki-prod
 ```
 
-示例命令（JSON）：
+範例指令（JSON）：
 ```bash
-cargo run --bin grafana-util -- dashboard list --url http://localhost:3000 --token <TOKEN> --json
+grafana-util dashboard list --url http://localhost:3000 --token <TOKEN> --json
 ```
 
 ```json
@@ -160,9 +161,9 @@ cargo run --bin grafana-util -- dashboard list --url http://localhost:3000 --tok
 ]
 ```
 
-### 3.3 `dashboard list-data-sources`
+### 3.3 `dashboard list-data-sources`（相容保留；建議改用 `datasource list`）
 
-**用途**：列出 live datasources。
+**用途**：保留舊的 dashboard datasource 盤點入口，同時把新的腳本與文件導向 `datasource list`。
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
@@ -172,12 +173,12 @@ cargo run --bin grafana-util -- dashboard list --url http://localhost:3000 --tok
 | `--output-format table/csv/json` | 單一輸出旗標 | 與上述三旗標互斥 |
 | `--no-header` | 不列表頭 | 只取值對比 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- dashboard list-data-sources --url http://localhost:3000 --basic-user admin --basic-password admin --table
+grafana-util datasource list --url http://localhost:3000 --basic-user admin --basic-password admin --table
 ```
 
-示例輸出：
+範例輸出：
 ```text
 UID                NAME               TYPE         IS_DEFAULT
 prom-main          prometheus-main    prometheus   true
@@ -185,9 +186,12 @@ loki-prod          loki-prod          loki         false
 tempo-prod         tempo-prod         tempo        false
 ```
 
+建議路徑：
+- 新的自動化腳本、範例與維運文件請優先使用 `5.1 datasource list`。
+
 ### 3.4 `dashboard import`（legacy `import-dashboard`）
 
-**用途**：將 `raw/` 導入 live dashboards。
+**用途**：將 `raw/` 導入線上的 dashboards。
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
@@ -209,15 +213,15 @@ tempo-prod         tempo-prod         tempo        false
 | `--output-format text/table/json` | dry-run 專用輸出代換旗標 | `text` 為預設摘要行為 |
 | `--output-columns` | dry-run table 欄位白名單 | 僅 `--dry-run --table` 有效 |
 | `--no-header` | table 不輸出表頭 | 僅 `--dry-run --table` |
-| `--progress` | 匯入進度 |
-| `-v`, `--verbose` | 每筆詳細訊息，覆蓋 `--progress` |
+| `--progress` | 匯入進度 | 大量匯入時便於追蹤 |
+| `-v`, `--verbose` | 每筆詳細訊息，覆蓋 `--progress` | 疑難排解時使用 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw --replace-existing --dry-run --table
+grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw --replace-existing --dry-run --table
 ```
 
-示例輸出：
+範例輸出：
 ```text
 UID          TITLE            ACTION   DESTINATION   FOLDER
 cpu-main     CPU Overview     update   existing      Infra
@@ -228,7 +232,7 @@ Dry-run checked 2 dashboard(s)
 
 ### 3.5 `dashboard diff`
 
-**用途**：比較本地 `raw/` 與 live。
+**用途**：比較本地 `raw/` 與線上狀態。
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
@@ -236,12 +240,12 @@ Dry-run checked 2 dashboard(s)
 | `--import-folder-uid` | 比對時覆寫 folder UID 對應關係 | 目錄與目標 folder 不一致修正 |
 | `--context-lines`（預設 `3`） | diff 上下文行數 | 大文件可提高觀察粒度 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw
+grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw
 ```
 
-示例輸出：
+範例輸出：
 ```text
 Dashboard diff found 1 differing item(s).
 
@@ -258,23 +262,23 @@ Dashboard diff found 1 differing item(s).
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--import-dir`（必需） | 指向 raw/ 目錄 | 不連線 live API |
+| `--import-dir`（必需） | 指向 raw/ 目錄 | 不連線線上 API |
 | `--json` | JSON 輸出 | 與 `--table`/`--report*` 互斥 |
 | `--table` | 表格輸出 | 與 `--json` 互斥 |
 | `--report` | report mode 快捷；可為空值 | 取預設 report table 或指定 csv/json/tree/governance |
-| `--output-format text|table|json|report-table|report-csv|report-json|report-tree|report-tree-table|governance|governance-json` | 單一輸出旗標 | 與 `--json`、`--table`、`--report` 互斥 |
+| `--output-format text\|table\|json\|report-table\|report-csv\|report-json\|report-tree\|report-tree-table\|governance\|governance-json` | 單一輸出旗標 | 與 `--json`、`--table`、`--report` 互斥 |
 | `--report-columns` | report 輸出欄位白名單 | 僅 report/table/csv/tree-table 類有意義 |
 | `--report-filter-datasource` | report/filter 的 datasource 精準匹配 | 問題來源鑑別 |
 | `--report-filter-panel-id` | report/filter 的 panel id 精準匹配 | 查單面板差異 |
 | `--help-full` | 顯示完整 report 範例與欄位說明 | 首次導入常用 |
 | `--no-header` | 表格/可表格化 report 不列表頭 | 便於比對輸出 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- dashboard inspect-export --import-dir ./dashboards/raw --output-format report-table
+grafana-util dashboard inspect-export --import-dir ./dashboards/raw --output-format report-table
 ```
 
-示例輸出：
+範例輸出：
 ```text
 UID           TITLE             PANEL_COUNT   DATASOURCES
 cpu-main      CPU Overview      6             prometheus-main
@@ -288,19 +292,19 @@ latency-main  API Latency       8             loki-prod
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--page-size`（預設 `500`） | live 分頁控制 | 大 instance 可先降頁長避免超時 |
+| `--page-size`（預設 `500`） | 線上資料分頁控制 | 大型環境可先降低每頁筆數以避免逾時 |
 | `--org-id` | 指定單一 org | 與 `--all-orgs` 互斥 |
-| `--all-orgs` | 跨可見 org 聚合 |
+| `--all-orgs` | 跨可見 org 聚合 | 用於跨組織總覽盤點 |
 | `--json` / `--table` / `--report` / `--output-format*` | 與 `inspect-export` 完全同義 | 可直接對比離線/線上 |
 | `--help-full` | 進一步說明 report 參數 | 導入/診斷複雜情境 |
 | `--no-header` | 不列表頭 | 主要供腳本處理 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- dashboard inspect-live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format governance-json
+grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format governance-json
 ```
 
-示例輸出：
+範例輸出：
 ```json
 [
   {
@@ -325,12 +329,12 @@ cargo run --bin grafana-util -- dashboard inspect-live --url http://localhost:30
 | `--flat` | 不保留子目錄階層 | 大量檔名變更時更好比對 |
 | `--overwrite` | 覆蓋 existing 檔案 | 重跑前置步驟 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- alert export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./alerts --overwrite
+grafana-util alert export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./alerts --overwrite
 ```
 
-示例輸出：
+範例輸出：
 ```text
 Exported rule          alerts/raw/rules/cpu_high.json
 Exported contact point alerts/raw/contact-points/oncall_webhook.json
@@ -345,17 +349,17 @@ Alert export completed: 3 resource(s) written
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
 | `--import-dir`（必需） | 指向 alert `raw/` 目錄 | 不能指向上層目錄 |
-| `--replace-existing` | 已存在則更新 |
-| `--dry-run` | 僅預覽，不真的送 API |
+| `--replace-existing` | 已存在則更新 | 常見於正式匯入覆寫 |
+| `--dry-run` | 僅預覽，不真的送 API | 建議先確認變更範圍 |
 | `--dashboard-uid-map` | dashboard uid 對照檔 | linked rule 在目標系統 UID 變更時必備 |
 | `--panel-id-map` | panel id 對照檔 | 修復 linked alert 內 panel 參考 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- alert import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./alerts/raw --replace-existing --dry-run
+grafana-util alert import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./alerts/raw --replace-existing --dry-run
 ```
 
-示例輸出：
+範例輸出：
 ```text
 kind=contact-point name=oncall-webhook action=would-update
 kind=rule-group name=linux-hosts action=would-create
@@ -364,20 +368,20 @@ kind=template name=default_message action=no-change
 
 ### 4.3 `alert diff`（legacy `diff-alert`）
 
-**用途**：本地 alert raw 與 live 內容比較。
+**用途**：比較本地 alert raw 與線上內容。
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--diff-dir`（必需） | 指向 raw 目錄 |
-| `--dashboard-uid-map` | dashboard 對映，確保跨環境比對一致 |
-| `--panel-id-map` | panel 對映，修正 linked path |
+| `--diff-dir`（必需） | 指向 raw 目錄 | 比對本地匯出與線上狀態的基準目錄 |
+| `--dashboard-uid-map` | dashboard 對映，確保跨環境比對一致 | 跨環境 UID 不一致時使用 |
+| `--panel-id-map` | panel 對映，修正 linked path | panel 編號差異時使用 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- alert diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./alerts/raw
+grafana-util alert diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./alerts/raw
 ```
 
-示例輸出：
+範例輸出：
 ```text
 Diff different
 
@@ -398,15 +402,15 @@ resource=contact-point name=oncall-webhook
 | `--table` | 表格輸出（預設） | 人工閱讀 |
 | `--csv` | CSV 輸出 | 匯出到外部工具 |
 | `--json` | JSON 輸出 | 自動化 |
-| `--output-format table|csv|json` | 取代 `--table/--csv/--json` 的統一入口 |
+| `--output-format table\|csv\|json` | 取代 `--table/--csv/--json` 的統一入口 | 建議優先使用的統一寫法 |
 | `--no-header` | 不列表頭（table 類） | 結構化比對 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- alert list-rules --url http://localhost:3000 --basic-user admin --basic-password admin --table
+grafana-util alert list-rules --url http://localhost:3000 --basic-user admin --basic-password admin --table
 ```
 
-示例輸出：
+範例輸出：
 ```text
 UID                 TITLE              FOLDER        CONDITION
 cpu-high            CPU High           linux-hosts   A > 80
@@ -414,21 +418,21 @@ memory-pressure     Memory Pressure    linux-hosts   B > 90
 api-latency         API Latency        apps-prod     C > 500
 ```
 
-`alert list-contact-points` 示例輸出：
+`alert list-contact-points` 範例輸出：
 ```text
 UID               NAME             TYPE      DESTINATION
 oncall-webhook    Oncall Webhook   webhook   http://alert.example.com/hook
 slack-primary     Slack Primary    slack     #ops-alerts
 ```
 
-`alert list-mute-timings` 示例輸出：
+`alert list-mute-timings` 範例輸出：
 ```text
 NAME                 INTERVALS
 maintenance-window   mon-fri 01:00-02:00
 release-freeze       sat-sun 00:00-23:59
 ```
 
-`alert list-templates` 示例輸出：
+`alert list-templates` 範例輸出：
 ```text
 NAME               PREVIEW
 default_message    Alert: {{ .CommonLabels.alertname }}
@@ -440,22 +444,22 @@ ops_summary        [{{ .Status }}] {{ .CommonLabels.severity }}
 
 ### 5.1 `datasource list`
 
-**用途**：列出 live datasource。
+**用途**：列出線上的 datasource。
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
 | `--table` | 表格輸出 | 人工掃描 |
 | `--csv` | CSV 輸出 | 報表 |
 | `--json` | JSON 輸出 | 腳本 |
-| `--output-format table|csv|json` | 取代三旗標 |
+| `--output-format table\|csv\|json` | 取代三旗標 | 建議優先使用的統一寫法 |
 | `--no-header` | 不列 header | 比對輸出 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- datasource list --url http://localhost:3000 --token <TOKEN> --table
+grafana-util datasource list --url http://localhost:3000 --token <TOKEN> --table
 ```
 
-示例輸出：
+範例輸出：
 ```text
 UID                NAME               TYPE         URL
 prom-main          prometheus-main    prometheus   http://prometheus:9090
@@ -472,15 +476,15 @@ tempo-prod         tempo-prod         tempo        http://tempo:3200
 | `--export-dir`（預設 `datasources`） | 匯出目錄 | 含 `datasources.json` + metadata |
 | `--org-id` | 匯出指定 org | 僅 Basic Auth 支援明確 org 匯出 |
 | `--all-orgs` | 匯出所有可見 org | 每個 org 會寫入 `org_<id>_<name>/` 子目錄 |
-| `--overwrite` | 覆蓋既有輸出 |
-| `--dry-run` | 僅列預期輸出，不落地 |
+| `--overwrite` | 覆蓋既有輸出 | 適合重複匯出流程 |
+| `--dry-run` | 僅列預期輸出，不落地 | 先確認輸出目錄與範圍 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./datasources --overwrite
+grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./datasources --overwrite
 ```
 
-示例輸出：
+範例輸出：
 ```text
 Exported datasource inventory -> datasources/datasources.json
 Exported metadata            -> datasources/export-metadata.json
@@ -501,24 +505,24 @@ Datasource export completed: 3 item(s)
 | `--use-export-org` | 依 export 內 org 路由回 Grafana | 匯入 `--all-orgs` 產生的整體匯出根目錄 |
 | `--only-org-id` | 限制 `--use-export-org` 只匯入指定 source org | 可重複指定多個 org |
 | `--create-missing-orgs` | 路由匯入前自動建立缺少的目標 org | 僅限 `--use-export-org`；搭配 `--dry-run` 時只預覽 `would-create-org`，不真的建立 |
-| `--require-matching-export-org` | 匯入前比對 orgId |
-| `--replace-existing` | 已存在時更新 |
-| `--update-existing-only` | 只更新已有，不建立 |
-| `--dry-run` | 僅預覽 |
+| `--require-matching-export-org` | 匯入前比對 orgId | 避免匯入到錯誤組織 |
+| `--replace-existing` | 已存在時更新 | 標準覆寫匯入模式 |
+| `--update-existing-only` | 只更新已有，不建立 | 保守同步模式 |
+| `--dry-run` | 僅預覽 | 建議正式匯入前先執行 |
 | `--table` | dry-run 時表格輸出 | 與 `--json` 互斥 |
 | `--json` | dry-run 時 JSON 輸出 | 與 `--table` 互斥 |
-| `--output-format text|table|json` | dry-run 單旗標 |
+| `--output-format text\|table\|json` | dry-run 單旗標 | 統一 dry-run 輸出模式 |
 | `--output-columns` | dry-run table 欄位白名單 | 僅 `--dry-run --table` |
 | `--no-header` | table no header | 僅 `--dry-run --table` |
 | `--progress` | 逐筆進度 | 大量匯入穩定觀察 |
 | `-v`, `--verbose` | 詳細逐筆日誌 | 覆蓋 `--progress` |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --replace-existing --dry-run --table
+grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --replace-existing --dry-run --table
 ```
 
-示例輸出：
+範例輸出：
 ```text
 UID         NAME               TYPE         ACTION   DESTINATION
 prom-main   prometheus-main    prometheus   update   existing
@@ -530,18 +534,18 @@ loki-prod   loki-prod          loki         create   missing
 
 ### 5.4 `datasource diff`
 
-**用途**：比較 export 與 live datasource。
+**用途**：比較匯出快照與線上 datasource。
 
 | 參數 | 用途 |
 | --- | --- |
 | `--diff-dir`（必需） | 指向 datasource 匯出根目錄 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- datasource diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./datasources
+grafana-util datasource diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./datasources
 ```
 
-示例輸出：
+範例輸出：
 ```text
 Datasource diff found 1 differing item(s).
 
@@ -552,7 +556,7 @@ uid=loki-prod
 
 ### 5.5 `datasource add`（僅 Python CLI）
 
-**用途**：直接在 Grafana 建立一筆 live datasource，不經過本地 export bundle。
+**用途**：直接在 Grafana 建立一筆線上 datasource，不經過本地 export bundle。
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
@@ -578,11 +582,11 @@ uid=loki-prod
 
 補充：
 - 常見 type 包含 `prometheus`、`loki`、`elasticsearch`、`influxdb`、`graphite`、`postgres`、`mysql`、`mssql`、`tempo`、`cloudwatch`。
-- 專用 auth/header 旗標會 merge 進 datasource payload；如果 `--json-data` 或 `--secure-json-data` 已經包含相同 key，命令會直接失敗，不會靜默覆蓋。
+- 專用 auth/header 旗標會合併進 datasource payload；如果 `--json-data` 或 `--secure-json-data` 已經包含相同 key，命令會直接失敗，不會靜默覆蓋。
 
-示例：Prometheus + basic auth
+範例：Prometheus + basic auth
 ```bash
-python3 -m grafana_utils datasource add \
+grafana-util datasource add \
   --url http://localhost:3000 \
   --token <TOKEN> \
   --uid prom-main \
@@ -596,9 +600,9 @@ python3 -m grafana_utils datasource add \
   --dry-run --table
 ```
 
-示例：Loki + tenant header
+範例：Loki + tenant header
 ```bash
-python3 -m grafana_utils datasource add \
+grafana-util datasource add \
   --url http://localhost:3000 \
   --token <TOKEN> \
   --uid loki-main \
@@ -610,9 +614,9 @@ python3 -m grafana_utils datasource add \
   --dry-run --json
 ```
 
-示例：InfluxDB + 額外 plugin 設定
+範例：InfluxDB + 額外 plugin 設定
 ```bash
-python3 -m grafana_utils datasource add \
+grafana-util datasource add \
   --url http://localhost:3000 \
   --token <TOKEN> \
   --uid influx-main \
@@ -654,15 +658,15 @@ python3 -m grafana_utils datasource add \
 
 ### 8.2 資產稽核與漂移盤點
 1. **線上掃描**: 定期執行 `dashboard inspect-live --output-format governance-json` 識別孤立資源。
-2. **組態比對**: 利用 `datasource diff` 確保線上資料源配置與標準庫一致。
+2. **組態比對**：利用 `datasource diff` 確保線上資料來源設定與標準庫一致。
 3. **權限稽核**: 執行 `access user list --scope global --csv` 產出年度審計報表。
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access user list --url http://localhost:3000 --basic-user admin --basic-password admin --scope global --table
+grafana-util access user list --url http://localhost:3000 --basic-user admin --basic-password admin --scope global --table
 ```
 
-示例輸出：
+範例輸出：
 ```text
 ID   LOGIN      EMAIL                NAME             ORG_ROLE   GRAFANA_ADMIN
 1    admin      admin@example.com    Grafana Admin    Admin      true
@@ -682,25 +686,25 @@ ID   LOGIN      EMAIL                NAME             ORG_ROLE   GRAFANA_ADMIN
 | `--password` | 初始密碼 | 三選一其一 |
 | `--password-file` | 從檔案讀取初始密碼 | 較安全的非互動用法 |
 | `--prompt-user-password` | 互動式輸入初始密碼 | 較安全的互動用法 |
-| `--org-role` | 初始角色 |
-| `--grafana-admin` | `true/false` |
-| `--json` | JSON 回應 |
+| `--org-role` | 初始角色 | 建立使用者時一併指定 |
+| `--grafana-admin` | `true/false` | 是否授與伺服器管理員權限 |
+| `--json` | JSON 回應 | 便於自動化後續處理 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login bob --email bob@example.com --name "Bob Lin" --password '<SECRET>' --org-role Editor --json
+grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login bob --email bob@example.com --name "Bob Lin" --password '<SECRET>' --org-role Editor --json
 ```
 
 補充：
 - `--password`、`--password-file`、`--prompt-user-password` 只能擇一。
 - `--password-file` 會去掉最後一個換行，方便直接讀常見 secret 檔。
 
-使用密碼檔示例：
+使用密碼檔範例：
 ```bash
-cargo run --bin grafana-util -- access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login bob --email bob@example.com --name "Bob Lin" --password-file ./secrets/bob-password.txt --org-role Editor --json
+grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login bob --email bob@example.com --name "Bob Lin" --password-file ./secrets/bob-password.txt --org-role Editor --json
 ```
 
-示例輸出：
+範例輸出：
 ```json
 {
   "id": 12,
@@ -719,30 +723,30 @@ cargo run --bin grafana-util -- access user add --url http://localhost:3000 --ba
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
 | `--user-id` / `--login` / `--email` | 三擇一定位使用者 | 避免歧義 |
-| `--set-login` | 更新 login |
-| `--set-email` | 更新 email |
-| `--set-name` | 更新名稱 |
+| `--set-login` | 更新 login | 變更登入名稱 |
+| `--set-email` | 更新 email | 更新通知與識別資訊 |
+| `--set-name` | 更新名稱 | 更新顯示名稱 |
 | `--set-password` | 重設密碼 | 三選一其一 |
 | `--set-password-file` | 從檔案讀取新密碼 | 較安全的非互動輪替 |
 | `--prompt-set-password` | 互動式輸入新密碼 | 較安全的互動輪替 |
-| `--set-org-role` | 更新角色 |
-| `--set-grafana-admin` | 更新管理員身分 |
-| `--json` | JSON 回應 |
+| `--set-org-role` | 更新角色 | 調整組織權限 |
+| `--set-grafana-admin` | 更新管理員身分 | 調整全域管理權限 |
+| `--json` | JSON 回應 | 便於自動化後續處理 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access user modify --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --set-email alice@example.com --set-org-role Editor --json
+grafana-util access user modify --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --set-email alice@example.com --set-org-role Editor --json
 ```
 
 補充：
 - `--set-password`、`--set-password-file`、`--prompt-set-password` 最多只能用一個。
 
-互動式改密碼示例：
+互動式改密碼範例：
 ```bash
-cargo run --bin grafana-util -- access user modify --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --prompt-set-password --set-org-role Editor --json
+grafana-util access user modify --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --prompt-set-password --set-org-role Editor --json
 ```
 
-示例輸出：
+範例輸出：
 ```json
 {
   "id": 9,
@@ -758,17 +762,17 @@ cargo run --bin grafana-util -- access user modify --url http://localhost:3000 -
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--user-id` / `--login` / `--email` | 三擇一定位 |
+| `--user-id` / `--login` / `--email` | 三擇一定位 | 任選一種方式指定目標使用者 |
 | `--scope org|global`（預設 `global`） | 刪除範圍 |
-| `--yes` | 跳過刪除確認（建議自動化必加） |
-| `--json` | JSON 回應 |
+| `--yes` | 跳過刪除確認（建議自動化必加） | 非互動執行時常用 |
+| `--json` | JSON 回應 | 便於自動化後續處理 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --login temp-user --scope global --yes --json
+grafana-util access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --login temp-user --scope global --yes --json
 ```
 
-示例輸出：
+範例輸出：
 ```json
 {
   "id": 14,
@@ -790,12 +794,12 @@ cargo run --bin grafana-util -- access user delete --url http://localhost:3000 -
 | `--scope` | `org` / `global` | 切換識別語意 |
 | `--with-teams` | 匯出每位使用者的 team 成員關係 | 還原 membership 時必加 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access user export --url http://localhost:3000 --token <TOKEN> --export-dir ./access-users --scope org --with-teams
+grafana-util access user export --url http://localhost:3000 --token <TOKEN> --export-dir ./access-users --scope org --with-teams
 ```
 
-示例輸出：
+範例輸出：
 ```text
 Exported users from http://localhost:3000 -> /tmp/access-users/users.json and /tmp/access-users/export-metadata.json
 ```
@@ -809,16 +813,16 @@ Exported users from http://localhost:3000 -> /tmp/access-users/users.json and /t
 | `--import-dir` | 包含 `users.json` 與 `export-metadata.json` 的目錄 | 必須沿用 export 目錄結構 |
 | `--scope` | `org` / `global` | 控制比對與更新規則 |
 | `--replace-existing` | 更新已存在帳號而非直接跳過 | 做重播同步時必須 |
-| `--dry-run` | 僅預覽，不實際改 Grafana |
+| `--dry-run` | 僅預覽，不實際改 Grafana | 建議正式匯入或修改前先確認 |
 | `--yes` | 跳過 destructive 移除確認 | 當要移除 team 成員會要求 |
 | `--table`、`--json`、`--output-format table/json` | dry-run 輸出模式 | 僅 `--dry-run` 可用，且互斥 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access user import --url http://localhost:3000 --token <TOKEN> --import-dir ./access-users --replace-existing --dry-run --output-format table
+grafana-util access user import --url http://localhost:3000 --token <TOKEN> --import-dir ./access-users --replace-existing --dry-run --output-format table
 ```
 
-示例輸出：
+範例輸出：
 ```text
 INDEX  IDENTITY        ACTION        DETAIL
 1      alice@example.com skip          existing and --replace-existing was not set.
@@ -830,19 +834,19 @@ Import summary: processed=3 created=1 updated=1 skipped=1 source=./access-users
 
 ### `access user diff`
 
-**用途**：比較快照 `users.json` 與 live users。
+**用途**：比較快照 `users.json` 與線上的 users。
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
 | `--diff-dir` | 包含 `users.json` 與 `export-metadata.json` 的目錄 | 預設 `access-users` |
 | `--scope` | `org` / `global` | 與匯出/匯入使用同一識別語意 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access user diff --url http://localhost:3000 --token <TOKEN> --diff-dir ./access-users --scope org
+grafana-util access user diff --url http://localhost:3000 --token <TOKEN> --diff-dir ./access-users --scope org
 ```
 
-示例輸出：
+範例輸出：
 ```text
 Diff checked 2 user(s).
 alice@example.com  UPDATE  role 從 Viewer 改成 Editor
@@ -851,22 +855,22 @@ bob@example.com    DELETE  snapshot 中找不到該使用者
 
 ### `access team diff`
 
-**用途**：比較快照 `teams.json` 與 live teams、team 成員。
+**用途**：比較快照 `teams.json` 與線上的 teams、team 成員。
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
 | `--diff-dir` | 包含 `teams.json` 與 `export-metadata.json` 的目錄 | 預設 `access-teams` |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access team diff --url http://localhost:3000 --token <TOKEN> --diff-dir ./access-teams
+grafana-util access team diff --url http://localhost:3000 --token <TOKEN> --diff-dir ./access-teams
 ```
 
-示例輸出：
+範例輸出：
 ```text
 Diff checked 1 team(s).
 Ops               UPDATE   add-member alice@example.com
-SRE               DELETE   live 多餘 team，snapshot 沒有
+SRE               DELETE   線上多出的 team，snapshot 中沒有
 ```
 
 ### 6.7 `access team list`
@@ -875,19 +879,19 @@ SRE               DELETE   live 多餘 team，snapshot 沒有
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--query` | fuzzy 搜尋 team |
-| `--name` | 精準 team name |
-| `--with-members` | 顯示 members |
-| `--page` / `--per-page` | 分頁 |
-| `--table` / `--csv` / `--json` | 輸出 |
-| `--output-format table/csv/json` | 取代上述 |
+| `--query` | 模糊搜尋 team | 盤點大量 team 時使用 |
+| `--name` | 精準 team name | 已知名稱時快速查詢 |
+| `--with-members` | 顯示 members | 需要同步檢查成員時使用 |
+| `--page` / `--per-page` | 分頁 | 大量資料時控制輸出 |
+| `--table` / `--csv` / `--json` | 輸出 | 傳統輸出切換方式 |
+| `--output-format table/csv/json` | 取代上述 | 建議優先使用的統一寫法 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access team list --url http://localhost:3000 --token <TOKEN> --with-members --table
+grafana-util access team list --url http://localhost:3000 --token <TOKEN> --with-members --table
 ```
 
-示例輸出：
+範例輸出：
 ```text
 ID   NAME        EMAIL              MEMBERS   ADMINS
 3    sre-team    sre@example.com    5         2
@@ -900,18 +904,18 @@ ID   NAME        EMAIL              MEMBERS   ADMINS
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--name` | team 名稱 |
-| `--email` | team 聯絡 email |
-| `--member`（可多） | 初始成員 |
-| `--admin`（可多） | 初始 admin |
-| `--json` | JSON 回應 |
+| `--name` | team 名稱 | 建立 team 時必填 |
+| `--email` | team 聯絡 email | 選填聯絡資訊 |
+| `--member`（可多） | 初始成員 | 可重複指定多位成員 |
+| `--admin`（可多） | 初始 admin | 可重複指定多位管理者 |
+| `--json` | JSON 回應 | 便於自動化後續處理 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access team add --url http://localhost:3000 --token <TOKEN> --name platform-team --email platform@example.com --member alice --member bob --admin alice --json
+grafana-util access team add --url http://localhost:3000 --token <TOKEN> --name platform-team --email platform@example.com --member alice --member bob --admin alice --json
 ```
 
-示例輸出：
+範例輸出：
 ```json
 {
   "teamId": 15,
@@ -927,17 +931,17 @@ cargo run --bin grafana-util -- access team add --url http://localhost:3000 --to
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--team-id` / `--name` | 三擇一定位 |
-| `--add-member` / `--remove-member` | 成員增刪 |
-| `--add-admin` / `--remove-admin` | admin 身分調整 |
-| `--json` | JSON 回應 |
+| `--team-id` / `--name` | 三擇一定位 | 任選一種方式指定目標 team |
+| `--add-member` / `--remove-member` | 成員增刪 | 維護 team 成員關係 |
+| `--add-admin` / `--remove-admin` | admin 身分調整 | 維護 team 管理權限 |
+| `--json` | JSON 回應 | 便於自動化後續處理 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access team modify --url http://localhost:3000 --token <TOKEN> --name platform-team --add-member carol --remove-member bob --remove-admin alice --json
+grafana-util access team modify --url http://localhost:3000 --token <TOKEN> --name platform-team --add-member carol --remove-member bob --remove-admin alice --json
 ```
 
-示例輸出：
+範例輸出：
 ```json
 {
   "teamId": 15,
@@ -954,16 +958,16 @@ cargo run --bin grafana-util -- access team modify --url http://localhost:3000 -
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--team-id` / `--name` | 三擇一定位 |
-| `--yes` | 確認強制 |
-| `--json` | JSON 回應 |
+| `--team-id` / `--name` | 三擇一定位 | 任選一種方式指定目標 team |
+| `--yes` | 確認強制 | 非互動刪除流程時使用 |
+| `--json` | JSON 回應 | 便於自動化後續處理 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access team delete --url http://localhost:3000 --token <TOKEN> --name platform-team --yes --json
+grafana-util access team delete --url http://localhost:3000 --token <TOKEN> --name platform-team --yes --json
 ```
 
-示例輸出：
+範例輸出：
 ```json
 {
   "teamId": 15,
@@ -983,12 +987,12 @@ cargo run --bin grafana-util -- access team delete --url http://localhost:3000 -
 | `--dry-run` | 僅預覽輸出路徑 | 驗證目錄與權限 |
 | `--with-members` | 匯出 members 與 admins | 還原成員關係必備 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access team export --url http://localhost:3000 --token <TOKEN> --export-dir ./access-teams --with-members
+grafana-util access team export --url http://localhost:3000 --token <TOKEN> --export-dir ./access-teams --with-members
 ```
 
-示例輸出：
+範例輸出：
 ```text
 Exported teams from http://localhost:3000 -> /tmp/access-teams/teams.json and /tmp/access-teams/export-metadata.json
 ```
@@ -1005,12 +1009,12 @@ Exported teams from http://localhost:3000 -> /tmp/access-teams/teams.json and /t
 | `--yes` | 跳過 destructive 移除確認 | 當預期移除 team 成員時必需 |
 | `--table`、`--json`、`--output-format table/json` | dry-run 輸出模式 | 僅 `--dry-run` 可用，且互斥 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access team import --url http://localhost:3000 --token <TOKEN> --import-dir ./access-teams --replace-existing --dry-run --output-format table
+grafana-util access team import --url http://localhost:3000 --token <TOKEN> --import-dir ./access-teams --replace-existing --dry-run --output-format table
 ```
 
-示例輸出：
+範例輸出：
 ```text
 INDEX  IDENTITY         ACTION       DETAIL
 1      platform-team    skip         existing and --replace-existing was not set.
@@ -1027,17 +1031,17 @@ Import summary: processed=4 created=1 updated=1 skipped=1 source=./access-teams
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--query` | fuzzy 搜尋名稱 |
-| `--page` / `--per-page` | 分頁 |
-| `--table` / `--csv` / `--json` | 輸出 |
-| `--output-format table/csv/json` | 取代三旗標 |
+| `--query` | 模糊搜尋名稱 | 盤點大量 service account 時使用 |
+| `--page` / `--per-page` | 分頁 | 大量資料時控制輸出 |
+| `--table` / `--csv` / `--json` | 輸出 | 傳統輸出切換方式 |
+| `--output-format table/csv/json` | 取代三旗標 | 建議優先使用的統一寫法 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access service-account list --url http://localhost:3000 --token <TOKEN> --table
+grafana-util access service-account list --url http://localhost:3000 --token <TOKEN> --table
 ```
 
-示例輸出：
+範例輸出：
 ```text
 ID   NAME          ROLE     DISABLED
 2    ci-bot        Editor   false
@@ -1050,17 +1054,17 @@ ID   NAME          ROLE     DISABLED
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--name` | 名稱 |
-| `--role Viewer|Editor|Admin|None`（預設 `Viewer`） | 權限角色 |
+| `--name` | 名稱 | 建立 service account 時必填 |
+| `--role Viewer\|Editor\|Admin\|None`（預設 `Viewer`） | 權限角色 | 指定建立後的組織角色 |
 | `--disabled` | `true/false` | Rust 版 `bool` 為文字化輸入 |
-| `--json` | JSON 回應 |
+| `--json` | JSON 回應 | 便於自動化後續處理 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access service-account add --url http://localhost:3000 --token <TOKEN> --name deploy-bot --role Editor --json
+grafana-util access service-account add --url http://localhost:3000 --token <TOKEN> --name deploy-bot --role Editor --json
 ```
 
-示例輸出：
+範例輸出：
 ```json
 {
   "id": 21,
@@ -1080,18 +1084,18 @@ cargo run --bin grafana-util -- access service-account add --url http://localhos
 | `--overwrite` | 覆蓋既有快照檔案 | 定期備份重跑 |
 | `--dry-run` | 僅預覽輸出路徑，不實際寫檔 | 先確認目錄 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access service-account export --url http://localhost:3000 --token <TOKEN> --export-dir ./access-service-accounts --overwrite
+grafana-util access service-account export --url http://localhost:3000 --token <TOKEN> --export-dir ./access-service-accounts --overwrite
 ```
 
-示例輸出：
+範例輸出：
 ```text
 Exported 3 service-account(s) from http://localhost:3000 -> access-service-accounts/service-accounts.json and access-service-accounts/export-metadata.json
 ```
 
 實跑註記：
-- 這條 snapshot 流程已由 `make test-access-live` 在 Grafana `12.4.1` 上驗證，包含 export、diff、dry-run import、live replay、delete，以及 token lifecycle。
+- 這條 snapshot 流程已由 `make test-access-live` 在 Grafana `12.4.1` 上驗證，包含 export、diff、dry-run import、線上 replay、delete，以及 token lifecycle。
 
 ### 6.16 `access service-account import`
 
@@ -1102,14 +1106,14 @@ Exported 3 service-account(s) from http://localhost:3000 -> access-service-accou
 | `--import-dir` | 包含 `service-accounts.json` 與 `export-metadata.json` 的目錄 | 需沿用 export 結構 |
 | `--replace-existing` | 建立缺漏帳號，並更新既有帳號 | 回放時必備 |
 | `--dry-run` | 只預覽 `create/update/skip` 決策，不實際寫入 | 建議先跑 |
-| `--table` / `--json` / `--output-format text|table|json` | dry-run 輸出模式 | 人工審查或機器判讀 |
+| `--table` / `--json` / `--output-format text\|table\|json` | dry-run 輸出模式 | 人工審查或機器判讀 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access service-account import --url http://localhost:3000 --token <TOKEN> --import-dir ./access-service-accounts --replace-existing --dry-run --output-format table
+grafana-util access service-account import --url http://localhost:3000 --token <TOKEN> --import-dir ./access-service-accounts --replace-existing --dry-run --output-format table
 ```
 
-示例輸出：
+範例輸出：
 ```text
 INDEX  IDENTITY     ACTION  DETAIL
 1      deploy-bot   update  would update fields=role,disabled
@@ -1119,22 +1123,22 @@ Import summary: processed=2 created=1 updated=1 skipped=0 source=./access-servic
 ```
 
 實跑註記：
-- live smoke 會先改寫匯出的 snapshot，確認 dry-run update preview，再把同一份檔案真正 replay 回 Grafana，驗證 live update 路徑。
+- live smoke 測試會先改寫匯出的 snapshot，確認 dry-run update preview，再把同一份檔案實際 replay 回 Grafana，驗證線上更新路徑。
 
 ### 6.17 `access service-account diff`
 
-**用途**：比較 service-account 快照與 live Grafana 狀態。
+**用途**：比較 service-account 快照與線上 Grafana 狀態。
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
 | `--diff-dir` | 包含 `service-accounts.json` 與 `export-metadata.json` 的目錄 | 預設 `access-service-accounts` |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access service-account diff --url http://localhost:3000 --token <TOKEN> --diff-dir ./access-service-accounts
+grafana-util access service-account diff --url http://localhost:3000 --token <TOKEN> --diff-dir ./access-service-accounts
 ```
 
-示例輸出：
+範例輸出：
 ```text
 Diff different service-account deploy-bot fields=role
 Diff missing-live service-account report-bot
@@ -1148,16 +1152,16 @@ Diff checked 3 service-account(s); 3 difference(s) found.
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--service-account-id` / `--name` | 三擇一定位 |
-| `--yes` | 需要跳過互動確認 |
-| `--json` | JSON 回應 |
+| `--service-account-id` / `--name` | 三擇一定位 | 任選一種方式指定目標 service account |
+| `--yes` | 需要跳過互動確認 | 非互動刪除流程時使用 |
+| `--json` | JSON 回應 | 便於自動化後續處理 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access service-account delete --url http://localhost:3000 --token <TOKEN> --name deploy-bot --yes --json
+grafana-util access service-account delete --url http://localhost:3000 --token <TOKEN> --name deploy-bot --yes --json
 ```
 
-示例輸出：
+範例輸出：
 ```json
 {
   "id": 21,
@@ -1172,17 +1176,17 @@ cargo run --bin grafana-util -- access service-account delete --url http://local
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--service-account-id` / `--name` | 定位 SA |
-| `--token-name` | token 名稱 |
-| `--seconds-to-live` | TTL（秒） |
-| `--json` | JSON 回應 |
+| `--service-account-id` / `--name` | 定位 SA | 任選一種方式指定目標 service account |
+| `--token-name` | token 名稱 | 建立新 token 時必填 |
+| `--seconds-to-live` | TTL（秒） | 控制 token 有效期間 |
+| `--json` | JSON 回應 | 便於自動化後續處理 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access service-account token add --url http://localhost:3000 --token <TOKEN> --name deploy-bot --token-name ci-token --seconds-to-live 86400 --json
+grafana-util access service-account token add --url http://localhost:3000 --token <TOKEN> --name deploy-bot --token-name ci-token --seconds-to-live 86400 --json
 ```
 
-示例輸出：
+範例輸出：
 ```json
 {
   "serviceAccountId": 21,
@@ -1199,17 +1203,17 @@ cargo run --bin grafana-util -- access service-account token add --url http://lo
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--service-account-id` / `--name` | 定位 SA |
-| `--token-id` / `--token-name` | 定位 token（需二擇一） |
-| `--yes` | 跳過確認 |
-| `--json` | JSON 回應 |
+| `--service-account-id` / `--name` | 定位 SA | 任選一種方式指定目標 service account |
+| `--token-id` / `--token-name` | 定位 token（需二擇一） | 任選一種方式指定目標 token |
+| `--yes` | 跳過確認 | 非互動刪除流程時使用 |
+| `--json` | JSON 回應 | 便於自動化後續處理 |
 
-示例命令：
+範例指令：
 ```bash
-cargo run --bin grafana-util -- access service-account token delete --url http://localhost:3000 --token <TOKEN> --name deploy-bot --token-name ci-token --yes --json
+grafana-util access service-account token delete --url http://localhost:3000 --token <TOKEN> --name deploy-bot --token-name ci-token --yes --json
 ```
 
-示例輸出：
+範例輸出：
 ```json
 {
   "serviceAccountId": 21,
@@ -1266,51 +1270,51 @@ cargo run --bin grafana-util -- access service-account token delete --url http:/
 
 ```bash
 # dashboard
-cargo run --bin grafana-util -- dashboard export --url <URL> --basic-user <USER> --basic-password <PASS> --export-dir <DIR> [--overwrite] [--all-orgs]
-cargo run --bin grafana-util -- dashboard export --url <URL> --token <TOKEN> --org-id <ORG_ID> --export-dir <DIR> [--overwrite]
-cargo run --bin grafana-util -- dashboard list --url <URL> --basic-user <USER> --basic-password <PASS> [--org-id <ORG_ID>|--all-orgs] [--table|--csv|--json|--output-format table|csv|json] [--with-sources]
-cargo run --bin grafana-util -- dashboard list-data-sources --url <URL> --basic-user <USER> --basic-password <PASS> [--table|--csv|--json|--output-format table|csv|json]
-cargo run --bin grafana-util -- dashboard import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw --replace-existing [--dry-run] [--table|--json|--output-format text|table|json] [--output-columns uid,destination,action,folder_path,destination_folder_path,file]
-cargo run --bin grafana-util -- dashboard diff --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw [--import-folder-uid <UID>] [--context-lines 3]
-cargo run --bin grafana-util -- dashboard inspect-export --import-dir <DIR>/raw --output-format report-tree
-cargo run --bin grafana-util -- dashboard inspect-live --url <URL> --basic-user <USER> --basic-password <PASS> --output-format report-json
+grafana-util dashboard export --url <URL> --basic-user <USER> --basic-password <PASS> --export-dir <DIR> [--overwrite] [--all-orgs]
+grafana-util dashboard export --url <URL> --token <TOKEN> --org-id <ORG_ID> --export-dir <DIR> [--overwrite]
+grafana-util dashboard list --url <URL> --basic-user <USER> --basic-password <PASS> [--org-id <ORG_ID>|--all-orgs] [--table|--csv|--json|--output-format table|csv|json] [--with-sources]
+grafana-util dashboard list-data-sources --url <URL> --basic-user <USER> --basic-password <PASS> [--table|--csv|--json|--output-format table|csv|json]
+grafana-util dashboard import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw --replace-existing [--dry-run] [--table|--json|--output-format text|table|json] [--output-columns uid,destination,action,folder_path,destination_folder_path,file]
+grafana-util dashboard diff --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw [--import-folder-uid <UID>] [--context-lines 3]
+grafana-util dashboard inspect-export --import-dir <DIR>/raw --output-format report-tree
+grafana-util dashboard inspect-live --url <URL> --basic-user <USER> --basic-password <PASS> --output-format report-json
 
 # alert
-cargo run --bin grafana-util -- alert export --url <URL> --token <TOKEN> --output-dir <DIR> [--flat] [--overwrite]
-cargo run --bin grafana-util -- alert import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw --replace-existing [--dry-run] [--dashboard-uid-map <FILE>] [--panel-id-map <FILE>]
-cargo run --bin grafana-util -- alert diff --url <URL> --basic-user <USER> --basic-password <PASS> --diff-dir <DIR>/raw [--dashboard-uid-map <FILE>] [--panel-id-map <FILE>]
-cargo run --bin grafana-util -- alert list-rules --url <URL> --token <TOKEN> [--table|--csv|--json]
+grafana-util alert export --url <URL> --token <TOKEN> --output-dir <DIR> [--flat] [--overwrite]
+grafana-util alert import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw --replace-existing [--dry-run] [--dashboard-uid-map <FILE>] [--panel-id-map <FILE>]
+grafana-util alert diff --url <URL> --basic-user <USER> --basic-password <PASS> --diff-dir <DIR>/raw [--dashboard-uid-map <FILE>] [--panel-id-map <FILE>]
+grafana-util alert list-rules --url <URL> --token <TOKEN> [--table|--csv|--json]
 
 # datasource
-cargo run --bin grafana-util -- datasource list --url <URL> --token <TOKEN> [--table|--csv|--json]
-python3 -m grafana_utils datasource add --url <URL> --token <TOKEN> --name <NAME> --type <TYPE> [--uid <UID>] [--access proxy|direct] [--datasource-url <URL>] [--basic-auth] [--basic-auth-user <USER>] [--basic-auth-password <PASS>] [--user <USER>] [--password <PASS>] [--with-credentials] [--http-header NAME=VALUE] [--tls-skip-verify] [--server-name <NAME>] [--json-data <JSON>] [--secure-json-data <JSON>] [--dry-run] [--table|--json|--output-format text|table|json]
-cargo run --bin grafana-util -- datasource export --url <URL> --basic-user <USER> --basic-password <PASS> --export-dir <DIR> [--overwrite] [--dry-run] [--org-id <ORG_ID>|--all-orgs]
-cargo run --bin grafana-util -- datasource import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR> --replace-existing [--org-id <ORG_ID>] [--use-export-org [--only-org-id <ORG_ID>]... [--create-missing-orgs]] [--dry-run] [--output-format table|text|json] [--output-columns uid,name,type,destination,action,org_id,file]
-cargo run --bin grafana-util -- datasource diff --url <URL> --basic-user <USER> --basic-password <PASS> --diff-dir <DIR>
+grafana-util datasource list --url <URL> --token <TOKEN> [--table|--csv|--json]
+grafana-util datasource add --url <URL> --token <TOKEN> --name <NAME> --type <TYPE> [--uid <UID>] [--access proxy|direct] [--datasource-url <URL>] [--basic-auth] [--basic-auth-user <USER>] [--basic-auth-password <PASS>] [--user <USER>] [--password <PASS>] [--with-credentials] [--http-header NAME=VALUE] [--tls-skip-verify] [--server-name <NAME>] [--json-data <JSON>] [--secure-json-data <JSON>] [--dry-run] [--table|--json|--output-format text|table|json]
+grafana-util datasource export --url <URL> --basic-user <USER> --basic-password <PASS> --export-dir <DIR> [--overwrite] [--dry-run] [--org-id <ORG_ID>|--all-orgs]
+grafana-util datasource import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR> --replace-existing [--org-id <ORG_ID>] [--use-export-org [--only-org-id <ORG_ID>]... [--create-missing-orgs]] [--dry-run] [--output-format table|text|json] [--output-columns uid,name,type,destination,action,org_id,file]
+grafana-util datasource diff --url <URL> --basic-user <USER> --basic-password <PASS> --diff-dir <DIR>
 
 # access
-cargo run --bin grafana-util -- access user list --url <URL> --token <TOKEN> --scope org [--table|--csv|--json]
-cargo run --bin grafana-util -- access user add --url <URL> --basic-user <USER> --basic-password <PASS> --login <LOGIN> --email <EMAIL> --name <NAME> --password <PWD> [--org-role Editor] [--grafana-admin true|false]
-cargo run --bin grafana-util -- access user modify --url <URL> --basic-user <USER> --basic-password <PASS> --login <LOGIN> --set-email <EMAIL> [--set-name <NAME>] [--set-org-role Viewer|Editor|Admin|None] [--set-grafana-admin true|false]
-cargo run --bin grafana-util -- access user delete --url <URL> --basic-user <USER> --basic-password <PASS> --login <LOGIN> --scope global --yes
-cargo run --bin grafana-util -- access user export --url <URL> --token <TOKEN> --export-dir ./access-users [--scope org|global] [--with-teams]
-cargo run --bin grafana-util -- access user import --url <URL> --token <TOKEN> --import-dir ./access-users --replace-existing [--dry-run] [--table|--json|--output-format text|table|json] [--yes]
-cargo run --bin grafana-util -- access user diff --url <URL> --token <TOKEN> --diff-dir ./access-users [--scope org|global]
-cargo run --bin grafana-util -- access team list --url <URL> --token <TOKEN> [--query <QUERY>|--name <NAME>] [--with-members] [--table|--csv|--json]
-cargo run --bin grafana-util -- access team add --url <URL> --token <TOKEN> --name <NAME> [--email <EMAIL>] [--member <LOGIN_OR_EMAIL>] [--admin <LOGIN_OR_EMAIL>]
-cargo run --bin grafana-util -- access team modify --url <URL> --token <TOKEN> --name <NAME> [--add-member <LOGIN_OR_EMAIL>] [--remove-member <LOGIN_OR_EMAIL>] [--add-admin <LOGIN_OR_EMAIL>] [--remove-admin <LOGIN_OR_EMAIL>]
-cargo run --bin grafana-util -- access team delete --url <URL> --token <TOKEN> --name <NAME> --yes
-cargo run --bin grafana-util -- access team export --url <URL> --token <TOKEN> --export-dir ./access-teams [--with-members]
-cargo run --bin grafana-util -- access team diff --url <URL> --token <TOKEN> --diff-dir ./access-teams
-cargo run --bin grafana-util -- access team import --url <URL> --token <TOKEN> --import-dir ./access-teams --replace-existing [--dry-run] [--table|--json|--output-format text|table|json] [--yes]
-cargo run --bin grafana-util -- access service-account export --url <URL> --token <TOKEN> --export-dir ./access-service-accounts [--overwrite]
-cargo run --bin grafana-util -- access service-account import --url <URL> --token <TOKEN> --import-dir ./access-service-accounts --replace-existing [--dry-run] [--table|--json|--output-format text|table|json]
-cargo run --bin grafana-util -- access service-account diff --url <URL> --token <TOKEN> --diff-dir ./access-service-accounts
-cargo run --bin grafana-util -- access service-account list --url <URL> --token <TOKEN> [--query <QUERY>] [--table|--csv|--json]
-cargo run --bin grafana-util -- access service-account add --url <URL> --token <TOKEN> --name <NAME> [--role Viewer|Editor|Admin|None] [--disabled true|false]
-cargo run --bin grafana-util -- access service-account delete --url <URL> --token <TOKEN> --name <NAME> --yes
-cargo run --bin grafana-util -- access service-account token add --url <URL> --token <TOKEN> --name <SA_NAME> --token-name <TOKEN_NAME> [--seconds-to-live <SECONDS>]
-cargo run --bin grafana-util -- access service-account token delete --url <URL> --token <TOKEN> --name <SA_NAME> --token-name <TOKEN_NAME> --yes
+grafana-util access user list --url <URL> --token <TOKEN> --scope org [--table|--csv|--json]
+grafana-util access user add --url <URL> --basic-user <USER> --basic-password <PASS> --login <LOGIN> --email <EMAIL> --name <NAME> --password <PWD> [--org-role Editor] [--grafana-admin true|false]
+grafana-util access user modify --url <URL> --basic-user <USER> --basic-password <PASS> --login <LOGIN> --set-email <EMAIL> [--set-name <NAME>] [--set-org-role Viewer|Editor|Admin|None] [--set-grafana-admin true|false]
+grafana-util access user delete --url <URL> --basic-user <USER> --basic-password <PASS> --login <LOGIN> --scope global --yes
+grafana-util access user export --url <URL> --token <TOKEN> --export-dir ./access-users [--scope org|global] [--with-teams]
+grafana-util access user import --url <URL> --token <TOKEN> --import-dir ./access-users --replace-existing [--dry-run] [--table|--json|--output-format text|table|json] [--yes]
+grafana-util access user diff --url <URL> --token <TOKEN> --diff-dir ./access-users [--scope org|global]
+grafana-util access team list --url <URL> --token <TOKEN> [--query <QUERY>|--name <NAME>] [--with-members] [--table|--csv|--json]
+grafana-util access team add --url <URL> --token <TOKEN> --name <NAME> [--email <EMAIL>] [--member <LOGIN_OR_EMAIL>] [--admin <LOGIN_OR_EMAIL>]
+grafana-util access team modify --url <URL> --token <TOKEN> --name <NAME> [--add-member <LOGIN_OR_EMAIL>] [--remove-member <LOGIN_OR_EMAIL>] [--add-admin <LOGIN_OR_EMAIL>] [--remove-admin <LOGIN_OR_EMAIL>]
+grafana-util access team delete --url <URL> --token <TOKEN> --name <NAME> --yes
+grafana-util access team export --url <URL> --token <TOKEN> --export-dir ./access-teams [--with-members]
+grafana-util access team diff --url <URL> --token <TOKEN> --diff-dir ./access-teams
+grafana-util access team import --url <URL> --token <TOKEN> --import-dir ./access-teams --replace-existing [--dry-run] [--table|--json|--output-format text|table|json] [--yes]
+grafana-util access service-account export --url <URL> --token <TOKEN> --export-dir ./access-service-accounts [--overwrite]
+grafana-util access service-account import --url <URL> --token <TOKEN> --import-dir ./access-service-accounts --replace-existing [--dry-run] [--table|--json|--output-format text|table|json]
+grafana-util access service-account diff --url <URL> --token <TOKEN> --diff-dir ./access-service-accounts
+grafana-util access service-account list --url <URL> --token <TOKEN> [--query <QUERY>] [--table|--csv|--json]
+grafana-util access service-account add --url <URL> --token <TOKEN> --name <NAME> [--role Viewer|Editor|Admin|None] [--disabled true|false]
+grafana-util access service-account delete --url <URL> --token <TOKEN> --name <NAME> --yes
+grafana-util access service-account token add --url <URL> --token <TOKEN> --name <SA_NAME> --token-name <TOKEN_NAME> [--seconds-to-live <SECONDS>]
+grafana-util access service-account token delete --url <URL> --token <TOKEN> --name <SA_NAME> --token-name <TOKEN_NAME> --yes
 ```
 
 10) 參數互斥與差異矩陣（Rust）
@@ -1331,10 +1335,10 @@ cargo run --bin grafana-util -- access service-account token delete --url <URL> 
 | access team list | table/csv/json | 不可 | 同上 |
 | access user import | text/table/json | 不可（僅 text/table/json） | text 為 dry-run 摘要 |
 | access team import | text/table/json | 不可（僅 text/table/json） | text 為 dry-run 摘要 |
-| access user diff | text | 僅摘要 |
-| access team diff | text | 僅摘要 |
+| access user diff | text | 否 | 僅摘要 |
+| access team diff | text | 否 | 僅摘要 |
 | access service-account import | text/table/json | 不可（僅 text/table/json） | text 為 dry-run 摘要 |
-| access service-account diff | text | 僅摘要 |
+| access service-account diff | text | 否 | 僅摘要 |
 | access service-account list | table/csv/json | 不可 | 同上 |
 
 `DRY-RUN` 類（預覽）：

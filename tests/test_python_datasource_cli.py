@@ -481,6 +481,19 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("--progress", help_text)
         self.assertIn("--verbose", help_text)
 
+    def test_root_help_includes_datasource_examples(self):
+        stream = io.StringIO()
+
+        with redirect_stdout(stream):
+            with self.assertRaises(SystemExit):
+                datasource_cli.parse_args(["-h"])
+
+        help_text = stream.getvalue()
+        self.assertIn("Examples:", help_text)
+        self.assertIn("grafana-util datasource list", help_text)
+        self.assertIn("grafana-util datasource add", help_text)
+        self.assertIn("grafana-util datasource export", help_text)
+
     def test_add_help_mentions_live_mutation_flags(self):
         stream = io.StringIO()
 
@@ -504,6 +517,9 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("--json-data", help_text)
         self.assertIn("--secure-json-data", help_text)
         self.assertIn("--dry-run", help_text)
+        self.assertIn("Examples:", help_text)
+        self.assertIn("grafana-util datasource add", help_text)
+        self.assertIn("--datasource-url http://prometheus:9090", help_text)
 
     def test_delete_help_mentions_live_mutation_flags(self):
         stream = io.StringIO()

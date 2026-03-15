@@ -5,6 +5,13 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-15 - Task: Align Shared CLI Help And User Guides
+- State: Done
+- Scope: `grafana_utils/unified_cli.py`, `grafana_utils/datasource/parser.py`, `tests/test_python_unified_cli.py`, `tests/test_python_datasource_cli.py`, `rust/src/cli.rs`, `rust/src/cli_rust_tests.rs`, `docs/user-guide.md`, `docs/user-guide-TW.md`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The shared user guides still framed examples around Rust source-tree commands, datasource help examples were inconsistent between root and subcommand help, and the Traditional Chinese user guide contained malformed Markdown tables plus mixed terminology around legacy compatibility paths.
+- Current Update: Switched shared user-guide examples to the neutral `grafana-util ...` / `grafana-access-utils ...` command shape, refreshed unified CLI help text to describe legacy entrypoints as compatibility forms without runtime warnings, expanded datasource root/subcommand help examples, and repaired the malformed Markdown tables plus terminology in the Traditional Chinese guide.
+- Result: Operators now see one shared CLI shape in the public guides, datasource help output includes actionable examples at both the group and subcommand level, and the compatibility-path wording stays visible in help/docs without changing legacy command behavior.
+
 ## 2026-03-15 - Task: Add Python Datasource Org-Scoped Export And Routed Import
 - State: Done
 - Scope: `grafana_utils/datasource/parser.py`, `grafana_utils/datasource_cli.py`, `grafana_utils/datasource/workflows.py`, `tests/test_python_datasource_cli.py`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
