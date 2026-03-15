@@ -19,6 +19,13 @@ Historical note:
 - Current Update: Replaced the single GitLab Python static-analysis job with two `make quality-python` jobs, one installing the base package and one installing `.[http2]`, while keeping package jobs gated on both Python dependency modes. Tightened the two transport tests so explicit `transport_name=\"httpx\"` succeeds only when `httpx` is installed and otherwise asserts the documented `HttpTransportError`. Updated GitHub Actions to `actions/checkout@v5` and `actions/setup-python@v6` so the workflow tracks the Node 24 action runtime line instead of the deprecated Node 20 line.
 - Result: GitLab now exercises the Python quality gate under both supported dependency contracts, base installs still validate the `requests` fallback path, extra-enabled installs validate the `httpx` transport path without treating `httpx` as a hidden required dependency, and GitHub Actions no longer relies on deprecated Node 20 action majors.
 
+## 2026-03-15 - Task: Add GitHub Rust Release Artifacts For Linux And macOS
+- State: Done
+- Scope: `.github/workflows/ci.yml`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: GitHub Actions only ran quality checks and did not produce downloadable Rust release artifacts. The repo had local scripts for Linux amd64 and macOS arm64 packaging, but only GitLab exposed a Linux release tarball path and there was no GitHub workflow artifact for tagged Rust releases on either platform.
+- Current Update: Extended the GitHub workflow to trigger on `v*` tags, added a Linux amd64 release-packaging job on `ubuntu-latest`, added a macOS arm64 release-packaging job on `macos-15`, and uploaded each generated `.tar.gz` package as a retained workflow artifact. Updated the maintainer guide to describe the new tagged GitHub artifact path.
+- Result: Tagged GitHub Actions runs now produce downloadable Rust release tarballs for both Linux amd64 and macOS arm64 using the existing repo packaging scripts.
+
 ## 2026-03-15 - Task: Add Python Datasource Org-Scoped Export And Routed Import
 - State: Done
 - Scope: `grafana_utils/datasource/parser.py`, `grafana_utils/datasource_cli.py`, `grafana_utils/datasource/workflows.py`, `tests/test_python_datasource_cli.py`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

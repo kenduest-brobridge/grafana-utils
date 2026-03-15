@@ -95,7 +95,7 @@ Commit message default for this repo:
 - `tests/test_python_alert_cli.py`: alerting Python unit tests
 - `tests/test_python_packaging.py`: Python package metadata and console-script tests
 - `Makefile`: shared developer shortcuts for Python wheel builds, Rust release builds, and test runs
-- `.github/workflows/ci.yml`: baseline CI gates for Python tests plus Rust tests/format/lint checks
+- `.github/workflows/ci.yml`: baseline CI gates for Python and Rust quality checks, plus tagged Rust release-package artifacts for Linux `amd64` and macOS `arm64`
 - `scripts/build-rust-macos-arm64.sh`: native Apple Silicon Rust release build helper that copies binaries and a distributable tarball into `dist/macos-arm64/`
 - `scripts/build-rust-linux-amd64.sh`: Docker-based Linux `amd64` Rust build helper for macOS or other non-Linux hosts
 - `scripts/build-rust-linux-amd64-zig.sh`: non-Docker Linux `amd64` Rust build helper using local `zig` and `cargo-zigbuild`
@@ -202,7 +202,7 @@ Commit message default for this repo:
 - `make quality` is the baseline local gate and now delegates to `scripts/check-quality.sh`.
 - `make quality-python` delegates to `scripts/check-python-quality.sh`, which always runs Python bytecode compilation plus `unittest` and only runs optional tools such as `ruff`, `mypy`, and `black --check` when they are installed.
 - `make quality-rust` delegates to `scripts/check-rust-quality.sh`, which always runs `cargo test` and conditionally runs `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` when those cargo components are available.
-- `.github/workflows/ci.yml` now calls the same `make quality-python` and `make quality-rust` targets so local and CI quality behavior stays centralized in the scripts instead of being duplicated in workflow YAML.
+- `.github/workflows/ci.yml` now calls the same `make quality-python` and `make quality-rust` targets so local and CI quality behavior stays centralized in the scripts instead of being duplicated in workflow YAML. On `vX.Y.Z` tags it also uploads Rust release tarballs for Linux `amd64` and macOS `arm64`.
 
 ### Rust cross-build notes
 

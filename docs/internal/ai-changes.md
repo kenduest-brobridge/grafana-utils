@@ -21,6 +21,15 @@ Historical note:
 - Impact: `.gitlab-ci.yml`, `.github/workflows/ci.yml`, `tests/test_python_dashboard_cli.py`, `tests/test_python_alert_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
 - Rollback/Risk: Low. The main behavior change is CI coverage shape rather than runtime code, but pipeline duration will increase because Python quality now runs twice by design and GitHub-hosted runners must provide the Node runtime expected by the newer official action majors.
 
+## 2026-03-15 - Add GitHub Rust Release Artifacts For Linux And macOS
+- Summary: Extended GitHub Actions so tagged builds now publish Rust release packages for both supported operator platforms instead of running quality checks only. The workflow now triggers on `v*` tags, waits for the existing Python and Rust quality jobs, builds the Linux amd64 package on `ubuntu-latest`, builds the macOS arm64 package on `macos-15`, and uploads each generated `.tar.gz` file as a retained workflow artifact. The maintainer guide now also calls out that tagged GitHub runs emit both Rust release artifacts.
+- Tests: Updated workflow-only behavior and maintainer documentation; no runtime code or unit tests changed.
+- Test Run: Not run
+- Reason: This change affects GitHub-hosted workflow execution and cannot be exercised end-to-end from the local sandbox.
+- Validation: Rechecked the workflow YAML after patching to confirm the new tag trigger, package-job dependencies, platform-specific build commands, and upload-artifact steps match the existing Rust packaging scripts and output directories.
+- Impact: `.github/workflows/ci.yml`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. The packaging logic reuses existing scripts, but the macOS package job now depends on GitHub continuing to provide an arm64 `macos-15` runner with the toolchain and tar behavior expected by the current script.
+
 ## 2026-03-15 - Add Python Datasource Org-Scoped Export And Routed Import
 - Summary: Extended the Python datasource CLI so export and import now understand explicit-org and multi-org routing workflows instead of staying current-org-only. Python datasource export now supports Basic-auth-only `--org-id` and `--all-orgs`, with multi-org exports written into `org_<id>_<name>/` subdirectories plus an aggregate root manifest. Python datasource import now supports Basic-auth-only `--use-export-org`, repeatable `--only-org-id`, and `--create-missing-orgs`, including dry-run org preview for `missing-org` and `would-create-org`.
 - Tests: Added focused Python parser/help/runtime coverage for datasource export `--org-id`, datasource export `--all-orgs`, routed datasource import selection, routed dry-run org preview, live missing-org creation, and incompatible flag combinations.
