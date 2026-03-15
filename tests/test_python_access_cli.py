@@ -1036,6 +1036,20 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("--prompt-set-password", help_text)
         self.assertNotIn("--token", help_text)
 
+    def test_org_modify_help_groups_target_updates_and_output(self):
+        parser = access_utils.build_parser()
+        org_modify_parser = (
+            parser._subparsers._group_actions[0]
+            .choices["org"]
+            ._subparsers._group_actions[0]
+            .choices["modify"]
+        )
+        help_text = org_modify_parser.format_help()
+
+        self.assertIn("Target Selection:", help_text)
+        self.assertIn("Org Updates:", help_text)
+        self.assertIn("Output Options:", help_text)
+
     def test_user_delete_help_uses_scope_and_confirmation_flags(self):
         parser = access_utils.build_parser()
         user_delete_parser = parser._subparsers._group_actions[0].choices["user"]._subparsers._group_actions[0].choices["delete"]
@@ -1139,6 +1153,9 @@ class AccessCliTests(unittest.TestCase):
         team_add_parser = parser._subparsers._group_actions[0].choices["team"]._subparsers._group_actions[0].choices["add"]
         help_text = team_add_parser.format_help()
 
+        self.assertIn("Team Definition:", help_text)
+        self.assertIn("Team Membership:", help_text)
+        self.assertIn("Output Options:", help_text)
         self.assertIn("--name NAME", help_text)
         self.assertIn("--email EMAIL", help_text)
         self.assertIn("--member LOGIN_OR_EMAIL", help_text)
@@ -1159,6 +1176,9 @@ class AccessCliTests(unittest.TestCase):
         help_text = token_add_parser.format_help()
 
         self.assertIn("Connection And Auth:", help_text)
+        self.assertIn("Target Selection:", help_text)
+        self.assertIn("Token Settings:", help_text)
+        self.assertIn("Output Options:", help_text)
         self.assertIn("--token-name TOKEN_NAME", help_text)
         self.assertIn("--seconds-to-live SECONDS_TO_LIVE", help_text)
         self.assertIn("Examples:", help_text)

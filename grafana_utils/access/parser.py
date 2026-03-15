@@ -664,17 +664,18 @@ def build_parser(prog=None):
         service_account_import_parser,
         resource="service-account",
     )
-    service_account_import_parser.add_argument(
+    output_group = service_account_import_parser.add_argument_group("Output Options")
+    output_group.add_argument(
         "--table",
         action="store_true",
         help="Render service-account import dry-run output as a table.",
     )
-    service_account_import_parser.add_argument(
+    output_group.add_argument(
         "--json",
         action="store_true",
         help="Render service-account import dry-run output as JSON.",
     )
-    service_account_import_parser.add_argument(
+    output_group.add_argument(
         "--output-format",
         choices=DRY_RUN_OUTPUT_FORMAT_CHOICES,
         default=None,
@@ -843,40 +844,41 @@ def add_common_cli_args(
 
 
 def add_user_list_cli_args(parser):
-    parser.add_argument(
+    filter_group = parser.add_argument_group("Filters")
+    filter_group.add_argument(
         "--scope",
         choices=SCOPE_CHOICES,
         default=DEFAULT_SCOPE,
         help="Choose org-scoped or global user listing (default: %s)." % DEFAULT_SCOPE,
     )
-    parser.add_argument(
+    filter_group.add_argument(
         "--query",
         default=None,
         help="Case-insensitive substring match across login, email, and name.",
     )
-    parser.add_argument(
+    filter_group.add_argument(
         "--login",
         default=None,
         help="Filter to one exact login.",
     )
-    parser.add_argument(
+    filter_group.add_argument(
         "--email",
         default=None,
         help="Filter to one exact email.",
     )
-    parser.add_argument(
+    filter_group.add_argument(
         "--org-role",
         default=None,
         choices=["Viewer", "Editor", "Admin", "None"],
         help="Filter by Grafana organization role.",
     )
-    parser.add_argument(
+    filter_group.add_argument(
         "--grafana-admin",
         default=None,
         type=bool_choice,
         help="Filter by Grafana server-admin state: true or false.",
     )
-    parser.add_argument(
+    filter_group.add_argument(
         "--with-teams",
         action="store_true",
         help=(
@@ -884,13 +886,13 @@ def add_user_list_cli_args(parser):
             "Grafana username/password login."
         ),
     )
-    parser.add_argument(
+    filter_group.add_argument(
         "--page",
         type=positive_int,
         default=1,
         help="Page number after filtering (default: 1).",
     )
-    parser.add_argument(
+    filter_group.add_argument(
         "--per-page",
         type=positive_int,
         default=DEFAULT_PAGE_SIZE,
@@ -916,17 +918,18 @@ def add_user_list_cli_args(parser):
 
 
 def add_user_add_cli_args(parser):
-    parser.add_argument(
+    identity_group = parser.add_argument_group("User Identity")
+    identity_group.add_argument(
         "--login",
         required=True,
         help="Login name for the new Grafana user.",
     )
-    parser.add_argument(
+    identity_group.add_argument(
         "--email",
         required=True,
         help="Email address for the new Grafana user.",
     )
-    parser.add_argument(
+    identity_group.add_argument(
         "--name",
         required=True,
         help="Display name for the new Grafana user.",
@@ -949,19 +952,21 @@ def add_user_add_cli_args(parser):
         action="store_true",
         help="Prompt for the new local Grafana user password without echo.",
     )
-    parser.add_argument(
+    privileges_group = parser.add_argument_group("Privileges")
+    privileges_group.add_argument(
         "--org-role",
         default=None,
         choices=["Viewer", "Editor", "Admin", "None"],
         help="Optional Grafana organization role to set after user creation.",
     )
-    parser.add_argument(
+    privileges_group.add_argument(
         "--grafana-admin",
         default=None,
         type=bool_choice,
         help="Optional Grafana server-admin state to set after user creation: true or false.",
     )
-    parser.add_argument(
+    output_group = parser.add_argument_group("Output Options")
+    output_group.add_argument(
         "--json",
         action="store_true",
         help="Render the created user as JSON.",
@@ -969,33 +974,35 @@ def add_user_add_cli_args(parser):
 
 
 def add_user_modify_cli_args(parser):
-    identity_group = parser.add_mutually_exclusive_group(required=True)
-    identity_group.add_argument(
+    identity_group = parser.add_argument_group("Target Identity")
+    identity_mutually = identity_group.add_mutually_exclusive_group(required=True)
+    identity_mutually.add_argument(
         "--user-id",
         default=None,
         help="Modify the user identified by this Grafana user id.",
     )
-    identity_group.add_argument(
+    identity_mutually.add_argument(
         "--login",
         default=None,
         help="Resolve the user by exact login before modifying it.",
     )
-    identity_group.add_argument(
+    identity_mutually.add_argument(
         "--email",
         default=None,
         help="Resolve the user by exact email before modifying it.",
     )
-    parser.add_argument(
+    mutate_group = parser.add_argument_group("Profile Changes")
+    mutate_group.add_argument(
         "--set-login",
         default=None,
         help="Set a new login for the target user.",
     )
-    parser.add_argument(
+    mutate_group.add_argument(
         "--set-email",
         default=None,
         help="Set a new email address for the target user.",
     )
-    parser.add_argument(
+    mutate_group.add_argument(
         "--set-name",
         default=None,
         help="Set a new display name for the target user.",
@@ -1016,19 +1023,21 @@ def add_user_modify_cli_args(parser):
         action="store_true",
         help="Prompt for the target user's new local password without echo.",
     )
-    parser.add_argument(
+    privileges_group = parser.add_argument_group("Privileges")
+    privileges_group.add_argument(
         "--set-org-role",
         default=None,
         choices=["Viewer", "Editor", "Admin", "None"],
         help="Optional Grafana organization role to set after profile changes.",
     )
-    parser.add_argument(
+    privileges_group.add_argument(
         "--set-grafana-admin",
         default=None,
         type=bool_choice,
         help="Optional Grafana server-admin state to set after profile changes: true or false.",
     )
-    parser.add_argument(
+    output_group = parser.add_argument_group("Output Options")
+    output_group.add_argument(
         "--json",
         action="store_true",
         help="Render the modified user as JSON.",
@@ -1036,34 +1045,37 @@ def add_user_modify_cli_args(parser):
 
 
 def add_user_delete_cli_args(parser):
-    identity_group = parser.add_mutually_exclusive_group(required=True)
-    identity_group.add_argument(
+    identity_group = parser.add_argument_group("Target")
+    identity_mutually = identity_group.add_mutually_exclusive_group(required=True)
+    identity_mutually.add_argument(
         "--user-id",
         default=None,
         help="Delete the user identified by this Grafana user id.",
     )
-    identity_group.add_argument(
+    identity_mutually.add_argument(
         "--login",
         default=None,
         help="Resolve the user by exact login before deleting it.",
     )
-    identity_group.add_argument(
+    identity_mutually.add_argument(
         "--email",
         default=None,
         help="Resolve the user by exact email before deleting it.",
     )
-    parser.add_argument(
+    action_group = parser.add_argument_group("Delete Action")
+    action_group.add_argument(
         "--scope",
         choices=SCOPE_CHOICES,
         default="global",
         help="Choose org-scoped removal or global deletion (default: global).",
     )
-    parser.add_argument(
+    action_group.add_argument(
         "--yes",
         action="store_true",
         help="Confirm that the target user should be deleted or removed.",
     )
-    parser.add_argument(
+    output_group = parser.add_argument_group("Output Options")
+    output_group.add_argument(
         "--json",
         action="store_true",
         help="Render the deleted user summary as JSON.",
@@ -1071,18 +1083,20 @@ def add_user_delete_cli_args(parser):
 
 
 def add_service_account_list_cli_args(parser):
-    parser.add_argument(
+    filter_group = parser.add_argument_group("Filters")
+    filter_group.add_argument(
         "--query",
         default=None,
         help="Case-insensitive substring match against service-account name or login.",
     )
-    parser.add_argument(
+    pagination_group = parser.add_argument_group("Pagination")
+    pagination_group.add_argument(
         "--page",
         type=positive_int,
         default=1,
         help="Grafana search page number (default: 1).",
     )
-    parser.add_argument(
+    pagination_group.add_argument(
         "--per-page",
         type=positive_int,
         default=DEFAULT_PAGE_SIZE,
@@ -1108,22 +1122,24 @@ def add_service_account_list_cli_args(parser):
 
 
 def add_org_list_cli_args(parser):
-    parser.add_argument(
+    filter_group = parser.add_argument_group("Selection")
+    filter_group.add_argument(
         "--org-id",
         default=None,
         help="Filter to one exact organization id.",
     )
-    parser.add_argument(
+    filter_group.add_argument(
         "--name",
         default=None,
         help="Filter to one exact organization name.",
     )
-    parser.add_argument(
+    filter_group.add_argument(
         "--query",
         default=None,
         help="Case-insensitive substring match against organization name.",
     )
-    parser.add_argument(
+    membership_group = parser.add_argument_group("Membership")
+    membership_group.add_argument(
         "--with-users",
         action="store_true",
         help="Include organization users and roles in the output.",
@@ -1148,12 +1164,14 @@ def add_org_list_cli_args(parser):
 
 
 def add_org_add_cli_args(parser):
-    parser.add_argument(
+    identity_group = parser.add_argument_group("Org Identity")
+    identity_group.add_argument(
         "--name",
         required=True,
         help="Organization name to create.",
     )
-    parser.add_argument(
+    output_group = parser.add_argument_group("Output Options")
+    output_group.add_argument(
         "--json",
         action="store_true",
         help="Render the created organization as JSON.",
@@ -1161,24 +1179,27 @@ def add_org_add_cli_args(parser):
 
 
 def add_org_modify_cli_args(parser):
-    identity_group = parser.add_mutually_exclusive_group(required=True)
-    identity_group.add_argument(
+    identity_group = parser.add_argument_group("Target Selection")
+    identity_mutually = identity_group.add_mutually_exclusive_group(required=True)
+    identity_mutually.add_argument(
         "--org-id",
         dest="target_org_id",
         default=None,
         help="Rename the organization identified by this Grafana organization id.",
     )
-    identity_group.add_argument(
+    identity_mutually.add_argument(
         "--name",
         default=None,
         help="Resolve the organization by exact name before renaming it.",
     )
-    parser.add_argument(
+    updates_group = parser.add_argument_group("Org Updates")
+    updates_group.add_argument(
         "--set-name",
         required=True,
         help="Set a new organization name for the target org.",
     )
-    parser.add_argument(
+    output_group = parser.add_argument_group("Output Options")
+    output_group.add_argument(
         "--json",
         action="store_true",
         help="Render the modified organization as JSON.",
@@ -1186,24 +1207,27 @@ def add_org_modify_cli_args(parser):
 
 
 def add_org_delete_cli_args(parser):
-    identity_group = parser.add_mutually_exclusive_group(required=True)
-    identity_group.add_argument(
+    identity_group = parser.add_argument_group("Target Selection")
+    identity_mutually = identity_group.add_mutually_exclusive_group(required=True)
+    identity_mutually.add_argument(
         "--org-id",
         dest="target_org_id",
         default=None,
         help="Delete the organization identified by this Grafana organization id.",
     )
-    identity_group.add_argument(
+    identity_mutually.add_argument(
         "--name",
         default=None,
         help="Resolve the organization by exact name before deleting it.",
     )
-    parser.add_argument(
+    safety_group = parser.add_argument_group("Safety")
+    safety_group.add_argument(
         "--yes",
         action="store_true",
         help="Confirm that the target organization should be deleted.",
     )
-    parser.add_argument(
+    output_group = parser.add_argument_group("Output Options")
+    output_group.add_argument(
         "--json",
         action="store_true",
         help="Render the deleted organization summary as JSON.",
@@ -1211,17 +1235,19 @@ def add_org_delete_cli_args(parser):
 
 
 def add_org_export_cli_args(parser):
-    parser.add_argument(
+    scope_group = parser.add_argument_group("Export Scope")
+    scope_group.add_argument(
         "--org-id",
         default=None,
         help="Filter export to one exact organization id.",
     )
-    parser.add_argument(
+    scope_group.add_argument(
         "--name",
         default=None,
         help="Filter export to one exact organization name.",
     )
-    parser.add_argument(
+    controls_group = parser.add_argument_group("Export Controls")
+    controls_group.add_argument(
         "--with-users",
         action="store_true",
         help="Include organization users and org roles in the export bundle.",
@@ -1229,28 +1255,31 @@ def add_org_export_cli_args(parser):
 
 
 def add_team_list_cli_args(parser):
-    parser.add_argument(
+    filter_group = parser.add_argument_group("Filters")
+    filter_group.add_argument(
         "--query",
         default=None,
         help="Case-insensitive substring match against team name or email.",
     )
-    parser.add_argument(
+    filter_group.add_argument(
         "--name",
         default=None,
         help="Filter to one exact team name.",
     )
-    parser.add_argument(
+    membership_group = parser.add_argument_group("Membership")
+    membership_group.add_argument(
         "--with-members",
         action="store_true",
         help="Include team member login names when the API returns them.",
     )
-    parser.add_argument(
+    pagination_group = parser.add_argument_group("Pagination")
+    pagination_group.add_argument(
         "--page",
         type=positive_int,
         default=1,
         help="Page number after filtering (default: 1).",
     )
-    parser.add_argument(
+    pagination_group.add_argument(
         "--per-page",
         type=positive_int,
         default=DEFAULT_PAGE_SIZE,
@@ -1276,46 +1305,49 @@ def add_team_list_cli_args(parser):
 
 
 def add_team_modify_cli_args(parser):
-    identity_group = parser.add_mutually_exclusive_group(required=True)
-    identity_group.add_argument(
+    identity_group = parser.add_argument_group("Target Selection")
+    identity_mutually = identity_group.add_mutually_exclusive_group(required=True)
+    identity_mutually.add_argument(
         "--team-id",
         default=None,
         help="Modify the team identified by this Grafana team id.",
     )
-    identity_group.add_argument(
+    identity_mutually.add_argument(
         "--name",
         default=None,
         help="Resolve the team by exact name before modifying memberships.",
     )
-    parser.add_argument(
+    membership_group = parser.add_argument_group("Membership")
+    membership_group.add_argument(
         "--add-member",
         action="append",
         default=[],
         metavar="LOGIN_OR_EMAIL",
         help="Add one team member by exact login or exact email. Repeat as needed.",
     )
-    parser.add_argument(
+    membership_group.add_argument(
         "--remove-member",
         action="append",
         default=[],
         metavar="LOGIN_OR_EMAIL",
         help="Remove one team member by exact login or exact email. Repeat as needed.",
     )
-    parser.add_argument(
+    membership_group.add_argument(
         "--add-admin",
         action="append",
         default=[],
         metavar="LOGIN_OR_EMAIL",
         help="Promote one user to team admin by exact login or exact email. Repeat as needed.",
     )
-    parser.add_argument(
+    membership_group.add_argument(
         "--remove-admin",
         action="append",
         default=[],
         metavar="LOGIN_OR_EMAIL",
         help="Demote one team admin to regular team member by exact login or exact email. Repeat as needed.",
     )
-    parser.add_argument(
+    output_group = parser.add_argument_group("Output Options")
+    output_group.add_argument(
         "--json",
         action="store_true",
         help="Render the team modification result as JSON.",
@@ -1323,31 +1355,34 @@ def add_team_modify_cli_args(parser):
 
 
 def add_team_add_cli_args(parser):
-    parser.add_argument(
+    definition_group = parser.add_argument_group("Team Definition")
+    definition_group.add_argument(
         "--name",
         required=True,
         help="Team name to create.",
     )
-    parser.add_argument(
+    definition_group.add_argument(
         "--email",
         default=None,
         help="Optional team email address to store in Grafana.",
     )
-    parser.add_argument(
+    membership_group = parser.add_argument_group("Team Membership")
+    membership_group.add_argument(
         "--member",
         action="append",
         default=[],
         metavar="LOGIN_OR_EMAIL",
         help="Add one initial team member by exact login or exact email. Repeat as needed.",
     )
-    parser.add_argument(
+    membership_group.add_argument(
         "--admin",
         action="append",
         default=[],
         metavar="LOGIN_OR_EMAIL",
         help="Add one initial team admin by exact login or exact email. Repeat as needed.",
     )
-    parser.add_argument(
+    output_group = parser.add_argument_group("Output Options")
+    output_group.add_argument(
         "--json",
         action="store_true",
         help="Render the created team as JSON.",
@@ -1355,12 +1390,13 @@ def add_team_add_cli_args(parser):
 
 
 def add_service_account_add_cli_args(parser):
-    parser.add_argument(
+    identity_group = parser.add_argument_group("Service Account Identity")
+    identity_group.add_argument(
         "--name",
         required=True,
         help="Service-account name to create.",
     )
-    parser.add_argument(
+    identity_group.add_argument(
         "--role",
         default=DEFAULT_SERVICE_ACCOUNT_ROLE,
         choices=["Viewer", "Editor", "Admin", "None"],
@@ -1368,13 +1404,14 @@ def add_service_account_add_cli_args(parser):
             "Service-account org role (default: %s)." % DEFAULT_SERVICE_ACCOUNT_ROLE
         ),
     )
-    parser.add_argument(
+    identity_group.add_argument(
         "--disabled",
         default="false",
         type=bool_choice,
         help="Create the service account in disabled state: true or false.",
     )
-    parser.add_argument(
+    output_group = parser.add_argument_group("Output Options")
+    output_group.add_argument(
         "--json",
         action="store_true",
         help="Render the created service account as JSON.",
@@ -1382,29 +1419,32 @@ def add_service_account_add_cli_args(parser):
 
 
 def add_service_account_token_add_cli_args(parser):
-    identity_group = parser.add_mutually_exclusive_group(required=True)
-    identity_group.add_argument(
+    identity_group = parser.add_argument_group("Target Selection")
+    identity_mutually = identity_group.add_mutually_exclusive_group(required=True)
+    identity_mutually.add_argument(
         "--service-account-id",
         default=None,
         help="Service-account id that should own the new token.",
     )
-    identity_group.add_argument(
+    identity_mutually.add_argument(
         "--name",
         default=None,
         help="Resolve the service account by exact name before creating the token.",
     )
-    parser.add_argument(
+    token_group = parser.add_argument_group("Token Settings")
+    token_group.add_argument(
         "--token-name",
         required=True,
         help="Token name to create under the target service account.",
     )
-    parser.add_argument(
+    token_group.add_argument(
         "--seconds-to-live",
         type=positive_int,
         default=None,
         help="Optional token lifetime in seconds.",
     )
-    parser.add_argument(
+    output_group = parser.add_argument_group("Output Options")
+    output_group.add_argument(
         "--json",
         action="store_true",
         help="Render the created token payload as JSON.",
