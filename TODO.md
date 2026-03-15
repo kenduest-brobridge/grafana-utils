@@ -30,6 +30,12 @@ Completed items that were previously listed here now live in `docs/internal/todo
 - evaluate streaming or lower-memory dashboard listing/export paths only if large-instance validation shows the current full-materialization approach is a real bottleneck
 - evaluate semantic alert diff normalization for equivalent values such as duration aliases after the current structural diff behavior is otherwise stable
 - extend `grafana-util sync` beyond the current Grafana-aware plan fetch and limited live apply subset so alerts, richer preflight checks, and broader dependency validation can use the same review contract
+- document `grafana-util sync` as one operator-facing workflow, including purpose, desired-state schema, staged artifact flow, review/preflight/apply semantics, and a minimal end-to-end demo
+- fix the current Python `grafana-util sync` rough edges so the documented `plan -> review -> apply` path actually round-trips through `--plan-file` / `--output-file` without ad hoc manual artifact edits
+- reconcile Python `sync` alert policy so `plan`, `assess-alerts`, `preflight`, and any future live-apply gate all agree on which alert cases are candidate, plan-only, or blocked
+- stabilize Python `sync` availability/preflight contracts so datasource plugin checks, availability key names, and bundle-level blocking summaries match the documented schema and demo behavior
+- formalize the desired-state and staged-artifact schema for `grafana-util sync`, including required `body`/`managedFields` semantics and what fields are intentionally excluded or plan-only
+- decide whether Python `sync apply` remains intent-first or grows into a complete live mutation workflow, then align help text, output documents, and gating rules to that explicit contract
 - extend datasource import placeholder secret handling from the current Python/Rust inline/file sidecars into a shared external-provider contract without weakening fail-closed behavior
 
 ### Roadmap Workbench: Inspection And Dependency Governance
@@ -58,6 +64,9 @@ Completed items that were previously listed here now live in `docs/internal/todo
 - require dry-run, review, and explicit apply acknowledgement before any future live mutation path is allowed
 - keep alert sync in plan-only mode until partial ownership and safe mutation semantics are explicit enough to review
 - decide how prune and unmanaged live resources are surfaced so Git-managed scope stays auditable in reviews
+- write one canonical operator document for `sync` before expanding more staged subcommands so the workflow is understandable outside internal notes
+- align Python and Rust staged artifact contracts only after the Python public flow, schema, and demo are stable enough to serve as the user-facing reference
+- keep `sync` demos and docs based on real runnable fixtures so plan/review/preflight/apply examples do not drift from actual CLI behavior
 
 ### Roadmap Workbench: Secret Handling And Redaction
 
