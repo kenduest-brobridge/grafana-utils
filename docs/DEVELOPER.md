@@ -96,9 +96,10 @@ Commit message default for this repo:
 - `tests/test_python_packaging.py`: Python package metadata and console-script tests
 - `Makefile`: shared developer shortcuts for Python wheel builds, Rust release builds, and test runs
 - `.github/workflows/ci.yml`: baseline CI gates for Python tests plus Rust tests/format/lint checks
-- `scripts/build-rust-macos-arm64.sh`: native Apple Silicon Rust release build helper that copies binaries into `dist/macos-arm64/`
+- `scripts/build-rust-macos-arm64.sh`: native Apple Silicon Rust release build helper that copies binaries and a distributable tarball into `dist/macos-arm64/`
 - `scripts/build-rust-linux-amd64.sh`: Docker-based Linux `amd64` Rust build helper for macOS or other non-Linux hosts
 - `scripts/build-rust-linux-amd64-zig.sh`: non-Docker Linux `amd64` Rust build helper using local `zig` and `cargo-zigbuild`
+- `scripts/package-rust-artifacts.sh`: shared Rust packaging helper that assembles release tarballs with binaries, README files, user guides, and `LICENSE`
 - `scripts/seed-grafana-sample-data.sh`: idempotent developer seed helper for sample orgs, datasources, folders, and dashboards in a running Grafana
 - `scripts/test-rust-live-grafana.sh`: Docker-backed Grafana smoke test for the Rust CLIs
 
@@ -206,12 +207,12 @@ Commit message default for this repo:
 ### Rust cross-build notes
 
 - `make build-rust-macos-arm64` runs `scripts/build-rust-macos-arm64.sh`.
-- That script is the explicit native release path for Apple Silicon Macs and copies binaries into `dist/macos-arm64/`.
+- That script is the explicit native release path for Apple Silicon Macs and writes raw binaries plus a `.tar.gz` package into `dist/macos-arm64/`.
 - `make build-rust-linux-amd64` runs `scripts/build-rust-linux-amd64.sh`.
 - The script uses Docker plus the official Rust image to build `x86_64-unknown-linux-gnu` binaries from macOS.
 - `make build-rust-linux-amd64-zig` runs `scripts/build-rust-linux-amd64-zig.sh`.
 - The zig path expects local `zig`, `cargo-zigbuild`, and a rustup-managed `x86_64-unknown-linux-gnu` target.
-- Output is copied into `dist/linux-amd64/` as `grafana-util`.
+- Output is copied into `dist/linux-amd64/` as raw binaries and a distributable `.tar.gz` package.
 - This is the preferred Linux `amd64` build path on macOS because it avoids managing a local Linux cross-linker toolchain.
 
 ### Export variants
