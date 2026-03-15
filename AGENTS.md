@@ -18,6 +18,9 @@
 - `README.md`: GitHub-facing usage and operator examples.
 - `docs/DEVELOPER.md`: maintainer notes, internal behavior, and implementation tradeoffs.
 - `docs/internal/ai-status.md` and `docs/internal/ai-changes.md`: internal change trace files for meaningful feature work.
+- `docs/internal/FILE_INDEX.json`: internal file inventory for quick project navigation and ownership lookup (reference-only).
+- `docs/internal/PROJECT_MAP.md`: internal architecture and component relationship map (reference-only).
+- `docs/internal/CHANGE_IMPACT.md`: internal dependency and impact-tracking notes for scoped changes (reference-only).
 
 Keep implementation code in `grafana_utils/` and keep `python/` wrappers thin unless a new workflow clearly deserves its own module.
 
@@ -36,10 +39,6 @@ Keep implementation code in `grafana_utils/` and keep `python/` wrappers thin un
 - `make build`: build both the Python wheel and the Rust release binaries.
 - `make test`: run both the Python and Rust test suites.
 - `make test-rust-live`: start Docker Grafana and run the Rust live smoke test script.
-- `python3 -m unittest -v`: run the full test suite.
-- `python3 -m unittest -v tests/test_python_alert_cli.py`: run alerting Python tests only.
-- `python3 -m unittest -v tests/test_python_dashboard_cli.py`: run dashboard Python tests only.
-- `python3 -m unittest -v tests/test_python_access_cli.py`: run access Python tests only.
 - `cd rust && cargo test --quiet`: run the full Rust test suite.
 
 Use Poetry-first commands for Python development and test execution. Keep the `pip install` commands for packaged-install validation, local release checks, or environments that intentionally skip Poetry.
@@ -73,8 +72,6 @@ For external command usage and operator examples, prefer `README.md`, `README.zh
 
 ## Testing Guidelines
 
-- Tests use `unittest`.
-- Name Python test files `tests/test_python_*.py` and test methods `test_*`.
 - Keep Rust unit tests in `rust/src/*_rust_tests.rs` when the filename needs to distinguish them from Python tests.
 - Add or update tests for every user-visible behavior change.
 - For CLI UX changes, test parser behavior or `format_help()` output directly.
@@ -101,6 +98,8 @@ For external command usage and operator examples, prefer `README.md`, `README.zh
 - Put external usage in `README.md`.
 - Put internal details, mappings, fallback rules, and maintenance notes in `docs/DEVELOPER.md`.
 - Update `docs/internal/ai-status.md` and `docs/internal/ai-changes.md` only for meaningful behavior or architecture changes.
+- Use `docs/internal/FILE_INDEX.json`, `docs/internal/PROJECT_MAP.md`, and `docs/internal/CHANGE_IMPACT.md` as reference-only internal project-information sources when scoping or validating changes.
+- Do not update `docs/internal/FILE_INDEX.json`, `docs/internal/PROJECT_MAP.md`, or `docs/internal/CHANGE_IMPACT.md` unless explicitly requested.
 - When updating `docs/user-guide.md` or `docs/user-guide-TW.md`, prefer real command lines and output excerpts captured from a local Docker Grafana run over illustrative placeholders. If a documented example claims to be validated, it should match an actually executed local live-smoke path and mention the Grafana version when that context matters.
 
 ## Changelog Policy
