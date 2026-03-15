@@ -203,15 +203,10 @@ where
 
     let mut raw_index_path = None;
     if !args.without_dashboard_raw {
-        let variant_dir = if args.all_orgs {
-            args.export_dir.join(RAW_EXPORT_SUBDIR)
-        } else {
-            raw_dir.clone()
-        };
-        let index_path = variant_dir.join("index.json");
-        let metadata_path = variant_dir.join(EXPORT_METADATA_FILENAME);
-        let folder_inventory_path = variant_dir.join(FOLDER_INVENTORY_FILENAME);
-        let datasource_inventory_path = variant_dir.join(DATASOURCE_INVENTORY_FILENAME);
+        let index_path = raw_dir.join("index.json");
+        let metadata_path = raw_dir.join(EXPORT_METADATA_FILENAME);
+        let folder_inventory_path = raw_dir.join(FOLDER_INVENTORY_FILENAME);
+        let datasource_inventory_path = raw_dir.join(DATASOURCE_INVENTORY_FILENAME);
         if !args.dry_run {
             write_json_document(
                 &build_variant_index(
@@ -241,13 +236,8 @@ where
     }
     let mut prompt_index_path = None;
     if !args.without_dashboard_prompt {
-        let variant_dir = if args.all_orgs {
-            args.export_dir.join(PROMPT_EXPORT_SUBDIR)
-        } else {
-            prompt_dir.clone()
-        };
-        let index_path = variant_dir.join("index.json");
-        let metadata_path = variant_dir.join(EXPORT_METADATA_FILENAME);
+        let index_path = prompt_dir.join("index.json");
+        let metadata_path = prompt_dir.join(EXPORT_METADATA_FILENAME);
         if !args.dry_run {
             write_json_document(
                 &build_variant_index(

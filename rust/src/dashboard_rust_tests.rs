@@ -2888,9 +2888,28 @@ fn export_dashboards_with_request_all_orgs_aggregates_results() {
         .is_file());
     assert!(args
         .export_dir
+        .join("org_1_Main_Org/raw/index.json")
+        .is_file());
+    assert!(args
+        .export_dir
+        .join("org_1_Main_Org/raw/export-metadata.json")
+        .is_file());
+    assert!(args
+        .export_dir
+        .join("org_1_Main_Org/raw/folders.json")
+        .is_file());
+    assert!(args
+        .export_dir
+        .join("org_1_Main_Org/raw/datasources.json")
+        .is_file());
+    assert!(args
+        .export_dir
         .join("org_2_Ops_Org/raw/Ops/Logs__xyz.json")
         .is_file());
-    assert!(args.export_dir.join("raw/index.json").is_file());
+    assert!(args
+        .export_dir
+        .join("org_2_Ops_Org/raw/index.json")
+        .is_file());
     assert_eq!(
         calls
             .iter()
@@ -4709,8 +4728,19 @@ fn build_routed_import_dry_run_json_with_request_reports_orgs_and_dashboards() {
     let export_root = temp.path().join("exports");
     let org_two_raw = export_root.join("org_2_Org_Two").join("raw");
     let org_nine_raw = export_root.join("org_9_Ops_Org").join("raw");
+    fs::create_dir_all(export_root.join("raw")).unwrap();
     fs::create_dir_all(&org_two_raw).unwrap();
     fs::create_dir_all(&org_nine_raw).unwrap();
+    fs::write(
+        export_root.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-root",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "orgCount": 2
+        }))
+        .unwrap(),
+    )
+    .unwrap();
 
     for (raw_dir, org_id, org_name, uid) in [
         (&org_two_raw, "2", "Org Two", "cpu-two"),
@@ -4830,7 +4860,18 @@ fn import_dashboards_with_use_export_org_dry_run_table_returns_after_org_summary
     let temp = tempdir().unwrap();
     let export_root = temp.path().join("exports");
     let org_two_raw = export_root.join("org_2_Org_Two").join("raw");
+    fs::create_dir_all(export_root.join("raw")).unwrap();
     fs::create_dir_all(&org_two_raw).unwrap();
+    fs::write(
+        export_root.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-root",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "orgCount": 1
+        }))
+        .unwrap(),
+    )
+    .unwrap();
     fs::write(
         org_two_raw.join(EXPORT_METADATA_FILENAME),
         serde_json::to_string_pretty(&json!({

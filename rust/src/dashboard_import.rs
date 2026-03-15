@@ -202,11 +202,6 @@ fn discover_export_org_import_scopes(args: &ImportArgs) -> Result<Vec<ExportOrgI
     if !args.use_export_org {
         return Ok(Vec::new());
     }
-    if args.import_dir.join(EXPORT_METADATA_FILENAME).is_file() {
-        return Err(message(
-            "Dashboard import with --use-export-org expects the combined export root, not one raw/ export directory.",
-        ));
-    }
     let selected_org_ids: std::collections::BTreeSet<i64> = args.only_org_id.iter().copied().collect();
     let mut scopes = Vec::new();
     for entry in fs::read_dir(&args.import_dir)? {
@@ -233,6 +228,11 @@ fn discover_export_org_import_scopes(args: &ImportArgs) -> Result<Vec<ExportOrgI
     }
     scopes.sort_by(|left, right| left.source_org_id.cmp(&right.source_org_id));
     if scopes.is_empty() {
+        if args.import_dir.join(EXPORT_METADATA_FILENAME).is_file() {
+            return Err(message(
+                "Dashboard import with --use-export-org expects the combined export root, not one raw/ export directory.",
+            ));
+        }
         if selected_org_ids.is_empty() {
             return Err(message(format!(
                 "Dashboard import with --use-export-org did not find any org-specific raw exports under {}.",
