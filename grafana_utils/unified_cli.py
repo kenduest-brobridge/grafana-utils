@@ -23,7 +23,7 @@ Caveats:
 
 import argparse
 import sys
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from . import access_cli, alert_cli, dashboard_cli, datasource_cli, sync_cli
 
@@ -107,6 +107,13 @@ LEGACY_ALERT_COMMAND_MAP = {
     "list-alert-mute-timings": "list-mute-timings",
     "list-alert-templates": "list-templates",
 }
+ENTRYPOINT_MODULE_DISPATCH = {
+    "dashboard": dashboard_cli,
+    "alert": alert_cli,
+    "access": access_cli,
+    "datasource": datasource_cli,
+    "sync": sync_cli,
+}  # type: Dict[str, Any]
 
 def _print_dashboard_group_help() -> None:
     """Print dedicated dashboard command help for the legacy/top-level entry path."""
@@ -314,17 +321,12 @@ def main(argv: Optional[list[str]] = None) -> int:
     - Preserve exit-code contract of the downstream module.
     """
     args = parse_args(argv)
-    if args.entrypoint == "dashboard":
-        return dashboard_cli.main(args.forwarded_argv)
-    if args.entrypoint == "alert":
-        return alert_cli.main(args.forwarded_argv)
-    if args.entrypoint == "access":
-        return access_cli.main(args.forwarded_argv)
-    if args.entrypoint == "datasource":
-        return datasource_cli.main(args.forwarded_argv)
-    if args.entrypoint == "sync":
-        return sync_cli.main(args.forwarded_argv)
-    raise RuntimeError("Unsupported unified CLI entrypoint.")
+    module = ENTRYPOINT_MODULE_DISPATCH.get(args.entrypoint)
+    if module is None:
+        raise RuntimeError(
+            "Unsupported unified CLI entrypoint: %s" % args.entrypoint
+        )
+    return module.main(args.forwarded_argv)
 
 
 if __name__ == "__main__":

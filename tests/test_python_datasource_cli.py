@@ -5,7 +5,7 @@ import json
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -182,6 +182,8 @@ class DatasourceCliTests(unittest.TestCase):
                 "--replace-existing",
                 "--dry-run",
                 "--table",
+                "--error-policy",
+                "continue",
             ]
         )
 
@@ -190,6 +192,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertTrue(args.replace_existing)
         self.assertTrue(args.dry_run)
         self.assertTrue(args.table)
+        self.assertEqual(args.error_policy, "continue")
 
     def test_parse_args_supports_import_secret_flags(self):
         args = datasource_cli.parse_args(
@@ -371,11 +374,20 @@ class DatasourceCliTests(unittest.TestCase):
 
     def test_parse_args_supports_diff_mode(self):
         args = datasource_cli.parse_args(
-            ["diff", "--diff-dir", "./datasources", "--url", "http://127.0.0.1:3000"]
+            [
+                "diff",
+                "--diff-dir",
+                "./datasources",
+                "--url",
+                "http://127.0.0.1:3000",
+                "--error-policy",
+                "continue",
+            ]
         )
 
         self.assertEqual(args.command, "diff")
         self.assertEqual(args.diff_dir, "./datasources")
+        self.assertEqual(args.error_policy, "continue")
 
     def test_parse_args_rejects_multiple_list_output_modes(self):
         with self.assertRaises(SystemExit):
@@ -1570,6 +1582,71 @@ class DatasourceCliTests(unittest.TestCase):
                     "httpHeaderValue1": "Bearer tenant-a",
                 },
             )
+
+    def test_import_datasources_continue_policy_keeps_processing_after_item_error(self):
+        args = datasource_cli.parse_args(
+            [
+                "import",
+                "--import-dir",
+                "ignored",
+                "--error-policy",
+                "continue",
+            ]
+        )
+        client = FakeDatasourceClient(datasources=[])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args.import_dir = tmpdir
+            self._write_datasource_bundle(
+                Path(tmpdir),
+                [
+                    {
+                        "uid": "broken",
+                        "name": "Broken",
+                        "type": "prometheus",
+                        "access": "proxy",
+                        "url": "http://broken:9090",
+                        "isDefault": "false",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                    {
+                        "uid": "prom_uid",
+                        "name": "Prometheus Main",
+                        "type": "prometheus",
+                        "access": "proxy",
+                        "url": "http://prometheus:9090",
+                        "isDefault": "true",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                ],
+            )
+
+            original_request_json = client.request_json
+
+            def flaky_request_json(path, params=None, method="GET", payload=None):
+                if (
+                    path == "/api/datasources"
+                    and method == "POST"
+                    and (payload or {}).get("uid") == "broken"
+                ):
+                    raise datasource_cli.GrafanaError("broken datasource")
+                return original_request_json(path, params=params, method=method, payload=payload)
+
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with mock.patch.object(datasource_cli, "build_client", return_value=client):
+                with mock.patch.object(client, "request_json", side_effect=flaky_request_json):
+                    with redirect_stdout(stdout), redirect_stderr(stderr):
+                        result = datasource_cli.import_datasources(args)
+
+            self.assertEqual(result, 1)
+            self.assertEqual(len(client.imported_payloads), 1)
+            self.assertEqual(client.imported_payloads[0]["payload"]["uid"], "prom_uid")
+            self.assertIn("Imported 1 datasource(s)", stdout.getvalue())
+            self.assertIn("failed=1", stdout.getvalue())
+            self.assertIn("Continuing after datasource import error", stderr.getvalue())
 
     def test_import_datasources_dry_run_uses_org_scoped_client(self):
         scoped_client = FakeDatasourceClient(

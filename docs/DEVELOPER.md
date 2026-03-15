@@ -92,6 +92,14 @@ Commit message default for this repo:
 - Avoid Python 3.10 union syntax such as `str | None`.
 - Keep using `typing.Optional`, `typing.Any`, `typing.Iterable`, and similar helpers where Python 3.9 still needs them.
 
+## Batch Error Policy
+
+- Python batch-style import/export/diff surfaces should share one `--error-policy abort|continue` contract instead of introducing per-command flags such as `--ignore-errors` or `--best-effort`.
+- `abort` remains the default and preserves the fail-closed behavior on the first item-level error.
+- `continue` only applies after a command has entered an item-processing loop. Commands should record the failed item, continue with the remaining items, print a summary with `failed=<count>` or equivalent, and still return a non-zero exit status when any item failed.
+- Setup-time validation, auth/bootstrap failures, unreadable bundle files, malformed top-level metadata, and similar pre-loop errors should still abort immediately even when `--error-policy continue` is selected.
+- When adding new batch workflows, keep the failure record shape stable with `kind`, `identity`, `source`, and `error` fields so dry-run JSON and stderr summaries stay consistent across dashboard, alert, datasource, and access commands.
+
 ## Version Workflow
 
 - `VERSION` is the canonical repo version source for both Python and Rust packaging metadata.

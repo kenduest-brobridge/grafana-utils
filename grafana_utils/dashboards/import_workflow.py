@@ -182,6 +182,7 @@ def _run_import_dashboards_by_export_org(args, deps, client):
     if bool(getattr(args, "dry_run", False)) and bool(getattr(args, "json", False)):
         org_entries = []
         import_entries = []
+        result_code = 0
         for target in targets:
             raw_dir = target["raw_dir"]
             target_org_id = target["target_org_id"]
@@ -218,7 +219,10 @@ def _run_import_dashboards_by_export_org(args, deps, client):
                 )
                 stream = StringIO()
                 with redirect_stdout(stream):
-                    _run_import_dashboards_for_single_org(scoped_args, deps)
+                    result_code = max(
+                        result_code,
+                        _run_import_dashboards_for_single_org(scoped_args, deps),
+                    )
                 import_entry.update(json.loads(stream.getvalue()))
             import_entries.append(import_entry)
         summary = {
@@ -246,7 +250,7 @@ def _run_import_dashboards_by_export_org(args, deps, client):
                 sort_keys=True,
             )
         )
-        return 0
+        return result_code
     if bool(getattr(args, "dry_run", False)) and bool(getattr(args, "table", False)):
         headers = [
             "SOURCE_ORG_ID",
@@ -282,6 +286,7 @@ def _run_import_dashboards_by_export_org(args, deps, client):
         for row in rows:
             print(format_row(row))
         return 0
+    result_code = 0
     for target in targets:
         raw_dir = target["raw_dir"]
         source_org_id = target["source_org_id"]
@@ -330,8 +335,11 @@ def _run_import_dashboards_by_export_org(args, deps, client):
             create_missing_orgs=False,
             require_matching_export_org=False,
         )
-        _run_import_dashboards_for_single_org(scoped_args, deps)
-    return 0
+        result_code = max(
+            result_code,
+            _run_import_dashboards_for_single_org(scoped_args, deps),
+        )
+    return result_code
 
 
 def _run_import_dashboards_for_single_org(args, deps):

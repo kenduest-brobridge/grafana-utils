@@ -4,6 +4,7 @@ import argparse
 import sys
 from typing import List, Optional
 
+from ..batch_error_policy import add_error_policy_argument
 from .common import DEFAULT_PAGE_SIZE
 from .pending_cli_staging import (
     add_service_account_delete_cli_args,
@@ -144,6 +145,7 @@ def add_access_import_cli_args(parser, resource, default_scope=DEFAULT_SCOPE):
         action="store_true",
         help="Acknowledge destructive import operations (delete/missing sync).",
     )
+    add_error_policy_argument(parser, "%s import" % resource)
 
 
 def add_access_diff_cli_args(parser, resource, default_scope=DEFAULT_SCOPE):
@@ -166,6 +168,7 @@ def add_access_diff_cli_args(parser, resource, default_scope=DEFAULT_SCOPE):
                 "Match against global or org user listing (default: %s)." % default_scope
             ),
         )
+    add_error_policy_argument(parser, "%s diff" % resource)
 
 
 def build_parser(prog=None):

@@ -11,6 +11,10 @@ from pathlib import Path
 from typing import Any, Optional
 from urllib import parse
 
+from ..batch_error_policy import (
+    append_item_failure,
+    should_continue_on_item_error,
+)
 from ..clients.dashboard_client import GrafanaClient
 from ..datasource_secret_workbench import build_datasource_secret_plan
 from ..dashboard_cli import (
@@ -52,6 +56,29 @@ from .parser import (
 
 def build_client(args):
     return build_dashboard_client(args)
+
+
+def _append_datasource_batch_failure(args, failures, item_kind, item_identity, item_source, exc):
+    if not should_continue_on_item_error(args):
+        return False
+    failure = append_item_failure(
+        failures,
+        item_kind=item_kind,
+        item_identity=item_identity,
+        item_source=item_source,
+        exc=exc,
+    )
+    print(
+        "Continuing after %s error identity=%s source=%s error=%s"
+        % (
+            failure["kind"],
+            failure["identity"],
+            failure["source"],
+            failure["error"],
+        ),
+        file=sys.stderr,
+    )
+    return True
 
 
 def build_export_index(datasource_records, datasources_file):
@@ -671,7 +698,8 @@ def render_import_dry_run_table(records, include_header, selected_columns=None):
     return lines
 
 
-def render_import_dry_run_json(mode, records, target_org_id):
+def render_import_dry_run_json(mode, records, target_org_id, failures=None):
+    failures = list(failures or [])
     summary = {
         "datasourceCount": len(records),
         "createCount": len([item for item in records if item["action"] == "would-create"]),
@@ -692,6 +720,7 @@ def render_import_dry_run_json(mode, records, target_org_id):
                 )
             ]
         ),
+        "failedCount": len(failures),
     }
     source_org_id = ""
     if records:
@@ -702,6 +731,7 @@ def render_import_dry_run_json(mode, records, target_org_id):
             "sourceOrgId": source_org_id,
             "targetOrgId": target_org_id,
             "datasources": records,
+            "failures": failures,
             "summary": summary,
         },
         indent=2,
@@ -1470,6 +1500,7 @@ def _run_import_datasources_by_export_org(args, client):
     if bool(getattr(args, "dry_run", False)) and bool(getattr(args, "json", False)):
         org_entries = []
         import_entries = []
+        result_code = 0
         for target in targets:
             org_entry = {
                 "sourceOrgId": target["source_org_id"],
@@ -1503,7 +1534,10 @@ def _run_import_datasources_by_export_org(args, client):
                 )
                 stream = StringIO()
                 with redirect_stdout(stream):
-                    _run_import_datasources_for_single_org(scoped_args)
+                    result_code = max(
+                        result_code,
+                        _run_import_datasources_for_single_org(scoped_args),
+                    )
                 import_entry.update(json.loads(stream.getvalue()))
             import_entries.append(import_entry)
         summary = {
@@ -1531,11 +1565,12 @@ def _run_import_datasources_by_export_org(args, client):
                 sort_keys=True,
             )
         )
-        return 0
+        return result_code
     if bool(getattr(args, "dry_run", False)) and bool(getattr(args, "table", False)):
         for line in _render_routed_datasource_import_table(args, targets):
             print(line)
         return 0
+    result_code = 0
     for target in targets:
         if bool(getattr(args, "dry_run", False)):
             print(
@@ -1569,8 +1604,8 @@ def _run_import_datasources_by_export_org(args, client):
             create_missing_orgs=False,
             require_matching_export_org=False,
         )
-        _run_import_datasources_for_single_org(scoped_args)
-    return 0
+        result_code = max(result_code, _run_import_datasources_for_single_org(scoped_args))
+    return result_code
 
 
 def _run_import_datasources_for_single_org(args):
@@ -1592,98 +1627,111 @@ def _run_import_datasources_for_single_org(args):
     records = []
     imported_count = 0
     skipped_missing_count = 0
+    failures = []
     total = len(bundle["records"])
     if not getattr(args, "json", False):
         print("Import mode: %s" % mode)
     for index, record in enumerate(bundle["records"], 1):
-        match = resolve_datasource_match(record, lookups)
-        action = determine_datasource_action(args, record, match)
-        secure_json_data = resolve_import_secure_json_data(args, record)
-        dry_run_record = {
-            "uid": record.get("uid") or "",
-            "name": record.get("name") or "",
-            "type": record.get("type") or "",
-            "destination": match["state"],
-            "action": action,
-            "orgId": target_org_id,
-            "sourceOrgId": record.get("orgId") or "",
-            "file": "%s#%s" % (bundle["datasources_path"], index - 1),
-        }
-        if args.dry_run:
-            records.append(dry_run_record)
-            if getattr(args, "table", False) or getattr(args, "json", False):
-                continue
-            print(
-                "Dry-run datasource uid=%s name=%s dest=%s action=%s file=%s"
-                % (
-                    dry_run_record["uid"] or "-",
-                    dry_run_record["name"] or "-",
-                    dry_run_record["destination"],
-                    dry_run_record["action"],
-                    dry_run_record["file"],
+        identity = str(record.get("uid") or record.get("name") or index)
+        try:
+            match = resolve_datasource_match(record, lookups)
+            action = determine_datasource_action(args, record, match)
+            secure_json_data = resolve_import_secure_json_data(args, record)
+            dry_run_record = {
+                "uid": record.get("uid") or "",
+                "name": record.get("name") or "",
+                "type": record.get("type") or "",
+                "destination": match["state"],
+                "action": action,
+                "orgId": target_org_id,
+                "sourceOrgId": record.get("orgId") or "",
+                "file": "%s#%s" % (bundle["datasources_path"], index - 1),
+            }
+            if args.dry_run:
+                records.append(dry_run_record)
+                if getattr(args, "table", False) or getattr(args, "json", False):
+                    continue
+                print(
+                    "Dry-run datasource uid=%s name=%s dest=%s action=%s file=%s"
+                    % (
+                        dry_run_record["uid"] or "-",
+                        dry_run_record["name"] or "-",
+                        dry_run_record["destination"],
+                        dry_run_record["action"],
+                        dry_run_record["file"],
+                    )
                 )
+                continue
+            if action == "would-skip-missing":
+                skipped_missing_count += 1
+                if getattr(args, "verbose", False):
+                    print(
+                        "Skipped datasource uid=%s name=%s dest=missing action=skip-missing"
+                        % (record.get("uid") or "-", record.get("name") or "-")
+                    )
+                elif getattr(args, "progress", False):
+                    print(
+                        "Skipping datasource %s/%s: %s"
+                        % (index, total, record.get("uid") or record.get("name") or "-")
+                    )
+                continue
+            if action in (
+                "would-fail-existing",
+                "would-fail-ambiguous",
+                "would-fail-plugin-type-change",
+                "would-fail-uid-mismatch",
+            ):
+                raise GrafanaError(
+                    "Datasource import blocked for uid=%s name=%s action=%s"
+                    % (record.get("uid") or "-", record.get("name") or "-", action)
+                )
+            payload = build_import_payload_with_secrets(
+                record,
+                existing=match.get("target"),
+                secure_json_data=secure_json_data,
             )
-            continue
-        if action == "would-skip-missing":
-            skipped_missing_count += 1
+            if action == "would-update":
+                datasource_id = payload.get("id")
+                if datasource_id is None:
+                    raise GrafanaError(
+                        "Datasource import could not determine destination datasource id for update."
+                    )
+                client.request_json(
+                    "/api/datasources/%s" % datasource_id,
+                    method="PUT",
+                    payload=payload,
+                )
+            else:
+                client.request_json("/api/datasources", method="POST", payload=payload)
+            imported_count += 1
             if getattr(args, "verbose", False):
                 print(
-                    "Skipped datasource uid=%s name=%s dest=missing action=skip-missing"
-                    % (record.get("uid") or "-", record.get("name") or "-")
+                    "Imported datasource uid=%s name=%s action=%s"
+                    % (
+                        record.get("uid") or "-",
+                        record.get("name") or "-",
+                        "update" if action == "would-update" else "create",
+                    )
                 )
             elif getattr(args, "progress", False):
                 print(
-                    "Skipping datasource %s/%s: %s"
+                    "Importing datasource %s/%s: %s"
                     % (index, total, record.get("uid") or record.get("name") or "-")
                 )
-            continue
-        if action in (
-            "would-fail-existing",
-            "would-fail-ambiguous",
-            "would-fail-plugin-type-change",
-            "would-fail-uid-mismatch",
-        ):
-            raise GrafanaError(
-                "Datasource import blocked for uid=%s name=%s action=%s"
-                % (record.get("uid") or "-", record.get("name") or "-", action)
-            )
-        payload = build_import_payload_with_secrets(
-            record,
-            existing=match.get("target"),
-            secure_json_data=secure_json_data,
-        )
-        if action == "would-update":
-            datasource_id = payload.get("id")
-            if datasource_id is None:
-                raise GrafanaError(
-                    "Datasource import could not determine destination datasource id for update."
-                )
-            client.request_json(
-                "/api/datasources/%s" % datasource_id,
-                method="PUT",
-                payload=payload,
-            )
-        else:
-            client.request_json("/api/datasources", method="POST", payload=payload)
-        imported_count += 1
-        if getattr(args, "verbose", False):
-            print(
-                "Imported datasource uid=%s name=%s action=%s"
-                % (
-                    record.get("uid") or "-",
-                    record.get("name") or "-",
-                    "update" if action == "would-update" else "create",
-                )
-            )
-        elif getattr(args, "progress", False):
-            print(
-                "Importing datasource %s/%s: %s"
-                % (index, total, record.get("uid") or record.get("name") or "-")
-            )
+        except Exception as exc:
+            if not _append_datasource_batch_failure(
+                args,
+                failures,
+                "datasource import",
+                identity,
+                "%s#%s" % (bundle["datasources_path"], index - 1),
+                exc,
+            ):
+                raise
     if args.dry_run:
         if getattr(args, "json", False):
-            print(render_import_dry_run_json(mode, records, target_org_id))
-            return 0
+            print(render_import_dry_run_json(mode, records, target_org_id, failures=failures))
+            return 1 if failures else 0
         if getattr(args, "table", False):
             for line in render_import_dry_run_table(
                 records,
@@ -1691,19 +1739,28 @@ def _run_import_datasources_for_single_org(args):
                 selected_columns=getattr(args, "output_columns", None),
             ):
                 print(line)
-        print(
-            "Dry-run checked %s datasource(s) from %s"
-            % (len(records), args.import_dir)
-        )
-        return 0
+        if failures:
+            print(
+                "Dry-run checked %s datasource(s) from %s; failed %s datasource(s)"
+                % (len(records), args.import_dir, len(failures))
+            )
+        else:
+            print(
+                "Dry-run checked %s datasource(s) from %s"
+                % (len(records), args.import_dir)
+            )
+        return 1 if failures else 0
     if skipped_missing_count:
         print(
-            "Imported %s datasource(s) from %s; skipped %s missing destination datasources"
-            % (imported_count, args.import_dir, skipped_missing_count)
+            "Imported %s datasource(s) from %s; skipped %s missing destination datasources; failed=%s"
+            % (imported_count, args.import_dir, skipped_missing_count, len(failures))
         )
     else:
-        print("Imported %s datasource(s) from %s" % (imported_count, args.import_dir))
-    return 0
+        print(
+            "Imported %s datasource(s) from %s; failed=%s"
+            % (imported_count, args.import_dir, len(failures))
+        )
+    return 1 if failures else 0
 
 
 def import_datasources(args):

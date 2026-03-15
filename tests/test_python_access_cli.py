@@ -1384,6 +1384,8 @@ class AccessCliTests(unittest.TestCase):
                 "--dry-run",
                 "--output-format",
                 "table",
+                "--error-policy",
+                "continue",
                 "--yes",
             ]
         )
@@ -1394,6 +1396,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(import_args.replace_existing)
         self.assertTrue(import_args.dry_run)
         self.assertTrue(import_args.table)
+        self.assertEqual(import_args.error_policy, "continue")
         self.assertTrue(import_args.yes)
 
         diff_args = access_utils.parse_args(
@@ -1408,6 +1411,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(diff_args.resource, "service-account")
         self.assertEqual(diff_args.command, "diff")
         self.assertEqual(diff_args.diff_dir, "/tmp/service-accounts")
+        self.assertEqual(diff_args.error_policy, "abort")
 
     def test_parse_args_supports_service_account_token_add(self):
         args = access_utils.parse_args(
@@ -2795,6 +2799,51 @@ class AccessCliTests(unittest.TestCase):
                 [("7", {"name": "robot", "role": "Editor", "isDisabled": True})],
             )
             self.assertIn("Updated service-account robot", output.getvalue())
+
+    def test_import_service_accounts_with_client_continue_policy_keeps_processing_after_item_error(self):
+        client = FakeAccessClient(service_accounts=[])
+        with tempfile.TemporaryDirectory() as temp_dir:
+            diff_dir = Path(temp_dir)
+            (diff_dir / "service-accounts.json").write_text(
+                json.dumps(
+                    {
+                        "kind": "grafana-utils-access-service-account-export-index",
+                        "version": 1,
+                        "records": [
+                            {"name": "broken", "role": "Viewer", "disabled": False},
+                            {"name": "robot", "role": "Editor", "disabled": True},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            args = argparse.Namespace(
+                import_dir=str(diff_dir),
+                replace_existing=True,
+                dry_run=False,
+                table=False,
+                json=False,
+                yes=False,
+                error_policy="continue",
+            )
+            output = io.StringIO()
+            errors = io.StringIO()
+            original_create = client.create_service_account
+
+            def flaky_create(payload):
+                if payload.get("name") == "broken":
+                    raise access_utils.GrafanaError("broken service account")
+                return original_create(payload)
+
+            with mock.patch.object(client, "create_service_account", side_effect=flaky_create):
+                with redirect_stdout(output), redirect_stderr(errors):
+                    result = access_utils.import_service_accounts_with_client(args, client)
+
+            self.assertEqual(result, 1)
+            self.assertEqual(client.created_service_accounts[0]["name"], "robot")
+            self.assertIn("failed=1", output.getvalue())
+            self.assertIn("Created service-account robot", output.getvalue())
+            self.assertIn("Continuing after service-account import error", errors.getvalue())
 
     def test_diff_service_accounts_with_client_returns_expected_difference_count(self):
         client = FakeAccessClient(

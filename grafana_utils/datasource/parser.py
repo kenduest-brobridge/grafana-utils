@@ -18,6 +18,7 @@ Caveats:
 import argparse
 from collections import OrderedDict
 
+from ..batch_error_policy import add_error_policy_argument
 from ..dashboard_cli import (
     HelpFullAction,
     add_common_cli_args,
@@ -216,6 +217,7 @@ def add_export_cli_args(parser):
         action="store_true",
         help="Preview the datasource export files that would be written without changing disk.",
     )
+    add_error_policy_argument(parser, "datasource")
 
 
 def add_import_cli_args(parser):
@@ -361,6 +363,7 @@ def add_import_cli_args(parser):
         action="store_true",
         help="Show detailed per-datasource import output. Overrides --progress output.",
     )
+    add_error_policy_argument(parser, "datasource")
 
 
 def add_diff_cli_args(parser):
@@ -373,6 +376,7 @@ def add_diff_cli_args(parser):
             "and export-metadata.json."
         ),
     )
+    add_error_policy_argument(parser, "datasource")
 
 
 def parse_bool_choice(value):

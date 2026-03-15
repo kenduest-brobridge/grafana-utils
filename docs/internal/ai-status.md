@@ -5,6 +5,13 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-15 - Task: Add Continue-On-Error Policy For Python Batch CLIs
+- State: Done
+- Scope: `grafana_utils/batch_error_policy.py`, `grafana_utils/dashboards/import_workflow.py`, `grafana_utils/datasource/parser.py`, `grafana_utils/datasource/workflows.py`, `grafana_utils/access/parser.py`, `grafana_utils/access/workflows.py`, `tests/test_python_datasource_cli.py`, `tests/test_python_access_cli.py`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Python batch export/import/diff commands mostly failed closed on the first per-item error, so one malformed dashboard file, missing folder, or API rejection aborted the rest of the batch even when operators would prefer to keep processing the remaining items and review the failures at the end.
+- Outcome: Added a shared `--error-policy abort|continue` helper, applied it to the maintained Python datasource and access batch parsers/workflows in this change set, and preserved non-zero exit status plus per-item failure summaries when `continue` records one or more failures.
+- Validation: `poetry run python -m unittest -v tests.test_python_datasource_cli.DatasourceCliTests.test_parse_args_supports_import_mode tests.test_python_datasource_cli.DatasourceCliTests.test_parse_args_supports_diff_mode tests.test_python_datasource_cli.DatasourceCliTests.test_import_datasources_continue_policy_keeps_processing_after_item_error tests.test_python_access_cli.AccessCliTests.test_parse_args_supports_service_account_import_and_diff tests.test_python_access_cli.AccessCliTests.test_import_service_accounts_with_client_continue_policy_keeps_processing_after_item_error`; `python3 -m py_compile grafana_utils/batch_error_policy.py grafana_utils/dashboards/import_workflow.py grafana_utils/datasource/parser.py grafana_utils/datasource/workflows.py grafana_utils/access/parser.py grafana_utils/access/workflows.py grafana_utils/unified_cli.py`
+
 ## 2026-03-15 - Task: Reduce Rust Sync And Access Maintenance Hotspots
 - State: Done
 - Scope: `rust/src/access.rs`, `rust/src/lib.rs`, `rust/src/sync.rs`, `rust/src/sync_workbench.rs`, `rust/src/sync_preflight.rs`, `rust/src/bundle_preflight.rs`, `rust/src/access_rust_tests.rs`, `rust/src/sync_rust_tests.rs`, `rust/src/sync_cli_rust_tests.rs`, `rust/src/bundle_preflight_rust_tests.rs`, `docs/DEVELOPER.md`, `docs/overview-rust.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

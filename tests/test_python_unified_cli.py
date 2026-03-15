@@ -277,6 +277,21 @@ class UnifiedCliTests(unittest.TestCase):
             ["plan", "--desired-file", "./desired.json", "--live-file", "./live.json"]
         )
 
+    def test_main_rejects_unsupported_entrypoint(self):
+        with mock.patch.object(
+            unified_cli,
+            "parse_args",
+            return_value=unified_cli.argparse.Namespace(
+                entrypoint="unknown",
+                forwarded_argv=["--json"],
+            ),
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                "Unsupported unified CLI entrypoint: unknown",
+            ):
+                unified_cli.main(["unknown", "--json"])
+
 
 if __name__ == "__main__":
     unittest.main()
