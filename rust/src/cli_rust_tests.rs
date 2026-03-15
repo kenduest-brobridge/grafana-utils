@@ -207,7 +207,6 @@ fn parse_cli_supports_access_group() {
 fn unified_help_mentions_alert_access_and_shims() {
     let help = render_unified_help();
     assert!(help.contains("grafana-util access user list"));
-    assert!(help.contains("grafana-access-utils"));
     assert!(help.contains("Run datasource list, export, import, and diff workflows."));
     assert!(help.contains("Compatibility direct form; prefer `grafana-util dashboard export`."));
     assert!(help.contains("Compatibility direct form; prefer `grafana-util alert export`."));

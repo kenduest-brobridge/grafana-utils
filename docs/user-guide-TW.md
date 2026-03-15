@@ -19,19 +19,16 @@ grafana-util dashboard -h
 grafana-util alert -h
 grafana-util datasource -h
 grafana-util access -h
-grafana-access-utils -h
 ```
 
 安裝後可直接使用：
 
 ```text
 grafana-util <domain> <command> [options]
-grafana-access-utils <access-command> [options]
 ```
 
 ### 入口點說明：
 - **`grafana-util`**: 統一調度器（Unified Dispatcher），支援 `dashboard/alert/datasource/access`。
-- **`grafana-access-utils`**: 針對存取控制（Access）的相容啟動器。
 - 部分舊版直達指令（如 `list-dashboard`、`export-dashboard`、`export-alert`）仍保留相容。
 - `dashboard list-data-sources` 也仍可使用，但新的 datasource 盤點作業流程應優先改用 `datasource list`。
 

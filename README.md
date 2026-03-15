@@ -73,6 +73,19 @@ python3 -m pip install .
 cd rust && cargo build --release
 ```
 
+### Downloads
+
+Tagged GitHub releases publish prebuilt Rust packages under **Assets**:
+
+- `grafana-utils-rust-linux-amd64-vX.Y.Z.tar.gz`
+- `grafana-utils-rust-macos-arm64-vX.Y.Z.tar.gz`
+
+Each archive includes:
+
+- `bin/grafana-util`
+- `README.md`, `README.zh-TW.md`, `LICENSE`
+- `docs/user-guide.md`, `docs/user-guide-TW.md`
+
 ### Common Usage Example
 
 **Batch Export Dashboards (Preserving Structure):**
@@ -106,7 +119,7 @@ grafana-util dashboard import \
 ---
 
 ## 📈 Compatibility
-- **OS**: RHEL 8+, macOS (ARM/Intel), Linux.
+- **OS**: RHEL 8+, macOS, Linux.
 - **Runtime**: Python 3.9+.
 - **Grafana**: Supports v8.x, v9.x, v10.x+.
 

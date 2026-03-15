@@ -27,8 +27,6 @@ mkdir -p "${OUTPUT_DIR}"
 )
 
 cp "${RUST_DIR}/target/release/grafana-util" "${OUTPUT_DIR}/grafana-util"
-cp "${RUST_DIR}/target/release/grafana-access-utils" "${OUTPUT_DIR}/grafana-access-utils"
 "${PACKAGE_SCRIPT}" "${OUTPUT_DIR}" "${RUST_DIR}/target/release" "${PACKAGE_NAME}"
 echo "Built macOS arm64 Rust binaries:"
 echo "  ${OUTPUT_DIR}/grafana-util"
-echo "  ${OUTPUT_DIR}/grafana-access-utils"

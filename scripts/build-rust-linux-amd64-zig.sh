@@ -30,8 +30,6 @@ mkdir -p "${OUTPUT_DIR}"
 )
 
 cp "${RUST_DIR}/target/${TARGET_TRIPLE}/release/grafana-util" "${OUTPUT_DIR}/grafana-util"
-cp "${RUST_DIR}/target/${TARGET_TRIPLE}/release/grafana-access-utils" "${OUTPUT_DIR}/grafana-access-utils"
 "${PACKAGE_SCRIPT}" "${OUTPUT_DIR}" "${RUST_DIR}/target/${TARGET_TRIPLE}/release" "${PACKAGE_NAME}"
 echo "Built Linux amd64 Rust binaries with zig:"
 echo "  ${OUTPUT_DIR}/grafana-util"
-echo "  ${OUTPUT_DIR}/grafana-access-utils"

@@ -14,12 +14,10 @@ PACKAGE_NAME="$3"
 
 mkdir -p "${OUTPUT_DIR}"
 
-for binary in grafana-util grafana-access-utils; do
-  if [[ ! -f "${BINARY_DIR}/${binary}" ]]; then
-    echo "Error: missing Rust binary ${BINARY_DIR}/${binary}" >&2
-    exit 1
-  fi
-done
+if [[ ! -f "${BINARY_DIR}/grafana-util" ]]; then
+  echo "Error: missing Rust binary ${BINARY_DIR}/grafana-util" >&2
+  exit 1
+fi
 
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/grafana-utils-rust-package.XXXXXX")"
 PACKAGE_DIR="${TMP_DIR}/${PACKAGE_NAME}"
@@ -28,7 +26,6 @@ trap 'rm -rf "${TMP_DIR}"' EXIT
 mkdir -p "${PACKAGE_DIR}/bin" "${PACKAGE_DIR}/docs"
 
 cp "${BINARY_DIR}/grafana-util" "${PACKAGE_DIR}/bin/grafana-util"
-cp "${BINARY_DIR}/grafana-access-utils" "${PACKAGE_DIR}/bin/grafana-access-utils"
 cp "${REPO_ROOT}/README.md" "${PACKAGE_DIR}/README.md"
 cp "${REPO_ROOT}/README.zh-TW.md" "${PACKAGE_DIR}/README.zh-TW.md"
 cp "${REPO_ROOT}/LICENSE" "${PACKAGE_DIR}/LICENSE"

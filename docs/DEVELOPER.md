@@ -88,7 +88,7 @@ Commit message default for this repo:
 - `grafana_utils/unified_cli.py`: unified Python entrypoint that dispatches dashboard, datasource, alert, and access workflows
 - `grafana_utils/__main__.py`: source-tree module entrypoint for the packaged unified CLI
 - `rust/src/cli.rs`: unified Rust entrypoint that dispatches dashboard, alert, and access workflows
-- `rust/src/bin/grafana-access-utils.rs`: thin Rust compatibility binary for the access-management CLI
+- `rust/src/bin/grafana-util.rs`: unified Rust binary entrypoint
 - `pyproject.toml`: build metadata, dependencies, and console-script entrypoints
 - `tests/test_python_dashboard_cli.py`: dashboard Python unit tests
 - `tests/test_python_dashboard_inspection_cli.py`: focused Python inspection summary/report tests kept separate from the broader dashboard CLI suite
@@ -123,7 +123,6 @@ Commit message default for this repo:
 
 - Mode selection is explicit.
 - Installed Python console script is `grafana-util`.
-- Rust still keeps `grafana-access-utils` as a compatibility binary.
 - Alert workflows no longer ship a separate `grafana-alert-utils` entrypoint; use `grafana-util alert ...`.
 - `grafana-util` is now the primary entrypoint for dashboard, datasource, alert, and access workflows.
 - Use `python3 -m grafana_utils dashboard list ...` to inspect live dashboard summaries.
@@ -202,7 +201,7 @@ Commit message default for this repo:
 - `make quality` is the baseline local gate and now delegates to `scripts/check-quality.sh`.
 - `make quality-python` delegates to `scripts/check-python-quality.sh`, which always runs Python bytecode compilation plus `unittest` and only runs optional tools such as `ruff`, `mypy`, and `black --check` when they are installed.
 - `make quality-rust` delegates to `scripts/check-rust-quality.sh`, which always runs `cargo test` and conditionally runs `cargo fmt --check` and `cargo clippy --all-targets -- -D warnings` when those cargo components are available.
-- `.github/workflows/ci.yml` now calls the same `make quality-python` and `make quality-rust` targets so local and CI quality behavior stays centralized in the scripts instead of being duplicated in workflow YAML. On `vX.Y.Z` tags it uploads Rust release tarballs for Linux `amd64` and macOS `arm64`, then attaches those tarballs to the GitHub Release for the same tag.
+- `.github/workflows/ci.yml` now calls the same `make quality-python` and `make quality-rust` targets so local and CI quality behavior stays centralized in the scripts instead of being duplicated in workflow YAML. On `vX.Y.Z` tags it uploads Rust release packages for Linux `amd64` and macOS `arm64`, then attaches those archives to the GitHub Release for the same tag.
 
 ### Rust cross-build notes
 
@@ -498,21 +497,6 @@ Alerting import format notes:
 ### Current scope
 
 Primary access entrypoints are `python3 -m grafana_utils access ...` and `cargo run --bin grafana-util -- access ...`.
-
-Rust still keeps a compatibility shim via `cargo run --bin grafana-access-utils -- ...` for the same command surface:
-
-- `user list`
-- `user add`
-- `user modify`
-- `user delete`
-- `team list`
-- `team modify`
-- `team add`
-- `team delete`
-- `service-account list`
-- `service-account add`
-- `service-account token add`
-- `service-account delete`
 - `service-account token delete`
 - `group` alias for `team`
 

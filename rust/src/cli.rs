@@ -28,7 +28,7 @@ use crate::dashboard::{
 };
 use crate::datasource::{run_datasource_cli, DatasourceGroupCommand};
 
-const UNIFIED_HELP_TEXT: &str = "Examples:\n\n  Export dashboards:\n    grafana-util export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n  Export alerting resources through the unified binary:\n    grafana-util alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n\n  List org users through the unified binary:\n    grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n\nCompatibility shim remains available:\n  grafana-access-utils ...";
+const UNIFIED_HELP_TEXT: &str = "Examples:\n\n  Export dashboards:\n    grafana-util export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n  Export alerting resources through the unified binary:\n    grafana-util alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n\n  List org users through the unified binary:\n    grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json";
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum DashboardGroupCommand {

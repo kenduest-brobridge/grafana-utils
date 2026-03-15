@@ -73,6 +73,19 @@ python3 -m pip install .
 cd rust && cargo build --release
 ```
 
+### 下載方式
+
+GitHub 的 tag release 會在 **Assets** 提供預先建好的 Rust 封裝檔：
+
+- `grafana-utils-rust-linux-amd64-vX.Y.Z.tar.gz`
+- `grafana-utils-rust-macos-arm64-vX.Y.Z.tar.gz`
+
+每個封裝檔都包含：
+
+- `bin/grafana-util`
+- `README.md`、`README.zh-TW.md`、`LICENSE`
+- `docs/user-guide.md`、`docs/user-guide-TW.md`
+
 ### 常用情境範例
 
 **批次匯出儀表板 (保留結構)：**
@@ -106,7 +119,7 @@ grafana-util dashboard import \
 ---
 
 ## 📈 相容性與目標
-- 支援 RHEL 8 / macOS 等作業系統。
+- 支援 RHEL 8、macOS 與 Linux。
 - Python 執行環境：3.9+。
 - Grafana 版本：支援 8.x, 9.x, 10.x+。
 

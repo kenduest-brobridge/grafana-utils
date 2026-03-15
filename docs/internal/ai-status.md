@@ -26,6 +26,13 @@ Historical note:
 - Current Update: Extended the GitHub workflow to trigger on `v*` tags, added a Linux amd64 release-packaging job on `ubuntu-latest`, added a macOS arm64 release-packaging job on `macos-15`, and uploaded each generated `.tar.gz` package as a retained workflow artifact. Updated the maintainer guide to describe the new tagged GitHub artifact path.
 - Result: Tagged GitHub Actions runs now produce downloadable Rust release tarballs for both Linux amd64 and macOS arm64 using the existing repo packaging scripts.
 
+## 2026-03-15 - Task: Remove Rust Access Shim Binary From Releases
+- State: Done
+- Scope: `rust/src/bin/grafana-access-utils.rs`, `rust/src/access_cli_defs.rs`, `rust/src/cli.rs`, `rust/src/access_rust_tests.rs`, `rust/src/cli_rust_tests.rs`, `scripts/package-rust-artifacts.sh`, `scripts/build-rust-macos-arm64.sh`, `scripts/build-rust-linux-amd64.sh`, `scripts/build-rust-linux-amd64-zig.sh`, `README.md`, `README.zh-TW.md`, `docs/user-guide.md`, `docs/user-guide-TW.md`, `docs/overview-rust.md`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust releases still shipped both `grafana-util` and the legacy `grafana-access-utils` compatibility binary even though operator docs already centered on the unified `grafana-util access ...` command model. Packaging scripts, release archives, help text, and multiple Rust tests still referenced the old access shim.
+- Current Update: Removed the dedicated Rust access shim binary, tightened packaging scripts so release archives carry only `grafana-util`, and updated help/docs/tests to treat `grafana-util access ...` as the sole shipped Rust access entrypoint.
+- Result: Rust release archives now ship one executable, `grafana-util`, while the internal access implementation remains split across focused modules. Local Rust tests and a package-content check both passed after the shim removal.
+
 ## 2026-03-15 - Task: Attach Tagged Rust Packages To GitHub Releases
 - State: Done
 - Scope: `.github/workflows/ci.yml`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

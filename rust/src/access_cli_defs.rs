@@ -1031,8 +1031,8 @@ pub enum AccessCommand {
 
 #[derive(Debug, Clone, Parser)]
 #[command(
-    name = "grafana-access-utils",
-    about = "List and manage Grafana users, orgs, teams, and service accounts."
+    name = "grafana-util",
+    about = "List and manage Grafana users, orgs, teams, and service accounts through `grafana-util access ...`."
 )]
 pub(crate) struct AccessCliRoot {
     #[command(flatten)]
