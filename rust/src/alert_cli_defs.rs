@@ -123,6 +123,12 @@ pub struct AlertLegacyArgs {
     pub dry_run: bool,
     #[arg(
         long,
+        default_value_t = false,
+        help = "Continue processing other alerting resource files after one fails; still exit non-zero if any file failed."
+    )]
+    pub continue_on_error: bool,
+    #[arg(
+        long,
         help = "JSON file that maps source dashboard UIDs to target dashboard UIDs for linked alert-rule repair during import."
     )]
     pub dashboard_uid_map: Option<PathBuf>,
@@ -178,6 +184,12 @@ pub struct AlertImportArgs {
         help = "Show whether each import file would create or update resources without changing Grafana."
     )]
     pub dry_run: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Continue processing other alerting resource files after one fails; still exit non-zero if any file failed."
+    )]
+    pub continue_on_error: bool,
     #[arg(
         long,
         help = "JSON file that maps source dashboard UIDs to target dashboard UIDs for linked alert-rule repair during import."
@@ -319,6 +331,7 @@ pub struct AlertCliArgs {
     pub overwrite: bool,
     pub replace_existing: bool,
     pub dry_run: bool,
+    pub continue_on_error: bool,
     pub dashboard_uid_map: Option<PathBuf>,
     pub panel_id_map: Option<PathBuf>,
     pub verify_ssl: bool,
@@ -345,6 +358,7 @@ pub fn cli_args_from_common(common: AlertCommonArgs) -> AlertCliArgs {
         overwrite: false,
         replace_existing: false,
         dry_run: false,
+        continue_on_error: false,
         dashboard_uid_map: None,
         panel_id_map: None,
         verify_ssl: common.verify_ssl,
@@ -375,6 +389,7 @@ fn empty_legacy_args() -> AlertLegacyArgs {
         overwrite: false,
         replace_existing: false,
         dry_run: false,
+        continue_on_error: false,
         dashboard_uid_map: None,
         panel_id_map: None,
     }
@@ -427,6 +442,7 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
             args.import_dir = Some(inner.import_dir);
             args.replace_existing = inner.replace_existing;
             args.dry_run = inner.dry_run;
+            args.continue_on_error = inner.continue_on_error;
             args.dashboard_uid_map = inner.dashboard_uid_map;
             args.panel_id_map = inner.panel_id_map;
             args
@@ -495,6 +511,7 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
                 overwrite: legacy.overwrite,
                 replace_existing: legacy.replace_existing,
                 dry_run: legacy.dry_run,
+                continue_on_error: legacy.continue_on_error,
                 dashboard_uid_map: legacy.dashboard_uid_map,
                 panel_id_map: legacy.panel_id_map,
                 verify_ssl: legacy.common.verify_ssl,

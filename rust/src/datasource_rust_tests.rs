@@ -1,20 +1,19 @@
 // Datasource domain test suite.
 // Exercises parsing + import/export/diff helpers, including mocked datasource matching and contract fixtures.
 use super::{
-    build_add_payload, build_import_payload, build_import_payload_with_secrets,
-    build_datasource_import_dry_run_json_value, build_import_secret_context, build_modify_payload,
-    build_modify_updates, ensure_live_import_provider_free,
-    diff_datasources_with_live, discover_export_org_import_scopes, load_import_records,
-    parse_json_object_argument, render_datasource_import_provider_review_lines, render_import_table,
-    render_live_mutation_json, render_live_mutation_table, resolve_delete_match,
-    resolve_import_secure_json_data, resolve_live_mutation_match, resolve_match,
-    run_datasource_cli, CommonCliArgs, DatasourceCliArgs, DatasourceImportArgs,
-    DatasourceImportRecord,
+    build_add_payload, build_datasource_import_dry_run_json_value, build_import_payload,
+    build_import_payload_with_secrets, build_import_secret_context, build_modify_payload,
+    build_modify_updates, diff_datasources_with_live, discover_export_org_import_scopes,
+    ensure_live_import_provider_free, load_import_records, parse_json_object_argument,
+    render_datasource_import_provider_review_lines, render_import_table, render_live_mutation_json,
+    render_live_mutation_table, resolve_delete_match, resolve_import_secure_json_data,
+    resolve_live_mutation_match, resolve_match, run_datasource_cli, CommonCliArgs,
+    DatasourceCliArgs, DatasourceImportArgs, DatasourceImportRecord,
 };
-use clap::{CommandFactory, Parser};
 use crate::datasource_provider::{
     build_provider_plan, collect_provider_references, summarize_provider_plan,
 };
+use clap::{CommandFactory, Parser};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::Path;
@@ -492,6 +491,24 @@ fn parse_datasource_import_supports_output_columns() {
 }
 
 #[test]
+fn parse_datasource_import_supports_continue_on_error() {
+    let args = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util",
+        "import",
+        "--import-dir",
+        "./datasources",
+        "--continue-on-error",
+    ]);
+
+    match args.command {
+        super::DatasourceGroupCommand::Import(inner) => {
+            assert!(inner.continue_on_error);
+        }
+        _ => panic!("expected datasource import"),
+    }
+}
+
+#[test]
 fn parse_datasource_import_supports_secret_sidecar_flags() {
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
@@ -542,8 +559,7 @@ fn parse_datasource_export_supports_org_scope_flags() {
 
 #[test]
 fn parse_datasource_export_supports_all_orgs_flag() {
-    let args =
-        DatasourceCliArgs::parse_normalized_from(["grafana-util", "export", "--all-orgs"]);
+    let args = DatasourceCliArgs::parse_normalized_from(["grafana-util", "export", "--all-orgs"]);
 
     match args.command {
         super::DatasourceGroupCommand::Export(inner) => {
@@ -769,6 +785,7 @@ fn resolve_import_secure_json_data_rejects_missing_placeholder_value() {
         create_missing_orgs: false,
         require_matching_export_org: false,
         replace_existing: false,
+        continue_on_error: false,
         secret_placeholder: vec!["prom-main:httpHeaderValue1=${secret:metrics-token}".to_string()],
         secrets: vec![],
         secret_file: None,
@@ -793,8 +810,9 @@ fn resolve_import_secure_json_data_rejects_missing_placeholder_value() {
         secure_json_data_providers: serde_json::Map::new(),
     };
 
-    let error = resolve_import_secure_json_data(&build_import_secret_context(&args).unwrap(), &record)
-        .unwrap_err();
+    let error =
+        resolve_import_secure_json_data(&build_import_secret_context(&args).unwrap(), &record)
+            .unwrap_err();
 
     assert!(error
         .to_string()
@@ -812,6 +830,7 @@ fn build_import_payload_with_secrets_includes_resolved_secure_json_data() {
         create_missing_orgs: false,
         require_matching_export_org: false,
         replace_existing: false,
+        continue_on_error: false,
         secret_placeholder: vec![
             "prom-main:httpHeaderValue1=${secret:metrics-token}".to_string(),
             "prom-main:basicAuthPassword=${secret:metrics-pass}".to_string(),
@@ -866,9 +885,7 @@ fn collect_provider_references_rejects_opaque_secret_replay() {
 
     let error = collect_provider_references(Some(&object)).unwrap_err();
 
-    assert!(error
-        .to_string()
-        .contains("opaque replay is not allowed"));
+    assert!(error.to_string().contains("opaque replay is not allowed"));
 }
 
 #[test]
@@ -1167,7 +1184,10 @@ fn datasource_import_dry_run_json_includes_provider_summary() {
 
     assert_eq!(value["summary"]["providerPlanCount"], json!(1));
     assert_eq!(value["summary"]["providerReferenceCount"], json!(2));
-    assert_eq!(value["summary"]["providerNames"], json!(["aws-sm", "vault"]));
+    assert_eq!(
+        value["summary"]["providerNames"],
+        json!(["aws-sm", "vault"])
+    );
     assert_eq!(
         value["datasources"][0]["providerSummary"]["providerKind"],
         json!("external-provider-reference")
@@ -1229,7 +1249,9 @@ fn ensure_live_import_provider_free_rejects_provider_backed_records() {
         .clone(),
     };
 
-    let error = ensure_live_import_provider_free(&record).unwrap_err().to_string();
+    let error = ensure_live_import_provider_free(&record)
+        .unwrap_err()
+        .to_string();
 
     assert!(error.contains("does not resolve secureJsonDataProviders"));
     assert!(error.contains("loki-main"));
@@ -1241,8 +1263,20 @@ fn discover_export_org_import_scopes_reads_selected_multi_org_root() {
     let import_root = write_multi_org_import_fixture(
         temp.path(),
         &[
-            (1, "Main Org", vec![json!({"uid":"prom-main","name":"Prometheus Main","type":"prometheus","access":"proxy","url":"http://prometheus:9090","isDefault":"true","org":"Main Org","orgId":"1"})]),
-            (2, "Org Two", vec![json!({"uid":"prom-two","name":"Prometheus Two","type":"prometheus","access":"proxy","url":"http://prometheus-2:9090","isDefault":"false","org":"Org Two","orgId":"2"})]),
+            (
+                1,
+                "Main Org",
+                vec![
+                    json!({"uid":"prom-main","name":"Prometheus Main","type":"prometheus","access":"proxy","url":"http://prometheus:9090","isDefault":"true","org":"Main Org","orgId":"1"}),
+                ],
+            ),
+            (
+                2,
+                "Org Two",
+                vec![
+                    json!({"uid":"prom-two","name":"Prometheus Two","type":"prometheus","access":"proxy","url":"http://prometheus-2:9090","isDefault":"false","org":"Org Two","orgId":"2"}),
+                ],
+            ),
         ],
     );
     let args = DatasourceImportArgs {
@@ -1254,6 +1288,7 @@ fn discover_export_org_import_scopes_reads_selected_multi_org_root() {
         create_missing_orgs: false,
         require_matching_export_org: false,
         replace_existing: false,
+        continue_on_error: false,
         secret_placeholder: vec![],
         secrets: vec![],
         secret_file: None,
@@ -1280,7 +1315,13 @@ fn discover_export_org_import_scopes_errors_when_selected_org_missing() {
     let temp = tempdir().unwrap();
     let import_root = write_multi_org_import_fixture(
         temp.path(),
-        &[(1, "Main Org", vec![json!({"uid":"prom-main","name":"Prometheus Main","type":"prometheus","access":"proxy","url":"http://prometheus:9090","isDefault":"true","org":"Main Org","orgId":"1"})])],
+        &[(
+            1,
+            "Main Org",
+            vec![
+                json!({"uid":"prom-main","name":"Prometheus Main","type":"prometheus","access":"proxy","url":"http://prometheus:9090","isDefault":"true","org":"Main Org","orgId":"1"}),
+            ],
+        )],
     );
     let args = DatasourceImportArgs {
         common: test_common_args(),
@@ -1291,6 +1332,7 @@ fn discover_export_org_import_scopes_errors_when_selected_org_missing() {
         create_missing_orgs: false,
         require_matching_export_org: false,
         replace_existing: false,
+        continue_on_error: false,
         secret_placeholder: vec![],
         secrets: vec![],
         secret_file: None,
@@ -1317,7 +1359,13 @@ fn datasource_import_with_use_export_org_requires_basic_auth() {
     let temp = tempdir().unwrap();
     let import_root = write_multi_org_import_fixture(
         temp.path(),
-        &[(1, "Main Org", vec![json!({"uid":"prom-main","name":"Prometheus Main","type":"prometheus","access":"proxy","url":"http://prometheus:9090","isDefault":"true","org":"Main Org","orgId":"1"})])],
+        &[(
+            1,
+            "Main Org",
+            vec![
+                json!({"uid":"prom-main","name":"Prometheus Main","type":"prometheus","access":"proxy","url":"http://prometheus:9090","isDefault":"true","org":"Main Org","orgId":"1"}),
+            ],
+        )],
     );
 
     let error = run_datasource_cli(
@@ -1355,7 +1403,9 @@ fn diff_help_explains_diff_dir_flag() {
     assert!(help.contains("--diff-dir"));
     assert!(help.contains("Compare datasource inventory"));
     assert!(help.contains("Examples:"));
-    assert!(help.contains("grafana-util datasource diff --url http://localhost:3000 --diff-dir ./datasources"));
+    assert!(help.contains(
+        "grafana-util datasource diff --url http://localhost:3000 --diff-dir ./datasources"
+    ));
 }
 
 #[test]
@@ -1477,11 +1527,7 @@ fn write_multi_org_import_fixture(
     let import_root = root.join("datasource-export-all-orgs");
     fs::create_dir_all(&import_root).unwrap();
     for (org_id, org_name, records) in orgs {
-        let org_dir = import_root.join(format!(
-            "org_{}_{}",
-            org_id,
-            org_name.replace(' ', "_")
-        ));
+        let org_dir = import_root.join(format!("org_{}_{}", org_id, org_name.replace(' ', "_")));
         fs::create_dir_all(&org_dir).unwrap();
         fs::write(
             org_dir.join("export-metadata.json"),

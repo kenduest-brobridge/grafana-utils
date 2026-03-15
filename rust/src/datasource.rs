@@ -228,6 +228,12 @@ pub struct DatasourceImportArgs {
     #[arg(
         long,
         default_value_t = false,
+        help = "Continue processing other datasource files after one fails; still exit non-zero if any file failed."
+    )]
+    pub continue_on_error: bool,
+    #[arg(
+        long,
+        default_value_t = false,
         help = "For --dry-run only, render a compact table instead of per-datasource log lines."
     )]
     pub table: bool,
@@ -732,13 +738,11 @@ fn resolve_target_client(common: &CommonCliArgs, org_id: Option<i64>) -> Result<
 fn validate_import_org_auth(common: &CommonCliArgs, args: &DatasourceImportArgs) -> Result<()> {
     let context = build_auth_context(common)?;
     if (args.org_id.is_some() || args.use_export_org) && context.auth_mode != "basic" {
-        return Err(message(
-            if args.use_export_org {
-                "Datasource import with --use-export-org requires Basic auth (--basic-user / --basic-password)."
-            } else {
-                "Datasource import with --org-id requires Basic auth (--basic-user / --basic-password)."
-            },
-        ));
+        return Err(message(if args.use_export_org {
+            "Datasource import with --use-export-org requires Basic auth (--basic-user / --basic-password)."
+        } else {
+            "Datasource import with --org-id requires Basic auth (--basic-user / --basic-password)."
+        }));
     }
     Ok(())
 }
@@ -819,9 +823,9 @@ fn parse_secret_placeholder_token(field_name: &str, token: &str) -> Result<Strin
             "Datasource secret field '{field_name}' must use ${{secret:...}} placeholders; opaque replay is not allowed."
         )));
     }
-    let placeholder_name =
-        token[SECRET_PLACEHOLDER_PREFIX.len()..token.len() - SECRET_PLACEHOLDER_SUFFIX.len()]
-            .trim();
+    let placeholder_name = token
+        [SECRET_PLACEHOLDER_PREFIX.len()..token.len() - SECRET_PLACEHOLDER_SUFFIX.len()]
+        .trim();
     if placeholder_name.is_empty() {
         return Err(message(format!(
             "Datasource secret field '{field_name}' must not use an empty placeholder name."
@@ -853,7 +857,9 @@ fn parse_secret_placeholder_assignment(raw: &str) -> Result<(String, String, Str
     ))
 }
 
-fn build_import_secret_context(args: &DatasourceImportArgs) -> Result<DatasourceImportSecretContext> {
+fn build_import_secret_context(
+    args: &DatasourceImportArgs,
+) -> Result<DatasourceImportSecretContext> {
     let mut placeholder_index: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
     for item in &args.secret_placeholder {
         let (datasource_key, field_name, placeholder_name) =
@@ -909,11 +915,14 @@ fn resolve_import_secure_json_data(
     }
     let mut secure_json_data = Map::new();
     for (field_name, placeholder_name) in resolved_fields {
-        let secret_value = context.secret_values.get(&placeholder_name).ok_or_else(|| {
-            message(format!(
-                "Missing datasource secret placeholder '{placeholder_name}'."
-            ))
-        })?;
+        let secret_value = context
+            .secret_values
+            .get(&placeholder_name)
+            .ok_or_else(|| {
+                message(format!(
+                    "Missing datasource secret placeholder '{placeholder_name}'."
+                ))
+            })?;
         if secret_value.is_empty() {
             return Err(message(format!(
                 "Resolved datasource secret '{placeholder_name}' must be a non-empty string."
@@ -1541,7 +1550,10 @@ fn collect_source_org_names(
     Ok(org_names)
 }
 
-fn parse_export_org_scope(import_root: &Path, scope_dir: &Path) -> Result<DatasourceExportOrgScope> {
+fn parse_export_org_scope(
+    import_root: &Path,
+    scope_dir: &Path,
+) -> Result<DatasourceExportOrgScope> {
     let metadata = parse_export_metadata(&scope_dir.join(EXPORT_METADATA_FILENAME))?;
     let export_org_ids = collect_source_org_ids(scope_dir, &metadata)?;
     let (source_org_id, source_org_name_from_dir) = if export_org_ids.is_empty() {
@@ -1750,7 +1762,8 @@ fn resolve_export_org_target_plan(
         )));
     }
     let created = create_org(admin_client, &scope.source_org_name)?;
-    let created_org_id = org_id_string_from_value(created.get("orgId").or_else(|| created.get("id")));
+    let created_org_id =
+        org_id_string_from_value(created.get("orgId").or_else(|| created.get("id")));
     if created_org_id.is_empty() {
         return Err(message(format!(
             "Grafana did not return a usable orgId after creating destination org '{}' for exported org {}.",
@@ -1831,8 +1844,24 @@ fn collect_datasource_import_dry_run_report(
     let mut skipped = 0usize;
     let mut blocked = 0usize;
     let mut provider_plans = Vec::new();
+    let mut failed_count = 0usize;
     for (index, record) in records.iter().enumerate() {
-        resolve_import_secure_json_data(&secret_context, record)?;
+        if let Err(error) = resolve_import_secure_json_data(&secret_context, record) {
+            if args.continue_on_error {
+                println!(
+                    "Datasource import dry-run skipped {}: {}",
+                    if record.uid.is_empty() {
+                        &record.name
+                    } else {
+                        &record.uid
+                    },
+                    error
+                );
+                failed_count += 1;
+                continue;
+            }
+            return Err(error);
+        }
         if let Some(plan) = provider_plan_for_import_record(record)? {
             provider_plans.push(plan);
         }
@@ -1853,6 +1882,11 @@ fn collect_datasource_import_dry_run_report(
             "would-skip-missing" => skipped += 1,
             _ => blocked += 1,
         }
+    }
+    if args.continue_on_error && failed_count > 0 {
+        return Err(message(format!(
+            "Datasource import encountered {failed_count} failed datasource file(s) with --continue-on-error."
+        )));
     }
     Ok(DatasourceImportDryRunReport {
         mode: mode.to_string(),
@@ -2078,23 +2112,54 @@ fn import_datasources_with_client(
     let mut updated = 0usize;
     let mut skipped = 0usize;
     let blocked = 0usize;
+    let mut failed_count = 0usize;
     for record in &records {
-        ensure_live_import_provider_free(record)?;
-        let secure_json_data = resolve_import_secure_json_data(&secret_context, record)?;
-        let matching = resolve_match(record, &live, replace_existing, args.update_existing_only);
-        match matching.action {
-            "would-create" => {
-                client.request_json(
-                    Method::POST,
-                    "/api/datasources",
-                    &[],
-                    Some(&build_import_payload_with_secrets(
-                        record,
-                        secure_json_data.as_ref(),
-                    )),
-                )?;
-                created += 1;
+        if let Err(error) = ensure_live_import_provider_free(record) {
+            if args.continue_on_error {
+                failed_count += 1;
+                println!(
+                    "Datasource import skipped {}: {}",
+                    if record.uid.is_empty() {
+                        &record.name
+                    } else {
+                        &record.uid
+                    },
+                    error
+                );
+                continue;
             }
+            return Err(error);
+        }
+        let secure_json_data = match resolve_import_secure_json_data(&secret_context, record) {
+            Ok(value) => value,
+            Err(error) => {
+                if args.continue_on_error {
+                    failed_count += 1;
+                    println!(
+                        "Datasource import skipped {}: {}",
+                        if record.uid.is_empty() {
+                            &record.name
+                        } else {
+                            &record.uid
+                        },
+                        error
+                    );
+                    continue;
+                }
+                return Err(error);
+            }
+        };
+        let matching = resolve_match(record, &live, replace_existing, args.update_existing_only);
+        let import_result = match matching.action {
+            "would-create" => client.request_json(
+                Method::POST,
+                "/api/datasources",
+                &[],
+                Some(&build_import_payload_with_secrets(
+                    record,
+                    secure_json_data.as_ref(),
+                )),
+            ),
             "would-update" => {
                 let target_id = matching.target_id.ok_or_else(|| {
                     message(format!(
@@ -2102,32 +2167,57 @@ fn import_datasources_with_client(
                         matching.target_name
                     ))
                 })?;
-                let payload =
-                    build_import_payload_with_secrets(record, secure_json_data.as_ref());
+                let payload = build_import_payload_with_secrets(record, secure_json_data.as_ref());
                 client.request_json(
                     Method::PUT,
                     &format!("/api/datasources/{target_id}"),
                     &[],
                     Some(&payload),
-                )?;
-                updated += 1;
+                )
             }
             "would-skip-missing" => {
                 skipped += 1;
+                Ok(None)
             }
-            _ => {
-                return Err(message(format!(
-                    "Datasource import blocked for {}: destination={} action={}.",
-                    if record.uid.is_empty() {
-                        &record.name
-                    } else {
-                        &record.uid
-                    },
-                    matching.destination,
-                    matching.action
-                )));
+            _ => Err(message(format!(
+                "Datasource import blocked for {}: destination={} action={}.",
+                if record.uid.is_empty() {
+                    &record.name
+                } else {
+                    &record.uid
+                },
+                matching.destination,
+                matching.action
+            ))),
+        };
+        match import_result {
+            Ok(_) => match matching.action {
+                "would-create" => created += 1,
+                "would-update" => updated += 1,
+                _ => {}
+            },
+            Err(error) => {
+                if args.continue_on_error {
+                    failed_count += 1;
+                    println!(
+                        "Datasource import skipped {}: {}",
+                        if record.uid.is_empty() {
+                            &record.name
+                        } else {
+                            &record.uid
+                        },
+                        error
+                    );
+                    continue;
+                }
+                return Err(error);
             }
         }
+    }
+    if args.continue_on_error && failed_count > 0 {
+        return Err(message(format!(
+            "Datasource import encountered {failed_count} failed datasource import(s) with --continue-on-error."
+        )));
     }
     println!(
         "Imported {} datasource(s) from {}; updated {}, skipped {}, blocked {}",
@@ -2204,6 +2294,7 @@ fn build_routed_datasource_import_dry_run_json(args: &DatasourceImportArgs) -> R
     let scopes = discover_export_org_import_scopes(args)?;
     let mut orgs = Vec::new();
     let mut imports = Vec::new();
+    let mut failed_org_count = 0usize;
     for scope in scopes {
         let plan = resolve_export_org_target_plan(&admin_client, args, &scope)?;
         let datasource_count = load_import_records(&plan.import_dir)?.1.len();
@@ -2223,9 +2314,35 @@ fn build_routed_datasource_import_dry_run_json(args: &DatasourceImportArgs) -> R
             scoped_args.create_missing_orgs = false;
             scoped_args.import_dir = plan.import_dir.clone();
             let scoped_client = build_http_client_for_org(&args.common, target_org_id)?;
-            build_datasource_import_dry_run_json_value(
-                &collect_datasource_import_dry_run_report(&scoped_client, &scoped_args)?,
-            )
+            match collect_datasource_import_dry_run_report(&scoped_client, &scoped_args) {
+                Ok(report) => build_datasource_import_dry_run_json_value(&report),
+                Err(error) => {
+                    if args.continue_on_error {
+                        failed_org_count += 1;
+                        eprintln!(
+                            "Datasource import dry-run skipped org {} from {}: {}",
+                            plan.source_org_id,
+                            plan.import_dir.display(),
+                            error
+                        );
+                        serde_json::json!({
+                            "mode": describe_datasource_import_mode(args.replace_existing, args.update_existing_only),
+                            "sourceOrgId": plan.source_org_id.to_string(),
+                            "targetOrgId": Value::Null,
+                            "datasources": [],
+                            "summary": {
+                                "datasourceCount": datasource_count,
+                                "wouldCreate": 0,
+                                "wouldUpdate": 0,
+                                "wouldSkip": 0,
+                                "wouldBlock": 0
+                            }
+                        })
+                    } else {
+                        return Err(error);
+                    }
+                }
+            }
         } else {
             serde_json::json!({
                 "mode": describe_datasource_import_mode(args.replace_existing, args.update_existing_only),
@@ -2259,6 +2376,11 @@ fn build_routed_datasource_import_dry_run_json(args: &DatasourceImportArgs) -> R
         }
         imports.push(Value::Object(import_entry));
     }
+    if args.continue_on_error && failed_org_count > 0 {
+        return Err(message(format!(
+            "Datasource import encountered {failed_org_count} failed import scope(s) with --continue-on-error."
+        )));
+    }
     let summary = serde_json::json!({
         "orgCount": orgs.len(),
         "existingOrgCount": orgs.iter().filter(|entry| entry.get("orgAction") == Some(&Value::String("exists".to_string()))).count(),
@@ -2287,7 +2409,10 @@ fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> Result<usize
     for scope in scopes {
         let plan = resolve_export_org_target_plan(&admin_client, args, &scope)?;
         let datasource_count = load_import_records(&plan.import_dir)?.1.len();
-        org_rows.push(build_routed_datasource_import_org_row(&plan, datasource_count));
+        org_rows.push(build_routed_datasource_import_org_row(
+            &plan,
+            datasource_count,
+        ));
         plans.push(plan);
     }
     if args.dry_run && args.table {
@@ -2297,6 +2422,7 @@ fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> Result<usize
         return Ok(0);
     }
     let mut imported_count = 0usize;
+    let mut failed_org_count = 0usize;
     for plan in plans {
         let target_org_id_label = plan
             .target_org_id
@@ -2324,7 +2450,27 @@ fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> Result<usize
         scoped_args.create_missing_orgs = false;
         scoped_args.import_dir = plan.import_dir.clone();
         let scoped_client = build_http_client_for_org(&args.common, target_org_id)?;
-        imported_count += import_datasources_with_client(&scoped_client, &scoped_args)?;
+        match import_datasources_with_client(&scoped_client, &scoped_args) {
+            Ok(count) => imported_count += count,
+            Err(error) => {
+                if args.continue_on_error {
+                    failed_org_count += 1;
+                    eprintln!(
+                        "Datasource import skipped org {} from {}: {}",
+                        plan.source_org_id,
+                        plan.import_dir.display(),
+                        error
+                    );
+                    continue;
+                }
+                return Err(error);
+            }
+        }
+    }
+    if args.continue_on_error && failed_org_count > 0 {
+        return Err(message(format!(
+            "Datasource import encountered {failed_org_count} failed import scope(s) with --continue-on-error."
+        )));
     }
     Ok(imported_count)
 }
@@ -3283,7 +3429,11 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                             &Value::Array(records.clone().into_iter().map(Value::Object).collect()),
                             args.overwrite,
                         )?;
-                        write_json_file(&index_path, &build_export_index(&records), args.overwrite)?;
+                        write_json_file(
+                            &index_path,
+                            &build_export_index(&records),
+                            args.overwrite,
+                        )?;
                         write_json_file(
                             &metadata_path,
                             &build_datasource_export_metadata(records.len()),

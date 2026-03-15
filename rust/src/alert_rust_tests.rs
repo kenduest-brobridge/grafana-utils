@@ -201,7 +201,9 @@ fn help_explains_flat_layout() {
 fn alert_subcommand_help_includes_examples() {
     let export_help = render_alert_subcommand_help("export");
     assert!(export_help.contains("Examples:"));
-    assert!(export_help.contains("grafana-util alert export --url http://localhost:3000 --output-dir ./alerts --overwrite"));
+    assert!(export_help.contains(
+        "grafana-util alert export --url http://localhost:3000 --output-dir ./alerts --overwrite"
+    ));
 
     let list_help = render_alert_subcommand_help("list-rules");
     assert!(list_help.contains("Examples:"));
@@ -225,6 +227,18 @@ fn parse_cli_supports_import_subcommand() {
 }
 
 #[test]
+fn parse_cli_supports_import_continue_on_error() {
+    let args: AlertCliArgs = parse_cli_from([
+        "grafana-alert-utils",
+        "import",
+        "--import-dir",
+        "./alerts/raw",
+        "--continue-on-error",
+    ]);
+    assert!(args.continue_on_error);
+}
+
+#[test]
 fn parse_cli_supports_list_rules_subcommand() {
     let args: AlertCliArgs = parse_cli_from(["grafana-util alert", "list-rules", "--json"]);
     assert_eq!(args.list_kind, Some(super::AlertListKind::Rules));
@@ -234,12 +248,8 @@ fn parse_cli_supports_list_rules_subcommand() {
 
 #[test]
 fn parse_cli_supports_list_rules_output_format_csv() {
-    let args: AlertCliArgs = parse_cli_from([
-        "grafana-util alert",
-        "list-rules",
-        "--output-format",
-        "csv",
-    ]);
+    let args: AlertCliArgs =
+        parse_cli_from(["grafana-util alert", "list-rules", "--output-format", "csv"]);
     assert_eq!(args.list_kind, Some(super::AlertListKind::Rules));
     assert!(args.csv);
     assert!(!args.table);
