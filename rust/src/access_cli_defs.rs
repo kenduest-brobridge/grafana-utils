@@ -275,16 +275,17 @@ pub struct UserListArgs {
     pub page: usize,
     #[arg(long, default_value_t = DEFAULT_PAGE_SIZE, help = "Number of users to request per page.")]
     pub per_page: usize,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render user summaries as a table.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help_heading = "Output Options", help = "Render user summaries as a table.")]
     pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render user summaries as CSV.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help_heading = "Output Options", help = "Render user summaries as CSV.")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render user summaries as JSON.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help_heading = "Output Options", help = "Render user summaries as JSON.")]
     pub json: bool,
     #[arg(
         long,
         value_enum,
         conflicts_with_all = ["table", "csv", "json"],
+        help_heading = "Output Options",
         help = "Alternative single-flag output selector. Use text, table, csv, or json."
     )]
     pub output_format: Option<ListOutputFormat>,
@@ -329,6 +330,7 @@ pub struct UserAddArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Render the create response as JSON."
     )]
     pub json: bool,
@@ -376,6 +378,7 @@ pub struct UserModifyArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Render the modify response as JSON."
     )]
     pub json: bool,
@@ -402,6 +405,7 @@ pub struct UserDeleteArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Render the delete response as JSON."
     )]
     pub json: bool,
@@ -476,6 +480,7 @@ pub struct UserImportArgs {
         long,
         default_value_t = false,
         requires = "dry_run",
+        help_heading = "Output Options",
         help = "For --dry-run only, render a compact table instead of per-record log lines."
     )]
     pub table: bool,
@@ -483,6 +488,7 @@ pub struct UserImportArgs {
         long,
         default_value_t = false,
         requires = "dry_run",
+        help_heading = "Output Options",
         help = "For --dry-run only, render one JSON document with action rows and summary counts."
     )]
     pub json: bool,
@@ -491,6 +497,7 @@ pub struct UserImportArgs {
         value_enum,
         default_value_t = DryRunOutputFormat::Text,
         conflicts_with_all = ["table", "json"],
+        help_heading = "Output Options",
         help = "Alternative single-flag output selector for --dry-run output. Use text, table, or json."
     )]
     pub output_format: DryRunOutputFormat,
@@ -543,16 +550,17 @@ pub struct TeamListArgs {
     pub page: usize,
     #[arg(long, default_value_t = DEFAULT_PAGE_SIZE, help = "Number of teams to request per page.")]
     pub per_page: usize,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render team summaries as a table.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help_heading = "Output Options", help = "Render team summaries as a table.")]
     pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render team summaries as CSV.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help_heading = "Output Options", help = "Render team summaries as CSV.")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render team summaries as JSON.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help_heading = "Output Options", help = "Render team summaries as JSON.")]
     pub json: bool,
     #[arg(
         long,
         value_enum,
         conflicts_with_all = ["table", "csv", "json"],
+        help_heading = "Output Options",
         help = "Alternative single-flag output selector. Use text, table, csv, or json."
     )]
     pub output_format: Option<ListOutputFormat>,
@@ -579,6 +587,7 @@ pub struct TeamAddArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Render the create response as JSON."
     )]
     pub json: bool,
@@ -639,6 +648,7 @@ pub struct TeamImportArgs {
         long,
         default_value_t = false,
         requires = "dry_run",
+        help_heading = "Output Options",
         help = "For --dry-run only, render a compact table instead of per-record log lines."
     )]
     pub table: bool,
@@ -646,6 +656,7 @@ pub struct TeamImportArgs {
         long,
         default_value_t = false,
         requires = "dry_run",
+        help_heading = "Output Options",
         help = "For --dry-run only, render one JSON document with action rows and summary counts."
     )]
     pub json: bool,
@@ -654,6 +665,7 @@ pub struct TeamImportArgs {
         value_enum,
         default_value_t = DryRunOutputFormat::Text,
         conflicts_with_all = ["table", "json"],
+        help_heading = "Output Options",
         help = "Alternative single-flag output selector for --dry-run output. Use text, table, or json."
     )]
     pub output_format: DryRunOutputFormat,
@@ -716,6 +728,7 @@ pub struct TeamModifyArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Render the modify response as JSON."
     )]
     pub json: bool,
@@ -737,16 +750,17 @@ pub struct OrgListArgs {
         help = "Include org users and org roles in the rendered output."
     )]
     pub with_users: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render org summaries as a table.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help_heading = "Output Options", help = "Render org summaries as a table.")]
     pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render org summaries as CSV.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help_heading = "Output Options", help = "Render org summaries as CSV.")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render org summaries as JSON.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help_heading = "Output Options", help = "Render org summaries as JSON.")]
     pub json: bool,
     #[arg(
         long,
         value_enum,
         conflicts_with_all = ["table", "csv", "json"],
+        help_heading = "Output Options",
         help = "Alternative single-flag output selector. Use text, table, csv, or json."
     )]
     pub output_format: Option<ListOutputFormat>,
@@ -761,6 +775,7 @@ pub struct OrgAddArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Render the create response as JSON."
     )]
     pub json: bool,
@@ -787,6 +802,7 @@ pub struct OrgModifyArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Render the modify response as JSON."
     )]
     pub json: bool,
@@ -817,6 +833,7 @@ pub struct OrgDeleteArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Render the delete response as JSON."
     )]
     pub json: bool,
@@ -899,16 +916,17 @@ pub struct ServiceAccountListArgs {
     pub page: usize,
     #[arg(long, default_value_t = DEFAULT_PAGE_SIZE, help = "Number of service accounts to request per page.")]
     pub per_page: usize,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render service-account summaries as a table.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help_heading = "Output Options", help = "Render service-account summaries as a table.")]
     pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render service-account summaries as CSV.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help_heading = "Output Options", help = "Render service-account summaries as CSV.")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render service-account summaries as JSON.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help_heading = "Output Options", help = "Render service-account summaries as JSON.")]
     pub json: bool,
     #[arg(
         long,
         value_enum,
         conflicts_with_all = ["table", "csv", "json"],
+        help_heading = "Output Options",
         help = "Alternative single-flag output selector. Use text, table, csv, or json."
     )]
     pub output_format: Option<ListOutputFormat>,
@@ -932,6 +950,7 @@ pub struct ServiceAccountAddArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Render the create response as JSON."
     )]
     pub json: bool,
@@ -986,6 +1005,7 @@ pub struct ServiceAccountImportArgs {
         long,
         default_value_t = false,
         requires = "dry_run",
+        help_heading = "Output Options",
         help = "For --dry-run only, render a compact table instead of per-record log lines."
     )]
     pub table: bool,
@@ -993,6 +1013,7 @@ pub struct ServiceAccountImportArgs {
         long,
         default_value_t = false,
         requires = "dry_run",
+        help_heading = "Output Options",
         help = "For --dry-run only, render one JSON document with action rows and summary counts."
     )]
     pub json: bool,
@@ -1001,6 +1022,7 @@ pub struct ServiceAccountImportArgs {
         value_enum,
         default_value_t = DryRunOutputFormat::Text,
         conflicts_with_all = ["table", "json"],
+        help_heading = "Output Options",
         help = "Alternative single-flag output selector for --dry-run output. Use text, table, or json."
     )]
     pub output_format: DryRunOutputFormat,
@@ -1051,6 +1073,7 @@ pub struct ServiceAccountTokenAddArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Render the token create response as JSON."
     )]
     pub json: bool,

@@ -92,22 +92,24 @@ pub enum DryRunOutputFormat {
 pub struct DatasourceListArgs {
     #[command(flatten)]
     pub common: CommonCliArgs,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render datasource summaries as a table.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help_heading = "Output Options", help = "Render datasource summaries as a table.")]
     pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render datasource summaries as CSV.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help_heading = "Output Options", help = "Render datasource summaries as CSV.")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render datasource summaries as JSON.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help_heading = "Output Options", help = "Render datasource summaries as JSON.")]
     pub json: bool,
     #[arg(
         long,
         value_enum,
         conflicts_with_all = ["table", "csv", "json"],
+        help_heading = "Output Options",
         help = "Alternative single-flag output selector. Use table, csv, or json."
     )]
     pub output_format: Option<ListOutputFormat>,
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Do not print table headers when rendering the default table output."
     )]
     pub no_header: bool,
@@ -234,12 +236,14 @@ pub struct DatasourceImportArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "For --dry-run only, render a compact table instead of per-datasource log lines."
     )]
     pub table: bool,
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "For --dry-run only, render one JSON document with mode, datasource actions, and summary counts."
     )]
     pub json: bool,
@@ -247,12 +251,14 @@ pub struct DatasourceImportArgs {
         long,
         value_enum,
         conflicts_with_all = ["table", "json"],
+        help_heading = "Output Options",
         help = "Alternative single-flag output selector for --dry-run output. Use text, table, or json."
     )]
     pub output_format: Option<DryRunOutputFormat>,
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "For --dry-run --table only, omit the table header row."
     )]
     pub no_header: bool,
@@ -261,6 +267,7 @@ pub struct DatasourceImportArgs {
         value_delimiter = ',',
         requires = "dry_run",
         value_parser = parse_datasource_import_output_column,
+        help_heading = "Output Options",
         help = "For --dry-run --table only, render only these comma-separated columns. Supported values: uid, name, type, destination, action, org_id, file."
     )]
     pub output_columns: Vec<String>,
@@ -329,20 +336,23 @@ pub struct DatasourceAddArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "For --dry-run only, render a compact table instead of plain text."
     )]
     pub table: bool,
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "For --dry-run only, render one JSON document."
     )]
     pub json: bool,
-    #[arg(long, value_enum, conflicts_with_all = ["table", "json"], help = "Alternative single-flag output selector for datasource add dry-run output. Use text, table, or json.")]
+    #[arg(long, value_enum, conflicts_with_all = ["table", "json"], help_heading = "Output Options", help = "Alternative single-flag output selector for datasource add dry-run output. Use text, table, or json.")]
     pub output_format: Option<DryRunOutputFormat>,
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "For --dry-run --table only, omit the table header row."
     )]
     pub no_header: bool,
@@ -375,20 +385,23 @@ pub struct DatasourceDeleteArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "For --dry-run only, render a compact table instead of plain text."
     )]
     pub table: bool,
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "For --dry-run only, render one JSON document."
     )]
     pub json: bool,
-    #[arg(long, value_enum, conflicts_with_all = ["table", "json"], help = "Alternative single-flag output selector for datasource delete dry-run output. Use text, table, or json.")]
+    #[arg(long, value_enum, conflicts_with_all = ["table", "json"], help_heading = "Output Options", help = "Alternative single-flag output selector for datasource delete dry-run output. Use text, table, or json.")]
     pub output_format: Option<DryRunOutputFormat>,
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "For --dry-run --table only, omit the table header row."
     )]
     pub no_header: bool,
@@ -432,20 +445,23 @@ pub struct DatasourceModifyArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "For --dry-run only, render a compact table instead of plain text."
     )]
     pub table: bool,
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "For --dry-run only, render one JSON document."
     )]
     pub json: bool,
-    #[arg(long, value_enum, conflicts_with_all = ["table", "json"], help = "Alternative single-flag output selector for datasource modify dry-run output. Use text, table, or json.")]
+    #[arg(long, value_enum, conflicts_with_all = ["table", "json"], help_heading = "Output Options", help = "Alternative single-flag output selector for datasource modify dry-run output. Use text, table, or json.")]
     pub output_format: Option<DryRunOutputFormat>,
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "For --dry-run --table only, omit the table header row."
     )]
     pub no_header: bool,

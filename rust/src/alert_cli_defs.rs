@@ -245,21 +245,28 @@ pub struct AlertListArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Render list output as a table. This is the default."
     )]
     pub table: bool,
-    #[arg(long, default_value_t = false, help = "Render list output as CSV.")]
+    #[arg(long, default_value_t = false, help_heading = "Output Options", help = "Render list output as CSV.")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, help = "Render list output as JSON.")]
+    #[arg(long, default_value_t = false, help_heading = "Output Options", help = "Render list output as JSON.")]
     pub json: bool,
     #[arg(
         long,
         value_enum,
         conflicts_with_all = ["table", "csv", "json"],
+        help_heading = "Output Options",
         help = "Alternative single-flag output selector. Use table, csv, or json."
     )]
     pub output_format: Option<AlertListOutputFormat>,
-    #[arg(long, default_value_t = false, help = "Omit the table header row.")]
+    #[arg(
+        long,
+        default_value_t = false,
+        help_heading = "Output Options",
+        help = "Omit the table header row."
+    )]
     pub no_header: bool,
 }
 

@@ -52,6 +52,7 @@ pub struct SyncSummaryArgs {
         long,
         value_enum,
         default_value_t = SyncOutputFormat::Text,
+        help_heading = "Output Options",
         help = "Render the summary document as text or json."
     )]
     pub output: SyncOutputFormat,
@@ -92,6 +93,7 @@ pub struct SyncPlanArgs {
         long,
         value_enum,
         default_value_t = SyncOutputFormat::Text,
+        help_heading = "Output Options",
         help = "Render the plan document as text or json."
     )]
     pub output: SyncOutputFormat,
@@ -116,6 +118,7 @@ pub struct SyncReviewArgs {
         long,
         value_enum,
         default_value_t = SyncOutputFormat::Text,
+        help_heading = "Output Options",
         help = "Render the reviewed plan document as text or json."
     )]
     pub output: SyncOutputFormat,
@@ -182,6 +185,7 @@ pub struct SyncApplyArgs {
         long,
         value_enum,
         default_value_t = SyncOutputFormat::Text,
+        help_heading = "Output Options",
         help = "Render the apply intent document as text or json."
     )]
     pub output: SyncOutputFormat,
@@ -232,6 +236,7 @@ pub struct SyncPreflightArgs {
         long,
         value_enum,
         default_value_t = SyncOutputFormat::Text,
+        help_heading = "Output Options",
         help = "Render the preflight document as text or json."
     )]
     pub output: SyncOutputFormat,
@@ -245,6 +250,7 @@ pub struct SyncAssessAlertsArgs {
         long,
         value_enum,
         default_value_t = SyncOutputFormat::Text,
+        help_heading = "Output Options",
         help = "Render the alert assessment document as text or json."
     )]
     pub output: SyncOutputFormat,
@@ -289,6 +295,7 @@ pub struct SyncBundlePreflightArgs {
         long,
         value_enum,
         default_value_t = SyncOutputFormat::Text,
+        help_heading = "Output Options",
         help = "Render the bundle preflight document as text or json."
     )]
     pub output: SyncOutputFormat,

@@ -176,22 +176,24 @@ pub struct ListArgs {
         help = "For table or CSV output, fetch each dashboard payload and include resolved datasource names in the list output. JSON already includes datasource names and UIDs by default. This is slower because it makes extra API calls per dashboard."
     )]
     pub with_sources: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render dashboard summaries as a table.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help_heading = "Output Options", help = "Render dashboard summaries as a table.")]
     pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render dashboard summaries as CSV.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help_heading = "Output Options", help = "Render dashboard summaries as CSV.")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render dashboard summaries as JSON.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help_heading = "Output Options", help = "Render dashboard summaries as JSON.")]
     pub json: bool,
     #[arg(
         long,
         value_enum,
         conflicts_with_all = ["table", "csv", "json"],
+        help_heading = "Output Options",
         help = "Alternative single-flag output selector. Use table, csv, or json."
     )]
     pub output_format: Option<SimpleOutputFormat>,
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Do not print table headers when rendering the default table output."
     )]
     pub no_header: bool,
@@ -201,22 +203,24 @@ pub struct ListArgs {
 pub struct ListDataSourcesArgs {
     #[command(flatten, next_help_heading = "Connection And Auth")]
     pub common: CommonCliArgs,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render datasource summaries as a table.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help_heading = "Output Options", help = "Render datasource summaries as a table.")]
     pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render datasource summaries as CSV.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help_heading = "Output Options", help = "Render datasource summaries as CSV.")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render datasource summaries as JSON.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help_heading = "Output Options", help = "Render datasource summaries as JSON.")]
     pub json: bool,
     #[arg(
         long,
         value_enum,
         conflicts_with_all = ["table", "csv", "json"],
+        help_heading = "Output Options",
         help = "Alternative single-flag output selector. Use table, csv, or json."
     )]
     pub output_format: Option<SimpleOutputFormat>,
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Do not print table headers when rendering the default table output."
     )]
     pub no_header: bool,
@@ -466,6 +470,7 @@ pub struct InspectExportArgs {
         default_value_t = false,
         conflicts_with = "report",
         conflicts_with = "table",
+        help_heading = "Output Options",
         help = "Render the export analysis as JSON."
     )]
     pub json: bool,
@@ -474,6 +479,7 @@ pub struct InspectExportArgs {
         default_value_t = false,
         conflicts_with = "report",
         conflicts_with = "json",
+        help_heading = "Output Options",
         help = "Render the export analysis as a table-oriented summary."
     )]
     pub table: bool,
@@ -481,6 +487,7 @@ pub struct InspectExportArgs {
         long,
         value_enum,
         conflicts_with_all = ["json", "table", "report", "output_format"],
+        help_heading = "Output Options",
         help = "Preferred inspect selector for what to render. Use summary, query, datasource, or governance. Combine with --format and optional --layout instead of legacy --output-format."
     )]
     pub view: Option<InspectView>,
@@ -489,6 +496,7 @@ pub struct InspectExportArgs {
         value_enum,
         requires = "view",
         conflicts_with_all = ["json", "table", "report", "output_format"],
+        help_heading = "Output Options",
         help = "Preferred inspect selector for output encoding. Use text, table, csv, or json with --view."
     )]
     pub format: Option<InspectRenderFormat>,
@@ -497,6 +505,7 @@ pub struct InspectExportArgs {
         value_enum,
         requires = "view",
         conflicts_with_all = ["json", "table", "report", "output_format"],
+        help_heading = "Output Options",
         help = "Preferred inspect selector for query layout. Use flat or tree with --view query."
     )]
     pub layout: Option<InspectLayout>,
@@ -506,6 +515,7 @@ pub struct InspectExportArgs {
         num_args = 0..=1,
         default_missing_value = "table",
         conflicts_with_all = ["json", "table"],
+        help_heading = "Output Options",
         help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for machine-readable output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report datasource-summary or --report datasource-summary-json for datasource dependency aggregates, --report governance for datasource governance tables, or --report governance-json for governance JSON."
     )]
     pub report: Option<InspectExportReportFormat>,
@@ -513,6 +523,7 @@ pub struct InspectExportArgs {
         long,
         value_enum,
         conflicts_with_all = ["view", "format", "layout"],
+        help_heading = "Output Options",
         help = "Legacy single-flag output selector for inspect output. Prefer --view plus --format (and --layout for query views)."
     )]
     pub output_format: Option<InspectOutputFormat>,
@@ -541,6 +552,7 @@ pub struct InspectExportArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Do not print table headers when rendering the table summary, table-like --report output, or compatible --output-format values."
     )]
     pub no_header: bool,
@@ -570,6 +582,7 @@ pub struct InspectLiveArgs {
         default_value_t = false,
         conflicts_with = "report",
         conflicts_with = "table",
+        help_heading = "Output Options",
         help = "Render the live inspection analysis as JSON."
     )]
     pub json: bool,
@@ -578,6 +591,7 @@ pub struct InspectLiveArgs {
         default_value_t = false,
         conflicts_with = "report",
         conflicts_with = "json",
+        help_heading = "Output Options",
         help = "Render the live inspection analysis as a table-oriented summary."
     )]
     pub table: bool,
@@ -585,6 +599,7 @@ pub struct InspectLiveArgs {
         long,
         value_enum,
         conflicts_with_all = ["json", "table", "report", "output_format"],
+        help_heading = "Output Options",
         help = "Preferred inspect selector for what to render. Use summary, query, datasource, or governance. Combine with --format and optional --layout instead of legacy --output-format."
     )]
     pub view: Option<InspectView>,
@@ -593,6 +608,7 @@ pub struct InspectLiveArgs {
         value_enum,
         requires = "view",
         conflicts_with_all = ["json", "table", "report", "output_format"],
+        help_heading = "Output Options",
         help = "Preferred inspect selector for output encoding. Use text, table, csv, or json with --view."
     )]
     pub format: Option<InspectRenderFormat>,
@@ -601,6 +617,7 @@ pub struct InspectLiveArgs {
         value_enum,
         requires = "view",
         conflicts_with_all = ["json", "table", "report", "output_format"],
+        help_heading = "Output Options",
         help = "Preferred inspect selector for query layout. Use flat or tree with --view query."
     )]
     pub layout: Option<InspectLayout>,
@@ -610,6 +627,7 @@ pub struct InspectLiveArgs {
         num_args = 0..=1,
         default_missing_value = "table",
         conflicts_with_all = ["json", "table"],
+        help_heading = "Output Options",
         help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for alternate output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report datasource-summary or --report datasource-summary-json for datasource dependency aggregates, --report governance for datasource governance tables, or --report governance-json for governance JSON."
     )]
     pub report: Option<InspectExportReportFormat>,
@@ -617,6 +635,7 @@ pub struct InspectLiveArgs {
         long,
         value_enum,
         conflicts_with_all = ["view", "format", "layout"],
+        help_heading = "Output Options",
         help = "Legacy single-flag output selector for inspect output. Prefer --view plus --format (and --layout for query views)."
     )]
     pub output_format: Option<InspectOutputFormat>,
@@ -645,6 +664,7 @@ pub struct InspectLiveArgs {
     #[arg(
         long,
         default_value_t = false,
+        help_heading = "Output Options",
         help = "Do not print headers when rendering table, csv, or tree-table inspection output, including compatible --output-format values."
     )]
     pub no_header: bool,

@@ -34,7 +34,7 @@ pub struct TeamDeleteArgs {
     pub name: Option<String>,
     #[arg(long, default_value_t = false)]
     pub yes: bool,
-    #[arg(long, default_value_t = false)]
+    #[arg(long, default_value_t = false, help_heading = "Output Options")]
     pub json: bool,
 }
 
@@ -48,7 +48,7 @@ pub struct ServiceAccountDeleteArgs {
     pub name: Option<String>,
     #[arg(long, default_value_t = false)]
     pub yes: bool,
-    #[arg(long, default_value_t = false)]
+    #[arg(long, default_value_t = false, help_heading = "Output Options")]
     pub json: bool,
 }
 
@@ -66,7 +66,7 @@ pub struct ServiceAccountTokenDeleteArgs {
     pub token_name: Option<String>,
     #[arg(long, default_value_t = false)]
     pub yes: bool,
-    #[arg(long, default_value_t = false)]
+    #[arg(long, default_value_t = false, help_heading = "Output Options")]
     pub json: bool,
 }
 

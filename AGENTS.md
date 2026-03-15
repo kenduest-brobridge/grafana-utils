@@ -102,3 +102,15 @@ For external command usage and operator examples, prefer `README.md`, `README.zh
 - Put internal details, mappings, fallback rules, and maintenance notes in `docs/DEVELOPER.md`.
 - Update `docs/internal/ai-status.md` and `docs/internal/ai-changes.md` only for meaningful behavior or architecture changes.
 - When updating `docs/user-guide.md` or `docs/user-guide-TW.md`, prefer real command lines and output excerpts captured from a local Docker Grafana run over illustrative placeholders. If a documented example claims to be validated, it should match an actually executed local live-smoke path and mention the Grafana version when that context matters.
+
+## Changelog Policy
+
+- When updating `CHANGELOG.md` for daily or versioned progress, follow this exact block format:
+  - `- \`<short-hash>\` <commit-subject>`
+  - `  - <behavior change sentence 1>`
+  - `  - <behavior change sentence 2>`
+  - `  - <behavior change sentence 3>`
+- Use concise action sentences and keep entries aligned to `git log` commit messages.
+- Prefer 2-4 detail bullets per commit, each describing concrete behavior impact or test/docs updates.
+- Preserve historical sections and keep existing date sections in reverse chronological order.
+- Add a blank line between top-level commit entries for readability.
