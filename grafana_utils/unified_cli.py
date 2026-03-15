@@ -114,6 +114,13 @@ ENTRYPOINT_MODULE_DISPATCH = {
     "datasource": datasource_cli,
     "sync": sync_cli,
 }  # type: Dict[str, Any]
+ENTRYPOINT_ALIASES = {
+    "db": "dashboard",
+    "ds": "datasource",
+    "al": "alert",
+    "ac": "access",
+    "sy": "sync",
+}
 
 def _print_dashboard_group_help() -> None:
     """Print dedicated dashboard command help for the legacy/top-level entry path."""
@@ -173,6 +180,7 @@ def build_parser() -> argparse.ArgumentParser:
     dashboard_parser = subparsers.add_parser(
         "dashboard",
         help="Run dashboard export, list, import, or diff workflows.",
+        aliases=["db"],
         add_help=False,
     )
     dashboard_subparsers = dashboard_parser.add_subparsers(dest="dashboard_command")
@@ -188,6 +196,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser(
         "alert",
         help="Run the alerting resource CLI under grafana-util alert ...",
+        aliases=["al"],
         add_help=False,
     )
     for command, help_text in DEPRECATED_ALERT_COMMAND_HELP.items():
@@ -195,11 +204,13 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser(
         "access",
         help="Run the access-management CLI under grafana-util access ...",
+        aliases=["ac"],
         add_help=False,
     )
     datasource_parser = subparsers.add_parser(
         "datasource",
         help="Run the datasource inventory CLI under grafana-util datasource ...",
+        aliases=["ds"],
         add_help=False,
     )
     datasource_subparsers = datasource_parser.add_subparsers(dest="datasource_command")
@@ -209,6 +220,7 @@ def build_parser() -> argparse.ArgumentParser:
     sync_parser = subparsers.add_parser(
         "sync",
         help="Run the declarative sync planner under grafana-util sync ...",
+        aliases=["sy"],
         add_help=False,
     )
     sync_subparsers = sync_parser.add_subparsers(dest="sync_command")
@@ -242,7 +254,8 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         parser.print_help()
         raise SystemExit(0)
 
-    command = argv[0]
+    command = ENTRYPOINT_ALIASES.get(argv[0], argv[0])
+
     if command == "dashboard":
         if len(argv) == 1 or argv[1] in ("-h", "--help"):
             _print_dashboard_group_help()
@@ -293,7 +306,6 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
             entrypoint="sync",
             forwarded_argv=argv[1:],
         )
-
     mapped = LEGACY_DASHBOARD_COMMAND_MAP.get(command)
     if mapped:
         return argparse.Namespace(

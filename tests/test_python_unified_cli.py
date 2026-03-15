@@ -126,6 +126,15 @@ class UnifiedCliTests(unittest.TestCase):
             ["export-dashboard", "--export-dir", "dashboards"],
         )
 
+    def test_parse_args_supports_dashboard_shortcut(self):
+        args = unified_cli.parse_args(["db", "diff", "--import-dir", "dashboards/raw"])
+
+        self.assertEqual(args.entrypoint, "dashboard")
+        self.assertEqual(
+            args.forwarded_argv,
+            ["diff", "--import-dir", "dashboards/raw"],
+        )
+
     def test_parse_args_supports_dashboard_inspect_live_namespace(self):
         args = unified_cli.parse_args(
             ["dashboard", "inspect-live", "--url", "http://127.0.0.1:3000", "--report"]
@@ -142,6 +151,17 @@ class UnifiedCliTests(unittest.TestCase):
 
         self.assertEqual(args.entrypoint, "alert")
         self.assertEqual(args.forwarded_argv, ["--url", "http://127.0.0.1:3000"])
+
+    def test_parse_args_supports_alert_shortcut(self):
+        args = unified_cli.parse_args(
+            ["al", "export", "--output-dir", "./alerts", "--overwrite"]
+        )
+
+        self.assertEqual(args.entrypoint, "alert")
+        self.assertEqual(
+            args.forwarded_argv,
+            ["export", "--output-dir", "./alerts", "--overwrite"],
+        )
 
     def test_parse_args_supports_alert_export_namespace(self):
         args = unified_cli.parse_args(
@@ -171,6 +191,17 @@ class UnifiedCliTests(unittest.TestCase):
             ["user", "list", "--url", "http://127.0.0.1:3000"],
         )
 
+    def test_parse_args_supports_access_shortcut(self):
+        args = unified_cli.parse_args(
+            ["ac", "user", "list", "--url", "http://127.0.0.1:3000"]
+        )
+
+        self.assertEqual(args.entrypoint, "access")
+        self.assertEqual(
+            args.forwarded_argv,
+            ["user", "list", "--url", "http://127.0.0.1:3000"],
+        )
+
     def test_parse_args_supports_datasource_namespace(self):
         args = unified_cli.parse_args(
             ["datasource", "export", "--export-dir", "./datasources", "--overwrite"]
@@ -181,6 +212,12 @@ class UnifiedCliTests(unittest.TestCase):
             args.forwarded_argv,
             ["export", "--export-dir", "./datasources", "--overwrite"],
         )
+
+    def test_parse_args_supports_datasource_shortcut(self):
+        args = unified_cli.parse_args(["ds", "list", "--json"])
+
+        self.assertEqual(args.entrypoint, "datasource")
+        self.assertEqual(args.forwarded_argv, ["list", "--json"])
 
     def test_parse_args_supports_datasource_add_namespace(self):
         args = unified_cli.parse_args(
@@ -223,6 +260,17 @@ class UnifiedCliTests(unittest.TestCase):
             ["plan", "--desired-file", "./desired.json", "--live-file", "./live.json"],
         )
 
+    def test_parse_args_supports_sync_shortcut(self):
+        args = unified_cli.parse_args(
+            ["sy", "plan", "--desired-file", "./desired.json", "--live-file", "./live.json"]
+        )
+
+        self.assertEqual(args.entrypoint, "sync")
+        self.assertEqual(
+            args.forwarded_argv,
+            ["plan", "--desired-file", "./desired.json", "--live-file", "./live.json"],
+        )
+
     def test_parse_args_supports_sync_preflight_namespace(self):
         args = unified_cli.parse_args(
             ["sync", "preflight", "--desired-file", "./desired.json"]
@@ -245,6 +293,13 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(result, 7)
         mocked.assert_called_once_with(["list-dashboard", "--json"])
 
+    def test_main_dispatches_dashboard_shortcut(self):
+        with mock.patch.object(unified_cli.dashboard_cli, "main", return_value=7) as mocked:
+            result = unified_cli.main(["db", "diff", "--import-dir", "dashboards/raw"])
+
+        self.assertEqual(result, 7)
+        mocked.assert_called_once_with(["diff", "--import-dir", "dashboards/raw"])
+
     def test_main_dispatches_alert_passthrough(self):
         with mock.patch.object(unified_cli.alert_cli, "main", return_value=3) as mocked:
             result = unified_cli.main(["alert", "--diff-dir", "./alerts/raw"])
@@ -252,9 +307,27 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(result, 3)
         mocked.assert_called_once_with(["--diff-dir", "./alerts/raw"])
 
+    def test_main_dispatches_alert_shortcut(self):
+        with mock.patch.object(unified_cli.alert_cli, "main", return_value=3) as mocked:
+            result = unified_cli.main(
+                ["al", "export", "--output-dir", "./alerts", "--overwrite"]
+            )
+
+        self.assertEqual(result, 3)
+        mocked.assert_called_once_with(
+            ["export", "--output-dir", "./alerts", "--overwrite"]
+        )
+
     def test_main_dispatches_access_passthrough(self):
         with mock.patch.object(unified_cli.access_cli, "main", return_value=5) as mocked:
             result = unified_cli.main(["access", "team", "list", "--json"])
+
+        self.assertEqual(result, 5)
+        mocked.assert_called_once_with(["team", "list", "--json"])
+
+    def test_main_dispatches_access_shortcut(self):
+        with mock.patch.object(unified_cli.access_cli, "main", return_value=5) as mocked:
+            result = unified_cli.main(["ac", "team", "list", "--json"])
 
         self.assertEqual(result, 5)
         mocked.assert_called_once_with(["team", "list", "--json"])
@@ -266,10 +339,28 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(result, 9)
         mocked.assert_called_once_with(["list", "--json"])
 
+    def test_main_dispatches_datasource_shortcut(self):
+        with mock.patch.object(unified_cli.datasource_cli, "main", return_value=9) as mocked:
+            result = unified_cli.main(["ds", "add", "--name", "Prometheus Main"])
+
+        self.assertEqual(result, 9)
+        mocked.assert_called_once_with(["add", "--name", "Prometheus Main"])
+
     def test_main_dispatches_sync_passthrough(self):
         with mock.patch.object(unified_cli.sync_cli, "main", return_value=4) as mocked:
             result = unified_cli.main(
                 ["sync", "plan", "--desired-file", "./desired.json", "--live-file", "./live.json"]
+            )
+
+        self.assertEqual(result, 4)
+        mocked.assert_called_once_with(
+            ["plan", "--desired-file", "./desired.json", "--live-file", "./live.json"]
+        )
+
+    def test_main_dispatches_sync_shortcut(self):
+        with mock.patch.object(unified_cli.sync_cli, "main", return_value=4) as mocked:
+            result = unified_cli.main(
+                ["sy", "plan", "--desired-file", "./desired.json", "--live-file", "./live.json"]
             )
 
         self.assertEqual(result, 4)
