@@ -121,6 +121,46 @@ ENTRYPOINT_ALIASES = {
     "ac": "access",
     "sy": "sync",
 }
+UNIFIED_TOP_LEVEL_HELP = (
+    "Usage: grafana-util <COMMAND>\n\n"
+    "Commands:\n"
+    "  Dashboard:\n"
+    "    dashboard (db)  Run dashboard export, list, import, or diff workflows.\n"
+    "    datasource (ds) Manage datasource inventory workflows.\n"
+    "    alert (al)     Run alerting resource workflows.\n"
+    "    access (ac)    Manage users, teams, orgs, and service accounts.\n"
+    "    sync (sy)      Build sync plans, reviews, and preflight artifacts.\n\n"
+    "  Compatibility aliases:\n"
+    "    export             Compatibility alias. Prefer `grafana-util dashboard export`.\n"
+    "    list               Compatibility alias. Prefer `grafana-util dashboard list`.\n"
+    "    list-data-sources  Compatibility alias. Prefer `grafana-util datasource list`.\n"
+    "    import             Compatibility alias. Prefer `grafana-util dashboard import`.\n"
+    "    diff               Compatibility alias. Prefer `grafana-util dashboard diff`.\n"
+    "    inspect-export     Compatibility alias. Prefer `grafana-util dashboard inspect-export`.\n"
+    "    inspect-live       Compatibility alias. Prefer `grafana-util dashboard inspect-live`.\n"
+    "    export-alert       Compatibility alias. Prefer `grafana-util alert export`.\n"
+    "    import-alert       Compatibility alias. Prefer `grafana-util alert import`.\n"
+    "    diff-alert         Compatibility alias. Prefer `grafana-util alert diff`.\n"
+    "    list-alert-rules   Compatibility alias. Prefer `grafana-util alert list-rules`.\n"
+    "    list-alert-contact-points\n"
+    "                      Compatibility alias. Prefer `grafana-util alert list-contact-points`.\n"
+    "    list-alert-mute-timings\n"
+    "                      Compatibility alias. Prefer `grafana-util alert list-mute-timings`.\n"
+    "    list-alert-templates\n"
+    "                      Compatibility alias. Prefer `grafana-util alert list-templates`.\n\n"
+    "Examples:\n"
+    "  grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./dashboards --overwrite\n"
+    "  grafana-util dashboard list --url http://localhost:3000 --table\n"
+    "  grafana-util dashboard inspect-export --import-dir ./dashboards/raw --view query --layout tree --format table\n"
+    "  grafana-util alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n"
+    "  grafana-util access org list --url http://localhost:3000 --basic-user admin --basic-password admin --with-users --table\n"
+    "  grafana-util access team list --url http://localhost:3000 --basic-user admin --basic-password admin --table\n"
+    "  grafana-util sync plan --desired-file ./desired.json --live-file ./live.json"
+)
+
+def _print_unified_group_help() -> None:
+    """Print dedicated top-level grouped help for the Python unified CLI."""
+    print(UNIFIED_TOP_LEVEL_HELP)
 
 def _print_dashboard_group_help() -> None:
     """Print dedicated dashboard command help for the legacy/top-level entry path."""
@@ -245,13 +285,13 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     # No argv means no explicit target command; keep UX stable by showing the
     # complete unified help and exiting 0.
     if not argv:
-        parser.print_help()
+        _print_unified_group_help()
         raise SystemExit(0)
 
     # Let the parser manage direct `-h`/`--help` and keep behavior consistent
     # with other module CLIs.
     if argv == ["-h"] or argv == ["--help"]:
-        parser.print_help()
+        _print_unified_group_help()
         raise SystemExit(0)
 
     command = ENTRYPOINT_ALIASES.get(argv[0], argv[0])

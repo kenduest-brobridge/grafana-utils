@@ -33,6 +33,9 @@ class UnifiedCliTests(unittest.TestCase):
 
         self.assertEqual(exc.exception.code, 0)
         help_text = stdout.getvalue()
+        self.assertIn("Commands:", help_text)
+        self.assertIn("Dashboard:", help_text)
+        self.assertIn("Compatibility aliases:", help_text)
         self.assertIn("dashboard", help_text)
         self.assertIn("export", help_text)
         self.assertIn("alert", help_text)
