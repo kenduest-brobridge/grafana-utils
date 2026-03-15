@@ -658,9 +658,12 @@ class ExporterTests(unittest.TestCase):
         help_text = stream.getvalue()
         self.assertIn("raw/ export directory explicitly", help_text)
         self.assertIn("--output-format", help_text)
-        self.assertIn("report-tree-table", help_text)
+        self.assertIn("--view", help_text)
+        self.assertIn("--format", help_text)
+        self.assertIn("--layout", help_text)
         self.assertIn("Examples:", help_text)
         self.assertIn("grafana-util dashboard inspect-export", help_text)
+        self.assertIn("--view query --layout tree --format table", help_text)
         self.assertIn("--help-full", help_text)
         self.assertNotIn("\n  --json", help_text)
         self.assertNotIn("\n  --table", help_text)
@@ -695,11 +698,13 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("--url", help_text)
         self.assertIn("--page-size", help_text)
         self.assertIn("--output-format", help_text)
-        self.assertIn("tree-table", help_text)
-        self.assertIn("tree", help_text)
+        self.assertIn("--view", help_text)
+        self.assertIn("--format", help_text)
+        self.assertIn("--layout", help_text)
         self.assertIn("--report-filter-panel-id", help_text)
         self.assertIn("Examples:", help_text)
         self.assertIn("grafana-util dashboard inspect-live", help_text)
+        self.assertIn("--view query --layout tree --format text", help_text)
         self.assertIn("--help-full", help_text)
         self.assertNotIn("\n  --report ", help_text)
         self.assertNotIn("\n  --json", help_text)
@@ -1152,6 +1157,42 @@ class ExporterTests(unittest.TestCase):
         self.assertFalse(args.json)
         self.assertFalse(args.table)
 
+    def test_parse_args_supports_inspect_export_view_format_layout(self):
+        args = exporter.parse_args(
+            [
+                "inspect-export",
+                "--import-dir",
+                "dashboards/raw",
+                "--view",
+                "query",
+                "--format",
+                "table",
+                "--layout",
+                "tree",
+            ]
+        )
+
+        self.assertEqual(args.command, "inspect-export")
+        self.assertEqual(args.view, "query")
+        self.assertEqual(args.format, "table")
+        self.assertEqual(args.layout, "tree")
+        self.assertEqual(args.output_format, "report-tree-table")
+        self.assertIsNone(args.report)
+
+    def test_parse_args_supports_inspect_export_view_summary_defaults(self):
+        args = exporter.parse_args(
+            [
+                "inspect-export",
+                "--import-dir",
+                "dashboards/raw",
+                "--view",
+                "summary",
+            ]
+        )
+
+        self.assertEqual(args.output_format, "text")
+        self.assertIsNone(args.report)
+
     def test_parse_args_supports_inspect_live_report_json(self):
         args = exporter.parse_args(
             [
@@ -1202,6 +1243,39 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(args.command, "inspect-live")
         self.assertEqual(args.output_format, "governance-json")
         self.assertIsNone(args.report)
+
+    def test_parse_args_supports_inspect_live_view_governance_json(self):
+        args = exporter.parse_args(
+            [
+                "inspect-live",
+                "--url",
+                "http://localhost:3000",
+                "--view",
+                "governance",
+                "--format",
+                "json",
+            ]
+        )
+
+        self.assertEqual(args.command, "inspect-live")
+        self.assertEqual(args.output_format, "governance-json")
+        self.assertIsNone(args.report)
+
+    def test_parse_args_supports_inspect_live_view_query_defaults(self):
+        args = exporter.parse_args(
+            [
+                "inspect-live",
+                "--url",
+                "http://localhost:3000",
+                "--view",
+                "query",
+            ]
+        )
+
+        self.assertEqual(args.output_format, "report-table")
+        self.assertIsNone(args.report)
+        self.assertEqual(args.view, "query")
+        self.assertEqual(args.format, None)
 
     def test_parse_args_supports_inspect_export_report_table(self):
         args = exporter.parse_args(
@@ -1275,6 +1349,64 @@ class ExporterTests(unittest.TestCase):
 
         self.assertEqual(args.command, "inspect-export")
         self.assertEqual(args.report_filter_panel_id, "7")
+
+    def test_parse_args_supports_inspect_format_without_view_as_summary(self):
+        args = exporter.parse_args(
+            [
+                "inspect-export",
+                "--import-dir",
+                "dashboards/raw",
+                "--format",
+                "json",
+            ]
+        )
+
+        self.assertEqual(args.output_format, "json")
+        self.assertIsNone(args.report)
+
+    def test_parse_args_rejects_inspect_view_with_legacy_output_flags(self):
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(
+                [
+                    "inspect-live",
+                    "--url",
+                    "http://localhost:3000",
+                    "--view",
+                    "query",
+                    "--output-format",
+                    "report-json",
+                ]
+            )
+
+    def test_parse_args_rejects_inspect_view_invalid_layout_combo(self):
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(
+                [
+                    "inspect-live",
+                    "--url",
+                    "http://localhost:3000",
+                    "--view",
+                    "datasource",
+                    "--layout",
+                    "tree",
+                ]
+            )
+
+    def test_parse_args_rejects_inspect_query_tree_json_combo(self):
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(
+                [
+                    "inspect-live",
+                    "--url",
+                    "http://localhost:3000",
+                    "--view",
+                    "query",
+                    "--layout",
+                    "tree",
+                    "--format",
+                    "json",
+                ]
+            )
 
     def test_parse_report_columns_accepts_snake_case_aliases(self):
         self.assertEqual(

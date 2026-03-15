@@ -208,6 +208,9 @@ INSPECT_OUTPUT_FORMAT_CHOICES = (
     "governance",
     "governance-json",
 )
+INSPECT_VIEW_CHOICES = ("summary", "query", "governance")
+INSPECT_FORMAT_CHOICES = ("text", "table", "csv", "json")
+INSPECT_LAYOUT_CHOICES = ("flat", "tree")
 
 
 class HelpFullAction(argparse.Action):
@@ -639,18 +642,44 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
         choices=INSPECT_OUTPUT_FORMAT_CHOICES,
         default=None,
         help=(
-            "Single-flag output selector for inspect output. "
+            "Legacy single-flag output selector for inspect output. "
             "Use text, table, json, report-table, report-csv, report-json, "
             "report-tree, report-tree-table, governance, or governance-json. "
-            "Use this instead of the legacy output flags. "
+            "Prefer --view with --format and optional --layout for new usage. "
             "This cannot be combined with hidden legacy output flags."
         ),
+    )
+    parser.add_argument(
+        "--view",
+        choices=INSPECT_VIEW_CHOICES,
+        default=None,
+        help=(
+            "Preferred inspect selector for what to render. "
+            "Use summary, query, or governance. "
+            "Combine with --format and optional --layout instead of legacy --output-format."
+        ),
+    )
+    parser.add_argument(
+        "--format",
+        choices=INSPECT_FORMAT_CHOICES,
+        default=None,
+        help=(
+            "Preferred inspect selector for output encoding. "
+            "Use text, table, csv, or json. "
+            "Combine with --view and optional --layout."
+        ),
+    )
+    parser.add_argument(
+        "--layout",
+        choices=INSPECT_LAYOUT_CHOICES,
+        default=None,
+        help="Preferred inspect selector for query layout. Use flat or tree with --view query.",
     )
     parser.add_argument(
         "--report-columns",
         default=None,
         help=(
-            "With report-table, report-csv, or report-tree-table --output-format values, "
+            "With query/table, query/csv, or query/tree/table output, "
             "render only these comma-separated report columns. "
             "Supported values: %s."
             % ", ".join(
@@ -670,7 +699,7 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report-filter-datasource",
         default=None,
         help=(
-            "With report-like --output-format values, only include query report rows whose datasource label "
+            "With query output, only include query report rows whose datasource label "
             "exactly matches this value."
         ),
     )
@@ -678,7 +707,7 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report-filter-panel-id",
         default=None,
         help=(
-            "With report-like --output-format values, only include query report rows whose panel id "
+            "With query output, only include query report rows whose panel id "
             "exactly matches this value."
         ),
     )
@@ -727,18 +756,44 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
         choices=INSPECT_OUTPUT_FORMAT_CHOICES,
         default=None,
         help=(
-            "Single-flag output selector for inspect output. "
+            "Legacy single-flag output selector for inspect output. "
             "Use text, table, json, report-table, report-csv, report-json, "
             "report-tree, report-tree-table, governance, or governance-json. "
-            "Use this instead of the legacy output flags. "
+            "Prefer --view with --format and optional --layout for new usage. "
             "This cannot be combined with hidden legacy output flags."
         ),
+    )
+    parser.add_argument(
+        "--view",
+        choices=INSPECT_VIEW_CHOICES,
+        default=None,
+        help=(
+            "Preferred inspect selector for what to render. "
+            "Use summary, query, or governance. "
+            "Combine with --format and optional --layout instead of legacy --output-format."
+        ),
+    )
+    parser.add_argument(
+        "--format",
+        choices=INSPECT_FORMAT_CHOICES,
+        default=None,
+        help=(
+            "Preferred inspect selector for output encoding. "
+            "Use text, table, csv, or json. "
+            "Combine with --view and optional --layout."
+        ),
+    )
+    parser.add_argument(
+        "--layout",
+        choices=INSPECT_LAYOUT_CHOICES,
+        default=None,
+        help="Preferred inspect selector for query layout. Use flat or tree with --view query.",
     )
     parser.add_argument(
         "--report-columns",
         default=None,
         help=(
-            "With report-table, report-csv, or report-tree-table --output-format values, "
+            "With query/table, query/csv, or query/tree/table output, "
             "render only these comma-separated report columns. "
             "Supported values: %s."
             % ", ".join(
@@ -758,7 +813,7 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report-filter-datasource",
         default=None,
         help=(
-            "With report-like --output-format values, only include query report rows whose datasource label "
+            "With query output, only include query report rows whose datasource label "
             "exactly matches this value."
         ),
     )
@@ -766,7 +821,7 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
         "--report-filter-panel-id",
         default=None,
         help=(
-            "With report-like --output-format values, only include query report rows whose panel id "
+            "With query output, only include query report rows whose panel id "
             "exactly matches this value."
         ),
     )
@@ -893,10 +948,10 @@ INSPECT_EXPORT_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  Show one machine-readable summary document:\n"
     "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
-    "--output-format json\n\n"
+    "--view summary --format json\n\n"
     "  Render grouped dashboard-first query tables:\n"
     "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
-    "--output-format report-tree-table\n\n"
+    "--view query --layout tree --format table\n\n"
     "  Show full inspect help with extended report examples:\n"
     "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw --help-full"
 )
@@ -906,10 +961,10 @@ INSPECT_LIVE_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  Inspect live dashboards as a report JSON document:\n"
     "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
-    "--output-format report-json\n\n"
+    "--view query --format json\n\n"
     "  Filter to one panel in dashboard/panel/query tree output:\n"
     "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
-    "--output-format report-tree --report-filter-panel-id 7\n\n"
+    "--view query --layout tree --format text --report-filter-panel-id 7\n\n"
     "  Show full inspect help with extended report examples:\n"
     "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --help-full"
 )
@@ -920,11 +975,11 @@ def _normalize_output_format_args(
     parser: argparse.ArgumentParser,
 ) -> None:
     """Translate `--output-format` aliases into exclusive list/import output flags."""
-    output_format = getattr(args, "output_format", None)
     command = getattr(args, "command", None)
-    if output_format is None:
-        return
+    output_format = getattr(args, "output_format", None)
     if command in ("list-dashboard", "list-data-sources"):
+        if output_format is None:
+            return
         if bool(getattr(args, "table", False)) or bool(getattr(args, "csv", False)) or bool(
             getattr(args, "json", False)
         ):
@@ -936,12 +991,104 @@ def _normalize_output_format_args(
         args.json = output_format == "json"
         return
     if command == "import-dashboard":
+        if output_format is None:
+            return
         if bool(getattr(args, "table", False)) or bool(getattr(args, "json", False)):
             parser.error(
                 "--output-format cannot be combined with --table or --json for import-dashboard."
             )
         args.table = output_format == "table"
         args.json = output_format == "json"
+        return
+    if command in ("inspect-export", "inspect-live"):
+        _normalize_inspect_mode_args(args, parser)
+
+
+def _normalize_inspect_mode_args(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+) -> None:
+    """Translate preferred inspect view/format/layout args into the legacy inspect contract."""
+    view = getattr(args, "view", None)
+    format_name = getattr(args, "format", None)
+    layout = getattr(args, "layout", None)
+
+    if view is None and format_name is None and layout is None:
+        return
+
+    if (
+        getattr(args, "output_format", None) is not None
+        or getattr(args, "report", None) is not None
+        or bool(getattr(args, "json", False))
+        or bool(getattr(args, "table", False))
+    ):
+        parser.error(
+            "--view, --format, and --layout cannot be combined with legacy inspect output flags (--output-format, --report, --json, or --table)."
+        )
+
+    normalized_output_format = _resolve_inspect_output_format_from_view_args(
+        parser,
+        view=view,
+        format_name=format_name,
+        layout=layout,
+    )
+    args.output_format = normalized_output_format
+
+
+def _resolve_inspect_output_format_from_view_args(
+    parser: argparse.ArgumentParser,
+    *,
+    view: Optional[str],
+    format_name: Optional[str],
+    layout: Optional[str],
+) -> str:
+    normalized_view = view or "summary"
+    normalized_format = format_name or ("text" if normalized_view != "query" else "table")
+    normalized_layout = layout or "flat"
+
+    if normalized_view == "summary":
+        if layout is not None:
+            parser.error("--layout is only supported with --view query.")
+        if normalized_format == "text":
+            return "text"
+        if normalized_format == "table":
+            return "table"
+        if normalized_format == "json":
+            return "json"
+        parser.error("--view summary only supports --format text, table, or json.")
+
+    if normalized_view == "query":
+        if normalized_layout == "flat":
+            if normalized_format == "table":
+                return "report-table"
+            if normalized_format == "csv":
+                return "report-csv"
+            if normalized_format == "json":
+                return "report-json"
+            parser.error(
+                "--view query with flat layout only supports --format table, csv, or json."
+            )
+        if normalized_layout == "tree":
+            if normalized_format == "text":
+                return "report-tree"
+            if normalized_format == "table":
+                return "report-tree-table"
+            parser.error(
+                "--view query with --layout tree only supports --format text or table."
+            )
+        parser.error("--layout must be flat or tree.")
+
+    if layout is not None:
+        parser.error("--layout is only supported with --view query.")
+
+    if normalized_view == "governance":
+        if normalized_format in ("text", "table"):
+            return "governance"
+        if normalized_format == "json":
+            return "governance-json"
+        parser.error("--view governance only supports --format text, table, or json.")
+
+    parser.error(f"Unsupported inspect view: {normalized_view}.")
 
 
 def _parse_dashboard_import_output_columns(

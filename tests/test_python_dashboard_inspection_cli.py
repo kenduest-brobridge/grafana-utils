@@ -577,6 +577,23 @@ class DashboardInspectionTests(unittest.TestCase):
         )
         self.assertEqual(governance_json_args.report, "governance-json")
 
+    def test_parse_args_supports_new_view_format_layout_flags(self):
+        query_args = exporter.parse_args(
+            [
+                "inspect-export",
+                "--import-dir",
+                "dashboards/raw",
+                "--view",
+                "query",
+                "--layout",
+                "tree",
+                "--format",
+                "table",
+            ]
+        )
+        self.assertEqual(query_args.output_format, "report-tree-table")
+        self.assertIsNone(query_args.report)
+
     def test_inspect_export_prometheus_metrics_ignore_grouping_labels_and_values(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)

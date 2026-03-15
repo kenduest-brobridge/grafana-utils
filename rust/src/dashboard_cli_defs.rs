@@ -1,6 +1,6 @@
 //! Clap schema for dashboard CLI commands.
 //! Hosts dashboard command enums/args and parser helpers consumed by the dashboard runtime module.
-use clap::{Args, Parser, Subcommand, ValueEnum};
+use clap::{error::ErrorKind, Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 use crate::common::{resolve_auth_headers, Result};
@@ -363,6 +363,8 @@ pub enum InspectExportReportFormat {
     Json,
     Tree,
     TreeTable,
+    DatasourceSummary,
+    DatasourceSummaryJson,
     Governance,
     GovernanceJson,
 }
@@ -377,10 +379,35 @@ pub enum InspectOutputFormat {
     ReportJson,
     ReportTree,
     ReportTreeTable,
+    DatasourceSummary,
+    DatasourceSummaryJson,
     Governance,
     GovernanceJson,
 }
+/// Preferred selector for which inspection view to render.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum InspectView {
+    Summary,
+    Query,
+    Datasource,
+    Governance,
+}
 
+/// Preferred selector for output encoding within inspect views.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum InspectRenderFormat {
+    Text,
+    Table,
+    Csv,
+    Json,
+}
+
+/// Preferred selector for query-oriented inspect layouts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum InspectLayout {
+    Flat,
+    Tree,
+}
 #[derive(Debug, Clone, Args)]
 pub struct InspectExportArgs {
     #[arg(
@@ -407,23 +434,46 @@ pub struct InspectExportArgs {
     #[arg(
         long,
         value_enum,
+        conflicts_with_all = ["json", "table", "report", "output_format"],
+        help = "Preferred inspect selector for what to render. Use summary, query, datasource, or governance. Combine with --format and optional --layout instead of legacy --output-format."
+    )]
+    pub view: Option<InspectView>,
+    #[arg(
+        long,
+        value_enum,
+        requires = "view",
+        conflicts_with_all = ["json", "table", "report", "output_format"],
+        help = "Preferred inspect selector for output encoding. Use text, table, csv, or json with --view."
+    )]
+    pub format: Option<InspectRenderFormat>,
+    #[arg(
+        long,
+        value_enum,
+        requires = "view",
+        conflicts_with_all = ["json", "table", "report", "output_format"],
+        help = "Preferred inspect selector for query layout. Use flat or tree with --view query."
+    )]
+    pub layout: Option<InspectLayout>,
+    #[arg(
+        long,
+        value_enum,
         num_args = 0..=1,
         default_missing_value = "table",
         conflicts_with_all = ["json", "table"],
-        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for machine-readable output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report governance for datasource governance tables, or --report governance-json for governance JSON."
+        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for machine-readable output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report datasource-summary or --report datasource-summary-json for datasource dependency aggregates, --report governance for datasource governance tables, or --report governance-json for governance JSON."
     )]
     pub report: Option<InspectExportReportFormat>,
     #[arg(
         long,
         value_enum,
-        conflicts_with_all = ["json", "table", "report"],
-        help = "Alternative single-flag output selector for inspect output. Use text, table, json, report-table, report-csv, report-json, report-tree, report-tree-table, governance, or governance-json."
+        conflicts_with_all = ["view", "format", "layout"],
+        help = "Legacy single-flag output selector for inspect output. Prefer --view plus --format (and --layout for query views)."
     )]
     pub output_format: Option<InspectOutputFormat>,
     #[arg(
         long,
         value_delimiter = ',',
-        help = "For --report table, csv, or tree-table output, or the equivalent report-like --output-format values, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
+        help = "For query-table output, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
     )]
     pub report_columns: Vec<String>,
     #[arg(
@@ -488,23 +538,46 @@ pub struct InspectLiveArgs {
     #[arg(
         long,
         value_enum,
+        conflicts_with_all = ["json", "table", "report", "output_format"],
+        help = "Preferred inspect selector for what to render. Use summary, query, datasource, or governance. Combine with --format and optional --layout instead of legacy --output-format."
+    )]
+    pub view: Option<InspectView>,
+    #[arg(
+        long,
+        value_enum,
+        requires = "view",
+        conflicts_with_all = ["json", "table", "report", "output_format"],
+        help = "Preferred inspect selector for output encoding. Use text, table, csv, or json with --view."
+    )]
+    pub format: Option<InspectRenderFormat>,
+    #[arg(
+        long,
+        value_enum,
+        requires = "view",
+        conflicts_with_all = ["json", "table", "report", "output_format"],
+        help = "Preferred inspect selector for query layout. Use flat or tree with --view query."
+    )]
+    pub layout: Option<InspectLayout>,
+    #[arg(
+        long,
+        value_enum,
         num_args = 0..=1,
         default_missing_value = "table",
         conflicts_with_all = ["json", "table"],
-        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for alternate output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report governance for datasource governance tables, or --report governance-json for governance JSON."
+        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for alternate output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report datasource-summary or --report datasource-summary-json for datasource dependency aggregates, --report governance for datasource governance tables, or --report governance-json for governance JSON."
     )]
     pub report: Option<InspectExportReportFormat>,
     #[arg(
         long,
         value_enum,
-        conflicts_with_all = ["json", "table", "report"],
-        help = "Alternative single-flag output selector for inspect output. Use text, table, json, report-table, report-csv, report-json, report-tree, report-tree-table, governance, or governance-json."
+        conflicts_with_all = ["view", "format", "layout"],
+        help = "Legacy single-flag output selector for inspect output. Prefer --view plus --format (and --layout for query views)."
     )]
     pub output_format: Option<InspectOutputFormat>,
     #[arg(
         long,
         value_delimiter = ',',
-        help = "For --report table, csv, or tree-table output, or the equivalent report-like --output-format values, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
+        help = "For query-table output, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
     )]
     pub report_columns: Vec<String>,
     #[arg(
@@ -646,9 +719,132 @@ fn normalize_dry_run_output_format(
     }
 }
 
-// Normalize dashboard subcommand variants so legacy and explicit flags end up with
-// the same boolean state contract for command handlers.
-pub fn normalize_dashboard_cli_args(mut args: DashboardCliArgs) -> DashboardCliArgs {
+fn inspect_report_from_view_format_layout(
+    view: InspectView,
+    format: Option<InspectRenderFormat>,
+    layout: Option<InspectLayout>,
+) -> std::result::Result<(bool, bool, Option<InspectExportReportFormat>), String> {
+    let chosen_format = format.unwrap_or(match view {
+        InspectView::Summary => InspectRenderFormat::Text,
+        InspectView::Query => InspectRenderFormat::Table,
+        InspectView::Datasource | InspectView::Governance => InspectRenderFormat::Table,
+    });
+    let chosen_layout = layout.unwrap_or(match view {
+        InspectView::Query => InspectLayout::Flat,
+        _ => InspectLayout::Flat,
+    });
+    match view {
+        InspectView::Summary => {
+            if layout.is_some() {
+                return Err("--layout is only supported with --view query.".to_string());
+            }
+            match chosen_format {
+                InspectRenderFormat::Text => Ok((false, false, None)),
+                InspectRenderFormat::Table => Ok((false, true, None)),
+                InspectRenderFormat::Json => Ok((true, false, None)),
+                InspectRenderFormat::Csv => Err(
+                    "--view summary supports only --format text, table, or json.".to_string(),
+                ),
+            }
+        }
+        InspectView::Query => match (chosen_format, chosen_layout) {
+            (InspectRenderFormat::Table, InspectLayout::Flat) => {
+                Ok((false, false, Some(InspectExportReportFormat::Table)))
+            }
+            (InspectRenderFormat::Table, InspectLayout::Tree) => {
+                Ok((false, false, Some(InspectExportReportFormat::TreeTable)))
+            }
+            (InspectRenderFormat::Csv, InspectLayout::Flat) => {
+                Ok((false, false, Some(InspectExportReportFormat::Csv)))
+            }
+            (InspectRenderFormat::Json, InspectLayout::Flat) => {
+                Ok((false, false, Some(InspectExportReportFormat::Json)))
+            }
+            (InspectRenderFormat::Text, InspectLayout::Tree) => {
+                Ok((false, false, Some(InspectExportReportFormat::Tree)))
+            }
+            (InspectRenderFormat::Text, InspectLayout::Flat) => Err(
+                "--view query with --format text requires --layout tree.".to_string(),
+            ),
+            (InspectRenderFormat::Csv | InspectRenderFormat::Json, InspectLayout::Tree) => Err(
+                "--layout tree is only supported with --format table or text for --view query."
+                    .to_string(),
+            ),
+        },
+        InspectView::Datasource => {
+            if layout.is_some() {
+                return Err("--layout is only supported with --view query.".to_string());
+            }
+            match chosen_format {
+                InspectRenderFormat::Table => Ok((
+                    false,
+                    false,
+                    Some(InspectExportReportFormat::DatasourceSummary),
+                )),
+                InspectRenderFormat::Json => Ok((
+                    false,
+                    false,
+                    Some(InspectExportReportFormat::DatasourceSummaryJson),
+                )),
+                InspectRenderFormat::Text | InspectRenderFormat::Csv => Err(
+                    "--view datasource supports only --format table or json.".to_string(),
+                ),
+            }
+        }
+        InspectView::Governance => {
+            if layout.is_some() {
+                return Err("--layout is only supported with --view query.".to_string());
+            }
+            match chosen_format {
+                InspectRenderFormat::Table => Ok((
+                    false,
+                    false,
+                    Some(InspectExportReportFormat::Governance),
+                )),
+                InspectRenderFormat::Json => Ok((
+                    false,
+                    false,
+                    Some(InspectExportReportFormat::GovernanceJson),
+                )),
+                InspectRenderFormat::Text | InspectRenderFormat::Csv => Err(
+                    "--view governance supports only --format table or json.".to_string(),
+                ),
+            }
+        }
+    }
+}
+
+fn normalize_inspect_args(
+    json: &mut bool,
+    table: &mut bool,
+    report: &mut Option<InspectExportReportFormat>,
+    output_format: Option<InspectOutputFormat>,
+    view: Option<InspectView>,
+    format: Option<InspectRenderFormat>,
+    layout: Option<InspectLayout>,
+) -> std::result::Result<(), String> {
+    if view.is_none() && format.is_none() && layout.is_none() {
+        return Ok(());
+    }
+    if view.is_none() {
+        return Err("--format and --layout require --view.".to_string());
+    }
+    let (normalized_json, normalized_table, normalized_report) =
+        inspect_report_from_view_format_layout(view.expect("validated"), format, layout)?;
+    *json = normalized_json;
+    *table = normalized_table;
+    *report = normalized_report;
+    let _ = output_format;
+    Ok(())
+}
+
+/// Normalize dashboard CLI variants into a common output-mode flag contract.
+///
+/// Legacy boolean output switches and enum-style aliases are collapsed into the
+/// shared handler shape before dispatch.
+pub(crate) fn try_normalize_dashboard_cli_args(
+    mut args: DashboardCliArgs,
+) -> std::result::Result<DashboardCliArgs, String> {
     match &mut args.command {
         DashboardCommand::List(list_args) => normalize_simple_output_format(
             &mut list_args.table,
@@ -667,9 +863,35 @@ pub fn normalize_dashboard_cli_args(mut args: DashboardCliArgs) -> DashboardCliA
             &mut import_args.json,
             import_args.output_format,
         ),
+        DashboardCommand::InspectExport(inspect_args) => normalize_inspect_args(
+            &mut inspect_args.json,
+            &mut inspect_args.table,
+            &mut inspect_args.report,
+            inspect_args.output_format,
+            inspect_args.view,
+            inspect_args.format,
+            inspect_args.layout,
+        )?,
+        DashboardCommand::InspectLive(inspect_args) => normalize_inspect_args(
+            &mut inspect_args.json,
+            &mut inspect_args.table,
+            &mut inspect_args.report,
+            inspect_args.output_format,
+            inspect_args.view,
+            inspect_args.format,
+            inspect_args.layout,
+        )?,
         _ => {}
     }
-    args
+    Ok(args)
+}
+
+pub fn normalize_dashboard_cli_args(args: DashboardCliArgs) -> DashboardCliArgs {
+    try_normalize_dashboard_cli_args(args).unwrap_or_else(|message| {
+        DashboardCliArgs::command()
+            .error(ErrorKind::ArgumentConflict, message)
+            .exit()
+    })
 }
 
 pub fn build_auth_context(common: &CommonCliArgs) -> Result<DashboardAuthContext> {

@@ -2,7 +2,7 @@
 //! Converts normalized query rows into plain text table and CSV representations.
 use super::dashboard_inspect_report::{
     normalize_query_report, render_query_report_column, report_column_header,
-    ExportInspectionQueryReport,
+    ExportInspectionDatasourceSummaryDocument, ExportInspectionQueryReport,
 };
 
 pub(crate) fn render_csv(headers: &[&str], rows: &[Vec<String>]) -> Vec<String> {
@@ -210,6 +210,85 @@ pub(crate) fn render_grouped_query_table_report(
     }
     while matches!(lines.last(), Some(last) if last.is_empty()) {
         lines.pop();
+    }
+    lines
+}
+
+pub(crate) fn render_datasource_summary_report(
+    import_dir: &str,
+    document: &ExportInspectionDatasourceSummaryDocument,
+    include_header: bool,
+) -> Vec<String> {
+    let mut lines = Vec::new();
+    lines.push(format!("Export inspection datasource summary: {import_dir}"));
+    lines.push(String::new());
+    lines.push("# Summary".to_string());
+    let summary_rows = vec![
+        vec![
+            "dashboard_count".to_string(),
+            document.summary.dashboard_count.to_string(),
+        ],
+        vec![
+            "query_record_count".to_string(),
+            document.summary.query_record_count.to_string(),
+        ],
+        vec![
+            "datasource_count".to_string(),
+            document.summary.datasource_count.to_string(),
+        ],
+        vec![
+            "active_datasource_count".to_string(),
+            document.summary.active_datasource_count.to_string(),
+        ],
+        vec![
+            "orphaned_datasource_count".to_string(),
+            document.summary.orphaned_datasource_count.to_string(),
+        ],
+    ];
+    for line in render_simple_table(&["METRIC", "VALUE"], &summary_rows, include_header) {
+        lines.push(line);
+    }
+    if !document.datasources.is_empty() {
+        lines.push(String::new());
+        lines.push("# Datasource dependencies".to_string());
+        let rows = document
+            .datasources
+            .iter()
+            .map(|item| {
+                vec![
+                    item.datasource.clone(),
+                    item.datasource_uid.clone(),
+                    item.datasource_type.clone(),
+                    item.family.clone(),
+                    item.dashboard_count.to_string(),
+                    item.panel_count.to_string(),
+                    item.query_count.to_string(),
+                    item.orphaned.clone(),
+                    item.metrics.join(","),
+                    item.measurements.join(","),
+                    item.buckets.join(","),
+                ]
+            })
+            .collect::<Vec<Vec<String>>>();
+        for line in render_simple_table(
+            &[
+                "DATASOURCE",
+                "DATASOURCE_UID",
+                "TYPE",
+                "FAMILY",
+                "DASHBOARD_COUNT",
+                "PANEL_COUNT",
+                "QUERY_COUNT",
+                "ORPHANED",
+                "METRICS",
+                "MEASUREMENTS",
+                "BUCKETS",
+            ],
+            &rows,
+            include_header,
+        ) {
+            lines.push(line);
+        }
     }
     lines
 }

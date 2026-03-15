@@ -60,8 +60,12 @@ pub use dashboard_cli_defs::{
     build_auth_context, build_http_client, build_http_client_for_org, normalize_dashboard_cli_args,
     parse_cli_from, CommonCliArgs, DashboardAuthContext, DashboardCliArgs, DashboardCommand,
     DiffArgs, ExportArgs, ImportArgs, InspectExportArgs, InspectExportReportFormat,
-    InspectLiveArgs, InspectOutputFormat, ListArgs, ListDataSourcesArgs,
+    InspectLayout, InspectLiveArgs, InspectOutputFormat, InspectRenderFormat, InspectView,
+    ListArgs, ListDataSourcesArgs,
 };
+#[cfg(test)]
+#[allow(unused_imports)]
+pub(crate) use dashboard_cli_defs::try_normalize_dashboard_cli_args;
 pub use dashboard_export::{
     build_export_variant_dirs, build_output_path, export_dashboards_with_client,
 };

@@ -11,13 +11,15 @@ use super::{
     format_folder_inventory_status_line, format_import_progress_line, format_import_verbose_line,
     import_dashboards_with_org_clients, import_dashboards_with_request,
     list_dashboards_with_request, list_data_sources_with_request, parse_cli_from,
+    try_normalize_dashboard_cli_args,
     render_dashboard_summary_csv, render_dashboard_summary_json, render_dashboard_summary_table,
     render_data_source_csv, render_data_source_json, render_data_source_table,
     render_import_dry_run_json, render_import_dry_run_table, CommonCliArgs, DashboardCliArgs,
     DashboardCommand, DiffArgs, ExportArgs, FolderInventoryStatusKind, ImportArgs,
-    InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs,
-    ListDataSourcesArgs, DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME,
-    FOLDER_INVENTORY_FILENAME, TOOL_SCHEMA_VERSION,
+    InspectExportArgs, InspectExportReportFormat, InspectLayout, InspectLiveArgs,
+    InspectOutputFormat, InspectRenderFormat, InspectView, ListArgs, ListDataSourcesArgs,
+    DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME,
+    TOOL_SCHEMA_VERSION,
 };
 use crate::common::api_response;
 use clap::{CommandFactory, Parser};
@@ -799,6 +801,62 @@ fn parse_cli_supports_inspect_export_output_format_flag() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_export_view_format_layout_flags() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--view",
+        "query",
+        "--format",
+        "table",
+        "--layout",
+        "tree",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(inspect_args.view, Some(InspectView::Query));
+            assert_eq!(inspect_args.format, Some(InspectRenderFormat::Table));
+            assert_eq!(inspect_args.layout, Some(InspectLayout::Tree));
+            assert_eq!(
+                inspect_args.report,
+                Some(InspectExportReportFormat::TreeTable)
+            );
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_inspect_export_summary_view_json_format() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--view",
+        "summary",
+        "--format",
+        "json",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(inspect_args.view, Some(InspectView::Summary));
+            assert_eq!(inspect_args.format, Some(InspectRenderFormat::Json));
+            assert!(inspect_args.json);
+            assert!(!inspect_args.table);
+            assert_eq!(inspect_args.report, None);
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_inspect_export_report_json_flag() {
     let args = parse_cli_from([
         "grafana-util",
@@ -915,6 +973,27 @@ fn parse_cli_supports_inspect_export_report_governance_flag() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_export_report_datasource_summary_flag() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--report",
+        "datasource-summary",
+    ]);
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(
+                inspect_args.report,
+                Some(InspectExportReportFormat::DatasourceSummary)
+            );
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_inspect_export_help_full_flag() {
     let args = parse_cli_from([
         "grafana-util",
@@ -1019,6 +1098,57 @@ fn parse_cli_supports_inspect_live_output_format_flag() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_live_output_format_datasource_summary_json() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-live",
+        "--url",
+        "https://grafana.example.com",
+        "--output-format",
+        "datasource-summary-json",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectLive(inspect_args) => {
+            assert_eq!(
+                inspect_args.output_format,
+                Some(InspectOutputFormat::DatasourceSummaryJson)
+            );
+            assert_eq!(inspect_args.report, None);
+        }
+        _ => panic!("expected inspect-live command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_inspect_live_view_format_flags() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-live",
+        "--url",
+        "https://grafana.example.com",
+        "--view",
+        "datasource",
+        "--format",
+        "json",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectLive(inspect_args) => {
+            assert_eq!(inspect_args.view, Some(InspectView::Datasource));
+            assert_eq!(inspect_args.format, Some(InspectRenderFormat::Json));
+            assert_eq!(
+                inspect_args.report,
+                Some(InspectExportReportFormat::DatasourceSummaryJson)
+            );
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-live command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_inspect_live_report_tree_table_flag() {
     let args = parse_cli_from([
         "grafana-util",
@@ -1088,15 +1218,58 @@ fn parse_cli_supports_inspect_live_help_full_flag() {
 }
 
 #[test]
+fn inspect_help_mentions_view_format_and_layout_flags() {
+    let help = render_dashboard_subcommand_help("inspect-export");
+
+    assert!(help.contains("--view"));
+    assert!(help.contains("--format"));
+    assert!(help.contains("--layout"));
+    assert!(help.contains("--output-format"));
+}
+
+#[test]
+fn normalize_dashboard_cli_args_rejects_inspect_format_without_view() {
+    let error = DashboardCliArgs::try_parse_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--format",
+        "json",
+    ])
+    .unwrap_err()
+    .to_string();
+    assert!(error.contains("--view <VIEW>"));
+}
+
+#[test]
+fn normalize_dashboard_cli_args_rejects_query_text_without_tree_layout() {
+    let parsed = DashboardCliArgs::try_parse_from([
+        "grafana-util",
+        "inspect-live",
+        "--url",
+        "https://grafana.example.com",
+        "--view",
+        "query",
+        "--format",
+        "text",
+    ])
+    .unwrap();
+
+    let error = try_normalize_dashboard_cli_args(parsed).unwrap_err();
+    assert!(error.contains("--view query with --format text requires --layout tree."));
+}
+
+#[test]
 fn inspect_live_help_mentions_report_and_panel_filter_flags() {
     let help = render_dashboard_subcommand_help("inspect-live");
 
     assert!(help.contains("--report"));
     assert!(help.contains("--output-format"));
+    assert!(help.contains("--view"));
+    assert!(help.contains("--format"));
     assert!(help.contains("--report-filter-panel-id"));
     assert!(help.contains("--help-full"));
-    assert!(help.contains("tree"));
-    assert!(help.contains("tree-table"));
     assert!(!help.contains("Extended Examples:"));
 }
 
@@ -1119,9 +1292,9 @@ fn inspect_export_help_full_includes_extended_examples() {
 
     assert!(help.contains("--help-full"));
     assert!(help.contains("Extended Examples:"));
-    assert!(help.contains("--report tree-table"));
+    assert!(help.contains("--view query --format table --layout tree"));
     assert!(help.contains("--report-filter-datasource"));
-    assert!(help.contains("--report-columns"));
+    assert!(help.contains("--view datasource --format json"));
 }
 
 #[test]
@@ -1130,9 +1303,9 @@ fn inspect_live_help_full_includes_extended_examples() {
 
     assert!(help.contains("--help-full"));
     assert!(help.contains("Extended Examples:"));
-    assert!(help.contains("--report tree-table"));
+    assert!(help.contains("--view query --format table --layout tree"));
     assert!(help.contains("--report-filter-panel-id"));
-    assert!(help.contains("--report-columns"));
+    assert!(help.contains("--view governance --format table"));
 }
 
 #[test]
@@ -1147,7 +1320,7 @@ fn maybe_render_dashboard_help_full_from_os_args_handles_missing_required_args()
 
     assert!(help.contains("inspect-export"));
     assert!(help.contains("Extended Examples:"));
-    assert!(help.contains("--report tree-table"));
+    assert!(help.contains("--view query --format table --layout tree"));
 }
 
 #[test]
@@ -3760,6 +3933,9 @@ fn validate_inspect_export_report_args_rejects_report_columns_without_report() {
         table: false,
         report: None,
         output_format: None,
+        view: None,
+        format: None,
+        layout: None,
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -3781,6 +3957,9 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_json_report() 
         table: false,
         report: Some(InspectExportReportFormat::Json),
         output_format: None,
+        view: None,
+        format: None,
+        layout: None,
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -3802,6 +3981,9 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_tree_report() 
         table: false,
         report: Some(InspectExportReportFormat::Tree),
         output_format: None,
+        view: None,
+        format: None,
+        layout: None,
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -3823,6 +4005,9 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_governance_rep
         table: false,
         report: Some(InspectExportReportFormat::Governance),
         output_format: None,
+        view: None,
+        format: None,
+        layout: None,
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -3844,6 +4029,9 @@ fn validate_inspect_export_report_args_allows_report_columns_for_tree_table_repo
         table: false,
         report: Some(InspectExportReportFormat::TreeTable),
         output_format: None,
+        view: None,
+        format: None,
+        layout: None,
         report_columns: vec!["panel_id".to_string(), "query".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -4327,6 +4515,9 @@ fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
         table: false,
         report: None,
         output_format: None,
+        view: None,
+        format: None,
+        layout: None,
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: Some("7".to_string()),
@@ -4351,6 +4542,9 @@ fn inspect_live_dashboards_with_request_reports_live_json_via_temp_raw_export() 
         table: false,
         report: Some(InspectExportReportFormat::Json),
         output_format: None,
+        view: None,
+        format: None,
+        layout: None,
         report_columns: Vec::new(),
         report_filter_datasource: Some("prom-main".to_string()),
         report_filter_panel_id: Some("7".to_string()),
@@ -4427,6 +4621,116 @@ fn inspect_live_dashboards_with_request_reports_live_json_via_temp_raw_export() 
     .unwrap();
 
     assert_eq!(count, 1);
+}
+
+#[test]
+fn inspect_live_dashboards_with_request_supports_all_orgs() {
+    let args = InspectLiveArgs {
+        common: make_common_args("https://grafana.example.com".to_string()),
+        page_size: 100,
+        org_id: None,
+        all_orgs: true,
+        json: false,
+        table: false,
+        report: Some(InspectExportReportFormat::Json),
+        output_format: None,
+        view: None,
+        format: None,
+        layout: None,
+        report_columns: Vec::new(),
+        report_filter_datasource: None,
+        report_filter_panel_id: None,
+        help_full: false,
+        no_header: false,
+    };
+
+    let count = super::inspect_live_dashboards_with_request(
+        |method, path, params, _payload| match (method, path) {
+            (reqwest::Method::GET, "/api/orgs") => Ok(Some(json!([
+                {"id": 1, "name": "Main Org."},
+                {"id": 2, "name": "Org Two"}
+            ]))),
+            (reqwest::Method::GET, "/api/org") => {
+                let org_id = params
+                    .iter()
+                    .find(|(key, _)| key == "orgId")
+                    .map(|(_, value)| value.clone());
+                match org_id.as_deref() {
+                    Some("2") => Ok(Some(json!({"id": 2, "name": "Org Two"}))),
+                    _ => Ok(Some(json!({"id": 1, "name": "Main Org."}))),
+                }
+            }
+            (reqwest::Method::GET, "/api/datasources") => {
+                let org_id = params
+                    .iter()
+                    .find(|(key, _)| key == "orgId")
+                    .map(|(_, value)| value.clone());
+                match org_id.as_deref() {
+                    Some("2") => Ok(Some(json!([
+                        {"uid": "logs-main", "name": "Logs Main", "type": "loki", "access": "proxy", "url": "http://loki:3100", "isDefault": false}
+                    ]))),
+                    _ => Ok(Some(json!([
+                        {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus", "access": "proxy", "url": "http://prometheus:9090", "isDefault": true}
+                    ]))),
+                }
+            }
+            (reqwest::Method::GET, "/api/search") => {
+                let org_id = params
+                    .iter()
+                    .find(|(key, _)| key == "orgId")
+                    .map(|(_, value)| value.clone());
+                match org_id.as_deref() {
+                    Some("2") => Ok(Some(json!([
+                        {"uid": "logs-main", "title": "Logs Main", "type": "dash-db", "folderUid": "logs", "folderTitle": "Logs"}
+                    ]))),
+                    _ => Ok(Some(json!([
+                        {"uid": "cpu-main", "title": "CPU Main", "type": "dash-db", "folderUid": "general", "folderTitle": "General"}
+                    ]))),
+                }
+            }
+            (reqwest::Method::GET, "/api/folders/general") => {
+                Ok(Some(json!({"uid": "general", "title": "General"})))
+            }
+            (reqwest::Method::GET, "/api/folders/logs") => {
+                Ok(Some(json!({"uid": "logs", "title": "Logs"})))
+            }
+            (reqwest::Method::GET, "/api/dashboards/uid/cpu-main") => Ok(Some(json!({
+                "dashboard": {
+                    "id": 11,
+                    "uid": "cpu-main",
+                    "title": "CPU Main",
+                    "panels": [{
+                        "id": 7,
+                        "title": "CPU Query",
+                        "type": "timeseries",
+                        "datasource": {"uid": "prom-main", "type": "prometheus"},
+                        "targets": [{"refId": "A", "expr": "up"}]
+                    }]
+                },
+                "meta": {"folderUid": "general"}
+            }))),
+            (reqwest::Method::GET, "/api/dashboards/uid/logs-main") => Ok(Some(json!({
+                "dashboard": {
+                    "id": 12,
+                    "uid": "logs-main",
+                    "title": "Logs Main",
+                    "panels": [{
+                        "id": 8,
+                        "title": "Logs Query",
+                        "type": "logs",
+                        "datasource": {"uid": "logs-main", "type": "loki"},
+                        "targets": [{"refId": "A", "expr": "{job=\"grafana\"}"}]
+                    }]
+                },
+                "meta": {"folderUid": "logs"}
+            }))),
+            _ => Err(super::message("unexpected request")),
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 2);
 }
 
 #[test]
