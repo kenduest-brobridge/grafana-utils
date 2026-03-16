@@ -22,6 +22,31 @@ jobs:
       - name: Run Python quality gate
         run: make poetry-quality-python
 
+  python-package:
+    runs-on: ubuntu-latest
+    needs:
+      - python-quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Poetry
+        run: python3 -m pip install --upgrade pip poetry
+      - name: Install Python build dependencies
+        run: |
+          poetry install --with dev --extras http2
+      - name: Build Python package artifacts
+        run: make build-python
+      - name: Upload Python package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-${{ github.ref_name }}-${{ github.sha }}
+          path: |
+            dist/*.tar.gz
+            dist/*.whl
+          if-no-files-found: error
+
   rust-quality:
     runs-on: ubuntu-latest
     steps:
@@ -31,3 +56,21 @@ jobs:
           components: rustfmt, clippy
       - name: Run Rust quality gate
         run: make quality-rust
+
+  rust-package:
+    runs-on: ubuntu-latest
+    needs:
+      - rust-quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build Rust release binaries
+        run: make build-rust
+      - name: Upload Rust package artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-package-${{ github.ref_name }}-${{ github.sha }}
+          path: |
+            build/rust/release/grafana-util
+            build/rust/release/grafana-access-utils
+          if-no-files-found: error
