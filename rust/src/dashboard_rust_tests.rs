@@ -243,6 +243,12 @@ fn screenshot_help_mentions_capture_options() {
     assert!(help.contains("--header-text"));
     assert!(help.contains("--var"));
     assert!(help.contains("--browser-path"));
+    assert!(help.contains("Target Options"));
+    assert!(help.contains("State Options"));
+    assert!(help.contains("Rendering Options"));
+    assert!(help.contains("Header Options"));
+    assert!(help.contains("Capture a full dashboard from a browser URL"));
+    assert!(help.contains("Capture a solo panel with a vars-query fragment"));
 }
 
 #[test]
