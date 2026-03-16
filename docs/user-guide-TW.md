@@ -353,7 +353,7 @@ diskdevices  custom                  [a-z]+|nvme[0-9]+n[0-9]+|mmcblk[0-9]+      
 | `--vars-query` | 重播 `var-*` 與相容 query key | 支援 `refresh`、`showCategory`、`timezone` 與 `${__all_variables}` 片段 |
 | `--print-capture-url` | 印出最終解析後的 URL | 除錯時非常實用 |
 | `--full-page` | 輸出長頁 dashboard 圖 | 瀏覽器式 full-page 擷取 |
-| `--full-page-output` | 保留單一大圖或改成分段檔案輸出 | `tiles` 會輸出 `part-0001.*` 等檔案；`manifest` 會再附 `manifest.json` |
+| `--full-page-output` | 保留單一大圖或改成分段檔案輸出 | `tiles` 會輸出 `part-0001.*` 等檔案；`manifest` 會再附帶 title/dashboard/panel 資訊的 `manifest.json` |
 | `--browser-path` | 指定 Chrome/Chromium 路徑 | 工作站有多個瀏覽器時可固定版本 |
 | `--header-title`、`--header-url`、`--header-captured-at`、`--header-text` | 在 PNG/JPEG 前面加深色 header 區塊 | header 在最終圖片合成，不會干擾 Grafana layout |
 

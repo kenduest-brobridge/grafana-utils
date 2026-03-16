@@ -164,7 +164,8 @@ pub(crate) use dashboard_prompt::{
 };
 #[cfg(test)]
 pub(crate) use dashboard_screenshot::{
-    build_dashboard_capture_url, infer_screenshot_output_format, validate_screenshot_args,
+    build_dashboard_capture_url, infer_screenshot_output_format, resolve_manifest_title,
+    validate_screenshot_args,
 };
 #[cfg(test)]
 pub(crate) use dashboard_vars::extract_dashboard_variables;

@@ -14,12 +14,12 @@ use super::{
     parse_cli_from, render_dashboard_summary_csv, render_dashboard_summary_json,
     render_dashboard_summary_table, render_data_source_csv, render_data_source_json,
     render_data_source_table, render_import_dry_run_json, render_import_dry_run_table,
-    validate_screenshot_args, CommonCliArgs, DashboardCliArgs, DashboardCommand, DiffArgs,
-    ExportArgs, FolderInventoryStatusKind, ImportArgs, InspectExportArgs,
-    InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs, ListDataSourcesArgs,
-    ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme, SimpleOutputFormat,
-    DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME,
-    TOOL_SCHEMA_VERSION,
+    resolve_manifest_title, validate_screenshot_args, CommonCliArgs, DashboardCliArgs,
+    DashboardCommand, DiffArgs, ExportArgs, FolderInventoryStatusKind, ImportArgs,
+    InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs,
+    ListDataSourcesArgs, ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme,
+    SimpleOutputFormat, DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME,
+    FOLDER_INVENTORY_FILENAME, TOOL_SCHEMA_VERSION,
 };
 use crate::common::api_response;
 use clap::{CommandFactory, Parser};
@@ -706,6 +706,50 @@ fn validate_screenshot_args_rejects_pdf_split_output() {
 
     let error = validate_screenshot_args(&args).unwrap_err().to_string();
     assert!(error.contains("PDF output does not support --full-page-output tiles or manifest"));
+}
+
+#[test]
+fn resolve_manifest_title_prefers_panel_then_dashboard_then_uid_then_output_stem() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--dashboard-uid",
+        "cpu-main",
+        "--output",
+        "./capture-name.png",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::Screenshot(args) => args,
+        other => panic!("expected screenshot args, got {other:?}"),
+    };
+
+    assert_eq!(
+        resolve_manifest_title(
+            Some("cpu-main"),
+            Some("CPU Overview"),
+            Some("CPU Busy"),
+            &args
+        ),
+        Some("CPU Busy".to_string())
+    );
+
+    assert_eq!(
+        resolve_manifest_title(Some("cpu-main"), Some("CPU Overview"), None, &args),
+        Some("CPU Overview".to_string())
+    );
+
+    assert_eq!(
+        resolve_manifest_title(Some("cpu-main"), None, None, &args),
+        Some("cpu-main".to_string())
+    );
+
+    assert_eq!(
+        resolve_manifest_title(None, None, None, &args),
+        Some("capture-name".to_string())
+    );
 }
 
 #[test]

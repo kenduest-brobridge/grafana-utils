@@ -270,6 +270,7 @@ pub fn capture_dashboard_screenshot(args: &ScreenshotArgs) -> Result<()> {
                 write_full_page_output(
                     &resolved_args,
                     &header_spec,
+                    &capture_metadata,
                     output_format,
                     segments,
                     ImageFormat::Png,
@@ -306,6 +307,7 @@ pub fn capture_dashboard_screenshot(args: &ScreenshotArgs) -> Result<()> {
                 write_full_page_output(
                     &resolved_args,
                     &header_spec,
+                    &capture_metadata,
                     output_format,
                     segments,
                     ImageFormat::Jpeg,
@@ -1372,6 +1374,7 @@ fn encode_rgba_image(image: &RgbaImage, format: ImageFormat) -> Result<Vec<u8>> 
 fn write_full_page_output(
     args: &ScreenshotArgs,
     header_spec: &Option<HeaderSpec>,
+    metadata: &DashboardCaptureMetadata,
     output_format: ScreenshotOutputFormat,
     capture: FullPageCapture,
     image_format: ImageFormat,
@@ -1419,8 +1422,13 @@ fn write_full_page_output(
             }
             if args.full_page_output == ScreenshotFullPageOutput::Manifest {
                 let manifest_path = output_dir.join("manifest.json");
-                let manifest =
-                    build_full_page_manifest(args, output_format, &capture, manifest_segments);
+                let manifest = build_full_page_manifest(
+                    args,
+                    metadata,
+                    output_format,
+                    &capture,
+                    manifest_segments,
+                );
                 fs::write(
                     manifest_path,
                     serde_json::to_vec_pretty(&manifest).map_err(|error| {
@@ -1453,10 +1461,18 @@ fn build_segment_output_dir(output: &Path) -> Result<PathBuf> {
 
 fn build_full_page_manifest(
     args: &ScreenshotArgs,
+    metadata: &DashboardCaptureMetadata,
     output_format: ScreenshotOutputFormat,
     capture: &FullPageCapture,
     segments: Vec<Value>,
 ) -> Value {
+    let title = resolve_manifest_title(
+        metadata.dashboard_uid.as_deref(),
+        metadata.dashboard_title.as_deref(),
+        metadata.panel_title.as_deref(),
+        args,
+    );
+    let header_title = resolve_header_title(args, metadata);
     json!({
         "kind": "dashboard-screenshot-segments",
         "version": 1,
@@ -1472,6 +1488,11 @@ fn build_full_page_manifest(
         },
         "fullPage": args.full_page,
         "output": args.output.display().to_string(),
+        "title": title,
+        "headerTitle": header_title,
+        "dashboardUid": metadata.dashboard_uid,
+        "dashboardTitle": metadata.dashboard_title,
+        "panelTitle": metadata.panel_title,
         "viewport": {
             "width": capture.viewport_width,
             "height": capture.viewport_height,
@@ -1486,6 +1507,20 @@ fn build_full_page_manifest(
         },
         "segments": segments,
     })
+}
+
+pub(crate) fn resolve_manifest_title(
+    dashboard_uid: Option<&str>,
+    dashboard_title: Option<&str>,
+    panel_title: Option<&str>,
+    args: &ScreenshotArgs,
+) -> Option<String> {
+    let metadata = DashboardCaptureMetadata {
+        dashboard_uid: dashboard_uid.map(str::to_string),
+        dashboard_title: dashboard_title.map(str::to_string),
+        panel_title: panel_title.map(str::to_string),
+    };
+    resolve_auto_title(&metadata, args)
 }
 
 fn read_numeric_expression(

@@ -392,7 +392,7 @@ Purpose: open one Grafana dashboard in headless Chromium and capture PNG, JPEG, 
 | `--vars-query` | Replay `var-*` plus compatible query keys | Supports `refresh`, `showCategory`, `timezone`, and `${__all_variables}`-style fragments |
 | `--print-capture-url` | Print the final resolved URL | Best for troubleshooting capture state |
 | `--full-page` | Stitch a tall dashboard image | Browser-style long screenshot |
-| `--full-page-output` | Keep one stitched image or emit segmented files | `tiles` writes `part-0001.*` etc.; `manifest` also writes `manifest.json` |
+| `--full-page-output` | Keep one stitched image or emit segmented files | `tiles` writes `part-0001.*` etc.; `manifest` also writes `manifest.json` with title/dashboard/panel metadata |
 | `--browser-path` | Pin the Chrome/Chromium binary | Useful on workstations with multiple browsers |
 | `--header-title`, `--header-url`, `--header-captured-at`, `--header-text` | Add a dark header block above PNG/JPEG output | Header is composed after capture, so it does not disturb Grafana layout |
 
