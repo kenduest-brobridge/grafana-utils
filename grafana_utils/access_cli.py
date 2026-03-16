@@ -125,7 +125,11 @@ from .clients.access_client import GrafanaAccessClient
 
 
 def resolve_auth(args):
-    """Resolve auth and convert parse-layer config errors to CLI error type."""
+    """Resolve auth in CLI glue and normalize parse-time auth errors.
+
+    Centralized auth decoding keeps dispatch behavior consistent across all access
+    commands.
+    """
     try:
         return resolve_cli_auth_from_namespace(
             args,
@@ -143,6 +147,11 @@ def build_request_headers(args):
 
 
 def _read_secret_file(path, label):
+    """Read password-like secret from file while trimming terminal newline artifacts.
+
+    CR/LF are stripped to avoid false mismatches when secrets are loaded from
+    heredoc- or printf-generated files.
+    """
     file_path = Path(path)
     try:
         content = file_path.read_text(encoding="utf-8")

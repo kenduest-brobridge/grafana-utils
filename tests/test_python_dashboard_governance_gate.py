@@ -6,6 +6,7 @@ from contextlib import redirect_stdout
 from pathlib import Path
 
 from grafana_utils import dashboard_governance_gate
+from tests.test_python_dashboard_cli import build_export_metadata, exporter
 
 
 class DashboardGovernanceGateTests(unittest.TestCase):
@@ -18,9 +19,17 @@ class DashboardGovernanceGateTests(unittest.TestCase):
                 "forbidUnknown": True,
                 "forbidMixedFamilies": True,
             },
+            "plugins": {
+                "allowedPluginIds": ["timeseries", "logs"],
+            },
+            "variables": {
+                "forbidUndefinedDatasourceVariables": True,
+            },
             "queries": {
                 "maxQueriesPerDashboard": 3,
                 "maxQueriesPerPanel": 2,
+                "maxQueryComplexityScore": 3,
+                "maxDashboardComplexityScore": 3,
                 "forbidSelectStar": True,
                 "requireSqlTimeFilter": True,
                 "forbidBroadLokiRegex": True,
@@ -67,6 +76,61 @@ class DashboardGovernanceGateTests(unittest.TestCase):
                 },
             ],
         }
+
+    def write_raw_dashboard_fixture(self, import_dir: Path):
+        exporter.write_json_document(
+            build_export_metadata(
+                variant=exporter.RAW_EXPORT_SUBDIR,
+                dashboard_count=1,
+                format_name="grafana-web-import-preserve-uid",
+                folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                datasources_file=exporter.DATASOURCE_INVENTORY_FILENAME,
+            ),
+            import_dir / exporter.EXPORT_METADATA_FILENAME,
+        )
+        exporter.write_json_document([], import_dir / exporter.FOLDER_INVENTORY_FILENAME)
+        exporter.write_json_document([], import_dir / exporter.DATASOURCE_INVENTORY_FILENAME)
+        exporter.write_json_document(
+            {
+                "dashboard": {
+                    "uid": "cpu-main",
+                    "title": "CPU Main",
+                    "templating": {
+                        "list": [
+                            {
+                                "name": "defined_ds",
+                                "type": "datasource",
+                                "query": "prometheus",
+                                "current": {},
+                            }
+                        ]
+                    },
+                    "panels": [
+                        {
+                            "id": 7,
+                            "title": "CPU Usage",
+                            "type": "timeseries",
+                            "datasource": "$missing_ds",
+                            "targets": [
+                                {
+                                    "refId": "A",
+                                    "datasource": {"uid": "${defined_ds}"},
+                                    "expr": "sum(rate(node_cpu_seconds_total[5m]))",
+                                }
+                            ],
+                        },
+                        {
+                            "id": 8,
+                            "title": "Geomap",
+                            "type": "geomap",
+                            "targets": [],
+                        },
+                    ],
+                },
+                "meta": {},
+            },
+            import_dir / "General" / "CPU_Main__cpu-main.json",
+        )
 
     def build_query_document(self):
         return {
@@ -139,6 +203,8 @@ class DashboardGovernanceGateTests(unittest.TestCase):
         self.assertIn("SQL_SELECT_STAR", codes)
         self.assertIn("SQL_MISSING_TIME_FILTER", codes)
         self.assertIn("DATASOURCE_UNKNOWN", codes)
+        self.assertIn("QUERY_COMPLEXITY_TOO_HIGH", codes)
+        self.assertIn("DASHBOARD_COMPLEXITY_TOO_HIGH", codes)
         self.assertEqual(result["summary"]["warningCount"], 2)
 
     def test_evaluate_policy_honors_query_count_thresholds(self):
@@ -196,6 +262,8 @@ class DashboardGovernanceGateTests(unittest.TestCase):
     def test_evaluate_policy_can_fail_on_governance_warnings(self):
         policy = self.build_policy(
             datasources={},
+            plugins={},
+            variables={},
             queries={},
             enforcement={"failOnWarnings": True},
         )
@@ -213,6 +281,34 @@ class DashboardGovernanceGateTests(unittest.TestCase):
         self.assertEqual(result["summary"]["violationCount"], 0)
         self.assertEqual(result["summary"]["warningCount"], 2)
 
+    def test_build_dashboard_context_extracts_plugin_ids_and_datasource_variable_refs(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self.write_raw_dashboard_fixture(import_dir)
+
+            context = dashboard_governance_gate._build_dashboard_context(import_dir)
+
+            self.assertEqual(len(context), 1)
+            self.assertEqual(context[0]["pluginIds"], ["geomap", "timeseries"])
+            self.assertEqual(context[0]["datasourceVariableRefs"], ["defined_ds", "missing_ds"])
+            self.assertEqual(context[0]["datasourceVariables"], ["defined_ds"])
+
+    def test_evaluate_policy_reports_plugin_and_variable_violations_from_import_dir_context(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self.write_raw_dashboard_fixture(import_dir)
+
+            result = dashboard_governance_gate.evaluate_dashboard_governance_policy(
+                self.build_policy(),
+                {"summary": {}, "riskRecords": []},
+                {"summary": {"dashboardCount": 0, "queryRecordCount": 0}, "queries": []},
+                dashboard_context=dashboard_governance_gate._build_dashboard_context(import_dir),
+            )
+
+            codes = [item["code"] for item in result["violations"]]
+            self.assertIn("PLUGIN_NOT_ALLOWED", codes)
+            self.assertIn("UNDEFINED_DATASOURCE_VARIABLE", codes)
+
     def test_main_writes_json_and_returns_failure_for_violations(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -220,6 +316,7 @@ class DashboardGovernanceGateTests(unittest.TestCase):
             governance_path = root / "governance.json"
             queries_path = root / "queries.json"
             output_path = root / "result.json"
+            import_dir = root / "raw"
             policy_path.write_text(
                 json.dumps(self.build_policy(), ensure_ascii=False),
                 encoding="utf-8",
@@ -232,6 +329,7 @@ class DashboardGovernanceGateTests(unittest.TestCase):
                 json.dumps(self.build_query_document(), ensure_ascii=False),
                 encoding="utf-8",
             )
+            self.write_raw_dashboard_fixture(import_dir)
 
             buffer = io.StringIO()
             with redirect_stdout(buffer):
@@ -243,6 +341,8 @@ class DashboardGovernanceGateTests(unittest.TestCase):
                         str(governance_path),
                         "--queries",
                         str(queries_path),
+                        "--import-dir",
+                        str(import_dir),
                         "--output-format",
                         "json",
                         "--json-output",

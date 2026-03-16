@@ -71,6 +71,15 @@ For external command usage and operator examples, prefer `README.md`, `README.zh
   - `grafana-util alert ...`
   - `grafana-util access ...`
 
+## Commenting Requirements
+
+- Use Python `#` comments for implementation notes and `"""` docstrings only when they help external-facing readers understand function/module intent.
+- In Rust:
+  - Use `///` only for public API surfaces (or items you want in `rustdoc`) and place them immediately above the item declaration.
+  - Use `//` inside private function bodies for local logic notes.
+  - Do not place `///` inside function bodies.
+- Keep comments short and behavior-focused so maintainers and agents can trace decisions quickly.
+
 ## Testing Guidelines
 
 - Tests use `unittest`.

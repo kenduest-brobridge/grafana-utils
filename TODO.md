@@ -10,7 +10,6 @@ Completed items that were previously listed here now live in `docs/internal/todo
 
 ## Next
 
-- reduce Python/Rust inspect-export and inspect-live drift by keeping one stable summary/report schema, shared filters, and synchronized help/examples
 - reduce repeated live Grafana lookups during dashboard import and dry-run paths so large imports do not multiply API round-trips per dashboard
 - dashboard `prompt` export should surface the original datasource name in Grafana web-import prompts, not only the datasource type label
 - dashboard `prompt` export should align `__requires` names and versions with Grafana external export where possible
@@ -73,12 +72,11 @@ Rules to keep:
 
 ## Priority Order
 
-1. reduce Python/Rust inspect-export and inspect-live drift
-2. reduce repeated dashboard import lookup calls on live Grafana
-3. refactor query report extraction behind datasource-type-specific analyzers
-4. add broader import dependency preflight for datasources/plugins/alert references
-5. improve dashboard prompt export fidelity for datasource names and `__requires`
-6. extend inspection into richer dependency analysis and datasource usage/orphan reports
+1. reduce repeated dashboard import lookup calls on live Grafana
+2. refactor query report extraction behind datasource-type-specific analyzers
+3. add broader import dependency preflight for datasources/plugins/alert references
+4. improve dashboard prompt export fidelity for datasource names and `__requires`
+5. extend inspection into richer dependency analysis and datasource usage/orphan reports
 7. typed datasource reference structs in the Rust dashboard and alert paths
 8. clean repo workflow noise and local scratch artifacts
 9. extend Rust bundle normalization beyond alert-rule specs

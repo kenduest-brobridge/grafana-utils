@@ -9,6 +9,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from .dashboards.export_inventory import discover_dashboard_files
+from .dashboards.import_support import extract_dashboard_object, load_json_file
+from .dashboards.inspection_runtime import iter_dashboard_panels
+from .dashboards.variable_inspection import extract_dashboard_variables
+
 
 SQL_FAMILIES = {"mysql", "postgres", "mssql", "sql"}
 SQL_TIME_FILTER_PATTERNS = (
@@ -23,6 +28,11 @@ LOKI_BROAD_QUERY_PATTERNS = (
     '|~".*"',
     '|~".+"',
     "{}",
+)
+DATASOURCE_VARIABLE_PATTERN = re.compile(r"^\$(?:\{)?([A-Za-z0-9_:-]+)(?:\})?$")
+COMPLEXITY_TOKEN_PATTERN = re.compile(
+    r"\b(sum|avg|min|max|count|rate|increase|histogram_quantile|label_replace|topk|bottomk|join|union|group by|order by)\b",
+    flags=re.IGNORECASE,
 )
 
 
@@ -155,16 +165,133 @@ def _governance_risk_kinds(governance_document: dict[str, Any]) -> set[str]:
     return kinds
 
 
+def _extract_datasource_variable_name(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    matched = DATASOURCE_VARIABLE_PATTERN.match(text)
+    if not matched:
+        return ""
+    return str(matched.group(1) or "").strip()
+
+
+def _score_query_complexity(query: dict[str, Any]) -> int:
+    query_text = _query_text(query)
+    if not query_text:
+        return 0
+    score = 1
+    lowered = query_text.lower()
+    if len(query_text) > 80:
+        score += 1
+    if len(query_text) > 160:
+        score += 1
+    score += min(3, len(COMPLEXITY_TOKEN_PATTERN.findall(query_text)))
+    score += min(2, lowered.count("|"))
+    if "=~" in query_text or "!~" in query_text:
+        score += 1
+    if "(" in query_text and ")" in query_text:
+        score += min(2, query_text.count("(") // 2)
+    score += min(2, len(list(query.get("metrics") or [])))
+    score += min(1, len(list(query.get("measurements") or [])))
+    score += min(1, len(list(query.get("buckets") or [])))
+    return score
+
+
+def _build_dashboard_context(import_dir: Path) -> list[dict[str, Any]]:
+    dashboard_files = discover_dashboard_files(
+        import_dir,
+        "raw",
+        "prompt",
+        "export-metadata.json",
+        "folders.json",
+        "datasources.json",
+    )
+    dashboards = []
+    for dashboard_file in dashboard_files:
+        document = load_json_file(dashboard_file)
+        dashboard = extract_dashboard_object(
+            document,
+            "Dashboard payload must be a JSON object.",
+        )
+        panels = iter_dashboard_panels(dashboard.get("panels"))
+        plugin_ids = set()
+        datasource_variable_refs = set()
+        for panel in panels:
+            panel_type = str(panel.get("type") or "").strip()
+            panel_plugin_id = str(panel.get("pluginId") or "").strip()
+            if panel_type and panel_type != "row":
+                plugin_ids.add(panel_type)
+            if panel_plugin_id:
+                plugin_ids.add(panel_plugin_id)
+            for datasource_value in (panel.get("datasource"),):
+                if isinstance(datasource_value, dict):
+                    for field in ("uid", "name", "type"):
+                        variable_name = _extract_datasource_variable_name(
+                            datasource_value.get(field)
+                        )
+                        if variable_name:
+                            datasource_variable_refs.add(variable_name)
+                else:
+                    variable_name = _extract_datasource_variable_name(datasource_value)
+                    if variable_name:
+                        datasource_variable_refs.add(variable_name)
+            for target in list(panel.get("targets") or []):
+                if not isinstance(target, dict):
+                    continue
+                datasource_value = target.get("datasource")
+                if isinstance(datasource_value, dict):
+                    for field in ("uid", "name", "type"):
+                        variable_name = _extract_datasource_variable_name(
+                            datasource_value.get(field)
+                        )
+                        if variable_name:
+                            datasource_variable_refs.add(variable_name)
+                else:
+                    variable_name = _extract_datasource_variable_name(datasource_value)
+                    if variable_name:
+                        datasource_variable_refs.add(variable_name)
+        variable_rows = extract_dashboard_variables(dashboard)
+        dashboards.append(
+            {
+                "dashboardUid": str(dashboard.get("uid") or ""),
+                "dashboardTitle": str(dashboard.get("title") or ""),
+                "file": str(dashboard_file),
+                "pluginIds": sorted(plugin_ids),
+                "variables": variable_rows,
+                "variableNames": sorted(
+                    {
+                        str(row.get("name") or "").strip()
+                        for row in variable_rows
+                        if str(row.get("name") or "").strip()
+                    }
+                ),
+                "datasourceVariables": sorted(
+                    {
+                        str(row.get("name") or "").strip()
+                        for row in variable_rows
+                        if str(row.get("type") or "").strip() == "datasource"
+                        and str(row.get("name") or "").strip()
+                    }
+                ),
+                "datasourceVariableRefs": sorted(datasource_variable_refs),
+            }
+        )
+    return dashboards
+
+
 def evaluate_dashboard_governance_policy(
     policy_document: dict[str, Any],
     governance_document: dict[str, Any],
     query_document: dict[str, Any],
+    dashboard_context: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     version = int(policy_document.get("version") or 1)
     if version != 1:
         raise ValueError("Unsupported dashboard governance policy version: %s" % version)
 
     datasource_policy = dict(policy_document.get("datasources") or {})
+    plugin_policy = dict(policy_document.get("plugins") or {})
+    variable_policy = dict(policy_document.get("variables") or {})
     query_policy = dict(policy_document.get("queries") or {})
     enforcement_policy = dict(policy_document.get("enforcement") or {})
 
@@ -174,10 +301,21 @@ def evaluate_dashboard_governance_policy(
     forbid_mixed_families = _normalize_bool(
         datasource_policy.get("forbidMixedFamilies"), default=False
     )
+    allowed_plugin_ids = _normalize_string_set(plugin_policy.get("allowedPluginIds"))
+    forbid_undefined_datasource_variables = _normalize_bool(
+        variable_policy.get("forbidUndefinedDatasourceVariables"),
+        default=False,
+    )
     max_queries_per_dashboard = _normalize_optional_int(
         query_policy.get("maxQueriesPerDashboard")
     )
     max_queries_per_panel = _normalize_optional_int(query_policy.get("maxQueriesPerPanel"))
+    max_query_complexity_score = _normalize_optional_int(
+        query_policy.get("maxQueryComplexityScore")
+    )
+    max_dashboard_complexity_score = _normalize_optional_int(
+        query_policy.get("maxDashboardComplexityScore")
+    )
     forbid_select_star = _normalize_bool(query_policy.get("forbidSelectStar"), default=False)
     require_sql_time_filter = _normalize_bool(
         query_policy.get("requireSqlTimeFilter"), default=False
@@ -196,8 +334,10 @@ def evaluate_dashboard_governance_policy(
 
     violations = []
     warnings = []
+    dashboard_context = list(dashboard_context or [])
 
     dashboard_counts = {}
+    dashboard_complexity_scores = {}
     panel_counts = {}
     for query in queries:
         dashboard_counts[_dashboard_key(query)] = (
@@ -208,6 +348,10 @@ def evaluate_dashboard_governance_policy(
         family = _query_family(query)
         datasource_uid = str(query.get("datasourceUid") or "").strip()
         query_text = _query_text(query)
+        complexity_score = _score_query_complexity(query)
+        dashboard_complexity_scores[_dashboard_key(query)] = int(
+            dashboard_complexity_scores.get(_dashboard_key(query), 0)
+        ) + complexity_score
 
         if forbid_unknown and (
             not family
@@ -275,6 +419,21 @@ def evaluate_dashboard_governance_policy(
                 )
             )
 
+        if (
+            max_query_complexity_score is not None
+            and complexity_score > max_query_complexity_score
+        ):
+            violations.append(
+                _build_finding(
+                    "error",
+                    "QUERY_COMPLEXITY_TOO_HIGH",
+                    "Query complexity score %s exceeds policy maxQueryComplexityScore=%s."
+                    % (complexity_score, max_query_complexity_score),
+                    query,
+                    extra={"complexityScore": complexity_score},
+                )
+            )
+
     if max_queries_per_dashboard is not None:
         for key, query_count in sorted(dashboard_counts.items()):
             if query_count <= max_queries_per_dashboard:
@@ -315,6 +474,25 @@ def evaluate_dashboard_governance_policy(
                 )
             )
 
+    if max_dashboard_complexity_score is not None:
+        for key, complexity_score in sorted(dashboard_complexity_scores.items()):
+            if complexity_score <= max_dashboard_complexity_score:
+                continue
+            dashboard_uid, dashboard_title = key
+            violations.append(
+                _build_finding(
+                    "error",
+                    "DASHBOARD_COMPLEXITY_TOO_HIGH",
+                    "Dashboard complexity score %s exceeds policy maxDashboardComplexityScore=%s."
+                    % (complexity_score, max_dashboard_complexity_score),
+                    extra={
+                        "dashboardUid": dashboard_uid,
+                        "dashboardTitle": dashboard_title,
+                        "complexityScore": complexity_score,
+                    },
+                )
+            )
+
     if forbid_mixed_families and "mixed-datasource-dashboard" in governance_risk_kinds:
         for record in governance_document.get("riskRecords") or []:
             if not isinstance(record, dict):
@@ -333,6 +511,43 @@ def evaluate_dashboard_governance_policy(
                     },
                 )
             )
+
+    for dashboard in dashboard_context:
+        dashboard_uid = str(dashboard.get("dashboardUid") or "")
+        dashboard_title = str(dashboard.get("dashboardTitle") or "")
+        for plugin_id in list(dashboard.get("pluginIds") or []):
+            if allowed_plugin_ids and plugin_id not in allowed_plugin_ids:
+                violations.append(
+                    _build_finding(
+                        "error",
+                        "PLUGIN_NOT_ALLOWED",
+                        "Dashboard plugin %s is not allowed by policy." % plugin_id,
+                        extra={
+                            "dashboardUid": dashboard_uid,
+                            "dashboardTitle": dashboard_title,
+                            "pluginId": plugin_id,
+                        },
+                    )
+                )
+        if forbid_undefined_datasource_variables:
+            defined_names = set(dashboard.get("variableNames") or [])
+            for variable_name in list(dashboard.get("datasourceVariableRefs") or []):
+                if variable_name in defined_names:
+                    continue
+                violations.append(
+                    _build_finding(
+                        "error",
+                        "UNDEFINED_DATASOURCE_VARIABLE",
+                        "Datasource variable %s is referenced by the dashboard but not defined in templating."
+                        % variable_name,
+                        extra={
+                            "dashboardUid": dashboard_uid,
+                            "dashboardTitle": dashboard_title,
+                            "variable": variable_name,
+                            "file": str(dashboard.get("file") or ""),
+                        },
+                    )
+                )
 
     for record in governance_document.get("riskRecords") or []:
         if not isinstance(record, dict):
@@ -364,10 +579,14 @@ def evaluate_dashboard_governance_policy(
             "checkedRules": {
                 "datasourceAllowedFamilies": sorted(allowed_families),
                 "datasourceAllowedUids": sorted(allowed_uids),
+                "allowedPluginIds": sorted(allowed_plugin_ids),
                 "forbidUnknown": forbid_unknown,
                 "forbidMixedFamilies": forbid_mixed_families,
+                "forbidUndefinedDatasourceVariables": forbid_undefined_datasource_variables,
                 "maxQueriesPerDashboard": max_queries_per_dashboard,
                 "maxQueriesPerPanel": max_queries_per_panel,
+                "maxQueryComplexityScore": max_query_complexity_score,
+                "maxDashboardComplexityScore": max_dashboard_complexity_score,
                 "forbidSelectStar": forbid_select_star,
                 "requireSqlTimeFilter": require_sql_time_filter,
                 "forbidBroadLokiRegex": forbid_broad_loki_regex,
@@ -440,6 +659,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to dashboard inspect report json output.",
     )
     parser.add_argument(
+        "--import-dir",
+        default=None,
+        help=(
+            "Optional raw dashboard export directory. Provide this when policy rules need "
+            "plugin or templating-variable checks in addition to inspect JSON."
+        ),
+    )
+    parser.add_argument(
         "--output-format",
         choices=("text", "json"),
         default="text",
@@ -461,6 +688,11 @@ def run_dashboard_governance_gate(args: argparse.Namespace) -> int:
         policy_document,
         governance_document,
         query_document,
+        dashboard_context=(
+            _build_dashboard_context(Path(args.import_dir))
+            if str(args.import_dir or "").strip()
+            else None
+        ),
     )
     if args.json_output:
         Path(args.json_output).write_text(

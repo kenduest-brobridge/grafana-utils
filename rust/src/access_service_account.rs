@@ -25,6 +25,11 @@ use super::{
 type DiffPayload = (String, Map<String, Value>);
 type DiffPayloadMap = BTreeMap<String, DiffPayload>;
 
+/// Fetch one page of service-account search results from Grafana.
+///
+/// Keep page parameters explicit because Grafana truncates responses by `perpage`.
+/// Consumers should treat a returned batch smaller than the requested size as
+/// the terminal page and stop pagination immediately.
 fn list_service_accounts_with_request<F>(
     mut request_json: F,
     query: Option<&str>,
@@ -148,6 +153,8 @@ where
         }
         let batch_len = batch.len();
         rows.extend(batch);
+        // Stop when Grafana returns a short final page; API responses do not
+        // include an explicit "last page" marker in all versions.
         if batch_len < DEFAULT_PAGE_SIZE {
             break;
         }

@@ -13,6 +13,7 @@ from .common import DEFAULT_PAGE_SIZE, GrafanaError
 
 
 def add_team_delete_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Register CLI flags for staged team delete commands."""
     identity_group = parser.add_mutually_exclusive_group(required=True)
     identity_group.add_argument(
         "--team-id",
@@ -37,6 +38,7 @@ def add_team_delete_cli_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_service_account_delete_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Register CLI flags for staged service-account delete commands."""
     identity_group = parser.add_mutually_exclusive_group(required=True)
     identity_group.add_argument(
         "--service-account-id",
@@ -63,6 +65,7 @@ def add_service_account_delete_cli_args(parser: argparse.ArgumentParser) -> None
 def add_service_account_token_delete_cli_args(
     parser: argparse.ArgumentParser,
 ) -> None:
+    """Register CLI flags for staged service-account token delete commands."""
     owner_group = parser.add_mutually_exclusive_group(required=True)
     owner_group.add_argument(
         "--service-account-id",
@@ -107,6 +110,7 @@ def normalize_group_alias_argv(argv: Iterable[str]) -> list[str]:
 
 
 def validate_destructive_confirmed(args: Any, action_label: str) -> None:
+    """Enforce explicit --yes for destructive actions."""
     if not bool(getattr(args, "yes", False)):
         raise GrafanaError("%s requires --yes." % action_label)
 
@@ -117,6 +121,7 @@ def _select_exact_match(
     expected_value: str,
     item_label: str,
 ) -> dict[str, Any]:
+    """Return the single exact match or explain none/multiple results."""
     matches = []
     for item in items:
         if str(item.get(field_name) or "") == expected_value:
@@ -139,6 +144,7 @@ def resolve_team_id(
     name: Optional[str] = None,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> str:
+    """Resolve a team identifier by explicit id or exact name lookup."""
     if team_id is not None and team_id != "":
         return str(team_id)
     if not name:
@@ -158,6 +164,7 @@ def resolve_service_account_id(
     name: Optional[str] = None,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> str:
+    """Resolve a service-account identifier by explicit id or exact name lookup."""
     if service_account_id is not None and service_account_id != "":
         return str(service_account_id)
     if not name:
@@ -178,6 +185,7 @@ def resolve_service_account_token_record(
     token_id: Optional[Any] = None,
     token_name: Optional[str] = None,
 ) -> dict[str, Any]:
+    """Resolve one token record by id or exact name, with clear validation."""
     if token_id is not None and token_id != "":
         return _select_exact_match(
             token_items,
@@ -198,6 +206,7 @@ def resolve_service_account_token_record(
 
 
 def build_team_delete_request(team_id: Any) -> dict[str, str]:
+    """Build a URL-safe DELETE request payload for one team."""
     quoted_team_id = parse.quote(str(team_id), safe="")
     return {
         "method": "DELETE",
@@ -208,6 +217,7 @@ def build_team_delete_request(team_id: Any) -> dict[str, str]:
 def build_service_account_delete_request(
     service_account_id: Any,
 ) -> dict[str, str]:
+    """Build a URL-safe DELETE request payload for one service account."""
     quoted_service_account_id = parse.quote(str(service_account_id), safe="")
     return {
         "method": "DELETE",
@@ -219,6 +229,7 @@ def build_service_account_token_delete_request(
     service_account_id: Any,
     token_id: Any,
 ) -> dict[str, str]:
+    """Build a URL-safe DELETE request payload for one service-account token."""
     quoted_service_account_id = parse.quote(str(service_account_id), safe="")
     quoted_token_id = parse.quote(str(token_id), safe="")
     return {

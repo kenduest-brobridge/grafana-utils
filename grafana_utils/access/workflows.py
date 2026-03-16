@@ -57,6 +57,10 @@ from .pending_cli_staging import (
 
 
 def validate_user_list_auth(args, auth_mode):
+    """Validate auth mode before listing users.
+
+    Global scope and team-augmented list flows require Basic auth in Grafana paths.
+    """
     if args.scope == "global" and auth_mode != "basic":
         raise GrafanaError(
             "User list with --scope global does not support API token auth. Use "
@@ -70,6 +74,7 @@ def validate_user_list_auth(args, auth_mode):
 
 
 def validate_org_auth(auth_mode):
+    """Validate org auth for operations where API-token auth is not guaranteed."""
     if auth_mode != "basic":
         raise GrafanaError(
             "Organization commands do not support API token auth. Use Grafana "
@@ -78,6 +83,7 @@ def validate_org_auth(auth_mode):
 
 
 def validate_user_add_auth(auth_mode):
+    """Require Basic auth for user creation, where session-style checks may apply."""
     if auth_mode != "basic":
         raise GrafanaError(
             "User add does not support API token auth. Use Grafana "
@@ -114,6 +120,7 @@ def validate_user_modify_args(args):
 
 
 def validate_user_modify_auth(auth_mode):
+    """Require Basic auth for user mutation flows (metadata and credentials)."""
     if auth_mode != "basic":
         raise GrafanaError(
             "User modify does not support API token auth. Use Grafana "
@@ -122,11 +129,13 @@ def validate_user_modify_auth(auth_mode):
 
 
 def validate_user_delete_args(args):
+    """Guard destructive user-delete by requiring explicit `--yes` confirmation."""
     if not args.yes:
         raise GrafanaError("User delete requires --yes.")
 
 
 def validate_user_delete_auth(args, auth_mode):
+    """Validate user-delete auth, with explicit handling for global scope."""
     if args.scope == "global" and auth_mode != "basic":
         raise GrafanaError(
             "User delete with --scope global does not support API token auth. Use "
@@ -135,6 +144,7 @@ def validate_user_delete_auth(args, auth_mode):
 
 
 def validate_team_modify_args(args):
+    """Require at least one team membership/admin mutation flag."""
     if not (
         args.add_member
         or args.remove_member
@@ -148,14 +158,17 @@ def validate_team_modify_args(args):
 
 
 def validate_team_delete_auth(_auth_mode):
+    """Validate team delete auth constraints for current supported versions."""
     return None
 
 
 def validate_service_account_delete_auth(_auth_mode):
+    """Validate service-account delete auth constraints."""
     return None
 
 
 def validate_service_account_token_delete_auth(_auth_mode):
+    """Validate service-account token delete auth constraints."""
     return None
 
 

@@ -78,6 +78,7 @@ pub enum GroupCommandStage {
     Delete(TeamDeleteArgs),
 }
 
+/// Ensure a destructive command only proceeds with explicit confirmation.
 fn validate_confirmation(yes: bool, noun: &str) -> Result<()> {
     if yes {
         Ok(())
@@ -86,10 +87,12 @@ fn validate_confirmation(yes: bool, noun: &str) -> Result<()> {
     }
 }
 
+/// Render one deletion result as stable pretty JSON.
 fn render_single_object_json(object: &Map<String, Value>) -> Result<String> {
     serde_json::to_string_pretty(&Value::Object(object.clone())).map_err(Into::into)
 }
 
+/// Validate one and only one identity selector was provided.
 fn validate_exactly_one_identity(
     id_present: bool,
     name_present: bool,
@@ -107,6 +110,7 @@ fn validate_exactly_one_identity(
     }
 }
 
+/// Validate service-account token delete identity and token selection constraints.
 fn validate_token_identity(args: &ServiceAccountTokenDeleteArgs) -> Result<()> {
     validate_exactly_one_identity(
         args.service_account_id.is_some(),
@@ -125,6 +129,7 @@ fn validate_token_identity(args: &ServiceAccountTokenDeleteArgs) -> Result<()> {
     }
 }
 
+/// List one page of teams for staged delete resolution.
 fn list_teams_with_request<F>(
     mut request_json: F,
     query: Option<&str>,
@@ -158,6 +163,7 @@ where
     }
 }
 
+/// Resolve a team by exact name match from the staged list endpoint.
 fn lookup_team_by_name<F>(mut request_json: F, name: &str) -> Result<Map<String, Value>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -169,6 +175,7 @@ where
         .ok_or_else(|| message(format!("Grafana team lookup did not find {name}.")))
 }
 
+/// Fetch one team record for staged delete confirmation output.
 fn get_team_with_request<F>(mut request_json: F, team_id: &str) -> Result<Map<String, Value>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -183,6 +190,7 @@ where
     )
 }
 
+/// Call the team DELETE endpoint and return Grafana's response payload.
 fn delete_team_api_with_request<F>(mut request_json: F, team_id: &str) -> Result<Map<String, Value>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -197,6 +205,7 @@ where
     )
 }
 
+/// Merge input team data with API response text into a stable result row.
 fn team_delete_result(
     team: &Map<String, Value>,
     response: &Map<String, Value>,
@@ -228,6 +237,7 @@ fn team_delete_result(
     ])
 }
 
+/// Build a compact human summary for team delete output.
 fn team_delete_summary_line(result: &Map<String, Value>) -> String {
     let mut parts = vec![
         format!("teamId={}", map_get_text(result, "teamId")),
@@ -244,6 +254,7 @@ fn team_delete_summary_line(result: &Map<String, Value>) -> String {
     parts.join(" ")
 }
 
+/// Delete one team after resolving identity and confirmation constraints.
 pub(crate) fn delete_team_with_request<F>(
     mut request_json: F,
     args: &TeamDeleteArgs,
@@ -274,6 +285,7 @@ where
     Ok(0)
 }
 
+/// List one page of service accounts for staged token/account deletion.
 fn list_service_accounts_with_request<F>(
     mut request_json: F,
     query: Option<&str>,
@@ -313,6 +325,7 @@ where
     }
 }
 
+/// Resolve a service account by exact name before delete operations.
 fn lookup_service_account_by_name<F>(mut request_json: F, name: &str) -> Result<Map<String, Value>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -329,6 +342,7 @@ where
         })
 }
 
+/// Fetch one service account record for id-backed delete workflows.
 fn get_service_account_with_request<F>(
     mut request_json: F,
     service_account_id: &str,
@@ -348,6 +362,7 @@ where
     )
 }
 
+/// Delete one service account and return Grafana's response payload.
 fn delete_service_account_api_with_request<F>(
     mut request_json: F,
     service_account_id: &str,
@@ -367,6 +382,7 @@ where
     )
 }
 
+/// Merge delete target info with response message for stable reporting.
 fn service_account_delete_result(
     service_account: &Map<String, Value>,
     response: &Map<String, Value>,
@@ -394,6 +410,7 @@ fn service_account_delete_result(
     row
 }
 
+/// Build a compact one-line summary for service-account delete output.
 fn service_account_delete_summary_line(result: &Map<String, Value>) -> String {
     let mut parts = vec![
         format!(
@@ -417,6 +434,7 @@ fn service_account_delete_summary_line(result: &Map<String, Value>) -> String {
     parts.join(" ")
 }
 
+/// Delete a service account after identity checks and optional JSON output.
 pub(crate) fn delete_service_account_with_request<F>(
     mut request_json: F,
     args: &ServiceAccountDeleteArgs,
@@ -454,6 +472,7 @@ where
     Ok(0)
 }
 
+/// List tokens for one service account to support exact-token selection.
 fn list_service_account_tokens_with_request<F>(
     mut request_json: F,
     service_account_id: &str,
@@ -484,6 +503,7 @@ where
     }
 }
 
+/// Find one token by exact name for staged token deletion workflows.
 fn lookup_service_account_token_by_name<F>(
     mut request_json: F,
     service_account_id: &str,
@@ -503,6 +523,7 @@ where
         })
 }
 
+/// Delete one token from a service account and return API response.
 fn delete_service_account_token_api_with_request<F>(
     mut request_json: F,
     service_account_id: &str,
@@ -523,6 +544,7 @@ where
     )
 }
 
+/// Build a stable row with resolved ids and deletion message.
 fn service_account_token_delete_result(
     service_account: &Map<String, Value>,
     token: &Map<String, Value>,
@@ -570,6 +592,7 @@ fn service_account_token_delete_result(
     ])
 }
 
+/// Build a compact one-line summary for token delete output.
 fn service_account_token_delete_summary_line(result: &Map<String, Value>) -> String {
     [
         format!(
@@ -587,6 +610,7 @@ fn service_account_token_delete_summary_line(result: &Map<String, Value>) -> Str
     .join(" ")
 }
 
+/// Delete one service-account token with mutually-exclusive identity checks.
 pub(crate) fn delete_service_account_token_with_request<F>(
     mut request_json: F,
     args: &ServiceAccountTokenDeleteArgs,

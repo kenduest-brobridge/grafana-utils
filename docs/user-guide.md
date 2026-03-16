@@ -1380,6 +1380,7 @@ python3 scripts/check_dashboard_governance.py \
   --policy examples/dashboard-governance-policy.json \
   --governance governance.json \
   --queries queries.json \
+  --import-dir ./dashboards/raw \
   --json-output governance-check.json
 ```
 
@@ -1387,7 +1388,10 @@ python3 scripts/check_dashboard_governance.py \
    - datasource family or uid allowlists
    - unknown datasource identity
    - mixed-datasource dashboards
+   - panel plugin allowlists
+   - undefined datasource variables referenced by dashboard panels
    - query count thresholds
+   - query or dashboard complexity thresholds
    - SQL `select *`
    - missing SQL Grafana time filters
    - broad Loki selectors or regexes

@@ -1336,6 +1336,7 @@ python3 scripts/check_dashboard_governance.py \
   --policy examples/dashboard-governance-policy.json \
   --governance governance.json \
   --queries queries.json \
+  --import-dir ./dashboards/raw \
   --json-output governance-check.json
 ```
 
@@ -1343,7 +1344,10 @@ python3 scripts/check_dashboard_governance.py \
    - 不在 allowlist 的 datasource family / uid
    - 無法識別的 datasource
    - mixed-datasource dashboard
+   - 不在 allowlist 的 panel plugin
+   - dashboard panel / query 引用但未定義的 datasource 變數
    - dashboard / panel query 數超標
+   - query / dashboard complexity 分數超標
    - SQL `select *`
    - 缺少 Grafana SQL time filter
    - Loki 過寬 selector / regex

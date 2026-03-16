@@ -570,13 +570,18 @@ Dashboard governance gate notes:
   - one policy JSON such as `examples/dashboard-governance-policy.json`
   - one governance report from `dashboard inspect-export --report governance-json`
   - one flat query report from `dashboard inspect-export --report json`
+  - optionally one raw export directory through `--import-dir` when policy rules need panel plugin ids or datasource-variable-definition checks
 - the first-pass blocking rules are:
   - datasource family allowlist
   - datasource uid allowlist
   - unknown datasource identity
   - mixed-datasource dashboards reported by governance risk records
+  - panel plugin allowlist
+  - undefined datasource variables referenced in panel/query datasource fields
   - max queries per dashboard
   - max queries per panel
+  - max query complexity score
+  - max dashboard complexity score
   - SQL `select *`
   - missing SQL Grafana time-filter macros
   - broad Loki selectors and regexes
@@ -598,6 +603,7 @@ python3 scripts/check_dashboard_governance.py \
   --policy examples/dashboard-governance-policy.json \
   --governance governance.json \
   --queries queries.json \
+  --import-dir ./dashboards/raw \
   --json-output governance-check.json
 ```
 
