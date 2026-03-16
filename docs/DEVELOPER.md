@@ -76,6 +76,16 @@ Commit message default for this repo:
 - `scripts/build-rust-linux-amd64-zig.sh`: non-Docker Linux `amd64` Rust build helper using local `zig` and `cargo-zigbuild`
 - `scripts/seed-grafana-sample-data.sh`: idempotent developer seed helper for sample orgs, datasources, folders, and dashboards in a running Grafana
 - `scripts/test-rust-live-grafana.sh`: Docker-backed Grafana smoke test for the Rust CLIs
+- `scripts/set-version.sh`: shared maintainer helper that keeps `VERSION`, `pyproject.toml`, `rust/Cargo.toml`, and the root package entry in `rust/Cargo.lock` aligned for preview and release bumps
+
+## Version Workflow
+
+- `VERSION` is the checked-in maintainer version source used by `scripts/set-version.sh`.
+- Use `make print-version` to inspect the current `VERSION`, Python package version, Rust crate version, and Rust lockfile package version together.
+- Use `make sync-version` after editing `VERSION` manually to push that version into `pyproject.toml`, `rust/Cargo.toml`, and `rust/Cargo.lock`.
+- Use `make set-release-version VERSION=X.Y.Z` when preparing `main` for a release version.
+- Use `make set-dev-version VERSION=X.Y.Z DEV_ITERATION=N` when preparing `dev` for a preview version such as `X.Y.Z.devN` / `X.Y.Z-dev.N`.
+- Release merges can still conflict on version lines because `dev` and `main` intentionally carry different version forms, but the recovery path is now one version command instead of hand-editing three files.
 
 ### Python CLI Boundaries
 

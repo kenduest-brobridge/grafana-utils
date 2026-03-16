@@ -1,5 +1,13 @@
 # ai-changes.md
 
+## 2026-03-17 - Formalize Version Sync Workflow
+- Summary: Promoted the existing but stale version helper into the supported maintainer workflow. `VERSION` now matches the current release line, `scripts/set-version.sh` now updates `pyproject.toml`, `rust/Cargo.toml`, and the root package entry in `rust/Cargo.lock`, and the root `Makefile` now exposes `print-version`, `sync-version`, `set-release-version`, and `set-dev-version` targets so release and preview bumps no longer require hand-editing multiple files.
+- Tests: Added focused Python coverage for the version script using isolated temporary files and added packaging assertions for the committed version workflow files and make targets.
+- Test Run: `python3 -m unittest -v tests/test_python_packaging.py tests/test_python_version_script.py`
+- Validation: Confirmed the new script tests pass for release bumps, preview bumps from `VERSION`, and dry-run mode, and confirmed the packaging tests see the committed `VERSION`, `scripts/set-version.sh`, and the new `Makefile` targets.
+- Impact: `VERSION`, `scripts/set-version.sh`, `Makefile`, `tests/test_python_packaging.py`, `tests/test_python_version_script.py`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. This reduces version-edit drift but does not eliminate merge conflicts by itself because `dev` and `main` still intentionally carry different version strings; maintainers should still combine this workflow with `git rerere` or a consistent release-merge ritual.
+
 ## 2026-03-16 - Audit CLI Help Examples And Grouped Parameters
 - Summary: Started a command-surface audit focused on help usability rather than execution logic. Python `access` now has root and per-subcommand `Examples:` blocks, Python `alert` now documents examples on leaf subcommands instead of only the root parser, and Python `sync` now documents root examples plus grouped input/runtime/output/apply-control sections on the key planning/apply commands. Rust `access`, `datasource`, and `sync` roots now also advertise real operator examples, and Rust access auth/transport options now render under grouped help headings instead of one flat flag list.
 - Tests: Added focused Python help assertions for access root/help-heavy mutation commands, alert import/list subcommands, and sync root/apply grouping. Added focused Rust help assertions for access, datasource, and sync root examples.

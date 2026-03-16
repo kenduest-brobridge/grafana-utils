@@ -5,6 +5,13 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-17 - Task: Formalize Version Sync Workflow
+- State: Done
+- Scope: `VERSION`, `scripts/set-version.sh`, `Makefile`, `tests/test_python_packaging.py`, `tests/test_python_version_script.py`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The repo already had a checked-in `VERSION` file and an unpublished `scripts/set-version.sh`, but the file was stale, the script only updated `pyproject.toml` and `rust/Cargo.toml`, `Makefile` exposed no version targets, and release merges still left maintainers hand-fixing `pyproject.toml`, `rust/Cargo.toml`, and `rust/Cargo.lock`.
+- Current Update: Updated `VERSION` to the current release line, taught `scripts/set-version.sh` to sync `rust/Cargo.lock` and to accept test-time path overrides, exposed `print-version`, `sync-version`, `set-release-version`, and `set-dev-version` in `Makefile`, and added focused Python tests for the script plus packaging assertions for the new workflow files and targets.
+- Result: The repo now has one documented version-sync path for preview and release bumps, and the lockfile package version no longer drifts from `pyproject.toml` / `rust/Cargo.toml` during scripted version changes.
+
 ## 2026-03-16 - Task: Wire Live Sync Fetch And Apply Across Python And Rust
 - State: Done
 - Scope: `grafana_utils/sync_cli.py`, `tests/test_python_sync_cli.py`, `rust/src/sync.rs`, `rust/src/cli.rs`, `rust/src/sync_cli_rust_tests.rs`, `rust/src/cli_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

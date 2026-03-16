@@ -2,10 +2,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-VERSION_FILE="${REPO_ROOT}/VERSION"
-PYPROJECT_TOML="${REPO_ROOT}/pyproject.toml"
-CARGO_TOML="${REPO_ROOT}/rust/Cargo.toml"
+DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="${REPO_ROOT_OVERRIDE:-${DEFAULT_REPO_ROOT}}"
+VERSION_FILE="${VERSION_FILE_OVERRIDE:-${REPO_ROOT}/VERSION}"
+PYPROJECT_TOML="${PYPROJECT_TOML_OVERRIDE:-${REPO_ROOT}/pyproject.toml}"
+CARGO_TOML="${CARGO_TOML_OVERRIDE:-${REPO_ROOT}/rust/Cargo.toml}"
+CARGO_LOCK="${CARGO_LOCK_OVERRIDE:-${REPO_ROOT}/rust/Cargo.lock}"
+CARGO_LOCK_PACKAGE="${CARGO_LOCK_PACKAGE_OVERRIDE:-grafana-utils-rust}"
 
 usage() {
   cat <<'EOF'
@@ -19,7 +22,7 @@ Usage:
   bash ./scripts/set-version.sh --version 0.2.9.dev1 --dry-run
 
 Options:
-  --sync-from-file Sync pyproject.toml and rust/Cargo.toml from ./VERSION.
+  --sync-from-file Sync pyproject.toml, rust/Cargo.toml, and rust/Cargo.lock from ./VERSION.
   --print-current  Print the current Python and Rust package versions.
   --version VALUE  Set both source versions from one version string.
                    Accepts Python dev form (X.Y.Z.devN), Rust dev form
@@ -38,6 +41,26 @@ rust_version() {
   sed -n 's/^version = "\(.*\)"$/\1/p' "${CARGO_TOML}" | head -n 1
 }
 
+lock_version() {
+  python3 - <<'PY' "${CARGO_LOCK}" "${CARGO_LOCK_PACKAGE}"
+import re
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+package_name = sys.argv[2]
+content = path.read_text(encoding="utf-8")
+match = re.search(
+    r'\[\[package\]\]\nname = "' + re.escape(package_name) + r'"\nversion = "([^"]+)"',
+    content,
+    re.MULTILINE,
+)
+if not match:
+    raise SystemExit(f"Could not find package {package_name!r} in {path}.")
+print(match.group(1))
+PY
+}
+
 canonical_version() {
   tr -d '[:space:]' < "${VERSION_FILE}"
 }
@@ -46,7 +69,30 @@ replace_version_line() {
   local file="$1"
   local expected="$2"
   local replacement="$3"
-  perl -0pi -e "s/version = \"\Q${expected}\E\"/version = \"${replacement}\"/" "${file}"
+  EXPECTED_VERSION="${expected}" REPLACEMENT_VERSION="${replacement}" \
+    perl -0pi -e '
+      my $expected = $ENV{EXPECTED_VERSION};
+      my $replacement = $ENV{REPLACEMENT_VERSION};
+      my $count = s/version = "\Q$expected\E"/version = "$replacement"/;
+      if (!$count) {
+        die "Failed to update version line in $ARGV\n";
+      }
+    ' "${file}"
+}
+
+replace_cargo_lock_version() {
+  local expected="$1"
+  local replacement="$2"
+  CARGO_LOCK_PACKAGE_NAME="${CARGO_LOCK_PACKAGE}" EXPECTED_VERSION="${expected}" REPLACEMENT_VERSION="${replacement}" \
+    perl -0pi -e '
+      my $package_name = $ENV{CARGO_LOCK_PACKAGE_NAME};
+      my $expected = $ENV{EXPECTED_VERSION};
+      my $replacement = $ENV{REPLACEMENT_VERSION};
+      my $count = s/(\[\[package\]\]\nname = "\Q$package_name\E"\nversion = ")\Q$expected\E(")/${1}$replacement$2/s;
+      if (!$count) {
+        die "Failed to update Cargo.lock package version for $package_name in $ARGV\n";
+      }
+    ' "${CARGO_LOCK}"
 }
 
 derive_versions() {
@@ -120,6 +166,7 @@ if [[ "${PRINT_CURRENT}" -eq 1 ]]; then
   echo "Canonical: $(canonical_version)"
   echo "Python:    $(python_version)"
   echo "Rust:      $(rust_version)"
+  echo "Lock:      $(lock_version)"
   exit 0
 fi
 
@@ -148,11 +195,13 @@ fi
 
 CURRENT_PYTHON_VERSION="$(python_version)"
 CURRENT_RUST_VERSION="$(rust_version)"
+CURRENT_LOCK_VERSION="$(lock_version)"
 
 echo "Current versions:"
 echo "  Canonical: $(canonical_version)"
 echo "  Python: ${CURRENT_PYTHON_VERSION}"
 echo "  Rust:   ${CURRENT_RUST_VERSION}"
+echo "  Lock:   ${CURRENT_LOCK_VERSION}"
 echo "Target versions:"
 echo "  Python: ${DERIVED_PYTHON_VERSION}"
 echo "  Rust:   ${DERIVED_RUST_VERSION}"
@@ -167,8 +216,10 @@ fi
 
 replace_version_line "${PYPROJECT_TOML}" "${CURRENT_PYTHON_VERSION}" "${DERIVED_PYTHON_VERSION}"
 replace_version_line "${CARGO_TOML}" "${CURRENT_RUST_VERSION}" "${DERIVED_RUST_VERSION}"
+replace_cargo_lock_version "${CURRENT_LOCK_VERSION}" "${DERIVED_RUST_VERSION}"
 
 echo "Updated:"
 echo "  ${VERSION_FILE}"
 echo "  ${PYPROJECT_TOML}"
 echo "  ${CARGO_TOML}"
+echo "  ${CARGO_LOCK}"
