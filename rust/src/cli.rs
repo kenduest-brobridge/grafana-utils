@@ -1,25 +1,24 @@
 //! Unified CLI dispatcher for Rust entrypoints.
 //!
 //! Purpose:
-//! - Own only command topology, legacy alias normalization, and domain dispatch.
-//! - Keep `grafana-util` and compatibility aliases in one place.
+//! - Own only command topology and domain dispatch.
+//! - Keep `grafana-util` command surface in one place.
 //! - Route to domain runners (`dashboard`, `alert`, `access`, `datasource`) without
 //!   carrying transport/request behavior.
 //!
 //! Flow:
 //! - Parse into `CliArgs` via Clap.
-//! - Normalize legacy and namespaced command forms into one domain command enum.
+//! - Normalize namespaced command forms into one domain command enum.
 //! - Delegate execution to the selected domain runner function.
 //!
 //! Caveats:
 //! - Do not add domain logic or HTTP transport details here.
-//! - Keep compatibility aliases minimal so deprecation windows are easy to track.
+//! - Keep help output canonical-first so users discover formal commands.
 use clap::{Parser, Subcommand};
 
 use crate::access::{run_access_cli, AccessCliArgs};
 use crate::alert::{
-    normalize_alert_group_command, normalize_alert_namespace_args, run_alert_cli, AlertCliArgs,
-    AlertDiffArgs, AlertExportArgs, AlertImportArgs, AlertListArgs, AlertNamespaceArgs,
+    normalize_alert_namespace_args, run_alert_cli, AlertCliArgs, AlertNamespaceArgs,
 };
 use crate::common::Result;
 use crate::dashboard::{
@@ -27,30 +26,22 @@ use crate::dashboard::{
     InspectExportArgs, InspectLiveArgs, ListArgs, ListDataSourcesArgs,
 };
 use crate::datasource::{run_datasource_cli, DatasourceGroupCommand};
+use crate::sync::{run_sync_cli, SyncGroupCommand};
 
-const UNIFIED_HELP_TEXT: &str = "Examples:\n\n  Export dashboards:\n    grafana-util export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n  Export alerting resources through the unified binary:\n    grafana-util alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n\n  List org users through the unified binary:\n    grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n\nCompatibility shim remains available:\n  grafana-access-utils ...";
+const UNIFIED_HELP_TEXT: &str = "Examples:\n\n  Export dashboards:\n    grafana-util dashboard export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n  Export alerting resources through the unified binary:\n    grafana-util alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n\n  List org users through the unified binary:\n    grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n\n  Build a local staged sync preflight document:\n    grafana-util sync preflight --desired-file ./desired.json --availability-file ./availability.json\n\nCompatibility shim remains available:\n  grafana-access-utils ...";
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum DashboardGroupCommand {
-    #[command(
-        visible_alias = "list-dashboard",
-        about = "List dashboard summaries without writing export files."
-    )]
+    #[command(about = "List dashboard summaries without writing export files.")]
     List(ListArgs),
     #[command(
         name = "list-data-sources",
-        about = "Compatibility command for datasource inventory; prefer `grafana-util datasource list`."
+        about = "List datasource inventory under the dashboard command surface."
     )]
     ListDataSources(ListDataSourcesArgs),
-    #[command(
-        visible_alias = "export-dashboard",
-        about = "Export dashboards to raw/ and prompt/ JSON files."
-    )]
+    #[command(about = "Export dashboards to raw/ and prompt/ JSON files.")]
     Export(ExportArgs),
-    #[command(
-        visible_alias = "import-dashboard",
-        about = "Import dashboard JSON files through the Grafana API."
-    )]
+    #[command(about = "Import dashboard JSON files through the Grafana API.")]
     Import(ImportArgs),
     #[command(about = "Compare local raw dashboard files against live Grafana dashboards.")]
     Diff(DiffArgs),
@@ -62,72 +53,32 @@ pub enum DashboardGroupCommand {
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum UnifiedCommand {
-    #[command(about = "Run dashboard export, list, import, and diff workflows.")]
+    #[command(
+        about = "Run dashboard export, list, import, and diff workflows.",
+        visible_alias = "db"
+    )]
     Dashboard {
         #[command(subcommand)]
         command: DashboardGroupCommand,
     },
-    #[command(about = "Run datasource list, export, import, and diff workflows.")]
+    #[command(
+        about = "Run datasource list, export, import, and diff workflows.",
+        visible_alias = "ds"
+    )]
     Datasource {
         #[command(subcommand)]
         command: DatasourceGroupCommand,
     },
-    #[command(about = "Compatibility direct form; prefer `grafana-util dashboard list`.")]
-    List(ListArgs),
     #[command(
-        name = "list-data-sources",
-        about = "Compatibility direct form; prefer `grafana-util datasource list`."
+        about = "Run local/document-only sync summary and preflight workflows.",
+        visible_alias = "sy"
     )]
-    ListDataSources(ListDataSourcesArgs),
-    #[command(about = "Compatibility direct form; prefer `grafana-util dashboard export`.")]
-    Export(ExportArgs),
-    #[command(about = "Compatibility direct form; prefer `grafana-util dashboard import`.")]
-    Import(ImportArgs),
-    #[command(about = "Compatibility direct form; prefer `grafana-util dashboard diff`.")]
-    Diff(DiffArgs),
-    #[command(
-        about = "Compatibility direct form; prefer `grafana-util dashboard inspect-export`."
-    )]
-    InspectExport(InspectExportArgs),
-    #[command(about = "Compatibility direct form; prefer `grafana-util dashboard inspect-live`.")]
-    InspectLive(InspectLiveArgs),
+    Sync {
+        #[command(subcommand)]
+        command: SyncGroupCommand,
+    },
     #[command(about = "Export, import, or diff Grafana alerting resources.")]
     Alert(AlertNamespaceArgs),
-    #[command(
-        name = "export-alert",
-        about = "Compatibility direct form; prefer `grafana-util alert export`."
-    )]
-    ExportAlert(AlertExportArgs),
-    #[command(
-        name = "import-alert",
-        about = "Compatibility direct form; prefer `grafana-util alert import`."
-    )]
-    ImportAlert(AlertImportArgs),
-    #[command(
-        name = "diff-alert",
-        about = "Compatibility direct form; prefer `grafana-util alert diff`."
-    )]
-    DiffAlert(AlertDiffArgs),
-    #[command(
-        name = "list-alert-rules",
-        about = "Compatibility direct form; prefer `grafana-util alert list-rules`."
-    )]
-    ListAlertRules(AlertListArgs),
-    #[command(
-        name = "list-alert-contact-points",
-        about = "Compatibility direct form; prefer `grafana-util alert list-contact-points`."
-    )]
-    ListAlertContactPoints(AlertListArgs),
-    #[command(
-        name = "list-alert-mute-timings",
-        about = "Compatibility direct form; prefer `grafana-util alert list-mute-timings`."
-    )]
-    ListAlertMuteTimings(AlertListArgs),
-    #[command(
-        name = "list-alert-templates",
-        about = "Compatibility direct form; prefer `grafana-util alert list-templates`."
-    )]
-    ListAlertTemplates(AlertListArgs),
     #[command(about = "List and manage Grafana users, teams, and service accounts.")]
     Access(AccessCliArgs),
 }
@@ -178,61 +129,26 @@ fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
 
 // Centralized command fan-out before invoking domain runners.
 // Every unified CLI variant is normalized into one of dashboard/alert/datasource/access runners here.
-fn dispatch_with_handlers<FD, FS, FA, FX>(
+fn dispatch_with_handlers<FD, FS, FY, FA, FX>(
     args: CliArgs,
     mut run_dashboard: FD,
     mut run_datasource: FS,
+    mut run_sync: FY,
     mut run_alert: FA,
     mut run_access: FX,
 ) -> Result<()>
 where
     FD: FnMut(DashboardCliArgs) -> Result<()>,
     FS: FnMut(DatasourceGroupCommand) -> Result<()>,
+    FY: FnMut(SyncGroupCommand) -> Result<()>,
     FA: FnMut(AlertCliArgs) -> Result<()>,
     FX: FnMut(AccessCliArgs) -> Result<()>,
 {
     match args.command {
         UnifiedCommand::Dashboard { command } => run_dashboard(wrap_dashboard_group(command)),
         UnifiedCommand::Datasource { command } => run_datasource(command),
-        UnifiedCommand::List(inner) => run_dashboard(wrap_dashboard(DashboardCommand::List(inner))),
-        UnifiedCommand::ListDataSources(inner) => {
-            run_dashboard(wrap_dashboard(DashboardCommand::ListDataSources(inner)))
-        }
-        UnifiedCommand::Export(inner) => {
-            run_dashboard(wrap_dashboard(DashboardCommand::Export(inner)))
-        }
-        UnifiedCommand::Import(inner) => {
-            run_dashboard(wrap_dashboard(DashboardCommand::Import(inner)))
-        }
-        UnifiedCommand::Diff(inner) => run_dashboard(wrap_dashboard(DashboardCommand::Diff(inner))),
-        UnifiedCommand::InspectExport(inner) => {
-            run_dashboard(wrap_dashboard(DashboardCommand::InspectExport(inner)))
-        }
-        UnifiedCommand::InspectLive(inner) => {
-            run_dashboard(wrap_dashboard(DashboardCommand::InspectLive(inner)))
-        }
+        UnifiedCommand::Sync { command } => run_sync(command),
         UnifiedCommand::Alert(inner) => run_alert(normalize_alert_namespace_args(inner)),
-        UnifiedCommand::ExportAlert(inner) => run_alert(normalize_alert_group_command(
-            crate::alert::AlertGroupCommand::Export(inner),
-        )),
-        UnifiedCommand::ImportAlert(inner) => run_alert(normalize_alert_group_command(
-            crate::alert::AlertGroupCommand::Import(inner),
-        )),
-        UnifiedCommand::DiffAlert(inner) => run_alert(normalize_alert_group_command(
-            crate::alert::AlertGroupCommand::Diff(inner),
-        )),
-        UnifiedCommand::ListAlertRules(inner) => run_alert(normalize_alert_group_command(
-            crate::alert::AlertGroupCommand::ListRules(inner),
-        )),
-        UnifiedCommand::ListAlertContactPoints(inner) => run_alert(normalize_alert_group_command(
-            crate::alert::AlertGroupCommand::ListContactPoints(inner),
-        )),
-        UnifiedCommand::ListAlertMuteTimings(inner) => run_alert(normalize_alert_group_command(
-            crate::alert::AlertGroupCommand::ListMuteTimings(inner),
-        )),
-        UnifiedCommand::ListAlertTemplates(inner) => run_alert(normalize_alert_group_command(
-            crate::alert::AlertGroupCommand::ListTemplates(inner),
-        )),
         UnifiedCommand::Access(inner) => run_access(inner),
     }
 }
@@ -246,6 +162,7 @@ pub fn run_cli(args: CliArgs) -> Result<()> {
         args,
         run_dashboard_cli,
         run_datasource_cli,
+        run_sync_cli,
         run_alert_cli,
         run_access_cli,
     )

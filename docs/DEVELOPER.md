@@ -58,7 +58,7 @@ Commit message default for this repo:
 - `rust/src/dashboard_export.rs`: Rust dashboard export pathing and multi-org export orchestration
 - `rust/src/dashboard_prompt.rs`: Rust dashboard prompt-export datasource resolution and template-rewrite logic
 - `grafana_utils/http_transport.py`: shared HTTP transport adapters and transport selection
-- `grafana_utils/unified_cli.py`: unified Python entrypoint that dispatches dashboard, datasource, alert, and access workflows
+- `grafana_utils/unified_cli.py`: unified Python entrypoint that dispatches canonical namespaced dashboard, datasource, alert, access, and sync workflows
 - `grafana_utils/__main__.py`: source-tree module entrypoint for the packaged unified CLI
 - `rust/src/cli.rs`: unified Rust entrypoint that dispatches dashboard, alert, and access workflows
 - `rust/src/bin/grafana-access-utils.rs`: thin Rust compatibility binary for the access-management CLI

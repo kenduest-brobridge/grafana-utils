@@ -28,8 +28,8 @@ CLI notes:
 
 - `grafana-util` is the primary unified CLI.
 - `grafana-access-utils` is a compatibility launcher for access workflows.
-- Legacy direct commands such as `list-dashboard`, `export-dashboard`, and `export-alert` still exist for compatibility, but new automation should use the modern namespaced subcommand layout.
-- `dashboard list-data-sources` also remains available for compatibility, but new datasource inventory workflows should use `datasource list`.
+- Use the namespaced `grafana-util <domain> <command>` layout throughout this guide.
+- `dashboard list-data-sources` remains available under the dashboard command surface, but new datasource inventory workflows should prefer `datasource list`.
 
 2) Global Options
 -----------------
@@ -97,7 +97,7 @@ Authentication exclusivity rules:
 3) Dashboard Commands
 ---------------------
 
-### 3.1 `dashboard export` (legacy `export-dashboard`)
+### 3.1 `dashboard export`
 
 Purpose: export live dashboards into `raw/` and `prompt/` variants.
 
@@ -134,7 +134,7 @@ How to read it:
 - `prompt` is the UI-import-friendly variant.
 - The final summary is the fastest check for missing dashboards.
 
-### 3.2 `dashboard list` (legacy `list-dashboard`)
+### 3.2 `dashboard list`
 
 Purpose: list live dashboards without writing files.
 
@@ -215,7 +215,7 @@ Preferred path:
 Preferred path:
 - Use section `5.1 datasource list` for new automation, saved examples, and operator documentation.
 
-### 3.4 `dashboard import` (legacy `import-dashboard`)
+### 3.4 `dashboard import`
 
 Purpose: import dashboards from a `raw/` export into live Grafana.
 
@@ -355,7 +355,7 @@ Example output:
 4) Alert Commands
 -----------------
 
-### 4.1 `alert export` (legacy `export-alert`)
+### 4.1 `alert export`
 
 Purpose: export alerting resources into `raw/` JSON files.
 

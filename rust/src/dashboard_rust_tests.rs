@@ -1227,13 +1227,12 @@ fn parse_cli_rejects_conflicting_list_org_scope_flags() {
 }
 
 #[test]
-fn parse_cli_supports_legacy_list_alias() {
-    let args = parse_cli_from(["grafana-util", "list-dashboard", "--json"]);
+fn parse_cli_rejects_legacy_list_alias() {
+    let error = DashboardCliArgs::try_parse_from(["grafana-util", "list-dashboard", "--json"])
+        .unwrap_err();
 
-    match args.command {
-        DashboardCommand::List(list_args) => assert!(list_args.json),
-        _ => panic!("expected list command"),
-    }
+    assert!(error.to_string().contains("unrecognized subcommand"));
+    assert!(error.to_string().contains("list-dashboard"));
 }
 
 #[test]
