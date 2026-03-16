@@ -70,6 +70,6 @@ jobs:
         with:
           name: rust-package-${{ github.ref_name }}-${{ github.sha }}
           path: |
-            build/rust/release/grafana-util
-            build/rust/release/grafana-access-utils
+            rust/target/release/grafana-util
+            rust/target/release/grafana-access-utils
           if-no-files-found: error

@@ -407,6 +407,8 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(type(transport).__name__, expected)
 
     def test_build_json_http_transport_supports_httpx(self):
+        if not transport_module.httpx_is_available():
+            self.skipTest("httpx is not installed")
         transport = alert_utils.build_json_http_transport(
             base_url="http://127.0.0.1:3000",
             headers={},
