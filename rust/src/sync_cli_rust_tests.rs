@@ -1,13 +1,89 @@
 use super::{
+    execute_live_apply_with_request, fetch_live_availability_with_request,
+    fetch_live_resource_specs_with_request, render_alert_sync_assessment_text,
     render_sync_apply_intent_text, render_sync_plan_text, render_sync_summary_text, run_sync_cli,
-    SyncApplyArgs, SyncBundlePreflightArgs, SyncCliArgs, SyncGroupCommand, SyncOutputFormat,
-    SyncPlanArgs, SyncPreflightArgs, SyncReviewArgs, SyncSummaryArgs, DEFAULT_REVIEW_TOKEN,
+    SyncApplyArgs, SyncAssessAlertsArgs, SyncBundleArgs, SyncBundlePreflightArgs, SyncCliArgs,
+    SyncGroupCommand, SyncOutputFormat, SyncPlanArgs, SyncPreflightArgs, SyncReviewArgs,
+    SyncSummaryArgs, DEFAULT_REVIEW_TOKEN,
 };
-use clap::Parser;
+use crate::dashboard::CommonCliArgs;
+use clap::{CommandFactory, Parser};
+use reqwest::Method;
 use serde_json::json;
 use std::fs;
 use std::path::Path;
 use tempfile::tempdir;
+
+fn sync_common_args() -> CommonCliArgs {
+    CommonCliArgs {
+        url: "http://127.0.0.1:3000".to_string(),
+        api_token: Some("test-token".to_string()),
+        username: None,
+        password: None,
+        prompt_password: false,
+        prompt_token: false,
+        timeout: 30,
+        verify_ssl: false,
+    }
+}
+
+fn render_sync_subcommand_help(name: &str) -> String {
+    let mut command = SyncCliArgs::command();
+    let subcommand = command
+        .find_subcommand_mut(name)
+        .unwrap_or_else(|| panic!("missing sync subcommand help for {name}"));
+    let mut output = Vec::new();
+    subcommand.write_long_help(&mut output).unwrap();
+    String::from_utf8(output).unwrap()
+}
+
+#[test]
+fn sync_summary_help_includes_examples_and_output_heading() {
+    let help = render_sync_subcommand_help("summary");
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("Output Options"));
+}
+
+#[test]
+fn sync_plan_help_includes_examples_and_live_heading() {
+    let help = render_sync_subcommand_help("plan");
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("Input Options"));
+    assert!(help.contains("Live Options"));
+    assert!(help.contains("--fetch-live"));
+}
+
+#[test]
+fn sync_apply_help_includes_examples_and_approval_flags() {
+    let help = render_sync_subcommand_help("apply");
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("Approval Options"));
+    assert!(help.contains("Live Options"));
+    assert!(help.contains("--approve"));
+    assert!(help.contains("--execute-live"));
+    assert!(help.contains("--allow-folder-delete"));
+}
+
+#[test]
+fn sync_bundle_preflight_help_includes_examples_and_grouped_headings() {
+    let help = render_sync_subcommand_help("bundle-preflight");
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("Input Options"));
+    assert!(help.contains("Live Options"));
+}
+
+#[test]
+fn sync_root_help_includes_examples() {
+    let mut command = SyncCliArgs::command();
+    let mut output = Vec::new();
+    command.write_long_help(&mut output).unwrap();
+    let help = String::from_utf8(output).unwrap();
+
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("grafana-util sync summary"));
+    assert!(help.contains("grafana-util sync plan"));
+    assert!(help.contains("grafana-util sync apply"));
+}
 
 #[test]
 fn parse_sync_cli_supports_summary_command() {
@@ -30,6 +106,26 @@ fn parse_sync_cli_supports_summary_command() {
 }
 
 #[test]
+fn parse_sync_cli_supports_assess_alerts_command() {
+    let args = SyncCliArgs::parse_from([
+        "grafana-util",
+        "assess-alerts",
+        "--alerts-file",
+        "./alerts.json",
+        "--output",
+        "json",
+    ]);
+
+    match args.command {
+        SyncGroupCommand::AssessAlerts(inner) => {
+            assert_eq!(inner.alerts_file, Path::new("./alerts.json"));
+            assert_eq!(inner.output, SyncOutputFormat::Json);
+        }
+        _ => panic!("expected assess-alerts"),
+    }
+}
+
+#[test]
 fn parse_sync_cli_supports_plan_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
@@ -48,10 +144,41 @@ fn parse_sync_cli_supports_plan_command() {
     match args.command {
         SyncGroupCommand::Plan(inner) => {
             assert_eq!(inner.desired_file, Path::new("./desired.json"));
-            assert_eq!(inner.live_file, Path::new("./live.json"));
+            assert_eq!(
+                inner.live_file,
+                Some(Path::new("./live.json").to_path_buf())
+            );
             assert!(inner.allow_prune);
             assert_eq!(inner.output, SyncOutputFormat::Json);
             assert_eq!(inner.trace_id, Some("trace-explicit".to_string()));
+        }
+        _ => panic!("expected plan"),
+    }
+}
+
+#[test]
+fn parse_sync_cli_supports_plan_fetch_live_mode() {
+    let args = SyncCliArgs::parse_from([
+        "grafana-util",
+        "plan",
+        "--desired-file",
+        "./desired.json",
+        "--fetch-live",
+        "--org-id",
+        "7",
+        "--page-size",
+        "250",
+        "--token",
+        "test-token",
+    ]);
+
+    match args.command {
+        SyncGroupCommand::Plan(inner) => {
+            assert_eq!(inner.desired_file, Path::new("./desired.json"));
+            assert_eq!(inner.live_file, None);
+            assert!(inner.fetch_live);
+            assert_eq!(inner.org_id, Some(7));
+            assert_eq!(inner.page_size, 250);
         }
         _ => panic!("expected plan"),
     }
@@ -94,7 +221,10 @@ fn parse_sync_cli_supports_review_command_with_note() {
 
     match args.command {
         SyncGroupCommand::Review(inner) => {
-            assert_eq!(inner.review_note, Some("manual review complete".to_string()));
+            assert_eq!(
+                inner.review_note,
+                Some("manual review complete".to_string())
+            );
         }
         _ => panic!("expected review"),
     }
@@ -119,19 +249,98 @@ fn parse_sync_cli_supports_apply_command() {
     match args.command {
         SyncGroupCommand::Apply(inner) => {
             assert_eq!(inner.plan_file, Path::new("./plan.json"));
-            assert_eq!(inner.preflight_file, Some(Path::new("./preflight.json").to_path_buf()));
+            assert_eq!(
+                inner.preflight_file,
+                Some(Path::new("./preflight.json").to_path_buf())
+            );
             assert_eq!(
                 inner.bundle_preflight_file,
                 Some(Path::new("./bundle-preflight.json").to_path_buf())
             );
             assert!(inner.approve);
             assert_eq!(inner.output, SyncOutputFormat::Json);
+            assert!(!inner.execute_live);
+            assert!(!inner.allow_folder_delete);
             assert_eq!(inner.applied_by, None);
             assert_eq!(inner.applied_at, None);
             assert_eq!(inner.approval_reason, None);
             assert_eq!(inner.apply_note, None);
         }
         _ => panic!("expected apply"),
+    }
+}
+
+#[test]
+fn parse_sync_cli_supports_apply_execute_live_flags() {
+    let args = SyncCliArgs::parse_from([
+        "grafana-util",
+        "apply",
+        "--plan-file",
+        "./plan.json",
+        "--approve",
+        "--execute-live",
+        "--allow-folder-delete",
+        "--org-id",
+        "9",
+        "--token",
+        "test-token",
+    ]);
+
+    match args.command {
+        SyncGroupCommand::Apply(inner) => {
+            assert!(inner.execute_live);
+            assert!(inner.allow_folder_delete);
+            assert_eq!(inner.org_id, Some(9));
+        }
+        _ => panic!("expected apply"),
+    }
+}
+
+#[test]
+fn parse_sync_cli_supports_preflight_fetch_live_mode() {
+    let args = SyncCliArgs::parse_from([
+        "grafana-util",
+        "preflight",
+        "--desired-file",
+        "./desired.json",
+        "--fetch-live",
+        "--org-id",
+        "3",
+        "--token",
+        "test-token",
+    ]);
+
+    match args.command {
+        SyncGroupCommand::Preflight(inner) => {
+            assert!(inner.fetch_live);
+            assert_eq!(inner.org_id, Some(3));
+        }
+        _ => panic!("expected preflight"),
+    }
+}
+
+#[test]
+fn parse_sync_cli_supports_bundle_preflight_fetch_live_mode() {
+    let args = SyncCliArgs::parse_from([
+        "grafana-util",
+        "bundle-preflight",
+        "--source-bundle",
+        "./bundle.json",
+        "--target-inventory",
+        "./target.json",
+        "--fetch-live",
+        "--org-id",
+        "5",
+        "--token",
+        "test-token",
+    ]);
+
+    match args.command {
+        SyncGroupCommand::BundlePreflight(inner) => {
+            assert!(inner.fetch_live);
+            assert_eq!(inner.org_id, Some(5));
+        }
+        _ => panic!("expected bundle-preflight"),
     }
 }
 
@@ -152,9 +361,59 @@ fn parse_sync_cli_supports_apply_command_with_reason_and_note() {
     match args.command {
         SyncGroupCommand::Apply(inner) => {
             assert_eq!(inner.approval_reason, Some("change-approved".to_string()));
-            assert_eq!(inner.apply_note, Some("local apply intent only".to_string()));
+            assert_eq!(
+                inner.apply_note,
+                Some("local apply intent only".to_string())
+            );
         }
         _ => panic!("expected apply"),
+    }
+}
+
+#[test]
+fn parse_sync_cli_supports_bundle_command() {
+    let args = SyncCliArgs::parse_from([
+        "grafana-util",
+        "bundle",
+        "--dashboard-export-dir",
+        "./dashboards/raw",
+        "--alert-export-dir",
+        "./alerts/raw",
+        "--datasource-export-file",
+        "./datasources.json",
+        "--metadata-file",
+        "./metadata.json",
+        "--output-file",
+        "./bundle.json",
+        "--output",
+        "json",
+    ]);
+
+    match args.command {
+        SyncGroupCommand::Bundle(inner) => {
+            assert_eq!(
+                inner.dashboard_export_dir,
+                Some(Path::new("./dashboards/raw").to_path_buf())
+            );
+            assert_eq!(
+                inner.alert_export_dir,
+                Some(Path::new("./alerts/raw").to_path_buf())
+            );
+            assert_eq!(
+                inner.datasource_export_file,
+                Some(Path::new("./datasources.json").to_path_buf())
+            );
+            assert_eq!(
+                inner.metadata_file,
+                Some(Path::new("./metadata.json").to_path_buf())
+            );
+            assert_eq!(
+                inner.output_file,
+                Some(Path::new("./bundle.json").to_path_buf())
+            );
+            assert_eq!(inner.output, SyncOutputFormat::Json);
+        }
+        _ => panic!("expected bundle"),
     }
 }
 
@@ -174,6 +433,32 @@ fn render_sync_summary_text_renders_counts() {
 
     assert_eq!(lines[0], "Sync summary");
     assert!(lines[1].contains("3 total"));
+}
+
+#[test]
+fn render_alert_sync_assessment_text_renders_status_lines() {
+    let lines = render_alert_sync_assessment_text(&json!({
+        "kind": "grafana-utils-alert-sync-plan",
+        "summary": {
+            "alertCount": 1,
+            "candidateCount": 0,
+            "planOnlyCount": 1,
+            "blockedCount": 0
+        },
+        "alerts": [
+            {
+                "identity": "cpu-high",
+                "status": "plan-only",
+                "liveApplyAllowed": false,
+                "detail": "detail text"
+            }
+        ]
+    }))
+    .unwrap();
+
+    assert_eq!(lines[0], "Alert sync assessment");
+    assert!(lines[1].contains("plan-only"));
+    assert!(lines[4].contains("cpu-high"));
 }
 
 #[test]
@@ -297,6 +582,129 @@ fn render_sync_plan_text_defaults_lineage_when_missing() {
 }
 
 #[test]
+fn fetch_live_resource_specs_with_request_collects_alerts_and_dashboards() {
+    let mut calls = Vec::new();
+    let specs = fetch_live_resource_specs_with_request(
+        |method, path, params, payload| {
+            calls.push((
+                method.clone(),
+                path.to_string(),
+                params.to_vec(),
+                payload.cloned(),
+            ));
+            match (method.clone(), path) {
+                (Method::GET, "/api/folders") => Ok(Some(json!([
+                    {"uid": "ops", "title": "Operations"}
+                ]))),
+                (Method::GET, "/api/search") => {
+                    let page = params
+                        .iter()
+                        .find(|(key, _)| key == "page")
+                        .map(|(_, value)| value.as_str())
+                        .unwrap_or("1");
+                    if page == "1" {
+                        Ok(Some(json!([
+                            {"uid": "cpu-main", "title": "CPU Main"}
+                        ])))
+                    } else {
+                        Ok(Some(json!([])))
+                    }
+                }
+                (Method::GET, "/api/dashboards/uid/cpu-main") => Ok(Some(json!({
+                    "dashboard": {"uid": "cpu-main", "title": "CPU Main", "panels": []}
+                }))),
+                (Method::GET, "/api/datasources") => Ok(Some(json!([
+                    {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus", "access": "proxy", "url": "http://prometheus:9090"}
+                ]))),
+                (Method::GET, "/api/v1/provisioning/alert-rules") => Ok(Some(json!([
+                    {
+                        "uid": "cpu-high",
+                        "title": "CPU High",
+                        "folderUID": "general",
+                        "ruleGroup": "CPU Alerts",
+                        "condition": "A",
+                        "data": [{"refId": "A"}]
+                    }
+                ]))),
+                _ => Err(crate::common::message(format!("unexpected {method} {path}"))),
+            }
+        },
+        500,
+    )
+    .unwrap();
+
+    assert!(specs.iter().any(|item| item["kind"] == "folder"));
+    assert!(specs.iter().any(|item| item["kind"] == "dashboard"));
+    assert!(specs.iter().any(|item| item["kind"] == "datasource"));
+    assert!(specs.iter().any(|item| item["kind"] == "alert"));
+    assert!(calls
+        .iter()
+        .any(|(_, path, _, _)| path == "/api/v1/provisioning/alert-rules"));
+}
+
+#[test]
+fn fetch_live_availability_with_request_collects_contact_points_and_plugins() {
+    let availability =
+        fetch_live_availability_with_request(|method, path, _, _| match (method, path) {
+            (Method::GET, "/api/datasources") => Ok(Some(json!([
+                {"uid": "prom-main", "name": "Prometheus Main"}
+            ]))),
+            (Method::GET, "/api/plugins") => Ok(Some(json!([
+                {"id": "prometheus"}
+            ]))),
+            (Method::GET, "/api/v1/provisioning/contact-points") => Ok(Some(json!([
+                {"uid": "cp-1", "name": "pagerduty-primary"}
+            ]))),
+            _ => Err(crate::common::message("unexpected request")),
+        })
+        .unwrap();
+
+    assert_eq!(availability["datasourceUids"], json!(["prom-main"]));
+    assert_eq!(availability["pluginIds"], json!(["prometheus"]));
+    assert_eq!(
+        availability["contactPoints"],
+        json!(["pagerduty-primary", "cp-1"])
+    );
+}
+
+#[test]
+fn execute_live_apply_with_request_supports_alert_create() {
+    let mut calls = Vec::new();
+    let result = execute_live_apply_with_request(
+        |method, path, _, payload| {
+            calls.push((method.clone(), path.to_string(), payload.cloned()));
+            match (method, path) {
+                (Method::POST, "/api/v1/provisioning/alert-rules") => {
+                    Ok(Some(json!({"uid": "cpu-high", "status": "created"})))
+                }
+                _ => Err(crate::common::message("unexpected request")),
+            }
+        },
+        &[json!({
+            "kind": "alert",
+            "identity": "cpu-high",
+            "action": "would-create",
+            "desired": {
+                "uid": "cpu-high",
+                "title": "CPU High",
+                "folderUID": "general",
+                "ruleGroup": "CPU Alerts",
+                "condition": "A",
+                "data": [{"refId": "A"}]
+            }
+        })],
+        false,
+    )
+    .unwrap();
+
+    assert_eq!(result["mode"], json!("live-apply"));
+    assert_eq!(result["appliedCount"], json!(1));
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].0, Method::POST);
+    assert_eq!(calls[0].1, "/api/v1/provisioning/alert-rules");
+}
+
+#[test]
 fn run_sync_cli_summary_accepts_local_desired_file() {
     let temp = tempdir().unwrap();
     let desired_file = temp.path().join("desired.json");
@@ -321,7 +729,7 @@ fn run_sync_cli_summary_accepts_local_desired_file() {
         output: SyncOutputFormat::Json,
     }));
 
-    assert!(result.is_ok());
+    assert!(result.is_ok(), "{result:?}");
 }
 
 #[test]
@@ -348,13 +756,325 @@ fn run_sync_cli_plan_accepts_local_inputs() {
 
     let result = run_sync_cli(SyncGroupCommand::Plan(SyncPlanArgs {
         desired_file,
-        live_file,
+        live_file: Some(live_file),
+        fetch_live: false,
+        common: sync_common_args(),
+        org_id: None,
+        page_size: 500,
         allow_prune: false,
         output: SyncOutputFormat::Json,
         trace_id: None,
     }));
 
     assert!(result.is_ok());
+}
+
+#[test]
+fn run_sync_cli_assess_alerts_accepts_local_inputs() {
+    let temp = tempdir().unwrap();
+    let alerts_file = temp.path().join("alerts.json");
+    fs::write(
+        &alerts_file,
+        serde_json::to_string_pretty(&json!([
+            {
+                "kind": "alert",
+                "uid": "cpu-high",
+                "managedFields": ["condition", "contactPoints"],
+                "body": {
+                    "condition": "A > 90",
+                    "contactPoints": ["pagerduty-primary"]
+                }
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let result = run_sync_cli(SyncGroupCommand::AssessAlerts(SyncAssessAlertsArgs {
+        alerts_file,
+        output: SyncOutputFormat::Json,
+    }));
+
+    assert!(result.is_ok());
+}
+
+#[test]
+fn run_sync_cli_bundle_writes_source_bundle_artifact() {
+    let temp = tempdir().unwrap();
+    let dashboard_export_dir = temp.path().join("dashboards").join("raw");
+    let alert_export_dir = temp.path().join("alerts").join("raw");
+    fs::create_dir_all(&dashboard_export_dir).unwrap();
+    fs::create_dir_all(alert_export_dir.join("rules")).unwrap();
+    fs::write(
+        dashboard_export_dir.join("cpu.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "panels": []
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        dashboard_export_dir.join("folders.json"),
+        serde_json::to_string_pretty(&json!([
+            {"uid": "ops", "title": "Operations", "path": "Operations"}
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        dashboard_export_dir.join("datasources.json"),
+        serde_json::to_string_pretty(&json!([
+            {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"}
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        alert_export_dir.join("rules").join("cpu-high.json"),
+        serde_json::to_string_pretty(&json!({
+            "groups": [{
+                "name": "CPU Alerts",
+                "folderUid": "general",
+                "rules": [{
+                    "uid": "cpu-high",
+                    "title": "CPU High",
+                    "condition": "A",
+                    "data": [{
+                        "refId": "A",
+                        "datasourceUid": "prom-main",
+                        "model": {
+                            "expr": "up",
+                            "refId": "A"
+                        }
+                    }],
+                    "for": "5m",
+                    "noDataState": "NoData",
+                    "execErrState": "Alerting",
+                    "annotations": {
+                        "__dashboardUid__": "cpu-main",
+                        "__panelId__": "1"
+                    },
+                    "notification_settings": {
+                        "receiver": "pagerduty-primary"
+                    }
+                }]
+            }]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let metadata_file = temp.path().join("metadata.json");
+    fs::write(
+        &metadata_file,
+        serde_json::to_string_pretty(&json!({
+            "bundleLabel": "smoke-bundle"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let output_file = temp.path().join("bundle.json");
+
+    let result = run_sync_cli(SyncGroupCommand::Bundle(SyncBundleArgs {
+        dashboard_export_dir: Some(dashboard_export_dir.clone()),
+        alert_export_dir: Some(alert_export_dir.clone()),
+        datasource_export_file: None,
+        metadata_file: Some(metadata_file.clone()),
+        output_file: Some(output_file.clone()),
+        output: SyncOutputFormat::Json,
+    }));
+
+    assert!(result.is_ok());
+    let bundle: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&output_file).unwrap()).unwrap();
+    assert_eq!(bundle["kind"], json!("grafana-utils-sync-source-bundle"));
+    assert_eq!(bundle["summary"]["dashboardCount"], json!(1));
+    assert_eq!(bundle["summary"]["datasourceCount"], json!(1));
+    assert_eq!(bundle["summary"]["folderCount"], json!(1));
+    assert_eq!(bundle["summary"]["alertRuleCount"], json!(1));
+    assert_eq!(bundle["alerts"].as_array().unwrap().len(), 1);
+    assert_eq!(bundle["alerts"][0]["kind"], json!("alert"));
+    assert_eq!(bundle["alerts"][0]["uid"], json!("cpu-high"));
+    assert_eq!(bundle["alerts"][0]["title"], json!("CPU High"));
+    assert_eq!(
+        bundle["alerts"][0]["managedFields"],
+        json!([
+            "condition",
+            "annotations",
+            "contactPoints",
+            "datasourceUids",
+            "data"
+        ])
+    );
+    assert_eq!(bundle["alerts"][0]["body"]["condition"], json!("A"));
+    assert_eq!(
+        bundle["alerts"][0]["body"]["contactPoints"],
+        json!(["pagerduty-primary"])
+    );
+    assert_eq!(
+        bundle["alerts"][0]["body"]["datasourceUids"],
+        json!(["prom-main"])
+    );
+    assert_eq!(
+        bundle["alerts"][0]["body"]["annotations"]["__dashboardUid__"],
+        json!("cpu-main")
+    );
+    assert_eq!(bundle["metadata"]["bundleLabel"], json!("smoke-bundle"));
+    assert_eq!(
+        bundle["metadata"]["dashboardExportDir"],
+        json!(dashboard_export_dir.display().to_string())
+    );
+    assert_eq!(
+        bundle["alerting"]["exportDir"],
+        json!(alert_export_dir.display().to_string())
+    );
+    assert_eq!(
+        bundle["metadata"]["alertExportDir"],
+        json!(alert_export_dir.display().to_string())
+    );
+}
+
+#[test]
+fn run_sync_cli_bundle_preserves_datasource_provider_metadata_from_inventory_file() {
+    let temp = tempdir().unwrap();
+    let datasource_export_file = temp.path().join("datasources.json");
+    fs::write(
+        &datasource_export_file,
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "loki-main",
+                "name": "Loki Main",
+                "type": "loki",
+                "secureJsonDataProviders": {
+                    "httpHeaderValue1": "${provider:vault:secret/data/loki/token}"
+                },
+                "secureJsonDataPlaceholders": {
+                    "basicAuthPassword": "${secret:loki-basic-auth}"
+                }
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    let output_file = temp.path().join("bundle.json");
+
+    let result = run_sync_cli(SyncGroupCommand::Bundle(SyncBundleArgs {
+        dashboard_export_dir: None,
+        alert_export_dir: None,
+        datasource_export_file: Some(datasource_export_file.clone()),
+        metadata_file: None,
+        output_file: Some(output_file.clone()),
+        output: SyncOutputFormat::Json,
+    }));
+
+    assert!(result.is_ok());
+    let bundle: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&output_file).unwrap()).unwrap();
+    assert_eq!(bundle["summary"]["datasourceCount"], json!(1));
+    assert_eq!(
+        bundle["metadata"]["datasourceExportFile"],
+        json!(datasource_export_file.display().to_string())
+    );
+    assert_eq!(
+        bundle["datasources"][0]["secureJsonDataProviders"]["httpHeaderValue1"],
+        json!("${provider:vault:secret/data/loki/token}")
+    );
+    assert_eq!(
+        bundle["datasources"][0]["secureJsonDataPlaceholders"]["basicAuthPassword"],
+        json!("${secret:loki-basic-auth}")
+    );
+}
+
+#[test]
+fn run_sync_cli_bundle_normalizes_tool_rule_export_into_top_level_alert_spec() {
+    let temp = tempdir().unwrap();
+    let alert_export_dir = temp.path().join("alerts").join("raw");
+    fs::create_dir_all(alert_export_dir.join("rules")).unwrap();
+    fs::write(
+        alert_export_dir.join("rules").join("cpu-high.json"),
+        serde_json::to_string_pretty(&json!({
+            "schemaVersion": 1,
+            "apiVersion": 1,
+            "kind": "grafana-alert-rule",
+            "metadata": {
+                "uid": "cpu-high",
+                "title": "CPU High",
+                "folderUID": "general",
+                "ruleGroup": "CPU Alerts"
+            },
+            "spec": {
+                "uid": "cpu-high",
+                "title": "CPU High",
+                "folderUID": "general",
+                "ruleGroup": "CPU Alerts",
+                "condition": "A",
+                "data": [{
+                    "refId": "A",
+                    "datasourceUid": "prom-main",
+                    "model": {
+                        "datasource": {
+                            "uid": "prom-main",
+                            "name": "Prometheus Main",
+                            "type": "prometheus"
+                        },
+                        "expr": "up",
+                        "refId": "A"
+                    }
+                }],
+                "notificationSettings": {
+                    "receiver": "pagerduty-primary"
+                }
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let output_file = temp.path().join("bundle.json");
+
+    let result = run_sync_cli(SyncGroupCommand::Bundle(SyncBundleArgs {
+        dashboard_export_dir: None,
+        alert_export_dir: Some(alert_export_dir.clone()),
+        datasource_export_file: None,
+        metadata_file: None,
+        output_file: Some(output_file.clone()),
+        output: SyncOutputFormat::Json,
+    }));
+
+    assert!(result.is_ok());
+    let bundle: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&output_file).unwrap()).unwrap();
+    assert_eq!(bundle["summary"]["alertRuleCount"], json!(1));
+    assert_eq!(bundle["alerts"].as_array().unwrap().len(), 1);
+    assert_eq!(
+        bundle["alerts"][0]["managedFields"],
+        json!([
+            "condition",
+            "contactPoints",
+            "datasourceUids",
+            "datasourceNames",
+            "pluginIds",
+            "data"
+        ])
+    );
+    assert_eq!(
+        bundle["alerts"][0]["body"]["contactPoints"],
+        json!(["pagerduty-primary"])
+    );
+    assert_eq!(
+        bundle["alerts"][0]["body"]["datasourceNames"],
+        json!(["Prometheus Main"])
+    );
+    assert_eq!(
+        bundle["alerts"][0]["body"]["pluginIds"],
+        json!(["prometheus"])
+    );
+    assert_eq!(
+        bundle["metadata"]["alertExportDir"],
+        json!(alert_export_dir.display().to_string())
+    );
 }
 
 #[test]
@@ -636,6 +1356,10 @@ fn run_sync_cli_apply_accepts_reviewed_plan_file() {
         preflight_file: None,
         bundle_preflight_file: None,
         approve: true,
+        common: sync_common_args(),
+        org_id: None,
+        execute_live: false,
+        allow_folder_delete: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -684,6 +1408,10 @@ fn run_sync_cli_apply_rejects_reviewed_plan_with_wrong_lineage_parent() {
         preflight_file: None,
         bundle_preflight_file: None,
         approve: true,
+        common: sync_common_args(),
+        org_id: None,
+        execute_live: false,
+        allow_folder_delete: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -730,6 +1458,10 @@ fn run_sync_cli_apply_rejects_unreviewed_plan_file() {
         preflight_file: None,
         bundle_preflight_file: None,
         approve: true,
+        common: sync_common_args(),
+        org_id: None,
+        execute_live: false,
+        allow_folder_delete: false,
         output: SyncOutputFormat::Text,
         applied_by: None,
         applied_at: None,
@@ -741,7 +1473,6 @@ fn run_sync_cli_apply_rejects_unreviewed_plan_file() {
 
     assert!(error.contains("marked reviewed"));
 }
-
 
 #[test]
 fn run_sync_cli_apply_requires_explicit_approval() {
@@ -777,6 +1508,10 @@ fn run_sync_cli_apply_requires_explicit_approval() {
         preflight_file: None,
         bundle_preflight_file: None,
         approve: false,
+        common: sync_common_args(),
+        org_id: None,
+        execute_live: false,
+        allow_folder_delete: false,
         output: SyncOutputFormat::Text,
         applied_by: None,
         applied_at: None,
@@ -838,6 +1573,10 @@ fn run_sync_cli_apply_accepts_non_blocking_preflight_file() {
         preflight_file: Some(preflight_file),
         bundle_preflight_file: None,
         approve: true,
+        common: sync_common_args(),
+        org_id: None,
+        execute_live: false,
+        allow_folder_delete: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -901,6 +1640,10 @@ fn run_sync_cli_apply_rejects_preflight_with_mismatched_trace_id() {
         preflight_file: Some(preflight_file),
         bundle_preflight_file: None,
         approve: true,
+        common: sync_common_args(),
+        org_id: None,
+        execute_live: false,
+        allow_folder_delete: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -930,7 +1673,11 @@ fn run_sync_cli_plan_accepts_explicit_trace_id() {
 
     let result = run_sync_cli(SyncGroupCommand::Plan(SyncPlanArgs {
         desired_file,
-        live_file,
+        live_file: Some(live_file),
+        fetch_live: false,
+        common: sync_common_args(),
+        org_id: None,
+        page_size: 500,
         allow_prune: false,
         output: SyncOutputFormat::Json,
         trace_id: Some("trace-explicit".to_string()),
@@ -988,6 +1735,10 @@ fn run_sync_cli_apply_rejects_blocking_preflight_file() {
         preflight_file: Some(preflight_file),
         bundle_preflight_file: None,
         approve: true,
+        common: sync_common_args(),
+        org_id: None,
+        execute_live: false,
+        allow_folder_delete: false,
         output: SyncOutputFormat::Text,
         applied_by: None,
         applied_at: None,
@@ -1048,6 +1799,10 @@ fn run_sync_cli_apply_rejects_blocking_bundle_preflight_file() {
         preflight_file: None,
         bundle_preflight_file: Some(bundle_preflight_file),
         approve: true,
+        common: sync_common_args(),
+        org_id: None,
+        execute_live: false,
+        allow_folder_delete: false,
         output: SyncOutputFormat::Text,
         applied_by: None,
         applied_at: None,
@@ -1093,6 +1848,10 @@ fn run_sync_cli_apply_rejects_missing_trace_id() {
         preflight_file: None,
         bundle_preflight_file: None,
         approve: true,
+        common: sync_common_args(),
+        org_id: None,
+        execute_live: false,
+        allow_folder_delete: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -1141,6 +1900,10 @@ fn run_sync_cli_apply_rejects_plan_with_non_review_lineage() {
         preflight_file: None,
         bundle_preflight_file: None,
         approve: true,
+        common: sync_common_args(),
+        org_id: None,
+        execute_live: false,
+        allow_folder_delete: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -1201,6 +1964,10 @@ fn run_sync_cli_apply_accepts_non_blocking_bundle_preflight_file() {
         preflight_file: None,
         bundle_preflight_file: Some(bundle_preflight_file),
         approve: true,
+        common: sync_common_args(),
+        org_id: None,
+        execute_live: false,
+        allow_folder_delete: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -1265,6 +2032,10 @@ fn run_sync_cli_apply_rejects_lineage_aware_preflight_without_trace_id() {
         preflight_file: Some(preflight_file),
         bundle_preflight_file: None,
         approve: true,
+        common: sync_common_args(),
+        org_id: None,
+        execute_live: false,
+        allow_folder_delete: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -1332,6 +2103,10 @@ fn run_sync_cli_apply_rejects_lineage_aware_bundle_preflight_with_mismatched_par
         preflight_file: None,
         bundle_preflight_file: Some(bundle_preflight_file),
         approve: true,
+        common: sync_common_args(),
+        org_id: None,
+        execute_live: false,
+        allow_folder_delete: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -1397,6 +2172,10 @@ fn run_sync_cli_apply_rejects_bundle_preflight_with_mismatched_trace_id() {
         preflight_file: None,
         bundle_preflight_file: Some(bundle_preflight_file),
         approve: true,
+        common: sync_common_args(),
+        org_id: None,
+        execute_live: false,
+        allow_folder_delete: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -1482,6 +2261,10 @@ fn run_sync_cli_apply_accepts_explicit_audit_metadata() {
         preflight_file: None,
         bundle_preflight_file: None,
         approve: true,
+        common: sync_common_args(),
+        org_id: None,
+        execute_live: false,
+        allow_folder_delete: false,
         output: SyncOutputFormat::Json,
         applied_by: Some("bob".to_string()),
         applied_at: Some("manual-apply".to_string()),
@@ -1510,6 +2293,9 @@ fn run_sync_cli_preflight_rejects_non_object_availability_file() {
     let error = run_sync_cli(SyncGroupCommand::Preflight(SyncPreflightArgs {
         desired_file,
         availability_file: Some(availability_file),
+        fetch_live: false,
+        common: sync_common_args(),
+        org_id: None,
         output: SyncOutputFormat::Text,
     }))
     .unwrap_err()
@@ -1534,12 +2320,19 @@ fn run_sync_cli_bundle_preflight_accepts_local_bundle_inputs() {
         .unwrap(),
     )
     .unwrap();
-    fs::write(&target_inventory, serde_json::to_string_pretty(&json!({})).unwrap()).unwrap();
+    fs::write(
+        &target_inventory,
+        serde_json::to_string_pretty(&json!({})).unwrap(),
+    )
+    .unwrap();
 
     let result = run_sync_cli(SyncGroupCommand::BundlePreflight(SyncBundlePreflightArgs {
         source_bundle,
         target_inventory,
         availability_file: None,
+        fetch_live: false,
+        common: sync_common_args(),
+        org_id: None,
         output: SyncOutputFormat::Json,
     }));
 

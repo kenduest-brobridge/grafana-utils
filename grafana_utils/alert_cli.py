@@ -95,14 +95,52 @@ HELP_EPILOG = """Examples:
   Import linked alert rules with dashboard and panel remapping:
     grafana-util alert import --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json
 """
+EXPORT_HELP_EPILOG = """Examples:
+
+  grafana-util alert export --url https://grafana.example.com --token "$GRAFANA_API_TOKEN" --output-dir ./alerts --overwrite
+"""
+IMPORT_HELP_EPILOG = """Examples:
+
+  grafana-util alert import --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing --dry-run
+  grafana-util alert import --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing --approve --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json
+"""
+DIFF_HELP_EPILOG = """Examples:
+
+  grafana-util alert diff --url https://grafana.example.com --diff-dir ./alerts/raw
+"""
+LIST_RULES_HELP_EPILOG = """Examples:
+
+  grafana-util alert list-rules --url https://grafana.example.com --json
+"""
+LIST_CONTACT_POINTS_HELP_EPILOG = """Examples:
+
+  grafana-util alert list-contact-points --url https://grafana.example.com --output-format csv
+"""
+LIST_MUTE_TIMINGS_HELP_EPILOG = """Examples:
+
+  grafana-util alert list-mute-timings --url https://grafana.example.com --table
+"""
+LIST_TEMPLATES_HELP_EPILOG = """Examples:
+
+  grafana-util alert list-templates --url https://grafana.example.com --json
+"""
+
+LIST_HELP_EPILOG_BY_COMMAND = {
+    "list-rules": LIST_RULES_HELP_EPILOG,
+    "list-contact-points": LIST_CONTACT_POINTS_HELP_EPILOG,
+    "list-mute-timings": LIST_MUTE_TIMINGS_HELP_EPILOG,
+    "list-templates": LIST_TEMPLATES_HELP_EPILOG,
+}
 
 def add_common_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
+    auth_group = parser.add_argument_group("Authentication Options")
+    transport_group = parser.add_argument_group("Transport Options")
+    auth_group.add_argument(
         "--url",
         default=DEFAULT_URL,
         help=f"Grafana base URL (default: {DEFAULT_URL})",
     )
-    parser.add_argument(
+    auth_group.add_argument(
         "--token",
         "--api-token",
         dest="api_token",
@@ -112,7 +150,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
             "Falls back to GRAFANA_API_TOKEN."
         ),
     )
-    parser.add_argument(
+    auth_group.add_argument(
         "--prompt-token",
         action="store_true",
         help=(
@@ -120,7 +158,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
             "--token on the command line."
         ),
     )
-    parser.add_argument(
+    auth_group.add_argument(
         "--basic-user",
         dest="username",
         default=None,
@@ -129,7 +167,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
             "Falls back to GRAFANA_USERNAME."
         ),
     )
-    parser.add_argument(
+    auth_group.add_argument(
         "--basic-password",
         dest="password",
         default=None,
@@ -138,7 +176,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
             "Falls back to GRAFANA_PASSWORD."
         ),
     )
-    parser.add_argument(
+    auth_group.add_argument(
         "--prompt-password",
         action="store_true",
         help=(
@@ -146,13 +184,13 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
             "passing --basic-password on the command line."
         ),
     )
-    parser.add_argument(
+    transport_group.add_argument(
         "--timeout",
         type=int,
         default=DEFAULT_TIMEOUT,
         help=f"HTTP timeout in seconds (default: {DEFAULT_TIMEOUT}).",
     )
-    parser.add_argument(
+    transport_group.add_argument(
         "--verify-ssl",
         action="store_true",
         help="Enable TLS certificate verification. Verification is disabled by default.",
@@ -160,7 +198,8 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_export_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
+    export_group = parser.add_argument_group("Export Options")
+    export_group.add_argument(
         "--output-dir",
         default=DEFAULT_OUTPUT_DIR,
         help=(
@@ -168,7 +207,7 @@ def add_export_args(parser: argparse.ArgumentParser) -> None:
             f"under {RAW_EXPORT_SUBDIR}/."
         ),
     )
-    parser.add_argument(
+    export_group.add_argument(
         "--flat",
         action="store_true",
         help=(
@@ -176,7 +215,7 @@ def add_export_args(parser: argparse.ArgumentParser) -> None:
             "resource directories instead of nested folder/group directories."
         ),
     )
-    parser.add_argument(
+    export_group.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite existing exported files if they already exist.",
@@ -184,27 +223,28 @@ def add_export_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_list_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
+    output_group = parser.add_argument_group("Output Options")
+    output_group.add_argument(
         "--table",
         action="store_true",
         help="Render list output as a table. This is the default.",
     )
-    parser.add_argument(
+    output_group.add_argument(
         "--csv",
         action="store_true",
         help="Render list output as CSV.",
     )
-    parser.add_argument(
+    output_group.add_argument(
         "--json",
         action="store_true",
         help="Render list output as JSON.",
     )
-    parser.add_argument(
+    output_group.add_argument(
         "--no-header",
         action="store_true",
         help="Omit the table header row.",
     )
-    parser.add_argument(
+    output_group.add_argument(
         "--output-format",
         choices=LIST_OUTPUT_FORMAT_CHOICES,
         default=None,
@@ -219,7 +259,8 @@ def add_list_args(parser: argparse.ArgumentParser) -> None:
 def add_import_args(parser: argparse.ArgumentParser, diff_mode: bool = False) -> None:
     dir_flag = "--diff-dir" if diff_mode else "--import-dir"
     verb = "Compare" if diff_mode else "Import"
-    parser.add_argument(
+    io_group = parser.add_argument_group("Input Options")
+    io_group.add_argument(
         dir_flag,
         dest="diff_dir" if diff_mode else "import_dir",
         required=True,
@@ -231,17 +272,24 @@ def add_import_args(parser: argparse.ArgumentParser, diff_mode: bool = False) ->
         + f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly.",
     )
     if not diff_mode:
-        parser.add_argument(
+        mutation_group = parser.add_argument_group("Mutation Options")
+        mutation_group.add_argument(
             "--replace-existing",
             action="store_true",
             help="Update existing resources with the same identity instead of failing on import.",
         )
-        parser.add_argument(
+        mutation_group.add_argument(
             "--dry-run",
             action="store_true",
             help="Show whether each import file would create or update resources without changing Grafana.",
         )
-    parser.add_argument(
+        mutation_group.add_argument(
+            "--approve",
+            action="store_true",
+            help="Explicit acknowledgement required before live alert import runs. Not required with --dry-run.",
+        )
+    mapping_group = parser.add_argument_group("Mapping Options")
+    mapping_group.add_argument(
         "--dashboard-uid-map",
         default=None,
         help=(
@@ -249,7 +297,7 @@ def add_import_args(parser: argparse.ArgumentParser, diff_mode: bool = False) ->
             "for linked alert-rule repair during import."
         ),
     )
-    parser.add_argument(
+    mapping_group.add_argument(
         "--panel-id-map",
         default=None,
         help=(
@@ -260,7 +308,7 @@ def add_import_args(parser: argparse.ArgumentParser, diff_mode: bool = False) ->
     if diff_mode:
         parser.set_defaults(replace_existing=False, dry_run=False, output_dir=DEFAULT_OUTPUT_DIR, flat=False, overwrite=False)
     else:
-        parser.set_defaults(diff_dir=None, output_dir=DEFAULT_OUTPUT_DIR, flat=False, overwrite=False)
+        parser.set_defaults(diff_dir=None, output_dir=DEFAULT_OUTPUT_DIR, flat=False, overwrite=False, approve=False)
 
 
 def build_legacy_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
@@ -301,6 +349,11 @@ def build_legacy_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
         help="Show whether each import file would create or update resources without changing Grafana.",
     )
     parser.add_argument(
+        "--approve",
+        action="store_true",
+        help="Explicit acknowledgement required before live alert import runs. Not required with --dry-run.",
+    )
+    parser.add_argument(
         "--dashboard-uid-map",
         default=None,
         help=(
@@ -333,6 +386,7 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
     export_parser = subparsers.add_parser(
         "export",
         help="Export alerting resources into raw/ JSON files.",
+        epilog=EXPORT_HELP_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_common_args(export_parser)
@@ -350,6 +404,7 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
     import_parser = subparsers.add_parser(
         "import",
         help="Import alerting resource JSON files through the Grafana API.",
+        epilog=IMPORT_HELP_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_common_args(import_parser)
@@ -359,6 +414,7 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
     diff_parser = subparsers.add_parser(
         "diff",
         help="Compare local alerting export files against live Grafana resources.",
+        epilog=DIFF_HELP_EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_common_args(diff_parser)
@@ -374,6 +430,7 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
         list_parser = subparsers.add_parser(
             command_name,
             help=help_text,
+            epilog=LIST_HELP_EPILOG_BY_COMMAND[command_name],
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
         add_common_args(list_parser)
@@ -1213,6 +1270,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         if getattr(args, "alert_command", "").startswith("list-"):
             return list_alert_resources(args)
         if getattr(args, "alert_command", None) == "import":
+            if not bool(getattr(args, "dry_run", False)) and not bool(
+                getattr(args, "approve", False)
+            ):
+                raise GrafanaError(
+                    "Alert import requires --approve unless --dry-run is active."
+                )
             return import_alerting_resources(args)
         if getattr(args, "alert_command", None) == "diff":
             return diff_alerting_resources(args)

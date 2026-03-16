@@ -47,6 +47,8 @@ mod dashboard_inspect_render;
 mod dashboard_inspect_report;
 #[path = "dashboard_inspect_summary.rs"]
 mod dashboard_inspect_summary;
+#[path = "dashboard_inspection_dependency_contract.rs"]
+mod dashboard_inspection_dependency_contract;
 #[path = "dashboard_list.rs"]
 mod dashboard_list;
 #[path = "dashboard_live.rs"]
@@ -55,6 +57,8 @@ mod dashboard_live;
 mod dashboard_models;
 #[path = "dashboard_prompt.rs"]
 mod dashboard_prompt;
+#[path = "dashboard_reference_models.rs"]
+mod dashboard_reference_models;
 #[path = "dashboard_screenshot.rs"]
 mod dashboard_screenshot;
 #[path = "dashboard_vars.rs"]
@@ -65,7 +69,8 @@ pub use dashboard_cli_defs::{
     parse_cli_from, CommonCliArgs, DashboardAuthContext, DashboardCliArgs, DashboardCommand,
     DiffArgs, ExportArgs, ImportArgs, InspectExportArgs, InspectExportReportFormat,
     InspectLiveArgs, InspectOutputFormat, InspectVarsArgs, ListArgs, ListDataSourcesArgs,
-    ScreenshotArgs, ScreenshotOutputFormat, ScreenshotTheme, SimpleOutputFormat,
+    ScreenshotArgs, ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme,
+    SimpleOutputFormat,
 };
 pub use dashboard_export::{
     build_export_variant_dirs, build_output_path, export_dashboards_with_client,
@@ -121,8 +126,6 @@ pub(crate) use dashboard_inspect_render::{
 };
 #[cfg(test)]
 pub(crate) use dashboard_inspect_report::normalize_query_report;
-#[cfg(test)]
-pub(crate) use dashboard_vars::extract_dashboard_variables;
 pub(crate) use dashboard_inspect_report::{
     build_export_inspection_query_report_document, build_query_report,
     refresh_filtered_query_report_summary, render_query_report_column, report_column_header,
@@ -145,13 +148,14 @@ pub(crate) use dashboard_list::{
 };
 #[cfg(test)]
 pub(crate) use dashboard_live::build_folder_inventory_status;
+#[cfg(test)]
+pub(crate) use dashboard_live::collect_folder_inventory_statuses_with_request;
 pub(crate) use dashboard_live::{
-    build_datasource_inventory_record, build_folder_path,
-    collect_folder_inventory_statuses_with_request, collect_folder_inventory_with_request,
-    ensure_folder_inventory_entry_with_request, fetch_dashboard_if_exists_with_request,
-    fetch_dashboard_with_request, fetch_folder_if_exists_with_request,
-    format_folder_inventory_status_line, import_dashboard_request_with_request,
-    list_dashboard_summaries_with_request, list_datasources_with_request,
+    build_datasource_inventory_record, build_folder_path, collect_folder_inventory_with_request,
+    fetch_dashboard_if_exists_with_request, fetch_dashboard_with_request,
+    fetch_folder_if_exists_with_request, format_folder_inventory_status_line,
+    import_dashboard_request_with_request, list_dashboard_summaries_with_request,
+    list_datasources_with_request,
 };
 pub(crate) use dashboard_models::{
     DashboardIndexItem, DatasourceInventoryItem, ExportMetadata, FolderInventoryItem,
@@ -164,8 +168,11 @@ pub(crate) use dashboard_prompt::{
 };
 #[cfg(test)]
 pub(crate) use dashboard_screenshot::{
-    build_dashboard_capture_url, infer_screenshot_output_format, validate_screenshot_args,
+    build_dashboard_capture_url, infer_screenshot_output_format, resolve_manifest_title,
+    validate_screenshot_args,
 };
+#[cfg(test)]
+pub(crate) use dashboard_vars::extract_dashboard_variables;
 
 pub const DEFAULT_URL: &str = "http://localhost:3000";
 pub const DEFAULT_TIMEOUT: u64 = 30;
@@ -266,7 +273,9 @@ pub fn run_dashboard_cli_with_client(
             )?;
             Ok(())
         }
-        DashboardCommand::InspectVars(inspect_vars_args) => inspect_dashboard_variables(&inspect_vars_args),
+        DashboardCommand::InspectVars(inspect_vars_args) => {
+            inspect_dashboard_variables(&inspect_vars_args)
+        }
         DashboardCommand::Screenshot(screenshot_args) => {
             capture_dashboard_screenshot(&screenshot_args)
         }
@@ -335,7 +344,9 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
             )?;
             Ok(())
         }
-        DashboardCommand::InspectVars(inspect_vars_args) => inspect_dashboard_variables(&inspect_vars_args),
+        DashboardCommand::InspectVars(inspect_vars_args) => {
+            inspect_dashboard_variables(&inspect_vars_args)
+        }
         DashboardCommand::Screenshot(screenshot_args) => {
             capture_dashboard_screenshot(&screenshot_args)
         }

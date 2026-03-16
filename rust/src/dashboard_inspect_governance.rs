@@ -59,6 +59,25 @@ pub(crate) struct DatasourceCoverageRow {
     pub(crate) orphaned: bool,
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub(crate) struct DashboardDependencyRow {
+    #[serde(rename = "dashboardUid")]
+    pub(crate) dashboard_uid: String,
+    #[serde(rename = "dashboardTitle")]
+    pub(crate) dashboard_title: String,
+    #[serde(rename = "folderPath")]
+    pub(crate) folder_path: String,
+    #[serde(rename = "file")]
+    pub(crate) file_path: String,
+    #[serde(rename = "panelCount")]
+    pub(crate) panel_count: usize,
+    #[serde(rename = "queryCount")]
+    pub(crate) query_count: usize,
+    pub(crate) datasources: Vec<String>,
+    #[serde(rename = "datasourceFamilies")]
+    pub(crate) datasource_families: Vec<String>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub(crate) struct GovernanceRiskRow {
     pub(crate) kind: String,
@@ -78,6 +97,8 @@ pub(crate) struct ExportInspectionGovernanceDocument {
     pub(crate) summary: GovernanceSummary,
     #[serde(rename = "datasourceFamilies")]
     pub(crate) datasource_families: Vec<DatasourceFamilyCoverageRow>,
+    #[serde(rename = "dashboardDependencies")]
+    pub(crate) dashboard_dependencies: Vec<DashboardDependencyRow>,
     pub(crate) datasources: Vec<DatasourceCoverageRow>,
     #[serde(rename = "riskRecords")]
     pub(crate) risk_records: Vec<GovernanceRiskRow>,
@@ -92,7 +113,7 @@ struct ResolvedDatasourceIdentity {
 
 // Collapse datasource type names into normalized family labels used in governance
 // summaries and risk grouping.
-fn normalize_family_name(datasource_type: &str) -> String {
+pub(crate) fn normalize_family_name(datasource_type: &str) -> String {
     match datasource_type.trim().to_ascii_lowercase().as_str() {
         "" => "unknown".to_string(),
         "grafana-postgresql-datasource" => "postgres".to_string(),
@@ -341,6 +362,30 @@ pub(crate) fn build_datasource_coverage_rows(
         .collect()
 }
 
+pub(crate) fn build_dashboard_dependency_rows(
+    report: &ExportInspectionQueryReport,
+) -> Vec<DashboardDependencyRow> {
+    let normalized = super::dashboard_inspect_report::normalize_query_report(report);
+    normalized
+        .dashboards
+        .into_iter()
+        .map(|dashboard| DashboardDependencyRow {
+            dashboard_uid: dashboard.dashboard_uid,
+            dashboard_title: dashboard.dashboard_title,
+            folder_path: dashboard.folder_path,
+            file_path: dashboard.file_path,
+            panel_count: dashboard.panels.len(),
+            query_count: dashboard
+                .panels
+                .iter()
+                .map(|panel| panel.queries.len())
+                .sum::<usize>(),
+            datasources: dashboard.datasources,
+            datasource_families: dashboard.datasource_families,
+        })
+        .collect()
+}
+
 pub(crate) fn build_governance_risk_rows(
     summary: &ExportInspectionSummary,
     report: &ExportInspectionQueryReport,
@@ -447,6 +492,7 @@ pub(crate) fn build_export_inspection_governance_document(
     report: &ExportInspectionQueryReport,
 ) -> ExportInspectionGovernanceDocument {
     let datasource_families = build_datasource_family_coverage_rows(summary, report);
+    let dashboard_dependencies = build_dashboard_dependency_rows(report);
     let datasources = build_datasource_coverage_rows(summary, report);
     let risk_records = build_governance_risk_rows(summary, report);
     ExportInspectionGovernanceDocument {
@@ -465,6 +511,7 @@ pub(crate) fn build_export_inspection_governance_document(
             risk_record_count: risk_records.len(),
         },
         datasource_families,
+        dashboard_dependencies,
         datasources,
         risk_records,
     }
@@ -521,6 +568,43 @@ pub(crate) fn render_governance_table_report(
                 "QUERIES",
             ],
             &family_rows,
+            true,
+        ));
+    }
+
+    lines.push(String::new());
+    lines.push("# Dashboard Dependencies".to_string());
+    let dashboard_rows = document
+        .dashboard_dependencies
+        .iter()
+        .map(|row| {
+            vec![
+                row.dashboard_uid.clone(),
+                row.dashboard_title.clone(),
+                row.folder_path.clone(),
+                row.panel_count.to_string(),
+                row.query_count.to_string(),
+                row.datasources.join(","),
+                row.datasource_families.join(","),
+                row.file_path.clone(),
+            ]
+        })
+        .collect::<Vec<Vec<String>>>();
+    if dashboard_rows.is_empty() {
+        lines.push("(none)".to_string());
+    } else {
+        lines.extend(render_simple_table(
+            &[
+                "DASHBOARD_UID",
+                "TITLE",
+                "FOLDER_PATH",
+                "PANELS",
+                "QUERIES",
+                "DATASOURCES",
+                "FAMILIES",
+                "FILE",
+            ],
+            &dashboard_rows,
             true,
         ));
     }

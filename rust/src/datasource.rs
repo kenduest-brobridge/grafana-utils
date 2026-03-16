@@ -38,6 +38,14 @@ const DATASOURCE_EXPORT_FILENAME: &str = "datasources.json";
 const EXPORT_METADATA_FILENAME: &str = "export-metadata.json";
 const ROOT_INDEX_KIND: &str = "grafana-utils-datasource-export-index";
 const TOOL_SCHEMA_VERSION: i64 = 1;
+const DATASOURCE_ROOT_HELP_TEXT: &str = "Examples:\n\n  List datasources as JSON:\n    grafana-util datasource list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n\n  Dry-run a live datasource create:\n    grafana-util datasource add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name prometheus-main --type prometheus --datasource-url http://prometheus:9090 --dry-run --table\n\n  Dry-run a datasource import:\n    grafana-util datasource import --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --import-dir ./datasources --dry-run --json";
+const DATASOURCE_LIST_HELP_TEXT: &str = "Examples:\n\n  grafana-util datasource list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n  grafana-util datasource list --url http://localhost:3000 --output-format csv";
+const DATASOURCE_EXPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./datasources --overwrite\n  grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./datasources";
+const DATASOURCE_IMPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util datasource import --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --import-dir ./datasources --dry-run --table\n  grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --use-export-org --only-org-id 2 --create-missing-orgs --dry-run --json";
+const DATASOURCE_DIFF_HELP_TEXT: &str = "Examples:\n\n  grafana-util datasource diff --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --diff-dir ./datasources";
+const DATASOURCE_ADD_HELP_TEXT: &str = "Examples:\n\n  grafana-util datasource add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name prometheus-main --type prometheus --datasource-url http://prometheus:9090 --dry-run --table\n  grafana-util datasource add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --uid loki-main --name loki-main --type loki --datasource-url http://loki:3100 --json-data '{\"timeout\":60}' --dry-run --json";
+const DATASOURCE_MODIFY_HELP_TEXT: &str = "Examples:\n\n  grafana-util datasource modify --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --uid prom-main --set-url http://prometheus-v2:9090 --dry-run --json\n  grafana-util datasource modify --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --uid prom-main --set-default true --dry-run --table";
+const DATASOURCE_DELETE_HELP_TEXT: &str = "Examples:\n\n  grafana-util datasource delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --uid prom-main --dry-run --json\n  grafana-util datasource delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --uid prom-main --yes";
 const DATASOURCE_CONTRACT_FIELDS: &[&str] = &[
     "uid",
     "name",
@@ -70,23 +78,25 @@ pub enum DryRunOutputFormat {
 pub struct DatasourceListArgs {
     #[command(flatten)]
     pub common: CommonCliArgs,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render datasource summaries as a table.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render datasource summaries as a table.", help_heading = "Output Options")]
     pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render datasource summaries as CSV.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render datasource summaries as CSV.", help_heading = "Output Options")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render datasource summaries as JSON.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render datasource summaries as JSON.", help_heading = "Output Options")]
     pub json: bool,
     #[arg(
         long,
         value_enum,
         conflicts_with_all = ["table", "csv", "json"],
-        help = "Alternative single-flag output selector. Use table, csv, or json."
+        help = "Alternative single-flag output selector. Use table, csv, or json.",
+        help_heading = "Output Options"
     )]
     pub output_format: Option<ListOutputFormat>,
     #[arg(
         long,
         default_value_t = false,
-        help = "Do not print table headers when rendering the default table output."
+        help = "Do not print table headers when rendering the default table output.",
+        help_heading = "Output Options"
     )]
     pub no_header: bool,
 }
@@ -134,7 +144,8 @@ pub struct DatasourceImportArgs {
     pub common: CommonCliArgs,
     #[arg(
         long,
-        help = "Import datasource inventory from this directory. Point this at the datasource export root that contains datasources.json and export-metadata.json."
+        help = "Import datasource inventory from this directory. Point this at the datasource export root that contains datasources.json and export-metadata.json.",
+        help_heading = "Input Options"
     )]
     pub import_dir: PathBuf,
     #[arg(
@@ -313,40 +324,48 @@ pub struct DatasourceDeleteArgs {
         long,
         required_unless_present = "name",
         conflicts_with = "name",
-        help = "Datasource UID to delete."
+        help = "Datasource UID to delete.",
+        help_heading = "Target Options"
     )]
     pub uid: Option<String>,
     #[arg(
         long,
         required_unless_present = "uid",
         conflicts_with = "uid",
-        help = "Datasource name to delete when UID is not available."
+        help = "Datasource name to delete when UID is not available.",
+        help_heading = "Target Options"
     )]
     pub name: Option<String>,
+    #[arg(long, default_value_t = false, help = "Acknowledge the live datasource delete. Required unless --dry-run is set.", help_heading = "Safety Options")]
+    pub yes: bool,
     #[arg(
         long,
         default_value_t = false,
-        help = "Preview what datasource delete would do without changing Grafana."
+        help = "Preview what datasource delete would do without changing Grafana.",
+        help_heading = "Output Options"
     )]
     pub dry_run: bool,
     #[arg(
         long,
         default_value_t = false,
-        help = "For --dry-run only, render a compact table instead of plain text."
+        help = "For --dry-run only, render a compact table instead of plain text.",
+        help_heading = "Output Options"
     )]
     pub table: bool,
     #[arg(
         long,
         default_value_t = false,
-        help = "For --dry-run only, render one JSON document."
+        help = "For --dry-run only, render one JSON document.",
+        help_heading = "Output Options"
     )]
     pub json: bool,
-    #[arg(long, value_enum, conflicts_with_all = ["table", "json"], help = "Alternative single-flag output selector for datasource delete dry-run output. Use text, table, or json.")]
+    #[arg(long, value_enum, conflicts_with_all = ["table", "json"], help = "Alternative single-flag output selector for datasource delete dry-run output. Use text, table, or json.", help_heading = "Output Options")]
     pub output_format: Option<DryRunOutputFormat>,
     #[arg(
         long,
         default_value_t = false,
-        help = "For --dry-run --table only, omit the table header row."
+        help = "For --dry-run --table only, omit the table header row.",
+        help_heading = "Output Options"
     )]
     pub no_header: bool,
 }
@@ -410,26 +429,27 @@ pub struct DatasourceModifyArgs {
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum DatasourceGroupCommand {
-    #[command(about = "List live Grafana datasource inventory.")]
+    #[command(about = "List live Grafana datasource inventory.", after_help = DATASOURCE_LIST_HELP_TEXT)]
     List(DatasourceListArgs),
-    #[command(about = "Create one live Grafana datasource through the Grafana API.")]
+    #[command(about = "Create one live Grafana datasource through the Grafana API.", after_help = DATASOURCE_ADD_HELP_TEXT)]
     Add(DatasourceAddArgs),
-    #[command(about = "Modify one live Grafana datasource through the Grafana API.")]
+    #[command(about = "Modify one live Grafana datasource through the Grafana API.", after_help = DATASOURCE_MODIFY_HELP_TEXT)]
     Modify(DatasourceModifyArgs),
-    #[command(about = "Delete one live Grafana datasource through the Grafana API.")]
+    #[command(about = "Delete one live Grafana datasource through the Grafana API.", after_help = DATASOURCE_DELETE_HELP_TEXT)]
     Delete(DatasourceDeleteArgs),
-    #[command(about = "Export live Grafana datasource inventory as normalized JSON files.")]
+    #[command(about = "Export live Grafana datasource inventory as normalized JSON files.", after_help = DATASOURCE_EXPORT_HELP_TEXT)]
     Export(DatasourceExportArgs),
-    #[command(about = "Import datasource inventory through the Grafana API.")]
+    #[command(about = "Import datasource inventory through the Grafana API.", after_help = DATASOURCE_IMPORT_HELP_TEXT)]
     Import(DatasourceImportArgs),
-    #[command(about = "Compare local datasource export files against live Grafana datasources.")]
+    #[command(about = "Compare local datasource export files against live Grafana datasources.", after_help = DATASOURCE_DIFF_HELP_TEXT)]
     Diff(DatasourceDiffArgs),
 }
 
 #[derive(Debug, Clone, Parser)]
 #[command(
     name = "grafana-util datasource",
-    about = "List, add, modify, delete, export, import, and diff Grafana datasources."
+    about = "List, add, modify, delete, export, import, and diff Grafana datasources.",
+    after_help = DATASOURCE_ROOT_HELP_TEXT
 )]
 pub struct DatasourceCliArgs {
     #[command(subcommand)]
@@ -2825,6 +2845,9 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                     println!("Dry-run checked 1 datasource delete request");
                 }
                 return Ok(());
+            }
+            if !args.yes {
+                return Err(message("Datasource delete requires --yes unless --dry-run is set."));
             }
             if matching.action != "would-delete" {
                 return Err(message(format!(

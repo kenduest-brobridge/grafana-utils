@@ -1,3 +1,4 @@
+import argparse
 import io
 import json
 import tempfile
@@ -86,6 +87,16 @@ class DashboardInspectionTests(unittest.TestCase):
                         "id": None,
                         "uid": "cpu-main",
                         "title": "CPU Main",
+                        "templating": {
+                            "list": [
+                                {
+                                    "name": "prom_ds",
+                                    "type": "datasource",
+                                    "query": "prometheus",
+                                    "current": {},
+                                }
+                            ]
+                        },
                         "panels": [
                             {
                                 "id": 7,
@@ -106,15 +117,22 @@ class DashboardInspectionTests(unittest.TestCase):
                         "id": None,
                         "uid": "mixed-main",
                         "title": "Mixed Main",
+                        "templating": {
+                            "list": [
+                                {
+                                    "name": "logs_ds",
+                                    "type": "datasource",
+                                    "query": "loki",
+                                    "current": {},
+                                }
+                            ]
+                        },
                         "panels": [
                             {
                                 "id": 8,
                                 "title": "Logs",
                                 "type": "logs",
-                                "datasource": {
-                                    "type": "datasource",
-                                    "uid": "-- Mixed --",
-                                },
+                                "datasource": "$logs_ds",
                                 "targets": [
                                     {
                                         "refId": "A",
@@ -552,7 +570,11 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertEqual(payload["queries"][0]["dashboardUid"], "infra-main")
             self.assertEqual(payload["queries"][0]["panelId"], "7")
             self.assertEqual(payload["queries"][0]["datasourceUid"], "prom-main")
+            self.assertEqual(payload["queries"][0]["datasourceType"], "prometheus")
+            self.assertEqual(payload["queries"][0]["datasourceFamily"], "prometheus")
             self.assertEqual(payload["queries"][0]["metrics"], ["node_cpu_seconds_total"])
+            self.assertEqual(payload["queries"][1]["datasourceType"], "influxdb")
+            self.assertEqual(payload["queries"][1]["datasourceFamily"], "influxdb")
             self.assertEqual(payload["queries"][1]["buckets"], ["prod"])
             self.assertEqual(payload["queries"][1]["measurements"], ["cpu"])
 
@@ -685,6 +707,28 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertEqual(payload["summary"]["queryRecordCount"], 1)
             self.assertEqual(payload["summary"]["datasourceFamilyCount"], 1)
             self.assertEqual(payload["datasourceFamilies"][0]["family"], "loki")
+            self.assertEqual(len(payload["dashboardDependencies"]), 2)
+            self.assertEqual(payload["dashboardDependencies"][0]["dashboardUid"], "cpu-main")
+            self.assertEqual(
+                payload["dashboardDependencies"][0]["pluginIds"],
+                ["timeseries"],
+            )
+            self.assertEqual(
+                payload["dashboardDependencies"][0]["datasourceVariables"],
+                ["prom_ds"],
+            )
+            self.assertEqual(
+                payload["dashboardDependencies"][1]["pluginIds"],
+                ["logs"],
+            )
+            self.assertEqual(
+                payload["dashboardDependencies"][1]["datasourceVariables"],
+                ["logs_ds"],
+            )
+            self.assertEqual(
+                payload["dashboardDependencies"][1]["datasourceVariableRefs"],
+                ["logs_ds"],
+            )
             self.assertEqual(payload["datasources"][0]["datasourceUid"], "logs-main")
             self.assertEqual(len(payload["riskRecords"]), 2)
             self.assertEqual(payload["riskRecords"][0]["kind"], "orphaned-datasource")
@@ -894,15 +938,18 @@ class DashboardInspectionTests(unittest.TestCase):
                     "--report",
                     "csv",
                     "--report-columns",
-                    "dashboard_uid,datasource_uid,datasource,query",
+                    "dashboard_uid,datasource_uid,datasource,datasource_family,query",
                 ]
             )
             _, csv_columns_output = self.run_inspect(csv_columns_args)
             self.assertIn(
-                "dashboard_uid,datasource_uid,datasource,query",
+                "dashboard_uid,datasource_uid,datasource,datasource_family,query",
                 csv_columns_output.splitlines()[0],
             )
-            self.assertIn("infra-main,prom-main,prom-main,up", csv_columns_output)
+            self.assertIn(
+                "infra-main,prom-main,prom-main,prometheus,up",
+                csv_columns_output,
+            )
 
     def test_inspect_export_filters_query_report(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -951,6 +998,217 @@ class DashboardInspectionTests(unittest.TestCase):
             payload = json.loads(json_output)
             self.assertEqual(payload["summary"]["queryRecordCount"], 1)
             self.assertEqual(payload["queries"][0]["datasource"], "prom-main")
+
+    def test_filter_export_inspection_report_document_matches_datasource_uid_type_and_family(self):
+        document = {
+            "summary": {"dashboardCount": 2, "queryRecordCount": 2},
+            "queries": [
+                {
+                    "dashboardUid": "cpu-main",
+                    "panelId": "7",
+                    "datasource": "prom-main",
+                    "datasourceUid": "prom-uid",
+                    "datasourceType": "prometheus",
+                    "datasourceFamily": "prometheus",
+                },
+                {
+                    "dashboardUid": "logs-main",
+                    "panelId": "8",
+                    "datasource": "logs-main",
+                    "datasourceUid": "logs-uid",
+                    "datasourceType": "loki",
+                    "datasourceFamily": "loki",
+                },
+            ],
+        }
+
+        for value in ("prom-main", "prom-uid", "prometheus"):
+            filtered = exporter.filter_export_inspection_report_document(
+                document,
+                datasource_label=value,
+            )
+            self.assertEqual(filtered["summary"]["dashboardCount"], 1)
+            self.assertEqual(filtered["summary"]["queryRecordCount"], 1)
+            self.assertEqual(filtered["queries"][0]["datasource"], "prom-main")
+
+    def test_inspect_export_help_describes_shared_report_columns_and_datasource_filter(self):
+        parser = argparse.ArgumentParser()
+        exporter.add_inspect_export_cli_args(parser)
+
+        help_text = parser.format_help()
+
+        self.assertIn("datasourceType", help_text)
+        self.assertIn("datasourceFamily", help_text)
+        self.assertIn("file", help_text)
+        self.assertIn("datasource label,", help_text)
+        self.assertIn("uid, type,", help_text)
+        self.assertIn("or family exactly matches this value", help_text)
+        self.assertIn(
+            "dashboard_uid,datasource_uid,datasource_family,query,file",
+            exporter.INSPECT_EXPORT_HELP_FULL_EXAMPLES,
+        )
+
+    def test_inspect_export_filters_query_report_by_datasource_uid_type_or_family(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self.write_summary_fixture(
+                import_dir,
+                dashboards=[
+                    {
+                        "path": Path("General") / "Mixed_Main__mixed-main.json",
+                        "dashboard": {
+                            "id": None,
+                            "uid": "mixed-main",
+                            "title": "Mixed Main",
+                            "panels": [
+                                {
+                                    "id": 1,
+                                    "title": "Mixed Panel",
+                                    "type": "timeseries",
+                                    "targets": [
+                                        {
+                                            "refId": "A",
+                                            "datasource": {
+                                                "type": "grafana-postgresql-datasource",
+                                                "uid": "pg-main",
+                                            },
+                                            "rawSql": "select * from cpu_usage",
+                                        },
+                                        {
+                                            "refId": "B",
+                                            "datasource": {
+                                                "type": "loki",
+                                                "uid": "logs-main",
+                                            },
+                                            "expr": '{job="grafana"}',
+                                        },
+                                    ],
+                                }
+                            ],
+                        },
+                    }
+                ],
+                datasources=[
+                    {"uid": "pg-main", "name": "Postgres Main", "type": "grafana-postgresql-datasource"},
+                    {"uid": "logs-main", "name": "Logs Main", "type": "loki"},
+                ],
+            )
+
+            cases = [
+                ("pg-main", "pg-main", "grafana-postgresql-datasource", "postgres"),
+                (
+                    "grafana-postgresql-datasource",
+                    "pg-main",
+                    "grafana-postgresql-datasource",
+                    "postgres",
+                ),
+                ("postgres", "pg-main", "grafana-postgresql-datasource", "postgres"),
+            ]
+            for filter_value, expected_uid, expected_type, expected_family in cases:
+                args = exporter.parse_args(
+                    [
+                        "inspect-export",
+                        "--import-dir",
+                        str(import_dir),
+                        "--report",
+                        "json",
+                        "--report-filter-datasource",
+                        filter_value,
+                    ]
+                )
+                _, json_output = self.run_inspect(args)
+                payload = json.loads(json_output)
+
+                self.assertEqual(payload["summary"]["queryRecordCount"], 1)
+                self.assertEqual(payload["queries"][0]["datasourceUid"], expected_uid)
+                self.assertEqual(payload["queries"][0]["datasourceType"], expected_type)
+                self.assertEqual(payload["queries"][0]["datasourceFamily"], expected_family)
+
+    def test_inspect_export_filters_query_report_by_datasource_uid_type_and_family(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self.write_report_fixture(
+                import_dir,
+                {
+                    "id": None,
+                    "uid": "mixed-main",
+                    "title": "Mixed Main",
+                    "panels": [
+                        {
+                            "id": 1,
+                            "title": "Mixed Panel",
+                            "type": "timeseries",
+                            "datasource": {"type": "datasource", "uid": "-- Mixed --"},
+                            "targets": [
+                                {
+                                    "refId": "A",
+                                    "datasource": {"type": "prometheus", "uid": "prom-main"},
+                                    "expr": "up",
+                                },
+                                {
+                                    "refId": "B",
+                                    "datasource": {"type": "loki", "uid": "logs-main"},
+                                    "expr": '{job="grafana"}',
+                                },
+                            ],
+                        }
+                    ],
+                },
+            )
+
+            for datasource_filter, expected_datasource in [
+                ("prom-main", "prom-main"),
+                ("prometheus", "prom-main"),
+                ("loki", "logs-main"),
+            ]:
+                args = exporter.parse_args(
+                    [
+                        "inspect-export",
+                        "--import-dir",
+                        str(import_dir),
+                        "--report",
+                        "json",
+                        "--report-filter-datasource",
+                        datasource_filter,
+                    ]
+                )
+                _, json_output = self.run_inspect(args)
+                payload = json.loads(json_output)
+                self.assertEqual(
+                    payload["queries"][0]["datasource"],
+                    expected_datasource,
+                    datasource_filter,
+                )
+
+    def test_inspect_export_help_lists_supported_report_columns_and_filter_matching(self):
+        parser = argparse.ArgumentParser()
+        exporter.add_inspect_export_cli_args(parser)
+
+        help_text = parser.format_help()
+
+        self.assertIn("datasourceUid", help_text)
+        self.assertIn("datasourceType", help_text)
+        self.assertIn("datasourceFamily", help_text)
+        self.assertIn("file", help_text)
+        self.assertIn("dashboard_uid", help_text)
+        self.assertIn("datasource label,", help_text)
+        self.assertIn("uid, type,", help_text)
+        self.assertIn("or family exactly matches this value", help_text)
+
+    def test_inspect_live_help_lists_supported_report_columns_and_filter_matching(self):
+        parser = argparse.ArgumentParser()
+        exporter.add_inspect_live_cli_args(parser)
+
+        help_text = parser.format_help()
+
+        self.assertIn("datasourceUid", help_text)
+        self.assertIn("datasourceType", help_text)
+        self.assertIn("datasourceFamily", help_text)
+        self.assertIn("file", help_text)
+        self.assertIn("dashboard_uid", help_text)
+        self.assertIn("datasource label,", help_text)
+        self.assertIn("uid, type,", help_text)
+        self.assertIn("or family exactly matches this value", help_text)
 
     def test_inspect_live_renders_report_json_from_mocked_client(self):
         fake_client = FakeDashboardWorkflowClient(
@@ -1152,3 +1410,74 @@ class DashboardInspectionTests(unittest.TestCase):
         self.assertEqual(result, 0)
         payload = json.loads(stdout.getvalue())
         self.assertEqual(payload["summary"]["dashboardCount"], 1)
+
+    def test_inspect_export_outputs_dependency_contract_json(self):
+        args = exporter.parse_args(
+            [
+                "inspect-export",
+                "--import-dir",
+                "dashboards/raw",
+                "--report",
+                "dependency",
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self.write_summary_fixture(
+                import_dir,
+                dashboards=[
+                    {
+                        "path": Path("General") / "CPU_Main__cpu-main.json",
+                        "dashboard": {
+                            "id": None,
+                            "uid": "cpu-main",
+                            "title": "CPU Main",
+                            "panels": [
+                                {
+                                    "id": 7,
+                                    "title": "CPU",
+                                    "type": "timeseries",
+                                    "targets": [
+                                        {
+                                            "refId": "A",
+                                            "expr": "sum(rate(node_cpu_seconds_total[5m]))",
+                                        }
+                                    ],
+                                    "datasource": {"uid": "prom-main", "type": "prometheus"},
+                                }
+                            ],
+                        },
+                    }
+                ],
+                datasources=[
+                    {
+                        "uid": "prom-main",
+                        "name": "Prometheus Main",
+                        "type": "prometheus",
+                        "access": "proxy",
+                        "url": "http://prometheus:9090",
+                        "isDefault": True,
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    }
+                ],
+                folders=[],
+            )
+            args.import_dir = str(import_dir)
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = exporter.inspect_export(args)
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(result, 0)
+        self.assertEqual(
+            payload["kind"],
+            "grafana-utils-dashboard-dependency-contract",
+        )
+        self.assertEqual(payload["queryCount"], 1)
+        self.assertEqual(payload["datasourceCount"], 1)
+        self.assertEqual(len(payload["queries"]), 1)
+        self.assertEqual(payload["queries"][0]["datasourceFamily"], "prometheus")
+        self.assertEqual(len(payload["datasourceUsage"]), 1)
+        self.assertEqual(payload["datasourceUsage"][0]["datasource"], "prom-main")

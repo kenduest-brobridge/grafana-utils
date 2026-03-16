@@ -204,6 +204,17 @@ def build_bundle_preflight_document(source_bundle, target_inventory, availabilit
     for item in source_bundle.get("folders") or []:
         if isinstance(item, Mapping):
             sync_specs.append(dict(item))
+    for item in source_bundle.get("alerts") or []:
+        if isinstance(item, Mapping):
+            sync_specs.append(
+                {
+                    "kind": "alert",
+                    "uid": item.get("uid"),
+                    "title": item.get("title"),
+                    "managedFields": list(item.get("managedFields") or []),
+                    "body": dict(item.get("body") or {}),
+                }
+            )
 
     promotion_plan = build_promotion_plan_document(
         source_bundle,

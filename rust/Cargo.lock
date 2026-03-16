@@ -615,7 +615,7 @@ dependencies = [
 
 [[package]]
 name = "grafana-utils-rust"
-version = "0.2.16"
+version = "0.2.18"
 dependencies = [
  "base64",
  "chrono",

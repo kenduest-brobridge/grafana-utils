@@ -55,7 +55,13 @@ class BundlePreflightWorkbenchTests(unittest.TestCase):
                     "uid": "cpu-high",
                     "title": "CPU High",
                     "managedFields": ["condition", "contactPoints"],
-                    "body": {"condition": "A > 90", "contactPoints": ["pagerduty-primary"]},
+                    "body": {
+                        "condition": "A > 90",
+                        "datasourceUid": "prom-main",
+                        "datasourceName": "Prometheus Main",
+                        "contactPoints": ["pagerduty-primary"],
+                        "notificationSettings": {"receiver": "slack-primary"},
+                    },
                 }
             ],
         }
@@ -76,6 +82,7 @@ class BundlePreflightWorkbenchTests(unittest.TestCase):
             availability={
                 "pluginIds": [],
                 "datasourceUids": [],
+                "datasourceNames": [],
                 "contactPoints": [],
                 "providerNames": [],
                 "secretPlaceholderNames": [],
@@ -104,6 +111,7 @@ class BundlePreflightWorkbenchTests(unittest.TestCase):
             availability={
                 "pluginIds": [],
                 "datasourceUids": [],
+                "datasourceNames": [],
                 "contactPoints": [],
                 "providerNames": [],
                 "secretPlaceholderNames": [],

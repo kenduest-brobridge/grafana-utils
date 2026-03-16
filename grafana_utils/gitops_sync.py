@@ -23,6 +23,8 @@ from .dashboard_cli import GrafanaError
 
 RESOURCE_KINDS = ("dashboard", "datasource", "folder", "alert")
 DEFAULT_REVIEW_TOKEN = "reviewed-sync-plan"
+SYNC_SOURCE_BUNDLE_KIND = "grafana-utils-sync-source-bundle"
+SYNC_SOURCE_BUNDLE_SCHEMA_VERSION = 1
 
 
 @dataclass(frozen=True)
@@ -432,18 +434,81 @@ def plan_to_document(plan):
     }
 
 
+def build_sync_source_bundle_document(
+    dashboards=None,
+    datasources=None,
+    folders=None,
+    alerting=None,
+    metadata=None,
+):
+    """Build one portable local source bundle document for later review/preflight."""
+    dashboards = list(dashboards or ())
+    datasources = list(datasources or ())
+    folders = list(folders or ())
+    alerting = _copy_mapping(alerting, "alerting")
+    metadata = _copy_mapping(metadata, "metadata")
+    alerting_summary = _copy_mapping(alerting.get("summary"), "alerting.summary")
+    return {
+        "kind": SYNC_SOURCE_BUNDLE_KIND,
+        "schemaVersion": SYNC_SOURCE_BUNDLE_SCHEMA_VERSION,
+        "summary": {
+            "dashboardCount": len(dashboards),
+            "datasourceCount": len(datasources),
+            "folderCount": len(folders),
+            "alertRuleCount": int(alerting_summary.get("ruleCount") or 0),
+            "contactPointCount": int(alerting_summary.get("contactPointCount") or 0),
+            "muteTimingCount": int(alerting_summary.get("muteTimingCount") or 0),
+            "policyCount": int(alerting_summary.get("policyCount") or 0),
+            "templateCount": int(alerting_summary.get("templateCount") or 0),
+        },
+        "dashboards": deepcopy(dashboards),
+        "datasources": deepcopy(datasources),
+        "folders": deepcopy(folders),
+        "alerts": [],
+        "alerting": deepcopy(alerting),
+        "metadata": deepcopy(metadata),
+    }
+
+
+def render_sync_source_bundle_text(document):
+    """Render one portable source bundle document as concise operator text."""
+    if not isinstance(document, Mapping):
+        raise GrafanaError("Sync source bundle document must be a JSON object.")
+    if document.get("kind") != SYNC_SOURCE_BUNDLE_KIND:
+        raise GrafanaError("Sync source bundle document kind is not supported.")
+    summary = _copy_mapping(document.get("summary"), "summary")
+    return [
+        "Sync source bundle",
+        "Dashboards: %s" % int(summary.get("dashboardCount") or 0),
+        "Datasources: %s" % int(summary.get("datasourceCount") or 0),
+        "Folders: %s" % int(summary.get("folderCount") or 0),
+        "Alerting: rules=%s contact-points=%s mute-timings=%s policies=%s templates=%s"
+        % (
+            int(summary.get("alertRuleCount") or 0),
+            int(summary.get("contactPointCount") or 0),
+            int(summary.get("muteTimingCount") or 0),
+            int(summary.get("policyCount") or 0),
+            int(summary.get("templateCount") or 0),
+        ),
+    ]
+
+
 __all__ = [
     "DEFAULT_REVIEW_TOKEN",
     "RESOURCE_KINDS",
+    "SYNC_SOURCE_BUNDLE_KIND",
+    "SYNC_SOURCE_BUNDLE_SCHEMA_VERSION",
     "SyncOperation",
     "SyncPlan",
     "SyncResourceSpec",
     "build_apply_intent",
     "build_resource_index",
+    "build_sync_source_bundle_document",
     "build_sync_plan",
     "mark_plan_reviewed",
     "normalize_resource_spec",
     "plan_to_document",
+    "render_sync_source_bundle_text",
     "summarize_alert_operations",
     "summarize_operations",
 ]

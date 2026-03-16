@@ -16,11 +16,13 @@ use super::dashboard_inspect_analyzer_loki;
 use super::dashboard_inspect_analyzer_prometheus;
 use super::dashboard_inspect_analyzer_sql;
 use super::dashboard_inspect_governance::{
-    build_export_inspection_governance_document, render_governance_table_report,
+    build_export_inspection_governance_document, normalize_family_name,
+    render_governance_table_report,
 };
 use super::dashboard_inspect_render::{
     render_csv, render_grouped_query_report, render_grouped_query_table_report, render_simple_table,
 };
+use super::dashboard_inspection_dependency_contract::build_offline_dependency_contract;
 use super::*;
 
 pub(crate) const DATASOURCE_FAMILY_PROMETHEUS: &str = "prometheus";
@@ -160,6 +162,56 @@ fn summarize_datasource_uid(reference: &Value) -> Option<String> {
             .map(str::trim)
             .filter(|value| !value.is_empty() && !is_placeholder_string(value))
             .map(ToString::to_string),
+        _ => None,
+    }
+}
+
+fn summarize_datasource_type(
+    reference: &Value,
+    datasource_inventory: &[DatasourceInventoryItem],
+) -> Option<String> {
+    if reference.is_null() || is_builtin_datasource_ref(reference) {
+        return None;
+    }
+    let lookup_inventory_type = |candidate: &str| -> Option<String> {
+        let normalized = candidate.trim();
+        if normalized.is_empty() || is_placeholder_string(normalized) {
+            return None;
+        }
+        datasource_inventory
+            .iter()
+            .find(|datasource| datasource.uid == normalized || datasource.name == normalized)
+            .map(|datasource| datasource.datasource_type.clone())
+            .or_else(|| Some(datasource_type_alias(normalized).to_string()))
+    };
+    match reference {
+        Value::String(text) => lookup_inventory_type(text),
+        Value::Object(object) => {
+            let uid = object
+                .get("uid")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty() && !is_placeholder_string(value));
+            let name = object
+                .get("name")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty() && !is_placeholder_string(value));
+            if let Some(datasource) = datasource_inventory.iter().find(|datasource| {
+                uid.map(|value| datasource.uid == value).unwrap_or(false)
+                    || name.map(|value| datasource.name == value).unwrap_or(false)
+            }) {
+                if !datasource.datasource_type.is_empty() {
+                    return Some(datasource.datasource_type.clone());
+                }
+            }
+            object
+                .get("type")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty() && !is_placeholder_string(value))
+                .map(|value| datasource_type_alias(value).to_string())
+        }
         _ => None,
     }
 }
@@ -653,6 +705,8 @@ fn collect_query_report_rows(
     dashboard_uid: &str,
     dashboard_title: &str,
     folder_path: &str,
+    dashboard_file: &Path,
+    datasource_inventory: &[DatasourceInventoryItem],
     rows: &mut Vec<ExportInspectionQueryRow>,
 ) {
     for panel in panels {
@@ -685,6 +739,15 @@ fn collect_query_report_rows(
                     .and_then(summarize_datasource_uid)
                     .or_else(|| panel_datasource.and_then(summarize_datasource_uid))
                     .unwrap_or_default();
+                let datasource_type = target_object
+                    .get("datasource")
+                    .and_then(|value| summarize_datasource_type(value, datasource_inventory))
+                    .or_else(|| {
+                        panel_datasource.and_then(|value| {
+                            summarize_datasource_type(value, datasource_inventory)
+                        })
+                    })
+                    .unwrap_or_default();
                 let (query_field, query_text) = extract_query_field_and_text(target_object);
                 let analysis = dispatch_query_analysis(&QueryExtractionContext {
                     panel: panel_object,
@@ -702,16 +765,27 @@ fn collect_query_report_rows(
                     ref_id: string_field(target_object, "refId", ""),
                     datasource,
                     datasource_uid,
+                    datasource_family: normalize_family_name(&datasource_type),
+                    datasource_type,
                     query_field,
                     query_text,
                     metrics: analysis.metrics,
                     measurements: analysis.measurements,
                     buckets: analysis.buckets,
+                    file_path: dashboard_file.display().to_string(),
                 });
             }
         }
         if let Some(children) = panel_object.get("panels").and_then(Value::as_array) {
-            collect_query_report_rows(children, dashboard_uid, dashboard_title, folder_path, rows);
+            collect_query_report_rows(
+                children,
+                dashboard_uid,
+                dashboard_title,
+                folder_path,
+                dashboard_file,
+                datasource_inventory,
+                rows,
+            );
         }
     }
 }
@@ -722,6 +796,7 @@ pub(crate) fn build_export_inspection_query_report(
     let summary = build_export_inspection_summary(import_dir)?;
     let metadata = load_export_metadata(import_dir, Some(RAW_EXPORT_SUBDIR))?;
     let dashboard_files = discover_dashboard_files(import_dir)?;
+    let datasource_inventory = load_datasource_inventory(import_dir, metadata.as_ref())?;
     let folder_inventory = load_folder_inventory(import_dir, metadata.as_ref())?;
     let folders_by_uid = folder_inventory
         .into_iter()
@@ -748,6 +823,8 @@ pub(crate) fn build_export_inspection_query_report(
                 &dashboard_uid,
                 &dashboard_title,
                 &folder_path,
+                dashboard_file,
+                &datasource_inventory,
                 &mut rows,
             );
         }
@@ -778,7 +855,12 @@ pub(crate) fn apply_query_report_filters(
     }
     report.queries.retain(|row| {
         let datasource_match = datasource_filter
-            .map(|value| row.datasource == value)
+            .map(|value| {
+                row.datasource == value
+                    || row.datasource_uid == value
+                    || row.datasource_type == value
+                    || row.datasource_family == value
+            })
             .unwrap_or(true);
         let panel_match = panel_id_filter
             .map(|value| row.panel_id == value)
@@ -846,6 +928,10 @@ fn map_output_format_to_report(
         InspectOutputFormat::ReportJson => Some(InspectExportReportFormat::Json),
         InspectOutputFormat::ReportTree => Some(InspectExportReportFormat::Tree),
         InspectOutputFormat::ReportTreeTable => Some(InspectExportReportFormat::TreeTable),
+        InspectOutputFormat::ReportDependency => Some(InspectExportReportFormat::Dependency),
+        InspectOutputFormat::ReportDependencyJson => {
+            Some(InspectExportReportFormat::DependencyJson)
+        }
         InspectOutputFormat::Governance => Some(InspectExportReportFormat::Governance),
         InspectOutputFormat::GovernanceJson => Some(InspectExportReportFormat::GovernanceJson),
     }
@@ -1047,6 +1133,26 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
         if report_format == InspectExportReportFormat::Json {
             let document = build_export_inspection_query_report_document(&report);
             println!("{}", serde_json::to_string_pretty(&document)?);
+            return Ok(report.summary.dashboard_count);
+        }
+        if report_format == InspectExportReportFormat::Dependency
+            || report_format == InspectExportReportFormat::DependencyJson
+        {
+            let metadata = load_export_metadata(&args.import_dir, Some(RAW_EXPORT_SUBDIR))?;
+            let datasource_inventory =
+                load_datasource_inventory(&args.import_dir, metadata.as_ref())?;
+            let report_document = build_export_inspection_query_report_document(&report);
+            let query_rows = report_document
+                .queries
+                .iter()
+                .map(|row| {
+                    serde_json::to_value(row).map_err(|error| {
+                        message(format!("failed to serialize dependency query row: {error}"))
+                    })
+                })
+                .collect::<Result<Vec<Value>>>()?;
+            let payload = build_offline_dependency_contract(&query_rows, &datasource_inventory);
+            println!("{}", serde_json::to_string_pretty(&payload)?);
             return Ok(report.summary.dashboard_count);
         }
         if report_format == InspectExportReportFormat::Tree {

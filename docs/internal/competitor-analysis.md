@@ -139,55 +139,54 @@ Implication for this repo:
 - not a direct benchmark for general Grafana operator tooling
 - more relevant as a reminder that scheduled backup packaging may matter if the repo later wants recurring DR use cases
 
-### 5. Grafana Git Sync
+### 5. Grafana Git Sync (Grafana 12+)
 
 Documentation:
-
 - <https://grafana.com/docs/grafana/latest/observability-as-code/provision-resources/provisioned-dashboards/>
 
 Maintenance read:
-
-- official Grafana feature under active development
-- documentation still indicated non-GA maturity when reviewed on 2026-03-15
-- different Grafana docs surfaces described it as `experimental` or `public preview` depending on product context
+- Official Grafana feature under active development.
+- In Grafana 12+, this allows users to "Save" in the UI and automatically create a Pull Request in Git.
 
 Primary value:
-
-- Git-backed synchronization of Grafana resources, especially dashboards
-
-Observed feature shape:
-
-- GitOps-oriented provisioning rather than backup/restore
-- not a full-instance reviewable backup system
-- does not replace multi-resource migration, access replay, or explicit dry-run/diff contracts
+- Bridges the gap between UI-based editing and Git-based version control for dashboards.
 
 Implication for this repo:
+- This is a powerful native feature for dashboard versioning.
+- However, it focuses primarily on dashboards and does not replace the need for multi-resource migration (Datasource, Alerts, Access), cross-environment diffing, or deep governance inspection provided by `grafana-utils`.
 
-- important strategic reference for declarative sync direction
-- should not cause the repo to collapse its current migration/inspection value into a dashboard-only Git feature
-
-### 6. `grafana/grizzly`
+### 6. Grafana Cog & Foundation SDK
 
 Repository:
+- <https://github.com/grafana/cog>
 
+Primary value:
+- A "schema-first" approach to generate developer-friendly libraries in Go, Python, TypeScript, and Java for building dashboards.
+
+Implication for this repo:
+- Competes with the "Dashboard-as-Code" space (like Jsonnet/Grafonnet).
+- It's a "developer tool" for creation, whereas `grafana-utils` is an "operator tool" for migration and governance.
+
+### 7. Perses (CNCF Sandbox)
+
+Repository:
+- <https://github.com/perses/perses>
+
+Primary value:
+- A vendor-neutral dashboarding standard that is GitOps-native by design (using CUE or Go).
+
+Implication for this repo:
+- A potential long-term alternative to Grafana itself for teams seeking pure GitOps.
+- Not a direct competitor for managing existing Grafana instances, but a reason for `grafana-utils` to stay focused on its "migration and audit" value proposition for the current Grafana ecosystem.
+
+### 8. `grafana/grizzly`
+
+(Existing content moved down or kept for historical context)
+Repository:
 - <https://github.com/grafana/grizzly>
 
 Maintenance read:
-
-- archived on 2025-08-05
-
-Primary value:
-
-- Grafana-as-code workflow built around declarative configuration
-
-Observed feature shape:
-
-- IaC and configuration management, not classic backup and restore
-
-Implication for this repo:
-
-- useful historical context for declarative workflows
-- no longer a good active benchmark
+- Appears to be in a lower maintenance or archival-like state compared to newer official tools.
 
 ## Comparison With `grafana-utils`
 

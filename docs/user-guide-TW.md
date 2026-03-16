@@ -262,11 +262,11 @@ Dashboard diff found 1 differing item(s).
 | `--import-dir`（必須） | 指向 raw/ 目錄 | 不連線線上 API |
 | `--json` | JSON 輸出 | 與 `--table`/`--report*` 互斥 |
 | `--table` | 表格輸出 | 與 `--json` 互斥 |
-| `--report` | report mode 快捷；可為空值 | 取預設 report table 或指定 csv/json/tree/governance |
-| `--output-format text\|table\|json\|report-table\|report-csv\|report-json\|report-tree\|report-tree-table\|governance\|governance-json` | 單一輸出旗標 | 與 `--json`、`--table`、`--report` 互斥 |
-| `--report-columns` | report 輸出欄位白名單 | 僅 report/table/csv/tree-table 類有意義 |
-| `--report-filter-datasource` | report/filter 的 datasource 精準匹配 | 問題來源鑑別 |
-| `--report-filter-panel-id` | report/filter 的 panel id 精準匹配 | 查單面板差異 |
+| `--report` | report mode 快捷；可為空值 | 空值預設是 flat table；也可指定 `csv`、`json`、`tree`、`tree-table`、`dependency`、`dependency-json`、`governance`、`governance-json` |
+| `--output-format text\|table\|json\|report-table\|report-csv\|report-json\|report-tree\|report-tree-table\|dependency\|dependency-json\|report-dependency\|report-dependency-json\|governance\|governance-json` | 單一輸出旗標 | 與 `--json`、`--table`、`--report` 互斥 |
+| `--report-columns` | report 輸出欄位白名單 | 只適用 `report-table`、`report-csv`、`report-tree-table` 與等價 `--report` 模式 |
+| `--report-filter-datasource` | report/filter 的 datasource 精準匹配 | 會精準比對 datasource label、uid、type、normalized family |
+| `--report-filter-panel-id` | report/filter 的 panel id 精準匹配 | 只適用 report 類輸出，適合查單面板差異 |
 | `--help-full` | 顯示完整 report 範例與欄位說明 | 首次導入常用 |
 | `--no-header` | 表格/可表格化 report 不列表頭 | 便於比對輸出 |
 
@@ -292,7 +292,7 @@ latency-main  API Latency       8             loki-prod
 | `--page-size`（預設 `500`） | 線上資料分頁控制 | 大型環境可先降低每頁筆數以避免逾時 |
 | `--org-id` | 指定單一 org | 與 `--all-orgs` 互斥 |
 | `--all-orgs` | 跨可見 org 聚合 | 用於跨組織總覽盤點 |
-| `--json` / `--table` / `--report` / `--output-format*` | 與 `inspect-export` 完全同義 | 可直接對比離線/線上 |
+| `--json` / `--table` / `--report` / `--output-format*` | 與 `inspect-export` 完全同義 | 包含 `dependency` / `dependency-json` 與 governance 模式 |
 | `--help-full` | 進一步說明 report 參數 | 導入/診斷複雜情境 |
 | `--no-header` | 不列表頭 | 主要供腳本處理 |
 
@@ -303,15 +303,28 @@ grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user adm
 
 範例輸出：
 ```json
-[
-  {
-    "uid": "cpu-main",
-    "title": "CPU Overview",
-    "datasource_count": 1,
-    "status": "ok"
-  }
-]
+{
+  "kind": "grafana-utils-dashboard-governance",
+  "summary": {
+    "dashboardCount": 1,
+    "mixedDashboardCount": 0
+  },
+  "dashboardDependencies": [
+    {
+      "dashboardUid": "cpu-main",
+      "dashboardTitle": "CPU Overview",
+      "datasources": ["prom-main"],
+      "datasourceFamilies": ["prometheus"],
+      "pluginIds": ["timeseries"]
+    }
+  ]
+}
 ```
+
+補充說明：
+- `--report-columns` 只適用 flat 或 grouped table 類 report；summary JSON、dependency contract、governance 輸出都會拒絕。
+- `--report-filter-datasource` 會精準匹配 datasource label、uid、type、normalized family。
+- `--report-filter-panel-id` 只適用 report 類輸出。
 
 ### 3.8 `dashboard inspect-vars`
 
@@ -348,9 +361,12 @@ diskdevices  custom                  [a-z]+|nvme[0-9]+n[0-9]+|mmcblk[0-9]+      
 | --- | --- | --- |
 | `--dashboard-uid` / `--dashboard-url` | 選擇 dashboard 目標 | URL 模式可直接保留瀏覽器 query state |
 | `--panel-id` | 擷取單一 panel | 使用 Grafana `d-solo` route |
+| `--width`、`--height` | 控制瀏覽器 viewport 尺寸 | 適合寬 dashboard 或 panel crop |
+| `--device-scale-factor` | 在不改變 CSS viewport 的情況下提高 raster 密度 | `2` 適合需要較銳利 PNG/JPEG 的情境 |
 | `--vars-query` | 重播 `var-*` 與相容 query key | 支援 `refresh`、`showCategory`、`timezone` 與 `${__all_variables}` 片段 |
 | `--print-capture-url` | 印出最終解析後的 URL | 除錯時非常實用 |
 | `--full-page` | 輸出長頁 dashboard 圖 | 瀏覽器式 full-page 擷取 |
+| `--full-page-output` | 保留單一大圖或改成分段檔案輸出 | `tiles` 會輸出 `part-0001.*` 等檔案；`manifest` 會再附帶 title/dashboard/panel 資訊的 `manifest.json` |
 | `--browser-path` | 指定 Chrome/Chromium 路徑 | 工作站有多個瀏覽器時可固定版本 |
 | `--header-title`、`--header-url`、`--header-captured-at`、`--header-text` | 在 PNG/JPEG 前面加深色 header 區塊 | header 在最終圖片合成，不會干擾 Grafana layout |
 
@@ -607,9 +623,12 @@ uid=loki-prod
 + url=http://loki-prod:3100
 ```
 
-### 5.5 `datasource add`（僅 Python CLI）
+### 5.5 `datasource add`
 
 **用途**：直接在 Grafana 建立一筆線上 datasource，不經過本地 export bundle。
+
+說明：
+- 目前 `datasource add`、`datasource modify`、`datasource delete` 已在 Python CLI 與 Rust CLI 提供對應命令面。
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
@@ -1316,6 +1335,42 @@ grafana-util access service-account token delete --url http://localhost:3000 --t
 3. 需要 import/diff 前檢查：加 `--dry-run`
 4. 跨 org 風險高：加 `--org-id`、`--require-matching-export-org`
 
+### 8.5 在 CI 中做 dashboard 治理門禁
+
+1. 先準備 `raw/` dashboard 匯出目錄。
+2. 產出治理與 flat query JSON：
+
+```bash
+grafana-util dashboard inspect-export --import-dir ./dashboards/raw --report governance-json > governance.json
+grafana-util dashboard inspect-export --import-dir ./dashboards/raw --report json > queries.json
+```
+
+3. 用 policy 檔做治理檢查：
+
+```bash
+python3 scripts/check_dashboard_governance.py \
+  --policy examples/dashboard-governance-policy.json \
+  --governance governance.json \
+  --queries queries.json \
+  --json-output governance-check.json
+```
+
+4. 只有在你餵的是較舊的 governance artifact、還沒有把 dashboard dependency facts 帶進 `governance.json` 時，才需要額外加 `--import-dir ./dashboards/raw` 當 fallback。
+
+5. governance-json-first checker 目前可阻擋：
+   - 不在 allowlist 的 datasource family / uid
+   - 無法識別的 datasource
+   - mixed-datasource dashboard
+   - 不在 allowlist 的 panel plugin
+   - 不在 allowlist 的 library panel
+   - 不允許的 dashboard folder prefix / routing 邊界
+   - dashboard panel / query 引用但未定義的 datasource 變數
+   - dashboard / panel query 數超標
+   - query / dashboard complexity 分數超標
+   - SQL `select *`
+   - 缺少 Grafana SQL time filter
+   - Loki 過寬 selector / regex
+
 9) 每命令 SOP（最短可跑版本）
 ------------------------------
 
@@ -1382,7 +1437,7 @@ grafana-util access service-account token delete --url <URL> --token <TOKEN> --n
 | dashboard import | text/table/json | 不可（僅 text/table/json） | text 為 dry-run 匯總資訊 |
 | alert list-* | table/csv/json | 不可 | list 命令共用 |
 | datasource list | table/csv/json | 不可 | 同上 |
-| datasource add | text/table/json | 不可（僅 text/table/json） | dry-run 可用，僅 Python CLI |
+| datasource add | text/table/json | 不可（僅 text/table/json） | dry-run 可用 |
 | datasource import | text/table/json | 不可（僅 text/table/json） | text 為 dry-run 摘要，也支援 routed org-level preview |
 | access user list | table/csv/json | 不可 | 同上 |
 | access team list | table/csv/json | 不可 | 同上 |

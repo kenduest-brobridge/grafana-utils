@@ -37,6 +37,8 @@ DASHBOARD_COMMAND_HELP = {
     "diff": "Compare exported raw dashboards with the current Grafana state.",
     "inspect-export": "Analyze a raw dashboard export directory offline.",
     "inspect-live": "Analyze live Grafana dashboards without writing a persistent export.",
+    "inspect-vars": "List dashboard templating variables from live Grafana.",
+    "screenshot": "Capture one Grafana dashboard or panel through a browser backend.",
 }
 UNIFIED_DASHBOARD_COMMAND_MAP = {
     "export": "export-dashboard",
@@ -46,16 +48,20 @@ UNIFIED_DASHBOARD_COMMAND_MAP = {
     "list-data-sources": "list-data-sources",
     "inspect-export": "inspect-export",
     "inspect-live": "inspect-live",
+    "inspect-vars": "inspect-vars",
+    "screenshot": "screenshot",
 }
 DATASOURCE_COMMAND_HELP = {
     "list": "List live Grafana datasource inventory.",
     "add": "Create one live Grafana datasource through the Grafana API.",
+    "modify": "Modify one live Grafana datasource through the Grafana API.",
     "delete": "Delete one live Grafana datasource through the Grafana API.",
     "export": "Export live Grafana datasource inventory as normalized JSON files.",
     "import": "Import datasource inventory JSON through the Grafana API.",
     "diff": "Compare exported datasource inventory with the current Grafana state.",
 }
 SYNC_COMMAND_HELP = {
+    "summary": "Summarize local desired sync resources from JSON.",
     "plan": "Build one reviewable sync plan from desired/live JSON files.",
     "review": "Mark one sync plan document as reviewed.",
     "preflight": "Build one staged sync preflight document from local JSON inputs.",
@@ -74,7 +80,9 @@ def _print_dashboard_group_help() -> None:
         "  import             Import dashboards from exported raw JSON files.\n"
         "  diff               Compare exported raw dashboards with the current Grafana state.\n"
         "  inspect-export     Analyze a raw dashboard export directory offline.\n"
-        "  inspect-live       Analyze live Grafana dashboards without writing a persistent export."
+        "  inspect-live       Analyze live Grafana dashboards without writing a persistent export.\n"
+        "  inspect-vars       List dashboard templating variables from live Grafana.\n"
+        "  screenshot         Capture one Grafana dashboard or panel through a browser backend."
     )
 
 
@@ -102,6 +110,7 @@ def build_parser() -> argparse.ArgumentParser:
     dashboard_parser = subparsers.add_parser(
         "dashboard",
         help="Run dashboard export, list, import, or diff workflows.",
+        aliases=["db"],
         add_help=False,
     )
     dashboard_subparsers = dashboard_parser.add_subparsers(dest="dashboard_command")
@@ -132,6 +141,7 @@ def build_parser() -> argparse.ArgumentParser:
     sync_parser = subparsers.add_parser(
         "sync",
         help="Run the declarative sync planner under grafana-util sync ...",
+        aliases=["sy"],
         add_help=False,
     )
     sync_subparsers = sync_parser.add_subparsers(dest="sync_command")
@@ -165,7 +175,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         raise SystemExit(0)
 
     command = argv[0]
-    if command == "dashboard":
+    if command in ("dashboard", "db"):
         if len(argv) == 1 or argv[1] in ("-h", "--help"):
             _print_dashboard_group_help()
             raise SystemExit(0)
@@ -200,6 +210,9 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         if len(argv) == 1 or argv[1] in ("-h", "--help"):
             datasource_cli.build_parser(prog="grafana-util datasource").print_help()
             raise SystemExit(0)
+        if argv[1] not in DATASOURCE_COMMAND_HELP:
+            parser.parse_args(argv)
+            raise AssertionError("argparse should have exited for unsupported datasource command")
         # Keep datasource facade entrypoint aligned with dashboard-style split:
         # parse + normalize first, then delegate to workflow layer.
         return argparse.Namespace(
@@ -207,7 +220,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
             forwarded_argv=argv[1:],
         )
 
-    if command == "sync":
+    if command in ("sync", "sy"):
         if len(argv) == 1 or argv[1] in ("-h", "--help"):
             sync_cli.build_parser(prog="grafana-util sync").print_help()
             raise SystemExit(0)

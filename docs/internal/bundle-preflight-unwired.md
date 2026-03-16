@@ -1,9 +1,16 @@
-# Bundle Preflight
+# Bundle Preflight Design History
+
+Historical note:
+
+- `grafana-util sync bundle-preflight` is now a wired command in both Python
+  and Rust.
+- The command supports local availability input and `--fetch-live`.
+- This file is kept as the original staged design note for traceability.
 
 ## Purpose
 
-This note tracks the staged bundle-level preflight scaffold and its current
-wiring status.
+This note tracks the original staged bundle-level preflight scaffold and its
+implementation shape.
 
 ## Scope
 
@@ -26,6 +33,7 @@ wiring status.
 
 - `grafana-util sync bundle-preflight`
   - Accepts local source-bundle and target-inventory JSON documents.
+  - Also supports `--availability-file` and `--fetch-live` in the current CLI.
   - Accepts provider and secret availability via `--availability-file`.
   - Supports `--fetch-live` for Grafana-backed datasource/plugin/contact-point
     availability hints, while provider and placeholder availability remain

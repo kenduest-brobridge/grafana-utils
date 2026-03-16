@@ -39,6 +39,13 @@ fn render_access_subcommand_help(path: &[&str]) -> String {
     String::from_utf8(output).unwrap()
 }
 
+fn render_access_root_help() -> String {
+    let mut command = AccessCliRoot::command();
+    let mut output = Vec::new();
+    command.write_long_help(&mut output).unwrap();
+    String::from_utf8(output).unwrap()
+}
+
 fn make_token_common() -> CommonCliArgs {
     CommonCliArgs {
         url: "http://127.0.0.1:3000".to_string(),
@@ -50,6 +57,8 @@ fn make_token_common() -> CommonCliArgs {
         org_id: None,
         timeout: 30,
         verify_ssl: false,
+        insecure: false,
+        ca_cert: None,
     }
 }
 
@@ -64,6 +73,8 @@ fn make_basic_common() -> CommonCliArgs {
         org_id: None,
         timeout: 30,
         verify_ssl: false,
+        insecure: false,
+        ca_cert: None,
     }
 }
 
@@ -77,6 +88,8 @@ fn make_basic_common_no_org_id() -> CommonCliArgsNoOrgId {
         prompt_token: false,
         timeout: 30,
         verify_ssl: false,
+        insecure: false,
+        ca_cert: None,
     }
 }
 
@@ -102,6 +115,60 @@ fn parse_cli_supports_user_list() {
         }
         _ => panic!("expected user list"),
     }
+}
+
+#[test]
+fn access_root_help_includes_examples() {
+    let mut command = AccessCliRoot::command();
+    let mut output = Vec::new();
+    command.write_long_help(&mut output).unwrap();
+    let help = String::from_utf8(output).unwrap();
+
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("grafana-util access user list"));
+    assert!(help.contains("grafana-util access team import"));
+}
+
+#[test]
+fn access_user_add_help_includes_examples_and_grouped_auth_headings() {
+    let help = render_access_subcommand_help(&["user", "add"]);
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("Authentication Options"));
+    assert!(help.contains("Transport Options"));
+}
+
+#[test]
+fn access_team_import_help_includes_examples_and_yes_flag() {
+    let help = render_access_subcommand_help(&["team", "import"]);
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("--yes"));
+    assert!(help.contains("Authentication Options"));
+}
+
+#[test]
+fn access_org_delete_help_includes_examples_and_yes_flag() {
+    let help = render_access_subcommand_help(&["org", "delete"]);
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("--yes"));
+}
+
+#[test]
+fn access_service_account_token_add_help_includes_examples() {
+    let help = render_access_subcommand_help(&["service-account", "token", "add"]);
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("--token-name"));
+}
+
+#[test]
+fn access_root_help_includes_examples_and_grouped_options() {
+    let help = render_access_root_help();
+    let user_add_help = render_access_subcommand_help(&["user", "add"]);
+
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("grafana-util access user list"));
+    assert!(help.contains("grafana-util access service-account token add"));
+    assert!(user_add_help.contains("Authentication Options"));
+    assert!(user_add_help.contains("Transport Options"));
 }
 
 #[test]
@@ -560,6 +627,146 @@ fn parse_cli_supports_prompt_token() {
         }
         _ => panic!("expected user list"),
     }
+}
+
+#[test]
+fn parse_cli_supports_insecure_and_ca_cert_flags() {
+    let args = parse_cli_from([
+        "grafana-access-utils",
+        "user",
+        "list",
+        "--ca-cert",
+        "/tmp/grafana-ca.pem",
+    ]);
+
+    match args.command {
+        AccessCommand::User {
+            command: UserCommand::List(list_args),
+        } => {
+            assert_eq!(
+                list_args.common.ca_cert.as_deref(),
+                Some(std::path::Path::new("/tmp/grafana-ca.pem"))
+            );
+            assert!(!list_args.common.verify_ssl);
+            assert!(!list_args.common.insecure);
+        }
+        _ => panic!("expected user list"),
+    }
+
+    let args = parse_cli_from(["grafana-access-utils", "user", "list", "--insecure"]);
+    match args.command {
+        AccessCommand::User {
+            command: UserCommand::List(list_args),
+        } => {
+            assert!(list_args.common.insecure);
+            assert_eq!(list_args.common.ca_cert, None);
+        }
+        _ => panic!("expected user list"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_insecure_on_destructive_commands() {
+    let args = parse_cli_from([
+        "grafana-access-utils",
+        "team",
+        "delete",
+        "--name",
+        "ops",
+        "--insecure",
+        "--yes",
+    ]);
+    match args.command {
+        AccessCommand::Team {
+            command: TeamCommand::Delete(delete_args),
+        } => {
+            assert!(delete_args.common.insecure);
+            assert_eq!(delete_args.name.as_deref(), Some("ops"));
+            assert!(delete_args.yes);
+        }
+        _ => panic!("expected team delete"),
+    }
+
+    let args = parse_cli_from([
+        "grafana-access-utils",
+        "org",
+        "delete",
+        "--name",
+        "ops",
+        "--insecure",
+        "--yes",
+    ]);
+    match args.command {
+        AccessCommand::Org {
+            command: OrgCommand::Delete(delete_args),
+        } => {
+            assert!(delete_args.common.insecure);
+            assert_eq!(delete_args.name.as_deref(), Some("ops"));
+            assert!(delete_args.yes);
+        }
+        _ => panic!("expected org delete"),
+    }
+
+    let args = parse_cli_from([
+        "grafana-access-utils",
+        "service-account",
+        "delete",
+        "--name",
+        "svc",
+        "--insecure",
+        "--yes",
+    ]);
+    match args.command {
+        AccessCommand::ServiceAccount {
+            command: ServiceAccountCommand::Delete(delete_args),
+        } => {
+            assert!(delete_args.common.insecure);
+            assert_eq!(delete_args.name.as_deref(), Some("svc"));
+            assert!(delete_args.yes);
+        }
+        _ => panic!("expected service-account delete"),
+    }
+
+    let args = parse_cli_from([
+        "grafana-access-utils",
+        "service-account",
+        "token",
+        "delete",
+        "--name",
+        "svc",
+        "--token-name",
+        "automation",
+        "--insecure",
+        "--yes",
+    ]);
+    match args.command {
+        AccessCommand::ServiceAccount {
+            command:
+                ServiceAccountCommand::Token {
+                    command: ServiceAccountTokenCommand::Delete(delete_args),
+                },
+        } => {
+            assert!(delete_args.common.insecure);
+            assert_eq!(delete_args.name.as_deref(), Some("svc"));
+            assert_eq!(delete_args.token_name.as_deref(), Some("automation"));
+            assert!(delete_args.yes);
+        }
+        _ => panic!("expected service-account token delete"),
+    }
+}
+
+#[test]
+fn build_auth_context_enables_verification_for_ca_cert() {
+    let mut common = make_token_common();
+    common.ca_cert = Some("/tmp/grafana-ca.pem".into());
+
+    let context = super::build_auth_context(&common).unwrap();
+
+    assert!(context.verify_ssl);
+    assert_eq!(
+        context.ca_cert.as_deref(),
+        Some(std::path::Path::new("/tmp/grafana-ca.pem"))
+    );
 }
 
 #[test]

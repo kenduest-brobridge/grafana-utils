@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Public Python CLI facade for conservative declarative sync planning.
+"""Public Python CLI facade for conservative declarative sync workflows.
 
 Purpose:
 - Expose the existing GitOps sync planning scaffold through `grafana-util sync`.
-- Keep the current public surface local-file based and non-live so reviewable
-  plan/apply contracts can settle before any Grafana API mutation is wired in.
+- Keep reviewable plan/apply contracts first-class while also supporting
+  conservative live fetch/apply paths for supported resource kinds.
 
 Architecture:
 - Parse and validate one local JSON input/output flow per subcommand.
@@ -16,6 +16,7 @@ Architecture:
 import argparse
 import json
 import sys
+from pathlib import Path
 from urllib import parse
 
 from .dashboard_cli import (
@@ -25,6 +26,8 @@ from .dashboard_cli import (
 )
 from .datasource.live_mutation_safe import build_add_payload as build_datasource_add_payload
 from .datasource.workflows import build_modify_datasource_payload
+from .alerts.common import GrafanaError as AlertGrafanaError
+from .alerts.provisioning import build_rule_import_payload
 from .alert_sync_workbench import (
     assess_alert_sync_specs,
     render_alert_sync_assessment_text,
@@ -38,9 +41,12 @@ from .gitops_sync import (
     SyncOperation,
     SyncPlan,
     build_apply_intent,
+    build_sync_source_bundle_document,
     build_sync_plan,
     mark_plan_reviewed,
+    normalize_resource_spec,
     plan_to_document,
+    render_sync_source_bundle_text,
 )
 from .sync_preflight_workbench import (
     build_sync_preflight_document,
@@ -53,6 +59,11 @@ PLAN_HELP_EXAMPLES = (
     "  grafana-util sync plan --desired-file ./desired.json --live-file ./live.json\n"
     "  grafana-util sync plan --desired-file ./desired.json --live-file ./live.json "
     "--allow-prune --plan-file ./sync-plan.json"
+)
+SUMMARY_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  grafana-util sync summary --desired-file ./desired.json\n"
+    "  grafana-util sync summary --desired-file ./desired.json --output json"
 )
 REVIEW_HELP_EXAMPLES = (
     "Examples:\n\n"
@@ -79,6 +90,37 @@ BUNDLE_PREFLIGHT_HELP_EXAMPLES = (
     "  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n"
     "  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --availability-file ./availability.json --output json"
 )
+BUNDLE_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n"
+    "  grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --datasource-export-file ./datasources/datasources.json --metadata-file ./metadata.json --output json"
+)
+SYNC_ROOT_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  grafana-util sync summary --desired-file ./desired.json\n"
+    "  grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n"
+    "  grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\""
+)
+
+
+def add_document_input_group(parser, *definitions):
+    group = parser.add_argument_group("Input Options")
+    for definition in definitions:
+        flags = definition[0]
+        kwargs = definition[1]
+        group.add_argument(*flags, **kwargs)
+
+
+def add_runtime_group(parser):
+    return parser.add_argument_group("Runtime Options")
+
+
+def add_output_group(parser):
+    return parser.add_argument_group("Output Options")
+
+
+def add_apply_control_group(parser):
+    return parser.add_argument_group("Apply Control Options")
 
 
 def build_parser(prog=None):
@@ -86,13 +128,31 @@ def build_parser(prog=None):
     parser = argparse.ArgumentParser(
         prog=prog or "grafana-util sync",
         description=(
-            "Build, review, and gate a local declarative Grafana sync plan "
-            "without talking to Grafana."
+            "Build, review, and gate declarative Grafana sync plans with "
+            "optional live Grafana fetch/apply paths."
         ),
+        epilog=SYNC_ROOT_HELP_EXAMPLES,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     subparsers = parser.add_subparsers(dest="command")
     subparsers.required = True
+
+    summary_parser = subparsers.add_parser(
+        "summary",
+        help="Summarize local desired sync resources from JSON.",
+        epilog=SUMMARY_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_document_input_group(
+        summary_parser,
+        (("--desired-file",), {"required": True, "help": "JSON file containing the desired managed resource list."}),
+    )
+    add_output_group(summary_parser).add_argument(
+        "--output",
+        choices=("text", "json"),
+        default="text",
+        help="Render the summary document as text or json (default: text).",
+    )
 
     plan_parser = subparsers.add_parser(
         "plan",
@@ -100,39 +160,35 @@ def build_parser(prog=None):
         epilog=PLAN_HELP_EXAMPLES,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    plan_parser.add_argument(
-        "--desired-file",
-        required=True,
-        help="JSON file containing the desired managed resource list.",
+    add_document_input_group(
+        plan_parser,
+        (("--desired-file",), {"required": True, "help": "JSON file containing the desired managed resource list."}),
+        (("--live-file",), {"default": None, "help": "JSON file containing the current live resource list."}),
     )
-    plan_parser.add_argument(
-        "--live-file",
-        default=None,
-        help="JSON file containing the current live resource list.",
-    )
-    plan_parser.add_argument(
+    runtime_group = add_runtime_group(plan_parser)
+    runtime_group.add_argument(
         "--fetch-live",
         action="store_true",
         help="Read the current live state directly from Grafana instead of --live-file.",
     )
     add_common_cli_args(plan_parser)
-    plan_parser.add_argument(
+    runtime_group.add_argument(
         "--org-id",
         default=None,
         help="Optional Grafana org id used when --fetch-live is active.",
     )
-    plan_parser.add_argument(
+    runtime_group.add_argument(
         "--page-size",
         type=int,
         default=500,
         help="Dashboard search page size when --fetch-live is active.",
     )
-    plan_parser.add_argument(
+    add_apply_control_group(plan_parser).add_argument(
         "--allow-prune",
         action="store_true",
         help="Treat live resources missing from desired state as would-delete instead of unmanaged.",
     )
-    plan_parser.add_argument(
+    add_output_group(plan_parser).add_argument(
         "--plan-file",
         default=None,
         help="Optional JSON file path to write the generated plan document.",
@@ -144,17 +200,16 @@ def build_parser(prog=None):
         epilog=REVIEW_HELP_EXAMPLES,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    review_parser.add_argument(
-        "--plan-file",
-        required=True,
-        help="Input JSON plan document produced by `grafana-util sync plan`.",
+    add_document_input_group(
+        review_parser,
+        (("--plan-file",), {"required": True, "help": "Input JSON plan document produced by `grafana-util sync plan`."}),
     )
-    review_parser.add_argument(
+    add_apply_control_group(review_parser).add_argument(
         "--review-token",
         default=DEFAULT_REVIEW_TOKEN,
         help="Explicit review token required to mark the plan reviewed.",
     )
-    review_parser.add_argument(
+    add_output_group(review_parser).add_argument(
         "--output-file",
         default=None,
         help="Optional JSON file path to write the reviewed plan document.",
@@ -166,28 +221,24 @@ def build_parser(prog=None):
         epilog=PREFLIGHT_HELP_EXAMPLES,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    preflight_parser.add_argument(
-        "--desired-file",
-        required=True,
-        help="JSON file containing the desired managed resource list.",
+    add_document_input_group(
+        preflight_parser,
+        (("--desired-file",), {"required": True, "help": "JSON file containing the desired managed resource list."}),
+        (("--availability-file",), {"default": None, "help": "Optional JSON object file containing availability hints such as datasourceUids, pluginIds, and contactPoints."}),
     )
-    preflight_parser.add_argument(
-        "--availability-file",
-        default=None,
-        help="Optional JSON object file containing availability hints such as datasourceUids, pluginIds, and contactPoints.",
-    )
-    preflight_parser.add_argument(
+    runtime_group = add_runtime_group(preflight_parser)
+    runtime_group.add_argument(
         "--fetch-live",
         action="store_true",
         help="Fetch availability hints from Grafana instead of relying only on --availability-file.",
     )
     add_common_cli_args(preflight_parser)
-    preflight_parser.add_argument(
+    runtime_group.add_argument(
         "--org-id",
         default=None,
         help="Optional Grafana org id used when --fetch-live is active.",
     )
-    preflight_parser.add_argument(
+    add_output_group(preflight_parser).add_argument(
         "--output",
         choices=("text", "json"),
         default="text",
@@ -200,12 +251,11 @@ def build_parser(prog=None):
         epilog=ASSESS_ALERTS_HELP_EXAMPLES,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    assess_alerts_parser.add_argument(
-        "--alerts-file",
-        required=True,
-        help="JSON file containing the alert sync resource list.",
+    add_document_input_group(
+        assess_alerts_parser,
+        (("--alerts-file",), {"required": True, "help": "JSON file containing the alert sync resource list."}),
     )
-    assess_alerts_parser.add_argument(
+    add_output_group(assess_alerts_parser).add_argument(
         "--output",
         choices=("text", "json"),
         default="text",
@@ -218,72 +268,90 @@ def build_parser(prog=None):
         epilog=BUNDLE_PREFLIGHT_HELP_EXAMPLES,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    bundle_preflight_parser.add_argument(
-        "--source-bundle",
-        required=True,
-        help="JSON file containing the staged multi-resource source bundle.",
+    add_document_input_group(
+        bundle_preflight_parser,
+        (("--source-bundle",), {"required": True, "help": "JSON file containing the staged multi-resource source bundle."}),
+        (("--target-inventory",), {"required": True, "help": "JSON file containing the staged target inventory snapshot."}),
+        (("--availability-file",), {"default": None, "help": "Optional JSON object file containing staged availability hints."}),
     )
-    bundle_preflight_parser.add_argument(
-        "--target-inventory",
-        required=True,
-        help="JSON file containing the staged target inventory snapshot.",
-    )
-    bundle_preflight_parser.add_argument(
-        "--availability-file",
-        default=None,
-        help="Optional JSON object file containing staged availability hints.",
-    )
-    bundle_preflight_parser.add_argument(
+    runtime_group = add_runtime_group(bundle_preflight_parser)
+    runtime_group.add_argument(
         "--fetch-live",
         action="store_true",
         help="Fetch availability hints from Grafana instead of relying only on --availability-file.",
     )
     add_common_cli_args(bundle_preflight_parser)
-    bundle_preflight_parser.add_argument(
+    runtime_group.add_argument(
         "--org-id",
         default=None,
         help="Optional Grafana org id used when --fetch-live is active.",
     )
-    bundle_preflight_parser.add_argument(
+    add_output_group(bundle_preflight_parser).add_argument(
         "--output",
         choices=("text", "json"),
         default="text",
         help="Render the bundle preflight document as text or json (default: text).",
     )
 
+    bundle_parser = subparsers.add_parser(
+        "bundle",
+        help="Package exported dashboards, alerting resources, datasource inventory, and metadata into one portable source bundle.",
+        epilog=BUNDLE_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_document_input_group(
+        bundle_parser,
+        (("--dashboard-export-dir",), {"default": None, "help": "Path to one existing dashboard raw export directory such as ./dashboards/raw."}),
+        (("--alert-export-dir",), {"default": None, "help": "Path to one existing alert raw export directory such as ./alerts/raw."}),
+        (("--datasource-export-file",), {"default": None, "help": "Optional standalone datasource inventory JSON file to include or prefer over dashboards/raw/datasources.json."}),
+        (("--metadata-file",), {"default": None, "help": "Optional JSON object file containing extra bundle metadata."}),
+    )
+    add_output_group(bundle_parser).add_argument(
+        "--output-file",
+        default=None,
+        help="Optional JSON file path to write the source bundle artifact.",
+    )
+    add_output_group(bundle_parser).add_argument(
+        "--output",
+        choices=("text", "json"),
+        default="text",
+        help="Render the source bundle as text or json (default: text).",
+    )
+
     apply_parser = subparsers.add_parser(
         "apply",
-        help="Build a gated apply intent from a reviewed plan without live mutation.",
+        help="Build a gated apply intent from a reviewed plan, optionally executing it live.",
         epilog=APPLY_HELP_EXAMPLES,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    apply_parser.add_argument(
-        "--plan-file",
-        required=True,
-        help="Input JSON plan document, typically already marked reviewed.",
+    add_document_input_group(
+        apply_parser,
+        (("--plan-file",), {"required": True, "help": "Input JSON plan document, typically already marked reviewed."}),
     )
-    apply_parser.add_argument(
+    control_group = add_apply_control_group(apply_parser)
+    control_group.add_argument(
         "--approve",
         action="store_true",
-        help="Explicit acknowledgement required before a non-live apply intent is emitted.",
+        help="Explicit acknowledgement required before an apply intent or live execution is emitted.",
     )
     add_common_cli_args(apply_parser)
-    apply_parser.add_argument(
+    runtime_group = add_runtime_group(apply_parser)
+    runtime_group.add_argument(
         "--org-id",
         default=None,
         help="Optional Grafana org id used when --execute-live is active.",
     )
-    apply_parser.add_argument(
+    control_group.add_argument(
         "--execute-live",
         action="store_true",
         help="Apply supported sync operations to Grafana after review and approval checks pass.",
     )
-    apply_parser.add_argument(
+    control_group.add_argument(
         "--allow-folder-delete",
         action="store_true",
         help="Allow live deletion of folders when a reviewed plan includes would-delete folder operations.",
     )
-    apply_parser.add_argument(
+    add_output_group(apply_parser).add_argument(
         "--output-file",
         default=None,
         help="Optional JSON file path to write the apply intent document.",
@@ -331,6 +399,51 @@ def _require_resource_list(document, label):
     if not isinstance(document, list):
         raise GrafanaError("%s must be a JSON array." % label)
     return document
+
+
+def build_sync_summary_document(raw_specs):
+    specs = [normalize_resource_spec(item) for item in raw_specs]
+    return {
+        "kind": "grafana-utils-sync-summary",
+        "schemaVersion": 1,
+        "summary": {
+            "resourceCount": len(specs),
+            "dashboardCount": len([item for item in specs if item.kind == "dashboard"]),
+            "datasourceCount": len([item for item in specs if item.kind == "datasource"]),
+            "folderCount": len([item for item in specs if item.kind == "folder"]),
+            "alertCount": len([item for item in specs if item.kind == "alert"]),
+        },
+        "resources": [
+            {
+                "kind": item.kind,
+                "identity": item.identity,
+                "title": item.title,
+                "managedFields": list(item.managed_fields),
+                "bodyFieldCount": len(item.body),
+                "sourcePath": item.source_path,
+            }
+            for item in specs
+        ],
+    }
+
+
+def render_sync_summary_text(document):
+    if document.get("kind") != "grafana-utils-sync-summary":
+        raise GrafanaError("Sync summary document kind is not supported.")
+    summary = _require_object(document.get("summary"), "Sync summary document summary")
+    return "\n".join(
+        [
+            "Sync summary",
+            "Resources: %s total, %s dashboards, %s datasources, %s folders, %s alerts"
+            % (
+                int(summary.get("resourceCount") or 0),
+                int(summary.get("dashboardCount") or 0),
+                int(summary.get("datasourceCount") or 0),
+                int(summary.get("folderCount") or 0),
+                int(summary.get("alertCount") or 0),
+            ),
+        ]
+    )
 
 
 def _coerce_operation(item, index):
@@ -470,6 +583,39 @@ def fetch_live_resource_specs(client, page_size=500):
                 "body": body,
             }
         )
+    alert_rules = client.request_json("/api/v1/provisioning/alert-rules")
+    if not isinstance(alert_rules, list):
+        raise GrafanaError("Unexpected alert-rule list response from Grafana.")
+    for rule in alert_rules:
+        if not isinstance(rule, dict):
+            continue
+        uid = _normalize_string(rule.get("uid"))
+        if not uid:
+            continue
+        body = build_rule_import_payload(rule)
+        body["uid"] = _normalize_string(body.get("uid"), uid) or uid
+        specs.append(
+            {
+                "kind": "alert",
+                "uid": uid,
+                "title": _normalize_string(body.get("title"), uid),
+                "body": body,
+                "managedFields": [
+                    field
+                    for field in (
+                        "condition",
+                        "labels",
+                        "annotations",
+                        "contactPoints",
+                        "for",
+                        "noDataState",
+                        "execErrState",
+                    )
+                    if field in body
+                ]
+                or ["condition"],
+            }
+        )
     return specs
 
 
@@ -502,6 +648,19 @@ def run_plan(args):
     return 0
 
 
+def run_summary(args):
+    desired_specs = _require_resource_list(
+        load_json_document(args.desired_file),
+        "Desired sync input",
+    )
+    document = build_sync_summary_document(desired_specs)
+    if args.output == "json":
+        emit_document(document)
+        return 0
+    print(render_sync_summary_text(document))
+    return 0
+
+
 def run_review(args):
     plan = load_plan_document(args.plan_file)
     reviewed_plan = mark_plan_reviewed(
@@ -524,7 +683,7 @@ def _load_optional_object_file(path, label):
 def _merge_availability(base, extra):
     merged = dict(base or {})
     for key, value in (extra or {}).items():
-        if key in ("datasourceUids", "pluginIds", "contactPoints"):
+        if key in ("datasourceUids", "datasourceNames", "pluginIds", "contactPoints"):
             existing = list(merged.get(key) or [])
             seen = set(str(item) for item in existing)
             for item in value or []:
@@ -542,6 +701,7 @@ def fetch_live_availability(client):
     """Fetch one conservative live availability snapshot from Grafana."""
     availability = {
         "datasourceUids": [],
+        "datasourceNames": [],
         "pluginIds": [],
         "contactPoints": [],
     }
@@ -549,8 +709,11 @@ def fetch_live_availability(client):
         if not isinstance(datasource, dict):
             continue
         uid = _normalize_string(datasource.get("uid"))
+        name = _normalize_string(datasource.get("name"))
         if uid:
             availability["datasourceUids"].append(uid)
+        if name:
+            availability["datasourceNames"].append(name)
 
     plugins = client.request_json("/api/plugins")
     if not isinstance(plugins, list):
@@ -572,7 +735,7 @@ def fetch_live_availability(client):
         uid = _normalize_string(item.get("uid"))
         if name:
             availability["contactPoints"].append(name)
-        elif uid:
+        if uid:
             availability["contactPoints"].append(uid)
     return availability
 
@@ -583,6 +746,243 @@ def _emit_text_or_json(document, lines, output):
         return
     for line in lines:
         print(line)
+
+
+def _load_optional_array_file(path, label):
+    if not path:
+        return []
+    document = load_json_document(path)
+    return _require_resource_list(document, label)
+
+
+def _discover_json_files(root, ignored_names):
+    files = []
+    for path in sorted(Path(root).rglob("*.json")):
+        if path.name in ignored_names:
+            continue
+        files.append(path)
+    return files
+
+
+def _dashboard_body_from_export(document):
+    if isinstance(document, dict) and isinstance(document.get("dashboard"), dict):
+        body = dict(document.get("dashboard") or {})
+    else:
+        body = _copy_mapping(document, "Dashboard export document")
+    body.pop("id", None)
+    return body
+
+
+def _normalize_dashboard_bundle_item(document, source_path):
+    body = _dashboard_body_from_export(document)
+    uid = _normalize_string(body.get("uid"))
+    title = _normalize_string(body.get("title"), uid)
+    if not uid:
+        raise GrafanaError("Dashboard export document is missing dashboard.uid: %s" % source_path)
+    return {
+        "kind": "dashboard",
+        "uid": uid,
+        "title": title or uid,
+        "body": body,
+        "sourcePath": source_path,
+    }
+
+
+def _normalize_folder_bundle_item(record):
+    record = _copy_mapping(record, "Folder inventory record")
+    uid = _normalize_string(record.get("uid"))
+    title = _normalize_string(record.get("title"), uid)
+    body = {"title": title or uid}
+    parent_uid = _normalize_string(record.get("parentUid"))
+    if parent_uid:
+        body["parentUid"] = parent_uid
+    path = _normalize_string(record.get("path"))
+    if path:
+        body["path"] = path
+    return {
+        "kind": "folder",
+        "uid": uid,
+        "title": title or uid,
+        "body": body,
+        "sourcePath": _normalize_string(record.get("sourcePath")),
+    }
+
+
+def _normalize_datasource_bundle_item(record):
+    record = _copy_mapping(record, "Datasource inventory record")
+    uid = _normalize_string(record.get("uid"))
+    name = _normalize_string(record.get("name"), uid)
+    if not (uid or name):
+        raise GrafanaError("Datasource inventory record requires uid or name.")
+    body = {
+        "uid": uid,
+        "name": name or uid,
+        "type": _normalize_string(record.get("type")),
+        "access": _normalize_string(record.get("access")),
+        "url": _normalize_string(record.get("url")),
+        "isDefault": bool(record.get("isDefault")),
+    }
+    return {
+        "kind": "datasource",
+        "uid": uid,
+        "name": name or uid,
+        "title": name or uid,
+        "body": body,
+        "sourcePath": _normalize_string(record.get("sourcePath")),
+    }
+
+
+def _classify_alert_export_path(relative_path):
+    parts = list(Path(relative_path).parts)
+    if not parts:
+        return None
+    root = parts[0]
+    mapping = {
+        "rules": "rules",
+        "contact-points": "contactPoints",
+        "mute-timings": "muteTimings",
+        "policies": "policies",
+        "templates": "templates",
+    }
+    return mapping.get(root)
+
+
+def _load_dashboard_bundle_sections(export_dir):
+    root = Path(export_dir)
+    dashboards = [
+        _normalize_dashboard_bundle_item(
+            load_json_document(str(path)),
+            path.relative_to(root).as_posix(),
+        )
+        for path in _discover_json_files(
+            root,
+            ("index.json", "export-metadata.json", "folders.json", "datasources.json"),
+        )
+    ]
+    folders = [
+        _normalize_folder_bundle_item(item)
+        for item in _load_optional_array_file(root / "folders.json", "Dashboard folder inventory")
+    ]
+    datasources = [
+        _normalize_datasource_bundle_item(item)
+        for item in _load_optional_array_file(
+            root / "datasources.json",
+            "Dashboard datasource inventory",
+        )
+    ]
+    metadata = {}
+    export_metadata_path = root / "export-metadata.json"
+    if export_metadata_path.is_file():
+        metadata["dashboardExport"] = _require_object(
+            load_json_document(str(export_metadata_path)),
+            "Dashboard export metadata",
+        )
+    metadata["dashboardExportDir"] = str(root)
+    return dashboards, datasources, folders, metadata
+
+
+def _load_alerting_bundle_section(export_dir):
+    root = Path(export_dir)
+    alerting = {
+        "summary": {
+            "ruleCount": 0,
+            "contactPointCount": 0,
+            "muteTimingCount": 0,
+            "policyCount": 0,
+            "templateCount": 0,
+        },
+        "rules": [],
+        "contactPoints": [],
+        "muteTimings": [],
+        "policies": [],
+        "templates": [],
+    }
+    for path in _discover_json_files(root, ("index.json", "export-metadata.json")):
+        relative_path = path.relative_to(root).as_posix()
+        section = _classify_alert_export_path(relative_path)
+        if not section:
+            continue
+        alerting[section].append(
+            {
+                "sourcePath": relative_path,
+                "document": load_json_document(str(path)),
+            }
+        )
+    alerting["summary"] = {
+        "ruleCount": len(alerting["rules"]),
+        "contactPointCount": len(alerting["contactPoints"]),
+        "muteTimingCount": len(alerting["muteTimings"]),
+        "policyCount": len(alerting["policies"]),
+        "templateCount": len(alerting["templates"]),
+    }
+    export_metadata_path = root / "export-metadata.json"
+    if export_metadata_path.is_file():
+        alerting["exportMetadata"] = _require_object(
+            load_json_document(str(export_metadata_path)),
+            "Alert export metadata",
+        )
+    alerting["exportDir"] = str(root)
+    return alerting
+
+
+def run_bundle(args):
+    if not any(
+        (
+            getattr(args, "dashboard_export_dir", None),
+            getattr(args, "alert_export_dir", None),
+            getattr(args, "datasource_export_file", None),
+            getattr(args, "metadata_file", None),
+        )
+    ):
+        raise GrafanaError(
+            "Sync bundle requires at least one export input such as --dashboard-export-dir, --alert-export-dir, --datasource-export-file, or --metadata-file."
+        )
+    dashboards = []
+    datasources = []
+    folders = []
+    metadata = {}
+    if getattr(args, "dashboard_export_dir", None):
+        (
+            dashboards,
+            dashboard_datasources,
+            folders,
+            dashboard_metadata,
+        ) = _load_dashboard_bundle_sections(args.dashboard_export_dir)
+        datasources.extend(dashboard_datasources)
+        metadata.update(dashboard_metadata)
+    if getattr(args, "datasource_export_file", None):
+        datasources = [
+            _normalize_datasource_bundle_item(item)
+            for item in _load_optional_array_file(
+                args.datasource_export_file,
+                "Datasource export inventory",
+            )
+        ]
+        metadata["datasourceExportFile"] = str(args.datasource_export_file)
+    alerting = {}
+    if getattr(args, "alert_export_dir", None):
+        alerting = _load_alerting_bundle_section(args.alert_export_dir)
+    metadata.update(
+        _load_optional_object_file(
+            getattr(args, "metadata_file", None),
+            "Sync bundle metadata input",
+        )
+    )
+    document = build_sync_source_bundle_document(
+        dashboards=dashboards,
+        datasources=datasources,
+        folders=folders,
+        alerting=alerting,
+        metadata=metadata,
+    )
+    if getattr(args, "output_file", None):
+        write_json_document(args.output_file, document)
+    _emit_text_or_json(
+        document,
+        render_sync_source_bundle_text(document),
+        getattr(args, "output", "text"),
+    )
+    return 0
 
 
 def run_preflight(args):
@@ -779,6 +1179,41 @@ def _apply_datasource_operation(client, operation):
     raise GrafanaError("Unsupported datasource sync action %s." % operation.action)
 
 
+def _apply_alert_operation(client, operation):
+    uid = _normalize_string(operation.identity)
+    if not uid:
+        raise GrafanaError("Alert sync operations require a stable uid identity.")
+    if operation.action == "would-delete":
+        return client.request_json(
+            "/api/v1/provisioning/alert-rules/%s" % parse.quote(uid, safe=""),
+            method="DELETE",
+        )
+    body = _copy_mapping(operation.desired, "Alert desired body")
+    body["uid"] = _normalize_string(body.get("uid"), uid) or uid
+    if body["uid"] != uid:
+        raise GrafanaError(
+            "Alert sync body uid %s does not match operation identity %s."
+            % (body["uid"], uid)
+        )
+    try:
+        payload = build_rule_import_payload(body)
+    except AlertGrafanaError as exc:
+        raise GrafanaError(str(exc))
+    if operation.action == "would-create":
+        return client.request_json(
+            "/api/v1/provisioning/alert-rules",
+            method="POST",
+            payload=payload,
+        )
+    if operation.action == "would-update":
+        return client.request_json(
+            "/api/v1/provisioning/alert-rules/%s" % parse.quote(uid, safe=""),
+            method="PUT",
+            payload=payload,
+        )
+    raise GrafanaError("Unsupported alert sync action %s." % operation.action)
+
+
 def execute_live_apply(client, operations, allow_folder_delete=False):
     """Apply one gated sync intent to Grafana for supported resource kinds."""
     results = []
@@ -794,9 +1229,7 @@ def execute_live_apply(client, operations, allow_folder_delete=False):
         elif operation.kind == "datasource":
             response = _apply_datasource_operation(client, operation)
         elif operation.kind == "alert":
-            raise GrafanaError(
-                "Live sync apply does not support alert operations yet; keep alerts in plan-only mode."
-            )
+            response = _apply_alert_operation(client, operation)
         else:
             raise GrafanaError("Unsupported sync resource kind %s." % operation.kind)
         results.append(
@@ -851,6 +1284,8 @@ def parse_args(argv=None):
 def main(argv=None):
     args = parse_args(argv)
     try:
+        if args.command == "summary":
+            return run_summary(args)
         if args.command == "plan":
             return run_plan(args)
         if args.command == "review":
@@ -861,6 +1296,8 @@ def main(argv=None):
             return run_assess_alerts(args)
         if args.command == "bundle-preflight":
             return run_bundle_preflight(args)
+        if args.command == "bundle":
+            return run_bundle(args)
         return run_apply(args)
     except GrafanaError as exc:
         print("Error: %s" % exc, file=sys.stderr)
@@ -869,6 +1306,7 @@ def main(argv=None):
 
 __all__ = [
     "build_parser",
+    "build_sync_summary_document",
     "emit_document",
     "load_json_document",
     "load_plan_document",
@@ -876,9 +1314,12 @@ __all__ = [
     "parse_args",
     "run_assess_alerts",
     "run_apply",
+    "run_bundle",
     "run_bundle_preflight",
     "run_plan",
     "run_preflight",
     "run_review",
+    "run_summary",
+    "render_sync_summary_text",
     "write_json_document",
 ]

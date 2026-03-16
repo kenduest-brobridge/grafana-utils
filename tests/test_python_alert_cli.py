@@ -7,7 +7,7 @@ import json
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -334,6 +334,36 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertIn("list-rules", help_text)
         self.assertIn("--dashboard-uid-map ./dashboard-map.json", help_text)
 
+    def test_import_help_includes_subcommand_examples(self):
+        help_text = alert_utils.build_parser()._subparsers._group_actions[0].choices["import"].format_help()
+
+        self.assertIn("Examples:", help_text)
+        self.assertIn("grafana-util alert import", help_text)
+        self.assertIn("--replace-existing", help_text)
+        self.assertIn("--dry-run", help_text)
+        self.assertIn("--approve", help_text)
+        self.assertIn("Authentication Options", help_text)
+        self.assertIn("Transport Options", help_text)
+        self.assertIn("Input Options", help_text)
+        self.assertIn("Mutation Options", help_text)
+        self.assertIn("Mapping Options", help_text)
+
+    def test_list_rules_help_includes_examples(self):
+        help_text = alert_utils.build_parser()._subparsers._group_actions[0].choices["list-rules"].format_help()
+
+        self.assertIn("Examples:", help_text)
+        self.assertIn("grafana-util alert list-rules", help_text)
+        self.assertIn("Output Options", help_text)
+
+    def test_export_help_includes_examples_and_grouped_sections(self):
+        help_text = alert_utils.build_parser()._subparsers._group_actions[0].choices["export"].format_help()
+
+        self.assertIn("Examples:", help_text)
+        self.assertIn("grafana-util alert export", help_text)
+        self.assertIn("Authentication Options", help_text)
+        self.assertIn("Transport Options", help_text)
+        self.assertIn("Export Options", help_text)
+
     def test_parse_args_defaults_output_dir_to_alerts(self):
         args = alert_utils.parse_args([])
 
@@ -344,6 +374,15 @@ class AlertUtilsTests(unittest.TestCase):
         args = alert_utils.parse_args([])
 
         self.assertEqual(args.url, "http://127.0.0.1:3000")
+
+    def test_main_requires_approve_for_live_import(self):
+        stream = io.StringIO()
+
+        with redirect_stderr(stream):
+            result = alert_utils.main(["import", "--import-dir", "alerts/raw"])
+
+        self.assertEqual(result, 1)
+        self.assertIn("requires --approve", stream.getvalue())
 
     def test_parse_args_disables_ssl_verification_by_default(self):
         args = alert_utils.parse_args([])

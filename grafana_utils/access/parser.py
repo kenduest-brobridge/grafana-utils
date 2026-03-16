@@ -34,6 +34,215 @@ SCOPE_CHOICES = ("org", "global")
 LIST_OUTPUT_FORMAT_CHOICES = ("text", "table", "csv", "json")
 DRY_RUN_OUTPUT_FORMAT_CHOICES = ("text", "table", "json")
 
+ACCESS_ROOT_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n"
+    "  grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --dry-run --table --yes\n"
+    "  grafana-util access service-account token add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly"
+)
+
+ACCESS_RESOURCE_HELP_EXAMPLES = {
+    "user": (
+        "Examples:\n\n"
+        "  grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n"
+        "  grafana-util access user import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-users --dry-run --table"
+    ),
+    "team": (
+        "Examples:\n\n"
+        "  grafana-util access team list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n"
+        "  grafana-util access team add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name Ops --member alice --admin carol"
+    ),
+    "org": (
+        "Examples:\n\n"
+        "  grafana-util access org list --url http://localhost:3000 --basic-user admin --basic-password admin --json\n"
+        "  grafana-util access org import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-orgs --dry-run --yes"
+    ),
+    "service-account": (
+        "Examples:\n\n"
+        "  grafana-util access service-account list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n"
+        "  grafana-util access service-account token add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly"
+    ),
+}
+
+ACCESS_COMMAND_HELP_EXAMPLES = {
+    ("user", "list"): "Examples:\n\n  grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --with-teams --json",
+    ("user", "export"): "Examples:\n\n  grafana-util access user export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./access-users --with-teams --overwrite",
+    ("user", "import"): "Examples:\n\n  grafana-util access user import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-users --replace-existing --dry-run --table --yes",
+    ("user", "diff"): "Examples:\n\n  grafana-util access user diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./access-users --scope global",
+    ("user", "add"): "Examples:\n\n  grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --email alice@example.com --name Alice --password secret --org-role Editor",
+    ("user", "modify"): "Examples:\n\n  grafana-util access user modify --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --set-name 'Alice Ops' --set-org-role Admin",
+    ("user", "delete"): "Examples:\n\n  grafana-util access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --scope global --yes",
+    ("team", "list"): "Examples:\n\n  grafana-util access team list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --with-members --json",
+    ("team", "add"): "Examples:\n\n  grafana-util access team add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name Ops --member alice --admin carol",
+    ("team", "modify"): "Examples:\n\n  grafana-util access team modify --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name Ops --add-member alice --remove-admin bob",
+    ("team", "export"): "Examples:\n\n  grafana-util access team export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./access-teams --overwrite",
+    ("team", "import"): "Examples:\n\n  grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --dry-run --table --yes",
+    ("team", "diff"): "Examples:\n\n  grafana-util access team diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./access-teams",
+    ("team", "delete"): "Examples:\n\n  grafana-util access team delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name Ops --yes",
+    ("org", "list"): "Examples:\n\n  grafana-util access org list --url http://localhost:3000 --basic-user admin --basic-password admin --with-users --json",
+    ("org", "add"): "Examples:\n\n  grafana-util access org add --url http://localhost:3000 --basic-user admin --basic-password admin --name Platform --json",
+    ("org", "modify"): "Examples:\n\n  grafana-util access org modify --url http://localhost:3000 --basic-user admin --basic-password admin --name Platform --set-name 'Platform Core'",
+    ("org", "delete"): "Examples:\n\n  grafana-util access org delete --url http://localhost:3000 --basic-user admin --basic-password admin --name Platform --yes",
+    ("org", "export"): "Examples:\n\n  grafana-util access org export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./access-orgs --with-users --overwrite",
+    ("org", "import"): "Examples:\n\n  grafana-util access org import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-orgs --replace-existing --dry-run --yes",
+    ("service-account", "list"): "Examples:\n\n  grafana-util access service-account list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json",
+    ("service-account", "add"): "Examples:\n\n  grafana-util access service-account add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --role Editor --json",
+    ("service-account", "export"): "Examples:\n\n  grafana-util access service-account export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./access-service-accounts --overwrite",
+    ("service-account", "import"): "Examples:\n\n  grafana-util access service-account import --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --import-dir ./access-service-accounts --replace-existing --dry-run --table --yes",
+    ("service-account", "diff"): "Examples:\n\n  grafana-util access service-account diff --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --diff-dir ./access-service-accounts",
+    ("service-account", "delete"): "Examples:\n\n  grafana-util access service-account delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --yes",
+    ("service-account", "token"): "Examples:\n\n  grafana-util access service-account token add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly",
+    ("service-account", "token-add"): "Examples:\n\n  grafana-util access service-account token add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly --seconds-to-live 3600",
+    ("service-account", "token-delete"): "Examples:\n\n  grafana-util access service-account token delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly --yes",
+}
+
+ACCESS_ROOT_HELP_EXAMPLES = """Examples:
+
+  List org users as JSON:
+    grafana-util access user list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --json
+
+  Create a Grafana user with Basic auth:
+    grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --email alice@example.com --name Alice --password 'secret'
+
+  Import teams with destructive sync acknowledgement:
+    grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --yes
+
+  Create a service-account token:
+    grafana-util access service-account token add --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --name deploy-bot --token-name nightly
+"""
+
+USER_LIST_HELP_EXAMPLES = """Examples:
+
+  grafana-util access user list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --scope org --json
+  grafana-util access user list --url http://localhost:3000 --basic-user admin --basic-password admin --scope global --table
+"""
+USER_EXPORT_HELP_EXAMPLES = """Examples:
+
+  grafana-util access user export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./access-users --with-teams --overwrite
+"""
+USER_IMPORT_HELP_EXAMPLES = """Examples:
+
+  grafana-util access user import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-users --scope global --replace-existing --dry-run
+  grafana-util access user import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-users --scope org --replace-existing --yes
+"""
+USER_DIFF_HELP_EXAMPLES = """Examples:
+
+  grafana-util access user diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./access-users --scope global
+"""
+USER_ADD_HELP_EXAMPLES = """Examples:
+
+  grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --email alice@example.com --name Alice --password 'secret'
+"""
+USER_MODIFY_HELP_EXAMPLES = """Examples:
+
+  grafana-util access user modify --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --set-name 'Alice Ops' --set-org-role Editor
+"""
+USER_DELETE_HELP_EXAMPLES = """Examples:
+
+  grafana-util access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --scope global --yes
+"""
+
+TEAM_LIST_HELP_EXAMPLES = """Examples:
+
+  grafana-util access team list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --with-members --json
+"""
+TEAM_ADD_HELP_EXAMPLES = """Examples:
+
+  grafana-util access team add --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --name Ops --email ops@example.com --member alice --admin bob --json
+"""
+TEAM_MODIFY_HELP_EXAMPLES = """Examples:
+
+  grafana-util access team modify --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --team-id 7 --add-member alice --remove-admin bob --json
+"""
+TEAM_EXPORT_HELP_EXAMPLES = """Examples:
+
+  grafana-util access team export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./access-teams --with-members --overwrite
+"""
+TEAM_IMPORT_HELP_EXAMPLES = """Examples:
+
+  grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --dry-run
+  grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --yes
+"""
+TEAM_DIFF_HELP_EXAMPLES = """Examples:
+
+  grafana-util access team diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./access-teams
+"""
+TEAM_DELETE_HELP_EXAMPLES = """Examples:
+
+  grafana-util access team delete --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --name Ops --yes
+"""
+
+ORG_LIST_HELP_EXAMPLES = """Examples:
+
+  grafana-util access org list --url http://localhost:3000 --basic-user admin --basic-password admin --with-users --json
+"""
+ORG_ADD_HELP_EXAMPLES = """Examples:
+
+  grafana-util access org add --url http://localhost:3000 --basic-user admin --basic-password admin --name platform --json
+"""
+ORG_MODIFY_HELP_EXAMPLES = """Examples:
+
+  grafana-util access org modify --url http://localhost:3000 --basic-user admin --basic-password admin --name platform --set-name platform-core --json
+"""
+ORG_DELETE_HELP_EXAMPLES = """Examples:
+
+  grafana-util access org delete --url http://localhost:3000 --basic-user admin --basic-password admin --name platform --yes
+"""
+ORG_EXPORT_HELP_EXAMPLES = """Examples:
+
+  grafana-util access org export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./access-orgs --with-users --overwrite
+"""
+ORG_IMPORT_HELP_EXAMPLES = """Examples:
+
+  grafana-util access org import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-orgs --replace-existing --yes
+"""
+
+SERVICE_ACCOUNT_LIST_HELP_EXAMPLES = """Examples:
+
+  grafana-util access service-account list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --json
+"""
+SERVICE_ACCOUNT_ADD_HELP_EXAMPLES = """Examples:
+
+  grafana-util access service-account add --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --name deploy-bot --role Editor --json
+"""
+SERVICE_ACCOUNT_EXPORT_HELP_EXAMPLES = """Examples:
+
+  grafana-util access service-account export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --export-dir ./access-service-accounts --overwrite
+"""
+SERVICE_ACCOUNT_IMPORT_HELP_EXAMPLES = """Examples:
+
+  grafana-util access service-account import --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --import-dir ./access-service-accounts --replace-existing --dry-run
+  grafana-util access service-account import --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --import-dir ./access-service-accounts --replace-existing --yes
+"""
+SERVICE_ACCOUNT_DIFF_HELP_EXAMPLES = """Examples:
+
+  grafana-util access service-account diff --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --diff-dir ./access-service-accounts
+"""
+SERVICE_ACCOUNT_DELETE_HELP_EXAMPLES = """Examples:
+
+  grafana-util access service-account delete --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --name deploy-bot --yes
+"""
+SERVICE_ACCOUNT_TOKEN_ROOT_HELP_EXAMPLES = """Examples:
+
+  grafana-util access service-account token add --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --name deploy-bot --token-name nightly
+  grafana-util access service-account token delete --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --name deploy-bot --token-name nightly --yes
+"""
+SERVICE_ACCOUNT_TOKEN_ADD_HELP_EXAMPLES = """Examples:
+
+  grafana-util access service-account token add --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --name deploy-bot --token-name nightly --seconds-to-live 86400 --json
+"""
+SERVICE_ACCOUNT_TOKEN_DELETE_HELP_EXAMPLES = """Examples:
+
+  grafana-util access service-account token delete --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --name deploy-bot --token-name nightly --yes
+"""
+
+
+def subparser_kwargs(epilog=None):
+    kwargs = {"formatter_class": argparse.RawDescriptionHelpFormatter}
+    if epilog:
+        kwargs["epilog"] = epilog
+    return kwargs
+
 
 def positive_int(value):
     parsed = int(value)
@@ -47,6 +256,13 @@ def bool_choice(value):
     if normalized not in {"true", "false"}:
         raise argparse.ArgumentTypeError("value must be true or false")
     return normalized
+
+
+def parser_help_kwargs(epilog):
+    return {
+        "epilog": epilog,
+        "formatter_class": argparse.RawDescriptionHelpFormatter,
+    }
 
 
 def add_list_output_format_arg(parser):
@@ -152,29 +368,22 @@ def add_access_diff_cli_args(parser, resource, default_scope=DEFAULT_SCOPE):
 def build_parser(prog=None):
     parser = argparse.ArgumentParser(
         prog=prog,
-        description="List and manage Grafana users, teams, organizations, and service accounts."
+        description="List and manage Grafana users, teams, organizations, and service accounts.",
+        epilog=ACCESS_ROOT_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     subparsers = parser.add_subparsers(dest="resource")
     subparsers.required = True
 
-    user_parser = subparsers.add_parser(
-        "user",
-        help="List Grafana users.",
-    )
+    user_parser = subparsers.add_parser("user", help="List Grafana users.", **subparser_kwargs())
     user_subparsers = user_parser.add_subparsers(dest="command")
     user_subparsers.required = True
 
-    list_parser = user_subparsers.add_parser(
-        "list",
-        help="List Grafana users from org-scoped or global APIs.",
-    )
+    list_parser = user_subparsers.add_parser("list", help="List Grafana users from org-scoped or global APIs.", **subparser_kwargs(USER_LIST_HELP_EXAMPLES))
     add_common_cli_args(list_parser)
     add_user_list_cli_args(list_parser)
 
-    user_export_parser = user_subparsers.add_parser(
-        "export",
-        help="Export Grafana users to JSON files.",
-    )
+    user_export_parser = user_subparsers.add_parser("export", help="Export Grafana users to JSON files.", **subparser_kwargs(USER_EXPORT_HELP_EXAMPLES))
     add_common_cli_args(
         user_export_parser,
         allow_token_auth=True,
@@ -198,10 +407,7 @@ def build_parser(prog=None):
         help="Include team memberships in exported user objects.",
     )
 
-    user_import_parser = user_subparsers.add_parser(
-        "import",
-        help="Import Grafana users from a JSON export.",
-    )
+    user_import_parser = user_subparsers.add_parser("import", help="Import Grafana users from a JSON export.", **subparser_kwargs(USER_IMPORT_HELP_EXAMPLES))
     add_common_cli_args(
         user_import_parser,
         allow_token_auth=True,
@@ -210,10 +416,7 @@ def build_parser(prog=None):
     )
     add_access_import_cli_args(user_import_parser, resource="user", default_scope=DEFAULT_SCOPE)
 
-    user_diff_parser = user_subparsers.add_parser(
-        "diff",
-        help="Diff Grafana users against a previously exported users.json file.",
-    )
+    user_diff_parser = user_subparsers.add_parser("diff", help="Diff Grafana users against a previously exported users.json file.", **subparser_kwargs(USER_DIFF_HELP_EXAMPLES))
     add_common_cli_args(
         user_diff_parser,
         allow_token_auth=True,
@@ -222,10 +425,7 @@ def build_parser(prog=None):
     )
     add_access_diff_cli_args(user_diff_parser, resource="user", default_scope=DEFAULT_SCOPE)
 
-    add_parser = user_subparsers.add_parser(
-        "add",
-        help="Create a Grafana user through the global admin API.",
-    )
+    add_parser = user_subparsers.add_parser("add", help="Create a Grafana user through the global admin API.", **subparser_kwargs(USER_ADD_HELP_EXAMPLES))
     add_common_cli_args(
         add_parser,
         allow_token_auth=False,
@@ -234,10 +434,7 @@ def build_parser(prog=None):
     )
     add_user_add_cli_args(add_parser)
 
-    modify_parser = user_subparsers.add_parser(
-        "modify",
-        help="Modify a Grafana user through the global admin APIs.",
-    )
+    modify_parser = user_subparsers.add_parser("modify", help="Modify a Grafana user through the global admin APIs.", **subparser_kwargs(USER_MODIFY_HELP_EXAMPLES))
     add_common_cli_args(
         modify_parser,
         allow_token_auth=False,
@@ -246,10 +443,7 @@ def build_parser(prog=None):
     )
     add_user_modify_cli_args(modify_parser)
 
-    delete_parser = user_subparsers.add_parser(
-        "delete",
-        help="Delete a Grafana user from the org or globally.",
-    )
+    delete_parser = user_subparsers.add_parser("delete", help="Delete a Grafana user from the org or globally.", **subparser_kwargs(USER_DELETE_HELP_EXAMPLES))
     add_common_cli_args(
         delete_parser,
         username_dest="auth_username",
@@ -257,38 +451,23 @@ def build_parser(prog=None):
     )
     add_user_delete_cli_args(delete_parser)
 
-    team_parser = subparsers.add_parser(
-        "team",
-        help="List Grafana teams.",
-    )
+    team_parser = subparsers.add_parser("team", help="List Grafana teams.", **subparser_kwargs())
     team_subparsers = team_parser.add_subparsers(dest="command")
     team_subparsers.required = True
 
-    team_list_parser = team_subparsers.add_parser(
-        "list",
-        help="List Grafana teams from the org-scoped API.",
-    )
+    team_list_parser = team_subparsers.add_parser("list", help="List Grafana teams from the org-scoped API.", **subparser_kwargs(TEAM_LIST_HELP_EXAMPLES))
     add_common_cli_args(team_list_parser)
     add_team_list_cli_args(team_list_parser)
 
-    team_add_parser = team_subparsers.add_parser(
-        "add",
-        help="Create a Grafana team and optionally seed members and admins.",
-    )
+    team_add_parser = team_subparsers.add_parser("add", help="Create a Grafana team and optionally seed members and admins.", **subparser_kwargs(TEAM_ADD_HELP_EXAMPLES))
     add_common_cli_args(team_add_parser)
     add_team_add_cli_args(team_add_parser)
 
-    team_modify_parser = team_subparsers.add_parser(
-        "modify",
-        help="Modify Grafana team members and team admins.",
-    )
+    team_modify_parser = team_subparsers.add_parser("modify", help="Modify Grafana team members and team admins.", **subparser_kwargs(TEAM_MODIFY_HELP_EXAMPLES))
     add_common_cli_args(team_modify_parser)
     add_team_modify_cli_args(team_modify_parser)
 
-    team_export_parser = team_subparsers.add_parser(
-        "export",
-        help="Export Grafana teams and membership to JSON files.",
-    )
+    team_export_parser = team_subparsers.add_parser("export", help="Export Grafana teams and membership to JSON files.", **subparser_kwargs(TEAM_EXPORT_HELP_EXAMPLES))
     add_common_cli_args(team_export_parser)
     add_access_export_cli_args(
         team_export_parser,
@@ -302,10 +481,7 @@ def build_parser(prog=None):
         help="Include team members and admin identities in exported team objects.",
     )
 
-    team_import_parser = team_subparsers.add_parser(
-        "import",
-        help="Import Grafana teams and membership from a JSON export.",
-    )
+    team_import_parser = team_subparsers.add_parser("import", help="Import Grafana teams and membership from a JSON export.", **subparser_kwargs(TEAM_IMPORT_HELP_EXAMPLES))
     add_common_cli_args(
         team_import_parser,
         username_dest="auth_username",
@@ -313,10 +489,7 @@ def build_parser(prog=None):
     )
     add_access_import_cli_args(team_import_parser, resource="team")
 
-    team_diff_parser = team_subparsers.add_parser(
-        "diff",
-        help="Diff Grafana teams against a previously exported teams.json file.",
-    )
+    team_diff_parser = team_subparsers.add_parser("diff", help="Diff Grafana teams against a previously exported teams.json file.", **subparser_kwargs(TEAM_DIFF_HELP_EXAMPLES))
     add_common_cli_args(
         team_diff_parser,
         username_dest="auth_username",
@@ -324,24 +497,15 @@ def build_parser(prog=None):
     )
     add_access_diff_cli_args(team_diff_parser, resource="team")
 
-    team_delete_parser = team_subparsers.add_parser(
-        "delete",
-        help="Delete a Grafana team.",
-    )
+    team_delete_parser = team_subparsers.add_parser("delete", help="Delete a Grafana team.", **subparser_kwargs(TEAM_DELETE_HELP_EXAMPLES))
     add_common_cli_args(team_delete_parser)
     add_team_delete_cli_args(team_delete_parser)
 
-    org_parser = subparsers.add_parser(
-        "org",
-        help="List and manage Grafana organizations.",
-    )
+    org_parser = subparsers.add_parser("org", help="List and manage Grafana organizations.", **subparser_kwargs())
     org_subparsers = org_parser.add_subparsers(dest="command")
     org_subparsers.required = True
 
-    org_list_parser = org_subparsers.add_parser(
-        "list",
-        help="List Grafana organizations from the admin API.",
-    )
+    org_list_parser = org_subparsers.add_parser("list", help="List Grafana organizations from the admin API.", **subparser_kwargs(ORG_LIST_HELP_EXAMPLES))
     add_common_cli_args(
         org_list_parser,
         allow_token_auth=False,
@@ -351,10 +515,7 @@ def build_parser(prog=None):
     )
     add_org_list_cli_args(org_list_parser)
 
-    org_add_parser = org_subparsers.add_parser(
-        "add",
-        help="Create a Grafana organization.",
-    )
+    org_add_parser = org_subparsers.add_parser("add", help="Create a Grafana organization.", **subparser_kwargs(ORG_ADD_HELP_EXAMPLES))
     add_common_cli_args(
         org_add_parser,
         allow_token_auth=False,
@@ -364,10 +525,7 @@ def build_parser(prog=None):
     )
     add_org_add_cli_args(org_add_parser)
 
-    org_modify_parser = org_subparsers.add_parser(
-        "modify",
-        help="Rename a Grafana organization.",
-    )
+    org_modify_parser = org_subparsers.add_parser("modify", help="Rename a Grafana organization.", **subparser_kwargs(ORG_MODIFY_HELP_EXAMPLES))
     add_common_cli_args(
         org_modify_parser,
         allow_token_auth=False,
@@ -377,10 +535,7 @@ def build_parser(prog=None):
     )
     add_org_modify_cli_args(org_modify_parser)
 
-    org_delete_parser = org_subparsers.add_parser(
-        "delete",
-        help="Delete a Grafana organization.",
-    )
+    org_delete_parser = org_subparsers.add_parser("delete", help="Delete a Grafana organization.", **subparser_kwargs(ORG_DELETE_HELP_EXAMPLES))
     add_common_cli_args(
         org_delete_parser,
         allow_token_auth=False,
@@ -390,10 +545,7 @@ def build_parser(prog=None):
     )
     add_org_delete_cli_args(org_delete_parser)
 
-    org_export_parser = org_subparsers.add_parser(
-        "export",
-        help="Export Grafana organizations to JSON files.",
-    )
+    org_export_parser = org_subparsers.add_parser("export", help="Export Grafana organizations to JSON files.", **subparser_kwargs(ORG_EXPORT_HELP_EXAMPLES))
     add_common_cli_args(
         org_export_parser,
         allow_token_auth=False,
@@ -408,10 +560,7 @@ def build_parser(prog=None):
     )
     add_org_export_cli_args(org_export_parser)
 
-    org_import_parser = org_subparsers.add_parser(
-        "import",
-        help="Import Grafana organizations from a JSON export.",
-    )
+    org_import_parser = org_subparsers.add_parser("import", help="Import Grafana organizations from a JSON export.", **subparser_kwargs(ORG_IMPORT_HELP_EXAMPLES))
     add_common_cli_args(
         org_import_parser,
         allow_token_auth=False,
@@ -421,31 +570,19 @@ def build_parser(prog=None):
     )
     add_access_import_cli_args(org_import_parser, resource="org")
 
-    service_account_parser = subparsers.add_parser(
-        "service-account",
-        help="List, create, export, import, diff, and delete Grafana service accounts.",
-    )
+    service_account_parser = subparsers.add_parser("service-account", help="List, create, export, import, diff, and delete Grafana service accounts.", **subparser_kwargs())
     service_account_subparsers = service_account_parser.add_subparsers(dest="command")
     service_account_subparsers.required = True
 
-    service_account_list_parser = service_account_subparsers.add_parser(
-        "list",
-        help="List Grafana service accounts.",
-    )
+    service_account_list_parser = service_account_subparsers.add_parser("list", help="List Grafana service accounts.", **subparser_kwargs(SERVICE_ACCOUNT_LIST_HELP_EXAMPLES))
     add_common_cli_args(service_account_list_parser)
     add_service_account_list_cli_args(service_account_list_parser)
 
-    service_account_add_parser = service_account_subparsers.add_parser(
-        "add",
-        help="Create a Grafana service account.",
-    )
+    service_account_add_parser = service_account_subparsers.add_parser("add", help="Create a Grafana service account.", **subparser_kwargs(SERVICE_ACCOUNT_ADD_HELP_EXAMPLES))
     add_common_cli_args(service_account_add_parser)
     add_service_account_add_cli_args(service_account_add_parser)
 
-    service_account_export_parser = service_account_subparsers.add_parser(
-        "export",
-        help="Export Grafana service accounts to JSON files.",
-    )
+    service_account_export_parser = service_account_subparsers.add_parser("export", help="Export Grafana service accounts to JSON files.", **subparser_kwargs(SERVICE_ACCOUNT_EXPORT_HELP_EXAMPLES))
     add_common_cli_args(service_account_export_parser)
     add_access_export_cli_args(
         service_account_export_parser,
@@ -453,10 +590,7 @@ def build_parser(prog=None):
         resource="service-account",
     )
 
-    service_account_import_parser = service_account_subparsers.add_parser(
-        "import",
-        help="Import Grafana service accounts from a JSON export.",
-    )
+    service_account_import_parser = service_account_subparsers.add_parser("import", help="Import Grafana service accounts from a JSON export.", **subparser_kwargs(SERVICE_ACCOUNT_IMPORT_HELP_EXAMPLES))
     add_common_cli_args(service_account_import_parser)
     add_access_import_cli_args(
         service_account_import_parser,
@@ -479,43 +613,28 @@ def build_parser(prog=None):
         help="Alternative single-flag output selector for --dry-run output. Use text, table, or json.",
     )
 
-    service_account_diff_parser = service_account_subparsers.add_parser(
-        "diff",
-        help="Diff Grafana service accounts against a previously exported snapshot.",
-    )
+    service_account_diff_parser = service_account_subparsers.add_parser("diff", help="Diff Grafana service accounts against a previously exported snapshot.", **subparser_kwargs(SERVICE_ACCOUNT_DIFF_HELP_EXAMPLES))
     add_common_cli_args(service_account_diff_parser)
     add_access_diff_cli_args(
         service_account_diff_parser,
         resource="service-account",
     )
 
-    service_account_delete_parser = service_account_subparsers.add_parser(
-        "delete",
-        help="Delete a Grafana service account.",
-    )
+    service_account_delete_parser = service_account_subparsers.add_parser("delete", help="Delete a Grafana service account.", **subparser_kwargs(SERVICE_ACCOUNT_DELETE_HELP_EXAMPLES))
     add_common_cli_args(service_account_delete_parser)
     add_service_account_delete_cli_args(service_account_delete_parser)
 
-    service_account_token_parser = service_account_subparsers.add_parser(
-        "token",
-        help="Manage Grafana service-account tokens.",
-    )
+    service_account_token_parser = service_account_subparsers.add_parser("token", help="Manage Grafana service-account tokens.", **subparser_kwargs(SERVICE_ACCOUNT_TOKEN_ROOT_HELP_EXAMPLES))
     service_account_token_subparsers = service_account_token_parser.add_subparsers(
         dest="token_command"
     )
     service_account_token_subparsers.required = True
 
-    service_account_token_add_parser = service_account_token_subparsers.add_parser(
-        "add",
-        help="Create a Grafana service-account token.",
-    )
+    service_account_token_add_parser = service_account_token_subparsers.add_parser("add", help="Create a Grafana service-account token.", **subparser_kwargs(SERVICE_ACCOUNT_TOKEN_ADD_HELP_EXAMPLES))
     add_common_cli_args(service_account_token_add_parser)
     add_service_account_token_add_cli_args(service_account_token_add_parser)
 
-    service_account_token_delete_parser = service_account_token_subparsers.add_parser(
-        "delete",
-        help="Delete a Grafana service-account token.",
-    )
+    service_account_token_delete_parser = service_account_token_subparsers.add_parser("delete", help="Delete a Grafana service-account token.", **subparser_kwargs(SERVICE_ACCOUNT_TOKEN_DELETE_HELP_EXAMPLES))
     add_common_cli_args(service_account_token_delete_parser)
     add_service_account_token_delete_cli_args(service_account_token_delete_parser)
     return parser
@@ -528,13 +647,15 @@ def add_common_cli_args(
     password_dest="password",
     include_org_id=True,
 ):
-    parser.add_argument(
+    auth_group = parser.add_argument_group("Authentication Options")
+    transport_group = parser.add_argument_group("Transport Options")
+    auth_group.add_argument(
         "--url",
         default=DEFAULT_URL,
         help="Grafana base URL (default: %s)" % DEFAULT_URL,
     )
     if allow_token_auth:
-        parser.add_argument(
+        auth_group.add_argument(
             "--token",
             "--api-token",
             dest="api_token",
@@ -545,7 +666,7 @@ def add_common_cli_args(
                 "Falls back to GRAFANA_API_TOKEN."
             ),
         )
-        parser.add_argument(
+        auth_group.add_argument(
             "--prompt-token",
             action="store_true",
             help=(
@@ -553,7 +674,7 @@ def add_common_cli_args(
                 "passing --token on the command line."
             ),
         )
-    parser.add_argument(
+    auth_group.add_argument(
         "--basic-user",
         dest=username_dest,
         default=None,
@@ -563,7 +684,7 @@ def add_common_cli_args(
             "Falls back to GRAFANA_USERNAME."
         ),
     )
-    parser.add_argument(
+    auth_group.add_argument(
         "--basic-password",
         dest=password_dest,
         default=None,
@@ -573,7 +694,7 @@ def add_common_cli_args(
             "Falls back to GRAFANA_PASSWORD."
         ),
     )
-    parser.add_argument(
+    auth_group.add_argument(
         "--prompt-password",
         action="store_true",
         help=(
@@ -582,21 +703,32 @@ def add_common_cli_args(
         ),
     )
     if include_org_id:
-        parser.add_argument(
+        auth_group.add_argument(
             "--org-id",
             default=None,
             help="Grafana organization id to send through X-Grafana-Org-Id.",
         )
-    parser.add_argument(
+    transport_group.add_argument(
         "--timeout",
         type=positive_int,
         default=DEFAULT_TIMEOUT,
         help="HTTP timeout in seconds (default: %s)." % DEFAULT_TIMEOUT,
     )
-    parser.add_argument(
+    transport_group.add_argument(
         "--verify-ssl",
         action="store_true",
         help="Enable TLS certificate verification. Verification is disabled by default.",
+    )
+    transport_group.add_argument(
+        "--insecure",
+        action="store_true",
+        help="Disable TLS certificate verification explicitly.",
+    )
+    transport_group.add_argument(
+        "--ca-cert",
+        default=None,
+        metavar="PATH",
+        help="PEM bundle file to trust for Grafana TLS verification.",
     )
 
 
@@ -1217,6 +1349,7 @@ def parse_args(argv=None):
 
     args = parser.parse_args(argv)
     _normalize_output_format_args(args, parser)
+    _validate_tls_args(args, parser)
     return args
 
 
@@ -1233,3 +1366,12 @@ def _normalize_output_format_args(args, parser):
     args.table = output_format == "table"
     args.csv = output_format == "csv"
     args.json = output_format == "json"
+
+
+def _validate_tls_args(args, parser):
+    if bool(getattr(args, "verify_ssl", False)) and bool(
+        getattr(args, "insecure", False)
+    ):
+        parser.error("--verify-ssl cannot be combined with --insecure.")
+    if getattr(args, "ca_cert", None) and bool(getattr(args, "insecure", False)):
+        parser.error("--ca-cert cannot be combined with --insecure.")

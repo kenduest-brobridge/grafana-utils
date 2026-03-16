@@ -51,7 +51,10 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(exc.exception.code, 0)
         help_text = stdout.getvalue()
         self.assertIn("grafana-util sync", help_text)
-        self.assertIn("{plan,review,preflight,assess-alerts,bundle-preflight,apply}", help_text)
+        self.assertIn(
+            "{summary,plan,review,preflight,assess-alerts,bundle-preflight,bundle,apply}",
+            help_text,
+        )
 
     def test_parse_args_dashboard_without_subcommand_prints_dashboard_help(self):
         stdout = io.StringIO()
@@ -99,6 +102,14 @@ class UnifiedCliTests(unittest.TestCase):
         help_text = stdout.getvalue()
         self.assertIn("grafana-util datasource", help_text)
         self.assertIn("{list,export,import,diff,add,modify,delete}", help_text)
+
+    def test_build_parser_registers_datasource_modify_subcommand(self):
+        parser = unified_cli.build_parser()
+        entrypoint_action = parser._subparsers._group_actions[0]
+        datasource_parser = entrypoint_action.choices["datasource"]
+        datasource_action = datasource_parser._subparsers._group_actions[0]
+
+        self.assertIn("modify", datasource_action.choices)
 
     def test_parse_args_supports_dashboard_namespace(self):
         args = unified_cli.parse_args(["dashboard", "export", "--export-dir", "dashboards"])
@@ -187,6 +198,10 @@ class UnifiedCliTests(unittest.TestCase):
             ["modify", "--uid", "prom-main", "--set-url", "http://prometheus-v2:9090"],
         )
 
+    def test_parse_args_rejects_unknown_datasource_subcommand(self):
+        with self.assertRaises(SystemExit):
+            unified_cli.parse_args(["datasource", "unknown-subcommand"])
+
     def test_parse_args_supports_datasource_diff_namespace(self):
         args = unified_cli.parse_args(
             ["datasource", "diff", "--diff-dir", "./datasources"]
@@ -194,6 +209,17 @@ class UnifiedCliTests(unittest.TestCase):
 
         self.assertEqual(args.entrypoint, "datasource")
         self.assertEqual(args.forwarded_argv, ["diff", "--diff-dir", "./datasources"])
+
+    def test_parse_args_supports_sync_summary_namespace(self):
+        args = unified_cli.parse_args(
+            ["sync", "summary", "--desired-file", "./desired.json", "--output", "json"]
+        )
+
+        self.assertEqual(args.entrypoint, "sync")
+        self.assertEqual(
+            args.forwarded_argv,
+            ["summary", "--desired-file", "./desired.json", "--output", "json"],
+        )
 
     def test_parse_args_supports_sync_namespace(self):
         args = unified_cli.parse_args(

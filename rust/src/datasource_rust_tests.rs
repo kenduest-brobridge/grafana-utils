@@ -53,6 +53,19 @@ fn test_common_args() -> CommonCliArgs {
 }
 
 #[test]
+fn datasource_root_help_includes_examples() {
+    let mut command = DatasourceCliArgs::command();
+    let mut output = Vec::new();
+    command.write_long_help(&mut output).unwrap();
+    let help = String::from_utf8(output).unwrap();
+
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("grafana-util datasource list"));
+    assert!(help.contains("grafana-util datasource add"));
+    assert!(help.contains("grafana-util datasource import"));
+}
+
+#[test]
 fn import_help_explains_common_operator_flags() {
     let mut command = DatasourceCliArgs::command();
     let subcommand = command
@@ -77,6 +90,8 @@ fn import_help_explains_common_operator_flags() {
     assert!(help.contains("--output-columns"));
     assert!(help.contains("--progress"));
     assert!(help.contains("--verbose"));
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("Input Options"));
 }
 
 #[test]
@@ -93,6 +108,7 @@ fn export_help_explains_org_scope_flags() {
     assert!(help.contains("--all-orgs"));
     assert!(help.contains("--overwrite"));
     assert!(help.contains("--dry-run"));
+    assert!(help.contains("Examples:"));
 }
 
 #[test]
@@ -111,6 +127,7 @@ fn add_help_explains_live_mutation_flags() {
     assert!(help.contains("--json-data"));
     assert!(help.contains("--secure-json-data"));
     assert!(help.contains("--dry-run"));
+    assert!(help.contains("Examples:"));
 }
 
 #[test]
@@ -126,6 +143,9 @@ fn delete_help_explains_live_mutation_flags() {
     assert!(help.contains("--uid"));
     assert!(help.contains("--name"));
     assert!(help.contains("--dry-run"));
+    assert!(help.contains("--yes"));
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("Safety Options"));
 }
 
 #[test]
@@ -145,6 +165,7 @@ fn modify_help_explains_live_mutation_flags() {
     assert!(help.contains("--json-data"));
     assert!(help.contains("--secure-json-data"));
     assert!(help.contains("--dry-run"));
+    assert!(help.contains("Examples:"));
 }
 
 #[test]
@@ -208,6 +229,26 @@ fn parse_datasource_delete_supports_output_format_json() {
             assert!(inner.dry_run);
             assert!(inner.json);
             assert!(!inner.table);
+        }
+        _ => panic!("expected datasource delete"),
+    }
+}
+
+#[test]
+fn parse_datasource_delete_accepts_yes_confirmation() {
+    let args = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util",
+        "delete",
+        "--uid",
+        "prom-main",
+        "--yes",
+    ]);
+
+    match args.command {
+        super::DatasourceGroupCommand::Delete(inner) => {
+            assert_eq!(inner.uid.as_deref(), Some("prom-main"));
+            assert!(inner.yes);
+            assert!(!inner.dry_run);
         }
         _ => panic!("expected datasource delete"),
     }

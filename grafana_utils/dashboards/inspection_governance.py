@@ -1,6 +1,31 @@
 """Dashboard inspection governance document helpers."""
 
+import json
+import re
+from pathlib import Path
 from typing import Any, Iterable, Optional
+
+from .import_support import extract_dashboard_object
+from .variable_inspection import extract_dashboard_variables
+
+
+DATASOURCE_VARIABLE_PATTERN = re.compile(
+    r"^\$(?:\{)?([A-Za-z0-9_:-]+)(?:\})?$"
+)
+
+
+def _iter_dashboard_panels(panels: Any) -> list[dict[str, Any]]:
+    flattened = []
+    if not isinstance(panels, list):
+        return flattened
+    for panel in panels:
+        if not isinstance(panel, dict):
+            continue
+        flattened.append(panel)
+        nested_panels = panel.get("panels")
+        if isinstance(nested_panels, list):
+            flattened.extend(_iter_dashboard_panels(nested_panels))
+    return flattened
 
 
 def _unique_strings(values: Iterable[Any]) -> list[str]:
@@ -81,6 +106,16 @@ def _build_query_analysis_state(record: dict[str, Any]) -> str:
         if isinstance(values, list) and values:
             return "ok"
     return "empty"
+
+
+def _extract_datasource_variable_name(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    matched = DATASOURCE_VARIABLE_PATTERN.match(text)
+    if not matched:
+        return ""
+    return str(matched.group(1) or "").strip()
 
 
 def _build_governance_risk_record(
@@ -256,6 +291,126 @@ def build_datasource_coverage_records(
     return rows
 
 
+def _load_dashboard_object_from_record(record: dict[str, Any]) -> dict[str, Any]:
+    dashboard_file = Path(str(record.get("file") or "").strip())
+    if not dashboard_file.is_file():
+        return {}
+    try:
+        document = json.loads(dashboard_file.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(document, dict):
+        return {}
+    try:
+        return extract_dashboard_object(
+            document,
+            "Dashboard payload must be a JSON object.",
+        )
+    except Exception:
+        return {}
+
+
+def build_dashboard_dependency_records(
+    summary_document: dict[str, Any],
+    report_document: dict[str, Any],
+) -> list[dict[str, Any]]:
+    dashboard_report_index = {}
+    for query in report_document.get("queries") or []:
+        if not isinstance(query, dict):
+            continue
+        key = str(query.get("dashboardUid") or "").strip()
+        record = dashboard_report_index.setdefault(
+            key,
+            {
+                "datasources": set(),
+                "datasourceFamilies": set(),
+            },
+        )
+        datasource = str(query.get("datasource") or "").strip()
+        if datasource:
+            record["datasources"].add(datasource)
+        datasource_family = str(query.get("datasourceFamily") or "").strip()
+        if datasource_family:
+            record["datasourceFamilies"].add(datasource_family)
+
+    rows = []
+    for dashboard in summary_document.get("dashboards") or []:
+        if not isinstance(dashboard, dict):
+            continue
+        dashboard_object = _load_dashboard_object_from_record(dashboard)
+        variable_rows = extract_dashboard_variables(dashboard_object)
+        datasource_variables = sorted(
+            {
+                str(item.get("name") or "").strip()
+                for item in variable_rows
+                if str(item.get("type") or "").strip() == "datasource"
+                and str(item.get("name") or "").strip()
+            }
+        )
+        datasource_variable_refs = set()
+        plugin_ids = set()
+        for panel in _iter_dashboard_panels(dashboard_object.get("panels")):
+            panel_type = str(panel.get("type") or "").strip()
+            panel_plugin_id = str(panel.get("pluginId") or "").strip()
+            if panel_type and panel_type != "row":
+                plugin_ids.add(panel_type)
+            if panel_plugin_id:
+                plugin_ids.add(panel_plugin_id)
+            panel_datasource = panel.get("datasource")
+            if isinstance(panel_datasource, dict):
+                for field in ("uid", "name", "type"):
+                    variable_name = _extract_datasource_variable_name(
+                        panel_datasource.get(field)
+                    )
+                    if variable_name:
+                        datasource_variable_refs.add(variable_name)
+            else:
+                variable_name = _extract_datasource_variable_name(panel_datasource)
+                if variable_name:
+                    datasource_variable_refs.add(variable_name)
+            for target in list(panel.get("targets") or []):
+                if not isinstance(target, dict):
+                    continue
+                target_datasource = target.get("datasource")
+                if isinstance(target_datasource, dict):
+                    for field in ("uid", "name", "type"):
+                        variable_name = _extract_datasource_variable_name(
+                            target_datasource.get(field)
+                        )
+                        if variable_name:
+                            datasource_variable_refs.add(variable_name)
+                else:
+                    variable_name = _extract_datasource_variable_name(target_datasource)
+                    if variable_name:
+                        datasource_variable_refs.add(variable_name)
+        report_record = dashboard_report_index.get(str(dashboard.get("uid") or "").strip()) or {}
+        rows.append(
+            {
+                "dashboardUid": str(dashboard.get("uid") or ""),
+                "dashboardTitle": str(dashboard.get("title") or ""),
+                "folderPath": str(dashboard.get("folderPath") or ""),
+                "file": str(dashboard.get("file") or ""),
+                "panelCount": int(dashboard.get("panelCount") or 0),
+                "queryCount": int(dashboard.get("queryCount") or 0),
+                "datasources": _unique_strings(report_record.get("datasources") or []),
+                "datasourceFamilies": _unique_strings(
+                    report_record.get("datasourceFamilies") or []
+                ),
+                "pluginIds": _unique_strings(plugin_ids),
+                "datasourceVariables": datasource_variables,
+                "datasourceVariableRefs": _unique_strings(datasource_variable_refs),
+            }
+        )
+    rows.sort(
+        key=lambda item: (
+            str(item.get("folderPath") or ""),
+            str(item.get("dashboardTitle") or ""),
+            str(item.get("dashboardUid") or ""),
+        )
+    )
+    return rows
+
+
 def build_governance_risk_records(
     summary_document: dict[str, Any],
     report_document: dict[str, Any],
@@ -352,6 +507,9 @@ def build_export_inspection_governance_document(
     family_records = build_datasource_family_coverage_records(
         summary_document, report_document
     )
+    dashboard_dependency_records = build_dashboard_dependency_records(
+        summary_document, report_document
+    )
     datasource_records = build_datasource_coverage_records(
         summary_document, report_document
     )
@@ -372,6 +530,7 @@ def build_export_inspection_governance_document(
             "riskRecordCount": len(risk_records),
         },
         "datasourceFamilies": family_records,
+        "dashboardDependencies": dashboard_dependency_records,
         "datasources": datasource_records,
         "riskRecords": risk_records,
     }

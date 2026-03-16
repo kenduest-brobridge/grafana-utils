@@ -103,22 +103,55 @@ pub(crate) fn render_grouped_query_report(report: &ExportInspectionQueryReport) 
             .iter()
             .map(|panel| panel.queries.len())
             .sum::<usize>();
+        let dashboard_datasources = if dashboard.datasources.is_empty() {
+            "none".to_string()
+        } else {
+            dashboard.datasources.join(",")
+        };
+        let dashboard_families = if dashboard.datasource_families.is_empty() {
+            "none".to_string()
+        } else {
+            dashboard.datasource_families.join(",")
+        };
         lines.push(format!(
-            "[{}] Dashboard: {} (uid={}, folder={}, panels={}, queries={})",
+            "[{}] Dashboard: {} (uid={}, folder={}, panels={}, queries={}, datasources={}, families={})",
             index + 1,
             dashboard.dashboard_title,
             dashboard.dashboard_uid,
             dashboard.folder_path,
             panel_count,
-            query_count
+            query_count,
+            dashboard_datasources,
+            dashboard_families
         ));
+        if !dashboard.file_path.is_empty() {
+            lines.push(format!("  File: {}", dashboard.file_path));
+        }
         for panel in dashboard.panels {
+            let panel_datasources = if panel.datasources.is_empty() {
+                "none".to_string()
+            } else {
+                panel.datasources.join(",")
+            };
+            let panel_families = if panel.datasource_families.is_empty() {
+                "none".to_string()
+            } else {
+                panel.datasource_families.join(",")
+            };
+            let query_fields = if panel.query_fields.is_empty() {
+                "none".to_string()
+            } else {
+                panel.query_fields.join(",")
+            };
             lines.push(format!(
-                "  Panel: {} (id={}, type={}, queries={})",
+                "  Panel: {} (id={}, type={}, queries={}, datasources={}, families={}, fields={})",
                 panel.panel_title,
                 panel.panel_id,
                 panel.panel_type,
-                panel.queries.len()
+                panel.queries.len(),
+                panel_datasources,
+                panel_families,
+                query_fields
             ));
             for query in panel.queries {
                 let mut details = vec![format!("refId={}", query.ref_id)];
@@ -127,6 +160,12 @@ pub(crate) fn render_grouped_query_report(report: &ExportInspectionQueryReport) 
                 }
                 if !query.datasource_uid.is_empty() {
                     details.push(format!("datasourceUid={}", query.datasource_uid));
+                }
+                if !query.datasource_type.is_empty() {
+                    details.push(format!("datasourceType={}", query.datasource_type));
+                }
+                if !query.datasource_family.is_empty() {
+                    details.push(format!("datasourceFamily={}", query.datasource_family));
                 }
                 if !query.query_field.is_empty() {
                     details.push(format!("field={}", query.query_field));
@@ -183,15 +222,30 @@ pub(crate) fn render_grouped_query_table_report(
             .iter()
             .map(|panel| panel.queries.len())
             .sum::<usize>();
+        let dashboard_datasources = if dashboard.datasources.is_empty() {
+            "none".to_string()
+        } else {
+            dashboard.datasources.join(",")
+        };
+        let dashboard_families = if dashboard.datasource_families.is_empty() {
+            "none".to_string()
+        } else {
+            dashboard.datasource_families.join(",")
+        };
         lines.push(format!(
-            "[{}] Dashboard: {} (uid={}, folder={}, panels={}, queries={})",
+            "[{}] Dashboard: {} (uid={}, folder={}, panels={}, queries={}, datasources={}, families={})",
             index + 1,
             dashboard.dashboard_title,
             dashboard.dashboard_uid,
             dashboard.folder_path,
             panel_count,
-            query_count
+            query_count,
+            dashboard_datasources,
+            dashboard_families
         ));
+        if !dashboard.file_path.is_empty() {
+            lines.push(format!("File: {}", dashboard.file_path));
+        }
         let rows = dashboard
             .panels
             .iter()

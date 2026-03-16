@@ -13,6 +13,126 @@ use crate::http::{JsonHttpClient, JsonHttpClientConfig};
 
 use super::*;
 
+#[derive(Default)]
+struct ImportLookupCache {
+    dashboards_by_uid: BTreeMap<String, Option<Value>>,
+    folders_by_uid: BTreeMap<String, Option<Map<String, Value>>>,
+    current_org_id: Option<String>,
+    orgs: Option<Vec<Map<String, Value>>>,
+}
+
+fn fetch_dashboard_if_exists_cached<F>(
+    request_json: &mut F,
+    cache: &mut ImportLookupCache,
+    uid: &str,
+) -> Result<Option<Value>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    if uid.is_empty() {
+        return Ok(None);
+    }
+    if let Some(cached) = cache.dashboards_by_uid.get(uid) {
+        return Ok(cached.clone());
+    }
+    let fetched = fetch_dashboard_if_exists_with_request(&mut *request_json, uid)?;
+    cache
+        .dashboards_by_uid
+        .insert(uid.to_string(), fetched.clone());
+    Ok(fetched)
+}
+
+fn fetch_folder_if_exists_cached<F>(
+    request_json: &mut F,
+    cache: &mut ImportLookupCache,
+    uid: &str,
+) -> Result<Option<Map<String, Value>>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    if uid.is_empty() {
+        return Ok(None);
+    }
+    if let Some(cached) = cache.folders_by_uid.get(uid) {
+        return Ok(cached.clone());
+    }
+    let fetched = fetch_folder_if_exists_with_request(&mut *request_json, uid)?;
+    cache
+        .folders_by_uid
+        .insert(uid.to_string(), fetched.clone());
+    Ok(fetched)
+}
+
+fn create_folder_entry_with_request<F>(
+    request_json: &mut F,
+    title: &str,
+    uid: &str,
+    parent_uid: Option<&str>,
+) -> Result<()>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let mut payload = Map::new();
+    payload.insert("uid".to_string(), Value::String(uid.to_string()));
+    payload.insert("title".to_string(), Value::String(title.to_string()));
+    if let Some(parent_uid) = parent_uid.filter(|value| !value.is_empty()) {
+        payload.insert(
+            "parentUid".to_string(),
+            Value::String(parent_uid.to_string()),
+        );
+    }
+    let _ = request_json(
+        Method::POST,
+        "/api/folders",
+        &[],
+        Some(&Value::Object(payload)),
+    )?;
+    Ok(())
+}
+
+fn cached_parent_uid_from_folder(folder: &Map<String, Value>) -> Option<String> {
+    folder
+        .get("parents")
+        .and_then(Value::as_array)
+        .and_then(|parents| parents.last())
+        .and_then(Value::as_object)
+        .map(|parent| string_field(parent, "uid", ""))
+        .filter(|uid| !uid.is_empty())
+}
+
+fn build_cached_folder_inventory_status(
+    folder: &FolderInventoryItem,
+    destination_folder: Option<&Map<String, Value>>,
+) -> FolderInventoryStatus {
+    let expected_parent_uid = folder.parent_uid.clone();
+    let mut status = FolderInventoryStatus {
+        uid: folder.uid.clone(),
+        expected_title: folder.title.clone(),
+        expected_parent_uid,
+        expected_path: folder.path.clone(),
+        actual_title: None,
+        actual_parent_uid: None,
+        actual_path: None,
+        kind: FolderInventoryStatusKind::Missing,
+    };
+    let Some(destination_folder) = destination_folder else {
+        return status;
+    };
+
+    status.actual_title = Some(string_field(destination_folder, "title", ""));
+    status.actual_parent_uid = cached_parent_uid_from_folder(destination_folder);
+    status.actual_path = Some(build_folder_path(destination_folder, &folder.title));
+    let title_matches = status.actual_title.as_deref() == Some(folder.title.as_str());
+    let parent_matches = status.actual_parent_uid == folder.parent_uid;
+    let path_matches = status.actual_path.as_deref() == Some(folder.path.as_str());
+    status.kind = if title_matches && parent_matches && path_matches {
+        FolderInventoryStatusKind::Matches
+    } else {
+        FolderInventoryStatusKind::Mismatch
+    };
+    status
+}
+
 fn validate_import_org_auth(context: &DashboardAuthContext, args: &ImportArgs) -> Result<()> {
     if args.org_id.is_some() && context.auth_mode != "basic" {
         return Err(message(
@@ -289,7 +409,8 @@ where
 }
 
 fn resolve_import_target_org_id_with_request<F>(
-    mut request_json: F,
+    request_json: &mut F,
+    cache: &mut ImportLookupCache,
     args: &ImportArgs,
 ) -> Result<String>
 where
@@ -298,12 +419,33 @@ where
     if let Some(org_id) = args.org_id {
         return Ok(org_id.to_string());
     }
-    let org = super::dashboard_list::fetch_current_org_with_request(&mut request_json)?;
-    Ok(super::dashboard_list::org_id_value(&org)?.to_string())
+    if let Some(org_id) = cache.current_org_id.as_ref() {
+        return Ok(org_id.clone());
+    }
+    let org = super::dashboard_list::fetch_current_org_with_request(&mut *request_json)?;
+    let org_id = super::dashboard_list::org_id_value(&org)?.to_string();
+    cache.current_org_id = Some(org_id.clone());
+    Ok(org_id)
+}
+
+fn list_orgs_cached<F>(
+    request_json: &mut F,
+    cache: &mut ImportLookupCache,
+) -> Result<Vec<Map<String, Value>>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    if let Some(orgs) = cache.orgs.as_ref() {
+        return Ok(orgs.clone());
+    }
+    let orgs = super::dashboard_list::list_orgs_with_request(&mut *request_json)?;
+    cache.orgs = Some(orgs.clone());
+    Ok(orgs)
 }
 
 fn validate_matching_export_org_with_request<F>(
-    mut request_json: F,
+    request_json: &mut F,
+    cache: &mut ImportLookupCache,
     args: &ImportArgs,
     import_dir: &Path,
     metadata: Option<&ExportMetadata>,
@@ -333,7 +475,7 @@ where
     let export_org_id = export_org_ids.into_iter().next().unwrap_or_default();
     let target_org_id = match target_org_id_override {
         Some(org_id) => org_id.to_string(),
-        None => resolve_import_target_org_id_with_request(&mut request_json, args)?,
+        None => resolve_import_target_org_id_with_request(request_json, cache, args)?,
     };
     if export_org_id != target_org_id {
         return Err(message(format!(
@@ -344,14 +486,15 @@ where
 }
 
 fn resolve_target_org_plan_for_export_scope_with_request<F>(
-    mut request_json: F,
+    request_json: &mut F,
+    cache: &mut ImportLookupCache,
     args: &ImportArgs,
     scope: &ExportOrgImportScope,
 ) -> Result<ExportOrgTargetPlan>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    let orgs = super::dashboard_list::list_orgs_with_request(&mut request_json)?;
+    let orgs = list_orgs_cached(request_json, cache)?;
     for org in &orgs {
         let org_id_text = org_id_string_from_value(org.get("id"));
         if org_id_text == scope.source_org_id.to_string() {
@@ -394,7 +537,7 @@ where
             import_dir: scope.import_dir.clone(),
         });
     }
-    let created = create_org_with_request(&mut request_json, &scope.source_org_name)?;
+    let created = create_org_with_request(&mut *request_json, &scope.source_org_name)?;
     let created_org_id =
         org_id_string_from_value(created.get("orgId").or_else(|| created.get("id")));
     if created_org_id.is_empty() {
@@ -487,7 +630,8 @@ fn build_compare_diff_text(
 }
 
 fn determine_dashboard_import_action_with_request<F>(
-    mut request_json: F,
+    request_json: &mut F,
+    cache: &mut ImportLookupCache,
     payload: &Value,
     replace_existing: bool,
     update_existing_only: bool,
@@ -505,7 +649,7 @@ where
     if uid.is_empty() {
         return Ok("would-create");
     }
-    if fetch_dashboard_if_exists_with_request(&mut request_json, &uid)?.is_none() {
+    if fetch_dashboard_if_exists_cached(request_json, cache, &uid)?.is_none() {
         if update_existing_only {
             return Ok("would-skip-missing");
         }
@@ -519,7 +663,8 @@ where
 }
 
 fn determine_import_folder_uid_override_with_request<F>(
-    mut request_json: F,
+    request_json: &mut F,
+    cache: &mut ImportLookupCache,
     uid: &str,
     folder_uid_override: Option<&str>,
     preserve_existing_folder: bool,
@@ -533,8 +678,7 @@ where
     if !preserve_existing_folder || uid.is_empty() {
         return Ok(None);
     }
-    let Some(existing_payload) = fetch_dashboard_if_exists_with_request(&mut request_json, uid)?
-    else {
+    let Some(existing_payload) = fetch_dashboard_if_exists_cached(request_json, cache, uid)? else {
         return Ok(None);
     };
     let object = value_as_object(
@@ -630,7 +774,8 @@ fn resolve_source_dashboard_folder_path(
 }
 
 fn resolve_existing_dashboard_folder_path_with_request<F>(
-    mut request_json: F,
+    request_json: &mut F,
+    cache: &mut ImportLookupCache,
     uid: &str,
 ) -> Result<Option<String>>
 where
@@ -639,8 +784,7 @@ where
     if uid.is_empty() {
         return Ok(None);
     }
-    let Some(existing_payload) = fetch_dashboard_if_exists_with_request(&mut request_json, uid)?
-    else {
+    let Some(existing_payload) = fetch_dashboard_if_exists_cached(request_json, cache, uid)? else {
         return Ok(None);
     };
     let object = value_as_object(
@@ -656,7 +800,7 @@ where
     if folder_uid.is_empty() || folder_uid == DEFAULT_FOLDER_UID {
         return Ok(Some(DEFAULT_FOLDER_TITLE.to_string()));
     }
-    let Some(folder) = fetch_folder_if_exists_with_request(&mut request_json, &folder_uid)? else {
+    let Some(folder) = fetch_folder_if_exists_cached(request_json, cache, &folder_uid)? else {
         return Ok(None);
     };
     let title = string_field(&folder, "title", &folder_uid);
@@ -709,7 +853,8 @@ fn apply_folder_path_guard_to_action(action: &'static str, matches: bool) -> &'s
 }
 
 fn resolve_dashboard_import_folder_path_with_request<F>(
-    mut request_json: F,
+    request_json: &mut F,
+    cache: &mut ImportLookupCache,
     payload: &Value,
     folders_by_uid: &std::collections::BTreeMap<String, FolderInventoryItem>,
 ) -> Result<String>
@@ -727,7 +872,7 @@ where
     if folder_uid.is_empty() || folder_uid == DEFAULT_FOLDER_UID {
         return Ok(DEFAULT_FOLDER_TITLE.to_string());
     }
-    if let Some(folder) = fetch_folder_if_exists_with_request(&mut request_json, &folder_uid)? {
+    if let Some(folder) = fetch_folder_if_exists_cached(request_json, cache, &folder_uid)? {
         let fallback_title = string_field(&folder, "title", &folder_uid);
         return Ok(build_folder_path(&folder, &fallback_title));
     }
@@ -740,6 +885,93 @@ where
         }
     }
     Ok(folder_uid)
+}
+
+fn collect_folder_inventory_statuses_cached<F>(
+    request_json: &mut F,
+    cache: &mut ImportLookupCache,
+    folder_inventory: &[FolderInventoryItem],
+) -> Result<Vec<FolderInventoryStatus>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let mut statuses = Vec::new();
+    for folder in folder_inventory {
+        let destination_folder = fetch_folder_if_exists_cached(request_json, cache, &folder.uid)?;
+        statuses.push(build_cached_folder_inventory_status(
+            folder,
+            destination_folder.as_ref(),
+        ));
+    }
+    Ok(statuses)
+}
+
+fn ensure_folder_inventory_entry_cached<F>(
+    request_json: &mut F,
+    cache: &mut ImportLookupCache,
+    folders_by_uid: &BTreeMap<String, FolderInventoryItem>,
+    folder_uid: &str,
+) -> Result<()>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    if folder_uid.is_empty() {
+        return Ok(());
+    }
+    let mut create_chain = Vec::new();
+    let mut current_uid = folder_uid.to_string();
+    loop {
+        if fetch_folder_if_exists_cached(request_json, cache, &current_uid)?.is_some() {
+            break;
+        }
+        let folder = folders_by_uid.get(&current_uid).ok_or_else(|| {
+            message(format!(
+                "Missing exported folder inventory for folderUid {current_uid}."
+            ))
+        })?;
+        create_chain.push(folder.clone());
+        let Some(parent_uid) = folder.parent_uid.as_deref() else {
+            break;
+        };
+        current_uid = parent_uid.to_string();
+    }
+    for folder in create_chain.into_iter().rev() {
+        if fetch_folder_if_exists_cached(request_json, cache, &folder.uid)?.is_some() {
+            continue;
+        }
+        create_folder_entry_with_request(
+            &mut *request_json,
+            &folder.title,
+            &folder.uid,
+            folder.parent_uid.as_deref(),
+        )?;
+        let mut created = Map::new();
+        created.insert("uid".to_string(), Value::String(folder.uid.clone()));
+        created.insert("title".to_string(), Value::String(folder.title.clone()));
+        if let Some(parent_uid) = folder.parent_uid.as_ref() {
+            let parents = if let Some(parent_folder) =
+                fetch_folder_if_exists_cached(request_json, cache, parent_uid)?
+            {
+                let parent_title = string_field(&parent_folder, "title", parent_uid);
+                vec![Value::Object(Map::from_iter(vec![
+                    ("uid".to_string(), Value::String(parent_uid.clone())),
+                    ("title".to_string(), Value::String(parent_title)),
+                ]))]
+            } else {
+                vec![Value::Object(Map::from_iter(vec![
+                    ("uid".to_string(), Value::String(parent_uid.clone())),
+                    ("title".to_string(), Value::String(parent_uid.clone())),
+                ]))]
+            };
+            created.insert("parents".to_string(), Value::Array(parents));
+        } else {
+            created.insert("parents".to_string(), Value::Array(Vec::new()));
+        }
+        cache
+            .folders_by_uid
+            .insert(folder.uid.clone(), Some(created));
+    }
+    Ok(())
 }
 
 fn build_import_dry_run_record(
@@ -1180,9 +1412,11 @@ pub(crate) fn collect_import_dry_run_report_with_request<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
+    let mut lookup_cache = ImportLookupCache::default();
     let metadata = load_export_metadata(&args.import_dir, Some(RAW_EXPORT_SUBDIR))?;
     validate_matching_export_org_with_request(
         &mut request_json,
+        &mut lookup_cache,
         args,
         &args.import_dir,
         metadata.as_ref(),
@@ -1204,7 +1438,11 @@ where
         )));
     }
     let folder_statuses = if args.ensure_folders {
-        collect_folder_inventory_statuses_with_request(&mut request_json, &folder_inventory)?
+        collect_folder_inventory_statuses_cached(
+            &mut request_json,
+            &mut lookup_cache,
+            &folder_inventory,
+        )?
     } else {
         Vec::new()
     };
@@ -1236,6 +1474,7 @@ where
         };
         let folder_uid_override = determine_import_folder_uid_override_with_request(
             &mut request_json,
+            &mut lookup_cache,
             &uid,
             args.import_folder_uid.as_deref(),
             effective_replace_existing,
@@ -1248,12 +1487,17 @@ where
         )?;
         let action = determine_dashboard_import_action_with_request(
             &mut request_json,
+            &mut lookup_cache,
             &payload,
             args.replace_existing,
             args.update_existing_only,
         )?;
         let destination_folder_path = if args.require_matching_folder_path {
-            resolve_existing_dashboard_folder_path_with_request(&mut request_json, &uid)?
+            resolve_existing_dashboard_folder_path_with_request(
+                &mut request_json,
+                &mut lookup_cache,
+                &uid,
+            )?
         } else {
             None
         };
@@ -1275,6 +1519,7 @@ where
         let action = apply_folder_path_guard_to_action(action, folder_paths_match);
         let folder_path = resolve_dashboard_import_folder_path_with_request(
             &mut request_json,
+            &mut lookup_cache,
             &payload,
             &folders_by_uid,
         )?;
@@ -1372,6 +1617,7 @@ pub(crate) fn import_dashboards_with_request<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
+    let mut lookup_cache = ImportLookupCache::default();
     if args.table && !args.dry_run {
         return Err(message(
             "--table is only supported with --dry-run for import-dashboard.",
@@ -1410,6 +1656,7 @@ where
     let metadata = load_export_metadata(&args.import_dir, Some(RAW_EXPORT_SUBDIR))?;
     validate_matching_export_org_with_request(
         &mut request_json,
+        &mut lookup_cache,
         args,
         &args.import_dir,
         metadata.as_ref(),
@@ -1431,7 +1678,11 @@ where
         )));
     }
     let folder_statuses = if args.dry_run && args.ensure_folders {
-        collect_folder_inventory_statuses_with_request(&mut request_json, &folder_inventory)?
+        collect_folder_inventory_statuses_cached(
+            &mut request_json,
+            &mut lookup_cache,
+            &folder_inventory,
+        )?
     } else {
         Vec::new()
     };
@@ -1515,6 +1766,7 @@ where
         };
         let folder_uid_override = determine_import_folder_uid_override_with_request(
             &mut request_json,
+            &mut lookup_cache,
             &uid,
             args.import_folder_uid.as_deref(),
             effective_replace_existing,
@@ -1532,6 +1784,7 @@ where
         {
             Some(determine_dashboard_import_action_with_request(
                 &mut request_json,
+                &mut lookup_cache,
                 &payload,
                 args.replace_existing,
                 args.update_existing_only,
@@ -1540,7 +1793,11 @@ where
             None
         };
         let destination_folder_path = if args.require_matching_folder_path {
-            resolve_existing_dashboard_folder_path_with_request(&mut request_json, &uid)?
+            resolve_existing_dashboard_folder_path_with_request(
+                &mut request_json,
+                &mut lookup_cache,
+                &uid,
+            )?
         } else {
             None
         };
@@ -1564,6 +1821,7 @@ where
         if args.dry_run {
             let folder_path = resolve_dashboard_import_folder_path_with_request(
                 &mut request_json,
+                &mut lookup_cache,
                 &payload,
                 &folders_by_uid,
             )?;
@@ -1665,8 +1923,9 @@ where
                 .and_then(Value::as_str)
                 .unwrap_or("");
             if !folder_uid.is_empty() && action != Some("would-fail-existing") {
-                ensure_folder_inventory_entry_with_request(
+                ensure_folder_inventory_entry_cached(
                     &mut request_json,
+                    &mut lookup_cache,
                     &folders_by_uid,
                     folder_uid,
                 )?;
@@ -1807,11 +2066,16 @@ where
     G: FnMut(i64, &ImportArgs) -> Result<ImportDryRunReport>,
 {
     let scopes = discover_export_org_import_scopes(args)?;
+    let mut lookup_cache = ImportLookupCache::default();
     let mut orgs = Vec::new();
     let mut imports = Vec::new();
     for scope in scopes {
-        let target_plan =
-            resolve_target_org_plan_for_export_scope_with_request(&mut request_json, args, &scope)?;
+        let target_plan = resolve_target_org_plan_for_export_scope_with_request(
+            &mut request_json,
+            &mut lookup_cache,
+            args,
+            &scope,
+        )?;
         let dashboard_count = discover_dashboard_files(&target_plan.import_dir)?
             .into_iter()
             .filter(|path| {
@@ -1890,6 +2154,7 @@ where
     H: FnMut(i64, &ImportArgs) -> Result<ImportDryRunReport>,
 {
     let scopes = discover_export_org_import_scopes(args)?;
+    let mut lookup_cache = ImportLookupCache::default();
     if args.dry_run && args.json {
         println!(
             "{}",
@@ -1905,8 +2170,12 @@ where
     let mut org_rows = Vec::new();
     let mut resolved_plans = Vec::new();
     for scope in scopes {
-        let target_plan =
-            resolve_target_org_plan_for_export_scope_with_request(&mut request_json, args, &scope)?;
+        let target_plan = resolve_target_org_plan_for_export_scope_with_request(
+            &mut request_json,
+            &mut lookup_cache,
+            args,
+            &scope,
+        )?;
         let dashboard_count = discover_dashboard_files(&target_plan.import_dir)?
             .into_iter()
             .filter(|path| {

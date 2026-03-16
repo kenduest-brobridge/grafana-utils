@@ -7,7 +7,9 @@
 
 use crate::alert_sync::assess_alert_sync_specs;
 use crate::common::{message, Result};
-use crate::datasource_provider::{build_provider_plan, iter_provider_names, summarize_provider_plan};
+use crate::datasource_provider::{
+    build_provider_plan, iter_provider_names, summarize_provider_plan,
+};
 use crate::sync_preflight::build_sync_preflight_document;
 use crate::sync_workbench::build_sync_summary_document;
 use serde_json::{json, Map, Value};
@@ -92,6 +94,17 @@ fn build_sync_specs_from_bundle(bundle: &Map<String, Value>) -> Vec<Value> {
     for item in bundle_section_items(bundle, "folders") {
         sync_specs.push(item);
     }
+    for item in bundle_section_items(bundle, "alerts") {
+        if let Some(object) = item.as_object() {
+            sync_specs.push(json!({
+                "kind": "alert",
+                "uid": object.get("uid"),
+                "title": object.get("title"),
+                "managedFields": object.get("managedFields").cloned().unwrap_or(Value::Array(Vec::new())),
+                "body": object.get("body").cloned().unwrap_or(Value::Object(Map::new())),
+            }));
+        }
+    }
     sync_specs
 }
 
@@ -100,7 +113,9 @@ fn build_provider_assessment(
     availability: &Map<String, Value>,
 ) -> Result<Value> {
     let available_provider_names = require_string_list(
-        availability.get("providerNames").or_else(|| availability.get("secretProviderNames")),
+        availability
+            .get("providerNames")
+            .or_else(|| availability.get("secretProviderNames")),
         "providerNames",
     )?
     .into_iter()
@@ -156,10 +171,13 @@ pub fn build_bundle_preflight_document(
     };
     let sync_specs = build_sync_specs_from_bundle(source_bundle);
     let sync_summary = build_sync_summary_document(&sync_specs)?;
-    let sync_preflight = build_sync_preflight_document(&sync_specs, Some(&Value::Object(availability_map.clone())))?;
+    let sync_preflight =
+        build_sync_preflight_document(&sync_specs, Some(&Value::Object(availability_map.clone())))?;
     let alert_assessment = assess_alert_sync_specs(&bundle_section_items(source_bundle, "alerts"))?;
-    let provider_assessment =
-        build_provider_assessment(&bundle_section_items(source_bundle, "datasources"), &availability_map)?;
+    let provider_assessment = build_provider_assessment(
+        &bundle_section_items(source_bundle, "datasources"),
+        &availability_map,
+    )?;
 
     let target_summary = if let Some(target_inventory) = target_inventory {
         let target_inventory = require_object(Some(target_inventory), "target inventory")?;

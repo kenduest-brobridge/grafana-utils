@@ -492,6 +492,8 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("Examples:", help_text)
         self.assertIn("grafana-util datasource list", help_text)
         self.assertIn("grafana-util datasource add", help_text)
+        self.assertIn("grafana-util datasource modify", help_text)
+        self.assertIn("grafana-util datasource delete", help_text)
         self.assertIn("grafana-util datasource export", help_text)
 
     def test_add_help_mentions_live_mutation_flags(self):

@@ -8,24 +8,25 @@
 
 use chrono::Local;
 use font8x8::UnicodeFonts;
-use headless_chrome::protocol::cdp::Page;
+use headless_chrome::protocol::cdp::{Emulation, Page};
 use headless_chrome::types::PrintToPdfOptions;
 use headless_chrome::{Browser, LaunchOptionsBuilder};
 use image::{DynamicImage, GenericImage, ImageFormat, Rgba, RgbaImage};
 use reqwest::Url;
+use serde_json::{json, Value};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fs;
 use std::net::TcpListener;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 
 use crate::common::{message, object_field, string_field, value_as_object, Result};
 
 use super::{
-    build_auth_context, build_http_client, fetch_dashboard, ScreenshotArgs, ScreenshotOutputFormat,
-    ScreenshotTheme,
+    build_auth_context, build_http_client, fetch_dashboard, ScreenshotArgs,
+    ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme,
 };
 
 pub fn validate_screenshot_args(args: &ScreenshotArgs) -> Result<()> {
@@ -52,6 +53,9 @@ pub fn validate_screenshot_args(args: &ScreenshotArgs) -> Result<()> {
     if args.height == 0 {
         return Err(message("--height must be greater than 0."));
     }
+    if !args.device_scale_factor.is_finite() || args.device_scale_factor <= 0.0 {
+        return Err(message("--device-scale-factor must be greater than 0."));
+    }
     for assignment in &args.vars {
         let (name, value) = parse_var_assignment(assignment)?;
         if name.is_empty() {
@@ -68,7 +72,19 @@ pub fn validate_screenshot_args(args: &ScreenshotArgs) -> Result<()> {
     if let Some(vars_query) = args.vars_query.as_deref() {
         let _ = parse_query_fragment(vars_query)?;
     }
-    let _ = infer_screenshot_output_format(&args.output, args.output_format)?;
+    let output_format = infer_screenshot_output_format(&args.output, args.output_format)?;
+    if args.full_page_output != ScreenshotFullPageOutput::Single && !args.full_page {
+        return Err(message(
+            "--full-page-output tiles or manifest requires --full-page.",
+        ));
+    }
+    if args.full_page_output != ScreenshotFullPageOutput::Single
+        && output_format == ScreenshotOutputFormat::Pdf
+    {
+        return Err(message(
+            "PDF output does not support --full-page-output tiles or manifest.",
+        ));
+    }
     Ok(())
 }
 
@@ -101,9 +117,8 @@ pub fn infer_screenshot_output_format(
 
 pub fn build_dashboard_capture_url(args: &ScreenshotArgs) -> Result<String> {
     let mut url = match args.dashboard_url.as_deref().map(str::trim) {
-        Some(value) if !value.is_empty() => {
-            Url::parse(value).map_err(|error| message(format!("Invalid --dashboard-url: {error}")))?
-        }
+        Some(value) if !value.is_empty() => Url::parse(value)
+            .map_err(|error| message(format!("Invalid --dashboard-url: {error}")))?,
         _ => Url::parse(args.common.url.trim_end_matches('/'))
             .map_err(|error| message(format!("Invalid Grafana base URL: {error}")))?,
     };
@@ -228,6 +243,7 @@ pub fn capture_dashboard_screenshot(args: &ScreenshotArgs) -> Result<()> {
     let tab = browser
         .new_tab()
         .map_err(|error| message(format!("Failed to create Chromium tab: {error}")))?;
+    configure_capture_viewport(&tab, &resolved_args)?;
 
     tab.set_extra_http_headers(build_browser_headers(&auth.headers))
         .map_err(|error| message(format!("Failed to set Chromium request headers: {error}")))?;
@@ -243,48 +259,85 @@ pub fn capture_dashboard_screenshot(args: &ScreenshotArgs) -> Result<()> {
 
     match output_format {
         ScreenshotOutputFormat::Png => {
-            let bytes = if resolved_args.full_page {
-                capture_stitched_screenshot(
+            if resolved_args.full_page {
+                let segments = capture_full_page_segments(
                     &tab,
                     &resolved_args,
                     &capture_offsets,
                     Page::CaptureScreenshotFormatOption::Png,
                     None,
-                )?
+                )?;
+                write_full_page_output(
+                    &resolved_args,
+                    &header_spec,
+                    &capture_metadata,
+                    output_format,
+                    segments,
+                    ImageFormat::Png,
+                )?;
             } else {
-                tab.capture_screenshot(
-                    Page::CaptureScreenshotFormatOption::Png,
-                    None,
-                    screenshot_clip.clone(),
-                    true,
-                )
-                .map_err(|error| message(format!("Failed to capture PNG screenshot: {error}")))?
-            };
-            let bytes = apply_header_if_requested(bytes, &resolved_args, &header_spec, ImageFormat::Png)?;
-            fs::write(&resolved_args.output, bytes)?;
+                let bytes = tab
+                    .capture_screenshot(
+                        Page::CaptureScreenshotFormatOption::Png,
+                        None,
+                        screenshot_clip.clone(),
+                        true,
+                    )
+                    .map_err(|error| {
+                        message(format!("Failed to capture PNG screenshot: {error}"))
+                    })?;
+                let bytes = apply_header_if_requested(
+                    bytes,
+                    &resolved_args,
+                    &header_spec,
+                    ImageFormat::Png,
+                )?;
+                fs::write(&resolved_args.output, bytes)?;
+            }
         }
         ScreenshotOutputFormat::Jpeg => {
-            let bytes = if resolved_args.full_page {
-                capture_stitched_screenshot(
+            if resolved_args.full_page {
+                let segments = capture_full_page_segments(
                     &tab,
                     &resolved_args,
                     &capture_offsets,
                     Page::CaptureScreenshotFormatOption::Jpeg,
                     Some(90),
-                )?
+                )?;
+                write_full_page_output(
+                    &resolved_args,
+                    &header_spec,
+                    &capture_metadata,
+                    output_format,
+                    segments,
+                    ImageFormat::Jpeg,
+                )?;
             } else {
-                tab.capture_screenshot(
-                    Page::CaptureScreenshotFormatOption::Jpeg,
-                    Some(90),
-                    screenshot_clip,
-                    true,
-                )
-                .map_err(|error| message(format!("Failed to capture JPEG screenshot: {error}")))?
-            };
-            let bytes = apply_header_if_requested(bytes, &resolved_args, &header_spec, ImageFormat::Jpeg)?;
-            fs::write(&resolved_args.output, bytes)?;
+                let bytes = tab
+                    .capture_screenshot(
+                        Page::CaptureScreenshotFormatOption::Jpeg,
+                        Some(90),
+                        screenshot_clip,
+                        true,
+                    )
+                    .map_err(|error| {
+                        message(format!("Failed to capture JPEG screenshot: {error}"))
+                    })?;
+                let bytes = apply_header_if_requested(
+                    bytes,
+                    &resolved_args,
+                    &header_spec,
+                    ImageFormat::Jpeg,
+                )?;
+                fs::write(&resolved_args.output, bytes)?;
+            }
         }
         ScreenshotOutputFormat::Pdf => {
+            if resolved_args.full_page_output != ScreenshotFullPageOutput::Single {
+                return Err(message(
+                    "PDF output does not support --full-page-output tiles or manifest.",
+                ));
+            }
             let pdf = tab
                 .print_to_pdf(Some(PrintToPdfOptions {
                     landscape: Some(false),
@@ -331,6 +384,27 @@ struct HeaderLine {
     text: String,
     scale: u32,
     color: Rgba<u8>,
+}
+
+#[derive(Debug, Clone)]
+struct CapturedSegment {
+    image: RgbaImage,
+    index: usize,
+    scroll_y: u32,
+    source_top: u32,
+}
+
+#[derive(Debug, Clone)]
+struct FullPageCapture {
+    total_height: u32,
+    target_width: u32,
+    viewport_width: u32,
+    viewport_height: u32,
+    device_scale_factor: f64,
+    crop_top: u32,
+    crop_left: u32,
+    step: u32,
+    segments: Vec<CapturedSegment>,
 }
 
 fn resolve_dashboard_metadata(args: &mut ScreenshotArgs) -> Result<DashboardCaptureMetadata> {
@@ -391,7 +465,10 @@ fn resolve_dashboard_uid(args: &ScreenshotArgs) -> Option<String> {
         })
 }
 
-fn find_panel_title(dashboard: &serde_json::Map<String, serde_json::Value>, panel_id: i64) -> Option<String> {
+fn find_panel_title(
+    dashboard: &serde_json::Map<String, serde_json::Value>,
+    panel_id: i64,
+) -> Option<String> {
     fn visit_panels(items: &[serde_json::Value], panel_id: i64) -> Option<String> {
         for item in items {
             let object = item.as_object()?;
@@ -525,12 +602,19 @@ fn compose_header_image(
     header_spec: &HeaderSpec,
     format: ImageFormat,
 ) -> Result<Vec<u8>> {
-    let screenshot = image::load_from_memory(&bytes)
-        .map_err(|error| message(format!("Failed to decode screenshot for header composition: {error}")))?;
+    let screenshot = image::load_from_memory(&bytes).map_err(|error| {
+        message(format!(
+            "Failed to decode screenshot for header composition: {error}"
+        ))
+    })?;
     let screenshot_rgba = screenshot.to_rgba8();
     let width = target_width.max(screenshot_rgba.width());
     let header_height = measure_header_height(header_spec);
-    let mut output = RgbaImage::from_pixel(width, header_height + screenshot_rgba.height(), Rgba([12, 16, 24, 255]));
+    let mut output = RgbaImage::from_pixel(
+        width,
+        header_height + screenshot_rgba.height(),
+        Rgba([12, 16, 24, 255]),
+    );
     paint_header_background(&mut output, width, header_height);
     draw_header_lines(&mut output, header_spec);
     output
@@ -539,7 +623,11 @@ fn compose_header_image(
     let mut encoded = std::io::Cursor::new(Vec::new());
     DynamicImage::ImageRgba8(output)
         .write_to(&mut encoded, format)
-        .map_err(|error| message(format!("Failed to encode screenshot header composition: {error}")))?;
+        .map_err(|error| {
+            message(format!(
+                "Failed to encode screenshot header composition: {error}"
+            ))
+        })?;
     Ok(encoded.into_inner())
 }
 
@@ -751,9 +839,10 @@ fn parse_dashboard_url_state(url: &Url) -> DashboardUrlState {
                 state.to = Some(value.into_owned());
             }
             _ if key.starts_with("var-") => {
-                state
-                    .vars
-                    .push((key.trim_start_matches("var-").to_string(), value.into_owned()));
+                state.vars.push((
+                    key.trim_start_matches("var-").to_string(),
+                    value.into_owned(),
+                ));
             }
             "theme" | "kiosk" | "viewPanel" => {}
             _ => {
@@ -800,7 +889,9 @@ fn collapse_sidebar_if_present(tab: &std::sync::Arc<headless_chrome::Tab>) -> Re
     Ok(())
 }
 
-fn prepare_dashboard_capture_dom(tab: &std::sync::Arc<headless_chrome::Tab>) -> Result<CaptureOffsets> {
+fn prepare_dashboard_capture_dom(
+    tab: &std::sync::Arc<headless_chrome::Tab>,
+) -> Result<CaptureOffsets> {
     tab.evaluate(
         r#"
 (() => {
@@ -1040,7 +1131,7 @@ Math.max(
         y: 0.0,
         width,
         height,
-        scale: 1.0,
+        scale: args.device_scale_factor,
     }))
 }
 
@@ -1078,8 +1169,11 @@ Math.max(
             "#,
             height
         );
-        tab.evaluate(&scroll_script, false)
-            .map_err(|error| message(format!("Failed to scroll dashboard for --full-page: {error}")))?;
+        tab.evaluate(&scroll_script, false).map_err(|error| {
+            message(format!(
+                "Failed to scroll dashboard for --full-page: {error}"
+            ))
+        })?;
         thread::sleep(Duration::from_millis(1800));
 
         let next_height = read_numeric_expression(
@@ -1106,19 +1200,26 @@ Math.max(
         }
     }
 
-    tab.evaluate("window.scrollTo({ top: 0, left: 0, behavior: 'instant' })", false)
-        .map_err(|error| message(format!("Failed to reset dashboard scroll position: {error}")))?;
+    tab.evaluate(
+        "window.scrollTo({ top: 0, left: 0, behavior: 'instant' })",
+        false,
+    )
+    .map_err(|error| {
+        message(format!(
+            "Failed to reset dashboard scroll position: {error}"
+        ))
+    })?;
     thread::sleep(Duration::from_millis(300));
     Ok(())
 }
 
-fn capture_stitched_screenshot(
+fn capture_full_page_segments(
     tab: &std::sync::Arc<headless_chrome::Tab>,
     args: &ScreenshotArgs,
     capture_offsets: &CaptureOffsets,
     format: Page::CaptureScreenshotFormatOption,
     quality: Option<u32>,
-) -> Result<Vec<u8>> {
+) -> Result<FullPageCapture> {
     let total_height = read_numeric_expression(
         tab,
         r#"
@@ -1131,15 +1232,19 @@ Math.max(
         args.height as f64,
     )?;
     let viewport_height = args.height as f64;
-    let viewport_width = args.width as u32;
-    let crop_top = capture_offsets.hidden_top_height.max(0.0).ceil() as u32;
-    let crop_left = capture_offsets.hidden_left_width.max(0.0).ceil() as u32;
-    let target_width = viewport_width.saturating_sub(crop_left).max(1);
+    let viewport_width = args.width;
+    let device_scale_factor = args.device_scale_factor.max(0.01);
+    let crop_top = (capture_offsets.hidden_top_height.max(0.0) * device_scale_factor).ceil() as u32;
+    let crop_left =
+        (capture_offsets.hidden_left_width.max(0.0) * device_scale_factor).ceil() as u32;
+    let target_width = ((viewport_width as f64 * device_scale_factor).ceil() as u32)
+        .saturating_sub(crop_left)
+        .max(1);
     let step = (viewport_height - capture_offsets.hidden_top_height.max(0.0)).max(200.0);
 
-    let mut stitched = RgbaImage::new(target_width, total_height.ceil() as u32);
-    let mut destination_y = 0_u32;
+    let final_total_height = ((total_height * device_scale_factor).ceil() as u32).max(1);
     let mut current_y = 0.0_f64;
+    let mut segments = Vec::new();
 
     while current_y < total_height - 1.0 {
         let scroll_script = format!(
@@ -1152,15 +1257,30 @@ Math.max(
 
         let bytes = tab
             .capture_screenshot(format.clone(), quality, None, true)
-            .map_err(|error| message(format!("Failed to capture stitched screenshot segment: {error}")))?;
-        let segment = image::load_from_memory(&bytes)
-            .map_err(|error| message(format!("Failed to decode stitched screenshot segment: {error}")))?;
+            .map_err(|error| {
+                message(format!(
+                    "Failed to capture stitched screenshot segment: {error}"
+                ))
+            })?;
+        let segment = image::load_from_memory(&bytes).map_err(|error| {
+            message(format!(
+                "Failed to decode stitched screenshot segment: {error}"
+            ))
+        })?;
         let segment_rgba = segment.to_rgba8();
         let segment_height = segment_rgba.height();
         let segment_width = segment_rgba.width();
         let source_left = crop_left.min(segment_width.saturating_sub(1));
-        let source_top = if current_y <= 0.0 { 0 } else { crop_top.min(segment_height) };
-        let remaining_height = stitched.height().saturating_sub(destination_y);
+        let source_top = if current_y <= 0.0 {
+            0
+        } else {
+            crop_top.min(segment_height)
+        };
+        let consumed_height = segments
+            .iter()
+            .map(|segment: &CapturedSegment| segment.image.height())
+            .fold(0_u32, |acc, height| acc.saturating_add(height));
+        let remaining_height = final_total_height.saturating_sub(consumed_height);
         if remaining_height == 0 {
             break;
         }
@@ -1179,36 +1299,228 @@ Math.max(
             copy_height,
         )
         .to_image();
-        stitched
-            .copy_from(&cropped, 0, destination_y)
-            .map_err(|error| message(format!("Failed to stitch screenshot segment: {error}")))?;
+        segments.push(CapturedSegment {
+            image: cropped,
+            index: segments.len(),
+            scroll_y: (current_y.floor().max(0.0) * device_scale_factor).ceil() as u32,
+            source_top,
+        });
 
-        destination_y = destination_y.saturating_add(copy_height);
-        if destination_y >= stitched.height() {
+        if consumed_height.saturating_add(copy_height) >= final_total_height {
             break;
         }
         current_y += step;
     }
 
+    Ok(FullPageCapture {
+        total_height: final_total_height.max(1),
+        target_width,
+        viewport_width,
+        viewport_height: args.height,
+        device_scale_factor,
+        crop_top,
+        crop_left,
+        step: step.ceil() as u32,
+        segments,
+    })
+}
+
+fn stitch_full_page_capture(capture: &FullPageCapture) -> Result<RgbaImage> {
+    let mut stitched = RgbaImage::new(capture.target_width, capture.total_height);
+    let mut destination_y = 0_u32;
+    for segment in &capture.segments {
+        if destination_y >= capture.total_height {
+            break;
+        }
+        stitched
+            .copy_from(&segment.image, 0, destination_y)
+            .map_err(|error| message(format!("Failed to stitch screenshot segment: {error}")))?;
+        destination_y = destination_y.saturating_add(segment.image.height());
+    }
     let final_height = destination_y.max(1);
-    let final_image = DynamicImage::ImageRgba8(
-        image::imageops::crop_imm(&stitched, 0, 0, target_width, final_height).to_image(),
-    );
+    Ok(image::imageops::crop_imm(&stitched, 0, 0, capture.target_width, final_height).to_image())
+}
+
+fn encode_rgba_image(image: &RgbaImage, format: ImageFormat) -> Result<Vec<u8>> {
+    let final_image = DynamicImage::ImageRgba8(image.clone());
     let mut encoded = std::io::Cursor::new(Vec::new());
     match format {
-        Page::CaptureScreenshotFormatOption::Png => final_image
+        ImageFormat::Png => final_image
             .write_to(&mut encoded, ImageFormat::Png)
-            .map_err(|error| message(format!("Failed to encode stitched PNG screenshot: {error}")))?,
-        Page::CaptureScreenshotFormatOption::Jpeg => final_image
+            .map_err(|error| {
+                message(format!("Failed to encode stitched PNG screenshot: {error}"))
+            })?,
+        ImageFormat::Jpeg => final_image
             .write_to(&mut encoded, ImageFormat::Jpeg)
-            .map_err(|error| message(format!("Failed to encode stitched JPEG screenshot: {error}")))?,
-        Page::CaptureScreenshotFormatOption::Webp => {
+            .map_err(|error| {
+                message(format!(
+                    "Failed to encode stitched JPEG screenshot: {error}"
+                ))
+            })?,
+        ImageFormat::WebP => {
             return Err(message(
                 "WEBP stitched screenshot encoding is not supported by this command.",
             ))
         }
+        _ => {
+            return Err(message(
+                "Only PNG and JPEG full-page screenshot encoding is supported by this command.",
+            ))
+        }
     }
     Ok(encoded.into_inner())
+}
+
+fn write_full_page_output(
+    args: &ScreenshotArgs,
+    header_spec: &Option<HeaderSpec>,
+    metadata: &DashboardCaptureMetadata,
+    output_format: ScreenshotOutputFormat,
+    capture: FullPageCapture,
+    image_format: ImageFormat,
+) -> Result<()> {
+    match args.full_page_output {
+        ScreenshotFullPageOutput::Single => {
+            let stitched = stitch_full_page_capture(&capture)?;
+            let encoded = encode_rgba_image(&stitched, image_format)?;
+            let bytes = apply_header_if_requested(encoded, args, header_spec, image_format)?;
+            fs::write(&args.output, bytes)?;
+            Ok(())
+        }
+        ScreenshotFullPageOutput::Tiles | ScreenshotFullPageOutput::Manifest => {
+            let output_dir = build_segment_output_dir(&args.output)?;
+            fs::create_dir_all(&output_dir)?;
+            let tile_extension = match output_format {
+                ScreenshotOutputFormat::Png => "png",
+                ScreenshotOutputFormat::Jpeg => "jpg",
+                ScreenshotOutputFormat::Pdf => {
+                    return Err(message(
+                        "PDF output does not support --full-page-output tiles or manifest.",
+                    ))
+                }
+            };
+            let mut manifest_segments = Vec::new();
+            for segment in &capture.segments {
+                let file_name = format!("part-{:04}.{}", segment.index + 1, tile_extension);
+                let tile_path = output_dir.join(&file_name);
+                let encoded = encode_rgba_image(&segment.image, image_format)?;
+                let bytes = if segment.index == 0 {
+                    apply_header_if_requested(encoded, args, header_spec, image_format)?
+                } else {
+                    encoded
+                };
+                fs::write(&tile_path, bytes)?;
+                manifest_segments.push(json!({
+                    "file": file_name,
+                    "index": segment.index,
+                    "scrollY": segment.scroll_y,
+                    "sourceTop": segment.source_top,
+                    "width": segment.image.width(),
+                    "height": segment.image.height(),
+                    "headerApplied": segment.index == 0 && header_spec.is_some(),
+                }));
+            }
+            if args.full_page_output == ScreenshotFullPageOutput::Manifest {
+                let manifest_path = output_dir.join("manifest.json");
+                let manifest = build_full_page_manifest(
+                    args,
+                    metadata,
+                    output_format,
+                    &capture,
+                    manifest_segments,
+                );
+                fs::write(
+                    manifest_path,
+                    serde_json::to_vec_pretty(&manifest).map_err(|error| {
+                        message(format!(
+                            "Failed to encode screenshot segment manifest: {error}"
+                        ))
+                    })?,
+                )?;
+            }
+            Ok(())
+        }
+    }
+}
+
+fn build_segment_output_dir(output: &Path) -> Result<PathBuf> {
+    let parent = output.parent().unwrap_or_else(|| Path::new(""));
+    let directory_name = output
+        .file_stem()
+        .or_else(|| output.file_name())
+        .and_then(|value| value.to_str())
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            message(
+                "Unable to derive a segment output directory from --output. Use a normal filename such as ./dashboard.png.",
+            )
+        })?;
+    Ok(parent.join(directory_name))
+}
+
+fn build_full_page_manifest(
+    args: &ScreenshotArgs,
+    metadata: &DashboardCaptureMetadata,
+    output_format: ScreenshotOutputFormat,
+    capture: &FullPageCapture,
+    segments: Vec<Value>,
+) -> Value {
+    let title = resolve_manifest_title(
+        metadata.dashboard_uid.as_deref(),
+        metadata.dashboard_title.as_deref(),
+        metadata.panel_title.as_deref(),
+        args,
+    );
+    let header_title = resolve_header_title(args, metadata);
+    json!({
+        "kind": "dashboard-screenshot-segments",
+        "version": 1,
+        "outputMode": match args.full_page_output {
+            ScreenshotFullPageOutput::Single => "single",
+            ScreenshotFullPageOutput::Tiles => "tiles",
+            ScreenshotFullPageOutput::Manifest => "manifest",
+        },
+        "outputFormat": match output_format {
+            ScreenshotOutputFormat::Png => "png",
+            ScreenshotOutputFormat::Jpeg => "jpeg",
+            ScreenshotOutputFormat::Pdf => "pdf",
+        },
+        "fullPage": args.full_page,
+        "output": args.output.display().to_string(),
+        "title": title,
+        "headerTitle": header_title,
+        "dashboardUid": metadata.dashboard_uid,
+        "dashboardTitle": metadata.dashboard_title,
+        "panelTitle": metadata.panel_title,
+        "viewport": {
+            "width": capture.viewport_width,
+            "height": capture.viewport_height,
+            "deviceScaleFactor": capture.device_scale_factor,
+        },
+        "capture": {
+            "totalHeight": capture.total_height,
+            "targetWidth": capture.target_width,
+            "cropTop": capture.crop_top,
+            "cropLeft": capture.crop_left,
+            "step": capture.step,
+        },
+        "segments": segments,
+    })
+}
+
+pub(crate) fn resolve_manifest_title(
+    dashboard_uid: Option<&str>,
+    dashboard_title: Option<&str>,
+    panel_title: Option<&str>,
+    args: &ScreenshotArgs,
+) -> Option<String> {
+    let metadata = DashboardCaptureMetadata {
+        dashboard_uid: dashboard_uid.map(str::to_string),
+        dashboard_title: dashboard_title.map(str::to_string),
+        panel_title: panel_title.map(str::to_string),
+    };
+    resolve_auto_title(&metadata, args)
 }
 
 fn read_numeric_expression(
@@ -1216,9 +1528,11 @@ fn read_numeric_expression(
     expression: &str,
     minimum: f64,
 ) -> Result<f64> {
-    let remote = tab
-        .evaluate(expression, false)
-        .map_err(|error| message(format!("Failed to read page dimensions for --full-page: {error}")))?;
+    let remote = tab.evaluate(expression, false).map_err(|error| {
+        message(format!(
+            "Failed to read page dimensions for --full-page: {error}"
+        ))
+    })?;
     let raw = remote
         .value
         .and_then(|value| value.as_f64())
@@ -1276,7 +1590,9 @@ fn parse_query_fragment(query: &str) -> Result<DashboardUrlState> {
                         "Invalid --vars-query value. Each var-* item must have a non-empty name and value.",
                     ));
                 }
-                state.vars.retain(|(existing_name, _)| existing_name != &name);
+                state
+                    .vars
+                    .retain(|(existing_name, _)| existing_name != &name);
                 state.vars.push((name, value));
             }
             "theme" | "kiosk" | "viewPanel" => {}
@@ -1323,6 +1639,34 @@ fn build_browser(args: &ScreenshotArgs) -> Result<Browser> {
             "Failed to launch Chromium browser session: {error}"
         ))
     })
+}
+
+fn configure_capture_viewport(
+    tab: &std::sync::Arc<headless_chrome::Tab>,
+    args: &ScreenshotArgs,
+) -> Result<()> {
+    tab.call_method(Emulation::SetDeviceMetricsOverride {
+        width: args.width,
+        height: args.height,
+        device_scale_factor: args.device_scale_factor,
+        mobile: false,
+        scale: None,
+        screen_width: None,
+        screen_height: None,
+        position_x: None,
+        position_y: None,
+        dont_set_visible_size: None,
+        screen_orientation: None,
+        viewport: None,
+        display_feature: None,
+        device_posture: None,
+    })
+    .map_err(|error| {
+        message(format!(
+            "Failed to configure Chromium device metrics override: {error}"
+        ))
+    })?;
+    Ok(())
 }
 
 fn reserve_debug_port() -> Result<u16> {

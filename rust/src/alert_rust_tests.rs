@@ -3,12 +3,15 @@
 use super::{
     build_compare_diff_text, build_contact_point_export_document, build_contact_point_output_path,
     build_empty_root_index, build_import_operation, build_rule_export_document,
-    build_rule_output_path, detect_document_kind, expect_object_list, parse_cli_from,
-    parse_template_list_response, root_command, serialize_compare_document, AlertCliArgs,
-    CONTACT_POINT_KIND, ROOT_INDEX_KIND, RULE_KIND, TOOL_API_VERSION, TOOL_SCHEMA_VERSION,
+    build_rule_output_path, detect_document_kind, expect_object_list, get_rule_linkage,
+    load_panel_id_map, load_string_map, parse_cli_from, parse_template_list_response, root_command,
+    serialize_compare_document, AlertCliArgs, CONTACT_POINT_KIND, ROOT_INDEX_KIND, RULE_KIND,
+    TOOL_API_VERSION, TOOL_SCHEMA_VERSION,
 };
 use serde_json::json;
+use std::fs;
 use std::path::Path;
+use tempfile::tempdir;
 
 fn render_alert_help() -> String {
     let mut command = root_command();
@@ -119,6 +122,63 @@ fn build_contact_point_export_document_wraps_tool_document() {
     );
     assert_eq!(document["kind"], CONTACT_POINT_KIND);
     assert!(document["spec"].get("provenance").is_none());
+}
+
+#[test]
+fn get_rule_linkage_returns_typed_dashboard_and_panel_ids() {
+    let linkage = get_rule_linkage(
+        json!({
+            "annotations": {
+                "__dashboardUid__": "dash-uid",
+                "__panelId__": 7
+            }
+        })
+        .as_object()
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(linkage.dashboard_uid, "dash-uid");
+    assert_eq!(linkage.panel_id.as_deref(), Some("7"));
+}
+
+#[test]
+fn load_string_map_returns_empty_map_without_input_file() {
+    let mapping = load_string_map(None, "Dashboard UID map").unwrap();
+    assert!(mapping.is_empty());
+}
+
+#[test]
+fn load_panel_id_map_parses_nested_dashboard_panel_mapping() {
+    let temp = tempdir().unwrap();
+    let path = temp.path().join("panel-map.json");
+    fs::write(
+        &path,
+        serde_json::to_string_pretty(&json!({
+            "source-dashboard": {
+                "7": "17",
+                "8": 18
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let mapping = load_panel_id_map(Some(&path)).unwrap();
+
+    assert_eq!(
+        mapping
+            .get("source-dashboard")
+            .and_then(|items| items.get("7"))
+            .map(String::as_str),
+        Some("17")
+    );
+    assert_eq!(
+        mapping
+            .get("source-dashboard")
+            .and_then(|items| items.get("8"))
+            .map(String::as_str),
+        Some("18")
+    );
 }
 
 #[test]

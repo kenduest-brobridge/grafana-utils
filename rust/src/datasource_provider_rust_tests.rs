@@ -2,8 +2,7 @@
 // Keeps staged secret-provider parsing and review-summary behavior aligned with Python.
 
 use crate::datasource_provider::{
-    build_provider_plan, collect_provider_references, iter_provider_names,
-    summarize_provider_plan,
+    build_provider_plan, collect_provider_references, iter_provider_names, summarize_provider_plan,
 };
 use serde_json::json;
 

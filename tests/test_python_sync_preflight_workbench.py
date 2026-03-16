@@ -31,12 +31,25 @@ class SyncPreflightWorkbenchTests(unittest.TestCase):
                     "uid": "cpu-high",
                     "title": "CPU High",
                     "managedFields": ["condition"],
-                    "body": {"condition": "A > 90", "contactPoints": ["pagerduty-primary"]},
+                    "body": {
+                        "condition": "A > 90",
+                        "datasourceUid": "prom-main",
+                        "datasourceName": "Prometheus Main",
+                        "contactPoints": ["pagerduty-primary"],
+                        "notificationSettings": {"receiver": "slack-primary"},
+                    },
+                },
+                {
+                    "kind": "dashboard",
+                    "uid": "cpu-main",
+                    "title": "CPU Main",
+                    "body": {"datasourceNames": ["Prometheus Main"]},
                 },
             ],
             availability={
                 "pluginIds": [],
                 "datasourceUids": [],
+                "datasourceNames": [],
                 "contactPoints": [],
             },
         )
@@ -44,14 +57,30 @@ class SyncPreflightWorkbenchTests(unittest.TestCase):
             document["kind"],
             sync_preflight_workbench.SYNC_PREFLIGHT_KIND,
         )
-        self.assertEqual(document["summary"]["checkCount"], 4)
-        self.assertEqual(document["summary"]["blockingCount"], 3)
+        self.assertEqual(document["summary"]["checkCount"], 8)
+        self.assertEqual(document["summary"]["blockingCount"], 7)
         checks = {(item["kind"], item["identity"]): item for item in document["checks"]}
         self.assertEqual(checks[("datasource", "prom-main")]["status"], "create-planned")
         self.assertEqual(checks[("plugin", "prometheus")]["status"], "missing")
+        self.assertEqual(
+            checks[("dashboard-datasource-name", "cpu-main->Prometheus Main")]["status"],
+            "missing",
+        )
         self.assertEqual(checks[("alert-live-apply", "cpu-high")]["status"], "blocked")
         self.assertEqual(
+            checks[("alert-datasource", "cpu-high->prom-main")]["status"],
+            "missing",
+        )
+        self.assertEqual(
+            checks[("alert-datasource-name", "cpu-high->Prometheus Main")]["status"],
+            "missing",
+        )
+        self.assertEqual(
             checks[("alert-contact-point", "cpu-high->pagerduty-primary")]["status"],
+            "missing",
+        )
+        self.assertEqual(
+            checks[("alert-contact-point", "cpu-high->slack-primary")]["status"],
             "missing",
         )
 

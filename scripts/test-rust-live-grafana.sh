@@ -18,6 +18,10 @@ DATASOURCE_EXPORT_DIR="${WORK_DIR}/datasources"
 DATASOURCE_MULTI_ORG_EXPORT_DIR="${WORK_DIR}/datasources-all-orgs"
 ALERT_EXPORT_DIR="${WORK_DIR}/alerts"
 MULTI_ORG_EXPORT_DIR="${WORK_DIR}/dashboards-all-orgs"
+ACCESS_SERVICE_ACCOUNT_EXPORT_DIR="${WORK_DIR}/access-service-accounts"
+SYNC_BUNDLE_FILE="${WORK_DIR}/sync-source-bundle.json"
+SYNC_TARGET_INVENTORY_FILE="${WORK_DIR}/sync-target-inventory.json"
+SYNC_BUNDLE_PREFLIGHT_FILE="${WORK_DIR}/sync-bundle-preflight.json"
 
 cleanup() {
   docker rm -f "${CONTAINER_NAME}" >/dev/null 2>&1 || true
@@ -306,6 +310,257 @@ alert_bin() {
 
 datasource_bin() {
   printf '%s\n' "${RUST_DIR}/target/debug/grafana-util"
+}
+
+access_bin() {
+  printf '%s\n' "${RUST_DIR}/target/debug/grafana-util"
+}
+
+sync_bin() {
+  printf '%s\n' "${RUST_DIR}/target/debug/grafana-util"
+}
+
+run_access_smoke() {
+  local list_json team_json org_json service_account_json token_json token_delete_json delete_json
+
+  "$(access_bin)" access user add \
+    --url "${GRAFANA_URL}" \
+    --basic-user "${GRAFANA_USER}" \
+    --basic-password "${GRAFANA_PASSWORD}" \
+    --login rust-access-org-delete \
+    --email rust-access-org-delete@example.com \
+    --name "Rust Access Org Delete" \
+    --password secret123 >/dev/null
+
+  "$(access_bin)" access user delete \
+    --url "${GRAFANA_URL}" \
+    --insecure \
+    --token "${GRAFANA_API_TOKEN}" \
+    --scope org \
+    --login rust-access-org-delete \
+    --yes >/dev/null
+
+  list_json="$(
+    "$(access_bin)" access user list \
+      --url "${GRAFANA_URL}" \
+      --token "${GRAFANA_API_TOKEN}" \
+      --scope org \
+      --login rust-access-org-delete \
+      --json
+  )"
+  [[ "$(printf '%s' "${list_json}" | jq 'length')" == "0" ]] \
+    || fail "rust access org-scoped delete did not remove the target user"
+
+  "$(access_bin)" access user add \
+    --url "${GRAFANA_URL}" \
+    --basic-user "${GRAFANA_USER}" \
+    --basic-password "${GRAFANA_PASSWORD}" \
+    --login rust-access-global-delete \
+    --email rust-access-global-delete@example.com \
+    --name "Rust Access Global Delete" \
+    --password secret123 >/dev/null
+
+  "$(access_bin)" access user delete \
+    --url "${GRAFANA_URL}" \
+    --insecure \
+    --basic-user "${GRAFANA_USER}" \
+    --basic-password "${GRAFANA_PASSWORD}" \
+    --scope global \
+    --login rust-access-global-delete \
+    --yes >/dev/null
+
+  list_json="$(
+    "$(access_bin)" access user list \
+      --url "${GRAFANA_URL}" \
+      --basic-user "${GRAFANA_USER}" \
+      --basic-password "${GRAFANA_PASSWORD}" \
+      --scope global \
+      --login rust-access-global-delete \
+      --json
+  )"
+  [[ "$(printf '%s' "${list_json}" | jq 'length')" == "0" ]] \
+    || fail "rust access global delete did not remove the target user"
+
+  "$(access_bin)" access user add \
+    --url "${GRAFANA_URL}" \
+    --basic-user "${GRAFANA_USER}" \
+    --basic-password "${GRAFANA_PASSWORD}" \
+    --login rust-access-team-member \
+    --email rust-access-team-member@example.com \
+    --name "Rust Access Team Member" \
+    --password secret123 >/dev/null
+
+  "$(access_bin)" access user add \
+    --url "${GRAFANA_URL}" \
+    --basic-user "${GRAFANA_USER}" \
+    --basic-password "${GRAFANA_PASSWORD}" \
+    --login rust-access-team-admin \
+    --email rust-access-team-admin@example.com \
+    --name "Rust Access Team Admin" \
+    --password secret123 >/dev/null
+
+  "$(access_bin)" access team add \
+    --url "${GRAFANA_URL}" \
+    --token "${GRAFANA_API_TOKEN}" \
+    --name rust-access-ops \
+    --email rust-access-ops@example.com \
+    --member rust-access-team-member \
+    --admin rust-access-team-admin@example.com >/dev/null
+
+  team_json="$(
+    "$(access_bin)" access team list \
+      --url "${GRAFANA_URL}" \
+      --token "${GRAFANA_API_TOKEN}" \
+      --name rust-access-ops \
+      --with-members \
+      --json
+  )"
+  [[ "$(printf '%s' "${team_json}" | jq -r '.[0].name')" == "rust-access-ops" ]] \
+    || fail "rust access team list did not return the created team"
+
+  "$(access_bin)" access team modify \
+    --url "${GRAFANA_URL}" \
+    --basic-user "${GRAFANA_USER}" \
+    --basic-password "${GRAFANA_PASSWORD}" \
+    --name rust-access-ops \
+    --remove-member rust-access-team-member \
+    --remove-admin rust-access-team-admin@example.com \
+    --remove-member rust-access-team-admin@example.com >/dev/null
+
+  team_json="$(
+    "$(access_bin)" access team list \
+      --url "${GRAFANA_URL}" \
+      --token "${GRAFANA_API_TOKEN}" \
+      --name rust-access-ops \
+      --with-members \
+      --json
+  )"
+  [[ "$(printf '%s' "${team_json}" | jq -r '.[0].members | length')" == "0" ]] \
+    || fail "rust access team modify did not remove seeded members/admins"
+
+  delete_json="$(
+    "$(access_bin)" access team delete \
+      --url "${GRAFANA_URL}" \
+      --insecure \
+      --token "${GRAFANA_API_TOKEN}" \
+      --name rust-access-ops \
+      --yes \
+      --json
+  )"
+  [[ "$(printf '%s' "${delete_json}" | jq -r '.name')" == "rust-access-ops" ]] \
+    || fail "rust access team delete did not remove the created team"
+
+  team_json="$(
+    "$(access_bin)" access team list \
+      --url "${GRAFANA_URL}" \
+      --token "${GRAFANA_API_TOKEN}" \
+      --name rust-access-ops \
+      --json
+  )"
+  [[ "$(printf '%s' "${team_json}" | jq 'length')" == "0" ]] \
+    || fail "rust access team delete did not remove the target team from list output"
+
+  org_json="$(
+    "$(access_bin)" access org add \
+      --url "${GRAFANA_URL}" \
+      --basic-user "${GRAFANA_USER}" \
+      --basic-password "${GRAFANA_PASSWORD}" \
+      --name rust-access-live-delete-target \
+      --json
+  )"
+  [[ "$(printf '%s' "${org_json}" | jq -r '.name')" == "rust-access-live-delete-target" ]] \
+    || fail "rust access org add did not create the delete target"
+
+  "$(access_bin)" access org delete \
+    --url "${GRAFANA_URL}" \
+    --insecure \
+    --basic-user "${GRAFANA_USER}" \
+    --basic-password "${GRAFANA_PASSWORD}" \
+    --name rust-access-live-delete-target \
+    --yes >/dev/null
+
+  list_json="$(
+    "$(access_bin)" access org list \
+      --url "${GRAFANA_URL}" \
+      --basic-user "${GRAFANA_USER}" \
+      --basic-password "${GRAFANA_PASSWORD}" \
+      --name rust-access-live-delete-target \
+      --json
+  )"
+  [[ "$(printf '%s' "${list_json}" | jq 'length')" == "0" ]] \
+    || fail "rust access org delete did not remove the target organization"
+
+  service_account_json="$(
+    "$(access_bin)" access service-account add \
+      --url "${GRAFANA_URL}" \
+      --basic-user "${GRAFANA_USER}" \
+      --basic-password "${GRAFANA_PASSWORD}" \
+      --name rust-access-service-account \
+      --role Admin \
+      --json
+  )"
+  [[ "$(printf '%s' "${service_account_json}" | jq -r '.name')" == "rust-access-service-account" ]] \
+    || fail "rust access service-account add did not return the created item"
+
+  token_json="$(
+    "$(access_bin)" access service-account token add \
+      --url "${GRAFANA_URL}" \
+      --basic-user "${GRAFANA_USER}" \
+      --basic-password "${GRAFANA_PASSWORD}" \
+      --name rust-access-service-account \
+      --token-name rust-access-token \
+      --seconds-to-live 3600 \
+      --json
+  )"
+  [[ -n "$(printf '%s' "${token_json}" | jq -r '.key')" ]] \
+    || fail "rust access service-account token add did not return a token key"
+
+  "$(access_bin)" access service-account export \
+    --url "${GRAFANA_URL}" \
+    --token "${GRAFANA_API_TOKEN}" \
+    --export-dir "${ACCESS_SERVICE_ACCOUNT_EXPORT_DIR}" \
+    --overwrite >/dev/null
+
+  [[ -f "${ACCESS_SERVICE_ACCOUNT_EXPORT_DIR}/service-accounts.json" ]] \
+    || fail "rust access service-account export did not write service-accounts.json"
+  [[ -f "${ACCESS_SERVICE_ACCOUNT_EXPORT_DIR}/export-metadata.json" ]] \
+    || fail "rust access service-account export did not write export-metadata.json"
+
+  token_delete_json="$(
+    "$(access_bin)" access service-account token delete \
+      --url "${GRAFANA_URL}" \
+      --insecure \
+      --basic-user "${GRAFANA_USER}" \
+      --basic-password "${GRAFANA_PASSWORD}" \
+      --name rust-access-service-account \
+      --token-name rust-access-token \
+      --yes \
+      --json
+  )"
+  [[ "$(printf '%s' "${token_delete_json}" | jq -r '.tokenName')" == "rust-access-token" ]] \
+    || fail "rust access service-account token delete did not remove the created token"
+
+  delete_json="$(
+    "$(access_bin)" access service-account delete \
+      --url "${GRAFANA_URL}" \
+      --insecure \
+      --basic-user "${GRAFANA_USER}" \
+      --basic-password "${GRAFANA_PASSWORD}" \
+      --name rust-access-service-account \
+      --yes \
+      --json
+  )"
+  [[ "$(printf '%s' "${delete_json}" | jq -r '.name')" == "rust-access-service-account" ]] \
+    || fail "rust access service-account delete did not remove the created service account"
+
+  service_account_json="$(
+    "$(access_bin)" access service-account list \
+      --url "${GRAFANA_URL}" \
+      --token "${GRAFANA_API_TOKEN}" \
+      --json
+  )"
+  [[ "$(printf '%s' "${service_account_json}" | jq '[.[] | select(.name == "rust-access-service-account")] | length')" == "0" ]] \
+    || fail "rust access service-account delete did not remove the target service account"
 }
 
 run_datasource_smoke() {
@@ -635,6 +890,36 @@ run_alert_smoke() {
     --diff-dir "${ALERT_EXPORT_DIR}/raw" >/dev/null
 }
 
+run_sync_smoke() {
+  "$(sync_bin)" sync bundle \
+    --dashboard-export-dir "${DASHBOARD_EXPORT_DIR}/raw" \
+    --alert-export-dir "${ALERT_EXPORT_DIR}/raw" \
+    --output-file "${SYNC_BUNDLE_FILE}" \
+    --output json >/dev/null
+
+  [[ -f "${SYNC_BUNDLE_FILE}" ]] || fail "sync bundle did not write source bundle output"
+  jq -e '.kind == "grafana-utils-sync-source-bundle"' "${SYNC_BUNDLE_FILE}" >/dev/null \
+    || fail "sync bundle did not emit the expected source bundle kind"
+  jq -e '.summary.alertRuleCount >= 1' "${SYNC_BUNDLE_FILE}" >/dev/null \
+    || fail "sync bundle did not record exported alert rule count"
+  jq -e '.alerts | length >= 1' "${SYNC_BUNDLE_FILE}" >/dev/null \
+    || fail "sync bundle did not normalize top-level alert specs"
+  jq -e '.alerts[] | select(.kind == "alert" and .uid == "smoke-alert-rule" and (.managedFields | index("condition")) != null)' "${SYNC_BUNDLE_FILE}" >/dev/null \
+    || fail "sync bundle did not preserve normalized alert spec fields"
+
+  printf '{}\n' >"${SYNC_TARGET_INVENTORY_FILE}"
+
+  "$(sync_bin)" sync bundle-preflight \
+    --source-bundle "${SYNC_BUNDLE_FILE}" \
+    --target-inventory "${SYNC_TARGET_INVENTORY_FILE}" \
+    --output json >"${SYNC_BUNDLE_PREFLIGHT_FILE}"
+
+  jq -e '.kind == "grafana-utils-sync-bundle-preflight"' "${SYNC_BUNDLE_PREFLIGHT_FILE}" >/dev/null \
+    || fail "sync bundle-preflight did not emit the expected document kind"
+  jq -e '.summary.resourceCount >= 3' "${SYNC_BUNDLE_PREFLIGHT_FILE}" >/dev/null \
+    || fail "sync bundle-preflight did not count bundled dashboard, datasource, and alert specs"
+}
+
 main() {
   command -v docker >/dev/null || fail "docker is required"
   command -v curl >/dev/null || fail "curl is required"
@@ -646,8 +931,10 @@ main() {
   seed_dashboard "Smoke Dashboard"
   seed_contact_point
   create_api_token
+  run_access_smoke
   run_dashboard_smoke
   run_alert_smoke
+  run_sync_smoke
   run_datasource_smoke
   printf 'Rust live Grafana smoke test passed against %s using %s\n' "${GRAFANA_URL}" "${GRAFANA_IMAGE}"
 }

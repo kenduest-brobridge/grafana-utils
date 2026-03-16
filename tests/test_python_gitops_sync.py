@@ -5,6 +5,57 @@ from grafana_utils.dashboard_cli import GrafanaError
 
 
 class GitopsSyncTests(unittest.TestCase):
+    def test_build_sync_source_bundle_document_tracks_portable_sections(self):
+        document = gitops_sync.build_sync_source_bundle_document(
+            dashboards=[
+                {
+                    "kind": "dashboard",
+                    "uid": "cpu-main",
+                    "title": "CPU Main",
+                    "body": {"uid": "cpu-main", "title": "CPU Main"},
+                    "sourcePath": "cpu__cpu-main.json",
+                }
+            ],
+            datasources=[
+                {
+                    "kind": "datasource",
+                    "uid": "prom-main",
+                    "name": "Prometheus Main",
+                    "title": "Prometheus Main",
+                    "body": {"uid": "prom-main", "name": "Prometheus Main"},
+                    "sourcePath": "datasources.json",
+                }
+            ],
+            folders=[
+                {
+                    "kind": "folder",
+                    "uid": "ops",
+                    "title": "Operations",
+                    "body": {"title": "Operations"},
+                    "sourcePath": "folders.json",
+                }
+            ],
+            alerting={
+                "summary": {
+                    "ruleCount": 1,
+                    "contactPointCount": 1,
+                    "muteTimingCount": 0,
+                    "policyCount": 1,
+                    "templateCount": 0,
+                },
+                "rules": [{"sourcePath": "rules/rule.json", "document": {"kind": "grafana-alert-rule"}}],
+            },
+            metadata={"dashboardExportDir": "./dashboards/raw"},
+        )
+
+        self.assertEqual(document["kind"], gitops_sync.SYNC_SOURCE_BUNDLE_KIND)
+        self.assertEqual(document["summary"]["dashboardCount"], 1)
+        self.assertEqual(document["summary"]["datasourceCount"], 1)
+        self.assertEqual(document["summary"]["folderCount"], 1)
+        self.assertEqual(document["summary"]["alertRuleCount"], 1)
+        self.assertEqual(document["alerts"], [])
+        self.assertEqual(document["metadata"]["dashboardExportDir"], "./dashboards/raw")
+
     def test_build_sync_plan_tracks_create_update_noop_and_unmanaged(self):
         desired = [
             {
@@ -201,6 +252,27 @@ class GitopsSyncTests(unittest.TestCase):
         self.assertEqual(document["summary"]["alert_plan_only"], 1)
         self.assertEqual(document["summary"]["alert_blocked"], 1)
         self.assertEqual(len(document["alertAssessment"]["alerts"]), 2)
+
+    def test_render_sync_source_bundle_text_renders_summary(self):
+        lines = gitops_sync.render_sync_source_bundle_text(
+            {
+                "kind": gitops_sync.SYNC_SOURCE_BUNDLE_KIND,
+                "summary": {
+                    "dashboardCount": 2,
+                    "datasourceCount": 1,
+                    "folderCount": 1,
+                    "alertRuleCount": 3,
+                    "contactPointCount": 1,
+                    "muteTimingCount": 1,
+                    "policyCount": 1,
+                    "templateCount": 2,
+                },
+            }
+        )
+
+        self.assertEqual(lines[0], "Sync source bundle")
+        self.assertIn("Dashboards: 2", lines[1])
+        self.assertIn("Alerting: rules=3", lines[4])
 
 
 if __name__ == "__main__":

@@ -24,6 +24,8 @@ REPORT_COLUMN_HEADERS = OrderedDict(
         ("panelType", "PANEL_TYPE"),
         ("refId", "REF_ID"),
         ("datasource", "DATASOURCE"),
+        ("datasourceType", "DATASOURCE_TYPE"),
+        ("datasourceFamily", "DATASOURCE_FAMILY"),
         ("queryField", "QUERY_FIELD"),
         ("metrics", "METRICS"),
         ("measurements", "MEASUREMENTS"),
@@ -43,9 +45,15 @@ REPORT_COLUMN_ALIASES = {
     "ref_id": "refId",
     "query_field": "queryField",
     "datasource_uid": "datasourceUid",
+    "datasource_type": "datasourceType",
+    "datasource_family": "datasourceFamily",
 }
 SUPPORTED_REPORT_COLUMN_HEADERS = OrderedDict(
     list(REPORT_COLUMN_HEADERS.items()) + list(OPTIONAL_REPORT_COLUMN_HEADERS.items())
+)
+SUPPORTED_REPORT_COLUMN_VALUES = tuple(
+    list(REPORT_COLUMN_ALIASES.keys())
+    + list(SUPPORTED_REPORT_COLUMN_HEADERS.keys())
 )
 INSPECT_REPORT_FORMAT_CHOICES = (
     "table",
@@ -53,6 +61,8 @@ INSPECT_REPORT_FORMAT_CHOICES = (
     "csv",
     "tree",
     "tree-table",
+    "dependency",
+    "dependency-json",
     "governance",
     "governance-json",
 )
@@ -66,6 +76,8 @@ NORMALIZED_QUERY_REPORT_FIELDS = (
     "refId",
     "datasource",
     "datasourceUid",
+    "datasourceType",
+    "datasourceFamily",
     "queryField",
     "query",
     "metrics",
@@ -75,50 +87,55 @@ NORMALIZED_QUERY_REPORT_FIELDS = (
 )
 INSPECT_EXPORT_HELP_FULL_EXAMPLES = (
     "Extended examples:\n\n"
-    "  Inspect one raw export as the default flat query table:\n"
+    "  Flat per-query table report:\n"
     "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
-    "--output-format report-table\n\n"
-    "  Inspect one raw export as datasource governance tables:\n"
+    "--report\n\n"
+    "  Datasource governance tables:\n"
     "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
-    "--output-format governance\n\n"
-    "  Inspect one raw export as datasource governance JSON:\n"
+    "--report governance\n\n"
+    "  Datasource governance JSON:\n"
     "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
-    "--output-format governance-json\n\n"
-    "  Inspect one raw export as dashboard-first grouped tables:\n"
+    "--report governance-json\n\n"
+    "  Dashboard-first grouped tables:\n"
     "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
-    "--output-format report-tree-table\n\n"
-    "  Narrow the report to one datasource and one panel id:\n"
+    "--report tree-table\n\n"
+    "  Narrow to one datasource and one panel id:\n"
     "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
-    "--output-format report-tree-table "
+    "--report tree-table "
     "--report-filter-datasource prom-main --report-filter-panel-id 7\n\n"
     "  Trim the per-query columns for flat or tree-table output:\n"
     "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
-    "--output-format report-tree-table "
-    "--report-columns panel_id,panel_title,datasource,query"
+    "--report tree-table "
+    "--report-columns dashboard_uid,datasource_uid,datasource_family,query,file"
 )
 INSPECT_LIVE_HELP_FULL_EXAMPLES = (
     "Extended examples:\n\n"
-    "  Inspect live dashboards as the default flat query table:\n"
-    "    grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin "
-    "--basic-password admin --output-format report-table\n\n"
-    "  Inspect live dashboards as datasource governance tables:\n"
-    "    grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin "
-    "--basic-password admin --output-format governance\n\n"
-    "  Inspect live dashboards as datasource governance JSON:\n"
-    "    grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin "
-    "--basic-password admin --output-format governance-json\n\n"
-    "  Inspect live dashboards as dashboard-first grouped tables:\n"
-    "    grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin "
-    "--basic-password admin --output-format report-tree-table\n\n"
+    "  Flat per-query table report from live Grafana:\n"
+    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
+    "--report\n\n"
+    "  Datasource governance tables from live Grafana:\n"
+    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
+    "--report governance\n\n"
+    "  Datasource governance JSON from live Grafana:\n"
+    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
+    "--report governance-json\n\n"
+    "  Dashboard-first grouped tables from live Grafana:\n"
+    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
+    "--report tree-table\n\n"
     "  Narrow live inspection to one datasource and one panel id:\n"
-    "    grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin "
-    "--basic-password admin --output-format report-tree-table --report-filter-datasource prom-main "
+    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
+    "--report tree-table --report-filter-datasource prom-main "
     "--report-filter-panel-id 7\n\n"
     "  Trim the per-query columns for flat or tree-table output:\n"
-    "    grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin "
-    "--basic-password admin --output-format report-tree-table "
-    "--report-columns panel_id,panel_title,datasource,query"
+    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
+    "--report tree-table "
+    "--report-columns dashboard_uid,datasource_uid,datasource_family,query,file"
 )
+
+
+def format_supported_report_column_values() -> str:
+    """Render supported report column ids for CLI help and parser errors."""
+    return ", ".join(SUPPORTED_REPORT_COLUMN_VALUES)
 
 
 def build_export_inspection_report_document(
@@ -279,6 +296,48 @@ def describe_panel_datasource_uid(
             if name and datasources_by_name.get(name):
                 return str(datasources_by_name[name].get("uid") or "")
     return ""
+
+
+def _normalize_datasource_family_name(datasource_type: str) -> str:
+    lowered = str(datasource_type or "").strip().lower()
+    if not lowered:
+        return "unknown"
+    aliases = {
+        "grafana-postgresql-datasource": "postgres",
+        "grafana-mysql-datasource": "mysql",
+    }
+    return aliases.get(lowered, lowered)
+
+
+def describe_panel_datasource_type(
+    panel: dict[str, Any],
+    target: dict[str, Any],
+    datasources_by_uid: dict[str, dict[str, str]],
+    datasources_by_name: dict[str, dict[str, str]],
+) -> str:
+    """Resolve one best-effort datasource plugin type for a panel/query target."""
+    for ref in (target.get("datasource"), panel.get("datasource")):
+        if isinstance(ref, dict):
+            uid = str(ref.get("uid") or "").strip()
+            name = str(ref.get("name") or "").strip()
+            inventory = None
+            if uid:
+                inventory = datasources_by_uid.get(uid)
+            if inventory is None and name:
+                inventory = datasources_by_name.get(name)
+            if inventory is not None:
+                return str(inventory.get("type") or "").strip()
+            ref_type = str(ref.get("type") or "").strip()
+            if ref_type:
+                return ref_type
+        elif isinstance(ref, str):
+            name = ref.strip()
+            inventory = datasources_by_uid.get(name) or datasources_by_name.get(name)
+            if inventory is not None:
+                return str(inventory.get("type") or "").strip()
+    return ""
+
+
 def build_query_report_record(
     dashboard: dict[str, Any],
     folder_path: str,
@@ -317,6 +376,12 @@ def build_query_report_record(
             target,
             datasources_by_name,
         ),
+        "datasourceType": describe_panel_datasource_type(
+            panel,
+            target,
+            datasources_by_uid,
+            datasources_by_name,
+        ),
         "queryField": query_field,
         "query": query_text,
         "metrics": analysis["metrics"],
@@ -324,6 +389,9 @@ def build_query_report_record(
         "buckets": analysis["buckets"],
         "file": str(dashboard_file),
     }
+    record["datasourceFamily"] = _normalize_datasource_family_name(
+        record["datasourceType"]
+    )
     normalized = {}
     for field in NORMALIZED_QUERY_REPORT_FIELDS:
         value = record.get(field)
@@ -356,16 +424,7 @@ def parse_report_columns(value: Optional[str]) -> Optional[list[str]]:
             % (
                 ", ".join(unknown),
                 ", ".join(
-                    list(REPORT_COLUMN_ALIASES.keys())
-                    + [
-                        "datasourceUid",
-                        "datasource",
-                        "metrics",
-                        "measurements",
-                        "buckets",
-                        "query",
-                        "file",
-                    ]
+                    SUPPORTED_REPORT_COLUMN_VALUES
                 ),
             )
         )
@@ -380,12 +439,26 @@ def filter_export_inspection_report_document(
     """Filter one flat inspection report document to narrower query rows."""
     if not datasource_label and not panel_id:
         return document
+    normalized_datasource_filter = str(datasource_label or "").strip()
+    normalized_panel_id_filter = str(panel_id or "").strip()
     filtered_records = [
         dict(record)
         for record in list(document.get("queries") or [])
         if (
-            (not datasource_label or str(record.get("datasource") or "") == datasource_label)
-            and (not panel_id or str(record.get("panelId") or "") == panel_id)
+            (
+                not normalized_datasource_filter
+                or normalized_datasource_filter
+                in {
+                    str(record.get("datasource") or "").strip(),
+                    str(record.get("datasourceUid") or "").strip(),
+                    str(record.get("datasourceType") or "").strip(),
+                    str(record.get("datasourceFamily") or "").strip(),
+                }
+            )
+            and (
+                not normalized_panel_id_filter
+                or str(record.get("panelId") or "") == normalized_panel_id_filter
+            )
         )
     ]
     return {

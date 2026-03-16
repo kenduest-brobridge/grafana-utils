@@ -3,6 +3,8 @@
 import json
 import sys
 
+from .inspection_dependency_models import build_dependency_rows_from_query_report
+
 
 INSPECT_OUTPUT_FORMAT_TO_MODE = {
     "text": (None, False, False),
@@ -13,6 +15,10 @@ INSPECT_OUTPUT_FORMAT_TO_MODE = {
     "report-json": ("json", False, False),
     "report-tree": ("tree", False, False),
     "report-tree-table": ("tree-table", False, False),
+    "report-dependency": ("dependency", False, False),
+    "dependency": ("dependency", False, False),
+    "dependency-json": ("dependency-json", False, False),
+    "report-dependency-json": ("dependency-json", False, False),
     "governance": ("governance", False, False),
     "governance-json": ("governance-json", False, False),
 }
@@ -157,6 +163,29 @@ def _render_report_output(import_dir, deps, settings):
             selected_columns=report_columns,
         ):
             print(line)
+        return 0
+
+    if report_format in ("dependency", "dependency-json"):
+        report_document = build_filtered_report_document(import_dir, deps, settings)
+        inventory = deps["load_datasource_inventory"](
+            import_dir,
+            deps["load_export_metadata"](import_dir, deps["RAW_EXPORT_SUBDIR"]),
+        )
+        dependency_report = build_dependency_rows_from_query_report(
+            report_document["queries"],
+            inventory,
+        ).to_dict()
+        payload = {"kind": "grafana-utils-dashboard-dependency-contract"}
+        payload.update(dependency_report)
+        payload.update(dependency_report.get("summary", {}))
+        print(
+            json.dumps(
+                payload,
+                indent=2,
+                sort_keys=False,
+                ensure_ascii=False,
+            )
+        )
         return 0
 
     report_document = build_filtered_report_document(import_dir, deps, settings)

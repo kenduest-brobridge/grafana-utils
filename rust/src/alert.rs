@@ -257,6 +257,42 @@ pub fn load_panel_id_map(
     Ok(normalized)
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+struct AlertLinkageMappings {
+    dashboard_uid_map: BTreeMap<String, String>,
+    panel_id_map: BTreeMap<String, BTreeMap<String, String>>,
+}
+
+impl AlertLinkageMappings {
+    fn load(
+        dashboard_uid_path: Option<&Path>,
+        panel_id_path: Option<&Path>,
+    ) -> Result<AlertLinkageMappings> {
+        Ok(AlertLinkageMappings {
+            dashboard_uid_map: load_string_map(dashboard_uid_path, "Dashboard UID map")?,
+            panel_id_map: load_panel_id_map(panel_id_path)?,
+        })
+    }
+
+    fn resolve_dashboard_uid(&self, source_dashboard_uid: &str) -> String {
+        self.dashboard_uid_map
+            .get(source_dashboard_uid)
+            .cloned()
+            .unwrap_or_else(|| source_dashboard_uid.to_string())
+    }
+
+    fn resolve_panel_id(
+        &self,
+        source_dashboard_uid: &str,
+        source_panel_id: &str,
+    ) -> Option<String> {
+        self.panel_id_map
+            .get(source_dashboard_uid)
+            .and_then(|mapping| mapping.get(source_panel_id))
+            .cloned()
+    }
+}
+
 fn value_to_string(value: &Value) -> String {
     match value {
         Value::Null => String::new(),
@@ -715,7 +751,13 @@ fn format_export_summary(root_index: &Map<String, Value>, index_path: &Path) -> 
     )
 }
 
-fn get_rule_linkage(rule: &Map<String, Value>) -> Option<BTreeMap<String, String>> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct RuleLinkage {
+    dashboard_uid: String,
+    panel_id: Option<String>,
+}
+
+fn get_rule_linkage(rule: &Map<String, Value>) -> Option<RuleLinkage> {
     let annotations = rule.get("annotations")?.as_object()?;
     let dashboard_uid = annotations
         .get("__dashboardUid__")
@@ -726,11 +768,10 @@ fn get_rule_linkage(rule: &Map<String, Value>) -> Option<BTreeMap<String, String
     if dashboard_uid.is_empty() {
         return None;
     }
-    let mut linkage = BTreeMap::from([("dashboardUid".to_string(), dashboard_uid)]);
-    if let Some(panel_id) = annotations.get("__panelId__") {
-        linkage.insert("panelId".to_string(), value_to_string(panel_id));
-    }
-    Some(linkage)
+    Some(RuleLinkage {
+        dashboard_uid,
+        panel_id: annotations.get("__panelId__").map(value_to_string),
+    })
 }
 
 fn find_panel_by_id(panels: Option<&Vec<Value>>, panel_id: &str) -> Option<Map<String, Value>> {
@@ -756,13 +797,16 @@ fn build_linked_dashboard_metadata(
         return Ok(None);
     };
 
-    let dashboard_uid = linkage.get("dashboardUid").cloned().unwrap_or_default();
     let mut metadata = Map::new();
-    for (key, value) in linkage {
-        metadata.insert(key, Value::String(value));
+    metadata.insert(
+        "dashboardUid".to_string(),
+        Value::String(linkage.dashboard_uid.clone()),
+    );
+    if let Some(panel_id) = linkage.panel_id.clone() {
+        metadata.insert("panelId".to_string(), Value::String(panel_id));
     }
 
-    let dashboard_payload = match client.get_dashboard(&dashboard_uid) {
+    let dashboard_payload = match client.get_dashboard(&linkage.dashboard_uid) {
         Ok(payload) => payload,
         Err(error) if error.status_code() == Some(404) => return Ok(Some(metadata)),
         Err(error) => return Err(error),
@@ -905,23 +949,17 @@ fn rewrite_rule_dashboard_linkage(
     client: &GrafanaAlertClient,
     payload: &Map<String, Value>,
     document: &Value,
-    dashboard_uid_map: &BTreeMap<String, String>,
-    panel_id_map: &BTreeMap<String, BTreeMap<String, String>>,
+    linkage_mappings: &AlertLinkageMappings,
 ) -> Result<Map<String, Value>> {
     let Some(linkage) = get_rule_linkage(payload) else {
         return Ok(payload.clone());
     };
 
-    let source_dashboard_uid = linkage.get("dashboardUid").cloned().unwrap_or_default();
-    let source_panel_id = linkage.get("panelId").cloned().unwrap_or_default();
-    let dashboard_uid = dashboard_uid_map
-        .get(&source_dashboard_uid)
-        .cloned()
-        .unwrap_or(source_dashboard_uid.clone());
-    let mapped_panel_id = panel_id_map
-        .get(&source_dashboard_uid)
-        .and_then(|mapping| mapping.get(&source_panel_id))
-        .cloned();
+    let source_dashboard_uid = linkage.dashboard_uid.clone();
+    let source_panel_id = linkage.panel_id.clone().unwrap_or_default();
+    let dashboard_uid = linkage_mappings.resolve_dashboard_uid(&source_dashboard_uid);
+    let mapped_panel_id =
+        linkage_mappings.resolve_panel_id(&source_dashboard_uid, &source_panel_id);
 
     let mut normalized = payload.clone();
     let annotations = normalized
@@ -1132,17 +1170,10 @@ fn prepare_import_payload_for_target(
     kind: &str,
     payload: &Map<String, Value>,
     document: &Value,
-    dashboard_uid_map: &BTreeMap<String, String>,
-    panel_id_map: &BTreeMap<String, BTreeMap<String, String>>,
+    linkage_mappings: &AlertLinkageMappings,
 ) -> Result<Map<String, Value>> {
     if kind == RULE_KIND {
-        return rewrite_rule_dashboard_linkage(
-            client,
-            payload,
-            document,
-            dashboard_uid_map,
-            panel_id_map,
-        );
+        return rewrite_rule_dashboard_linkage(client, payload, document, linkage_mappings);
     }
     Ok(payload.clone())
 }
@@ -1437,9 +1468,10 @@ fn import_alerting_resources(args: &AlertCliArgs) -> Result<()> {
         .as_ref()
         .ok_or_else(|| message("Import directory is required for alerting import."))?;
     let resource_files = discover_alert_resource_files(import_dir)?;
-    let dashboard_uid_map =
-        load_string_map(args.dashboard_uid_map.as_deref(), "Dashboard UID map")?;
-    let panel_id_map = load_panel_id_map(args.panel_id_map.as_deref())?;
+    let linkage_mappings = AlertLinkageMappings::load(
+        args.dashboard_uid_map.as_deref(),
+        args.panel_id_map.as_deref(),
+    )?;
     let mut policies_seen = 0usize;
 
     for resource_file in &resource_files {
@@ -1450,8 +1482,7 @@ fn import_alerting_resources(args: &AlertCliArgs) -> Result<()> {
             &kind,
             &payload,
             &document,
-            &dashboard_uid_map,
-            &panel_id_map,
+            &linkage_mappings,
         )?;
         policies_seen = count_policy_documents(&kind, policies_seen)?;
         let identity = build_resource_identity(&kind, &payload);
@@ -1500,9 +1531,10 @@ fn diff_alerting_resources(args: &AlertCliArgs) -> Result<()> {
         .as_ref()
         .ok_or_else(|| message("Diff directory is required for alerting diff."))?;
     let resource_files = discover_alert_resource_files(diff_dir)?;
-    let dashboard_uid_map =
-        load_string_map(args.dashboard_uid_map.as_deref(), "Dashboard UID map")?;
-    let panel_id_map = load_panel_id_map(args.panel_id_map.as_deref())?;
+    let linkage_mappings = AlertLinkageMappings::load(
+        args.dashboard_uid_map.as_deref(),
+        args.panel_id_map.as_deref(),
+    )?;
     let mut policies_seen = 0usize;
     let mut differences = 0usize;
 
@@ -1514,8 +1546,7 @@ fn diff_alerting_resources(args: &AlertCliArgs) -> Result<()> {
             &kind,
             &payload,
             &document,
-            &dashboard_uid_map,
-            &panel_id_map,
+            &linkage_mappings,
         )?;
         policies_seen = count_policy_documents(&kind, policies_seen)?;
         let identity = build_resource_identity(&kind, &payload);

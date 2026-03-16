@@ -38,16 +38,22 @@ class FakeDashboardIntegrationClient:
         self.headers = {}
         self.created_folders = []
         self.imported_payloads = []
+        self.dashboard_fetch_if_exists_calls = []
+        self.dashboard_fetch_calls = []
+        self.folder_fetch_calls = []
 
     def fetch_dashboard_if_exists(self, uid):
+        self.dashboard_fetch_if_exists_calls.append(uid)
         return self.dashboards.get(uid)
 
     def fetch_dashboard(self, uid):
+        self.dashboard_fetch_calls.append(uid)
         if uid not in self.dashboards:
             raise exporter.GrafanaApiError(404, "/api/dashboards/uid/%s" % uid, "not found")
         return self.dashboards[uid]
 
     def fetch_folder_if_exists(self, uid):
+        self.folder_fetch_calls.append(uid)
         return self.folders.get(uid)
 
     def create_folder(self, uid, title, parent_uid=None):
@@ -311,6 +317,9 @@ class DashboardIntegrationFlowTests(unittest.TestCase):
             self.assertEqual(
                 payload["dashboards"][1]["folderPath"], "Platform / Infra / Prod"
             )
+            self.assertEqual(client.dashboard_fetch_if_exists_calls.count("cpu-main"), 1)
+            self.assertEqual(client.dashboard_fetch_if_exists_calls.count("prod-main"), 1)
+            self.assertEqual(client.folder_fetch_calls.count("infra"), 1)
 
 
 if __name__ == "__main__":

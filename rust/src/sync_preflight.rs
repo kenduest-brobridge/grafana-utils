@@ -102,9 +102,8 @@ fn build_datasource_checks(
             kind: "plugin".to_string(),
             identity: datasource_type,
             status: "missing".to_string(),
-            detail:
-                "Datasource plugin type is not listed in destination plugin availability."
-                    .to_string(),
+            detail: "Datasource plugin type is not listed in destination plugin availability."
+                .to_string(),
             blocking: true,
         });
     }
@@ -118,11 +117,21 @@ fn build_dashboard_checks(
     let available_uids = require_string_list(availability.get("datasourceUids"), "datasourceUids")?
         .into_iter()
         .collect::<BTreeSet<String>>();
-    let datasource_uids = require_string_list(
-        spec.body.get("datasourceUids"),
-        "dashboard datasourceUids",
+    let available_names =
+        require_string_list(availability.get("datasourceNames"), "datasourceNames")?
+            .into_iter()
+            .collect::<BTreeSet<String>>();
+    let datasource_uids =
+        require_string_list(spec.body.get("datasourceUids"), "dashboard datasourceUids")?;
+    let datasource_names = require_string_list(
+        spec.body.get("datasourceNames"),
+        "dashboard datasourceNames",
     )?;
-    Ok(datasource_uids
+    let available_plugin_ids = require_string_list(availability.get("pluginIds"), "pluginIds")?
+        .into_iter()
+        .collect::<BTreeSet<String>>();
+    let plugin_ids = require_string_list(spec.body.get("pluginIds"), "dashboard pluginIds")?;
+    let mut checks = datasource_uids
         .into_iter()
         .map(|datasource_uid| {
             let available = available_uids.contains(&datasource_uid);
@@ -139,17 +148,139 @@ fn build_dashboard_checks(
                 blocking: !available,
             }
         })
-        .collect())
+        .collect::<Vec<_>>();
+    checks.extend(datasource_names.into_iter().map(|datasource_name| {
+        let available = available_names.contains(&datasource_name);
+        SyncPreflightCheck {
+            kind: "dashboard-datasource-name".to_string(),
+            identity: format!("{}->{}", spec.identity, datasource_name),
+            status: if available { "ok" } else { "missing" }.to_string(),
+            detail: if available {
+                "Referenced datasource name is available for dashboard sync."
+            } else {
+                "Referenced datasource name is missing for dashboard sync."
+            }
+            .to_string(),
+            blocking: !available,
+        }
+    }));
+    checks.extend(plugin_ids.into_iter().map(|plugin_id| {
+        let available = available_plugin_ids.contains(&plugin_id);
+        SyncPreflightCheck {
+            kind: "dashboard-plugin".to_string(),
+            identity: format!("{}->{}", spec.identity, plugin_id),
+            status: if available { "ok" } else { "missing" }.to_string(),
+            detail: if available {
+                "Dashboard plugin dependency is available."
+            } else {
+                "Dashboard plugin dependency is missing."
+            }
+            .to_string(),
+            blocking: !available,
+        }
+    }));
+    Ok(checks)
+}
+
+fn is_builtin_alert_datasource_ref(value: &str) -> bool {
+    matches!(value, "__expr__" | "__dashboard__")
+}
+
+fn collect_alert_datasource_uids(body: &Map<String, Value>) -> Result<Vec<String>> {
+    let mut datasource_uids = BTreeSet::new();
+    let direct_uid = normalize_text(body.get("datasourceUid"));
+    if !direct_uid.is_empty() && !is_builtin_alert_datasource_ref(&direct_uid) {
+        datasource_uids.insert(direct_uid);
+    }
+    for datasource_uid in require_string_list(body.get("datasourceUids"), "alert datasourceUids")? {
+        if !is_builtin_alert_datasource_ref(&datasource_uid) {
+            datasource_uids.insert(datasource_uid);
+        }
+    }
+    for item in body
+        .get("data")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        let Some(object) = item.as_object() else {
+            continue;
+        };
+        let datasource_uid = normalize_text(object.get("datasourceUid"));
+        if !datasource_uid.is_empty() && !is_builtin_alert_datasource_ref(&datasource_uid) {
+            datasource_uids.insert(datasource_uid);
+        }
+    }
+    Ok(datasource_uids.into_iter().collect())
+}
+
+fn collect_alert_datasource_names(body: &Map<String, Value>) -> Result<Vec<String>> {
+    let mut datasource_names = BTreeSet::new();
+    let direct_name = normalize_text(body.get("datasourceName"));
+    if !direct_name.is_empty() {
+        datasource_names.insert(direct_name);
+    }
+    for datasource_name in
+        require_string_list(body.get("datasourceNames"), "alert datasourceNames")?
+    {
+        datasource_names.insert(datasource_name);
+    }
+    for item in body
+        .get("data")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        let Some(object) = item.as_object() else {
+            continue;
+        };
+        let datasource_name = normalize_text(object.get("datasourceName"));
+        if !datasource_name.is_empty() {
+            datasource_names.insert(datasource_name);
+        }
+    }
+    Ok(datasource_names.into_iter().collect())
+}
+
+fn collect_alert_contact_points(body: &Map<String, Value>) -> Result<Vec<String>> {
+    let mut contact_points = require_string_list(body.get("contactPoints"), "alert contactPoints")?
+        .into_iter()
+        .collect::<BTreeSet<String>>();
+    let receiver = normalize_text(body.get("receiver"));
+    if !receiver.is_empty() {
+        contact_points.insert(receiver);
+    }
+    if let Some(notification_settings) = body.get("notificationSettings").and_then(Value::as_object)
+    {
+        let receiver = normalize_text(notification_settings.get("receiver"));
+        if !receiver.is_empty() {
+            contact_points.insert(receiver);
+        }
+    }
+    Ok(contact_points.into_iter().collect())
 }
 
 fn build_alert_checks(
     spec: &SyncResourceSpec,
     availability: &Map<String, Value>,
 ) -> Result<Vec<SyncPreflightCheck>> {
+    let available_datasource_uids =
+        require_string_list(availability.get("datasourceUids"), "datasourceUids")?
+            .into_iter()
+            .collect::<BTreeSet<String>>();
+    let available_datasource_names =
+        require_string_list(availability.get("datasourceNames"), "datasourceNames")?
+            .into_iter()
+            .collect::<BTreeSet<String>>();
     let available_contact_points =
         require_string_list(availability.get("contactPoints"), "contactPoints")?
             .into_iter()
             .collect::<BTreeSet<String>>();
+    let available_plugin_ids = require_string_list(availability.get("pluginIds"), "pluginIds")?
+        .into_iter()
+        .collect::<BTreeSet<String>>();
+    let body = require_object(Some(&Value::Object(spec.body.clone())), "alert body")?;
+    let plugin_ids = require_string_list(body.get("pluginIds"), "alert pluginIds")?;
     let mut checks = vec![SyncPreflightCheck {
         kind: "alert-live-apply".to_string(),
         identity: spec.identity.clone(),
@@ -159,7 +290,52 @@ fn build_alert_checks(
                 .to_string(),
         blocking: true,
     }];
-    for contact_point in require_string_list(spec.body.get("contactPoints"), "alert contactPoints")? {
+    for datasource_uid in collect_alert_datasource_uids(&body)? {
+        let available = available_datasource_uids.contains(&datasource_uid);
+        checks.push(SyncPreflightCheck {
+            kind: "alert-datasource".to_string(),
+            identity: format!("{}->{}", spec.identity, datasource_uid),
+            status: if available { "ok" } else { "missing" }.to_string(),
+            detail: if available {
+                "Alert datasource is available."
+            } else {
+                "Alert datasource is missing."
+            }
+            .to_string(),
+            blocking: !available,
+        });
+    }
+    for datasource_name in collect_alert_datasource_names(&body)? {
+        let available = available_datasource_names.contains(&datasource_name);
+        checks.push(SyncPreflightCheck {
+            kind: "alert-datasource-name".to_string(),
+            identity: format!("{}->{}", spec.identity, datasource_name),
+            status: if available { "ok" } else { "missing" }.to_string(),
+            detail: if available {
+                "Alert datasource name is available."
+            } else {
+                "Alert datasource name is missing."
+            }
+            .to_string(),
+            blocking: !available,
+        });
+    }
+    for plugin_id in plugin_ids {
+        let available = available_plugin_ids.contains(&plugin_id);
+        checks.push(SyncPreflightCheck {
+            kind: "alert-plugin".to_string(),
+            identity: format!("{}->{}", spec.identity, plugin_id),
+            status: if available { "ok" } else { "missing" }.to_string(),
+            detail: if available {
+                "Alert plugin dependency is available."
+            } else {
+                "Alert plugin dependency is missing."
+            }
+            .to_string(),
+            blocking: !available,
+        });
+    }
+    for contact_point in collect_alert_contact_points(&body)? {
         let available = available_contact_points.contains(&contact_point);
         checks.push(SyncPreflightCheck {
             kind: "alert-contact-point".to_string(),
@@ -193,15 +369,10 @@ pub fn build_sync_preflight_document(
                 kind: "folder".to_string(),
                 identity: spec.identity.clone(),
                 status: "ok".to_string(),
-                detail: "Folder sync does not require extra staged preflight checks."
-                    .to_string(),
+                detail: "Folder sync does not require extra staged preflight checks.".to_string(),
                 blocking: false,
             }),
-            other => {
-                return Err(message(format!(
-                    "Unsupported sync preflight kind {other}."
-                )))
-            }
+            other => return Err(message(format!("Unsupported sync preflight kind {other}."))),
         }
     }
     Ok(serde_json::json!({
@@ -234,7 +405,10 @@ pub fn render_sync_preflight_text(document: &Value) -> Result<Vec<String>> {
         "Sync preflight summary".to_string(),
         format!(
             "Checks: {} total, {} ok, {} blocking",
-            summary.get("checkCount").and_then(Value::as_i64).unwrap_or(0),
+            summary
+                .get("checkCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
             summary.get("okCount").and_then(Value::as_i64).unwrap_or(0),
             summary
                 .get("blockingCount")

@@ -3,8 +3,7 @@ use crate::sync_preflight::{
 };
 use crate::sync_workbench::{
     build_sync_apply_intent_document, build_sync_plan_document, build_sync_summary_document,
-    normalize_resource_spec, summarize_resource_specs, SYNC_APPLY_INTENT_KIND,
-    SYNC_SUMMARY_KIND,
+    normalize_resource_spec, summarize_resource_specs, SYNC_APPLY_INTENT_KIND, SYNC_SUMMARY_KIND,
 };
 use serde_json::json;
 
@@ -107,27 +106,39 @@ fn build_sync_preflight_document_reports_plugin_dependency_and_alert_blocks() {
             "kind": "dashboard",
             "uid": "cpu-main",
             "title": "CPU Main",
-            "body": {"datasourceUids": ["loki-main", "prom-main"]}
+            "body": {
+                "datasourceUids": ["loki-main", "prom-main"],
+                "datasourceNames": ["Prometheus Main"],
+                "pluginIds": ["timeseries", "geomap"]
+            }
         }),
         json!({
             "kind": "alert",
             "uid": "cpu-high",
             "title": "CPU High",
             "managedFields": ["condition", "contactPoints"],
-            "body": {"condition": "A > 90", "contactPoints": ["pagerduty-primary"]}
+            "body": {
+                "condition": "A > 90",
+                "datasourceUid": "loki-main",
+                "datasourceName": "Prometheus Main",
+                "pluginIds": ["grafana-oncall-app"],
+                "contactPoints": ["pagerduty-primary"],
+                "notificationSettings": {"receiver": "slack-primary"}
+            }
         }),
     ];
     let availability = json!({
-        "pluginIds": ["prometheus"],
+        "pluginIds": ["prometheus", "timeseries"],
         "datasourceUids": ["prom-main"],
+        "datasourceNames": [],
         "contactPoints": []
     });
 
     let document = build_sync_preflight_document(&desired_specs, Some(&availability)).unwrap();
 
     assert_eq!(document["kind"], json!(SYNC_PREFLIGHT_KIND));
-    assert_eq!(document["summary"]["checkCount"], json!(6));
-    assert_eq!(document["summary"]["blockingCount"], json!(4));
+    assert_eq!(document["summary"]["checkCount"], json!(13));
+    assert_eq!(document["summary"]["blockingCount"], json!(10));
     assert!(document["checks"]
         .as_array()
         .unwrap()
@@ -137,7 +148,30 @@ fn build_sync_preflight_document_reports_plugin_dependency_and_alert_blocks() {
         .as_array()
         .unwrap()
         .iter()
-        .any(|item| item["kind"] == "dashboard-datasource" && item["identity"] == "cpu-main->loki-main" && item["status"] == "missing"));
+        .any(|item| item["kind"] == "dashboard-datasource"
+            && item["identity"] == "cpu-main->loki-main"
+            && item["status"] == "missing"));
+    assert!(document["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["kind"] == "dashboard-datasource-name"
+            && item["identity"] == "cpu-main->Prometheus Main"
+            && item["status"] == "missing"));
+    assert!(document["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["kind"] == "dashboard-plugin"
+            && item["identity"] == "cpu-main->timeseries"
+            && item["status"] == "ok"));
+    assert!(document["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["kind"] == "dashboard-plugin"
+            && item["identity"] == "cpu-main->geomap"
+            && item["status"] == "missing"));
     assert!(document["checks"]
         .as_array()
         .unwrap()
@@ -147,7 +181,35 @@ fn build_sync_preflight_document_reports_plugin_dependency_and_alert_blocks() {
         .as_array()
         .unwrap()
         .iter()
+        .any(|item| item["kind"] == "alert-datasource"
+            && item["identity"] == "cpu-high->loki-main"
+            && item["status"] == "missing"));
+    assert!(document["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["kind"] == "alert-datasource-name"
+            && item["identity"] == "cpu-high->Prometheus Main"
+            && item["status"] == "missing"));
+    assert!(document["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["kind"] == "alert-plugin"
+            && item["identity"] == "cpu-high->grafana-oncall-app"
+            && item["status"] == "missing"));
+    assert!(document["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
         .any(|item| item["kind"] == "alert-contact-point" && item["status"] == "missing"));
+    assert!(document["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["kind"] == "alert-contact-point"
+            && item["identity"] == "cpu-high->slack-primary"
+            && item["status"] == "missing"));
 }
 
 #[test]
@@ -166,7 +228,9 @@ fn render_sync_preflight_text_renders_deterministic_summary() {
 
     assert_eq!(lines[0], "Sync preflight summary");
     assert!(lines[1].contains("1 total"));
-    assert!(lines.iter().any(|line| line.contains("folder identity=ops status=ok")));
+    assert!(lines
+        .iter()
+        .any(|line| line.contains("folder identity=ops status=ok")));
 }
 
 #[test]

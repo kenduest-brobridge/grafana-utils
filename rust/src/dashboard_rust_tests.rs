@@ -6,19 +6,20 @@ use super::{
     build_export_variant_dirs, build_external_export_document, build_folder_inventory_status,
     build_folder_path, build_import_auth_context, build_import_payload, build_output_path,
     build_preserved_web_import_document, build_root_export_index, diff_dashboards_with_request,
-    discover_dashboard_files, export_dashboards_with_request, format_dashboard_summary_line,
-    format_data_source_line, format_export_progress_line, format_export_verbose_line,
-    format_folder_inventory_status_line, format_import_progress_line, format_import_verbose_line,
-    import_dashboards_with_org_clients, import_dashboards_with_request, extract_dashboard_variables,
+    discover_dashboard_files, export_dashboards_with_request, extract_dashboard_variables,
+    format_dashboard_summary_line, format_data_source_line, format_export_progress_line,
+    format_export_verbose_line, format_folder_inventory_status_line, format_import_progress_line,
+    format_import_verbose_line, import_dashboards_with_org_clients, import_dashboards_with_request,
     infer_screenshot_output_format, list_dashboards_with_request, list_data_sources_with_request,
     parse_cli_from, render_dashboard_summary_csv, render_dashboard_summary_json,
     render_dashboard_summary_table, render_data_source_csv, render_data_source_json,
     render_data_source_table, render_import_dry_run_json, render_import_dry_run_table,
-    validate_screenshot_args, CommonCliArgs, DashboardCliArgs, DashboardCommand, DiffArgs,
-    ExportArgs, FolderInventoryStatusKind, ImportArgs, InspectExportArgs,
-    InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs, ListDataSourcesArgs,
-    ScreenshotOutputFormat, ScreenshotTheme, SimpleOutputFormat, DATASOURCE_INVENTORY_FILENAME,
-    EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME, TOOL_SCHEMA_VERSION,
+    resolve_manifest_title, validate_screenshot_args, CommonCliArgs, DashboardCliArgs,
+    DashboardCommand, DiffArgs, ExportArgs, FolderInventoryStatusKind, ImportArgs,
+    InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs,
+    ListDataSourcesArgs, ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme,
+    SimpleOutputFormat, DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME,
+    FOLDER_INVENTORY_FILENAME, TOOL_SCHEMA_VERSION,
 };
 use crate::common::api_response;
 use clap::{CommandFactory, Parser};
@@ -129,7 +130,11 @@ fn parse_cli_supports_screenshot_mode() {
         "1600",
         "--height",
         "900",
+        "--device-scale-factor",
+        "2",
         "--full-page",
+        "--full-page-output",
+        "manifest",
         "--wait-ms",
         "9000",
         "--browser-path",
@@ -162,7 +167,10 @@ fn parse_cli_supports_screenshot_mode() {
                 Some("https://grafana.example.com/rendered/cpu-main")
             );
             assert!(screenshot_args.header_captured_at);
-            assert_eq!(screenshot_args.header_text.as_deref(), Some("Nightly capture"));
+            assert_eq!(
+                screenshot_args.header_text.as_deref(),
+                Some("Nightly capture")
+            );
             assert_eq!(
                 screenshot_args.vars,
                 vec!["env=prod".to_string(), "region=us-east-1".to_string()]
@@ -174,7 +182,12 @@ fn parse_cli_supports_screenshot_mode() {
             );
             assert_eq!(screenshot_args.width, 1600);
             assert_eq!(screenshot_args.height, 900);
+            assert_eq!(screenshot_args.device_scale_factor, 2.0);
             assert!(screenshot_args.full_page);
+            assert_eq!(
+                screenshot_args.full_page_output,
+                ScreenshotFullPageOutput::Manifest
+            );
             assert_eq!(screenshot_args.wait_ms, 9000);
             assert_eq!(
                 screenshot_args.browser_path,
@@ -212,7 +225,12 @@ fn parse_cli_screenshot_defaults_match_browser_capture_defaults() {
             assert_eq!(screenshot_args.output_format, None);
             assert_eq!(screenshot_args.width, 1440);
             assert_eq!(screenshot_args.height, 1024);
+            assert_eq!(screenshot_args.device_scale_factor, 1.0);
             assert!(!screenshot_args.full_page);
+            assert_eq!(
+                screenshot_args.full_page_output,
+                ScreenshotFullPageOutput::Single
+            );
             assert_eq!(screenshot_args.wait_ms, 5000);
             assert_eq!(screenshot_args.browser_path, None);
             assert_eq!(screenshot_args.header_title, None);
@@ -243,6 +261,8 @@ fn screenshot_help_mentions_capture_options() {
     assert!(help.contains("--header-text"));
     assert!(help.contains("--var"));
     assert!(help.contains("--browser-path"));
+    assert!(help.contains("--device-scale-factor"));
+    assert!(help.contains("--full-page-output"));
     assert!(help.contains("Target Options"));
     assert!(help.contains("State Options"));
     assert!(help.contains("Rendering Options"));
@@ -613,6 +633,123 @@ fn validate_screenshot_args_rejects_invalid_var_assignment() {
 
     let error = validate_screenshot_args(&args).unwrap_err().to_string();
     assert!(error.contains("Invalid --var value 'env'"));
+}
+
+#[test]
+fn validate_screenshot_args_rejects_split_output_without_full_page() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--dashboard-uid",
+        "cpu-main",
+        "--output",
+        "./cpu-main.png",
+        "--full-page-output",
+        "tiles",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::Screenshot(args) => args,
+        other => panic!("expected screenshot args, got {other:?}"),
+    };
+
+    let error = validate_screenshot_args(&args).unwrap_err().to_string();
+    assert!(error.contains("--full-page-output tiles or manifest requires --full-page"));
+}
+
+#[test]
+fn validate_screenshot_args_rejects_invalid_device_scale_factor() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--dashboard-uid",
+        "cpu-main",
+        "--output",
+        "./cpu-main.png",
+        "--device-scale-factor",
+        "0",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::Screenshot(args) => args,
+        other => panic!("expected screenshot args, got {other:?}"),
+    };
+
+    let error = validate_screenshot_args(&args).unwrap_err().to_string();
+    assert!(error.contains("--device-scale-factor must be greater than 0"));
+}
+
+#[test]
+fn validate_screenshot_args_rejects_pdf_split_output() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--dashboard-uid",
+        "cpu-main",
+        "--output",
+        "./cpu-main.pdf",
+        "--full-page",
+        "--full-page-output",
+        "manifest",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::Screenshot(args) => args,
+        other => panic!("expected screenshot args, got {other:?}"),
+    };
+
+    let error = validate_screenshot_args(&args).unwrap_err().to_string();
+    assert!(error.contains("PDF output does not support --full-page-output tiles or manifest"));
+}
+
+#[test]
+fn resolve_manifest_title_prefers_panel_then_dashboard_then_uid_then_output_stem() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--dashboard-uid",
+        "cpu-main",
+        "--output",
+        "./capture-name.png",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::Screenshot(args) => args,
+        other => panic!("expected screenshot args, got {other:?}"),
+    };
+
+    assert_eq!(
+        resolve_manifest_title(
+            Some("cpu-main"),
+            Some("CPU Overview"),
+            Some("CPU Busy"),
+            &args
+        ),
+        Some("CPU Busy".to_string())
+    );
+
+    assert_eq!(
+        resolve_manifest_title(Some("cpu-main"), Some("CPU Overview"), None, &args),
+        Some("CPU Overview".to_string())
+    );
+
+    assert_eq!(
+        resolve_manifest_title(Some("cpu-main"), None, None, &args),
+        Some("cpu-main".to_string())
+    );
+
+    assert_eq!(
+        resolve_manifest_title(None, None, None, &args),
+        Some("capture-name".to_string())
+    );
 }
 
 #[test]
@@ -1314,6 +1451,32 @@ fn parse_cli_supports_inspect_export_output_format_flag() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_export_output_format_dependency_flag() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--output-format",
+        "report-dependency",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
+            assert_eq!(
+                inspect_args.output_format,
+                Some(InspectOutputFormat::ReportDependency)
+            );
+            assert_eq!(inspect_args.report, None);
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_inspect_export_report_json_flag() {
     let args = parse_cli_from([
         "grafana-util",
@@ -1396,6 +1559,56 @@ fn parse_cli_supports_inspect_export_report_tree_table_flag() {
             assert_eq!(
                 inspect_args.report,
                 Some(InspectExportReportFormat::TreeTable)
+            );
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_inspect_export_report_dependency_flag() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--report",
+        "dependency",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
+            assert_eq!(
+                inspect_args.report,
+                Some(InspectExportReportFormat::Dependency)
+            );
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_inspect_export_report_dependency_json_flag() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--report",
+        "dependency-json",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
+            assert_eq!(
+                inspect_args.report,
+                Some(InspectExportReportFormat::DependencyJson)
             );
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
@@ -1534,6 +1747,32 @@ fn parse_cli_supports_inspect_live_output_format_flag() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_live_output_format_dependency_json_flag() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-live",
+        "--url",
+        "https://grafana.example.com",
+        "--output-format",
+        "report-dependency-json",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectLive(inspect_args) => {
+            assert_eq!(inspect_args.common.url, "https://grafana.example.com");
+            assert_eq!(
+                inspect_args.output_format,
+                Some(InspectOutputFormat::ReportDependencyJson)
+            );
+            assert_eq!(inspect_args.report, None);
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-live command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_inspect_live_report_tree_table_flag() {
     let args = parse_cli_from([
         "grafana-util",
@@ -1550,6 +1789,31 @@ fn parse_cli_supports_inspect_live_report_tree_table_flag() {
             assert_eq!(
                 inspect_args.report,
                 Some(InspectExportReportFormat::TreeTable)
+            );
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-live command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_inspect_live_report_dependency_flag() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-live",
+        "--url",
+        "https://grafana.example.com",
+        "--report",
+        "dependency",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectLive(inspect_args) => {
+            assert_eq!(inspect_args.common.url, "https://grafana.example.com");
+            assert_eq!(
+                inspect_args.report,
+                Some(InspectExportReportFormat::Dependency)
             );
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
@@ -1625,6 +1889,11 @@ fn inspect_export_help_lists_datasource_uid_report_column() {
         .to_string();
 
     assert!(help.contains("datasource_uid"));
+    assert!(help.contains("datasource_type"));
+    assert!(help.contains("datasource_family"));
+    assert!(help.contains("file"));
+    assert!(help.contains("dashboardUid"));
+    assert!(help.contains("datasource label, uid, type, or family"));
     assert!(help.contains("--output-format"));
 }
 
@@ -1636,7 +1905,11 @@ fn inspect_export_help_full_includes_extended_examples() {
     assert!(help.contains("Extended Examples:"));
     assert!(help.contains("--report tree-table"));
     assert!(help.contains("--report-filter-datasource"));
+    assert!(help.contains("--report-filter-panel-id 7"));
     assert!(help.contains("--report-columns"));
+    assert!(
+        help.contains("--report-columns dashboard_uid,datasource_uid,datasource_family,query,file")
+    );
 }
 
 #[test]
@@ -1645,9 +1918,13 @@ fn inspect_live_help_full_includes_extended_examples() {
 
     assert!(help.contains("--help-full"));
     assert!(help.contains("Extended Examples:"));
+    assert!(help.contains("--token \"$GRAFANA_API_TOKEN\""));
     assert!(help.contains("--report tree-table"));
     assert!(help.contains("--report-filter-panel-id"));
     assert!(help.contains("--report-columns"));
+    assert!(
+        help.contains("--report-columns dashboard_uid,datasource_uid,datasource_family,query,file")
+    );
 }
 
 #[test]
@@ -1663,6 +1940,7 @@ fn maybe_render_dashboard_help_full_from_os_args_handles_missing_required_args()
     assert!(help.contains("inspect-export"));
     assert!(help.contains("Extended Examples:"));
     assert!(help.contains("--report tree-table"));
+    assert!(help.contains("--report-filter-panel-id 7"));
 }
 
 #[test]
@@ -2716,14 +2994,24 @@ fn collect_dashboard_source_names_prefers_datasource_names() {
         }
     });
     let catalog = super::build_datasource_catalog(&[
-        json!({"uid": "prom_uid", "name": "Prom Main", "type": "prometheus"})
-            .as_object()
-            .unwrap()
-            .clone(),
-        json!({"uid": "loki_uid", "name": "Loki Logs", "type": "loki"})
-            .as_object()
-            .unwrap()
-            .clone(),
+        json!({
+            "uid": "prom_uid",
+            "name": "Prom Main",
+            "type": "prometheus",
+            "pluginVersion": "11.0.0"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+        json!({
+            "uid": "loki_uid",
+            "name": "Loki Logs",
+            "type": "loki",
+            "meta": {"info": {"version": "3.1.0"}}
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
     ]);
 
     let (sources, source_uids) =
@@ -3194,14 +3482,24 @@ fn build_external_export_document_adds_datasource_inputs() {
         }
     });
     let catalog = super::build_datasource_catalog(&[
-        json!({"uid": "prom_uid", "name": "Prom Main", "type": "prometheus"})
-            .as_object()
-            .unwrap()
-            .clone(),
-        json!({"uid": "loki_uid", "name": "Loki Logs", "type": "loki"})
-            .as_object()
-            .unwrap()
-            .clone(),
+        json!({
+            "uid": "prom_uid",
+            "name": "Prom Main",
+            "type": "prometheus",
+            "pluginVersion": "11.0.0"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+        json!({
+            "uid": "loki_uid",
+            "name": "Loki Logs",
+            "type": "loki",
+            "meta": {"info": {"version": "3.1.0"}}
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
     ]);
 
     let document = build_external_export_document(&payload, &catalog).unwrap();
@@ -3221,6 +3519,23 @@ fn build_external_export_document_adds_datasource_inputs() {
     assert_eq!(document["__inputs"][1]["label"], "Prom Main");
     assert_eq!(document["__inputs"][0]["pluginName"], "Loki");
     assert_eq!(document["__inputs"][1]["pluginName"], "Prometheus");
+    assert_eq!(
+        document["__requires"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|item| item["type"] == "datasource")
+            .map(|item| (
+                item["id"].as_str().unwrap(),
+                item["name"].as_str().unwrap(),
+                item["version"].as_str().unwrap()
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            ("loki", "Loki", "3.1.0"),
+            ("prometheus", "Prometheus", "11.0.0"),
+        ]
+    );
     assert_eq!(document["__elements"], json!({}));
 }
 
@@ -3280,6 +3595,208 @@ fn build_external_export_document_creates_input_from_datasource_template_variabl
         "${DS_PROMETHEUS}"
     );
     assert_eq!(document["panels"][0]["datasource"]["uid"], "$datasource");
+}
+
+#[test]
+fn build_external_export_document_deduplicates_same_type_datasource_requires() {
+    let payload = json!({
+        "dashboard": {
+            "id": 18,
+            "title": "Two Prometheus Query Dashboard",
+            "panels": [
+                {
+                    "id": 1,
+                    "type": "timeseries",
+                    "title": "Two Prometheus Panel",
+                    "datasource": {"type": "datasource", "uid": "-- Mixed --"},
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prom_uid_1"},
+                            "expr": "up"
+                        },
+                        {
+                            "refId": "B",
+                            "datasource": {"type": "prometheus", "uid": "prom_uid_2"},
+                            "expr": "up"
+                        }
+                    ]
+                }
+            ]
+        }
+    });
+    let catalog = super::build_datasource_catalog(&[
+        json!({
+            "uid": "prom_uid_1",
+            "name": "Smoke Prometheus",
+            "type": "prometheus",
+            "pluginVersion": "11.0.0"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+        json!({
+            "uid": "prom_uid_2",
+            "name": "Smoke Prometheus 2",
+            "type": "prometheus"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+    ]);
+
+    let document = build_external_export_document(&payload, &catalog).unwrap();
+
+    assert_eq!(
+        document["panels"][0]["targets"][0]["datasource"]["uid"],
+        "${DS_SMOKE_PROMETHEUS}"
+    );
+    assert_eq!(
+        document["panels"][0]["targets"][1]["datasource"]["uid"],
+        "${DS_SMOKE_PROMETHEUS_2}"
+    );
+    assert_eq!(
+        document["__requires"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|item| item["type"] == "datasource")
+            .map(|item| (
+                item["id"].as_str().unwrap(),
+                item["name"].as_str().unwrap(),
+                item["version"].as_str().unwrap()
+            ))
+            .collect::<Vec<_>>(),
+        vec![("prometheus", "Prometheus", "11.0.0")]
+    );
+}
+
+#[test]
+fn build_external_export_document_uses_grafana_style_plugin_names_for_inputs_and_requires() {
+    let payload = json!({
+        "dashboard": {
+            "id": 19,
+            "title": "Search And SQL",
+            "panels": [
+                {"type": "table", "datasource": "logs-search"},
+                {"type": "stat", "datasource": "reporting-db"}
+            ]
+        }
+    });
+    let catalog = super::build_datasource_catalog(&[
+        json!({
+            "uid": "search_uid",
+            "name": "logs-search",
+            "type": "grafana-opensearch-datasource",
+            "pluginVersion": "2.25.0"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+        json!({
+            "uid": "sql_uid",
+            "name": "reporting-db",
+            "type": "postgres",
+            "meta": {"info": {"version": "1.0.0"}}
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+    ]);
+
+    let document = build_external_export_document(&payload, &catalog).unwrap();
+
+    assert_eq!(document["__inputs"][0]["label"], "logs-search");
+    assert_eq!(document["__inputs"][0]["pluginName"], "OpenSearch");
+    assert_eq!(document["__inputs"][1]["label"], "reporting-db");
+    assert_eq!(document["__inputs"][1]["pluginName"], "PostgreSQL");
+    assert_eq!(
+        document["__requires"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|item| item["type"] == "datasource")
+            .map(|item| (
+                item["id"].as_str().unwrap(),
+                item["name"].as_str().unwrap(),
+                item["version"].as_str().unwrap()
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            ("grafana-opensearch-datasource", "OpenSearch", "2.25.0"),
+            ("postgres", "PostgreSQL", "1.0.0"),
+        ]
+    );
+}
+
+#[test]
+fn build_external_export_document_keeps_distinct_same_type_object_reference_names() {
+    let payload = json!({
+        "dashboard": {
+            "id": 20,
+            "title": "Same Type Object References",
+            "panels": [
+                {
+                    "type": "timeseries",
+                    "datasource": {"type": "datasource", "uid": "-- Mixed --"},
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "prom_uid_1",
+                                "name": "Regional Prometheus"
+                            },
+                            "expr": "up"
+                        },
+                        {
+                            "refId": "B",
+                            "datasource": {
+                                "type": "prometheus",
+                                "uid": "prom_uid_2",
+                                "name": "Infra Prometheus"
+                            },
+                            "expr": "up"
+                        }
+                    ]
+                }
+            ]
+        }
+    });
+    let catalog = super::build_datasource_catalog(&[
+        json!({
+            "uid": "prom_uid_1",
+            "name": "Regional Prometheus",
+            "type": "prometheus",
+            "pluginVersion": "11.0.0"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+        json!({
+            "uid": "prom_uid_2",
+            "name": "Infra Prometheus",
+            "type": "prometheus"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+    ]);
+
+    let document = build_external_export_document(&payload, &catalog).unwrap();
+
+    assert_eq!(document["__inputs"][0]["label"], "Infra Prometheus");
+    assert_eq!(document["__inputs"][0]["name"], "DS_INFRA_PROMETHEUS");
+    assert_eq!(document["__inputs"][1]["label"], "Regional Prometheus");
+    assert_eq!(document["__inputs"][1]["name"], "DS_REGIONAL_PROMETHEUS");
+    assert_eq!(
+        document["panels"][0]["targets"][0]["datasource"]["uid"],
+        "${DS_REGIONAL_PROMETHEUS}"
+    );
+    assert_eq!(
+        document["panels"][0]["targets"][1]["datasource"]["uid"],
+        "${DS_INFRA_PROMETHEUS}"
+    );
 }
 
 #[test]
@@ -4059,15 +4576,25 @@ fn build_export_inspection_query_report_keeps_prometheus_metrics_and_skips_label
 }
 
 #[test]
-fn resolve_report_column_ids_keep_datasource_uid_optional() {
+fn resolve_report_column_ids_include_file_by_default_and_allow_datasource_uid() {
     let default_columns = super::resolve_report_column_ids(&[]).unwrap();
+    assert!(default_columns.iter().any(|value| value == "file"));
     assert!(!default_columns
         .iter()
         .any(|value| value == "datasource_uid"));
+    assert!(default_columns
+        .iter()
+        .any(|value| value == "datasource_type"));
+    assert!(default_columns
+        .iter()
+        .any(|value| value == "datasource_family"));
 
     let selected = super::resolve_report_column_ids(&[
         "dashboard_uid".to_string(),
         "datasource_uid".to_string(),
+        "datasource_type".to_string(),
+        "datasource_family".to_string(),
+        "file".to_string(),
         "query".to_string(),
     ])
     .unwrap();
@@ -4076,13 +4603,40 @@ fn resolve_report_column_ids_keep_datasource_uid_optional() {
         vec![
             "dashboard_uid".to_string(),
             "datasource_uid".to_string(),
+            "datasource_type".to_string(),
+            "datasource_family".to_string(),
+            "file".to_string(),
             "query".to_string(),
         ]
     );
 }
 
 #[test]
-fn export_inspection_query_row_json_keeps_datasource_uid_field_when_empty() {
+fn resolve_report_column_ids_accepts_json_style_aliases() {
+    let selected = super::resolve_report_column_ids(&[
+        "dashboardUid".to_string(),
+        "datasourceUid".to_string(),
+        "datasourceType".to_string(),
+        "datasourceFamily".to_string(),
+        "queryField".to_string(),
+        "file".to_string(),
+    ])
+    .unwrap();
+    assert_eq!(
+        selected,
+        vec![
+            "dashboard_uid".to_string(),
+            "datasource_uid".to_string(),
+            "datasource_type".to_string(),
+            "datasource_family".to_string(),
+            "query_field".to_string(),
+            "file".to_string(),
+        ]
+    );
+}
+
+#[test]
+fn export_inspection_query_row_json_keeps_datasource_uid_and_file_fields() {
     let row = super::ExportInspectionQueryRow {
         dashboard_uid: "main".to_string(),
         dashboard_title: "Main".to_string(),
@@ -4093,16 +4647,31 @@ fn export_inspection_query_row_json_keeps_datasource_uid_field_when_empty() {
         ref_id: "A".to_string(),
         datasource: "prom-main".to_string(),
         datasource_uid: String::new(),
+        datasource_type: "prometheus".to_string(),
+        datasource_family: "prometheus".to_string(),
         query_field: "expr".to_string(),
         query_text: "up".to_string(),
         metrics: vec!["up".to_string()],
         measurements: Vec::new(),
         buckets: Vec::new(),
+        file_path: "/tmp/raw/main.json".to_string(),
     };
 
     let value = serde_json::to_value(&row).unwrap();
 
     assert_eq!(value["datasourceUid"], Value::String(String::new()));
+    assert_eq!(
+        value["datasourceType"],
+        Value::String("prometheus".to_string())
+    );
+    assert_eq!(
+        value["datasourceFamily"],
+        Value::String("prometheus".to_string())
+    );
+    assert_eq!(
+        value["file"],
+        Value::String("/tmp/raw/main.json".to_string())
+    );
 }
 
 #[test]
@@ -4153,11 +4722,14 @@ fn apply_query_report_filters_keep_matching_rows_only() {
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
                 datasource_uid: "prom-uid".to_string(),
+                datasource_type: "prometheus".to_string(),
+                datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/main.json".to_string(),
             },
             super::ExportInspectionQueryRow {
                 dashboard_uid: "logs".to_string(),
@@ -4169,11 +4741,14 @@ fn apply_query_report_filters_keep_matching_rows_only() {
                 ref_id: "A".to_string(),
                 datasource: "logs-main".to_string(),
                 datasource_uid: "logs-uid".to_string(),
+                datasource_type: "loki".to_string(),
+                datasource_family: "loki".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "{job=\"grafana\"}".to_string(),
                 metrics: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/logs.json".to_string(),
             },
         ],
     };
@@ -4187,6 +4762,71 @@ fn apply_query_report_filters_keep_matching_rows_only() {
     assert_eq!(filtered.queries.len(), 1);
     assert_eq!(filtered.queries[0].datasource, "prom-main");
     assert_eq!(filtered.queries[0].panel_id, "1");
+}
+
+#[test]
+fn apply_query_report_filters_match_datasource_uid_type_and_family() {
+    let report = super::ExportInspectionQueryReport {
+        import_dir: "/tmp/raw".to_string(),
+        summary: super::QueryReportSummary {
+            dashboard_count: 2,
+            panel_count: 2,
+            query_count: 2,
+            report_row_count: 2,
+        },
+        queries: vec![
+            super::ExportInspectionQueryRow {
+                dashboard_uid: "main".to_string(),
+                dashboard_title: "Main".to_string(),
+                folder_path: "General".to_string(),
+                panel_id: "1".to_string(),
+                panel_title: "CPU".to_string(),
+                panel_type: "timeseries".to_string(),
+                ref_id: "A".to_string(),
+                datasource: "prom-main".to_string(),
+                datasource_uid: "prom-uid".to_string(),
+                datasource_type: "prometheus".to_string(),
+                datasource_family: "prometheus".to_string(),
+                query_field: "expr".to_string(),
+                query_text: "up".to_string(),
+                metrics: vec!["up".to_string()],
+                measurements: Vec::new(),
+                buckets: Vec::new(),
+                file_path: "/tmp/raw/main.json".to_string(),
+            },
+            super::ExportInspectionQueryRow {
+                dashboard_uid: "logs".to_string(),
+                dashboard_title: "Logs".to_string(),
+                folder_path: "General".to_string(),
+                panel_id: "2".to_string(),
+                panel_title: "Logs".to_string(),
+                panel_type: "logs".to_string(),
+                ref_id: "A".to_string(),
+                datasource: "logs-main".to_string(),
+                datasource_uid: "logs-uid".to_string(),
+                datasource_type: "loki".to_string(),
+                datasource_family: "loki".to_string(),
+                query_field: "expr".to_string(),
+                query_text: "{job=\"grafana\"}".to_string(),
+                metrics: Vec::new(),
+                measurements: Vec::new(),
+                buckets: Vec::new(),
+                file_path: "/tmp/raw/logs.json".to_string(),
+            },
+        ],
+    };
+
+    let filtered_uid = super::apply_query_report_filters(report.clone(), Some("prom-uid"), None);
+    assert_eq!(filtered_uid.queries.len(), 1);
+    assert_eq!(filtered_uid.queries[0].dashboard_uid, "main");
+
+    let filtered_type = super::apply_query_report_filters(report.clone(), Some("loki"), None);
+    assert_eq!(filtered_type.queries.len(), 1);
+    assert_eq!(filtered_type.queries[0].dashboard_uid, "logs");
+
+    let filtered_family = super::apply_query_report_filters(report, Some("prometheus"), None);
+    assert_eq!(filtered_family.queries.len(), 1);
+    assert_eq!(filtered_family.queries[0].dashboard_uid, "main");
 }
 
 #[test]
@@ -4210,11 +4850,14 @@ fn normalize_query_report_groups_rows_by_dashboard_then_panel() {
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
                 datasource_uid: "prom-main".to_string(),
+                datasource_type: "prometheus".to_string(),
+                datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/main.json".to_string(),
             },
             super::ExportInspectionQueryRow {
                 dashboard_uid: "main".to_string(),
@@ -4226,11 +4869,14 @@ fn normalize_query_report_groups_rows_by_dashboard_then_panel() {
                 ref_id: "B".to_string(),
                 datasource: "prom-main".to_string(),
                 datasource_uid: "prom-main".to_string(),
+                datasource_type: "prometheus".to_string(),
+                datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "process_resident_memory_bytes".to_string(),
                 metrics: vec!["process_resident_memory_bytes".to_string()],
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/main.json".to_string(),
             },
             super::ExportInspectionQueryRow {
                 dashboard_uid: "logs".to_string(),
@@ -4242,11 +4888,14 @@ fn normalize_query_report_groups_rows_by_dashboard_then_panel() {
                 ref_id: "A".to_string(),
                 datasource: "loki-main".to_string(),
                 datasource_uid: "loki-main".to_string(),
+                datasource_type: "loki".to_string(),
+                datasource_family: "loki".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "{job=\"grafana\"}".to_string(),
                 metrics: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/logs.json".to_string(),
             },
         ],
     };
@@ -4257,8 +4906,29 @@ fn normalize_query_report_groups_rows_by_dashboard_then_panel() {
     assert_eq!(normalized.summary, report.summary);
     assert_eq!(normalized.dashboards.len(), 2);
     assert_eq!(normalized.dashboards[0].dashboard_uid, "main");
+    assert_eq!(normalized.dashboards[0].file_path, "/tmp/raw/main.json");
+    assert_eq!(
+        normalized.dashboards[0].datasources,
+        vec!["prom-main".to_string()]
+    );
+    assert_eq!(
+        normalized.dashboards[0].datasource_families,
+        vec!["prometheus".to_string()]
+    );
     assert_eq!(normalized.dashboards[0].panels.len(), 2);
     assert_eq!(normalized.dashboards[0].panels[0].panel_id, "1");
+    assert_eq!(
+        normalized.dashboards[0].panels[0].datasources,
+        vec!["prom-main".to_string()]
+    );
+    assert_eq!(
+        normalized.dashboards[0].panels[0].datasource_families,
+        vec!["prometheus".to_string()]
+    );
+    assert_eq!(
+        normalized.dashboards[0].panels[0].query_fields,
+        vec!["expr".to_string()]
+    );
     assert_eq!(normalized.dashboards[0].panels[0].queries.len(), 1);
     assert_eq!(normalized.dashboards[1].dashboard_uid, "logs");
     assert_eq!(normalized.dashboards[1].panels[0].panel_title, "Errors");
@@ -4292,6 +4962,27 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_json_report() 
         json: false,
         table: false,
         report: Some(InspectExportReportFormat::Json),
+        output_format: None,
+        report_columns: vec!["dashboard_uid".to_string()],
+        report_filter_datasource: None,
+        report_filter_panel_id: None,
+        help_full: false,
+        no_header: false,
+    };
+
+    let error = super::validate_inspect_export_report_args(&args).unwrap_err();
+    assert!(error.to_string().contains(
+        "--report-columns is only supported with report-table, report-csv, report-tree-table, or the equivalent --report modes"
+    ));
+}
+
+#[test]
+fn validate_inspect_export_report_args_rejects_report_columns_for_dependency_report() {
+    let args = InspectExportArgs {
+        import_dir: PathBuf::from("./dashboards/raw"),
+        json: false,
+        table: false,
+        report: Some(InspectExportReportFormat::Dependency),
         output_format: None,
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
@@ -4401,11 +5092,14 @@ fn render_grouped_query_report_displays_dashboard_panel_and_query_tree() {
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
                 datasource_uid: "prom-main".to_string(),
+                datasource_type: "prometheus".to_string(),
+                datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/main.json".to_string(),
             },
             super::ExportInspectionQueryRow {
                 dashboard_uid: "main".to_string(),
@@ -4417,11 +5111,14 @@ fn render_grouped_query_report_displays_dashboard_panel_and_query_tree() {
                 ref_id: "B".to_string(),
                 datasource: "loki-main".to_string(),
                 datasource_uid: "loki-main".to_string(),
+                datasource_type: "loki".to_string(),
+                datasource_family: "loki".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "{job=\"grafana\"}".to_string(),
                 metrics: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/main.json".to_string(),
             },
         ],
     };
@@ -4431,15 +5128,17 @@ fn render_grouped_query_report_displays_dashboard_panel_and_query_tree() {
 
     assert!(output.contains("Export inspection report: /tmp/raw"));
     assert!(output.contains("# Dashboard tree"));
-    assert!(output.contains("[1] Dashboard: Main (uid=main, folder=General, panels=2, queries=2)"));
-    assert!(output.contains("  Panel: CPU (id=7, type=timeseries, queries=1)"));
-    assert!(output.contains("  Panel: Logs (id=8, type=logs, queries=1)"));
+    assert!(output.contains("[1] Dashboard: Main (uid=main, folder=General, panels=2, queries=2, datasources=prom-main,loki-main, families=prometheus,loki)"));
+    assert!(output.contains("  File: /tmp/raw/main.json"));
+    assert!(output.contains("  Panel: CPU (id=7, type=timeseries, queries=1, datasources=prom-main, families=prometheus, fields=expr)"));
+    assert!(output.contains("  Panel: Logs (id=8, type=logs, queries=1, datasources=loki-main, families=loki, fields=expr)"));
     assert!(output.contains(
-        "    Query: refId=A datasource=prom-main datasourceUid=prom-main field=expr metrics=up"
+        "    Query: refId=A datasource=prom-main datasourceUid=prom-main datasourceType=prometheus datasourceFamily=prometheus field=expr metrics=up"
     ));
     assert!(output.contains("      up"));
-    assert!(output
-        .contains("    Query: refId=B datasource=loki-main datasourceUid=loki-main field=expr"));
+    assert!(output.contains(
+        "    Query: refId=B datasource=loki-main datasourceUid=loki-main datasourceType=loki datasourceFamily=loki field=expr"
+    ));
     assert!(output.contains("      {job=\"grafana\"}"));
 }
 
@@ -4464,11 +5163,14 @@ fn render_grouped_query_table_report_displays_dashboard_sections_with_tables() {
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
                 datasource_uid: "prom-main".to_string(),
+                datasource_type: "prometheus".to_string(),
+                datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/main.json".to_string(),
             },
             super::ExportInspectionQueryRow {
                 dashboard_uid: "main".to_string(),
@@ -4480,11 +5182,14 @@ fn render_grouped_query_table_report_displays_dashboard_sections_with_tables() {
                 ref_id: "B".to_string(),
                 datasource: "loki-main".to_string(),
                 datasource_uid: "loki-main".to_string(),
+                datasource_type: "loki".to_string(),
+                datasource_family: "loki".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "{job=\"grafana\"}".to_string(),
                 metrics: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/main.json".to_string(),
             },
         ],
     };
@@ -4502,7 +5207,8 @@ fn render_grouped_query_table_report_displays_dashboard_sections_with_tables() {
     let output = lines.join("\n");
 
     assert!(output.contains("# Dashboard sections"));
-    assert!(output.contains("[1] Dashboard: Main (uid=main, folder=General, panels=2, queries=2)"));
+    assert!(output.contains("[1] Dashboard: Main (uid=main, folder=General, panels=2, queries=2, datasources=prom-main,loki-main, families=prometheus,loki)"));
+    assert!(output.contains("File: /tmp/raw/main.json"));
     assert!(output.contains("PANEL_ID  PANEL_TITLE  DATASOURCE  QUERY"));
     assert!(output.contains("7         CPU          prom-main   up"));
     assert!(output.contains("8         Logs         loki-main   {job=\"grafana\"}"));
@@ -4528,6 +5234,8 @@ fn render_grouped_query_table_report_includes_loki_analysis_columns() {
             ref_id: "A".to_string(),
             datasource: "loki-main".to_string(),
             datasource_uid: "loki-main".to_string(),
+            datasource_type: "loki".to_string(),
+            datasource_family: "loki".to_string(),
             query_field: "expr".to_string(),
             query_text: "{job=\"varlogs\",app=~\"api|web\"} |= \"error\" | json [5m]".to_string(),
             metrics: vec![
@@ -4541,6 +5249,7 @@ fn render_grouped_query_table_report_includes_loki_analysis_columns() {
                 "app=~\"api|web\"".to_string(),
             ],
             buckets: vec!["5m".to_string()],
+            file_path: "/tmp/raw/logs-main.json".to_string(),
         }],
     };
 
@@ -4669,11 +5378,14 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
                 datasource_uid: "prom-main".to_string(),
+                datasource_type: "prometheus".to_string(),
+                datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/cpu-main.json".to_string(),
             },
             super::ExportInspectionQueryRow {
                 dashboard_uid: "mixed-main".to_string(),
@@ -4685,11 +5397,14 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
                 ref_id: "B".to_string(),
                 datasource: "custom-main".to_string(),
                 datasource_uid: String::new(),
+                datasource_type: "custom-plugin".to_string(),
+                datasource_family: "unknown".to_string(),
                 query_field: "query".to_string(),
                 query_text: "custom_query".to_string(),
                 metrics: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/mixed-main.json".to_string(),
             },
         ],
     };
@@ -4700,6 +5415,12 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
     assert_eq!(document.summary.query_record_count, 2);
     assert_eq!(document.summary.datasource_family_count, 2);
     assert_eq!(document.summary.risk_record_count, 4);
+    assert_eq!(document.dashboard_dependencies.len(), 2);
+    assert_eq!(document.dashboard_dependencies[0].dashboard_uid, "cpu-main");
+    assert_eq!(
+        document.dashboard_dependencies[1].datasource_families,
+        vec!["unknown".to_string()]
+    );
     assert_eq!(document.datasource_families[0].family, "prometheus");
     assert_eq!(document.datasource_families[1].family, "unknown");
     let unused = document
@@ -4806,11 +5527,14 @@ fn render_governance_table_report_displays_sections() {
             ref_id: "A".to_string(),
             datasource: "logs-main".to_string(),
             datasource_uid: "logs-main".to_string(),
+            datasource_type: "loki".to_string(),
+            datasource_family: "loki".to_string(),
             query_field: "expr".to_string(),
             query_text: "{job=\"grafana\"}".to_string(),
             metrics: vec!["count_over_time".to_string()],
             measurements: vec!["job=\"grafana\"".to_string()],
             buckets: vec!["5m".to_string()],
+            file_path: "/tmp/raw/logs-main.json".to_string(),
         }],
     };
 
@@ -4821,8 +5545,11 @@ fn render_governance_table_report_displays_sections() {
     assert!(output.contains("Export inspection governance: /tmp/raw"));
     assert!(output.contains("# Summary"));
     assert!(output.contains("# Datasource Families"));
+    assert!(output.contains("# Dashboard Dependencies"));
     assert!(output.contains("# Datasources"));
     assert!(output.contains("# Risks"));
+    assert!(output.contains("DASHBOARD_UID"));
+    assert!(output.contains("/tmp/raw/logs-main.json"));
     assert!(output.contains("CATEGORY"));
     assert!(output.contains("RECOMMENDATION"));
     assert!(output.contains("logs-main"));
@@ -5234,12 +5961,119 @@ fn import_dashboards_with_use_export_org_dry_run_filters_selected_orgs_without_c
 
     assert_eq!(
         admin_calls,
-        vec![
-            ("GET".to_string(), "/api/orgs".to_string()),
-            ("GET".to_string(), "/api/orgs".to_string()),
-        ]
+        vec![("GET".to_string(), "/api/orgs".to_string())]
     );
     assert_eq!(import_calls, vec![(2, org_two_raw.clone(), Some(2))]);
+}
+
+#[test]
+fn build_routed_import_dry_run_json_with_request_reuses_org_inventory_lookup() {
+    let temp = tempdir().unwrap();
+    let export_root = temp.path().join("exports");
+    let org_two_raw = export_root.join("org_2_Org_Two").join("raw");
+    let org_nine_raw = export_root.join("org_9_Ops_Org").join("raw");
+    fs::create_dir_all(&org_two_raw).unwrap();
+    fs::create_dir_all(&org_nine_raw).unwrap();
+
+    for (raw_dir, org_id, org_name, uid) in [
+        (&org_two_raw, "2", "Org Two", "cpu-two"),
+        (&org_nine_raw, "9", "Ops Org", "ops-main"),
+    ] {
+        fs::write(
+            raw_dir.join(EXPORT_METADATA_FILENAME),
+            serde_json::to_string_pretty(&json!({
+                "kind": "grafana-utils-dashboard-export-index",
+                "schemaVersion": TOOL_SCHEMA_VERSION,
+                "variant": "raw",
+                "dashboardCount": 1,
+                "indexFile": "index.json",
+                "format": "grafana-web-import-preserve-uid"
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            raw_dir.join("index.json"),
+            serde_json::to_string_pretty(&json!([
+                {
+                    "uid": uid,
+                    "title": "CPU",
+                    "path": "dash.json",
+                    "format": "grafana-web-import-preserve-uid",
+                    "org": org_name,
+                    "orgId": org_id
+                }
+            ]))
+            .unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            raw_dir.join("dash.json"),
+            serde_json::to_string_pretty(&json!({
+                "dashboard": {"id": null, "uid": uid, "title": "CPU"}
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    }
+
+    let mut args = make_import_args(export_root);
+    args.common = make_basic_common_args("http://127.0.0.1:3000".to_string());
+    args.use_export_org = true;
+    args.create_missing_orgs = true;
+    args.dry_run = true;
+    args.json = true;
+
+    let mut admin_calls = Vec::new();
+    let payload: Value = serde_json::from_str(
+        &super::dashboard_import::build_routed_import_dry_run_json_with_request(
+            |method, path, _params, _payload| {
+                admin_calls.push((method.to_string(), path.to_string()));
+                match (method, path) {
+                    (reqwest::Method::GET, "/api/orgs") => Ok(Some(json!([
+                        {"id": 2, "name": "Org Two"}
+                    ]))),
+                    _ => Err(super::message(format!("unexpected request {path}"))),
+                }
+            },
+            |target_org_id, scoped_args| {
+                Ok(super::dashboard_import::ImportDryRunReport {
+                    mode: "create-only".to_string(),
+                    import_dir: scoped_args.import_dir.clone(),
+                    folder_statuses: Vec::new(),
+                    dashboard_records: vec![[
+                        if target_org_id == 2 {
+                            "cpu-two".to_string()
+                        } else {
+                            "ops-main".to_string()
+                        },
+                        "missing".to_string(),
+                        "create".to_string(),
+                        "General".to_string(),
+                        "".to_string(),
+                        "".to_string(),
+                        "".to_string(),
+                        scoped_args
+                            .import_dir
+                            .join("dash.json")
+                            .display()
+                            .to_string(),
+                    ]],
+                    skipped_missing_count: 0,
+                    skipped_folder_mismatch_count: 0,
+                })
+            },
+            &args,
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        admin_calls,
+        vec![("GET".to_string(), "/api/orgs".to_string())]
+    );
+    assert_eq!(payload["orgs"].as_array().unwrap().len(), 2);
 }
 
 #[test]
@@ -6686,9 +7520,7 @@ fn import_dashboards_with_ensure_folders_creates_missing_folder_chain_from_raw_i
             "GET /api/dashboards/uid/abc",
             "GET /api/folders/child",
             "GET /api/folders/platform",
-            "GET /api/folders/platform",
             "POST /api/folders",
-            "GET /api/folders/child",
             "POST /api/folders",
             "POST /api/dashboards/db"
         ]
@@ -6804,8 +7636,7 @@ fn import_dashboards_with_dry_run_and_ensure_folders_checks_folder_inventory() {
         vec![
             "GET /api/folders/platform",
             "GET /api/folders/child",
-            "GET /api/dashboards/uid/abc",
-            "GET /api/folders/child"
+            "GET /api/dashboards/uid/abc"
         ]
     );
 }

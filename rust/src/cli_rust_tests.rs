@@ -221,9 +221,15 @@ fn unified_help_mentions_alert_access_and_shims() {
     let help = render_unified_help();
     assert!(help.contains("grafana-util access user list"));
     assert!(help.contains("grafana-access-utils"));
+    assert!(help.contains("datasource"));
     assert!(help.contains("Run datasource list, export, import, and diff workflows."));
-    assert!(help.contains("grafana-util sync preflight"));
-    assert!(help.contains("Run local/document-only sync summary and preflight workflows."));
+    assert!(help.contains("grafana-util sync plan --desired-file ./desired.json --fetch-live"));
+    assert!(help.contains(
+        "grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live"
+    ));
+    assert!(help.contains(
+        "Run staged sync planning workflows with optional live Grafana fetch/apply paths."
+    ));
     assert!(help.contains("dashboard"));
     assert!(help.contains("[aliases: db]"));
     assert!(help.contains("[aliases: ds]"));
@@ -241,8 +247,9 @@ fn parse_cli_rejects_legacy_dashboard_direct_command() {
 
 #[test]
 fn parse_cli_rejects_legacy_alert_direct_command() {
-    let error = CliArgs::try_parse_from(["grafana-util", "export-alert", "--output-dir", "./alerts"])
-        .unwrap_err();
+    let error =
+        CliArgs::try_parse_from(["grafana-util", "export-alert", "--output-dir", "./alerts"])
+            .unwrap_err();
 
     assert!(error.to_string().contains("unrecognized subcommand"));
     assert!(error.to_string().contains("export-alert"));
@@ -273,6 +280,30 @@ fn parse_cli_supports_sync_group_alias() {
 }
 
 #[test]
+fn parse_cli_supports_sync_assess_alerts_group_command() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "sync",
+        "assess-alerts",
+        "--alerts-file",
+        "./alerts.json",
+        "--output",
+        "json",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Sync { command } => match command {
+            SyncGroupCommand::AssessAlerts(inner) => {
+                assert_eq!(inner.alerts_file, Path::new("./alerts.json"));
+                assert_eq!(inner.output, SyncOutputFormat::Json);
+            }
+            _ => panic!("expected sync assess-alerts"),
+        },
+        _ => panic!("expected sync group"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_sync_plan_group_command() {
     let args: CliArgs = parse_cli_from([
         "grafana-util",
@@ -292,9 +323,44 @@ fn parse_cli_supports_sync_plan_group_command() {
         UnifiedCommand::Sync { command } => match command {
             SyncGroupCommand::Plan(inner) => {
                 assert_eq!(inner.desired_file, Path::new("./desired.json"));
-                assert_eq!(inner.live_file, Path::new("./live.json"));
+                assert_eq!(inner.live_file, Some(Path::new("./live.json").to_path_buf()));
                 assert_eq!(inner.trace_id, Some("trace-explicit".to_string()));
                 assert_eq!(inner.output, SyncOutputFormat::Json);
+            }
+            _ => panic!("expected sync plan"),
+        },
+        _ => panic!("expected sync group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_sync_plan_fetch_live_group_command() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "sync",
+        "plan",
+        "--desired-file",
+        "./desired.json",
+        "--fetch-live",
+        "--org-id",
+        "7",
+        "--page-size",
+        "250",
+        "--url",
+        "http://localhost:3000",
+        "--token",
+        "token-value",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Sync { command } => match command {
+            SyncGroupCommand::Plan(inner) => {
+                assert_eq!(inner.desired_file, Path::new("./desired.json"));
+                assert!(inner.fetch_live);
+                assert_eq!(inner.org_id, Some(7));
+                assert_eq!(inner.page_size, 250);
+                assert_eq!(inner.common.url, "http://localhost:3000");
+                assert_eq!(inner.common.api_token, Some("token-value".to_string()));
             }
             _ => panic!("expected sync plan"),
         },
@@ -321,7 +387,46 @@ fn parse_cli_supports_sync_apply_group_command_with_reason_and_note() {
         UnifiedCommand::Sync { command } => match command {
             SyncGroupCommand::Apply(inner) => {
                 assert_eq!(inner.approval_reason, Some("change-approved".to_string()));
-                assert_eq!(inner.apply_note, Some("local apply intent only".to_string()));
+                assert_eq!(
+                    inner.apply_note,
+                    Some("local apply intent only".to_string())
+                );
+            }
+            _ => panic!("expected sync apply"),
+        },
+        _ => panic!("expected sync group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_sync_apply_execute_live_group_command() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "sync",
+        "apply",
+        "--plan-file",
+        "./plan.json",
+        "--approve",
+        "--execute-live",
+        "--allow-folder-delete",
+        "--org-id",
+        "9",
+        "--url",
+        "http://localhost:3000",
+        "--token",
+        "token-value",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Sync { command } => match command {
+            SyncGroupCommand::Apply(inner) => {
+                assert_eq!(inner.plan_file, Path::new("./plan.json"));
+                assert!(inner.approve);
+                assert!(inner.execute_live);
+                assert!(inner.allow_folder_delete);
+                assert_eq!(inner.org_id, Some(9));
+                assert_eq!(inner.common.url, "http://localhost:3000");
+                assert_eq!(inner.common.api_token, Some("token-value".to_string()));
             }
             _ => panic!("expected sync apply"),
         },

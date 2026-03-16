@@ -114,6 +114,22 @@ def build_inspection_workflow_deps(config):
         "EXPORT_METADATA_FILENAME": config["EXPORT_METADATA_FILENAME"],
         "FOLDER_INVENTORY_FILENAME": config["FOLDER_INVENTORY_FILENAME"],
         "RAW_EXPORT_SUBDIR": config["RAW_EXPORT_SUBDIR"],
+        "load_datasource_inventory": (
+            lambda import_dir, metadata=None: load_datasource_inventory(
+                import_dir,
+                config["DATASOURCE_INVENTORY_FILENAME"],
+                metadata=metadata,
+            )
+        ),
+        "load_export_metadata": (
+            lambda import_dir, expected_variant=None: load_export_metadata(
+                import_dir,
+                config["EXPORT_METADATA_FILENAME"],
+                config["ROOT_INDEX_KIND"],
+                config["TOOL_SCHEMA_VERSION"],
+                expected_variant=expected_variant,
+            )
+        ),
         "attach_dashboard_org": attach_dashboard_org,
         "build_client": config["build_client"],
         "build_dashboard_index_item": (

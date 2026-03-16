@@ -2,19 +2,19 @@
 //! Fetches one dashboard JSON document and summarizes `dashboard.templating.list`
 //! so operators know which `--var name=value` assignments to pass to screenshot
 //! or other URL-based workflows.
+use reqwest::Url;
 use serde::Serialize;
 use serde_json::{Map, Value};
-use reqwest::Url;
 
 use crate::common::{message, object_field, string_field, value_as_object, Result};
 use crate::http::JsonHttpClient;
 
+use super::dashboard_inspect_render::{render_csv, render_simple_table};
+use super::dashboard_screenshot::parse_vars_query;
 use super::{
     build_http_client, build_http_client_for_org, fetch_dashboard, InspectVarsArgs,
     SimpleOutputFormat,
 };
-use super::dashboard_inspect_render::{render_csv, render_simple_table};
-use super::dashboard_screenshot::parse_vars_query;
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub(crate) struct DashboardVariableRow {
@@ -68,14 +68,7 @@ pub(crate) fn inspect_dashboard_variables(args: &InspectVarsArgs) -> Result<()> 
         }
         SimpleOutputFormat::Table => {
             for line in render_simple_table(
-                &[
-                    "NAME",
-                    "TYPE",
-                    "LABEL",
-                    "CURRENT",
-                    "DATASOURCE",
-                    "OPTIONS",
-                ],
+                &["NAME", "TYPE", "LABEL", "CURRENT", "DATASOURCE", "OPTIONS"],
                 &document
                     .variables
                     .iter()
@@ -107,8 +100,8 @@ fn build_inspect_vars_client(args: &InspectVarsArgs) -> Result<JsonHttpClient> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
     {
-        let url =
-            Url::parse(dashboard_url).map_err(|error| message(format!("Invalid --dashboard-url: {error}")))?;
+        let url = Url::parse(dashboard_url)
+            .map_err(|error| message(format!("Invalid --dashboard-url: {error}")))?;
         if let Some(host) = url.host_str() {
             let mut base = format!("{}://{host}", url.scheme());
             if let Some(port) = url.port() {
@@ -139,8 +132,8 @@ fn resolve_dashboard_uid(args: &InspectVarsArgs) -> Result<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .ok_or_else(|| message("Set --dashboard-uid or pass --dashboard-url."))?;
-    let url =
-        Url::parse(dashboard_url).map_err(|error| message(format!("Invalid --dashboard-url: {error}")))?;
+    let url = Url::parse(dashboard_url)
+        .map_err(|error| message(format!("Invalid --dashboard-url: {error}")))?;
     let segments = url
         .path_segments()
         .map(|values| values.map(str::to_string).collect::<Vec<String>>())
@@ -159,8 +152,11 @@ fn build_dashboard_variable_document(
 ) -> Result<DashboardVariableDocument> {
     let payload = fetch_dashboard(client, dashboard_uid)?;
     let object = value_as_object(&payload, "Unexpected dashboard payload from Grafana.")?;
-    let dashboard = object_field(object, "dashboard")
-        .ok_or_else(|| message(format!("Dashboard UID {dashboard_uid} did not include a dashboard object.")))?;
+    let dashboard = object_field(object, "dashboard").ok_or_else(|| {
+        message(format!(
+            "Dashboard UID {dashboard_uid} did not include a dashboard object."
+        ))
+    })?;
     let title = string_field(dashboard, "title", dashboard_uid);
     let variables = extract_dashboard_variables(dashboard)?;
     Ok(DashboardVariableDocument {
@@ -171,10 +167,7 @@ fn build_dashboard_variable_document(
     })
 }
 
-fn apply_vars_query_overrides(
-    rows: &mut [DashboardVariableRow],
-    vars_query: &str,
-) -> Result<()> {
+fn apply_vars_query_overrides(rows: &mut [DashboardVariableRow], vars_query: &str) -> Result<()> {
     let overrides = parse_vars_query(vars_query)?;
     if overrides.is_empty() {
         return Ok(());
@@ -215,8 +208,14 @@ pub(crate) fn extract_dashboard_variables(
             .get("datasource")
             .map(format_compact_value)
             .unwrap_or_default();
-        let query = object.get("query").map(format_compact_value).unwrap_or_default();
-        let multi = object.get("multi").and_then(Value::as_bool).unwrap_or(false);
+        let query = object
+            .get("query")
+            .map(format_compact_value)
+            .unwrap_or_default();
+        let multi = object
+            .get("multi")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
         let include_all = object
             .get("includeAll")
             .and_then(Value::as_bool)
@@ -225,7 +224,8 @@ pub(crate) fn extract_dashboard_variables(
             .get("options")
             .and_then(Value::as_array)
             .map(|items| {
-                items.iter()
+                items
+                    .iter()
                     .map(format_option_value)
                     .filter(|value| !value.is_empty())
                     .collect::<Vec<String>>()
@@ -270,7 +270,12 @@ fn summarize_options(row: &DashboardVariableRow) -> String {
     if row.options.is_empty() {
         return String::new();
     }
-    let mut preview = row.options.iter().take(LIMIT).cloned().collect::<Vec<String>>();
+    let mut preview = row
+        .options
+        .iter()
+        .take(LIMIT)
+        .cloned()
+        .collect::<Vec<String>>();
     if row.options.len() > LIMIT {
         preview.push(format!("(+{} more)", row.options.len() - LIMIT));
     }
@@ -280,8 +285,14 @@ fn summarize_options(row: &DashboardVariableRow) -> String {
 fn format_current_value(value: &Value) -> String {
     match value {
         Value::Object(object) => {
-            let text = object.get("text").map(format_compact_value).unwrap_or_default();
-            let raw = object.get("value").map(format_compact_value).unwrap_or_default();
+            let text = object
+                .get("text")
+                .map(format_compact_value)
+                .unwrap_or_default();
+            let raw = object
+                .get("value")
+                .map(format_compact_value)
+                .unwrap_or_default();
             match (text.is_empty(), raw.is_empty()) {
                 (false, false) if text != raw => format!("{text} ({raw})"),
                 (false, _) => text,
@@ -296,8 +307,14 @@ fn format_current_value(value: &Value) -> String {
 fn format_option_value(value: &Value) -> String {
     match value {
         Value::Object(object) => {
-            let text = object.get("text").map(format_compact_value).unwrap_or_default();
-            let raw = object.get("value").map(format_compact_value).unwrap_or_default();
+            let text = object
+                .get("text")
+                .map(format_compact_value)
+                .unwrap_or_default();
+            let raw = object
+                .get("value")
+                .map(format_compact_value)
+                .unwrap_or_default();
             if text.is_empty() {
                 raw
             } else if raw.is_empty() || text == raw {
@@ -324,7 +341,10 @@ fn format_compact_value(value: &Value) -> String {
             .join("|"),
         Value::Object(object) => {
             for key in ["uid", "name", "label", "text", "value", "type"] {
-                let candidate = object.get(key).map(format_compact_value).unwrap_or_default();
+                let candidate = object
+                    .get(key)
+                    .map(format_compact_value)
+                    .unwrap_or_default();
                 if !candidate.is_empty() {
                     return candidate;
                 }

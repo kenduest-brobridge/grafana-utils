@@ -37,6 +37,10 @@ pub(crate) struct ExportInspectionQueryRow {
     pub(crate) datasource: String,
     #[serde(rename = "datasourceUid")]
     pub(crate) datasource_uid: String,
+    #[serde(rename = "datasourceType")]
+    pub(crate) datasource_type: String,
+    #[serde(rename = "datasourceFamily")]
+    pub(crate) datasource_family: String,
     #[serde(rename = "queryField")]
     pub(crate) query_field: String,
     #[serde(rename = "query")]
@@ -44,6 +48,8 @@ pub(crate) struct ExportInspectionQueryRow {
     pub(crate) metrics: Vec<String>,
     pub(crate) measurements: Vec<String>,
     pub(crate) buckets: Vec<String>,
+    #[serde(rename = "file")]
+    pub(crate) file_path: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -72,6 +78,9 @@ pub(crate) struct GroupedQueryPanel {
     pub(crate) panel_id: String,
     pub(crate) panel_title: String,
     pub(crate) panel_type: String,
+    pub(crate) datasources: Vec<String>,
+    pub(crate) datasource_families: Vec<String>,
+    pub(crate) query_fields: Vec<String>,
     pub(crate) queries: Vec<ExportInspectionQueryRow>,
 }
 
@@ -80,6 +89,9 @@ pub(crate) struct GroupedQueryDashboard {
     pub(crate) dashboard_uid: String,
     pub(crate) dashboard_title: String,
     pub(crate) folder_path: String,
+    pub(crate) file_path: String,
+    pub(crate) datasources: Vec<String>,
+    pub(crate) datasource_families: Vec<String>,
     pub(crate) panels: Vec<GroupedQueryPanel>,
 }
 
@@ -99,11 +111,14 @@ pub(crate) const DEFAULT_REPORT_COLUMN_IDS: &[&str] = &[
     "panel_type",
     "ref_id",
     "datasource",
+    "datasource_type",
+    "datasource_family",
     "query_field",
     "metrics",
     "measurements",
     "buckets",
     "query",
+    "file",
 ];
 
 pub(crate) const SUPPORTED_REPORT_COLUMN_IDS: &[&str] = &[
@@ -116,12 +131,32 @@ pub(crate) const SUPPORTED_REPORT_COLUMN_IDS: &[&str] = &[
     "ref_id",
     "datasource",
     "datasource_uid",
+    "datasource_type",
+    "datasource_family",
     "query_field",
     "metrics",
     "measurements",
     "buckets",
     "query",
+    "file",
 ];
+
+fn normalize_report_column_id(value: &str) -> &str {
+    match value {
+        "dashboardUid" => "dashboard_uid",
+        "dashboardTitle" => "dashboard_title",
+        "folderPath" => "folder_path",
+        "panelId" => "panel_id",
+        "panelTitle" => "panel_title",
+        "panelType" => "panel_type",
+        "refId" => "ref_id",
+        "datasourceUid" => "datasource_uid",
+        "datasourceType" => "datasource_type",
+        "datasourceFamily" => "datasource_family",
+        "queryField" => "query_field",
+        _ => value,
+    }
+}
 
 pub(crate) fn build_query_report(
     import_dir: String,
@@ -186,7 +221,7 @@ pub(crate) fn resolve_report_column_ids(selected: &[String]) -> Result<Vec<Strin
     }
     let mut result = Vec::new();
     for value in selected {
-        let normalized = value.trim();
+        let normalized = normalize_report_column_id(value.trim());
         if normalized.is_empty() {
             continue;
         }
@@ -221,11 +256,14 @@ pub(crate) fn report_column_header(column_id: &str) -> &'static str {
         "ref_id" => "REF_ID",
         "datasource" => "DATASOURCE",
         "datasource_uid" => "DATASOURCE_UID",
+        "datasource_type" => "DATASOURCE_TYPE",
+        "datasource_family" => "DATASOURCE_FAMILY",
         "query_field" => "QUERY_FIELD",
         "metrics" => "METRICS",
         "measurements" => "MEASUREMENTS",
         "buckets" => "BUCKETS",
         "query" => "QUERY",
+        "file" => "FILE",
         _ => unreachable!("unsupported report column header"),
     }
 }
@@ -244,11 +282,14 @@ pub(crate) fn render_query_report_column(
         "ref_id" => row.ref_id.clone(),
         "datasource" => row.datasource.clone(),
         "datasource_uid" => row.datasource_uid.clone(),
+        "datasource_type" => row.datasource_type.clone(),
+        "datasource_family" => row.datasource_family.clone(),
         "query_field" => row.query_field.clone(),
         "metrics" => row.metrics.join(","),
         "measurements" => row.measurements.join(","),
         "buckets" => row.buckets.join(","),
         "query" => row.query_text.clone(),
+        "file" => row.file_path.clone(),
         _ => unreachable!("unsupported report column value"),
     }
 }
@@ -276,10 +317,36 @@ pub(crate) fn normalize_query_report(
                     dashboard_uid: row.dashboard_uid.clone(),
                     dashboard_title: row.dashboard_title.clone(),
                     folder_path: row.folder_path.clone(),
+                    file_path: row.file_path.clone(),
+                    datasources: Vec::new(),
+                    datasource_families: Vec::new(),
                     panels: Vec::new(),
                 });
                 dashboards.len() - 1
             });
+        if !row.file_path.is_empty() && dashboards[dashboard_index].file_path.is_empty() {
+            dashboards[dashboard_index].file_path = row.file_path.clone();
+        }
+        if !row.datasource.is_empty()
+            && !dashboards[dashboard_index]
+                .datasources
+                .iter()
+                .any(|value| value == &row.datasource)
+        {
+            dashboards[dashboard_index]
+                .datasources
+                .push(row.datasource.clone());
+        }
+        if !row.datasource_family.is_empty()
+            && !dashboards[dashboard_index]
+                .datasource_families
+                .iter()
+                .any(|value| value == &row.datasource_family)
+        {
+            dashboards[dashboard_index]
+                .datasource_families
+                .push(row.datasource_family.clone());
+        }
         let panels = &mut dashboards[dashboard_index].panels;
         let panel_index = panels
             .iter()
@@ -293,10 +360,41 @@ pub(crate) fn normalize_query_report(
                     panel_id: row.panel_id.clone(),
                     panel_title: row.panel_title.clone(),
                     panel_type: row.panel_type.clone(),
+                    datasources: Vec::new(),
+                    datasource_families: Vec::new(),
+                    query_fields: Vec::new(),
                     queries: Vec::new(),
                 });
                 panels.len() - 1
             });
+        if !row.datasource.is_empty()
+            && !panels[panel_index]
+                .datasources
+                .iter()
+                .any(|value| value == &row.datasource)
+        {
+            panels[panel_index].datasources.push(row.datasource.clone());
+        }
+        if !row.datasource_family.is_empty()
+            && !panels[panel_index]
+                .datasource_families
+                .iter()
+                .any(|value| value == &row.datasource_family)
+        {
+            panels[panel_index]
+                .datasource_families
+                .push(row.datasource_family.clone());
+        }
+        if !row.query_field.is_empty()
+            && !panels[panel_index]
+                .query_fields
+                .iter()
+                .any(|value| value == &row.query_field)
+        {
+            panels[panel_index]
+                .query_fields
+                .push(row.query_field.clone());
+        }
         panels[panel_index].queries.push(row.clone());
     }
     NormalizedQueryReport {

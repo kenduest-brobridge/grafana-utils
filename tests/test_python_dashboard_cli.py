@@ -7,7 +7,7 @@ import json
 import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -68,6 +68,7 @@ INSPECTION_RENDER_MODULE_PATH = (
 INSPECTION_SUMMARY_MODULE_PATH = (
     REPO_ROOT / "grafana_utils" / "dashboards" / "inspection_summary.py"
 )
+GOVERNANCE_GATE_MODULE_PATH = REPO_ROOT / "grafana_utils" / "dashboard_governance_gate.py"
 LISTING_MODULE_PATH = REPO_ROOT / "grafana_utils" / "dashboards" / "listing.py"
 OUTPUT_SUPPORT_MODULE_PATH = (
     REPO_ROOT / "grafana_utils" / "dashboards" / "output_support.py"
@@ -575,6 +576,11 @@ class ExporterTests(unittest.TestCase):
             feature_version=(3, 9),
         )
 
+    def test_dashboard_governance_gate_module_parses_as_python39_syntax(self):
+        source = GOVERNANCE_GATE_MODULE_PATH.read_text(encoding="utf-8")
+
+        ast.parse(source, filename=str(GOVERNANCE_GATE_MODULE_PATH), feature_version=(3, 9))
+
     def test_dashboard_listing_module_parses_as_python39_syntax(self):
         source = LISTING_MODULE_PATH.read_text(encoding="utf-8")
 
@@ -647,6 +653,44 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("missing/match/mismatch", help_text)
         self.assertIn("skipped/blocked", help_text)
         self.assertIn("table form", help_text)
+        self.assertIn("Examples:", help_text)
+        self.assertIn("--approve", help_text)
+        self.assertIn("Connection Options", help_text)
+        self.assertIn("Auth Options", help_text)
+        self.assertIn("Target Options", help_text)
+        self.assertIn("Mutation Options", help_text)
+        self.assertIn("Safety Options", help_text)
+        self.assertIn("Output Options", help_text)
+
+    def test_list_help_includes_examples_and_grouped_sections(self):
+        stream = io.StringIO()
+
+        with redirect_stdout(stream):
+            with self.assertRaises(SystemExit):
+                exporter.parse_args(["list-dashboard", "-h"])
+
+        help_text = stream.getvalue()
+        self.assertIn("Examples:", help_text)
+        self.assertIn("grafana-util dashboard list-dashboard", help_text)
+        self.assertIn("Input Options", help_text)
+        self.assertIn("Target Options", help_text)
+        self.assertIn("Output Options", help_text)
+
+    def test_screenshot_help_includes_examples_and_grouped_sections(self):
+        stream = io.StringIO()
+
+        with redirect_stdout(stream):
+            with self.assertRaises(SystemExit):
+                exporter.parse_args(["screenshot", "-h"])
+
+        help_text = stream.getvalue()
+        self.assertIn("Examples:", help_text)
+        self.assertIn("grafana-util dashboard screenshot", help_text)
+        self.assertIn("Target Options", help_text)
+        self.assertIn("State Options", help_text)
+        self.assertIn("Rendering Options", help_text)
+        self.assertIn("Output Options", help_text)
+        self.assertIn("Header Options", help_text)
 
     def test_inspect_export_help_mentions_raw_export_directory(self):
         stream = io.StringIO()
@@ -659,9 +703,14 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("raw/ export directory explicitly", help_text)
         self.assertIn("--output-format", help_text)
         self.assertIn("report-tree-table", help_text)
+        self.assertIn("dependency", help_text)
         self.assertIn("Examples:", help_text)
         self.assertIn("grafana-util dashboard inspect-export", help_text)
         self.assertIn("--help-full", help_text)
+        self.assertIn("datasourceType", help_text)
+        self.assertIn("datasourceFamily", help_text)
+        self.assertIn("datasource label, uid, type,", help_text)
+        self.assertIn("or family exactly matches this value", help_text)
         self.assertNotIn("\n  --json", help_text)
         self.assertNotIn("\n  --table", help_text)
         self.assertNotIn("\n  --report ", help_text)
@@ -678,11 +727,14 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("raw/ export directory explicitly", help_text)
         self.assertIn("Extended examples:", help_text)
         self.assertIn("grafana-util dashboard inspect-export", help_text)
-        self.assertIn("--output-format report-tree-table", help_text)
+        self.assertIn("--report tree-table", help_text)
         self.assertIn("--report-filter-datasource prom-main", help_text)
-        self.assertIn("--report-columns panel_id,panel_title,datasource,query", help_text)
+        self.assertIn("--report-filter-panel-id 7", help_text)
+        self.assertIn(
+            "--report-columns dashboard_uid,datasource_uid,datasource_family,query,file",
+            help_text,
+        )
         self.assertNotIn("grafana-utils inspect-export", help_text)
-        self.assertNotIn("--report tree-table", help_text)
 
     def test_inspect_live_help_mentions_live_report_flags(self):
         stream = io.StringIO()
@@ -697,10 +749,15 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("--output-format", help_text)
         self.assertIn("tree-table", help_text)
         self.assertIn("tree", help_text)
+        self.assertIn("dependency", help_text)
         self.assertIn("--report-filter-panel-id", help_text)
         self.assertIn("Examples:", help_text)
         self.assertIn("grafana-util dashboard inspect-live", help_text)
         self.assertIn("--help-full", help_text)
+        self.assertIn("datasourceType", help_text)
+        self.assertIn("datasourceFamily", help_text)
+        self.assertIn("datasource label, uid, type,", help_text)
+        self.assertIn("or family exactly matches this value", help_text)
         self.assertNotIn("\n  --report ", help_text)
         self.assertNotIn("\n  --json", help_text)
         self.assertNotIn("\n  --table", help_text)
@@ -717,11 +774,14 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("--url", help_text)
         self.assertIn("Extended examples:", help_text)
         self.assertIn("grafana-util dashboard inspect-live", help_text)
-        self.assertIn("--output-format report-tree-table", help_text)
+        self.assertIn("--token \"$GRAFANA_API_TOKEN\"", help_text)
+        self.assertIn("--report tree-table", help_text)
         self.assertIn("--report-filter-panel-id 7", help_text)
-        self.assertIn("--report-columns panel_id,panel_title,datasource,query", help_text)
+        self.assertIn(
+            "--report-columns dashboard_uid,datasource_uid,datasource_family,query,file",
+            help_text,
+        )
         self.assertNotIn("grafana-utils inspect-live", help_text)
-        self.assertNotIn("--report tree-table", help_text)
 
     def test_parse_args_supports_import_mode(self):
         args = exporter.parse_args(["import-dashboard", "--import-dir", "dashboards"])
@@ -735,6 +795,15 @@ class ExporterTests(unittest.TestCase):
         )
 
         self.assertEqual(args.org_id, "2")
+
+    def test_main_requires_approve_for_live_import(self):
+        stream = io.StringIO()
+
+        with redirect_stderr(stream):
+            result = exporter.main(["import-dashboard", "--import-dir", "dashboards/raw"])
+
+        self.assertEqual(result, 1)
+        self.assertIn("requires --approve", stream.getvalue())
 
     def test_parse_args_supports_require_matching_export_org(self):
         args = exporter.parse_args(
@@ -1152,6 +1221,23 @@ class ExporterTests(unittest.TestCase):
         self.assertFalse(args.json)
         self.assertFalse(args.table)
 
+    def test_parse_args_supports_inspect_export_output_format_dependency(self):
+        args = exporter.parse_args(
+            [
+                "inspect-export",
+                "--import-dir",
+                "dashboards/raw",
+                "--output-format",
+                "report-dependency",
+            ]
+        )
+
+        self.assertEqual(args.command, "inspect-export")
+        self.assertEqual(args.output_format, "report-dependency")
+        self.assertIsNone(args.report)
+        self.assertFalse(args.json)
+        self.assertFalse(args.table)
+
     def test_parse_args_supports_inspect_live_report_json(self):
         args = exporter.parse_args(
             [
@@ -1188,6 +1274,21 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(args.url, "http://localhost:3000")
         self.assertEqual(args.report, "tree-table")
 
+    def test_parse_args_supports_inspect_live_report_dependency(self):
+        args = exporter.parse_args(
+            [
+                "inspect-live",
+                "--url",
+                "http://localhost:3000",
+                "--report",
+                "dependency",
+            ]
+        )
+
+        self.assertEqual(args.command, "inspect-live")
+        self.assertEqual(args.url, "http://localhost:3000")
+        self.assertEqual(args.report, "dependency")
+
     def test_parse_args_supports_inspect_live_output_format(self):
         args = exporter.parse_args(
             [
@@ -1201,6 +1302,21 @@ class ExporterTests(unittest.TestCase):
 
         self.assertEqual(args.command, "inspect-live")
         self.assertEqual(args.output_format, "governance-json")
+        self.assertIsNone(args.report)
+
+    def test_parse_args_supports_inspect_live_output_format_dependency(self):
+        args = exporter.parse_args(
+            [
+                "inspect-live",
+                "--url",
+                "http://localhost:3000",
+                "--output-format",
+                "report-dependency-json",
+            ]
+        )
+
+        self.assertEqual(args.command, "inspect-live")
+        self.assertEqual(args.output_format, "report-dependency-json")
         self.assertIsNone(args.report)
 
     def test_parse_args_supports_inspect_export_report_table(self):
@@ -1243,6 +1359,34 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(args.command, "inspect-export")
         self.assertEqual(args.report, "tree-table")
 
+    def test_parse_args_supports_inspect_export_report_dependency(self):
+        args = exporter.parse_args(
+            [
+                "inspect-export",
+                "--import-dir",
+                "dashboards/raw",
+                "--report",
+                "dependency",
+            ]
+        )
+
+        self.assertEqual(args.command, "inspect-export")
+        self.assertEqual(args.report, "dependency")
+
+    def test_parse_args_supports_inspect_export_report_dependency_json(self):
+        args = exporter.parse_args(
+            [
+                "inspect-export",
+                "--import-dir",
+                "dashboards/raw",
+                "--report",
+                "dependency-json",
+            ]
+        )
+
+        self.assertEqual(args.command, "inspect-export")
+        self.assertEqual(args.report, "dependency-json")
+
     def test_parse_args_supports_inspect_export_report_columns_and_filter(self):
         args = exporter.parse_args(
             [
@@ -1279,9 +1423,16 @@ class ExporterTests(unittest.TestCase):
     def test_parse_report_columns_accepts_snake_case_aliases(self):
         self.assertEqual(
             exporter.parse_report_columns(
-                "dashboard_uid,panel_title,query_field,datasource_uid"
+                "dashboard_uid,panel_title,query_field,datasource_uid,datasource_type,datasource_family"
             ),
-            ["dashboardUid", "panelTitle", "queryField", "datasourceUid"],
+            [
+                "dashboardUid",
+                "panelTitle",
+                "queryField",
+                "datasourceUid",
+                "datasourceType",
+                "datasourceFamily",
+            ],
         )
 
     def test_dispatch_query_analysis_uses_prometheus_analyzer(self):
@@ -6033,8 +6184,18 @@ class ExporterTests(unittest.TestCase):
         }
         catalog = exporter.build_datasource_catalog(
             [
-                {"uid": "prom_uid", "name": "Prom Main", "type": "prometheus"},
-                {"uid": "loki_uid", "name": "Loki Logs", "type": "loki"},
+                {
+                    "uid": "prom_uid",
+                    "name": "Prom Main",
+                    "type": "prometheus",
+                    "pluginVersion": "11.0.0",
+                },
+                {
+                    "uid": "loki_uid",
+                    "name": "Loki Logs",
+                    "type": "loki",
+                    "meta": {"info": {"version": "3.1.0"}},
+                },
             ]
         )
 
@@ -6065,6 +6226,14 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(
             {item["id"] for item in document["__requires"] if item["type"] == "datasource"},
             {"loki", "prometheus"},
+        )
+        self.assertEqual(
+            [
+                (item["id"], item["name"], item["version"])
+                for item in document["__requires"]
+                if item["type"] == "datasource"
+            ],
+            [("loki", "Loki", "3.1.0"), ("prometheus", "Prometheus", "11.0.0")],
         )
         self.assertEqual(document["__elements"], {})
 
@@ -6139,8 +6308,18 @@ class ExporterTests(unittest.TestCase):
         }
         catalog = exporter.build_datasource_catalog(
             [
-                {"uid": "prom_uid", "name": "Smoke Prometheus", "type": "prometheus"},
-                {"uid": "loki_uid", "name": "Smoke Loki", "type": "loki"},
+                {
+                    "uid": "prom_uid",
+                    "name": "Smoke Prometheus",
+                    "type": "prometheus",
+                    "pluginVersion": "11.0.0",
+                },
+                {
+                    "uid": "loki_uid",
+                    "name": "Smoke Loki",
+                    "type": "loki",
+                    "meta": {"info": {"version": "3.1.0"}},
+                },
             ]
         )
 
@@ -6169,6 +6348,14 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(
             {item["id"] for item in document["__requires"] if item["type"] == "datasource"},
             {"loki", "prometheus"},
+        )
+        self.assertEqual(
+            [
+                (item["id"], item["name"], item["version"])
+                for item in document["__requires"]
+                if item["type"] == "datasource"
+            ],
+            [("loki", "Loki", "3.1.0"), ("prometheus", "Prometheus", "11.0.0")],
         )
 
     def test_build_external_export_document_keeps_distinct_same_type_datasources_separate(self):
@@ -6200,7 +6387,12 @@ class ExporterTests(unittest.TestCase):
         }
         catalog = exporter.build_datasource_catalog(
             [
-                {"uid": "prom_uid_1", "name": "Smoke Prometheus", "type": "prometheus"},
+                {
+                    "uid": "prom_uid_1",
+                    "name": "Smoke Prometheus",
+                    "type": "prometheus",
+                    "pluginVersion": "11.0.0",
+                },
                 {"uid": "prom_uid_2", "name": "Smoke Prometheus 2", "type": "prometheus"},
             ]
         )
@@ -6222,6 +6414,14 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(
             [item["name"] for item in document["__inputs"]],
             ["DS_SMOKE_PROMETHEUS", "DS_SMOKE_PROMETHEUS_2"],
+        )
+        self.assertEqual(
+            [
+                (item["id"], item["name"], item["version"])
+                for item in document["__requires"]
+                if item["type"] == "datasource"
+            ],
+            [("prometheus", "Prometheus", "11.0.0")],
         )
         self.assertNotIn("templating", document)
 

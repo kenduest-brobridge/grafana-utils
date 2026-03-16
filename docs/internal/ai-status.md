@@ -5,12 +5,110 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-16 - Task: Wire Live Sync Fetch And Apply Across Python And Rust
+- State: Done
+- Scope: `grafana_utils/sync_cli.py`, `tests/test_python_sync_cli.py`, `rust/src/sync.rs`, `rust/src/cli.rs`, `rust/src/sync_cli_rust_tests.rs`, `rust/src/cli_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Python `sync` can already fetch live dashboard/folder/datasource state and can execute live apply for those resource kinds, but it still rejects `alert` operations during live apply. Rust `sync` currently remains local/document-only: plan/preflight/bundle-preflight do not support `--fetch-live`, apply emits only a staged intent with no `--execute-live` path, and alert sync stays staged only in both runtimes.
+- Current Update: Extended Python live planning to fetch alert rules and extended Python live apply to create, update, and delete alert rules through the provisioning API when the sync operation carries a complete rule payload. Extended Rust `sync` to accept `--fetch-live` on plan/preflight/bundle-preflight, added `--execute-live` plus `--allow-folder-delete` / `--org-id` on apply, implemented live fetch for folders/dashboards/datasources/alert rules plus live availability probing, and wired live apply for folders/dashboards/datasources/alert rules. Updated unified Rust help/tests to advertise and parse the live sync flags.
+- Result: Python and Rust `sync` now both support live-backed planning plus live apply for the same core resource kinds, including alert rules. The alert path still fails closed when a sync alert spec is only a partial ownership document and cannot satisfy the full rule payload required by Grafana provisioning APIs.
+
+## 2026-03-16 - Task: Audit CLI Help Examples And Grouped Parameters
+- State: In Progress
+- Scope: `grafana_utils/access/parser.py`, `grafana_utils/alert_cli.py`, `grafana_utils/sync_cli.py`, `tests/test_python_access_cli.py`, `tests/test_python_alert_cli.py`, `tests/test_python_sync_cli.py`, `rust/src/access_cli_defs.rs`, `rust/src/access_rust_tests.rs`, `rust/src/datasource.rs`, `rust/src/datasource_rust_tests.rs`, `rust/src/sync.rs`, `rust/src/sync_cli_rust_tests.rs`
+- Baseline: Several command surfaces still mixed rich help with bare parser output. Python `access` had almost no `Examples:` coverage at either the root or subcommand level, Python `alert` only documented examples on the root parser, Python `sync` had per-subcommand examples but no root examples or grouped option sections, and Rust `access` / `datasource` / `sync` roots still exposed no example usage.
+- Current Update: Added root-level and per-subcommand example epilogs across Python `access`, Python `alert`, and Python `sync`, grouped Python auth/transport/input/output/apply options where the parser shape made that possible, and added focused help assertions for the newly documented flows. Added root example help text for Rust `access`, `datasource`, and `sync`, plus grouped help headings on Rust access auth/transport arguments and focused help tests that lock those new examples in place.
+- Result: The main Python and Rust entrypoints now advertise real operator command lines instead of only bare usage syntax, and mutation-heavy paths such as access import/delete and sync apply now surface their acknowledgement flags together with example usage. A broader follow-up pass is still needed if we want every remaining Rust leaf subcommand to carry dedicated `after_help` examples instead of relying on root coverage.
+
+## 2026-03-16 - Task: Expose Dashboard Dependency Contracts As First-Class Inspect Output
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/inspection_dispatch.py`, `grafana_utils/dashboards/inspection_report.py`, `grafana_utils/dashboards/inspection_runtime.py`, `tests/test_python_dashboard_cli.py`, `tests/test_python_dashboard_inspection_cli.py`, `rust/src/dashboard.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_inspect.rs`, `rust/src/lib.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/DEVELOPER.md`, `docs/user-guide.md`, `docs/user-guide-TW.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Inspect summary, flat query reports, grouped tree reports, and governance outputs were already documented, but the newer dependency-contract path was only implicit in code and newer tests. User-facing docs still described `--output-format` too narrowly and did not spell out the current validation rules around report columns and datasource filters.
+- Current Update: Added Python and Rust inspect support for `dependency` / `dependency-json` via `--report` and `report-dependency` / `report-dependency-json` via `--output-format`, wired offline dependency-contract rendering through the shared datasource inventory path, and documented the stricter report validation rules. The docs now describe dependency output as a maintained contract rather than an internal side path.
+- Result: Operators can discover dependency-contract output directly from the docs, and maintainers have an explicit trace entry for the Python/Rust inspect surface expansion and shared dependency model split.
+
+## 2026-03-16 - Task: Shift Dashboard Governance Gate Toward Governance-Json-First Inputs
+- State: Done
+- Scope: `grafana_utils/dashboards/inspection_governance.py`, `grafana_utils/dashboard_governance_gate.py`, `tests/test_python_dashboard_inspection_cli.py`, `tests/test_python_dashboard_governance_gate.py`, `docs/DEVELOPER.md`, `docs/user-guide.md`, `docs/user-guide-TW.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The initial governance gate still depended on raw export rescans for plugin and datasource-variable checks because Python governance JSON did not yet carry `dashboardDependencies`-style dependency facts.
+- Current Update: Added Python governance JSON `dashboardDependencies` rows with plugin ids, datasource variables, datasource variable references, and file/folder dependency context. Updated the governance gate to prefer those facts directly from `governance.json`, leaving `--import-dir` only as a compatibility fallback, and extended the safe rule set with library panel allowlists plus explicit folder-prefix routing rules.
+- Result: The preferred governance gate contract is now `policy + governance-json + report-json`, and the checker can enforce plugin, library-panel, datasource-variable, and folder-routing policies without rescanning raw dashboards in the common case.
+
+## 2026-03-16 - Task: Add External Dashboard Governance Gate For CI
+- State: Done
+- Scope: `grafana_utils/dashboard_governance_gate.py`, `scripts/check_dashboard_governance.py`, `examples/dashboard-governance-policy.json`, `tests/test_python_dashboard_governance_gate.py`, `docs/DEVELOPER.md`, `docs/user-guide.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The repo already had mature `inspect-export` governance/query reports, but there was no checked-in policy gate that could consume those reports in CI and fail builds when dashboards violated datasource or query-governance rules.
+- Current Update: Added a first-pass external governance checker module plus thin script wrapper that reads a policy JSON, one `governance-json` report, one flat query-report JSON, and optionally a raw dashboard export directory for plugin/templating checks, then emits text or JSON results with nonzero exit codes for blocking violations. The current rules cover datasource family/uid allowlists, unknown datasource identity, mixed-datasource dashboards, panel plugin allowlists, undefined datasource variables referenced from panel/query datasource fields, query-count thresholds, query/dashboard complexity scores, SQL `select *`, missing SQL time-filter macros, and broad Loki selectors.
+- Result: The repo now has an operator-usable CI gate that can turn existing inspect artifacts plus raw export metadata into governance enforcement without locking the main dashboard CLI into one team's policy contract.
+
+## 2026-03-16 - Task: Align Python And Rust Dashboard Inspect Report Contracts
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/inspection_report.py`, `tests/test_python_dashboard_inspection_cli.py`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_help.rs`, `rust/src/dashboard_rust_tests.rs`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust inspect report rendering already emitted `datasource_type`, `datasource_family`, and `file`, and Rust datasource filtering already matched datasource label, uid, type, or family. Python still documented datasource-label-only filtering, and the remaining inspect backlog item was tracking help/filter/schema drift between the two runtimes.
+- Current Update: Aligned the shared inspect-export/live contract across Python and Rust by keeping datasource filter matching on label, uid, type, or family in both runtimes, updating normal/full help text to advertise the richer report-column set, and tightening focused tests around the shared filter/help behavior.
+- Result: Python and Rust inspect-export/live now present the same operator-facing datasource filter semantics and the same report-column contract in help text and focused tests, so the active inspect parity backlog item is no longer current.
+
+## 2026-03-16 - Task: Let Rust Bundle Preflight Fall Back To Raw Alert Rule Documents
+- State: Done
+- Scope: `rust/src/sync_bundle_preflight.rs`, `rust/src/sync_bundle_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust bundle-preflight only consumed top-level `alerts` from a source bundle. When a bundle still carried alert exports only under `alerting.rules[*].document`, the staged sync-preflight path ignored those alert rules entirely and missed alert datasource and contact-point dependency checks.
+- Current Update: Added a Rust bundle-preflight fallback that derives minimal staged alert sync specs from raw alert rule export documents under `alerting.rules`, while still preferring explicit top-level `alerts` when those are already present.
+- Result: Rust bundle-preflight now surfaces alert dependency failures from bundled raw alert rule exports even before the source-bundle builder fully materializes top-level alert specs, which closes most of the remaining alert-dependency blind spot in the current bundle contract.
+
+## 2026-03-16 - Task: Normalize Rust Source Bundle Alert Specs
+- State: Done
+- Scope: `rust/src/sync.rs`, `rust/src/sync_workbench.rs`, `rust/src/sync_cli_rust_tests.rs`, `rust/src/sync_bundle_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust `sync bundle` already carried raw `alerting.rules[*].document` exports, but the emitted source bundle still left top-level `alerts` empty. That meant downstream staged sync flows had to rely on bundle-preflight fallbacks instead of receiving normalized alert sync specs directly from the source-bundle artifact.
+- Current Update: Added Rust alert normalization that derives top-level alert sync specs from bundled alert rule exports, supports both `grafana-alert-rule` tool documents and raw `groups[].rules[]` documents, carries safe dependency-oriented fields such as `condition`, `annotations`, `contactPoints`, `datasourceUids`, `datasourceNames`, `pluginIds`, and `data`, and passes those normalized alerts into `build_sync_source_bundle_document(...)`.
+- Result: Rust source bundles now emit non-empty top-level `alerts` when the alert export contains enough rule detail, which lets downstream bundle review and staged sync paths consume normalized alert specs directly instead of depending solely on raw `alerting` documents.
+
+## 2026-03-16 - Task: Clarify Remaining Rust Sync Bundle Alert Gap
+- State: Done
+- Scope: `TODO.md`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The active backlog still described the Rust export package/bundle work as if the whole workflow were missing, even though the current tree already packages dashboards, folders, datasource inventory, bundle metadata, and raw `alerting` sections. That wording no longer pointed maintainers at the actual remaining alert-side gap.
+- Current Update: Narrowed the backlog and maintainer notes to the real remaining Rust sync bundle problem: deriving safe normalized top-level alert sync specs from raw alert exports so bundle-preflight and downstream sync stages can consume `alerts` directly instead of relying only on raw `alerting` documents.
+- Result: The maintainer docs and active backlog now describe the bundle workflow as partially complete and identify the remaining alert normalization step as the next focused Rust gap.
+
+## 2026-03-16 - Task: Tighten Rust Sync Bundle And Preflight Dependency Coverage
+- State: Done
+- Scope: `rust/src/sync.rs`, `rust/src/sync_preflight.rs`, `rust/src/sync_workbench.rs`, `rust/src/sync_rust_tests.rs`, `rust/src/sync_cli_rust_tests.rs`, `rust/src/sync_bundle_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust sync preflight already checked datasource uid/name availability plus datasource plugin types for datasource resources, and the first-pass Rust `sync bundle` workflow could package dashboards, datasource inventory, and raw alerting sections. But dashboard/alert specs could not declare their own plugin dependencies in preflight, bundled datasource inventory dropped secret-provider metadata needed by provider assessment, and the bundle CLI tests did not prove that provider metadata survived into downstream bundle-preflight evaluation.
+- Current Update: Added optional dashboard and alert `pluginIds` checks to Rust sync preflight so staged specs can block on missing plugin availability before mutation. Preserved `secureJsonDataProviders` and `secureJsonDataPlaceholders` when normalizing datasource inventory into the Rust source bundle, recorded `alertExportDir` in bundle metadata, and added focused Rust tests that verify bundle output preserves provider metadata and that bundle-preflight can read provider references back out of a source-bundle document.
+- Result: Rust sync preflight now covers one broader class of non-datasource plugin dependencies, and the Rust source-bundle workflow now carries enough datasource provider metadata for bundle-preflight/provider assessment to work against bundle artifacts instead of only hand-built fixture documents.
+
+## 2026-03-16 - Task: Exercise Rust Sync Bundle Alert Normalization Paths
+- State: Done
+- Scope: `rust/src/sync_cli_rust_tests.rs`, `rust/src/sync_bundle_rust_tests.rs`, `scripts/test-rust-live-grafana.sh`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The Rust sync bundle and bundle-preflight coverage already proved datasource provider metadata and alert export directory provenance, but they still did not exercise the expected top-level `alerts` normalization path end to end. The live smoke harness also had no `grafana-util sync ...` path at all.
+- Current Update: Added bundle CLI test coverage with a realistic raw alert-rule export fixture that asserts the source bundle carries a normalized top-level alert spec, added bundle-preflight coverage that counts a source bundle containing alert specs alongside dashboard and datasource records, and extended the Rust live smoke script to package the seeded dashboard/alert exports through `grafana-util sync bundle` plus `sync bundle-preflight`.
+- Result: Once the source-bundle normalization path is present, the checked-in Rust tests and live smoke harness now exercise it directly instead of only validating adjacent alerting summary/provider metadata behavior.
+
+## 2026-03-16 - Task: Split Rust Full-Page Screenshot Output
+- State: Done
+- Scope: `rust/src/dashboard.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_screenshot.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/user-guide.md`, `docs/user-guide-TW.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust `dashboard screenshot --full-page` always stitched the entire page into one raster file. That worked, but very tall dashboards produced oversized PNG/JPEG artifacts and there was no supported way to emit smaller segmented files.
+- Current Update: Added `--full-page-output single|tiles|manifest` to the Rust screenshot CLI. The runtime now captures full-page segments once, then either stitches them into the existing single-file output, writes numbered `part-0001.*` tiles into a derived output directory, or writes the same tile set plus `manifest.json` metadata with viewport/crop/scroll details. Validation now rejects `tiles` or `manifest` without `--full-page`, and rejects PDF split output because PDF remains single-file only.
+- Result: Operators can keep the old one-file behavior by default or switch long dashboard captures to multi-file output that is easier to store, review, and post-process without changing the existing screenshot route for normal captures.
+
+## 2026-03-16 - Task: Add Rust Screenshot Device Scale Factor
+- State: Done
+- Scope: `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_screenshot.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/user-guide.md`, `docs/user-guide-TW.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust screenshot capture exposed viewport `--width` and `--height`, but it had no Python-style `--device-scale-factor`. Operators could make the CSS viewport bigger, but they could not request denser PNG/JPEG output without also changing layout width and height.
+- Current Update: Added `--device-scale-factor` with default `1.0`, validated it as greater than zero, and wired Chromium `Emulation.setDeviceMetricsOverride` into the Rust screenshot runtime. Updated full-page clip/stitch math to convert crop and scroll offsets from CSS pixels into output pixels so high-density full-page captures stay aligned.
+- Result: Rust screenshot capture now accepts commands such as `--device-scale-factor 2 --width 2200 --height 1600`, including full-page PNG/JPEG output at higher raster density without changing the dashboard's CSS viewport geometry.
+
 ## 2026-03-16 - Task: Add Rust Dashboard Screenshot Command
 - State: Done
 - Scope: `rust/Cargo.toml`, `rust/src/cli.rs`, `rust/src/dashboard.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_screenshot.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
 - Baseline: The Rust dashboard CLI currently supports list/export/import/diff/inspect workflows only. There is no screenshot or PDF capture subcommand, no browser automation runtime, and no code path that can capture the rendered Grafana dashboard UI as an image or PDF.
 - Current Update: Added a Rust-only `dashboard screenshot` workflow with clap args for dashboard UID, slug, panel id, time range, repeatable `--var`, theme, viewport, wait time, browser path, org header, and output format selection. Added a new browser-capture module that launches Chromium through `headless_chrome`, reuses the existing auth header builder, constructs dashboard or solo-panel URLs, reserves a local debug port explicitly, hides Grafana chrome before capture, derives a clip from live page dimensions for `--full-page`, and writes PNG, JPEG, or PDF output after a render wait. Fixed the initial screenshot bugs where the capture path passed the wrong `headless_chrome` flag and where full-page dimension reads expected a JSON object instead of primitive values, then tightened the DOM cleanup to collapse the left menu first, hide sticky/fixed top bars more aggressively, and preserve datasource-style template variable routing through repeatable `--var NAME=VALUE` query pairs.
 - Result: The Rust dashboard CLI now supports `grafana-util dashboard screenshot ...` through unified dispatch, the new screenshot helper behavior is covered by focused parser/help/URL/validation tests, the Rust `dashboard` plus `cli` test targets pass, and live checks against both local Docker Grafana and the user-provided remote dashboard produced browser-rendered full-page PNG output with the sidebar removed while keeping dark-mode and template-variable-driven dashboard selection intact.
+
+## 2026-03-16 - Task: Add Python Dashboard Inspect Vars And Screenshot Commands
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/unified_cli.py`, `grafana_utils/dashboards/variable_inspection.py`, `grafana_utils/dashboards/screenshot.py`, `tests/test_python_dashboard_variable_inspection.py`, `tests/test_python_dashboard_screenshot_helper.py`, `tests/test_python_dashboard_capture_cli.py`, `tests/test_python_unified_cli_dashboard_capture.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Python dashboard support already covered export/list/import/diff/inspect-export/inspect-live, but it still lacked Rust's `dashboard inspect-vars` and `dashboard screenshot` commands. Python unified CLI also did not expose those dashboard subcommands or the short `db` / `sy` aliases that Rust already supported.
+- Current Update: Added a Python live variable-inspection helper that resolves dashboard UID from `--dashboard-uid` or Grafana URLs, extracts `templating.list`, applies `vars-query` overlays, and renders table/CSV/JSON output. Added a Python screenshot helper that validates capture args, parses `--var` and `vars-query` state, builds `/d/...` and `/d-solo/...` capture URLs, preserves a `/render/...` builder for future/fallback use, and now defaults to a browser-driven Chromium DevTools flow that injects Grafana auth headers directly into the page session instead of routing through `/render`. Follow-up work on the same path added live slug fail-open for direct `--dashboard-url` capture, Rust-style DOM readiness checks, sidebar/topbar cleanup, a Rust-style full-page scroll-and-stitch PNG/JPEG path so long dashboards no longer rely on one giant browser clip, and Python runtime support for Rust-like screenshot metadata/header fields (`print-capture-url`, header title/url/captured-at/text) on raster outputs.
+- Result: The Python CLI now accepts `grafana-util dashboard inspect-vars ...` and `grafana-util dashboard screenshot ...`, the unified Python entrypoint routes both commands through the dashboard namespace, focused Python screenshot/CLI tests pass, and live checks against `https://192.168.1.112:3000` succeeded for both variable inspection and browser-driven PNG capture without using Grafana `/render`, including stitched full-page PNG output for the long `node-exporter-full` dashboard URL. The screenshot runtime now also has the image-header composition path needed for Rust-style title/url/captured-at annotations on PNG/JPEG outputs.
 
 ## 2026-03-16 - Task: Recover Sync And Workbench Modules After Reverse
 - State: Done
@@ -109,6 +207,41 @@ Historical note:
 - Baseline: Python CLI entrypoint and facade files were functionally stable but carried fewer maintainer-facing boundary notes than their module layout, making future refactors slower to reason about at a glance.
 - Current Update: Added explicit module and function docstrings for unified routing, parser normalization, dispatch boundaries, and datasource contract semantics; added a DEVELOPER section for Python CLI boundary responsibilities.
 - Result: No behavior changes. Future maintainers can now infer the intended separation between entrypoint routing and domain workflow ownership directly from source and maintainer documentation.
+
+## 2026-03-16 - Task: Cache Rust Dashboard Import Org Lookups
+- State: Done
+- Scope: `rust/src/dashboard_import.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust dashboard import already cached per-dashboard UID and folder lookups inside one import run, but routed import preview and `--use-export-org` planning still re-fetched `/api/orgs` for each exported org scope, and matching-export-org validation kept current-org lookup outside the same reusable import cache.
+- Current Update: Extended the Rust import lookup cache to retain current-org ID and the admin org inventory, rewired matching-export-org validation to reuse the same cache, and rewired routed import planning/preview to reuse one `/api/orgs` fetch across all export scopes in the same run.
+- Result: Large routed Rust imports now avoid repeated admin org inventory lookups during planning and dry-run preview while preserving existing import behavior and output contracts.
+
+## 2026-03-16 - Task: Tighten Rust Prompt Export Naming And Typed Alert Linkage
+- State: Done
+- Scope: `rust/src/dashboard_prompt.rs`, `rust/src/alert.rs`, `rust/src/dashboard_rust_tests.rs`, `rust/src/alert_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust prompt export already rewrote datasource inputs and `__requires`, but plugin display names still fell back to generic title-casing for datasource types such as OpenSearch and PostgreSQL, and the prompt tests only covered a narrow Prometheus/Loki subset. The alert import path also still passed raw dashboard/panel linkage maps down through rewrite helpers instead of one typed linkage context.
+- Current Update: Added Grafana-style datasource plugin display names for common datasource families, carried those names through prompt input and `__requires` rendering, and extended Rust dashboard tests with broader same-type object-reference coverage plus OpenSearch/PostgreSQL naming/version assertions. Replaced the alert import path's raw dashboard/panel linkage map pair with a typed `AlertLinkageMappings` helper that loads and resolves dashboard and panel remaps through explicit methods.
+- Result: Rust prompt export is closer to Grafana external export naming for common datasource plugins, the prompt test surface now covers broader same-type and non-Prometheus/Loki cases, and alert linkage rewriting no longer threads ad hoc nested maps through the import/diff path.
+
+## 2026-03-16 - Task: Deepen Rust Inspection Dependency Summaries
+- State: Done
+- Scope: `rust/src/dashboard_inspect.rs`, `rust/src/dashboard_inspect_report.rs`, `rust/src/dashboard_inspect_render.rs`, `rust/src/dashboard_inspect_governance.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust inspect report output already exposed flat per-query rows plus governance family coverage, but the grouped tree output still summarized dashboards and panels only by counts, governance JSON did not include explicit dashboard dependency rows, and `--report-filter-datasource` only matched the rendered datasource label rather than the uid/type/family fields already present in the report rows.
+- Current Update: Extended normalized grouped query models with dashboard/panel datasource families, datasource labels, query-field lists, and dashboard file paths so tree and tree-table output can surface dependency shape directly in section headers. Added governance `dashboardDependencies` rows with dashboard file, datasource, family, panel-count, and query-count coverage, and widened Rust datasource report filtering to match exact datasource label, uid, type, or family values.
+- Result: Rust inspect-export / inspect-live output now carries richer dependency summaries inside the existing tree/governance surfaces, and operators can narrow report output by datasource uid/type/family without adding new CLI flags.
+
+## 2026-03-16 - Task: Drop Python 3.6 Compatibility As A Contributor Constraint
+- State: Done
+- Scope: `AGENTS.md`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The published package metadata already required Python 3.9+, and the active syntax-floor tests already validated Python 3.9 parseability, but the repo instructions still told contributors to keep new code parseable under Python 3.6 and framed RHEL 8-era compatibility as an active coding constraint.
+- Current Update: Updated the repo contributor instructions and maintainer notes to make Python 3.9+ the explicit development baseline, removed the remaining guidance that told contributors to preserve Python 3.6 parser compatibility, and clarified that new work can use Python 3.9-era language features where appropriate.
+- Result: Repo policy now matches packaging metadata, current tests, and current maintainer intent: Python 3.9+ is the supported baseline, and Python 3.6 compatibility is no longer a requirement for new code.
+
+## 2026-03-16 - Task: Expand Rust Access Live Smoke And Clear Stale TLS TODOs
+- State: Done
+- Scope: `scripts/test-rust-live-grafana.sh`, `rust/src/access_rust_tests.rs`, `TODO.md`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The checked-in Rust live smoke covered dashboard, alerting, and datasource workflows, but it did not enter the `access` namespace at all. At the same time, `TODO.md` still claimed shared access TLS flags such as `--insecure` and `--ca-cert` were unimplemented even though parser/runtime support had already landed in both runtimes.
+- Current Update: Extended the Rust Docker smoke script to exercise representative destructive access paths with `--insecure`, including user org/global delete, team delete, org delete, and service-account token/service-account delete after creating the corresponding live objects. Added focused Rust parser coverage that asserts those destructive commands accept `--insecure`, refreshed maintainer notes for the expanded Rust smoke surface, and cleaned the stale TODO entries that still listed `--insecure` / `--ca-cert` as missing.
+- Result: Rust now has a checked-in live validation path for the newer access delete surface instead of relying on Python-only smoke coverage, and the active backlog no longer misreports already-implemented access TLS flags as unfinished work.
 
 ## 2026-03-15 - Task: Align Rust Inspection Orphaned Datasource Summary
 - State: Done

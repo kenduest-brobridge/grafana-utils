@@ -196,75 +196,6 @@ pub(crate) fn build_datasource_inventory_record(
     }
 }
 
-fn create_folder_with_request<F>(
-    request_json: &mut F,
-    title: &str,
-    uid: &str,
-    parent_uid: Option<&str>,
-) -> Result<()>
-where
-    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
-{
-    let mut payload = Map::new();
-    payload.insert("uid".to_string(), Value::String(uid.to_string()));
-    payload.insert("title".to_string(), Value::String(title.to_string()));
-    if let Some(parent_uid) = parent_uid.filter(|value| !value.is_empty()) {
-        payload.insert(
-            "parentUid".to_string(),
-            Value::String(parent_uid.to_string()),
-        );
-    }
-    let _ = request_json(
-        Method::POST,
-        "/api/folders",
-        &[],
-        Some(&Value::Object(payload)),
-    )?;
-    Ok(())
-}
-
-pub(crate) fn ensure_folder_inventory_entry_with_request<F>(
-    request_json: &mut F,
-    folders_by_uid: &std::collections::BTreeMap<String, FolderInventoryItem>,
-    folder_uid: &str,
-) -> Result<()>
-where
-    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
-{
-    if folder_uid.is_empty() {
-        return Ok(());
-    }
-    let mut create_chain = Vec::new();
-    let mut current_uid = folder_uid.to_string();
-    loop {
-        if fetch_folder_if_exists_with_request(&mut *request_json, &current_uid)?.is_some() {
-            break;
-        }
-        let folder = folders_by_uid.get(&current_uid).ok_or_else(|| {
-            message(format!(
-                "Missing exported folder inventory for folderUid {current_uid}."
-            ))
-        })?;
-        create_chain.push(folder.clone());
-        let Some(parent_uid) = folder.parent_uid.as_deref() else {
-            break;
-        };
-        current_uid = parent_uid.to_string();
-    }
-    for folder in create_chain.into_iter().rev() {
-        if fetch_folder_if_exists_with_request(&mut *request_json, &folder.uid)?.is_some() {
-            continue;
-        }
-        create_folder_with_request(
-            &mut *request_json,
-            &folder.title,
-            &folder.uid,
-            folder.parent_uid.as_deref(),
-        )?;
-    }
-    Ok(())
-}
-
 pub(crate) fn build_folder_path(folder: &Map<String, Value>, fallback_title: &str) -> String {
     let mut titles = Vec::new();
     if let Some(parents) = folder.get("parents").and_then(Value::as_array) {
@@ -288,6 +219,7 @@ pub(crate) fn build_folder_path(folder: &Map<String, Value>, fallback_title: &st
     }
 }
 
+#[cfg(test)]
 fn parent_uid_from_folder(folder: &Map<String, Value>) -> Option<String> {
     folder
         .get("parents")
@@ -298,6 +230,7 @@ fn parent_uid_from_folder(folder: &Map<String, Value>) -> Option<String> {
         .filter(|uid| !uid.is_empty())
 }
 
+#[cfg(test)]
 pub(crate) fn build_folder_inventory_status(
     folder: &FolderInventoryItem,
     destination_folder: Option<&Map<String, Value>>,
@@ -360,6 +293,7 @@ pub(crate) fn format_folder_inventory_status_line(status: &FolderInventoryStatus
     }
 }
 
+#[cfg(test)]
 pub(crate) fn collect_folder_inventory_statuses_with_request<F>(
     request_json: &mut F,
     folder_inventory: &[FolderInventoryItem],

@@ -363,6 +363,8 @@ pub enum InspectExportReportFormat {
     Json,
     Tree,
     TreeTable,
+    Dependency,
+    DependencyJson,
     Governance,
     GovernanceJson,
 }
@@ -377,6 +379,8 @@ pub enum InspectOutputFormat {
     ReportJson,
     ReportTree,
     ReportTreeTable,
+    ReportDependency,
+    ReportDependencyJson,
     Governance,
     GovernanceJson,
 }
@@ -392,6 +396,13 @@ pub enum ScreenshotOutputFormat {
 pub enum ScreenshotTheme {
     Light,
     Dark,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum ScreenshotFullPageOutput {
+    Single,
+    Tiles,
+    Manifest,
 }
 
 #[derive(Debug, Clone, Args)]
@@ -418,7 +429,11 @@ pub struct ScreenshotArgs {
         help = "Optional dashboard slug. When omitted, the runtime can reuse the UID as a fallback route segment."
     )]
     pub slug: Option<String>,
-    #[arg(long, help_heading = "Output Options", help = "Write the captured browser output to this file path.")]
+    #[arg(
+        long,
+        help_heading = "Output Options",
+        help = "Write the captured browser output to this file path."
+    )]
     pub output: PathBuf,
     #[arg(
         long,
@@ -528,10 +543,25 @@ pub struct ScreenshotArgs {
     #[arg(
         long,
         help_heading = "Rendering Options",
+        default_value_t = 1.0,
+        help = "Browser device scale factor for higher-density raster capture."
+    )]
+    pub device_scale_factor: f64,
+    #[arg(
+        long,
+        help_heading = "Rendering Options",
         default_value_t = false,
         help = "Capture the full scrollable page instead of only the initial viewport. Ignored for PDF output."
     )]
     pub full_page: bool,
+    #[arg(
+        long,
+        help_heading = "Output Options",
+        value_enum,
+        default_value_t = ScreenshotFullPageOutput::Single,
+        help = "When --full-page is enabled, write one stitched file, a tiles directory, or a tiles directory plus manifest metadata."
+    )]
+    pub full_page_output: ScreenshotFullPageOutput,
     #[arg(
         long,
         help_heading = "Rendering Options",
@@ -617,25 +647,25 @@ pub struct InspectExportArgs {
         num_args = 0..=1,
         default_missing_value = "table",
         conflicts_with_all = ["json", "table"],
-        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for machine-readable output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report governance for datasource governance tables, or --report governance-json for governance JSON."
+        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for machine-readable output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report dependency for dependency contracts, --report dependency-json for dependency contract JSON, --report governance for datasource governance tables, or --report governance-json for governance JSON."
     )]
     pub report: Option<InspectExportReportFormat>,
     #[arg(
         long,
         value_enum,
         conflicts_with_all = ["json", "table", "report"],
-        help = "Alternative single-flag output selector for inspect output. Use text, table, json, report-table, report-csv, report-json, report-tree, report-tree-table, governance, or governance-json."
+        help = "Alternative single-flag output selector for inspect output. Use text, table, json, report-table, report-csv, report-json, report-tree, report-tree-table, report-dependency, report-dependency-json, governance, or governance-json."
     )]
     pub output_format: Option<InspectOutputFormat>,
     #[arg(
         long,
         value_delimiter = ',',
-        help = "For --report table, csv, or tree-table output, or the equivalent report-like --output-format values, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
+        help = "For --report table, csv, or tree-table output, or the equivalent report-like --output-format values, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, datasource_type, datasource_family, query_field, metrics, measurements, buckets, query, file. JSON-style aliases like dashboardUid, datasourceType, and datasourceFamily are also accepted."
     )]
     pub report_columns: Vec<String>,
     #[arg(
         long,
-        help = "For --report output or report-like --output-format values, include only rows whose datasource label exactly matches this value."
+        help = "For --report output or report-like --output-format values, include only rows whose datasource label, uid, type, or family exactly matches this value."
     )]
     pub report_filter_datasource: Option<String>,
     #[arg(
@@ -698,25 +728,25 @@ pub struct InspectLiveArgs {
         num_args = 0..=1,
         default_missing_value = "table",
         conflicts_with_all = ["json", "table"],
-        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for alternate output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report governance for datasource governance tables, or --report governance-json for governance JSON."
+        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for alternate output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report dependency for dependency contracts, --report dependency-json for dependency contract JSON, --report governance for datasource governance tables, or --report governance-json for governance JSON."
     )]
     pub report: Option<InspectExportReportFormat>,
     #[arg(
         long,
         value_enum,
         conflicts_with_all = ["json", "table", "report"],
-        help = "Alternative single-flag output selector for inspect output. Use text, table, json, report-table, report-csv, report-json, report-tree, report-tree-table, governance, or governance-json."
+        help = "Alternative single-flag output selector for inspect output. Use text, table, json, report-table, report-csv, report-json, report-tree, report-tree-table, report-dependency, report-dependency-json, governance, or governance-json."
     )]
     pub output_format: Option<InspectOutputFormat>,
     #[arg(
         long,
         value_delimiter = ',',
-        help = "For --report table, csv, or tree-table output, or the equivalent report-like --output-format values, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
+        help = "For --report table, csv, or tree-table output, or the equivalent report-like --output-format values, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, datasource_type, datasource_family, query_field, metrics, measurements, buckets, query, file. JSON-style aliases like dashboardUid, datasourceType, and datasourceFamily are also accepted."
     )]
     pub report_columns: Vec<String>,
     #[arg(
         long,
-        help = "For --report output or report-like --output-format values, include only rows whose datasource label exactly matches this value."
+        help = "For --report output or report-like --output-format values, include only rows whose datasource label, uid, type, or family exactly matches this value."
     )]
     pub report_filter_datasource: Option<String>,
     #[arg(

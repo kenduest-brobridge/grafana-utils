@@ -345,6 +345,7 @@ class AccessCliTests(unittest.TestCase):
             headers={},
             timeout=30,
             verify_ssl=False,
+            ca_cert=None,
             transport=transport,
         )
 
@@ -970,6 +971,8 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("--basic-user USERNAME", help_text)
         self.assertIn("--scope {org,global}", help_text)
         self.assertIn("--yes", help_text)
+        self.assertIn("Examples:", help_text)
+        self.assertIn("grafana-util access user delete", help_text)
 
     def test_parse_args_supports_team_list_mode(self):
         args = access_utils.parse_args(
@@ -1069,6 +1072,31 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("--email EMAIL", help_text)
         self.assertIn("--member LOGIN_OR_EMAIL", help_text)
         self.assertIn("--admin LOGIN_OR_EMAIL", help_text)
+        self.assertIn("Examples:", help_text)
+        self.assertIn("grafana-util access team add", help_text)
+
+    def test_root_help_includes_examples(self):
+        help_text = access_utils.build_parser().format_help()
+
+        self.assertIn("Examples:", help_text)
+        self.assertIn("grafana-util access user list", help_text)
+        self.assertIn("grafana-util access service-account token add", help_text)
+
+    def test_service_account_token_delete_help_includes_confirmation_example(self):
+        parser = access_utils.build_parser()
+        token_delete_parser = (
+            parser._subparsers._group_actions[0]
+            .choices["service-account"]
+            ._subparsers._group_actions[0]
+            .choices["token"]
+            ._subparsers._group_actions[0]
+            .choices["delete"]
+        )
+        help_text = token_delete_parser.format_help()
+
+        self.assertIn("--yes", help_text)
+        self.assertIn("Examples:", help_text)
+        self.assertIn("grafana-util access service-account token delete", help_text)
 
     def test_parse_args_supports_team_add_mode(self):
         args = access_utils.parse_args(
@@ -1296,6 +1324,58 @@ class AccessCliTests(unittest.TestCase):
 
         self.assertTrue(args.prompt_token)
         self.assertIsNone(args.api_token)
+
+    def test_parse_args_supports_insecure_and_ca_cert(self):
+        args = access_utils.parse_args(
+            ["user", "list", "--ca-cert", "/tmp/grafana-ca.pem"]
+        )
+
+        self.assertEqual(args.ca_cert, "/tmp/grafana-ca.pem")
+        self.assertFalse(args.verify_ssl)
+        self.assertFalse(args.insecure)
+
+        args = access_utils.parse_args(["user", "list", "--insecure"])
+        self.assertTrue(args.insecure)
+        self.assertIsNone(args.ca_cert)
+
+    def test_parse_args_supports_insecure_on_destructive_commands(self):
+        cases = [
+            ["user", "delete", "--login", "alice", "--scope", "org", "--yes", "--insecure"],
+            ["team", "delete", "--name", "ops", "--yes", "--insecure"],
+            ["org", "delete", "--name", "platform", "--yes", "--insecure"],
+            [
+                "service-account",
+                "delete",
+                "--name",
+                "svc",
+                "--yes",
+                "--insecure",
+            ],
+            [
+                "service-account",
+                "token",
+                "delete",
+                "--name",
+                "svc",
+                "--token-name",
+                "cli-token",
+                "--yes",
+                "--insecure",
+            ],
+        ]
+
+        for argv in cases:
+            args = access_utils.parse_args(argv)
+            self.assertTrue(args.insecure, msg="expected --insecure for %r" % (argv,))
+            self.assertIsNone(getattr(args, "ca_cert", None))
+
+    def test_parse_args_rejects_conflicting_tls_flags(self):
+        with self.assertRaisesRegex(SystemExit, "2"):
+            access_utils.parse_args(["user", "list", "--verify-ssl", "--insecure"])
+        with self.assertRaisesRegex(SystemExit, "2"):
+            access_utils.parse_args(
+                ["user", "list", "--ca-cert", "/tmp/grafana-ca.pem", "--insecure"]
+            )
 
     def test_parse_args_supports_service_account_export(self):
         args = access_utils.parse_args(
@@ -1558,6 +1638,37 @@ class AccessCliTests(unittest.TestCase):
             "Choose either --token / --api-token or --prompt-token, not both.",
         ):
             access_utils.resolve_auth(args)
+
+    def test_run_builds_access_client_with_ca_cert(self):
+        args = argparse.Namespace(
+            url="https://grafana.example.com",
+            api_token="abc123",
+            prompt_token=False,
+            username=None,
+            password=None,
+            prompt_password=False,
+            org_id=None,
+            timeout=30,
+            verify_ssl=False,
+            ca_cert="/tmp/grafana-ca.pem",
+        )
+
+        with mock.patch.object(
+            access_utils, "GrafanaAccessClient", autospec=True
+        ) as client_cls, mock.patch.object(
+            access_utils, "dispatch_access_command", return_value=0
+        ) as dispatch:
+            result = access_utils.run(args)
+
+        self.assertEqual(result, 0)
+        client_cls.assert_called_once_with(
+            base_url="https://grafana.example.com",
+            headers={"Authorization": "Bearer abc123"},
+            timeout=30,
+            verify_ssl=True,
+            ca_cert="/tmp/grafana-ca.pem",
+        )
+        dispatch.assert_called_once()
 
     def test_resolve_user_secret_inputs_reads_new_user_password_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:

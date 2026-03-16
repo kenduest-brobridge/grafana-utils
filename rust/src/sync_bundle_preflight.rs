@@ -6,7 +6,9 @@
 //! - Keep Rust-side bundle planning pure and import-safe before any CLI wiring.
 
 use crate::common::{message, Result};
-use crate::datasource_provider::{build_provider_plan, iter_provider_names, summarize_provider_plan};
+use crate::datasource_provider::{
+    build_provider_plan, iter_provider_names, summarize_provider_plan,
+};
 use crate::sync_preflight::build_sync_preflight_document;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
@@ -97,7 +99,10 @@ fn build_provider_assessment(
         for provider_name in iter_provider_names(&plan.references) {
             let missing = !provider_names.contains(provider_name);
             checks.push(Value::Object(Map::from_iter(vec![
-                ("kind".to_string(), Value::String("secret-provider".to_string())),
+                (
+                    "kind".to_string(),
+                    Value::String("secret-provider".to_string()),
+                ),
                 (
                     "datasourceName".to_string(),
                     Value::String(plan.datasource_name.clone()),
@@ -161,6 +166,84 @@ fn build_provider_assessment(
     ])))
 }
 
+fn extract_alert_rule_spec(document: &Map<String, Value>) -> Result<Option<Map<String, Value>>> {
+    if document.get("kind").and_then(Value::as_str) == Some("grafana-alert-rule") {
+        let Some(spec) = document.get("spec").and_then(Value::as_object) else {
+            return Err(message(
+                "grafana-alert-rule bundle document is missing a valid spec object.",
+            ));
+        };
+        return Ok(Some(spec.clone()));
+    }
+    if document.contains_key("condition") && document.contains_key("data") {
+        return Ok(Some(document.clone()));
+    }
+    Ok(None)
+}
+
+fn normalize_alert_bundle_item(
+    rule_spec: &Map<String, Value>,
+    source_path: Option<&str>,
+) -> Result<Value> {
+    let uid = normalize_text(rule_spec.get("uid"));
+    if uid.is_empty() {
+        return Err(message(format!(
+            "Alert bundle rule document is missing uid{}.",
+            source_path
+                .map(|value| format!(": {value}"))
+                .unwrap_or_default()
+        )));
+    }
+    let title = {
+        let title = normalize_text(rule_spec.get("title"));
+        if title.is_empty() {
+            uid.clone()
+        } else {
+            title
+        }
+    };
+    Ok(serde_json::json!({
+        "kind": "alert",
+        "uid": uid,
+        "title": title,
+        "managedFields": ["condition"],
+        "body": rule_spec,
+        "sourcePath": source_path.unwrap_or(""),
+    }))
+}
+
+fn collect_alert_specs(source_bundle: &Map<String, Value>) -> Result<Vec<Value>> {
+    let mut alerts = Vec::new();
+    if let Some(items) = source_bundle.get("alerts") {
+        for item in require_array(Some(items), "alerts")? {
+            alerts.push(item.clone());
+        }
+    }
+    if !alerts.is_empty() {
+        return Ok(alerts);
+    }
+    let Some(alerting) = source_bundle.get("alerting").and_then(Value::as_object) else {
+        return Ok(alerts);
+    };
+    let Some(rule_documents) = alerting.get("rules") else {
+        return Ok(alerts);
+    };
+    for item in require_array(Some(rule_documents), "alerting.rules")? {
+        let Some(object) = item.as_object() else {
+            continue;
+        };
+        let source_path = object.get("sourcePath").and_then(Value::as_str);
+        let Some(document) = object.get("document").and_then(Value::as_object) else {
+            continue;
+        };
+        let Some(rule_spec) = extract_alert_rule_spec(document)? else {
+            continue;
+        };
+        alerts.push(normalize_alert_bundle_item(&rule_spec, source_path)?);
+    }
+    Ok(alerts)
+}
+
 pub fn build_sync_bundle_preflight_document(
     source_bundle: &Value,
     target_inventory: &Value,
@@ -170,7 +253,7 @@ pub fn build_sync_bundle_preflight_document(
     let _target_inventory = require_object(Some(target_inventory), "target inventory")?;
     let availability = require_object(availability, "availability")?;
     let mut desired_specs = Vec::new();
-    for key in ["dashboards", "datasources", "folders", "alerts"] {
+    for key in ["dashboards", "datasources", "folders"] {
         let Some(items) = source_bundle.get(key) else {
             continue;
         };
@@ -178,7 +261,9 @@ pub fn build_sync_bundle_preflight_document(
             desired_specs.push(item.clone());
         }
     }
-    let sync_preflight = build_sync_preflight_document(&desired_specs, Some(&Value::Object(availability.clone())))?;
+    desired_specs.extend(collect_alert_specs(&source_bundle)?);
+    let sync_preflight =
+        build_sync_preflight_document(&desired_specs, Some(&Value::Object(availability.clone())))?;
     let provider_assessment = build_provider_assessment(
         source_bundle
             .get("datasources")
