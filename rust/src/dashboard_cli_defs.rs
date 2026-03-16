@@ -533,25 +533,13 @@ pub struct InspectLiveArgs {
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum DashboardCommand {
-    #[command(
-        name = "list",
-        visible_alias = "list-dashboard",
-        about = "List dashboard summaries without writing export files."
-    )]
+    #[command(name = "list", about = "List dashboard summaries without writing export files.")]
     List(ListArgs),
     #[command(name = "list-data-sources", about = "List Grafana data sources.")]
     ListDataSources(ListDataSourcesArgs),
-    #[command(
-        name = "export",
-        visible_alias = "export-dashboard",
-        about = "Export dashboards to raw/ and prompt/ JSON files."
-    )]
+    #[command(name = "export", about = "Export dashboards to raw/ and prompt/ JSON files.")]
     Export(ExportArgs),
-    #[command(
-        name = "import",
-        visible_alias = "import-dashboard",
-        about = "Import dashboard JSON files through the Grafana API."
-    )]
+    #[command(name = "import", about = "Import dashboard JSON files through the Grafana API.")]
     Import(ImportArgs),
     #[command(about = "Compare local raw dashboard files against live Grafana dashboards.")]
     Diff(DiffArgs),

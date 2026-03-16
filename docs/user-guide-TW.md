@@ -32,8 +32,8 @@ grafana-access-utils <access-command> [options]
 ### 入口點說明：
 - **`grafana-util`**: 統一調度器（Unified Dispatcher），支援 `dashboard/alert/datasource/access`。
 - **`grafana-access-utils`**: 針對存取控制（Access）的相容啟動器。
-- 部分舊版直達指令（如 `list-dashboard`、`export-dashboard`、`export-alert`）仍保留相容。
-- `dashboard list-data-sources` 也仍可使用，但新的 datasource 盤點作業流程應優先改用 `datasource list`。
+- 統一 CLI 請使用 namespaced 形式：`grafana-util <domain> <command>`。
+- `dashboard list-data-sources` 仍可使用，但新的 datasource 盤點作業流程應優先改用 `datasource list`。
 
 2) 全域通用參數
 ----------------
@@ -116,7 +116,7 @@ Exported prompt mem-main -> dashboards/prompt/Infra/MEM__mem-main.json
 Dashboard export completed: 2 dashboard(s), 4 file(s) written
 ```
 
-### 3.2 `dashboard list`（legacy `list-dashboard`）
+### 3.2 `dashboard list`
 
 **用途**：列出線上的 dashboards。
 
@@ -319,7 +319,7 @@ grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user adm
 4) alert 命令
 -------------
 
-### 4.1 `alert export`（legacy `export-alert`）
+### 4.1 `alert export`
 
 **用途**：匯出 alerting 資源為 raw JSON。
 

@@ -7,7 +7,7 @@
 Python CLI 的定位是保留一個統一進入點、穩定的域名封裝與可測試的 workflow：
 
 - `grafana_utils/__main__.py`：source-tree module entrypoint，讓 `python3 -m grafana_utils` 可直接呼叫未安裝環境中的套件入口。
-- `grafana_utils/unified_cli.py`：統一路由層，不實作 domain 邏輯，只做 legacy / namespaced 命令正規化。
+- `grafana_utils/unified_cli.py`：統一路由層，不實作 domain 邏輯，只做 canonical namespaced 命令正規化。
 - `grafana_utils/dashboard_cli.py` / `alert_cli.py` / `access_cli.py` / `datasource_cli.py`：各 domain 的 facade，負責 parser + auth + client 生成 + dispatch。
 - `grafana_utils/clients/*` + `grafana_utils/http_transport.py`：共享 HTTP transport 與 request/response 例外轉譯。
 
@@ -16,10 +16,9 @@ Python CLI 的定位是保留一個統一進入點、穩定的域名封裝與可
 ### 2.1 統一進入點
 
 - `grafana_utils/unified_cli.py`
-  - 支援 legacy 類型：`export-dashboard`、`import-dashboard`、`list-dashboard`、`list-alert-*`、`export-alert` 等。
-  - 支援 namespaced 類型：`grafana-util dashboard <cmd>`、`grafana-util alert <cmd>`、`grafana-util access <cmd>`、`grafana-util datasource <cmd>`。
+  - 支援 namespaced 類型：`grafana-util dashboard <cmd>`、`grafana-util alert <cmd>`、`grafana-util access <cmd>`、`grafana-util datasource <cmd>`、`grafana-util sync <cmd>`。
   - 只做兩件事：正規化進入點、呼叫對應 facade 的 parser 並轉給 `main`。
-  - 保留舊版 `-h` 行為，故對應 command help 會有較高維持成本；新增命令要同步兩條路徑時務必加到映射表。
+  - unified 入口已收斂到 canonical command shape；新增命令時只需維護 namespaced 路徑。
 
 ### 2.2 Domain Facade（薄封裝）
 
@@ -27,7 +26,7 @@ Python CLI 的定位是保留一個統一進入點、穩定的域名封裝與可
   - 較胖但仍以「參數進/流程出」為主軸。
   - 常見職責：公共參數組裝、輸出格式正規化、例外邏輯關卡、workflow 依賴組裝與分流。
 - `grafana_utils/alert_cli.py`
-  - 同時處理 legacy 與 namespaced alert 命令名稱。
+  - 處理 alert domain 子命令名稱與對應 workflow 分流。
   - 分流後呼叫 `GrafanaAlertClient` + `alerts/provisioning.py` 的資源函式。
 - `grafana_utils/access_cli.py`
   - 解析 `access parser` 產生參數，呼叫 `resolve_cli_auth_from_namespace` 後建立 `GrafanaAccessClient`，再交給 `access.workflows`。

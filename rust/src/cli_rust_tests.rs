@@ -1,9 +1,10 @@
 // Unified CLI test suite.
-// Focuses on command routing for aliases/groups and ensures handlers receive the expected domain payload shapes.
+// Focuses on canonical command routing and ensures handlers receive the expected domain payload shapes.
 use super::{dispatch_with_handlers, parse_cli_from, CliArgs, UnifiedCommand};
 use crate::dashboard::DashboardCommand;
 use crate::datasource::DatasourceGroupCommand;
-use clap::CommandFactory;
+use crate::sync::{SyncGroupCommand, SyncOutputFormat, DEFAULT_REVIEW_TOKEN};
+use clap::{CommandFactory, Parser};
 use std::cell::RefCell;
 use std::path::Path;
 
@@ -80,6 +81,21 @@ fn parse_cli_supports_datasource_diff_group_command() {
 }
 
 #[test]
+fn parse_cli_supports_datasource_group_alias() {
+    let args: CliArgs = parse_cli_from(["grafana-util", "ds", "list", "--json"]);
+
+    match args.command {
+        UnifiedCommand::Datasource { command } => match command {
+            DatasourceGroupCommand::List(inner) => {
+                assert!(inner.json);
+            }
+            _ => panic!("expected datasource list"),
+        },
+        _ => panic!("expected datasource group"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_dashboard_group_inspect_export_command() {
     let args: CliArgs = parse_cli_from([
         "grafana-util",
@@ -130,14 +146,15 @@ fn parse_cli_supports_dashboard_group_inspect_live_command() {
 }
 
 #[test]
-fn parse_cli_supports_legacy_dashboard_command() {
-    let args: CliArgs = parse_cli_from(["grafana-util", "list", "--json"]);
+fn parse_cli_supports_dashboard_group_alias() {
+    let args: CliArgs = parse_cli_from(["grafana-util", "db", "list", "--json"]);
 
     match args.command {
-        UnifiedCommand::List(inner) => {
-            assert!(inner.json);
-        }
-        _ => panic!("expected legacy list"),
+        UnifiedCommand::Dashboard { command } => match command {
+            super::DashboardGroupCommand::List(inner) => assert!(inner.json),
+            _ => panic!("expected dashboard list"),
+        },
+        _ => panic!("expected dashboard group"),
     }
 }
 
@@ -161,18 +178,6 @@ fn parse_cli_supports_alert_group() {
             _ => panic!("expected alert export"),
         },
         _ => panic!("expected alert group"),
-    }
-}
-
-#[test]
-fn parse_cli_supports_legacy_alert_alias() {
-    let args: CliArgs = parse_cli_from(["grafana-util", "list-alert-rules", "--json"]);
-
-    match args.command {
-        UnifiedCommand::ListAlertRules(inner) => {
-            assert!(inner.json);
-        }
-        _ => panic!("expected list-alert-rules"),
     }
 }
 
@@ -209,8 +214,141 @@ fn unified_help_mentions_alert_access_and_shims() {
     assert!(help.contains("grafana-util access user list"));
     assert!(help.contains("grafana-access-utils"));
     assert!(help.contains("Run datasource list, export, import, and diff workflows."));
-    assert!(help.contains("Compatibility direct form; prefer `grafana-util dashboard export`."));
-    assert!(help.contains("Compatibility direct form; prefer `grafana-util alert export`."));
+    assert!(help.contains("grafana-util sync preflight"));
+    assert!(help.contains("Run local/document-only sync summary and preflight workflows."));
+    assert!(help.contains("dashboard"));
+    assert!(help.contains("[aliases: db]"));
+    assert!(help.contains("[aliases: ds]"));
+    assert!(help.contains("[aliases: sy]"));
+    assert!(!help.contains("Compatibility direct form"));
+}
+
+#[test]
+fn parse_cli_rejects_legacy_dashboard_direct_command() {
+    let error = CliArgs::try_parse_from(["grafana-util", "list-dashboard", "--json"]).unwrap_err();
+
+    assert!(error.to_string().contains("unrecognized subcommand"));
+    assert!(error.to_string().contains("list-dashboard"));
+}
+
+#[test]
+fn parse_cli_rejects_legacy_alert_direct_command() {
+    let error = CliArgs::try_parse_from(["grafana-util", "export-alert", "--output-dir", "./alerts"])
+        .unwrap_err();
+
+    assert!(error.to_string().contains("unrecognized subcommand"));
+    assert!(error.to_string().contains("export-alert"));
+}
+
+#[test]
+fn parse_cli_supports_sync_group_alias() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "sy",
+        "summary",
+        "--desired-file",
+        "./desired.json",
+        "--output",
+        "json",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Sync { command } => match command {
+            SyncGroupCommand::Summary(inner) => {
+                assert_eq!(inner.desired_file, Path::new("./desired.json"));
+                assert_eq!(inner.output, SyncOutputFormat::Json);
+            }
+            _ => panic!("expected sync summary"),
+        },
+        _ => panic!("expected sync group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_sync_plan_group_command() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "sync",
+        "plan",
+        "--desired-file",
+        "./desired.json",
+        "--live-file",
+        "./live.json",
+        "--trace-id",
+        "trace-explicit",
+        "--output",
+        "json",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Sync { command } => match command {
+            SyncGroupCommand::Plan(inner) => {
+                assert_eq!(inner.desired_file, Path::new("./desired.json"));
+                assert_eq!(inner.live_file, Path::new("./live.json"));
+                assert_eq!(inner.trace_id, Some("trace-explicit".to_string()));
+                assert_eq!(inner.output, SyncOutputFormat::Json);
+            }
+            _ => panic!("expected sync plan"),
+        },
+        _ => panic!("expected sync group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_sync_apply_group_command_with_reason_and_note() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "sync",
+        "apply",
+        "--plan-file",
+        "./plan.json",
+        "--approve",
+        "--approval-reason",
+        "change-approved",
+        "--apply-note",
+        "local apply intent only",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Sync { command } => match command {
+            SyncGroupCommand::Apply(inner) => {
+                assert_eq!(inner.approval_reason, Some("change-approved".to_string()));
+                assert_eq!(inner.apply_note, Some("local apply intent only".to_string()));
+            }
+            _ => panic!("expected sync apply"),
+        },
+        _ => panic!("expected sync group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_sync_review_group_command() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "sync",
+        "review",
+        "--plan-file",
+        "./plan.json",
+        "--review-token",
+        "reviewed-sync-plan",
+        "--output",
+        "json",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Sync { command } => match command {
+            SyncGroupCommand::Review(inner) => {
+                assert_eq!(inner.plan_file, Path::new("./plan.json"));
+                assert_eq!(inner.review_token, DEFAULT_REVIEW_TOKEN);
+                assert_eq!(inner.output, SyncOutputFormat::Json);
+                assert_eq!(inner.reviewed_by, None);
+                assert_eq!(inner.reviewed_at, None);
+                assert_eq!(inner.review_note, None);
+            }
+            _ => panic!("expected sync review"),
+        },
+        _ => panic!("expected sync group"),
+    }
 }
 
 #[test]
@@ -235,6 +373,10 @@ fn dispatch_routes_dashboard_group_to_dashboard_handler() {
         },
         |_datasource_args| {
             routed.borrow_mut().push("datasource".to_string());
+            Ok(())
+        },
+        |_sync_args| {
+            routed.borrow_mut().push("sync".to_string());
             Ok(())
         },
         |_alert_args| {
@@ -274,6 +416,10 @@ fn dispatch_routes_access_group_to_access_handler() {
             routed.borrow_mut().push("datasource".to_string());
             Ok(())
         },
+        |_sync_args| {
+            routed.borrow_mut().push("sync".to_string());
+            Ok(())
+        },
         |_alert_args| {
             routed.borrow_mut().push("alert".to_string());
             Ok(())
@@ -286,6 +432,45 @@ fn dispatch_routes_access_group_to_access_handler() {
 
     assert!(result.is_ok());
     assert_eq!(*routed.borrow(), vec!["access".to_string()]);
+}
+
+#[test]
+fn dispatch_routes_sync_group_to_sync_handler() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "sync",
+        "preflight",
+        "--desired-file",
+        "./desired.json",
+    ]);
+    let routed = RefCell::new(Vec::new());
+
+    let result = dispatch_with_handlers(
+        args,
+        |_dashboard_args| {
+            routed.borrow_mut().push("dashboard".to_string());
+            Ok(())
+        },
+        |_datasource_args| {
+            routed.borrow_mut().push("datasource".to_string());
+            Ok(())
+        },
+        |_sync_args| {
+            routed.borrow_mut().push("sync".to_string());
+            Ok(())
+        },
+        |_alert_args| {
+            routed.borrow_mut().push("alert".to_string());
+            Ok(())
+        },
+        |_access_args| {
+            routed.borrow_mut().push("access".to_string());
+            Ok(())
+        },
+    );
+
+    assert!(result.is_ok());
+    assert_eq!(*routed.borrow(), vec!["sync".to_string()]);
 }
 
 #[test]
@@ -308,6 +493,10 @@ fn dispatch_routes_datasource_group_to_datasource_handler() {
         },
         |_datasource_args| {
             routed.borrow_mut().push("datasource".to_string());
+            Ok(())
+        },
+        |_sync_args| {
+            routed.borrow_mut().push("sync".to_string());
             Ok(())
         },
         |_alert_args| {

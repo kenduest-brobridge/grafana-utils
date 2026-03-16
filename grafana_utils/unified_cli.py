@@ -1,31 +1,32 @@
 #!/usr/bin/env python3
-"""Unified Python entrypoint for dashboard, alert, access, and datasource CLIs.
+"""Unified Python entrypoint for dashboard, alert, access, datasource, and sync CLIs.
 
 Purpose:
 - Central CLI bootstrap for all Python commands so operators can use one binary
-  (`grafana-util`) while tests and scripts still support old top-level forms.
+  (`grafana-util`) with one canonical namespaced command shape.
 
 Architecture:
 - Keep one entry process (`grafana-util`) that only does command routing.
-- Preserve old top-level commands (legacy forms) while also supporting modern
-  `grafana-util <module> <command>` style.
+- Accept only namespaced `grafana-util <module> <command>` forms at the unified
+  entrypoint.
 - Delegate real argument parsing and execution to each domain CLI module so each
   domain can evolve independently.
 
 Usage notes:
-- Top-level commands are accepted in both legacy and namespaced forms.
+- Use namespaced forms such as `grafana-util dashboard export`.
 - No Grafana API logic is implemented here; this file only maps entrypoints.
 
 Caveats:
 - Do not add domain workflows in this module; keep behavior in `dashboard_cli`,
-  `alert_cli`, `access_cli`, and `datasource_cli` to avoid hidden coupling.
+  `alert_cli`, `access_cli`, `datasource_cli`, and `sync_cli` to avoid hidden
+  coupling.
 """
 
 import argparse
 import sys
 from typing import Optional
 
-from . import access_cli, alert_cli, dashboard_cli, datasource_cli
+from . import access_cli, alert_cli, dashboard_cli, datasource_cli, sync_cli
 
 
 DASHBOARD_COMMAND_HELP = {
@@ -37,15 +38,6 @@ DASHBOARD_COMMAND_HELP = {
     "inspect-export": "Analyze a raw dashboard export directory offline.",
     "inspect-live": "Analyze live Grafana dashboards without writing a persistent export.",
 }
-LEGACY_DASHBOARD_COMMAND_MAP = {
-    "export-dashboard": "export-dashboard",
-    "list-dashboard": "list-dashboard",
-    "import-dashboard": "import-dashboard",
-    "diff": "diff",
-    "list-data-sources": "list-data-sources",
-    "inspect-export": "inspect-export",
-    "inspect-live": "inspect-live",
-}
 UNIFIED_DASHBOARD_COMMAND_MAP = {
     "export": "export-dashboard",
     "list": "list-dashboard",
@@ -55,33 +47,6 @@ UNIFIED_DASHBOARD_COMMAND_MAP = {
     "inspect-export": "inspect-export",
     "inspect-live": "inspect-live",
 }
-ALERT_COMMAND_HELP = {
-    "export-alert": "Export alerting resources into raw/ JSON files.",
-    "import-alert": "Import alerting resource JSON files through the Grafana API.",
-    "diff-alert": "Compare local alerting export files against live Grafana resources.",
-    "list-alert-rules": "List live Grafana alert rules.",
-    "list-alert-contact-points": "List live Grafana alert contact points.",
-    "list-alert-mute-timings": "List live Grafana mute timings.",
-    "list-alert-templates": "List live Grafana notification templates.",
-}
-DEPRECATED_DIRECT_DASHBOARD_COMMAND_HELP = {
-    "export": "Compatibility direct form. Prefer `grafana-util dashboard export`.",
-    "list": "Compatibility direct form. Prefer `grafana-util dashboard list`.",
-    "list-data-sources": "Compatibility form. Prefer `grafana-util datasource list`.",
-    "import": "Compatibility direct form. Prefer `grafana-util dashboard import`.",
-    "diff": "Compatibility direct form. Prefer `grafana-util dashboard diff`.",
-    "inspect-export": "Compatibility direct form. Prefer `grafana-util dashboard inspect-export`.",
-    "inspect-live": "Compatibility direct form. Prefer `grafana-util dashboard inspect-live`.",
-}
-DEPRECATED_ALERT_COMMAND_HELP = {
-    "export-alert": "Compatibility direct form. Prefer `grafana-util alert export`.",
-    "import-alert": "Compatibility direct form. Prefer `grafana-util alert import`.",
-    "diff-alert": "Compatibility direct form. Prefer `grafana-util alert diff`.",
-    "list-alert-rules": "Compatibility direct form. Prefer `grafana-util alert list-rules`.",
-    "list-alert-contact-points": "Compatibility direct form. Prefer `grafana-util alert list-contact-points`.",
-    "list-alert-mute-timings": "Compatibility direct form. Prefer `grafana-util alert list-mute-timings`.",
-    "list-alert-templates": "Compatibility direct form. Prefer `grafana-util alert list-templates`.",
-}
 DATASOURCE_COMMAND_HELP = {
     "list": "List live Grafana datasource inventory.",
     "add": "Create one live Grafana datasource through the Grafana API.",
@@ -90,16 +55,14 @@ DATASOURCE_COMMAND_HELP = {
     "import": "Import datasource inventory JSON through the Grafana API.",
     "diff": "Compare exported datasource inventory with the current Grafana state.",
 }
-LEGACY_ALERT_COMMAND_MAP = {
-    "export-alert": "export",
-    "import-alert": "import",
-    "diff-alert": "diff",
-    "list-alert-rules": "list-rules",
-    "list-alert-contact-points": "list-contact-points",
-    "list-alert-mute-timings": "list-mute-timings",
-    "list-alert-templates": "list-templates",
+SYNC_COMMAND_HELP = {
+    "plan": "Build one reviewable sync plan from desired/live JSON files.",
+    "review": "Mark one sync plan document as reviewed.",
+    "preflight": "Build one staged sync preflight document from local JSON inputs.",
+    "assess-alerts": "Assess alert sync specs for candidate, plan-only, and blocked states.",
+    "bundle-preflight": "Build one staged bundle-level preflight document from local JSON inputs.",
+    "apply": "Build a gated non-live apply intent from a reviewed plan.",
 }
-
 def _print_dashboard_group_help() -> None:
     """Print dedicated dashboard command help for the legacy/top-level entry path."""
     print(
@@ -107,7 +70,7 @@ def _print_dashboard_group_help() -> None:
         "Commands:\n"
         "  export             Export dashboards into raw/ and prompt/ variants.\n"
         "  list               List live dashboard summaries from Grafana.\n"
-        "  list-data-sources  Compatibility command; prefer `grafana-util datasource list`.\n"
+        "  list-data-sources  List datasource inventory under the dashboard command surface.\n"
         "  import             Import dashboards from exported raw JSON files.\n"
         "  diff               Compare exported raw dashboards with the current Grafana state.\n"
         "  inspect-export     Analyze a raw dashboard export directory offline.\n"
@@ -121,14 +84,15 @@ def build_parser() -> argparse.ArgumentParser:
         prog="grafana-util",
         description=(
             "Unified Grafana CLI for dashboards, alerting resources, access "
-            "management, and datasource inventory."
+            "management, datasource inventory, and declarative sync planning."
         ),
         epilog=(
             "Examples:\n\n"
             "  grafana-util dashboard export --url http://localhost:3000 --export-dir ./dashboards\n"
             "  grafana-util alert export --url http://localhost:3000 --output-dir ./alerts\n"
             "  grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n"
-            "  grafana-util datasource export --url http://localhost:3000 --export-dir ./datasources"
+            "  grafana-util datasource export --url http://localhost:3000 --export-dir ./datasources\n"
+            "  grafana-util sync plan --desired-file ./desired.json --live-file ./live.json"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -143,20 +107,13 @@ def build_parser() -> argparse.ArgumentParser:
     dashboard_subparsers = dashboard_parser.add_subparsers(dest="dashboard_command")
     dashboard_subparsers.required = False
     for command, help_text in DASHBOARD_COMMAND_HELP.items():
-        if command == "list-data-sources":
-            help_text = "Compatibility command. Prefer `grafana-util datasource list`."
         dashboard_subparsers.add_parser(command, help=help_text, add_help=False)
-
-    for command, help_text in DEPRECATED_DIRECT_DASHBOARD_COMMAND_HELP.items():
-        subparsers.add_parser(command, help=help_text, add_help=False)
 
     subparsers.add_parser(
         "alert",
         help="Run the alerting resource CLI under grafana-util alert ...",
         add_help=False,
     )
-    for command, help_text in DEPRECATED_ALERT_COMMAND_HELP.items():
-        subparsers.add_parser(command, help=help_text, add_help=False)
     subparsers.add_parser(
         "access",
         help="Run the access-management CLI under grafana-util access ...",
@@ -165,12 +122,22 @@ def build_parser() -> argparse.ArgumentParser:
     datasource_parser = subparsers.add_parser(
         "datasource",
         help="Run the datasource inventory CLI under grafana-util datasource ...",
+        aliases=["ds"],
         add_help=False,
     )
     datasource_subparsers = datasource_parser.add_subparsers(dest="datasource_command")
     datasource_subparsers.required = False
     for command, help_text in DATASOURCE_COMMAND_HELP.items():
         datasource_subparsers.add_parser(command, help=help_text, add_help=False)
+    sync_parser = subparsers.add_parser(
+        "sync",
+        help="Run the declarative sync planner under grafana-util sync ...",
+        add_help=False,
+    )
+    sync_subparsers = sync_parser.add_subparsers(dest="sync_command")
+    sync_subparsers.required = False
+    for command, help_text in SYNC_COMMAND_HELP.items():
+        sync_subparsers.add_parser(command, help=help_text, add_help=False)
     return parser
 
 def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
@@ -178,9 +145,8 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
 
     Flow:
     - Normalize argv from real CLI invocation.
-    - Route legacy top-level commands through explicit compatibility maps.
-    - Route namespaced commands (`dashboard`, `alert`, `access`, `datasource`) to
-      their domain CLI modules.
+    - Route namespaced commands (`dashboard`, `alert`, `access`, `datasource`,
+      `sync`) to their domain CLI modules.
     - Return the selected entrypoint plus domain-local argv slice for dispatch.
     """
     parser = build_parser()
@@ -230,7 +196,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         # logic independent from access-specific auth and validation details.
         return argparse.Namespace(entrypoint="access", forwarded_argv=argv[1:])
 
-    if command == "datasource":
+    if command in ("datasource", "ds"):
         if len(argv) == 1 or argv[1] in ("-h", "--help"):
             datasource_cli.build_parser(prog="grafana-util datasource").print_help()
             raise SystemExit(0)
@@ -241,18 +207,13 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
             forwarded_argv=argv[1:],
         )
 
-    mapped = LEGACY_DASHBOARD_COMMAND_MAP.get(command)
-    if mapped:
+    if command == "sync":
+        if len(argv) == 1 or argv[1] in ("-h", "--help"):
+            sync_cli.build_parser(prog="grafana-util sync").print_help()
+            raise SystemExit(0)
         return argparse.Namespace(
-            entrypoint="dashboard",
-            forwarded_argv=[mapped] + argv[1:],
-        )
-
-    mapped = LEGACY_ALERT_COMMAND_MAP.get(command)
-    if mapped:
-        return argparse.Namespace(
-            entrypoint="alert",
-            forwarded_argv=[mapped] + argv[1:],
+            entrypoint="sync",
+            forwarded_argv=argv[1:],
         )
 
     parser.parse_args(argv)
@@ -276,6 +237,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         return access_cli.main(args.forwarded_argv)
     if args.entrypoint == "datasource":
         return datasource_cli.main(args.forwarded_argv)
+    if args.entrypoint == "sync":
+        return sync_cli.main(args.forwarded_argv)
     raise RuntimeError("Unsupported unified CLI entrypoint.")
 
 

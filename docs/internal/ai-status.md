@@ -5,6 +5,20 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-16 - Task: Recover Sync And Workbench Modules After Reverse
+- State: Done
+- Scope: `grafana_utils/unified_cli.py`, `grafana_utils/sync_cli.py`, `grafana_utils/gitops_sync.py`, `grafana_utils/*workbench.py`, `tests/test_python_unified_cli.py`, `tests/test_python_sync_cli.py`, `tests/test_python_*workbench.py`, `rust/src/lib.rs`, `rust/src/cli.rs`, `rust/src/sync.rs`, `rust/src/sync_*.rs`, `rust/src/alert_sync.rs`, `rust/src/bundle_preflight.rs`, `rust/src/datasource_provider.rs`, `rust/src/cli_rust_tests.rs`, `docs/internal/*.md`, `VERSION`, `scripts/set-version.sh`
+- Baseline: The current tree had lost the Rust sync command surface plus its supporting sync/preflight/provider modules, and the same reverse also removed the Python sync/workbench modules, their tests, and several internal design notes. Rust unified CLI help and dispatch no longer exposed `sync`, while Python unified CLI also no longer routed `grafana-util sync ...`.
+- Current Update: Restored the deleted Python and Rust sync/workbench module files from the earlier dev commit, reconnected Python unified CLI routing for `grafana-util sync ...`, and reconnected Rust unified CLI routing for `grafana-util sync ...` while keeping the requested canonical-only Rust rule that rejects legacy direct forms. Preserved the short Rust namespace aliases `db` and `sy`.
+- Result: The repo again contains the staged sync/preflight/workbench implementation set in both runtimes, Python and Rust unified CLIs both route `sync`, and the focused recovered test suites pass.
+
+## 2026-03-16 - Task: Remove Rust Unified CLI Legacy Direct Commands
+- State: Done
+- Scope: `rust/src/cli.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/cli_rust_tests.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The Rust unified CLI still accepted top-level legacy direct commands such as `list-dashboard` and `export-alert`, and `--help` still advertised compatibility direct forms. That regressed the intended canonical command shape where operators should use `grafana-util <module> <command>`.
+- Current Update: Removed Rust top-level legacy direct routing and dashboard command aliases for `list-dashboard`, `export-dashboard`, and `import-dashboard`. Kept a short namespace alias so `grafana-util db ...` still routes to `dashboard ...`, and updated focused Rust parser/help tests to reject the removed direct forms while accepting `db`.
+- Result: The Rust unified CLI now enforces namespaced commands such as `grafana-util dashboard list` or `grafana-util db list`, and its help output no longer reintroduces removed compatibility direct forms.
+
 ## 2026-03-15 - Task: Align Shared CLI Help And User Guides
 - State: Done
 - Scope: `grafana_utils/unified_cli.py`, `grafana_utils/datasource/parser.py`, `tests/test_python_unified_cli.py`, `tests/test_python_datasource_cli.py`, `rust/src/cli.rs`, `rust/src/cli_rust_tests.rs`, `docs/user-guide.md`, `docs/user-guide-TW.md`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
