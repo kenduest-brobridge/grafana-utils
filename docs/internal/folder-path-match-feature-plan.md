@@ -2,6 +2,13 @@
 
 Date: 2026-03-14
 
+Historical note:
+
+- `--require-matching-folder-path` is now implemented and documented.
+- Current user-facing behavior is described in `docs/user-guide.md`,
+  `docs/user-guide-TW.md`, and `docs/DEVELOPER.md`.
+- This file remains as design history for the original guard semantics.
+
 This file is a non-invasive implementation plan for a proposed dashboard import guard:
 
 - `--require-matching-folder-path`
@@ -10,7 +17,8 @@ The plan is intentionally recorded in a new file first so active in-flight edits
 
 ## Goal
 
-Add an optional dashboard import safeguard that only allows updating an existing dashboard when:
+Add an optional dashboard import safeguard that only allows updating an
+existing dashboard when:
 
 - the source raw dashboard folder path
 - and the destination Grafana dashboard folder path

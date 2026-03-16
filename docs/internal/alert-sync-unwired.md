@@ -1,9 +1,17 @@
-# Alert Sync (Unwired)
+# Alert Sync Design History
+
+Historical note:
+
+- Alert sync assessment is now wired through `grafana-util sync assess-alerts`
+  in both Python and Rust.
+- Live alert create/update/delete support is also wired through the current
+  sync apply flow when the sync operation carries a complete alert rule payload.
+- This file remains as the original isolated scaffold summary.
 
 ## Purpose
 
-This note tracks the isolated alert-sync ownership and policy scaffold before
-any alert sync CLI or live mutation path lands.
+This note tracks the original isolated alert-sync ownership and policy scaffold
+from before the sync CLI and live alert apply paths landed.
 
 ## Scope
 
@@ -22,8 +30,11 @@ any alert sync CLI or live mutation path lands.
 - `render_alert_sync_assessment_text(...)`
   - Renders a deterministic text summary for later wiring.
 
-## Not Yet Wired
+## Current Wiring Status
 
-- No CLI integration yet.
-- No live alert mutation support yet.
+- Assessment wiring now exists through `grafana_utils/sync_cli.py` and
+  `rust/src/sync.rs`.
+- The workbench still intentionally classifies some alert specs as staged
+  `plan-only` when they do not contain the full Grafana provisioning payload
+  required for safe live apply.
 - No Grafana alert API probing yet.

@@ -1,9 +1,19 @@
-# GitOps Sync (Unwired)
+# GitOps Sync Design History
+
+Historical note:
+
+- The sync surface is now wired in both Python and Rust as
+  `grafana-util sync ...`.
+- Current implemented commands include `summary`, `plan`, `review`, `apply`,
+  `preflight`, `assess-alerts`, `bundle-preflight`, and `bundle`.
+- Live Grafana fetch/apply support now exists for the supported resource kinds.
+- This file is kept as the original planning scaffold because historical change
+  entries already point at it.
 
 ## Purpose
 
-This note tracks the isolated declarative sync planning scaffold before any
-CLI wiring or live Grafana mutation path lands.
+This note tracks the original isolated declarative sync planning scaffold from
+before CLI wiring and live Grafana mutation paths landed.
 
 ## Scope
 
@@ -28,16 +38,10 @@ CLI wiring or live Grafana mutation path lands.
   - Refuses live apply intent until the plan is both reviewed and explicitly
     approved.
 
-## Not Yet Wired
+## Current Wiring Status
 
-- No argparse or unified CLI integration yet.
-- No live Grafana client or filesystem/Git integration yet.
-- No external secret-provider integration yet.
-- No Rust parity yet.
-
-## Future Wire Points
-
-- `grafana_utils/unified_cli.py`
-- `grafana_utils/dashboard_cli.py`
-- `grafana_utils/datasource_cli.py`
-- `grafana_utils/alert_cli.py`
+- Python wiring now lives in `grafana_utils/sync_cli.py` and the unified CLI.
+- Rust parity now lives in `rust/src/sync.rs`.
+- Review-gated live apply and live fetch are implemented for the current
+  supported sync resource kinds.
+- Secret-provider integration still remains separate follow-up work.

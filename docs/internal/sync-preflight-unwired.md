@@ -1,9 +1,16 @@
-# Sync Preflight
+# Sync Preflight Design History
+
+Historical note:
+
+- `grafana-util sync preflight` is now a wired command in both Python and Rust.
+- The command can use local availability input or `--fetch-live` to gather
+  availability hints from Grafana.
+- This file is kept as the original scaffold summary for traceability.
 
 ## Purpose
 
-This note tracks the declarative sync preflight scaffold and its current wiring
-status.
+This note tracks the original declarative sync preflight scaffold and its
+implementation shape.
 
 ## Scope
 
@@ -26,6 +33,8 @@ status.
 
 - `grafana-util sync preflight`
   - Accepts local desired-state JSON plus optional `--availability-file`.
+  - Also supports `--fetch-live` plus Grafana connection arguments in the
+    current CLI implementation.
   - Supports `--fetch-live` to probe datasource UIDs, plugin IDs, and alert
     contact points from Grafana before rendering preflight output.
 
