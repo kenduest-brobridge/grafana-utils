@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches:
@@ -73,3 +76,33 @@ jobs:
             rust/target/release/grafana-util
             rust/target/release/grafana-access-utils
           if-no-files-found: error
+
+  github-release:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - python-package
+      - rust-package
+    permissions:
+      contents: write
+    steps:
+      - name: Download Python package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-${{ github.ref_name }}-${{ github.sha }}
+          path: release-assets/python
+      - name: Download Rust package artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-package-${{ github.ref_name }}-${{ github.sha }}
+          path: release-assets/rust
+      - name: Publish GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            release-assets/python/* \
+            release-assets/rust/* \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes
