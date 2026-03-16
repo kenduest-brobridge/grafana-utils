@@ -46,11 +46,16 @@ While the official Grafana UI and CLI are excellent for day-to-day interactions,
 - Analyze dashboard structures and query inventory to identify redundant or inefficient resources.
 - Optimized for large-scale instances using high-performance pagination and processing (powered by Rust).
 
+### 5. Dashboard Snapshots & Screenshots
+- **High-Fidelity Captures**: Capture full dashboards or individual panels as PNG, JPEG, or PDF using headless Chromium.
+- **State Replay**: Support replaying template variables and query states via URL or CLI parameters to ensure screenshots reflect the desired data state.
+- **Reporting Ready**: Add customizable dark headers with titles, URLs, and timestamps directly to captured images.
+
 ### Support Matrix
 
-| Domain | List / Inspect | Add / Modify / Delete | Export / Import / Diff | Notes |
+| Domain | List / Inspect / Capture | Add / Modify / Delete | Export / Import / Diff | Notes |
 | --- | --- | --- | --- | --- |
-| Dashboard | Yes | No | Yes | Import-driven changes, folder-aware migration, dry-run support, and routed multi-org export/import with missing-org creation |
+| Dashboard | Yes | No | Yes | Import-driven changes, folder-aware migration, dry-run support, and screenshot/PDF capture |
 | Alerting | Yes | No | Yes | Import-driven rule and contact-point workflows |
 | Datasource | Yes | Yes | Yes | Dry-run and diff supported, plus all-org export and routed multi-org import with missing-org creation |
 | Access User | Yes | Yes | Yes | Supports `--password-file` / `--prompt-user-password` and `--set-password-file` / `--prompt-set-password` |
