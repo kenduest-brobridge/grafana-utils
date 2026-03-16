@@ -1,13 +1,9 @@
 """Workflow and helper logic for the Python access-management CLI."""
 
 import json
-import sys
 from pathlib import Path
+from typing import Any, Optional
 
-from ..batch_error_policy import (
-    append_item_failure,
-    should_continue_on_item_error,
-)
 from .common import (
     DEFAULT_PAGE_SIZE,
     GrafanaError,
@@ -49,6 +45,7 @@ from .models import (
     render_user_table,
     service_account_matches_query,
     serialize_service_account_row,
+    serialize_service_account_token_row,
     serialize_user_row,
 )
 from .pending_cli_staging import (
@@ -139,7 +136,10 @@ def validate_user_delete_auth(args, auth_mode):
 
 def validate_team_modify_args(args):
     if not (
-        args.add_member or args.remove_member or args.add_admin or args.remove_admin
+        args.add_member
+        or args.remove_member
+        or args.add_admin
+        or args.remove_admin
     ):
         raise GrafanaError(
             "Team modify requires at least one of --add-member, --remove-member, "
@@ -169,7 +169,10 @@ def service_account_role_to_api(value):
 def _normalize_org_user_record(record):
     return {
         "userId": str(
-            record.get("userId") or record.get("id") or record.get("user") or ""
+            record.get("userId")
+            or record.get("id")
+            or record.get("user")
+            or ""
         ),
         "login": str(record.get("login") or ""),
         "email": str(record.get("email") or ""),
@@ -334,11 +337,9 @@ def _normalize_user_for_diff(record):
         "grafanaAdmin": normalize_bool(
             record.get("grafanaAdmin")
             if record.get("grafanaAdmin") is not None
-            else (
-                record.get("isGrafanaAdmin")
-                if record.get("isGrafanaAdmin") is not None
-                else record.get("isAdmin")
-            )
+            else record.get("isGrafanaAdmin")
+            if record.get("isGrafanaAdmin") is not None
+            else record.get("isAdmin")
         ),
         "teams": sorted(_normalize_access_identity_list(record.get("teams") or [])),
     }
@@ -384,7 +385,9 @@ def _build_team_diff_map(records, source, include_members=False):
     for record in records:
         team_name = str(record.get("name") or "").strip()
         if not team_name:
-            raise GrafanaError("Team diff record in %s does not include name." % source)
+            raise GrafanaError(
+                "Team diff record in %s does not include name." % source
+            )
         key = _normalize_access_import_identity(team_name)
         if key in indexed:
             raise GrafanaError("Duplicate team name in %s: %s" % (source, team_name))
@@ -450,38 +453,24 @@ def _build_team_export_for_diff_records(client, include_members):
                     continue
                 if identity not in team_record["members"]:
                     team_record["members"].append(identity)
-                if (
-                    team_member_admin_state(member) is True
-                    and identity not in team_record["admins"]
-                ):
+                if team_member_admin_state(member) is True and identity not in team_record["admins"]:
                     team_record["admins"].append(identity)
         normalized.append(team_record)
-    return [_normalize_team_for_diff(item, True) for item in normalized]
+    return [ _normalize_team_for_diff(item, True) for item in normalized ]
 
 
 def diff_users_with_client(args, client):
-    failures = []
-    bundle = _load_access_import_bundle(
-        args.diff_dir,
-        ACCESS_USER_EXPORT_FILENAME,
-        ACCESS_EXPORT_KIND_USERS,
+    local_records = [
+        _normalize_user_record(item)
+        for item in _load_access_import_bundle(
+            args.diff_dir,
+            ACCESS_USER_EXPORT_FILENAME,
+            ACCESS_EXPORT_KIND_USERS,
+        )["records"]
+    ]
+    include_teams = any(
+        bool(record.get("teams")) for record in local_records
     )
-    local_records = []
-    for index, item in enumerate(bundle["records"], 1):
-        try:
-            local_records.append(_normalize_user_record(item))
-        except Exception as exc:
-            if _append_access_batch_failure(
-                args,
-                failures,
-                "user diff",
-                str(index),
-                bundle["bundle_path"],
-                exc,
-            ):
-                continue
-            raise
-    include_teams = any(bool(record.get("teams")) for record in local_records)
     local_map = _build_user_diff_map(local_records, args.diff_dir)
 
     live_map = _build_user_diff_map(
@@ -508,7 +497,8 @@ def diff_users_with_client(args, client):
         if changed:
             differences += 1
             print(
-                "Diff different user %s fields=%s" % (local_identity, ",".join(changed))
+                "Diff different user %s fields=%s"
+                % (local_identity, ",".join(changed))
             )
         else:
             print("Diff same user %s" % local_identity)
@@ -522,39 +512,23 @@ def diff_users_with_client(args, client):
 
     if differences:
         print(
-            "Diff checked %s user(s); %s difference(s) found; failed=%s."
-            % (checked, differences, len(failures))
+            "Diff checked %s user(s); %s difference(s) found."
+            % (checked, differences)
         )
     else:
-        print(
-            "No user differences across %s user(s); failed=%s."
-            % (checked, len(failures))
-        )
-    return differences or len(failures)
+        print("No user differences across %s user(s)." % checked)
+    return differences
 
 
 def diff_teams_with_client(args, client):
-    failures = []
-    bundle = _load_access_import_bundle(
-        args.diff_dir,
-        ACCESS_TEAM_EXPORT_FILENAME,
-        ACCESS_EXPORT_KIND_TEAMS,
-    )
-    local_records = []
-    for index, item in enumerate(bundle["records"], 1):
-        try:
-            local_records.append(_normalize_team_record(item))
-        except Exception as exc:
-            if _append_access_batch_failure(
-                args,
-                failures,
-                "team diff",
-                str(index),
-                bundle["bundle_path"],
-                exc,
-            ):
-                continue
-            raise
+    local_records = [
+        _normalize_team_record(item)
+        for item in _load_access_import_bundle(
+            args.diff_dir,
+            ACCESS_TEAM_EXPORT_FILENAME,
+            ACCESS_EXPORT_KIND_TEAMS,
+        )["records"]
+    ]
     include_members = any(
         bool(item.get("members") or item.get("admins")) for item in local_records
     )
@@ -591,7 +565,8 @@ def diff_teams_with_client(args, client):
         if changed:
             differences += 1
             print(
-                "Diff different team %s fields=%s" % (local_identity, ",".join(changed))
+                "Diff different team %s fields=%s"
+                % (local_identity, ",".join(changed))
             )
         else:
             print("Diff same team %s" % local_identity)
@@ -605,15 +580,12 @@ def diff_teams_with_client(args, client):
 
     if differences:
         print(
-            "Diff checked %s team(s); %s difference(s) found; failed=%s."
-            % (checked, differences, len(failures))
+            "Diff checked %s team(s); %s difference(s) found."
+            % (checked, differences)
         )
     else:
-        print(
-            "No team differences across %s team(s); failed=%s."
-            % (checked, len(failures))
-        )
-    return differences or len(failures)
+        print("No team differences across %s team(s)." % checked)
+    return differences
 
 
 def _iter_service_accounts(client, page_size=DEFAULT_PAGE_SIZE):
@@ -711,27 +683,13 @@ def diff_service_accounts_with_client(args, client):
         ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME,
         ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS,
     )
-    failures = []
     local_records = []
-    for index, item in enumerate(bundle.get("records") or [], 1):
-        try:
-            if not isinstance(item, dict):
-                raise GrafanaError(
-                    "Access import entry in %s must be an object."
-                    % bundle["bundle_path"]
-                )
-            local_records.append(_normalize_service_account_record(item))
-        except Exception as exc:
-            if _append_access_batch_failure(
-                args,
-                failures,
-                "service-account diff",
-                str(index),
-                bundle["bundle_path"],
-                exc,
-            ):
-                continue
-            raise
+    for item in bundle.get("records") or []:
+        if not isinstance(item, dict):
+            raise GrafanaError(
+                "Access import entry in %s must be an object." % bundle["bundle_path"]
+            )
+        local_records.append(_normalize_service_account_record(item))
     local_map = _build_service_account_diff_map(local_records, bundle["bundle_path"])
     live_records = [
         _normalize_service_account_record(item)
@@ -771,15 +729,13 @@ def diff_service_accounts_with_client(args, client):
 
     if differences:
         print(
-            "Diff checked %s service-account(s); %s difference(s) found; failed=%s."
-            % (checked, differences, len(failures))
+            "Diff checked %s service-account(s); %s difference(s) found."
+            % (checked, differences)
         )
     else:
-        print(
-            "No service-account differences across %s service-account(s); failed=%s."
-            % (checked, len(failures))
-        )
-    return differences or len(failures)
+        print("No service-account differences across %s service-account(s)." % checked)
+    return differences
+
 
 
 def _load_json_document(path):
@@ -876,16 +832,17 @@ def _render_access_import_preview_table(rows):
 
 
 def _validate_access_import_preview_output(args, resource_label):
-    if (
-        bool(getattr(args, "table", False)) or bool(getattr(args, "json", False))
-    ) and not bool(getattr(args, "dry_run", False)):
+    if (bool(getattr(args, "table", False)) or bool(getattr(args, "json", False))) and not bool(
+        getattr(args, "dry_run", False)
+    ):
         raise GrafanaError(
             "--table/--json for %s import are only supported with --dry-run."
             % resource_label
         )
     if bool(getattr(args, "table", False)) and bool(getattr(args, "json", False)):
         raise GrafanaError(
-            "--table and --json cannot be used together for %s import." % resource_label
+            "--table and --json cannot be used together for %s import."
+            % resource_label
         )
 
 
@@ -938,9 +895,7 @@ def _resolve_access_user_key(record):
         return login
     if email:
         return email
-    raise GrafanaError(
-        "User import record does not include login or email: %s" % record
-    )
+    raise GrafanaError("User import record does not include login or email: %s" % record)
 
 
 def _build_access_user_payload(record):
@@ -948,7 +903,8 @@ def _build_access_user_payload(record):
     email = str(record.get("email") or "")
     if not login or not email:
         raise GrafanaError(
-            "User import record is missing required login/email fields: %s" % record
+            "User import record is missing required login/email fields: %s"
+            % record
         )
     return {
         "name": str(record.get("name") or ""),
@@ -1015,7 +971,8 @@ def _sync_team_members_for_import(
     existing_keys = list(existing_members.keys())
     existing_key_set = set(existing_keys)
     existing_identity_map = {
-        key: payload.get("identity") or key for key, payload in existing_members.items()
+        key: payload.get("identity") or key
+        for key, payload in existing_members.items()
     }
 
     summary = {
@@ -1043,10 +1000,15 @@ def _sync_team_members_for_import(
             continue
         payload = lookup_org_user_by_identity(client, identity)
         member_user_id = str(
-            payload.get("userId") or payload.get("id") or payload.get("user") or ""
+            payload.get("userId")
+            or payload.get("id")
+            or payload.get("user")
+            or ""
         )
         if not member_user_id:
-            raise GrafanaError("Team member lookup did not return an id: %s" % identity)
+            raise GrafanaError(
+                "Team member lookup did not return an id: %s" % identity
+            )
         client.add_team_member(team_id, member_user_id)
 
     # Remove memberships that are missing from the import target only in full sync mode.
@@ -1074,7 +1036,9 @@ def _sync_team_members_for_import(
     # state change. This mirrors existing add/remove membership behavior and keeps
     # API state deterministic.
     existing_admin_keys = set(
-        key for key, info in existing_members.items() if info.get("admin") is True
+        key
+        for key, info in existing_members.items()
+        if info.get("admin") is True
     )
     for key in target_admin_keys:
         if key in existing_admin_keys:
@@ -1181,7 +1145,6 @@ def _emit_service_account_import_dry_run_output(args, rows, summary):
         print(
             json.dumps(
                 {
-                    "failures": summary.get("failures") or [],
                     "rows": rows,
                     "summary": summary,
                 },
@@ -1195,41 +1158,15 @@ def _emit_service_account_import_dry_run_output(args, rows, summary):
             print(line)
         print("")
         print(
-            "Import summary: processed=%s created=%s updated=%s skipped=%s failed=%s source=%s"
+            "Import summary: processed=%s created=%s updated=%s skipped=%s source=%s"
             % (
                 summary["processed"],
                 summary["created"],
                 summary["updated"],
                 summary["skipped"],
-                summary.get("failed", 0),
                 summary["source"],
             )
         )
-
-
-def _append_access_batch_failure(
-    args, failures, item_kind, item_identity, item_source, exc
-):
-    if not should_continue_on_item_error(args):
-        return False
-    failure = append_item_failure(
-        failures,
-        item_kind=item_kind,
-        item_identity=item_identity,
-        item_source=item_source,
-        exc=exc,
-    )
-    print(
-        "Continuing after %s error identity=%s source=%s error=%s"
-        % (
-            failure["kind"],
-            failure["identity"],
-            failure["source"],
-            failure["error"],
-        ),
-        file=sys.stderr,
-    )
-    return True
 
 
 def validate_service_account_import_dry_run_output(args):
@@ -1401,117 +1338,99 @@ def import_orgs_with_client(args, client):
     updated = 0
     skipped = 0
     processed = 0
-    failures = []
     for index, record in enumerate(records, 1):
         processed += 1
-        org_name = str(record.get("name") or "").strip() or str(index)
-        try:
-            org_id = str(record.get("id") or "").strip()
-            record_changed = False
-            if not org_name:
-                raise GrafanaError(
-                    "Access org import record %s in %s lacks name."
-                    % (index, bundle["bundle_path"])
-                )
-            existing = live_by_name.get(_normalize_access_import_identity(org_name))
-            if existing is None and org_id:
-                existing = live_by_id.get(org_id)
-            count_as_updated = existing is not None
+        org_name = str(record.get("name") or "").strip()
+        org_id = str(record.get("id") or "").strip()
+        record_changed = False
+        if not org_name:
+            raise GrafanaError(
+                "Access org import record %s in %s lacks name."
+                % (index, bundle["bundle_path"])
+            )
+        existing = live_by_name.get(_normalize_access_import_identity(org_name))
+        if existing is None and org_id:
+            existing = live_by_id.get(org_id)
+        count_as_updated = existing is not None
 
-            target_org_id = ""
-            if existing is None:
-                if not args.replace_existing:
-                    skipped += 1
-                    print(
-                        "Skipped org %s (%s): missing and --replace-existing was not set."
-                        % (org_name, index)
-                    )
-                    continue
-                if args.dry_run:
-                    created += 1
-                    target_org_id = ""
-                    record_changed = True
-                    print("Would create org %s" % org_name)
-                else:
-                    created_payload = client.create_organization({"name": org_name})
-                    target_org_id = str(
-                        created_payload.get("orgId") or created_payload.get("id") or ""
-                    )
-                    created += 1
-                    record_changed = True
-                    print("Created org %s" % org_name)
-            else:
-                target_org_id = str(existing.get("id") or "")
-                if not args.replace_existing:
-                    skipped += 1
-                    print("Skipped existing org %s (%s)" % (org_name, index))
-                    continue
-                existing_name = str(existing.get("name") or "")
-                if org_id and target_org_id == org_id and existing_name != org_name:
-                    if args.dry_run:
-                        print("Would rename org %s -> %s" % (existing_name, org_name))
-                    else:
-                        client.update_organization(target_org_id, {"name": org_name})
-                    record_changed = True
-
-            desired_users = record.get("users") or []
-            if desired_users:
-                if args.dry_run and not target_org_id:
-                    membership_changed = bool(desired_users)
-                    for user in desired_users:
-                        identity = str(
-                            user.get("login") or user.get("email") or ""
-                        ).strip()
-                        if not identity:
-                            raise GrafanaError(
-                                "Organization import record for %s has a user without login/email."
-                                % org_name
-                            )
-                        role = normalize_org_role(user.get("orgRole") or "") or "Viewer"
-                        print(
-                            "Would add user %s to org %s with role %s"
-                            % (identity, org_name, role)
-                        )
-                else:
-                    membership_changed = _apply_org_user_import(
-                        client,
-                        target_org_id,
-                        org_name,
-                        desired_users,
-                        args.dry_run,
-                    )
-                if membership_changed and existing is not None:
-                    count_as_updated = True
-                record_changed = record_changed or membership_changed
-            elif existing is not None and target_org_id and not record_changed:
+        target_org_id = ""
+        if existing is None:
+            if not args.replace_existing:
                 skipped += 1
                 print(
-                    "Skipped org %s (%s): already matched live state."
+                    "Skipped org %s (%s): missing and --replace-existing was not set."
                     % (org_name, index)
                 )
                 continue
-
-            if existing is not None and record_changed:
-                if count_as_updated:
-                    updated += 1
-                print("Updated org %s" % org_name)
-        except Exception as exc:
-            if _append_access_batch_failure(
-                args,
-                failures,
-                "org import",
-                org_name,
-                bundle["bundle_path"],
-                exc,
-            ):
+            if args.dry_run:
+                created += 1
+                target_org_id = ""
+                record_changed = True
+                print("Would create org %s" % org_name)
+            else:
+                created_payload = client.create_organization({"name": org_name})
+                target_org_id = str(
+                    created_payload.get("orgId") or created_payload.get("id") or ""
+                )
+                created += 1
+                record_changed = True
+                print("Created org %s" % org_name)
+        else:
+            target_org_id = str(existing.get("id") or "")
+            if not args.replace_existing:
+                skipped += 1
+                print("Skipped existing org %s (%s)" % (org_name, index))
                 continue
-            raise
+            existing_name = str(existing.get("name") or "")
+            if org_id and target_org_id == org_id and existing_name != org_name:
+                if args.dry_run:
+                    print("Would rename org %s -> %s" % (existing_name, org_name))
+                else:
+                    client.update_organization(target_org_id, {"name": org_name})
+                record_changed = True
+
+        desired_users = record.get("users") or []
+        if desired_users:
+            if args.dry_run and not target_org_id:
+                membership_changed = bool(desired_users)
+                for user in desired_users:
+                    identity = str(user.get("login") or user.get("email") or "").strip()
+                    if not identity:
+                        raise GrafanaError(
+                            "Organization import record for %s has a user without login/email."
+                            % org_name
+                        )
+                    role = normalize_org_role(user.get("orgRole") or "") or "Viewer"
+                    print(
+                        "Would add user %s to org %s with role %s"
+                        % (identity, org_name, role)
+                    )
+            else:
+                membership_changed = _apply_org_user_import(
+                    client,
+                    target_org_id,
+                    org_name,
+                    desired_users,
+                    args.dry_run,
+                )
+            if membership_changed and existing is not None:
+                count_as_updated = True
+            record_changed = record_changed or membership_changed
+        elif existing is not None and target_org_id and not record_changed:
+            skipped += 1
+            print("Skipped org %s (%s): already matched live state." % (org_name, index))
+            continue
+
+        if existing is not None and record_changed:
+            if count_as_updated:
+                updated += 1
+            print("Updated org %s" % org_name)
 
     print(
-        "Import summary: processed=%s created=%s updated=%s skipped=%s failed=%s source=%s"
-        % (processed, created, updated, skipped, len(failures), args.import_dir)
+        "Import summary: processed=%s created=%s updated=%s skipped=%s source=%s"
+        % (processed, created, updated, skipped, args.import_dir)
     )
-    return 1 if failures else 0
+    return 0
 
 
 def import_users_with_client(args, client):
@@ -1520,239 +1439,184 @@ def import_users_with_client(args, client):
     records = []
     for item in raw_records:
         if not isinstance(item, dict):
-            raise GrafanaError(
-                "Access import entry in %s must be an object." % bundle["bundle_path"]
-            )
+            raise GrafanaError("Access import entry in %s must be an object." % bundle["bundle_path"])
         records.append(_normalize_user_record(item))
 
     created = []
     updated = []
     skipped = []
     processed = 0
-    failures = []
     for index, record in enumerate(records, 1):
         processed += 1
-        identity = str(record.get("login") or record.get("email") or "").strip() or str(
-            index
-        )
-        try:
-            login = str(record.get("login") or "").strip()
-            email = str(record.get("email") or "").strip()
-            if not login and not email:
-                raise GrafanaError(
-                    "Access user import record %s in %s lacks login/email."
-                    % (index, bundle["bundle_path"])
-                )
-
-            if args.scope == "global":
-                existing = None
-                try:
-                    existing = lookup_global_user_by_identity(
-                        client,
-                        login=login or None,
-                        email=email or None,
-                    )
-                except GrafanaError:
-                    existing = None
-            else:
-                try:
-                    existing = lookup_org_user_by_identity(client, login or email)
-                except GrafanaError:
-                    existing = None
-
-            if existing is None:
-                if not args.replace_existing:
-                    skipped.append(_resolve_access_user_key(record))
-                    print(
-                        "Skipped user %s (%s): missing and --replace-existing was not set."
-                        % (login or email, index)
-                    )
-                    continue
-                if args.scope == "org":
-                    raise GrafanaError(
-                        "User import cannot create missing org users by login/email: %s"
-                        % (login or email)
-                    )
-                payload = _build_access_user_payload(record)
-                payload.setdefault(
-                    "password", str(record.get("password") or "").strip()
-                )
-                if not payload.get("password"):
-                    raise GrafanaError(
-                        "Missing password for new user import entry %s: %s"
-                        % (index, login or email)
-                    )
-                if args.dry_run:
-                    created.append(_resolve_access_user_key(record))
-                    print("Would create user %s" % (login or email))
-                    continue
-                created_payload = client.create_user(payload)
-                created.append(
-                    str(
-                        created_payload.get("id")
-                        if isinstance(created_payload, dict)
-                        else ""
-                    )
-                )
-                print("Created user %s" % (login or email))
-                continue
-
-            user_id = str(
-                existing.get("id") or existing.get("userId") or record.get("id") or ""
+        login = str(record.get("login") or "").strip()
+        email = str(record.get("email") or "").strip()
+        if not login and not email:
+            raise GrafanaError(
+                "Access user import record %s in %s lacks login/email."
+                % (index, bundle["bundle_path"])
             )
-            if not user_id:
-                raise GrafanaError(
-                    "User import record %s resolved without id: %s" % (index, record)
-                )
 
+        if args.scope == "global":
+            existing = None
+            try:
+                existing = lookup_global_user_by_identity(
+                    client,
+                    login=login or None,
+                    email=email or None,
+                )
+            except GrafanaError:
+                existing = None
+        else:
+            try:
+                existing = lookup_org_user_by_identity(client, login or email)
+            except GrafanaError:
+                existing = None
+
+        if existing is None:
             if not args.replace_existing:
                 skipped.append(_resolve_access_user_key(record))
-                print(
-                    "Skipped existing user %s (%s)"
-                    % (record.get("login") or record.get("email") or "", index)
-                )
+                print("Skipped user %s (%s): missing and --replace-existing was not set." % (login or email, index))
                 continue
+            if args.scope == "org":
+                raise GrafanaError(
+                    "User import cannot create missing org users by login/email: %s"
+                    % (login or email)
+                )
+            payload = _build_access_user_payload(record)
+            payload.setdefault("password", str(record.get("password") or "").strip())
+            if not payload.get("password"):
+                raise GrafanaError(
+                    "Missing password for new user import entry %s: %s"
+                    % (index, login or email)
+                )
+            if args.dry_run:
+                created.append(_resolve_access_user_key(record))
+                print("Would create user %s" % (login or email))
+                continue
+            created_payload = client.create_user(payload)
+            created.append(
+                str(
+                    created_payload.get("id")
+                    if isinstance(created_payload, dict)
+                    else ""
+                )
+            )
+            print("Created user %s" % (login or email))
+            continue
 
-            desired = record
-            profile_payload = {}
-            if desired.get("login") and desired.get("login") != existing.get("login"):
-                profile_payload["login"] = desired.get("login")
-            if desired.get("email") and desired.get("email") != existing.get("email"):
-                profile_payload["email"] = desired.get("email")
-            if desired.get("name") and desired.get("name") != existing.get("name"):
-                profile_payload["name"] = desired.get("name")
-            if profile_payload:
-                if args.dry_run:
-                    print(
-                        "Would update user %s profile"
+        user_id = str(
+            existing.get("id")
+            or existing.get("userId")
+            or record.get("id")
+            or ""
+        )
+        if not user_id:
+            raise GrafanaError("User import record %s resolved without id: %s" % (index, record))
+
+        if not args.replace_existing:
+            skipped.append(_resolve_access_user_key(record))
+            print("Skipped existing user %s (%s)" % (record.get("login") or record.get("email") or "", index))
+            continue
+
+        desired = record
+        profile_payload = {}
+        if desired.get("login") and desired.get("login") != existing.get("login"):
+            profile_payload["login"] = desired.get("login")
+        if desired.get("email") and desired.get("email") != existing.get("email"):
+            profile_payload["email"] = desired.get("email")
+        if desired.get("name") and desired.get("name") != existing.get("name"):
+            profile_payload["name"] = desired.get("name")
+        if profile_payload:
+            if args.dry_run:
+                print("Would update user %s profile" % (record.get("login") or record.get("email") or ""))
+            else:
+                client.update_user(user_id, profile_payload)
+
+        desired_org_role = normalize_org_role(desired.get("orgRole") or "")
+        if args.scope == "org":
+            existing_org_role = normalize_org_role(existing.get("role") or "")
+        else:
+            existing_org_role = normalize_org_role(existing.get("orgRole") or existing.get("role") or "")
+        if desired_org_role and desired_org_role != existing_org_role:
+            if args.dry_run:
+                print(
+                    "Would update orgRole for user %s -> %s"
+                    % (record.get("login") or record.get("email") or "", desired_org_role)
+                )
+            else:
+                client.update_user_org_role(user_id, desired_org_role)
+
+        desired_admin = normalize_bool(desired.get("grafanaAdmin"))
+        existing_admin = normalize_bool(
+            existing.get("isGrafanaAdmin")
+            or existing.get("isAdmin")
+        )
+        if desired_admin is not None and desired_admin != existing_admin:
+            if args.dry_run:
+                print(
+                    "Would update grafanaAdmin for user %s -> %s"
+                    % (
+                        record.get("login") or record.get("email") or "",
+                        bool_label(desired_admin),
+                    )
+                )
+            else:
+                client.update_user_permissions(user_id, desired_admin)
+
+        updated.append(record)
+
+        if args.scope != "global":
+            target_teams = _normalize_access_identity_list(record.get("teams") or [])
+            if target_teams:
+                if not args.replace_existing:
+                    continue
+                current_members = {}
+                for item in client.list_user_teams(user_id):
+                    team_name = str(item.get("name") or "").strip()
+                    if team_name:
+                        current_members[_normalize_access_import_identity(team_name)] = {
+                            "id": str(item.get("id") or ""),
+                            "name": team_name,
+                        }
+                desired_team_keys = set(
+                    _normalize_access_import_identity(team_name)
+                    for team_name in target_teams
+                )
+                if bool(set(current_members.keys()) - desired_team_keys) and not args.yes:
+                    raise GrafanaError(
+                        "User import would remove team memberships for %s. Add --yes to confirm."
                         % (record.get("login") or record.get("email") or "")
                     )
-                else:
-                    client.update_user(user_id, profile_payload)
-
-            desired_org_role = normalize_org_role(desired.get("orgRole") or "")
-            if args.scope == "org":
-                existing_org_role = normalize_org_role(existing.get("role") or "")
-            else:
-                existing_org_role = normalize_org_role(
-                    existing.get("orgRole") or existing.get("role") or ""
-                )
-            if desired_org_role and desired_org_role != existing_org_role:
-                if args.dry_run:
-                    print(
-                        "Would update orgRole for user %s -> %s"
-                        % (
-                            record.get("login") or record.get("email") or "",
-                            desired_org_role,
-                        )
-                    )
-                else:
-                    client.update_user_org_role(user_id, desired_org_role)
-
-            desired_admin = normalize_bool(desired.get("grafanaAdmin"))
-            existing_admin = normalize_bool(
-                existing.get("isGrafanaAdmin") or existing.get("isAdmin")
-            )
-            if desired_admin is not None and desired_admin != existing_admin:
-                if args.dry_run:
-                    print(
-                        "Would update grafanaAdmin for user %s -> %s"
-                        % (
-                            record.get("login") or record.get("email") or "",
-                            bool_label(desired_admin),
-                        )
-                    )
-                else:
-                    client.update_user_permissions(user_id, desired_admin)
-
-            updated.append(record)
-
-            if args.scope != "global":
-                target_teams = _normalize_access_identity_list(
-                    record.get("teams") or []
-                )
-                if target_teams:
-                    if not args.replace_existing:
-                        continue
-                    current_members = {}
-                    for item in client.list_user_teams(user_id):
-                        team_name = str(item.get("name") or "").strip()
-                        if team_name:
-                            current_members[
-                                _normalize_access_import_identity(team_name)
-                            ] = {
-                                "id": str(item.get("id") or ""),
-                                "name": team_name,
-                            }
-                    desired_team_keys = set(
-                        _normalize_access_import_identity(team_name)
-                        for team_name in target_teams
-                    )
-                    if (
-                        bool(set(current_members.keys()) - desired_team_keys)
-                        and not args.yes
-                    ):
-                        raise GrafanaError(
-                            "User import would remove team memberships for %s. Add --yes to confirm."
-                            % (record.get("login") or record.get("email") or "")
-                        )
-                    for team_name in target_teams:
-                        team_key = _normalize_access_import_identity(team_name)
-                        if team_key not in current_members:
-                            team_payload = lookup_team_by_name(client, team_name)
-                            team_id = str(team_payload.get("id") or "")
+                for team_name in target_teams:
+                    team_key = _normalize_access_import_identity(team_name)
+                    if team_key not in current_members:
+                        team_payload = lookup_team_by_name(client, team_name)
+                        team_id = str(team_payload.get("id") or "")
+                        if not team_id:
+                            raise GrafanaError(
+                                "Could not resolve target team for user import: %s" % team_name
+                            )
+                        if args.dry_run:
+                            print("Would add user %s to team %s" % (user_id, team_name))
+                        else:
+                            client.add_team_member(team_id, user_id)
+                if args.replace_existing:
+                    for team_key in set(current_members.keys()) - desired_team_keys:
+                        if args.dry_run:
+                            print("Would remove user %s from team %s" % (user_id, current_members[team_key]["name"]))
+                        else:
+                            team_id = current_members[team_key]["id"]
                             if not team_id:
-                                raise GrafanaError(
-                                    "Could not resolve target team for user import: %s"
-                                    % team_name
-                                )
-                            if args.dry_run:
-                                print(
-                                    "Would add user %s to team %s"
-                                    % (user_id, team_name)
-                                )
-                            else:
-                                client.add_team_member(team_id, user_id)
-                    if args.replace_existing:
-                        for team_key in set(current_members.keys()) - desired_team_keys:
-                            if args.dry_run:
-                                print(
-                                    "Would remove user %s from team %s"
-                                    % (user_id, current_members[team_key]["name"])
-                                )
-                            else:
-                                team_id = current_members[team_key]["id"]
-                                if not team_id:
-                                    continue
-                                client.remove_team_member(team_id, user_id)
+                                continue
+                            client.remove_team_member(team_id, user_id)
 
-            print(
-                "Updated user %s" % (record.get("login") or record.get("email") or "")
-            )
-        except Exception as exc:
-            if _append_access_batch_failure(
-                args,
-                failures,
-                "user import",
-                identity,
-                bundle["bundle_path"],
-                exc,
-            ):
-                continue
-            raise
+        print("Updated user %s" % (record.get("login") or record.get("email") or ""))
 
     print(
-        "Import summary: processed=%s created=%s updated=%s skipped=%s failed=%s source=%s"
-        % (
-            processed,
-            len(created),
-            len(updated),
-            len(skipped),
-            len(failures),
-            args.import_dir,
-        )
+        "Import summary: processed=%s created=%s updated=%s skipped=%s source=%s"
+        % (processed, len(created), len(updated), len(skipped), args.import_dir)
     )
-    return 1 if failures else 0
+    return 0
 
 
 def export_service_accounts_with_client(args, client):
@@ -1809,106 +1673,27 @@ def import_service_accounts_with_client(args, client):
     processed = 0
     dry_run_rows = []
     dry_run_structured = bool(args.dry_run and (args.table or args.json))
-    failures = []
 
     for index, record in enumerate(records, 1):
         processed += 1
-        service_account_name = str(record.get("name") or "").strip() or str(index)
+        service_account_name = str(record.get("name") or "").strip()
+        if not service_account_name:
+            raise GrafanaError(
+                "Access service-account import record %s in %s lacks name."
+                % (index, bundle["bundle_path"])
+            )
         try:
-            if not service_account_name:
-                raise GrafanaError(
-                    "Access service-account import record %s in %s lacks name."
-                    % (index, bundle["bundle_path"])
-                )
-            try:
-                existing = _lookup_service_account_by_name(client, service_account_name)
-            except GrafanaError:
-                existing = None
+            existing = _lookup_service_account_by_name(client, service_account_name)
+        except GrafanaError:
+            existing = None
 
-            if existing is None:
-                if not args.replace_existing:
-                    skipped += 1
-                    detail = "missing and --replace-existing was not set."
-                    if dry_run_structured:
-                        dry_run_rows.append(
-                            _build_service_account_import_row(
-                                index, service_account_name, "skip", detail
-                            )
-                        )
-                    else:
-                        print(
-                            "Skipped service-account %s (%s): %s"
-                            % (service_account_name, index, detail)
-                        )
-                    continue
-                if args.dry_run:
-                    created += 1
-                    if dry_run_structured:
-                        dry_run_rows.append(
-                            _build_service_account_import_row(
-                                index,
-                                service_account_name,
-                                "create",
-                                "would create service account",
-                            )
-                        )
-                    else:
-                        print("Would create service-account %s" % service_account_name)
-                    continue
-                client.create_service_account(
-                    {
-                        "name": service_account_name,
-                        "role": service_account_role_to_api(
-                            record.get("role") or "Viewer"
-                        ),
-                        "isDisabled": bool(normalize_bool(record.get("disabled"))),
-                    }
-                )
-                created += 1
-                print("Created service-account %s" % service_account_name)
-                continue
-
+        if existing is None:
             if not args.replace_existing:
                 skipped += 1
-                detail = "existing and --replace-existing was not set."
+                detail = "missing and --replace-existing was not set."
                 if dry_run_structured:
                     dry_run_rows.append(
-                        _build_service_account_import_row(
-                            index, service_account_name, "skip", detail
-                        )
-                    )
-                else:
-                    print(
-                        "Skipped existing service-account %s (%s)"
-                        % (service_account_name, index)
-                    )
-                continue
-
-            desired_role = normalize_org_role(record.get("role") or "")
-            existing_role = normalize_org_role(existing.get("role") or "")
-            desired_disabled = normalize_bool(record.get("disabled"))
-            existing_disabled = normalize_bool(
-                existing.get("disabled")
-                if existing.get("disabled") is not None
-                else existing.get("isDisabled")
-            )
-            update_payload = {"name": service_account_name}
-            changed_fields = []
-            if desired_role and desired_role != existing_role:
-                update_payload["role"] = service_account_role_to_api(desired_role)
-                changed_fields.append("role")
-            if desired_disabled is not None and desired_disabled != existing_disabled:
-                update_payload["isDisabled"] = desired_disabled
-                changed_fields.append("disabled")
-
-            if not changed_fields:
-                skipped += 1
-                detail = "already matched live state."
-                if dry_run_structured:
-                    dry_run_rows.append(
-                        _build_service_account_import_row(
-                            index, service_account_name, "skip", detail
-                        )
+                        _build_service_account_import_row(index, service_account_name, "skip", detail)
                     )
                 else:
                     print(
@@ -1916,62 +1701,108 @@ def import_service_accounts_with_client(args, client):
                         % (service_account_name, index, detail)
                     )
                 continue
-
             if args.dry_run:
-                updated += 1
-                detail = "would update fields=%s" % ",".join(changed_fields)
+                created += 1
                 if dry_run_structured:
                     dry_run_rows.append(
                         _build_service_account_import_row(
-                            index, service_account_name, "update", detail
+                            index,
+                            service_account_name,
+                            "create",
+                            "would create service account",
                         )
                     )
                 else:
-                    print(
-                        "Would update service-account %s %s"
-                        % (service_account_name, detail)
-                    )
+                    print("Would create service-account %s" % service_account_name)
                 continue
+            client.create_service_account(
+                {
+                    "name": service_account_name,
+                    "role": service_account_role_to_api(
+                        record.get("role") or "Viewer"
+                    ),
+                    "isDisabled": bool(normalize_bool(record.get("disabled"))),
+                }
+            )
+            created += 1
+            print("Created service-account %s" % service_account_name)
+            continue
 
-            service_account_id = str(existing.get("id") or "")
-            if not service_account_id:
-                raise GrafanaError(
-                    "Resolved service-account did not include an id: %s"
-                    % service_account_name
+        if not args.replace_existing:
+            skipped += 1
+            detail = "existing and --replace-existing was not set."
+            if dry_run_structured:
+                dry_run_rows.append(
+                    _build_service_account_import_row(index, service_account_name, "skip", detail)
                 )
-            client.update_service_account(service_account_id, update_payload)
+            else:
+                print("Skipped existing service-account %s (%s)" % (service_account_name, index))
+            continue
+
+        desired_role = normalize_org_role(record.get("role") or "")
+        existing_role = normalize_org_role(existing.get("role") or "")
+        desired_disabled = normalize_bool(record.get("disabled"))
+        existing_disabled = normalize_bool(
+            existing.get("disabled")
+            if existing.get("disabled") is not None
+            else existing.get("isDisabled")
+        )
+        update_payload = {"name": service_account_name}
+        changed_fields = []
+        if desired_role and desired_role != existing_role:
+            update_payload["role"] = service_account_role_to_api(desired_role)
+            changed_fields.append("role")
+        if desired_disabled is not None and desired_disabled != existing_disabled:
+            update_payload["isDisabled"] = desired_disabled
+            changed_fields.append("disabled")
+
+        if not changed_fields:
+            skipped += 1
+            detail = "already matched live state."
+            if dry_run_structured:
+                dry_run_rows.append(
+                    _build_service_account_import_row(index, service_account_name, "skip", detail)
+                )
+            else:
+                print("Skipped service-account %s (%s): %s" % (service_account_name, index, detail))
+            continue
+
+        if args.dry_run:
             updated += 1
-            print("Updated service-account %s" % service_account_name)
-        except Exception as exc:
-            if _append_access_batch_failure(
-                args,
-                failures,
-                "service-account import",
-                service_account_name,
-                bundle["bundle_path"],
-                exc,
-            ):
-                continue
-            raise
+            detail = "would update fields=%s" % ",".join(changed_fields)
+            if dry_run_structured:
+                dry_run_rows.append(
+                    _build_service_account_import_row(index, service_account_name, "update", detail)
+                )
+            else:
+                print("Would update service-account %s %s" % (service_account_name, detail))
+            continue
+
+        service_account_id = str(existing.get("id") or "")
+        if not service_account_id:
+            raise GrafanaError(
+                "Resolved service-account did not include an id: %s" % service_account_name
+            )
+        client.update_service_account(service_account_id, update_payload)
+        updated += 1
+        print("Updated service-account %s" % service_account_name)
 
     summary = {
         "processed": processed,
         "created": created,
         "updated": updated,
         "skipped": skipped,
-        "failed": len(failures),
-        "failures": failures,
         "source": args.import_dir,
     }
     if dry_run_structured:
         _emit_service_account_import_dry_run_output(args, dry_run_rows, summary)
         if args.json or args.table:
-            return 1 if failures else 0
+            return 0
     print(
-        "Import summary: processed=%s created=%s updated=%s skipped=%s failed=%s source=%s"
-        % (processed, created, updated, skipped, len(failures), args.import_dir)
+        "Import summary: processed=%s created=%s updated=%s skipped=%s source=%s"
+        % (processed, created, updated, skipped, args.import_dir)
     )
-    return 1 if failures else 0
+    return 0
 
 
 def export_teams_with_client(args, client):
@@ -2013,127 +1844,93 @@ def import_teams_with_client(args, client):
     records = []
     for item in raw_records:
         if not isinstance(item, dict):
-            raise GrafanaError(
-                "Access import entry in %s must be an object." % bundle["bundle_path"]
-            )
+            raise GrafanaError("Access import entry in %s must be an object." % bundle["bundle_path"])
         records.append(_normalize_team_record(item))
 
     created = 0
     updated = 0
     skipped = 0
-    failures = []
     for index, record in enumerate(records, 1):
-        team_name = str(record.get("name") or "").strip() or str(index)
+        team_name = str(record.get("name") or "").strip()
+        if not team_name:
+            raise GrafanaError(
+                "Access team import record %s in %s is missing name." % (index, bundle["bundle_path"])
+            )
+        existing = None
         try:
-            if not team_name:
-                raise GrafanaError(
-                    "Access team import record %s in %s is missing name."
-                    % (index, bundle["bundle_path"])
-                )
+            existing = lookup_team_by_name(client, team_name)
+        except GrafanaError:
             existing = None
-            try:
-                existing = lookup_team_by_name(client, team_name)
-            except GrafanaError:
-                existing = None
 
-            if existing is None:
-                created += 1
-                if args.dry_run:
-                    print("Would create team %s" % team_name)
-                else:
-                    created_payload = client.create_team(
-                        {"name": team_name, "email": str(record.get("email") or "")}
-                    )
-                    team_id = str(
-                        created_payload.get("teamId") or created_payload.get("id") or ""
-                    )
-                    if not team_id:
-                        raise GrafanaError(
-                            "Team import did not return team id for %s" % team_name
-                        )
-                    target_members = _normalize_access_identity_list(
-                        record.get("members") or []
-                    )
-                    target_admins = _normalize_access_identity_list(
-                        record.get("admins") or []
-                    )
-                    if target_members or target_admins:
-                        existing_members = {}
-                        _sync_team_members_for_import(
-                            client,
-                            team_id,
-                            team_name,
-                            existing_members,
-                            target_members,
-                            target_admins,
-                            include_missing=True,
-                            dry_run=args.dry_run,
-                        )
-                    print("Created team %s" % team_name)
-                continue
-
-            team_id = str(existing.get("id") or existing.get("teamId") or "")
-            if not team_id:
-                raise GrafanaError("Team %s resolved without id." % team_name)
-
-            if not args.replace_existing:
-                skipped += 1
-                print("Skipped team %s (%s)" % (team_name, index))
-                continue
-            target_members = _normalize_access_identity_list(
-                record.get("members") or []
-            )
-            target_admins = _normalize_access_identity_list(record.get("admins") or [])
-            existing_members = _lookup_team_memberships_by_identity(client, team_id)
-            target_keys = set(
-                _normalize_access_import_identity(item)
-                for item in target_members + target_admins
-            )
-            if set(existing_members.keys()) - target_keys and not args.yes:
-                raise GrafanaError(
-                    "Team import would remove team memberships for %s. Add --yes to confirm."
-                    % team_name
-                )
-
+        if existing is None:
+            created += 1
             if args.dry_run:
-                print("Would update team %s" % team_name)
+                print("Would create team %s" % team_name)
             else:
-                _sync_team_members_for_import(
-                    client,
-                    team_id,
-                    team_name,
-                    existing_members,
-                    target_members,
-                    target_admins,
-                    include_missing=True,
-                    dry_run=args.dry_run,
+                created_payload = client.create_team({"name": team_name, "email": str(record.get("email") or "")})
+                team_id = str(
+                    created_payload.get("teamId")
+                    or created_payload.get("id")
+                    or ""
                 )
-                print("Updated team %s" % team_name)
-            updated += 1
-        except Exception as exc:
-            if _append_access_batch_failure(
-                args,
-                failures,
-                "team import",
+                if not team_id:
+                    raise GrafanaError("Team import did not return team id for %s" % team_name)
+                target_members = _normalize_access_identity_list(record.get("members") or [])
+                target_admins = _normalize_access_identity_list(record.get("admins") or [])
+                if target_members or target_admins:
+                    existing_members = {}
+                    _sync_team_members_for_import(
+                        client,
+                        team_id,
+                        team_name,
+                        existing_members,
+                        target_members,
+                        target_admins,
+                        include_missing=True,
+                        dry_run=args.dry_run,
+                    )
+                print("Created team %s" % team_name)
+            continue
+
+        team_id = str(existing.get("id") or existing.get("teamId") or "")
+        if not team_id:
+            raise GrafanaError("Team %s resolved without id." % team_name)
+
+        if not args.replace_existing:
+            skipped += 1
+            print("Skipped team %s (%s)" % (team_name, index))
+            continue
+        target_members = _normalize_access_identity_list(record.get("members") or [])
+        target_admins = _normalize_access_identity_list(record.get("admins") or [])
+        existing_members = _lookup_team_memberships_by_identity(client, team_id)
+        target_keys = set(
+            _normalize_access_import_identity(item)
+            for item in target_members + target_admins
+        )
+        if set(existing_members.keys()) - target_keys and not args.yes:
+            raise GrafanaError("Team import would remove team memberships for %s. Add --yes to confirm." % team_name)
+
+        if args.dry_run:
+            print("Would update team %s" % team_name)
+        else:
+            _sync_team_members_for_import(
+                client,
+                team_id,
                 team_name,
-                bundle["bundle_path"],
-                exc,
-            ):
-                continue
-            raise
+                existing_members,
+                target_members,
+                target_admins,
+                include_missing=True,
+                dry_run=args.dry_run,
+            )
+            print("Updated team %s" % team_name)
+        updated += 1
 
     print(
-        "Import summary: processed=%s created=%s updated=%s skipped=%s failed=%s source=%s"
-        % (
-            created + updated + skipped + len(failures),
-            created,
-            updated,
-            skipped,
-            len(failures),
-            args.import_dir,
-        )
+        "Import summary: processed=%s created=%s updated=%s skipped=%s source=%s"
+        % (created + updated + skipped, created, updated, skipped, args.import_dir)
     )
-    return 1 if failures else 0
+    return 0
 
 
 def lookup_service_account_id_by_name(client, service_account_name):
@@ -2152,7 +1949,8 @@ def lookup_service_account_id_by_name(client, service_account_name):
         )
     if len(exact_matches) > 1:
         raise GrafanaError(
-            "Service account name matched multiple items: %s" % service_account_name
+            "Service account name matched multiple items: %s"
+            % service_account_name
         )
     service_account_id = exact_matches[0].get("id")
     if not service_account_id:
@@ -2194,7 +1992,9 @@ def lookup_org_user_by_identity(client, identity):
     if not exact_matches:
         raise GrafanaError("User not found by login or email: %s" % target)
     if len(exact_matches) > 1:
-        raise GrafanaError("User identity matched multiple org users: %s" % target)
+        raise GrafanaError(
+            "User identity matched multiple org users: %s" % target
+        )
     return dict(exact_matches[0])
 
 
@@ -2218,7 +2018,9 @@ def lookup_global_user_by_identity(client, login=None, email=None):
         raise GrafanaError("User not found by login or email: %s" % target)
     if len(exact_matches) > 1:
         target = target_login or target_email
-        raise GrafanaError("User identity matched multiple global users: %s" % target)
+        raise GrafanaError(
+            "User identity matched multiple global users: %s" % target
+        )
     return dict(exact_matches[0])
 
 
@@ -2291,9 +2093,7 @@ def normalize_identity_list(values):
     return normalized
 
 
-def validate_conflicting_identity_sets(
-    add_values, remove_values, add_label, remove_label
-):
+def validate_conflicting_identity_sets(add_values, remove_values, add_label, remove_label):
     overlap = set(add_values) & set(remove_values)
     if overlap:
         raise GrafanaError(
@@ -2303,7 +2103,9 @@ def validate_conflicting_identity_sets(
 
 
 def team_member_admin_state(member):
-    explicit = normalize_bool(member.get("isAdmin", member.get("admin")))
+    explicit = normalize_bool(
+        member.get("isAdmin", member.get("admin"))
+    )
     if explicit is not None:
         return explicit
     for key in ("role", "teamRole", "permissionName"):
@@ -2411,7 +2213,10 @@ def list_users_with_client(args, client):
         for user in users:
             print(format_user_summary_line(user))
     print("")
-    print("Listed %s user(s) from %s scope at %s" % (len(users), args.scope, args.url))
+    print(
+        "Listed %s user(s) from %s scope at %s"
+        % (len(users), args.scope, args.url)
+    )
     return 0
 
 
@@ -2505,7 +2310,9 @@ def _render_org_table(rows):
             widths[index] = max(widths[index], len(value))
 
     def _format(items):
-        return "  ".join(item.ljust(widths[index]) for index, item in enumerate(items))
+        return "  ".join(
+            item.ljust(widths[index]) for index, item in enumerate(items)
+        )
 
     lines = [_format(headers), _format(["-" * width for width in widths])]
     for row in values:
@@ -2528,8 +2335,8 @@ def _render_org_csv(rows):
 
 def _csv_escape(value):
     text = str(value or "")
-    if any(char in text for char in [",", '"', "\n"]):
-        return '"%s"' % text.replace('"', '""')
+    if any(char in text for char in [",", "\"", "\n"]):
+        return "\"%s\"" % text.replace("\"", "\"\"")
     return text
 
 
@@ -2908,7 +2715,9 @@ def apply_team_membership_changes(
             continue
         user_id = user.get("userId") or user.get("id")
         if user_id is None:
-            raise GrafanaError("Resolved user did not include an id for %s." % target)
+            raise GrafanaError(
+                "Resolved user did not include an id for %s." % target
+            )
         client.add_team_member(team_id, user_id)
         members_by_identity[identity] = dict(user)
         member_user_ids[identity] = str(user_id)
@@ -3055,8 +2864,12 @@ def delete_service_account_with_client(args, client):
     )
     delete_payload = client.delete_service_account(service_account_id)
     result = serialize_service_account_row(service_account)
-    result["serviceAccountId"] = str(service_account.get("id") or service_account_id)
-    result["message"] = str(delete_payload.get("message") or "Service account deleted.")
+    result["serviceAccountId"] = str(
+        service_account.get("id") or service_account_id
+    )
+    result["message"] = str(
+        delete_payload.get("message") or "Service account deleted."
+    )
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     else:
@@ -3122,121 +2935,85 @@ def delete_team_with_client(args, client):
     return 0
 
 
-def _validate_noop(_args, _auth_mode):
-    return None
-
-
-def _validate_org_command(_args, auth_mode):
-    validate_org_auth(auth_mode)
-
-
-def _validate_user_list_command(args, auth_mode):
-    validate_user_list_auth(args, auth_mode)
-
-
-def _validate_user_add_command(_args, auth_mode):
-    validate_user_add_auth(auth_mode)
-
-
-def _validate_user_modify_command(_args, auth_mode):
-    validate_user_modify_auth(auth_mode)
-
-
-def _validate_user_delete_command(args, auth_mode):
-    validate_user_delete_auth(args, auth_mode)
-
-
-def _validate_team_delete_command(_args, auth_mode):
-    validate_team_delete_auth(auth_mode)
-
-
-def _validate_service_account_delete_command(_args, auth_mode):
-    validate_service_account_delete_auth(auth_mode)
-
-
-def _validate_service_account_token_delete_command(_args, auth_mode):
-    validate_service_account_token_delete_auth(auth_mode)
-
-
-ACCESS_COMMAND_DISPATCH = {
-    ("org", "list", None): ("_validate_org_command", "list_orgs_with_client"),
-    ("org", "add", None): ("_validate_org_command", "add_org_with_client"),
-    ("org", "modify", None): ("_validate_org_command", "modify_org_with_client"),
-    ("org", "delete", None): ("_validate_org_command", "delete_org_with_client"),
-    ("org", "export", None): ("_validate_org_command", "export_orgs_with_client"),
-    ("org", "import", None): ("_validate_org_command", "import_orgs_with_client"),
-    ("user", "list", None): ("_validate_user_list_command", "list_users_with_client"),
-    ("user", "export", None): ("_validate_noop", "export_users_with_client"),
-    ("user", "import", None): ("_validate_noop", "import_users_with_client"),
-    ("user", "add", None): ("_validate_user_add_command", "add_user_with_client"),
-    ("user", "modify", None): (
-        "_validate_user_modify_command",
-        "modify_user_with_client",
-    ),
-    ("user", "delete", None): (
-        "_validate_user_delete_command",
-        "delete_user_with_client",
-    ),
-    ("user", "diff", None): ("_validate_user_list_command", "diff_users_with_client"),
-    ("team", "list", None): ("_validate_noop", "list_teams_with_client"),
-    ("team", "add", None): ("_validate_noop", "add_team_with_client"),
-    ("team", "modify", None): ("_validate_noop", "modify_team_with_client"),
-    ("team", "delete", None): (
-        "_validate_team_delete_command",
-        "delete_team_with_client",
-    ),
-    ("team", "diff", None): ("_validate_noop", "diff_teams_with_client"),
-    ("team", "export", None): ("_validate_noop", "export_teams_with_client"),
-    ("team", "import", None): ("_validate_noop", "import_teams_with_client"),
-    ("service-account", "list", None): (
-        "_validate_noop",
-        "list_service_accounts_with_client",
-    ),
-    ("service-account", "add", None): (
-        "_validate_noop",
-        "add_service_account_with_client",
-    ),
-    ("service-account", "export", None): (
-        "_validate_noop",
-        "export_service_accounts_with_client",
-    ),
-    ("service-account", "import", None): (
-        "_validate_noop",
-        "import_service_accounts_with_client",
-    ),
-    ("service-account", "diff", None): (
-        "_validate_noop",
-        "diff_service_accounts_with_client",
-    ),
-    ("service-account", "delete", None): (
-        "_validate_service_account_delete_command",
-        "delete_service_account_with_client",
-    ),
-    ("service-account", "token", "add"): (
-        "_validate_noop",
-        "add_service_account_token_with_client",
-    ),
-    ("service-account", "token", "delete"): (
-        "_validate_service_account_token_delete_command",
-        "delete_service_account_token_with_client",
-    ),
-}
-
-
-def _build_access_command_key(args):
-    if (
-        getattr(args, "resource", None) == "service-account"
-        and getattr(args, "command", None) == "token"
-    ):
-        return ("service-account", "token", getattr(args, "token_command", None))
-    return (getattr(args, "resource", None), getattr(args, "command", None), None)
 
 
 def dispatch_access_command(args, client, auth_mode):
-    key = _build_access_command_key(args)
-    dispatch_entry = ACCESS_COMMAND_DISPATCH.get(key)
-    if dispatch_entry is None:
-        raise GrafanaError("Unsupported command.")
-    validator_name, handler_name = dispatch_entry
-    globals()[validator_name](args, auth_mode)
-    return globals()[handler_name](args, client)
+    if args.resource == "org" and args.command == "list":
+        validate_org_auth(auth_mode)
+        return list_orgs_with_client(args, client)
+    if args.resource == "org" and args.command == "add":
+        validate_org_auth(auth_mode)
+        return add_org_with_client(args, client)
+    if args.resource == "org" and args.command == "modify":
+        validate_org_auth(auth_mode)
+        return modify_org_with_client(args, client)
+    if args.resource == "org" and args.command == "delete":
+        validate_org_auth(auth_mode)
+        return delete_org_with_client(args, client)
+    if args.resource == "org" and args.command == "export":
+        validate_org_auth(auth_mode)
+        return export_orgs_with_client(args, client)
+    if args.resource == "org" and args.command == "import":
+        validate_org_auth(auth_mode)
+        return import_orgs_with_client(args, client)
+    if args.resource == "user" and args.command == "list":
+        validate_user_list_auth(args, auth_mode)
+        return list_users_with_client(args, client)
+    if args.resource == "user" and args.command == "export":
+        return export_users_with_client(args, client)
+    if args.resource == "user" and args.command == "import":
+        return import_users_with_client(args, client)
+    if args.resource == "user" and args.command == "add":
+        validate_user_add_auth(auth_mode)
+        return add_user_with_client(args, client)
+    if args.resource == "user" and args.command == "modify":
+        validate_user_modify_auth(auth_mode)
+        return modify_user_with_client(args, client)
+    if args.resource == "user" and args.command == "delete":
+        validate_user_delete_auth(args, auth_mode)
+        return delete_user_with_client(args, client)
+    if args.resource == "user" and args.command == "diff":
+        validate_user_list_auth(args, auth_mode)
+        return diff_users_with_client(args, client)
+    if args.resource == "team" and args.command == "list":
+        return list_teams_with_client(args, client)
+    if args.resource == "team" and args.command == "add":
+        return add_team_with_client(args, client)
+    if args.resource == "team" and args.command == "modify":
+        return modify_team_with_client(args, client)
+    if args.resource == "team" and args.command == "delete":
+        validate_team_delete_auth(auth_mode)
+        return delete_team_with_client(args, client)
+    if args.resource == "team" and args.command == "diff":
+        return diff_teams_with_client(args, client)
+    if args.resource == "team" and args.command == "export":
+        return export_teams_with_client(args, client)
+    if args.resource == "team" and args.command == "import":
+        return import_teams_with_client(args, client)
+    if args.resource == "service-account" and args.command == "list":
+        return list_service_accounts_with_client(args, client)
+    if args.resource == "service-account" and args.command == "add":
+        return add_service_account_with_client(args, client)
+    if args.resource == "service-account" and args.command == "export":
+        return export_service_accounts_with_client(args, client)
+    if args.resource == "service-account" and args.command == "import":
+        return import_service_accounts_with_client(args, client)
+    if args.resource == "service-account" and args.command == "diff":
+        return diff_service_accounts_with_client(args, client)
+    if args.resource == "service-account" and args.command == "delete":
+        validate_service_account_delete_auth(auth_mode)
+        return delete_service_account_with_client(args, client)
+    if (
+        args.resource == "service-account"
+        and args.command == "token"
+        and args.token_command == "add"
+    ):
+        return add_service_account_token_with_client(args, client)
+    if (
+        args.resource == "service-account"
+        and args.command == "token"
+        and args.token_command == "delete"
+    ):
+        validate_service_account_token_delete_auth(auth_mode)
+        return delete_service_account_token_with_client(args, client)
+    raise GrafanaError("Unsupported command.")

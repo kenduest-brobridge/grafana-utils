@@ -30,11 +30,6 @@ Commit message default for this repo:
 - `grafana_utils/datasource_cli.py`: packaged datasource inventory list/export utility
 - `grafana_utils/datasource/parser.py`: Python datasource argparse wiring, dry-run output-column parsing metadata, and help/example scaffolding
 - `grafana_utils/datasource/workflows.py`: Python datasource export/import/diff workflow logic, bundle loading, and live-vs-export reconciliation helpers
-- Rust staged sync contract imports should prefer `crate::sync_contracts`; `sync_workbench` remains only as a compatibility path for older internal references and change-history continuity.
-- `rust/src/sync.rs`: Rust `sync` CLI/orchestration layer, including staged artifact IO, lineage validation, preflight/apply gating, and the current limited live-apply bridge
-- `rust/src/sync_preflight.rs`: Rust pure preflight contract for datasource/plugin/dashboard/alert dependency checks
-- `rust/src/sync_bundle_preflight.rs`: Rust bundle-level aggregate preflight contract that combines sync checks, alert assessment, and datasource provider availability
-- `rust/src/sync_workbench.rs`: Rust staged summary/plan/apply-intent compatibility implementation re-exported through `crate::sync_contracts`
 - `grafana_utils/dashboards/export_workflow.py`: Python dashboard export orchestration helper that keeps the CLI-facing export workflow out of `dashboard_cli.py`
 - `grafana_utils/dashboards/export_inventory.py`: Python dashboard raw-export discovery, inventory loading, and export metadata validation helpers shared by diff/import/inspect paths
 - `grafana_utils/dashboards/inspection_report.py`: Python dashboard inspection report model, column/mode constants, query-row normalization, and flat/grouped report renderers shared by `inspect-export` and `inspect-live`
@@ -45,8 +40,8 @@ Commit message default for this repo:
 - `grafana_utils/alert_cli.py`: packaged alerting resource export/import utility
 - `grafana_utils/access_cli.py`: packaged access-management facade that preserves the stable Python CLI surface and top-level auth/client dispatch
 - `grafana_utils/access/parser.py`: Python access argparse wiring, shared access CLI constants, and group-alias-aware parse helpers
-- `grafana_utils/access/workflows.py`: Python access auth validation, dispatch-table routing, identity lookup helpers, and user/team/service-account workflow implementations
-- `rust/src/access.rs`: Rust access-management orchestration entrypoint, shared request helpers, and small client-selection helpers that keep per-command dispatch out of the transport setup path
+- `grafana_utils/access/workflows.py`: Python access auth validation, identity lookup helpers, and user/team/service-account workflow implementations
+- `rust/src/access.rs`: Rust access-management orchestration entrypoint and shared request helpers
 - `rust/src/access_cli_defs.rs`: Rust access CLI arg definitions and auth/client builders
 - `rust/src/access_render.rs`: Rust access table/CSV/JSON renderers and row normalization helpers
 - `rust/src/access_user.rs`: Rust access user list/add/modify/delete flows
@@ -73,12 +68,10 @@ Commit message default for this repo:
 - `tests/test_python_alert_cli.py`: alerting Python unit tests
 - `tests/test_python_packaging.py`: Python package metadata and console-script tests
 - `Makefile`: shared developer shortcuts for Python wheel builds, Rust release builds, and test runs
-- `VERSION`: canonical repo version source used to sync Python and Rust package metadata before builds
 - `.github/workflows/ci.yml`: baseline CI gates for Python tests plus Rust tests/format/lint checks
 - `scripts/build-rust-macos-arm64.sh`: native Apple Silicon Rust release build helper that copies binaries into `dist/macos-arm64/`
 - `scripts/build-rust-linux-amd64.sh`: Docker-based Linux `amd64` Rust build helper for macOS or other non-Linux hosts
 - `scripts/build-rust-linux-amd64-zig.sh`: non-Docker Linux `amd64` Rust build helper using local `zig` and `cargo-zigbuild`
-- `scripts/set-version.sh`: version sync helper that updates `VERSION`, `pyproject.toml`, and `rust/Cargo.toml` from one requested version or tag
 - `scripts/seed-grafana-sample-data.sh`: idempotent developer seed helper for sample orgs, datasources, folders, and dashboards in a running Grafana
 - `scripts/test-rust-live-grafana.sh`: Docker-backed Grafana smoke test for the Rust CLIs
 
@@ -89,55 +82,12 @@ Commit message default for this repo:
 - [Python overview for maintainers](docs/overview-python.md) provides a longer architecture walkthrough.
 - [Rust overview for maintainers](docs/overview-rust.md) provides a longer architecture walkthrough.
 
-## Rust Sync Maintenance Contract
-
-- Treat Rust `sync` as local/document-first even though it now has optional live fetch and a limited live apply path. The stable review surface is still the staged JSON artifact chain: `summary -> plan -> review -> preflight/bundle-preflight -> apply`.
-- `crate::sync_contracts` is the preferred import surface for summary/plan/apply-intent builders. `sync_workbench` remains only as the backing compatibility module.
-- `sync.rs` owns CLI parsing, file IO, trace/lineage propagation, validator calls, and live bridges. Avoid moving reusable contract logic into `sync.rs` if it can live in `sync_contracts`, `sync_preflight`, or `sync_bundle_preflight`.
-- [Rust sync artifact note](docs/internal/rust-sync-artifacts.md) is the canonical maintainer reference for staged artifact kinds plus the fixture files that docs/tests should reuse.
-- Lineage metadata is part of the contract, not decorative output:
-  - `traceId` identifies one staged flow.
-  - `stage`, `stepIndex`, and `parentTraceId` constrain which artifacts can be combined.
-  - `apply` must reject reviewed plans or preflight artifacts whose lineage does not match the current plan trace.
-- Managed scope is intentionally narrow:
-  - supported resource kinds are `dashboard`, `datasource`, `folder`, and partial `alert`
-  - alert specs must carry `managedFields`
-  - `unmanaged` means live-only and outside explicit prune intent
-  - `would-delete` means prune has been explicitly allowed for that managed scope
-- Keep preflight fail-closed:
-  - blocking dependency or policy checks should stop `apply`
-  - bundle-preflight should remain the place where cross-resource sync/provider checks aggregate into one reviewable summary
-- Prefer fixture-driven Rust sync coverage when the contract grows:
-  - demo inputs should live under `tests/fixtures/rust_sync_demo_*.json`
-  - contract fixtures should live under `tests/fixtures/rust_sync_*_cases.json`
-  - tests should load those files with `include_str!(...)` instead of duplicating the same large JSON literals across suites
-- When maintainer docs or examples mention Rust `sync`, describe it as staged and review-driven first. Do not imply that it is a general full Grafana takeover or fully symmetric with Terraform/native provisioning.
-
 ## Python Baseline
 
 - Both Python entrypoints now target Python 3.9+ syntax and runtime support.
 - Prefer Python 3.9 built-in generics such as `list[str]`, `dict[str, Any]`, and `tuple[str, ...]` in touched code.
 - Avoid Python 3.10 union syntax such as `str | None`.
 - Keep using `typing.Optional`, `typing.Any`, `typing.Iterable`, and similar helpers where Python 3.9 still needs them.
-
-## Batch Error Policy
-
-- Python batch-style import/export/diff surfaces should share one `--error-policy abort|continue` contract instead of introducing per-command flags such as `--ignore-errors` or `--best-effort`.
-- `abort` remains the default and preserves the fail-closed behavior on the first item-level error.
-- `continue` only applies after a command has entered an item-processing loop. Commands should record the failed item, continue with the remaining items, print a summary with `failed=<count>` or equivalent, and still return a non-zero exit status when any item failed.
-- Setup-time validation, auth/bootstrap failures, unreadable bundle files, malformed top-level metadata, and similar pre-loop errors should still abort immediately even when `--error-policy continue` is selected.
-- When adding new batch workflows, keep the failure record shape stable with `kind`, `identity`, `source`, and `error` fields so dry-run JSON and stderr summaries stay consistent across dashboard, alert, datasource, and access commands.
-
-## Version Workflow
-
-- `VERSION` is the canonical repo version source for both Python and Rust packaging metadata.
-- Run `make version-show` to inspect the canonical version plus the current source-file versions.
-- Run `make sync-version` after switching branches if `pyproject.toml` or `rust/Cargo.toml` drift from `VERSION`.
-- Run `make version-dev VERSION=0.2.9.dev1` to validate and set preview metadata for `dev` branch work.
-- Run `make version-release VERSION=0.2.9` to validate and set release metadata for `main` or release-prep work.
-- Run `make release-tag VERSION=0.2.9` only after the source version files already match the release you intend to tag; it verifies `VERSION`, `pyproject.toml`, and `rust/Cargo.toml` first, then creates `v0.2.9`.
-- `make set-version ...` and `make git-tag ...` still exist as lower-level escape hatches, but prefer the `version-dev`, `version-release`, and `release-tag` targets for normal maintainer workflows.
-- Rust build helper scripts now call `scripts/set-version.sh --sync-from-file` before `cargo build` so direct script-based builds do not accidentally reuse stale package metadata after a branch switch.
 
 ## Dashboard Utility
 
@@ -152,7 +102,6 @@ Commit message default for this repo:
 - Use `python3 -m grafana_utils datasource list ...` as the preferred live Grafana datasource inventory CLI.
 - Keep `python3 -m grafana_utils dashboard list-data-sources ...` only as a compatibility path while older automation migrates.
 - Use `python3 -m grafana_utils dashboard inspect-live ...` to inspect live Grafana dashboards through the same summary/report renderers used for raw exports.
-- Use `python3 -m grafana_utils dashboard promote-plan ...` and `preflight-plan ...` as local staged-contract entrypoints for promotion/preflight workbench flows before any later live mutation wiring exists.
 - Use `python3 -m grafana_utils dashboard export ...` for export.
 - Use `python3 -m grafana_utils dashboard import ...` for import.
 - Use `python3 -m grafana_utils dashboard diff ...` for live-vs-local comparison.
@@ -208,7 +157,7 @@ Commit message default for this repo:
 - The Python dashboard implementation is intentionally split by responsibility: `dashboard_cli.py` stays as the stable CLI facade focused on parser, auth/client wiring, dependency bundles, and top-level dispatch; `grafana_utils/dashboards/output_support.py` owns export pathing, file writes, and export metadata/index builders; `grafana_utils/dashboards/progress.py` owns export/import progress renderers; `grafana_utils/dashboards/folder_support.py` owns folder inventory and import-folder helpers; `grafana_utils/dashboards/import_support.py` owns import payload, diff, and dry-run helper logic; `grafana_utils/dashboards/listing.py` owns live dashboard/datasource listing plus datasource/source-enrichment helpers; `grafana_utils/dashboards/export_inventory.py` owns raw-export discovery plus inventory/manifest validation helpers; `grafana_utils/dashboards/inspection_summary.py` owns the inspection summary document plus summary/table renderers; `grafana_utils/dashboards/inspection_report.py` owns the explicit per-query report model plus flat/grouped renderers; `grafana_utils/dashboards/inspection_dispatch.py` owns inspect output-mode validation plus report/summary rendering dispatch; and `grafana_utils/dashboards/export_workflow.py`, `grafana_utils/dashboards/inspection_workflow.py`, and `grafana_utils/dashboards/import_workflow.py` own the high-level orchestration bodies for export, inspect-live/inspect-export, and import respectively.
 - The Rust dashboard implementation follows the same boundary at a crate-module level: `dashboard.rs` stays as the public facade and top-level entrypoint/re-export surface; `dashboard_models.rs` owns export/index/inventory payload structs; `dashboard_files.rs` owns raw-export discovery plus inventory/manifest validation helpers; `dashboard_inspect_report.rs` owns the query-report contract and grouped renderers; `dashboard_inspect_summary.rs` owns the inspection summary payload structs; and the import/inspect orchestration stays in the dedicated dashboard submodules.
 - The Rust dashboard implementation is intentionally split by responsibility: `dashboard_cli_defs.rs` owns clap/auth/client setup, `dashboard_list.rs` owns list/datasource renderers and org-aware list orchestration, `dashboard_export.rs` owns export pathing and multi-org export orchestration, `dashboard_prompt.rs` owns datasource resolution plus prompt-export template rewrites, and `dashboard.rs` now keeps only the remaining shared constants, CLI entrypoints, and re-exports needed by the dedicated helper modules.
-- The Rust access implementation is intentionally split by responsibility: `access_cli_defs.rs` owns clap/auth/client setup, `access_render.rs` owns output formatting and row normalization, `access_user.rs` owns user flows, `access_team.rs` owns team flows, `access_service_account.rs` owns service-account flows, and `access.rs` keeps shared request wrappers plus top-level dispatch/client-selection helpers.
+- The Rust access implementation is intentionally split by responsibility: `access_cli_defs.rs` owns clap/auth/client setup, `access_render.rs` owns output formatting and row normalization, `access_user.rs` owns user flows, `access_team.rs` owns team flows, `access_service_account.rs` owns service-account flows, and `access.rs` keeps shared request wrappers plus top-level dispatch.
 - The Python access implementation follows the same pattern at a smaller scale: `access_cli.py` stays as the stable facade, `grafana_utils/access/parser.py` owns argparse wiring and CLI-shape helpers, `grafana_utils/access/workflows.py` owns auth validation plus user/team/service-account orchestration, `grafana_utils/clients/access_client.py` owns HTTP calls, and `grafana_utils/access/models.py` owns normalization and rendering helpers.
 - The Python datasource implementation now follows the same facade pattern: `datasource_cli.py` stays as the stable facade and test-facing helper surface, `grafana_utils/datasource/parser.py` owns argparse wiring plus import dry-run column metadata, and `grafana_utils/datasource/workflows.py` owns export/import/diff execution plus datasource bundle/file helpers.
 
@@ -231,7 +180,6 @@ Commit message default for this repo:
 
 - `make build-rust-macos-arm64` runs `scripts/build-rust-macos-arm64.sh`.
 - That script is the explicit native release path for Apple Silicon Macs and copies binaries into `dist/macos-arm64/`.
-- `make build-rust` writes the default repo-local Rust release build into `build/rust/release/` by setting `CARGO_TARGET_DIR`.
 - `make build-rust-linux-amd64` runs `scripts/build-rust-linux-amd64.sh`.
 - The script uses Docker plus the official Rust image to build `x86_64-unknown-linux-gnu` binaries from macOS.
 - `make build-rust-linux-amd64-zig` runs `scripts/build-rust-linux-amd64-zig.sh`.
@@ -263,17 +211,13 @@ Those manifests use `schemaVersion` and `variant` markers so `import` and `diff`
 
 The Python and Rust dashboard CLIs also have `inspect-export` for offline raw-export analysis. The summary path reads the raw `export-metadata.json`, `index.json`, `folders.json`, `datasources.json`, and dashboard files, then summarizes dashboard count, folder paths, panel/query totals, datasource usage, datasource inventory, orphaned datasources, and mixed-datasource dashboards. `inspect-export --output-format json` emits the same summary as one machine-readable document, while `inspect-export --output-format table` renders the summary as separate summary, folder-path, datasource-usage, datasource-inventory, orphaned-datasource, and mixed-dashboard tables.
 
-`inspect-export` and `inspect-live` use `--output-format` as the primary explicit output selector. `text`, `table`, and `json` cover summary modes, while `report-table`, `report-csv`, `report-json`, `report-tree`, `report-tree-table`, `governance`, `governance-json`, `graph-json`, `graph-dot`, `graph-governance`, and `graph-governance-json` cover the corresponding report/governance/dependency-graph modes. Legacy `--json`, `--table`, and `--report` spellings still exist for compatibility, but help and examples should prefer `--output-format`.
+`inspect-export` and `inspect-live` use `--output-format` as the primary explicit output selector. `text`, `table`, and `json` cover summary modes, while `report-table`, `report-csv`, `report-json`, `report-tree`, `report-tree-table`, `governance`, and `governance-json` cover the corresponding report/governance modes. Legacy `--json`, `--table`, and `--report` spellings still exist for compatibility, but help and examples should prefer `--output-format`.
 
 The Python CLI also has `inspect-live`, which accepts the normal live dashboard auth/common args, materializes a temporary raw-export-like directory from live dashboard payloads plus current folder and datasource inventories, and then reuses the same summary/report inspection pipeline as `inspect-export`. This keeps the operator-facing output contract aligned while avoiding a second inspection implementation.
 
 `inspect-export` and `inspect-live` also expose `--help-full` on both the Python and Rust CLIs. Normal `-h/--help` stays concise, while `--help-full` prints that same subcommand help followed by a short examples block focused on `--output-format` report modes such as `report-table`, `report-tree`, `report-tree-table`, plus datasource/panel filters and `--report-columns`.
 
 `inspect-export --output-format report-table` takes the same raw export input but emits one per-query record instead of the higher-level summary. Each record carries dashboard uid/title, folder path, panel id/title/type, target `refId`, resolved datasource label, a best-effort `datasourceUid`, the query field chosen from the target payload (`expr`, `query`, `rawSql`, and similar), the raw query text, and heuristic extraction fields such as `metrics`, `measurements`, and `buckets`. `--output-format report-json` emits the same flat record model as JSON for downstream analysis, and `report-tree` / `report-tree-table` render the same underlying records in grouped forms with clearer operator intent. Flux and SQL-family extraction remain heuristic and conservative: Flux currently uses `metrics` for pipeline/source function names plus `measurements`/`buckets` for `_measurement` and `bucket` references, while SQL-family queries currently use `measurements` for table/source references and `metrics` for coarse query-shape hints because the shared report contract does not yet expose dedicated table or shape fields.
-
-`inspect-export --output-format graph-json` and `graph-dot` now reuse the same filtered per-query inspection report plus summary document to build a staged resource dependency graph covering dashboards, panels, and datasources. `graph-governance` and `graph-governance-json` summarize that graph into datasource blast-radius and orphaned-datasource views without introducing a second governance pipeline.
-
-`dashboard promote-plan` and `dashboard preflight-plan` are currently local JSON-to-JSON/text entrypoints that expose the staged roadmap promotion contracts through the stable CLI. They do not call Grafana APIs yet. `promote-plan` consumes source/target JSON documents plus optional datasource/dashboard remap files and emits one reviewable create/update plan; `preflight-plan` consumes that plan plus an optional availability document and emits datasource/plugin/contact-point/library-panel check results in either text or JSON. The canonical helper module for these staged contracts is now `grafana_utils/roadmap_contracts.py`; the older `roadmap_workbench.py` path remains as a compatibility wrapper.
 
 `--report-columns` affects `report-table`/`report-csv` output and the grouped `report-tree-table` output, and uses stable column ids such as `dashboard_uid`, `panel_title`, `datasource`, `metrics`, and `query`. Optional columns such as `datasource_uid` stay out of the default table/CSV layout so the common report shape remains stable, but callers can opt them in explicitly. `--report-filter-datasource` applies before flat or grouped rendering and keeps only rows whose datasource label exactly matches the requested value. `--report-filter-panel-id` applies at the same stage and keeps only rows whose `panelId` exactly matches the requested value, which is useful when one dashboard expands into many panel/query rows.
 

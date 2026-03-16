@@ -7,8 +7,6 @@ RUST_DIR="${REPO_ROOT}/rust"
 OUTPUT_DIR="${REPO_ROOT}/dist/linux-amd64"
 TARGET_TRIPLE="x86_64-unknown-linux-gnu"
 
-bash "${REPO_ROOT}/scripts/set-version.sh" --sync-from-file >/dev/null
-
 if ! command -v zig >/dev/null 2>&1; then
   echo "Error: zig is required for non-Docker Linux amd64 Rust builds." >&2
   exit 1

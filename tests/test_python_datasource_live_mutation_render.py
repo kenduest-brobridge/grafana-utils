@@ -50,10 +50,7 @@ class DatasourceLiveMutationRenderTests(unittest.TestCase):
             ]
         )
 
-        self.assertEqual(
-            lines[0],
-            "OPERATION  UID        NAME       TYPE  MATCH       ACTION        TARGET_ID",
-        )
+        self.assertEqual(lines[0], "OPERATION  UID        NAME       TYPE  MATCH       ACTION        TARGET_ID")
         self.assertIn("delete", lines[2])
         self.assertIn("would-delete", lines[2])
 

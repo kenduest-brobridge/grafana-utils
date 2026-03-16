@@ -30,6 +30,7 @@ def build_export_metadata(
     )
 
 
+
 class FakeDashboardIntegrationClient:
     def __init__(self, dashboards=None, folders=None):
         self.dashboards = dashboards or {}
@@ -43,9 +44,7 @@ class FakeDashboardIntegrationClient:
 
     def fetch_dashboard(self, uid):
         if uid not in self.dashboards:
-            raise exporter.GrafanaApiError(
-                404, "/api/dashboards/uid/%s" % uid, "not found"
-            )
+            raise exporter.GrafanaApiError(404, "/api/dashboards/uid/%s" % uid, "not found")
         return self.dashboards[uid]
 
     def fetch_folder_if_exists(self, uid):
@@ -68,9 +67,7 @@ class FakeDashboardIntegrationClient:
 
 
 class DashboardIntegrationFlowTests(unittest.TestCase):
-    def test_main_inspect_export_json_summarizes_raw_inventory_and_mixed_dashboards(
-        self,
-    ):
+    def test_main_inspect_export_json_summarizes_raw_inventory_and_mixed_dashboards(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
@@ -139,10 +136,7 @@ class DashboardIntegrationFlowTests(unittest.TestCase):
                             {
                                 "id": 1,
                                 "type": "timeseries",
-                                "datasource": {
-                                    "type": "prometheus",
-                                    "uid": "prom-main",
-                                },
+                                "datasource": {"type": "prometheus", "uid": "prom-main"},
                                 "targets": [{"refId": "A", "expr": "sum(up)"}],
                             }
                         ],
@@ -161,24 +155,15 @@ class DashboardIntegrationFlowTests(unittest.TestCase):
                             {
                                 "id": 2,
                                 "type": "timeseries",
-                                "datasource": {
-                                    "type": "datasource",
-                                    "uid": "-- Mixed --",
-                                },
+                                "datasource": {"type": "datasource", "uid": "-- Mixed --"},
                                 "targets": [
                                     {
                                         "refId": "A",
-                                        "datasource": {
-                                            "type": "prometheus",
-                                            "uid": "prom-main",
-                                        },
+                                        "datasource": {"type": "prometheus", "uid": "prom-main"},
                                     },
                                     {
                                         "refId": "B",
-                                        "datasource": {
-                                            "type": "loki",
-                                            "uid": "loki-main",
-                                        },
+                                        "datasource": {"type": "loki", "uid": "loki-main"},
                                     },
                                 ],
                             }
@@ -216,9 +201,7 @@ class DashboardIntegrationFlowTests(unittest.TestCase):
                 ["loki-main", "prom-main"],
             )
 
-    def test_main_import_dry_run_json_reports_folder_checks_and_update_skip_actions(
-        self,
-    ):
+    def test_main_import_dry_run_json_reports_folder_checks_and_update_skip_actions(self):
         client = FakeDashboardIntegrationClient(
             dashboards={
                 "cpu-main": {
@@ -227,12 +210,7 @@ class DashboardIntegrationFlowTests(unittest.TestCase):
                 }
             },
             folders={
-                "platform": {
-                    "uid": "platform",
-                    "title": "Platform",
-                    "parentUid": "",
-                    "parents": [],
-                },
+                "platform": {"uid": "platform", "title": "Platform", "parentUid": "", "parents": []},
                 "infra": {
                     "uid": "infra",
                     "title": "Infra",
@@ -284,12 +262,7 @@ class DashboardIntegrationFlowTests(unittest.TestCase):
             )
             exporter.write_json_document(
                 {
-                    "dashboard": {
-                        "id": None,
-                        "uid": "cpu-main",
-                        "title": "CPU Main",
-                        "panels": [],
-                    },
+                    "dashboard": {"id": None, "uid": "cpu-main", "title": "CPU Main", "panels": []},
                     "meta": {"folderUid": "infra"},
                 },
                 import_dir / "Infra" / "CPU_Main__cpu-main.json",

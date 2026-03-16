@@ -13,6 +13,7 @@ Caveats:
 """
 
 from copy import deepcopy
+from typing import Any, Optional
 
 from ..dashboard_cli import GrafanaError
 
@@ -220,12 +221,7 @@ def delete_datasource(client, uid=None, name=None, dry_run=False):
     if plan["action"] != "would-delete":
         raise GrafanaError(
             "Datasource delete blocked for uid=%s name=%s match=%s action=%s"
-            % (
-                _normalize_string(uid) or "-",
-                _normalize_string(name) or "-",
-                plan["match"],
-                plan["action"],
-            )
+            % (_normalize_string(uid) or "-", _normalize_string(name) or "-", plan["match"], plan["action"])
         )
     target = plan.get("target") or {}
     datasource_id = target.get("id")

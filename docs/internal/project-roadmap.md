@@ -108,28 +108,6 @@ Explicit non-goals for this phase:
 - no general deployment orchestrator
 - no attempt to own every environment-management concern outside Grafana resource migration
 
-Competitor-informed direction:
-
-`grafana-backup-tool` is a useful reference for backup productization, but it should inform this phase selectively rather than redefine the repo as a generic backup utility.
-
-Necessary or strong-reference additions:
-
-- keep investing in cross-environment datasource and dashboard remap support because backup-style raw restore alone does not solve target-environment datasource selection
-- evaluate one reviewable bundle/package format that groups dashboards, alerts, datasources, and metadata into one portable artifact while preserving current dry-run and diff guardrails
-- make promotion/preflight outputs easy to use from scheduled jobs and CI so operators can treat migration bundles as operational artifacts rather than ad hoc export folders
-- add stronger bundle metadata and validation so exported state can be verified before restore or promotion starts
-
-Possible directions, but not required:
-
-- add a dedicated `backup` or `restore` command family only if it clearly reuses the existing export/import/diff contracts instead of creating a second parallel workflow model
-- add remote artifact storage targets such as S3, GCS, or Azure Blob only after the local bundle contract is stable
-- add retention-oriented backup lifecycle features only if the project intentionally chooses to serve recurring disaster-recovery jobs in addition to migration/governance workflows
-- add extra archival coverage for resources such as library elements, annotations, snapshots, or dashboard version history only when they materially improve migration or review value
-
-Guardrail:
-
-- do not trade away multi-org routing, dry-run trustworthiness, or reviewable remap/preflight behavior just to mimic a simpler save/restore backup experience
-
 ### Phase 3: Introduce GitOps-Oriented Declarative Sync
 
 Target outcome:
@@ -138,10 +116,9 @@ Target outcome:
 
 Priority items:
 
-- expand the shipped `grafana-util sync` surface beyond the current staged/local-first baseline
+- design a declarative sync command such as `grafana-util sync` around an explicit export/import/diff contract
 - define a narrow supported state model for dashboards, datasources, folders, and selected alert resources
 - require reviewable plan/dry-run output before live mutation
-- decide which live fetch and live apply bridges belong in the stable sync contract versus staying explicitly limited
 - keep sync semantics compatible with existing normalized export formats wherever practical
 - document where declarative sync complements rather than replaces Terraform/native Grafana provisioning
 
@@ -152,7 +129,7 @@ Why this phase is later:
 
 Definition of done for this phase:
 
-- operators can use one explicit sync workflow for a supported subset of Grafana state without dropping back to ad hoc scripts
+- operators can declare a supported subset of Grafana state in versioned files and reconcile drift through one explicit workflow
 - sync results are reviewable, predictable, and fail closed on unsupported ambiguity
 - the feature reuses existing contracts instead of inventing a second incompatible resource model
 
@@ -226,14 +203,6 @@ These items should continue across phases instead of waiting for one specific mi
 - reduce oversized orchestration modules before they become the default place for every new feature
 - update maintainer docs when behavior or architecture changes materially
 - resist scope creep that does not reinforce migration, inspection, diff, promotion, or governance value
-
-## Backup Roadmap Guidance
-
-When considering backup-oriented work inspired by `grafana-backup-tool`, use this filter:
-
-- necessary or strong-reference work should strengthen portable bundles, preflight validation, remap support, scheduled-job ergonomics, and artifact verification
-- optional work may include cloud backup destinations, retention policies, extra archival resource types, or a dedicated `backup/restore` UX layer
-- reject work that mostly increases backup marketing surface area without improving the repo's core migration, diff, governance, or safety model
 
 ## Priority Order Right Now
 

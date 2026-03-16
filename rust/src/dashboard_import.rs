@@ -13,30 +13,6 @@ use crate::http::{JsonHttpClient, JsonHttpClientConfig};
 
 use super::*;
 
-fn with_continue_on_error<T, F>(
-    args: &ImportArgs,
-    dashboard_file: &Path,
-    operation: F,
-) -> Result<Option<T>>
-where
-    F: FnOnce() -> Result<T>,
-{
-    match operation() {
-        Ok(value) => Ok(Some(value)),
-        Err(error) => {
-            if args.continue_on_error {
-                eprintln!(
-                    "Skipping dashboard {} after error: {error}",
-                    dashboard_file.display()
-                );
-                Ok(None)
-            } else {
-                Err(error)
-            }
-        }
-    }
-}
-
 fn validate_import_org_auth(context: &DashboardAuthContext, args: &ImportArgs) -> Result<()> {
     if args.org_id.is_some() && context.auth_mode != "basic" {
         return Err(message(
@@ -189,10 +165,7 @@ fn parse_export_org_scope(import_root: &Path, raw_dir: &Path) -> Result<ExportOr
         return Err(message(format!(
             "Cannot route import by export org for {}: found multiple export orgIds ({}).",
             raw_dir.display(),
-            export_org_ids
-                .into_iter()
-                .collect::<Vec<String>>()
-                .join(", ")
+            export_org_ids.into_iter().collect::<Vec<String>>().join(", ")
         )));
     }
     let source_org_id_text = export_org_ids.into_iter().next().unwrap_or_default();
@@ -229,8 +202,7 @@ fn discover_export_org_import_scopes(args: &ImportArgs) -> Result<Vec<ExportOrgI
     if !args.use_export_org {
         return Ok(Vec::new());
     }
-    let selected_org_ids: std::collections::BTreeSet<i64> =
-        args.only_org_id.iter().copied().collect();
+    let selected_org_ids: std::collections::BTreeSet<i64> = args.only_org_id.iter().copied().collect();
     let mut scopes = Vec::new();
     for entry in fs::read_dir(&args.import_dir)? {
         let entry = entry?;
@@ -419,8 +391,7 @@ where
         });
     }
     let created = create_org_with_request(&mut request_json, &scope.source_org_name)?;
-    let created_org_id =
-        org_id_string_from_value(created.get("orgId").or_else(|| created.get("id")));
+    let created_org_id = org_id_string_from_value(created.get("orgId").or_else(|| created.get("id")));
     if created_org_id.is_empty() {
         return Err(message(format!(
             "Grafana did not return a usable orgId after creating destination org '{}' for exported org {}.",
@@ -1242,106 +1213,42 @@ where
     });
     let effective_replace_existing = args.replace_existing || args.update_existing_only;
     let mut dashboard_records: Vec<[String; 8]> = Vec::new();
-    let mut failed_count = 0usize;
     for dashboard_file in &dashboard_files {
-        let document = match with_continue_on_error(args, dashboard_file, || {
-            load_json_file(dashboard_file)
-        })? {
-            Some(document) => document,
-            None => {
-                failed_count += 1;
-                continue;
-            }
-        };
-        let document_object = match with_continue_on_error(args, dashboard_file, || {
-            value_as_object(&document, "Dashboard payload must be a JSON object.")
-        })? {
-            Some(document_object) => document_object,
-            None => {
-                failed_count += 1;
-                continue;
-            }
-        };
-        let dashboard = match with_continue_on_error(args, dashboard_file, || {
-            extract_dashboard_object(document_object)
-        })? {
-            Some(dashboard) => dashboard,
-            None => {
-                failed_count += 1;
-                continue;
-            }
-        };
+        let document = load_json_file(dashboard_file)?;
+        let document_object =
+            value_as_object(&document, "Dashboard payload must be a JSON object.")?;
+        let dashboard = extract_dashboard_object(document_object)?;
         let uid = string_field(dashboard, "uid", "");
         let source_folder_path = if args.require_matching_folder_path {
-            match with_continue_on_error(args, dashboard_file, || {
-                resolve_source_dashboard_folder_path(
-                    &document,
-                    dashboard_file,
-                    &args.import_dir,
-                    &folders_by_uid,
-                )
-            })? {
-                Some(path) => Some(path),
-                None => {
-                    failed_count += 1;
-                    continue;
-                }
-            }
+            Some(resolve_source_dashboard_folder_path(
+                &document,
+                dashboard_file,
+                &args.import_dir,
+                &folders_by_uid,
+            )?)
         } else {
             None
         };
-        let folder_uid_override = match with_continue_on_error(args, dashboard_file, || {
-            determine_import_folder_uid_override_with_request(
-                &mut request_json,
-                &uid,
-                args.import_folder_uid.as_deref(),
-                effective_replace_existing,
-            )
-        })? {
-            Some(value) => value,
-            None => {
-                failed_count += 1;
-                continue;
-            }
-        };
-        let payload = match with_continue_on_error(args, dashboard_file, || {
-            build_import_payload(
-                &document,
-                folder_uid_override.as_deref(),
-                effective_replace_existing,
-                &args.import_message,
-            )
-        })? {
-            Some(payload) => payload,
-            None => {
-                failed_count += 1;
-                continue;
-            }
-        };
-        let action = match with_continue_on_error(args, dashboard_file, || {
-            determine_dashboard_import_action_with_request(
-                &mut request_json,
-                &payload,
-                args.replace_existing,
-                args.update_existing_only,
-            )
-        })? {
-            Some(action) => action,
-            None => {
-                failed_count += 1;
-                continue;
-            }
-        };
+        let folder_uid_override = determine_import_folder_uid_override_with_request(
+            &mut request_json,
+            &uid,
+            args.import_folder_uid.as_deref(),
+            effective_replace_existing,
+        )?;
+        let payload = build_import_payload(
+            &document,
+            folder_uid_override.as_deref(),
+            effective_replace_existing,
+            &args.import_message,
+        )?;
+        let action = determine_dashboard_import_action_with_request(
+            &mut request_json,
+            &payload,
+            args.replace_existing,
+            args.update_existing_only,
+        )?;
         let destination_folder_path = if args.require_matching_folder_path {
-            match with_continue_on_error(args, dashboard_file, || {
-                resolve_existing_dashboard_folder_path_with_request(&mut request_json, &uid)
-            })? {
-                Some(path) => path,
-                None => {
-                    failed_count += 1;
-                    continue;
-                }
-            }
+            resolve_existing_dashboard_folder_path_with_request(&mut request_json, &uid)?
         } else {
             None
         };
@@ -1361,19 +1268,11 @@ where
             (true, "", String::new(), None)
         };
         let action = apply_folder_path_guard_to_action(action, folder_paths_match);
-        let folder_path = match with_continue_on_error(args, dashboard_file, || {
-            resolve_dashboard_import_folder_path_with_request(
-                &mut request_json,
-                &payload,
-                &folders_by_uid,
-            )
-        })? {
-            Some(value) => value,
-            None => {
-                failed_count += 1;
-                continue;
-            }
-        };
+        let folder_path = resolve_dashboard_import_folder_path_with_request(
+            &mut request_json,
+            &payload,
+            &folders_by_uid,
+        )?;
         dashboard_records.push(build_import_dry_run_record(
             dashboard_file,
             &uid,
@@ -1381,13 +1280,8 @@ where
             &folder_path,
             &normalized_source_folder_path,
             normalized_destination_folder_path.as_deref(),
-            folder_match_reason,
+            &folder_match_reason,
         ));
-    }
-    if args.continue_on_error && failed_count > 0 {
-        return Err(message(format!(
-            "Import dry-run encountered {failed_count} dashboard file errors with --continue-on-error."
-        )));
     }
     Ok(ImportDryRunReport {
         mode: describe_dashboard_import_mode(args.replace_existing, args.update_existing_only)
@@ -1548,7 +1442,6 @@ where
     let effective_replace_existing = args.replace_existing || args.update_existing_only;
     let mut dry_run_records: Vec<[String; 8]> = Vec::new();
     let mut imported_count = 0usize;
-    let mut failed_count = 0usize;
     let mut skipped_missing_count = 0usize;
     let mut skipped_folder_mismatch_count = 0usize;
     let mode = describe_dashboard_import_mode(args.replace_existing, args.update_existing_only);
@@ -1600,112 +1493,49 @@ where
         {
             continue;
         }
-        let document = match with_continue_on_error(args, dashboard_file, || {
-            load_json_file(dashboard_file)
-        })? {
-            Some(document) => document,
-            None => {
-                failed_count += 1;
-                continue;
-            }
-        };
-        let document_object = match with_continue_on_error(args, dashboard_file, || {
-            value_as_object(&document, "Dashboard payload must be a JSON object.")
-        })? {
-            Some(document_object) => document_object,
-            None => {
-                failed_count += 1;
-                continue;
-            }
-        };
-        let dashboard = match with_continue_on_error(args, dashboard_file, || {
-            extract_dashboard_object(document_object)
-        })? {
-            Some(dashboard) => dashboard,
-            None => {
-                failed_count += 1;
-                continue;
-            }
-        };
+        let document = load_json_file(dashboard_file)?;
+        let document_object =
+            value_as_object(&document, "Dashboard payload must be a JSON object.")?;
+        let dashboard = extract_dashboard_object(document_object)?;
         let uid = string_field(dashboard, "uid", "");
         let source_folder_path = if args.require_matching_folder_path {
-            match with_continue_on_error(args, dashboard_file, || {
-                resolve_source_dashboard_folder_path(
-                    &document,
-                    dashboard_file,
-                    &args.import_dir,
-                    &folders_by_uid,
-                )
-            })? {
-                Some(path) => Some(path),
-                None => {
-                    failed_count += 1;
-                    continue;
-                }
-            }
+            Some(resolve_source_dashboard_folder_path(
+                &document,
+                dashboard_file,
+                &args.import_dir,
+                &folders_by_uid,
+            )?)
         } else {
             None
         };
-        let folder_uid_override = match with_continue_on_error(args, dashboard_file, || {
-            determine_import_folder_uid_override_with_request(
-                &mut request_json,
-                &uid,
-                args.import_folder_uid.as_deref(),
-                effective_replace_existing,
-            )
-        })? {
-            Some(value) => value,
-            None => {
-                failed_count += 1;
-                continue;
-            }
-        };
-        let payload = match with_continue_on_error(args, dashboard_file, || {
-            build_import_payload(
-                &document,
-                folder_uid_override.as_deref(),
-                effective_replace_existing,
-                &args.import_message,
-            )
-        })? {
-            Some(payload) => payload,
-            None => {
-                failed_count += 1;
-                continue;
-            }
-        };
+        let folder_uid_override = determine_import_folder_uid_override_with_request(
+            &mut request_json,
+            &uid,
+            args.import_folder_uid.as_deref(),
+            effective_replace_existing,
+        )?;
+        let payload = build_import_payload(
+            &document,
+            folder_uid_override.as_deref(),
+            effective_replace_existing,
+            &args.import_message,
+        )?;
         let action = if args.dry_run
             || args.update_existing_only
             || args.ensure_folders
             || args.require_matching_folder_path
         {
-            match with_continue_on_error(args, dashboard_file, || {
-                determine_dashboard_import_action_with_request(
-                    &mut request_json,
-                    &payload,
-                    args.replace_existing,
-                    args.update_existing_only,
-                )
-            })? {
-                Some(value) => Some(value),
-                None => {
-                    failed_count += 1;
-                    continue;
-                }
-            }
+            Some(determine_dashboard_import_action_with_request(
+                &mut request_json,
+                &payload,
+                args.replace_existing,
+                args.update_existing_only,
+            )?)
         } else {
             None
         };
         let destination_folder_path = if args.require_matching_folder_path {
-            match with_continue_on_error(args, dashboard_file, || {
-                resolve_existing_dashboard_folder_path_with_request(&mut request_json, &uid)
-            })? {
-                Some(value) => value,
-                None => {
-                    failed_count += 1;
-                    continue;
-                }
-            }
+            resolve_existing_dashboard_folder_path_with_request(&mut request_json, &uid)?
         } else {
             None
         };
@@ -1727,28 +1557,13 @@ where
         let action =
             action.map(|value| apply_folder_path_guard_to_action(value, folder_paths_match));
         if args.dry_run {
-            let folder_path = match with_continue_on_error(args, dashboard_file, || {
-                resolve_dashboard_import_folder_path_with_request(
-                    &mut request_json,
-                    &payload,
-                    &folders_by_uid,
-                )
-            })? {
-                Some(path) => path,
-                None => {
-                    failed_count += 1;
-                    continue;
-                }
-            };
-            let payload_object = match with_continue_on_error(args, dashboard_file, || {
-                value_as_object(&payload, "Dashboard import payload must be a JSON object.")
-            })? {
-                Some(payload_object) => payload_object,
-                None => {
-                    failed_count += 1;
-                    continue;
-                }
-            };
+            let folder_path = resolve_dashboard_import_folder_path_with_request(
+                &mut request_json,
+                &payload,
+                &folders_by_uid,
+            )?;
+            let payload_object =
+                value_as_object(&payload, "Dashboard import payload must be a JSON object.")?;
             let dashboard = payload_object
                 .get("dashboard")
                 .and_then(Value::as_object)
@@ -1762,7 +1577,7 @@ where
                     &folder_path,
                     &normalized_source_folder_path,
                     normalized_destination_folder_path.as_deref(),
-                    folder_match_reason,
+                    &folder_match_reason,
                 ));
             } else if args.verbose {
                 println!(
@@ -1791,15 +1606,8 @@ where
             continue;
         }
         if args.update_existing_only || args.require_matching_folder_path {
-            let payload_object = match with_continue_on_error(args, dashboard_file, || {
-                value_as_object(&payload, "Dashboard import payload must be a JSON object.")
-            })? {
-                Some(value) => value,
-                None => {
-                    failed_count += 1;
-                    continue;
-                }
-            };
+            let payload_object =
+                value_as_object(&payload, "Dashboard import payload must be a JSON object.")?;
             let dashboard = payload_object
                 .get("dashboard")
                 .and_then(Value::as_object)
@@ -1845,42 +1653,21 @@ where
             }
         }
         if args.ensure_folders {
-            let payload_object = match with_continue_on_error(args, dashboard_file, || {
-                value_as_object(&payload, "Dashboard import payload must be a JSON object.")
-            })? {
-                Some(value) => value,
-                None => {
-                    failed_count += 1;
-                    continue;
-                }
-            };
+            let payload_object =
+                value_as_object(&payload, "Dashboard import payload must be a JSON object.")?;
             let folder_uid = payload_object
                 .get("folderUid")
                 .and_then(Value::as_str)
                 .unwrap_or("");
-            if !folder_uid.is_empty()
-                && action != Some("would-fail-existing")
-                && with_continue_on_error(args, dashboard_file, || {
-                    ensure_folder_inventory_entry_with_request(
-                        &mut request_json,
-                        &folders_by_uid,
-                        folder_uid,
-                    )
-                })?
-                .is_none()
-            {
-                failed_count += 1;
-                continue;
+            if !folder_uid.is_empty() && action != Some("would-fail-existing") {
+                ensure_folder_inventory_entry_with_request(
+                    &mut request_json,
+                    &folders_by_uid,
+                    folder_uid,
+                )?;
             }
         }
-        if with_continue_on_error(args, dashboard_file, || {
-            import_dashboard_request_with_request(&mut request_json, &payload).map(|_| ())
-        })?
-        .is_none()
-        {
-            failed_count += 1;
-            continue;
-        }
+        let _result = import_dashboard_request_with_request(&mut request_json, &payload)?;
         imported_count += 1;
         if args.verbose {
             println!(
@@ -1970,11 +1757,6 @@ where
                 args.import_dir.display()
             );
         }
-        if args.continue_on_error && failed_count > 0 {
-            return Err(message(format!(
-                "Import dry-run encountered {failed_count} dashboard file errors with --continue-on-error."
-            )));
-        }
         return Ok(dashboard_files.len());
     }
     if args.update_existing_only && skipped_missing_count > 0 && skipped_folder_mismatch_count > 0 {
@@ -2000,11 +1782,6 @@ where
             skipped_folder_mismatch_count
         );
     }
-    if args.continue_on_error && failed_count > 0 {
-        return Err(message(format!(
-            "Dashboard import encountered {failed_count} failed dashboard file(s) with --continue-on-error."
-        )));
-    }
     Ok(imported_count)
 }
 
@@ -2027,10 +1804,12 @@ where
     let scopes = discover_export_org_import_scopes(args)?;
     let mut orgs = Vec::new();
     let mut imports = Vec::new();
-    let mut failed_org_count = 0usize;
     for scope in scopes {
-        let target_plan =
-            resolve_target_org_plan_for_export_scope_with_request(&mut request_json, args, &scope)?;
+        let target_plan = resolve_target_org_plan_for_export_scope_with_request(
+            &mut request_json,
+            args,
+            &scope,
+        )?;
         let dashboard_count = discover_dashboard_files(&target_plan.import_dir)?
             .into_iter()
             .filter(|path| {
@@ -2045,49 +1824,14 @@ where
             "dashboardCount": dashboard_count,
             "importDir": target_plan.import_dir.display().to_string(),
         }));
-        let preview: Value = if let Some(target_org_id) = target_plan.target_org_id {
+        let preview = if let Some(target_org_id) = target_plan.target_org_id {
             let mut scoped_args = args.clone();
             scoped_args.org_id = Some(target_org_id);
             scoped_args.use_export_org = false;
             scoped_args.only_org_id = Vec::new();
             scoped_args.create_missing_orgs = false;
             scoped_args.import_dir = target_plan.import_dir.clone();
-            if args.continue_on_error {
-                match collect_preview_for_org(target_org_id, &scoped_args) {
-                    Ok(report) => build_import_dry_run_json_value(&report),
-                    Err(error) => {
-                        failed_org_count += 1;
-                        eprintln!(
-                            "Skipping export org {} after error: {}",
-                            target_plan.import_dir.display(),
-                            error
-                        );
-                        serde_json::json!({
-                            "mode": describe_dashboard_import_mode(
-                                args.replace_existing,
-                                args.update_existing_only
-                            ),
-                            "folders": [],
-                            "dashboards": [],
-                            "summary": {
-                                "importDir": target_plan.import_dir.display().to_string(),
-                                "folderCount": 0,
-                                "missingFolders": 0,
-                                "mismatchedFolders": 0,
-                                "dashboardCount": dashboard_count,
-                                "missingDashboards": 0,
-                                "skippedMissingDashboards": 0,
-                                "skippedFolderMismatchDashboards": 0,
-                            }
-                        })
-                    }
-                }
-            } else {
-                build_import_dry_run_json_value(&collect_preview_for_org(
-                    target_org_id,
-                    &scoped_args,
-                )?)
-            }
+            build_import_dry_run_json_value(&collect_preview_for_org(target_org_id, &scoped_args)?)
         } else {
             serde_json::json!({
                 "mode": describe_dashboard_import_mode(args.replace_existing, args.update_existing_only),
@@ -2105,7 +1849,7 @@ where
                 }
             })
         };
-        let mut import_entry = serde_json::Map::<String, Value>::new();
+        let mut import_entry = serde_json::Map::new();
         import_entry.insert(
             "sourceOrgId".to_string(),
             Value::from(target_plan.source_org_id),
@@ -2114,7 +1858,10 @@ where
             "sourceOrgName".to_string(),
             Value::from(target_plan.source_org_name.clone()),
         );
-        import_entry.insert("orgAction".to_string(), Value::from(target_plan.org_action));
+        import_entry.insert(
+            "orgAction".to_string(),
+            Value::from(target_plan.org_action),
+        );
         import_entry.insert(
             "targetOrgId".to_string(),
             target_plan
@@ -2123,16 +1870,11 @@ where
                 .unwrap_or(Value::Null),
         );
         if let Some(preview_object) = preview.as_object() {
-            for (key, value) in preview_object.iter() {
-                import_entry.insert(key.to_string(), value.clone());
+            for (key, value) in preview_object {
+                import_entry.insert(key.clone(), value.clone());
             }
         }
         imports.push(Value::Object(import_entry));
-    }
-    if args.continue_on_error && failed_org_count > 0 {
-        return Err(message(format!(
-            "Dashboard import encountered {failed_org_count} failed export org(s) with --continue-on-error."
-        )));
     }
     build_routed_import_dry_run_json_document(&orgs, &imports)
 }
@@ -2161,12 +1903,14 @@ where
         return Ok(0);
     }
     let mut imported_count = 0;
-    let mut failed_org_count = 0usize;
     let mut org_rows = Vec::new();
     let mut resolved_plans = Vec::new();
     for scope in scopes {
-        let target_plan =
-            resolve_target_org_plan_for_export_scope_with_request(&mut request_json, args, &scope)?;
+        let target_plan = resolve_target_org_plan_for_export_scope_with_request(
+            &mut request_json,
+            args,
+            &scope,
+        )?;
         let dashboard_count = discover_dashboard_files(&target_plan.import_dir)?
             .into_iter()
             .filter(|path| {
@@ -2210,26 +1954,7 @@ where
         scoped_args.only_org_id = Vec::new();
         scoped_args.create_missing_orgs = false;
         scoped_args.import_dir = target_plan.import_dir.clone();
-        match import_for_org(target_org_id, &scoped_args) {
-            Ok(value) => imported_count += value,
-            Err(error) => {
-                if args.continue_on_error {
-                    eprintln!(
-                        "Skipping export org {} after error: {}",
-                        target_plan.import_dir.display(),
-                        error
-                    );
-                    failed_org_count += 1;
-                    continue;
-                }
-                return Err(error);
-            }
-        };
-    }
-    if args.continue_on_error && failed_org_count > 0 {
-        return Err(message(format!(
-            "Dashboard import encountered {failed_org_count} failed export org(s) with --continue-on-error."
-        )));
+        imported_count += import_for_org(target_org_id, &scoped_args)?;
     }
     Ok(imported_count)
 }

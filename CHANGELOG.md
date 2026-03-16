@@ -1,149 +1,20 @@
 # Changelog
 
-## 2026-03-16
-
-- `401c088` refactor: group CLI help options by intent across commands
-  - Grouped connection/auth flags under a dedicated `Connection and Auth` heading across Python and Rust help surfaces.
-  - Split dashboard import output help into routing, behavior, safety, dry-run output, and progress/logging groups.
-  - Updated help assertions in Python and Rust tests so grouped headings remain enforced.
-  - Kept command behavior and existing examples unchanged while improving parser help readability.
-
-- `6b6cde3` feature: add machine-readable Rust sync artifact schemas
-  - Added canonical JSON Schema files for summary, plan, preflight, bundle-preflight, and apply-intent artifacts.
-  - Added a machine-readable schema index manifest to enumerate all sync contracts.
-  - Added Rust contract tests that validate metadata and required/const field behavior across generated artifacts.
-
-- `623a3d7` feature: add canonical rust sync fixtures and artifact contract
-  - Added canonical Rust sync demo and contract fixtures to reuse in both code and docs.
-  - Refactored Rust sync tests to load canonical fixtures via `include_str!` and keep suite coverage stable.
-  - Expanded staged sync contract detail with explicit scope/prune metadata and richer preflight/bundle-preflight summaries.
-
-- `8d7adb5` docs: refresh stale internal status notes
-  - Marked service-account snapshot status as done and removed the duplicate planned entry.
-  - Updated GitOps sync internal notes to describe shipped staged CLI behavior.
-  - Reframed the sync roadmap from “design from scratch” to expansion of the existing workflow.
-
-
 ## 2026-03-15
 
-- `37f2db7` bugfix: complete rust cli import/workbench follow-up
-  - Completed access import/update/export argument normalization and added runtime guards.
-  - Extended dashboard inspect/report and datasource provider handling paths used by sync/import tooling.
-  - Hardened sync and preflight failure handling and aligned test coverage.
+- `9d6e00e` Add safer access user password input
+  - Added safer password input options for `access user add` and `access user modify` in both Python and Rust.
+  - Added `--password-file` and `--prompt-user-password` for new-user creation without requiring cleartext passwords directly on the command line.
+  - Added `--set-password-file` and `--prompt-set-password` for password rotation and recovery flows on existing users.
+  - Updated Python and Rust tests to cover the new password flag surface, help text, and secret resolution behavior.
+  - Refreshed README, user guides, repo guidance, and internal trace docs to reflect the safer password workflows and access support matrix changes.
 
-- `da74501` bugfix: harden python quality gate path handling
-  - Dynamically build quality paths so available tools/lists are checked against real checkout paths.
-  - Removed duplicate parser test import that could break quality checks.
-
-- `e497e8d` ci: avoid poetry root install in github actions
-  - CI now uses `poetry install --with dev --no-root` and optional transport dependencies in a safer order.
-
-- `f37e3e0` bugfix: add continue-on-error for alert and datasource import
-  - Added `--continue-on-error` parser and runtime support for alert and datasource import.
-  - Enabled per-item continuation during import while preserving non-zero exit behavior on failed items.
-  - Extended parser and runtime tests for continue-on-error acceptance paths.
-
-- `9f5ced6` ci: align python quality job with poetry workflow
-  - Simplified GitHub Actions Python quality job to be Poetry-first and aligned with local quality gate.
-
-- `4386e0e` bugfix: continue-on-error dashboard import
-  - Centralized dashboard continue-on-error behavior in import execution and dry-run.
-  - Added parser and runtime tests covering continue-on-error semantics and export-org item failures.
-
-- `0c57d96` feature: expose python http transport selection
-  - Added shared `--http-transport auto|requests|httpx` across all Python CLIs.
-  - Threaded transport selection into Python Grafana clients and cloning paths.
-  - Made explicit-httpx tests pass with and without optional `httpx` dependency installed.
-
-- `586c749` bugfix: allow sync apply to continue on non-blocking errors
-  - Added sync apply continue-on-error and added per-item status output for successful and failed actions.
-  - Kept failed operations visible in a structured result stream while preserving non-zero failure summary exits.
-
-- `8b72104` bugfix: add rust sync live apply execution
-  - Implemented rust sync live apply execution for folder/dashboards/datasources.
-  - Added parser coverage for `--execute-live` and folder-delete options.
-  - Wired execute-live dispatch in CLI run path and validated in full Rust suite.
-
-- `b6db8dd` feat: align rust sync cli with live and alert assess
-  - Added optional live fetch support and new `assess-alerts` sync command path.
-  - Extended parse model with optional live availability files and flattened auth arguments.
-  - Added CLI regression coverage for `--fetch-live` and `assess-alerts`.
-
-- `ad5cfb1` feature: add python batch error policy
-  - Added shared abort/continue batch policy helper to datasource and access batch workflows.
-  - Kept batch failures item-scoped while preserving fail-open/fail-closed behavior at the right layer.
-
-- `17ec0dc` feature: add continue-on-error batch policy to dashboard and alert CLIs
-  - Added `--error-policy` to dashboard and alert flows for item-level continuation.
-  - Preserved strict pre-flight validation while allowing post-validation continuation.
-  - Expanded parser and behavior tests for dashboard and alert batch error policy.
-
-- `daa23ca` refactor: reduce CLI maintenance hotspots
-  - Replaced Python inspection string-key wiring with explicit dependency/setting objects.
-  - Centralized common dispatch paths while keeping compatibility wrappers in place.
-
-- `c399a8f` docs: capture sync follow-up backlog
-  - Captured sync follow-up technical backlog including sync round-trip, alert policy, and contract hardening.
-  - Updated internal docs to keep planned sync work explicit and stable.
-
-- `ac7cb2c` bugfix: allow parent-linked sync preflight lineage
-  - Relaxed parent lineage checks where appropriate while keeping apply-side validation strong.
-  - Removed stale no-parent lineage rejection from apply-time preflight checks.
-  - Revalidated focused Rust sync suite after lineage contract adjustment.
-
-- `f9d549f` feature: add rust sync preflight lineage metadata
-  - Added optional trace IDs for preflight/bundle-preflight metadata and staged lineage checks.
-  - Tightened staged apply validation for expected lineage metadata and step intent.
-  - Added contract-focused Rust sync tests for lineage compatibility.
-
-- `188b1d0` feature: carry trace ids through rust sync preflight
-  - Added trace-id support across preflight surfaces and applied lineage metadata to emitted staged docs.
-  - Rejected apply intent inputs when expected lineage metadata is missing.
-  - Updated tests and trace docs around lineage-aware sync documents.
-
-- `95e2510` feature: add sync workflows and scoped import extensions
-  - Added planning/preflight/review/apply sync workflow framing and scoped import extension points.
-  - Extended datasource, dashboard, alert, and access CLIs with new staged import and org-scoped behavior.
-  - Added internal modules and user-guide notes for the staged sync operator path.
-
-- `2abe613` build: add canonical version sync workflow
-  - Added canonical version sync via VERSION file plus helper scripts and Make targets.
-  - Synced Python and Rust metadata updates to one source of truth.
-  - Added targets for version show/sync/dev/release and tag workflows.
-
-- `134212e` bugfix: tighten rust sync staged lineage gating
-  - Tightened staged lineage gating in sync review/apply and aligned 1/2/3 staged flow indexes.
-  - Rejected inconsistent lineage or trace metadata for reviewed plan inputs before local apply.
-
-- `50e469a` feature: expand Grafana sample data workflow
-  - Expanded sample-data generation for users/teams/folders/datasources with read-only verify.
-  - Added richer workflow coverage across multiple orgs and richer dashboard fixtures.
-
-- `8b5ab08` feature: wire roadmap graph and promotion plan surfaces
-  - Added graph output formats and promote-plan preflight command surfaces for roadmap workflows.
-  - Added local command surfaces for dashboard promote plan and preflight plan previews.
-  - Added tests for new inspect export path and roadmap workbench behavior.
-
-- `a1bb2ec` feature: simplify inspect output selection
-  - Added inspect `--view/--format/--layout` while preserving legacy output compatibility.
-  - Kept old `--output-format` compatibility through argument normalization.
-  - Added parser/help/runtime tests for inspect UX normalization.
-
-- `20f44c0` docs: refresh internal roadmap and archive notes
-  - Updated roadmap/archive docs and aligned names to current `grafana-util` wording.
-  - Clarified historical command naming so legacy internal notes are not mistaken for current guidance.
-
-- `6d96e07` docs: bump dev version to 0.2.0 preview
-  - Updated Python and Rust dev version identifiers per branch policy.
-  - Kept release policy expectations explicit in version metadata and release flow notes.
-
-- `9683be4` docs: align shared CLI guides and help
-  - Updated shared CLI guides to prefer unified command shape with clarified examples.
-  - Expanded root datasource and subcommand guidance in help and user-facing docs.
-
-- `dbbbed0` ci: enforce release version policy
-  - Added CI checks for release-version format alignment across branches and tags.
-  - Added policy enforcement for branch, dev, and tagged release version consistency.
+- `329203a` Add access org management
+  - Added first-class `access org` list, add, modify, delete, export, and import workflows in both Python and Rust.
+  - Added org snapshot bundles using `orgs.json` plus `export-metadata.json` so operators can back up and replay organization state.
+  - Added org membership replay during import so org exports can restore or update user membership and org-role assignments.
+  - Clarified and preserved the existing `access user` org-targeting behavior for create-time org placement, org-role updates, and org-scoped user removal.
+  - Updated access tests and maintainer docs to cover the new org command surface and behavior.
 
 ## 2026-03-14
 

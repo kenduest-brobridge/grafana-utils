@@ -106,7 +106,7 @@ pub(crate) fn build_datasource_diff_report(
         if !record.name.is_empty() {
             live_by_name
                 .entry(record.name.clone())
-                .or_default()
+                .or_insert_with(Vec::new)
                 .push(index);
         }
     }

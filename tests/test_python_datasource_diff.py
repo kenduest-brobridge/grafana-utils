@@ -154,9 +154,7 @@ class DatasourceDiffScaffoldTests(unittest.TestCase):
         self.assertEqual(records[0]["org"], "Main Org.")
         self.assertEqual(records[0]["orgId"], "3")
 
-    def test_compare_datasource_inventory_reports_match_difference_missing_and_extra(
-        self,
-    ):
+    def test_compare_datasource_inventory_reports_match_difference_missing_and_extra(self):
         bundle_records = [
             {
                 "uid": "prom-main",
@@ -220,9 +218,7 @@ class DatasourceDiffScaffoldTests(unittest.TestCase):
         self.assertEqual(by_identity["tempo-main"]["status"], "missing-live")
         self.assertEqual(by_identity["pyroscope-main"]["status"], "extra-live")
 
-    def test_compare_datasource_inventory_uses_name_fallback_and_flags_ambiguous_live_name(
-        self,
-    ):
+    def test_compare_datasource_inventory_uses_name_fallback_and_flags_ambiguous_live_name(self):
         bundle_records = [
             {
                 "uid": "",

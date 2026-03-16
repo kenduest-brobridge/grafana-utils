@@ -17,12 +17,11 @@ SAFE_DRY_RUN_COLUMN_HEADERS = {
 
 def validate_columns(columns):
     selected = list(columns or [])
-    unsupported = [
-        column for column in selected if column not in SAFE_DRY_RUN_COLUMN_HEADERS
-    ]
+    unsupported = [column for column in selected if column not in SAFE_DRY_RUN_COLUMN_HEADERS]
     if unsupported:
         raise GrafanaError(
-            "Unsupported live mutation dry-run column(s): %s." % ", ".join(unsupported)
+            "Unsupported live mutation dry-run column(s): %s."
+            % ", ".join(unsupported)
         )
     return selected
 
@@ -46,18 +45,14 @@ def render_live_mutation_dry_run_table(records, include_header=True, columns=Non
         columns or ["operation", "uid", "name", "type", "match", "action", "targetId"]
     )
     headers = [SAFE_DRY_RUN_COLUMN_HEADERS[column] for column in selected_columns]
-    rows = [
-        [str(item.get(column) or "") for column in selected_columns] for item in records
-    ]
+    rows = [[str(item.get(column) or "") for column in selected_columns] for item in records]
     widths = [len(value) for value in headers]
     for row in rows:
         for index, value in enumerate(row):
             widths[index] = max(widths[index], len(value))
 
     def render_row(values):
-        return "  ".join(
-            values[index].ljust(widths[index]) for index in range(len(values))
-        )
+        return "  ".join(values[index].ljust(widths[index]) for index in range(len(values)))
 
     lines = []
     if include_header:
@@ -71,18 +66,8 @@ def render_live_mutation_dry_run_table(records, include_header=True, columns=Non
 def render_live_mutation_dry_run_json(records):
     summary = {
         "itemCount": len(records),
-        "createCount": len(
-            [item for item in records if item.get("action") == "would-create"]
-        ),
-        "deleteCount": len(
-            [item for item in records if item.get("action") == "would-delete"]
-        ),
-        "blockedCount": len(
-            [
-                item
-                for item in records
-                if item.get("action", "").startswith("would-fail-")
-            ]
-        ),
+        "createCount": len([item for item in records if item.get("action") == "would-create"]),
+        "deleteCount": len([item for item in records if item.get("action") == "would-delete"]),
+        "blockedCount": len([item for item in records if item.get("action", "").startswith("would-fail-")]),
     }
     return json.dumps({"items": records, "summary": summary}, indent=2, sort_keys=False)

@@ -1,26 +1,26 @@
 // Access domain test suite.
 // Validates CLI parsing/help text surfaces and handler contract behavior with stubbed request closures.
 use super::{
-    add_service_account_token_with_request, add_service_account_with_request,
-    add_team_with_request, add_user_with_request, delete_org_with_request,
+    add_service_account_token_with_request, add_service_account_with_request, add_team_with_request,
+    add_user_with_request, delete_org_with_request,
     delete_service_account_token_with_request, delete_service_account_with_request,
     delete_team_with_request, delete_user_with_request, diff_service_accounts_with_request,
     diff_teams_with_request, diff_users_with_request, export_service_accounts_with_request,
     import_service_accounts_with_request, import_teams_with_request, list_orgs_with_request,
     list_service_accounts_command_with_request, list_teams_command_with_request,
     list_users_with_request, modify_org_with_request, modify_team_with_request,
-    modify_user_with_request, org_command_common, parse_cli_from, run_access_cli_with_request,
-    service_account_command_common, team_command_common, user_command_common, AccessCommand,
-    CommonCliArgs, DryRunOutputFormat, OrgCommand, OrgDeleteArgs, OrgListArgs, OrgModifyArgs,
-    Scope, ServiceAccountAddArgs, ServiceAccountCommand, ServiceAccountDeleteArgs,
-    ServiceAccountDiffArgs, ServiceAccountExportArgs, ServiceAccountImportArgs,
-    ServiceAccountListArgs, ServiceAccountTokenAddArgs, ServiceAccountTokenCommand,
-    ServiceAccountTokenDeleteArgs, TeamAddArgs, TeamCommand, TeamDeleteArgs, TeamDiffArgs,
-    TeamImportArgs, TeamListArgs, TeamModifyArgs, UserAddArgs, UserCommand, UserDeleteArgs,
-    UserDiffArgs, UserListArgs, UserModifyArgs,
+    modify_user_with_request, parse_cli_from, run_access_cli_with_request, AccessCommand,
+    CommonCliArgs, DryRunOutputFormat, OrgCommand, OrgDeleteArgs,
+    OrgListArgs, OrgModifyArgs, Scope, ServiceAccountAddArgs, ServiceAccountCommand,
+    ServiceAccountDeleteArgs, ServiceAccountDiffArgs, ServiceAccountExportArgs,
+    ServiceAccountImportArgs, ServiceAccountListArgs,
+    ServiceAccountTokenAddArgs, ServiceAccountTokenCommand, ServiceAccountTokenDeleteArgs,
+    TeamAddArgs, TeamCommand, TeamDeleteArgs, TeamDiffArgs, TeamImportArgs, TeamListArgs,
+    TeamModifyArgs, UserAddArgs, UserCommand, UserDeleteArgs, UserDiffArgs, UserListArgs,
+    UserModifyArgs,
 };
-use crate::access::access_cli_defs::AccessCliRoot;
 use crate::access::access_cli_defs::CommonCliArgsNoOrgId;
+use crate::access::access_cli_defs::AccessCliRoot;
 use clap::{CommandFactory, Parser};
 use reqwest::Method;
 use serde_json::json;
@@ -37,13 +37,6 @@ fn render_access_subcommand_help(path: &[&str]) -> String {
     }
     let mut output = Vec::new();
     current.write_long_help(&mut output).unwrap();
-    String::from_utf8(output).unwrap()
-}
-
-fn render_access_help() -> String {
-    let mut command = AccessCliRoot::command();
-    let mut output = Vec::new();
-    command.write_long_help(&mut output).unwrap();
     String::from_utf8(output).unwrap()
 }
 
@@ -113,81 +106,6 @@ fn parse_cli_supports_user_list() {
 }
 
 #[test]
-fn command_common_helpers_return_expected_common_args() {
-    let user_args = parse_cli_from([
-        "grafana-access-utils",
-        "user",
-        "list",
-        "--url",
-        "http://user.example",
-        "--token",
-        "abc",
-    ]);
-    match &user_args.command {
-        AccessCommand::User { command } => {
-            assert_eq!(user_command_common(command).url, "http://user.example");
-        }
-        _ => panic!("expected user command"),
-    }
-
-    let team_args = parse_cli_from([
-        "grafana-access-utils",
-        "team",
-        "delete",
-        "--url",
-        "http://team.example",
-        "--name",
-        "platform",
-        "--yes",
-    ]);
-    match &team_args.command {
-        AccessCommand::Team { command } => {
-            assert_eq!(team_command_common(command).url, "http://team.example");
-        }
-        _ => panic!("expected team command"),
-    }
-
-    let org_args = parse_cli_from([
-        "grafana-access-utils",
-        "org",
-        "list",
-        "--url",
-        "http://org.example",
-    ]);
-    match &org_args.command {
-        AccessCommand::Org { command } => {
-            assert_eq!(org_command_common(command).url, "http://org.example");
-        }
-        _ => panic!("expected org command"),
-    }
-}
-
-#[test]
-fn service_account_common_helper_supports_nested_token_commands() {
-    let args = parse_cli_from([
-        "grafana-access-utils",
-        "service-account",
-        "token",
-        "add",
-        "--url",
-        "http://service-account.example",
-        "--name",
-        "automation",
-        "--token-name",
-        "ci-token",
-    ]);
-    match &args.command {
-        AccessCommand::ServiceAccount { command } => {
-            assert_eq!(
-                service_account_command_common(command).url,
-                "http://service-account.example"
-            );
-        }
-        _ => panic!("expected service-account command"),
-    }
-}
-
-#[test]
 fn parse_cli_supports_safer_user_password_inputs() {
     let args = parse_cli_from([
         "grafana-access-utils",
@@ -240,44 +158,18 @@ fn parse_cli_supports_safer_user_password_inputs() {
 }
 
 #[test]
-fn access_root_and_group_help_include_examples() {
-    let root_help = render_access_help();
-    assert!(root_help.contains("Examples:"));
-    assert!(root_help.contains("grafana-util access user list"));
-    assert!(root_help.contains("grafana-util access org export"));
-
-    let service_account_group_help = render_access_subcommand_help(&["service-account"]);
-    assert!(service_account_group_help.contains("Examples:"));
-    assert!(service_account_group_help.contains("grafana-util access service-account list"));
-    assert!(service_account_group_help.contains("grafana-util access service-account token add"));
-
-    let token_group_help = render_access_subcommand_help(&["service-account", "token"]);
-    assert!(token_group_help.contains("Examples:"));
-    assert!(token_group_help.contains("grafana-util access service-account token add"));
-    assert!(token_group_help.contains("grafana-util access service-account token delete"));
-}
-
-#[test]
 fn user_help_mentions_filter_and_output_flags() {
     let help = render_access_subcommand_help(&["user", "list"]);
-    assert!(help.contains("Connection And Auth:"));
     assert!(help.contains("--scope"));
     assert!(help.contains("current org scope"));
     assert!(help.contains("--with-teams"));
     assert!(help.contains("Include each user's current team memberships"));
     assert!(help.contains("--output-format"));
-    assert!(help.contains("Examples:"));
-    assert!(help
-        .contains("grafana-util access user list --url http://localhost:3000 --scope org --table"));
 }
 
 #[test]
 fn user_mutation_help_mentions_target_and_json_flags() {
     let add_help = render_access_subcommand_help(&["user", "add"]);
-    assert!(add_help.contains("Connection And Auth:"));
-    assert!(add_help.contains("User Identity:"));
-    assert!(add_help.contains("Credentials:"));
-    assert!(add_help.contains("Privileges:"));
     assert!(add_help.contains("--login"));
     assert!(add_help.contains("Login name for the new Grafana user"));
     assert!(add_help.contains("--grafana-admin"));
@@ -303,48 +195,27 @@ fn user_mutation_help_mentions_target_and_json_flags() {
 #[test]
 fn team_and_service_account_help_mentions_membership_and_token_flags() {
     let org_help = render_access_subcommand_help(&["org", "list"]);
-    assert!(org_help.contains("Connection And Auth:"));
     assert!(org_help.contains("--with-users"));
     assert!(org_help.contains("Include org users and org roles"));
-    assert!(org_help.contains("Examples:"));
-    assert!(org_help.contains("grafana-util access org list --url http://localhost:3000 --table"));
 
     let team_add_help = render_access_subcommand_help(&["team", "add"]);
     assert!(team_add_help.contains("--member"));
     assert!(team_add_help.contains("Add one or more members"));
-    assert!(team_add_help.contains("Examples:"));
-    assert!(team_add_help.contains("grafana-util access team add --url http://localhost:3000 --name platform --member alice --member bob"));
 
     let team_help = render_access_subcommand_help(&["team", "modify"]);
     assert!(team_help.contains("--add-member"));
     assert!(team_help.contains("Add one or more members"));
     assert!(team_help.contains("--remove-admin"));
     assert!(team_help.contains("Remove team-admin status"));
-    assert!(team_help.contains("Examples:"));
 
     let service_account_help = render_access_subcommand_help(&["service-account", "add"]);
-    assert!(service_account_help.contains("Connection And Auth:"));
     assert!(service_account_help.contains("--role"));
     assert!(service_account_help.contains("Initial org role for the service account"));
-    assert!(service_account_help.contains("Examples:"));
-    assert!(service_account_help.contains("grafana-util access service-account add --url http://localhost:3000 --name automation --role Viewer"));
 
     let token_help = render_access_subcommand_help(&["service-account", "token", "add"]);
-    assert!(token_help.contains("Connection And Auth:"));
     assert!(token_help.contains("--token-name"));
     assert!(token_help.contains("Name for the new service-account token"));
     assert!(token_help.contains("--seconds-to-live"));
-    assert!(token_help.contains("Examples:"));
-    assert!(token_help.contains("grafana-util access service-account token add --url http://localhost:3000 --name automation --token-name ci-token --seconds-to-live 3600"));
-}
-
-#[test]
-fn access_top_level_help_includes_examples() {
-    let help = render_access_help();
-    assert!(help.contains("Examples:"));
-    assert!(help.contains("grafana-util access user list --url http://localhost:3000 --table"));
-    assert!(help.contains("grafana-util access org export --url http://localhost:3000 --with-users --export-dir ./access-orgs --overwrite"));
-    assert!(help.contains("grafana-util access service-account token add --url http://localhost:3000 --name automation --token-name ci-token --seconds-to-live 3600"));
 }
 
 #[test]
@@ -589,10 +460,10 @@ fn parse_cli_supports_service_account_export_import_and_diff() {
 }
 
 #[test]
-fn parse_cli_supports_team_delete_command() {
+fn parse_cli_supports_group_delete_alias() {
     let args = parse_cli_from([
         "grafana-access-utils",
-        "team",
+        "group",
         "delete",
         "--team-id",
         "7",
@@ -606,7 +477,7 @@ fn parse_cli_supports_team_delete_command() {
             assert_eq!(delete_args.team_id.as_deref(), Some("7"));
             assert!(delete_args.yes);
         }
-        _ => panic!("expected team delete"),
+        _ => panic!("expected group alias delete"),
     }
 }
 
@@ -1133,10 +1004,7 @@ fn run_access_cli_with_request_routes_org_import() {
                 (Method::GET, "/api/orgs") => Ok(Some(json!([]))),
                 (Method::POST, "/api/orgs") => {
                     assert_eq!(
-                        payload
-                            .and_then(|value| value.as_object())
-                            .unwrap()
-                            .get("name"),
+                        payload.and_then(|value| value.as_object()).unwrap().get("name"),
                         Some(&json!("Main Org"))
                     );
                     Ok(Some(json!({"orgId": "3"})))
@@ -1149,9 +1017,7 @@ fn run_access_cli_with_request_routes_org_import() {
         args,
     );
     assert!(result.is_ok());
-    assert!(calls
-        .iter()
-        .any(|(method, path)| method == "POST" && path == "/api/orgs"));
+    assert!(calls.iter().any(|(method, path)| method == "POST" && path == "/api/orgs"));
     assert!(calls
         .iter()
         .any(|(method, path)| method == "POST" && path == "/api/orgs/3/users"));
@@ -1621,18 +1487,20 @@ fn user_modify_with_request_reads_set_password_file() {
     };
     let mut captured_password = None;
     let result = modify_user_with_request(
-        |method, path, _params, payload| match path {
-            "/api/users/9" if method == Method::GET => Ok(Some(
-                json!({"id": 9, "login": "alice", "email": "alice@example.com", "name": "Alice"}),
-            )),
-            "/api/admin/users/9/password" if method == Method::PUT => {
-                captured_password = payload
-                    .and_then(|value| value.get("password"))
-                    .and_then(|value| value.as_str())
-                    .map(str::to_string);
-                Ok(Some(json!({"message": "ok"})))
+        |method, path, _params, payload| {
+            match path {
+                "/api/users/9" if method == Method::GET => Ok(Some(
+                    json!({"id": 9, "login": "alice", "email": "alice@example.com", "name": "Alice"}),
+                )),
+                "/api/admin/users/9/password" if method == Method::PUT => {
+                    captured_password = payload
+                        .and_then(|value| value.get("password"))
+                        .and_then(|value| value.as_str())
+                        .map(str::to_string);
+                    Ok(Some(json!({"message": "ok"})))
+                }
+                _ => panic!("unexpected request"),
             }
-            _ => panic!("unexpected request"),
         },
         &args,
     );
@@ -2213,10 +2081,7 @@ fn modify_org_with_request_renames_resolved_org() {
                 ]))),
                 (Method::PUT, "/api/orgs/4") => {
                     assert_eq!(
-                        payload
-                            .and_then(|value| value.as_object())
-                            .unwrap()
-                            .get("name"),
+                        payload.and_then(|value| value.as_object()).unwrap().get("name"),
                         Some(&json!("Renamed Org"))
                     );
                     Ok(Some(json!({"message": "ok"})))

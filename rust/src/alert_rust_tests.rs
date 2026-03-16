@@ -17,16 +17,6 @@ fn render_alert_help() -> String {
     String::from_utf8(output).unwrap()
 }
 
-fn render_alert_subcommand_help(name: &str) -> String {
-    let mut command = root_command();
-    let subcommand = command
-        .find_subcommand_mut(name)
-        .unwrap_or_else(|| panic!("missing alert subcommand help for {name}"));
-    let mut output = Vec::new();
-    subcommand.write_long_help(&mut output).unwrap();
-    String::from_utf8(output).unwrap()
-}
-
 #[test]
 fn build_rule_output_path_keeps_folder_structure() {
     let rule = json!({
@@ -198,21 +188,6 @@ fn help_explains_flat_layout() {
 }
 
 #[test]
-fn alert_subcommand_help_includes_examples() {
-    let export_help = render_alert_subcommand_help("export");
-    assert!(export_help.contains("Connection And Auth:"));
-    assert!(export_help.contains("Examples:"));
-    assert!(export_help.contains(
-        "grafana-util alert export --url http://localhost:3000 --output-dir ./alerts --overwrite"
-    ));
-
-    let list_help = render_alert_subcommand_help("list-rules");
-    assert!(list_help.contains("Connection And Auth:"));
-    assert!(list_help.contains("Examples:"));
-    assert!(list_help.contains("grafana-util alert list-rules --url http://localhost:3000 --table"));
-}
-
-#[test]
 fn parse_cli_supports_import_subcommand() {
     let args: AlertCliArgs = parse_cli_from([
         "grafana-alert-utils",
@@ -229,18 +204,6 @@ fn parse_cli_supports_import_subcommand() {
 }
 
 #[test]
-fn parse_cli_supports_import_continue_on_error() {
-    let args: AlertCliArgs = parse_cli_from([
-        "grafana-alert-utils",
-        "import",
-        "--import-dir",
-        "./alerts/raw",
-        "--continue-on-error",
-    ]);
-    assert!(args.continue_on_error);
-}
-
-#[test]
 fn parse_cli_supports_list_rules_subcommand() {
     let args: AlertCliArgs = parse_cli_from(["grafana-util alert", "list-rules", "--json"]);
     assert_eq!(args.list_kind, Some(super::AlertListKind::Rules));
@@ -250,8 +213,12 @@ fn parse_cli_supports_list_rules_subcommand() {
 
 #[test]
 fn parse_cli_supports_list_rules_output_format_csv() {
-    let args: AlertCliArgs =
-        parse_cli_from(["grafana-util alert", "list-rules", "--output-format", "csv"]);
+    let args: AlertCliArgs = parse_cli_from([
+        "grafana-util alert",
+        "list-rules",
+        "--output-format",
+        "csv",
+    ]);
     assert_eq!(args.list_kind, Some(super::AlertListKind::Rules));
     assert!(args.csv);
     assert!(!args.table);

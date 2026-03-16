@@ -75,9 +75,7 @@ def build_export_inspection_document(
     total_queries = 0
     mixed_dashboards = []
 
-    for folder in sorted(
-        folder_inventory, key=lambda item: str(item.get("path") or "")
-    ):
+    for folder in sorted(folder_inventory, key=lambda item: str(item.get("path") or "")):
         path = str(folder.get("path") or str(folder.get("title") or "")).strip()
         if path:
             folder_paths[path] = 0
@@ -93,14 +91,11 @@ def build_export_inspection_document(
             import_dir,
             folder_lookup,
         )
-        folder_path = (
-            str(
-                folder_record.get("path")
-                or folder_record.get("title")
-                or DEFAULT_FOLDER_TITLE
-            ).strip()
+        folder_path = str(
+            folder_record.get("path")
+            or folder_record.get("title")
             or DEFAULT_FOLDER_TITLE
-        )
+        ).strip() or DEFAULT_FOLDER_TITLE
         folder_paths[folder_path] = int(folder_paths.get(folder_path) or 0) + 1
 
         panels = deps["iter_dashboard_panels"](dashboard.get("panels"))
@@ -126,10 +121,9 @@ def build_export_inspection_document(
                     [target for target in targets if isinstance(target, dict)]
                 )
             panel_datasource = panel.get("datasource")
-            if (
-                isinstance(panel_datasource, dict)
-                and str(panel_datasource.get("uid") or "") == "-- Mixed --"
-            ):
+            if isinstance(panel_datasource, dict) and str(
+                panel_datasource.get("uid") or ""
+            ) == "-- Mixed --":
                 is_mixed = True
         if len(unique_datasources) > 1:
             is_mixed = True
@@ -249,8 +243,10 @@ def render_export_inspection_summary(
         "Folders: %s" % int(summary.get("folderCount") or 0),
         "Panels: %s" % int(summary.get("panelCount") or 0),
         "Queries: %s" % int(summary.get("queryCount") or 0),
-        "Datasource inventory: %s" % int(summary.get("datasourceInventoryCount") or 0),
-        "Orphaned datasources: %s" % int(summary.get("orphanedDatasourceCount") or 0),
+        "Datasource inventory: %s"
+        % int(summary.get("datasourceInventoryCount") or 0),
+        "Orphaned datasources: %s"
+        % int(summary.get("orphanedDatasourceCount") or 0),
         "Mixed datasource dashboards: %s"
         % int(summary.get("mixedDatasourceDashboardCount") or 0),
     ]

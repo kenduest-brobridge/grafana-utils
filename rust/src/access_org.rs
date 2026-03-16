@@ -283,11 +283,7 @@ fn assert_not_overwrite(path: &Path, dry_run: bool, overwrite: bool) -> Result<(
     )))
 }
 
-fn build_org_export_metadata(
-    source_url: &str,
-    source_dir: &Path,
-    record_count: usize,
-) -> Map<String, Value> {
+fn build_org_export_metadata(source_url: &str, source_dir: &Path, record_count: usize) -> Map<String, Value> {
     Map::from_iter(vec![
         (
             "kind".to_string(),
@@ -372,7 +368,9 @@ fn load_org_import_records(import_dir: &Path) -> Result<Vec<Map<String, Value>>>
     };
     records
         .into_iter()
-        .map(|value| value_as_object(&value, "Access import entry must be an object.").cloned())
+        .map(|value| {
+            value_as_object(&value, "Access import entry must be an object.").map(|object| object.clone())
+        })
         .collect()
 }
 
@@ -484,7 +482,11 @@ where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
     validate_basic_auth_only(&args.common)?;
-    let org = lookup_org_by_identity(&mut request_json, args.org_id, args.name.as_deref())?;
+    let org = lookup_org_by_identity(
+        &mut request_json,
+        args.org_id,
+        args.name.as_deref(),
+    )?;
     let org_id = scalar_text(org.get("id"));
     let payload = Value::Object(Map::from_iter(vec![(
         "name".to_string(),
@@ -520,7 +522,11 @@ where
     if !args.yes {
         return Err(message("Org delete requires --yes."));
     }
-    let org = lookup_org_by_identity(&mut request_json, args.org_id, args.name.as_deref())?;
+    let org = lookup_org_by_identity(
+        &mut request_json,
+        args.org_id,
+        args.name.as_deref(),
+    )?;
     let org_id = scalar_text(org.get("id"));
     let delete_payload = delete_organization_with_request(&mut request_json, &org_id)?;
     let row = Map::from_iter(vec![
@@ -546,10 +552,7 @@ where
     Ok(0)
 }
 
-pub(crate) fn export_orgs_with_request<F>(
-    mut request_json: F,
-    args: &OrgExportArgs,
-) -> Result<usize>
+pub(crate) fn export_orgs_with_request<F>(mut request_json: F, args: &OrgExportArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
@@ -617,11 +620,7 @@ where
             args.overwrite,
         )?;
     }
-    let action = if args.dry_run {
-        "Would export"
-    } else {
-        "Exported"
-    };
+    let action = if args.dry_run { "Would export" } else { "Exported" };
     println!(
         "{action} {} org(s) from {} -> {} and {}",
         records.len(),
@@ -632,10 +631,7 @@ where
     Ok(records.len())
 }
 
-pub(crate) fn import_orgs_with_request<F>(
-    mut request_json: F,
-    args: &OrgImportArgs,
-) -> Result<usize>
+pub(crate) fn import_orgs_with_request<F>(mut request_json: F, args: &OrgImportArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
@@ -657,13 +653,10 @@ where
             return Err(message("Organization import record is missing name."));
         }
         let exported_id = scalar_text(record.get("id"));
-        let existing = live_orgs
-            .iter()
-            .find(|org| {
-                string_field(org, "name", "") == desired_name
-                    || (!exported_id.is_empty() && scalar_text(org.get("id")) == exported_id)
-            })
-            .cloned();
+        let existing = live_orgs.iter().find(|org| {
+            string_field(org, "name", "") == desired_name
+                || (!exported_id.is_empty() && scalar_text(org.get("id")) == exported_id)
+        }).cloned();
         let existing_found = existing.is_some();
 
         let org_id = if let Some(existing) = existing.as_ref() {
@@ -675,12 +668,12 @@ where
             }
             if !exported_id.is_empty()
                 && exported_id == existing_id
-                && string_field(existing, "name", "") != desired_name
+                && string_field(&existing, "name", "") != desired_name
             {
                 if args.dry_run {
                     println!(
                         "Would rename org {} -> {}",
-                        string_field(existing, "name", ""),
+                        string_field(&existing, "name", ""),
                         desired_name
                     );
                 } else {
@@ -688,11 +681,7 @@ where
                         "name".to_string(),
                         Value::String(desired_name.clone()),
                     )]));
-                    let _ = update_organization_with_request(
-                        &mut request_json,
-                        &existing_id,
-                        &payload,
-                    )?;
+                    let _ = update_organization_with_request(&mut request_json, &existing_id, &payload)?;
                 }
             }
             existing_id
@@ -714,8 +703,7 @@ where
                     "name".to_string(),
                     Value::String(desired_name.clone()),
                 )]));
-                let created_payload =
-                    create_organization_with_request(&mut request_json, &payload)?;
+                let created_payload = create_organization_with_request(&mut request_json, &payload)?;
                 created += 1;
                 let created_id = scalar_text(created_payload.get("orgId"));
                 live_orgs.push(Map::from_iter(vec![
@@ -736,7 +724,7 @@ where
                 Some(Value::Array(values)) => values
                     .iter()
                     .filter_map(|item| value_as_object(item, "Unexpected org user record.").ok())
-                    .map(normalize_org_user_row)
+                    .map(|item| normalize_org_user_row(item))
                     .collect::<Vec<Map<String, Value>>>(),
                 _ => Vec::new(),
             };
@@ -788,10 +776,7 @@ where
                     }
                     None => {
                         if args.dry_run {
-                            println!(
-                                "Would add org user {} -> {} in org {}",
-                                identity, desired_role, desired_name
-                            );
+                            println!("Would add org user {} -> {} in org {}", identity, desired_role, desired_name);
                         } else {
                             let _ = add_user_to_org_with_request(
                                 &mut request_json,

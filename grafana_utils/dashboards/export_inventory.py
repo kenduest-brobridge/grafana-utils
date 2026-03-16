@@ -44,9 +44,7 @@ def discover_dashboard_files(
     return files
 
 
-def discover_org_raw_export_dirs(
-    import_dir: Path, raw_export_subdir: str
-) -> list[Path]:
+def discover_org_raw_export_dirs(import_dir: Path, raw_export_subdir: str) -> list[Path]:
     """Find per-org raw export directories under one combined multi-org export root."""
     if not import_dir.exists():
         raise GrafanaError(f"Import directory does not exist: {import_dir}")
@@ -90,9 +88,7 @@ def load_folder_inventory(
     records = []
     for item in raw:
         if not isinstance(item, dict):
-            raise GrafanaError(
-                "Folder inventory entry must be a JSON object: %s" % path
-            )
+            raise GrafanaError("Folder inventory entry must be a JSON object: %s" % path)
         records.append(
             {
                 "uid": str(item.get("uid") or ""),

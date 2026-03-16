@@ -110,9 +110,7 @@ class DashboardInspectionGovernanceTests(unittest.TestCase):
         self._assert_parses_as_python39(GOVERNANCE_MODULE)
         self._assert_parses_as_python39(GOVERNANCE_RENDER_MODULE)
 
-    def test_build_export_inspection_governance_document_summarizes_families_and_risks(
-        self,
-    ):
+    def test_build_export_inspection_governance_document_summarizes_families_and_risks(self):
         summary_document, report_document = self._build_fixture_documents()
 
         document = inspection_governance.build_export_inspection_governance_document(
@@ -138,9 +136,7 @@ class DashboardInspectionGovernanceTests(unittest.TestCase):
         self.assertIn("unknown-datasource-family", risk_kinds)
         self.assertIn("empty-query-analysis", risk_kinds)
         orphaned = [
-            row
-            for row in document["riskRecords"]
-            if row["kind"] == "orphaned-datasource"
+            row for row in document["riskRecords"] if row["kind"] == "orphaned-datasource"
         ][0]
         self.assertEqual(orphaned["category"], "inventory")
         self.assertIn("Remove the unused datasource", orphaned["recommendation"])
@@ -150,9 +146,7 @@ class DashboardInspectionGovernanceTests(unittest.TestCase):
             if row["kind"] == "unknown-datasource-family"
         ][0]
         self.assertEqual(unknown["category"], "coverage")
-        self.assertIn(
-            "Normalize the datasource type mapping", unknown["recommendation"]
-        )
+        self.assertIn("Normalize the datasource type mapping", unknown["recommendation"])
 
     def test_render_export_inspection_governance_tables_renders_sections(self):
         summary_document, report_document = self._build_fixture_documents()

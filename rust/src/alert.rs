@@ -1441,95 +1441,40 @@ fn import_alerting_resources(args: &AlertCliArgs) -> Result<()> {
         load_string_map(args.dashboard_uid_map.as_deref(), "Dashboard UID map")?;
     let panel_id_map = load_panel_id_map(args.panel_id_map.as_deref())?;
     let mut policies_seen = 0usize;
-    let mut failed_count = 0usize;
 
     for resource_file in &resource_files {
-        let operation = (|| -> Result<(String, Map<String, Value>)> {
-            let document = load_json_object_file(resource_file, "Alerting resource")?;
-            let (kind, payload) = build_import_operation(&document)?;
-            let payload = prepare_import_payload_for_target(
-                &client,
-                &kind,
-                &payload,
-                &document,
-                &dashboard_uid_map,
-                &panel_id_map,
-            )?;
-            policies_seen = count_policy_documents(&kind, policies_seen)?;
-            Ok((kind, payload))
-        })();
-        let (kind, payload) = match operation {
-            Ok(operation) => operation,
-            Err(error) => {
-                if args.continue_on_error {
-                    failed_count += 1;
-                    eprintln!(
-                        "Alerting import skipped {}: {}",
-                        resource_file.display(),
-                        error
-                    );
-                    continue;
-                }
-                return Err(error);
-            }
-        };
+        let document = load_json_object_file(resource_file, "Alerting resource")?;
+        let (kind, payload) = build_import_operation(&document)?;
+        let payload = prepare_import_payload_for_target(
+            &client,
+            &kind,
+            &payload,
+            &document,
+            &dashboard_uid_map,
+            &panel_id_map,
+        )?;
+        policies_seen = count_policy_documents(&kind, policies_seen)?;
+        let identity = build_resource_identity(&kind, &payload);
         if args.dry_run {
-            let action =
-                match determine_import_action(&client, &kind, &payload, args.replace_existing) {
-                    Ok(action) => action,
-                    Err(error) => {
-                        if args.continue_on_error {
-                            failed_count += 1;
-                            eprintln!(
-                                "Alerting import skipped {}: {}",
-                                resource_file.display(),
-                                error
-                            );
-                            continue;
-                        }
-                        return Err(error);
-                    }
-                };
+            let action = determine_import_action(&client, &kind, &payload, args.replace_existing)?;
             println!(
                 "Dry-run {} -> kind={} id={} action={}",
                 resource_file.display(),
                 kind,
-                build_resource_identity(&kind, &payload),
+                identity,
                 action
             );
             continue;
         }
 
-        let imported = import_resource_document(&client, &kind, &payload, args);
-        match imported {
-            Ok((action, imported_identity)) => {
-                println!(
-                    "Imported {} -> kind={} id={} action={}",
-                    resource_file.display(),
-                    kind,
-                    imported_identity,
-                    action
-                );
-            }
-            Err(error) => {
-                if args.continue_on_error {
-                    failed_count += 1;
-                    eprintln!(
-                        "Alerting import skipped {}: {}",
-                        resource_file.display(),
-                        error
-                    );
-                    continue;
-                }
-                return Err(error);
-            }
-        }
-    }
-
-    if args.continue_on_error && failed_count > 0 {
-        return Err(message(format!(
-            "Alert import encountered {failed_count} failed alerting resource file(s) with --continue-on-error."
-        )));
+        let (action, identity) = import_resource_document(&client, &kind, &payload, args)?;
+        println!(
+            "Imported {} -> kind={} id={} action={}",
+            resource_file.display(),
+            kind,
+            identity,
+            action
+        );
     }
 
     if args.dry_run {

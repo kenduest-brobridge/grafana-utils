@@ -98,9 +98,7 @@ def resolve_datasource_target(datasources, uid=None, name=None):
 def normalize_add_spec(spec):
     if not isinstance(spec, dict):
         raise GrafanaError("Datasource add spec must be a JSON object.")
-    extra_fields = sorted(
-        key for key in spec.keys() if key not in SAFE_ALLOWED_ADD_FIELDS
-    )
+    extra_fields = sorted(key for key in spec.keys() if key not in SAFE_ALLOWED_ADD_FIELDS)
     if extra_fields:
         raise GrafanaError(
             "Datasource add spec contains unsupported field(s): %s."
@@ -241,12 +239,7 @@ def delete_datasource(client, uid=None, name=None, dry_run=False):
     if plan["action"] != "would-delete":
         raise GrafanaError(
             "Datasource delete blocked for uid=%s name=%s match=%s action=%s"
-            % (
-                _normalize_string(uid) or "-",
-                _normalize_string(name) or "-",
-                plan["match"],
-                plan["action"],
-            )
+            % (_normalize_string(uid) or "-", _normalize_string(name) or "-", plan["match"], plan["action"])
         )
     target = plan.get("target") or {}
     datasource_id = target.get("id")

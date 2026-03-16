@@ -1,6 +1,0 @@
-{
-  "datasourceUids": ["prom-main"],
-  "pluginIds": ["prometheus"],
-  "contactPoints": [],
-  "providerNames": []
-}

@@ -52,9 +52,7 @@ def resolve_source_dashboard_folder_path(
         if title:
             return title
 
-    relative_folder_path = build_import_dashboard_folder_path(
-        dashboard_file, import_dir
-    )
+    relative_folder_path = build_import_dashboard_folder_path(dashboard_file, import_dir)
     return normalize_folder_path(relative_folder_path, default_folder_title)
 
 

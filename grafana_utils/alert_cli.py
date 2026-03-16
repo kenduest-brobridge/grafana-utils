@@ -32,11 +32,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .auth_staging import AuthConfigError, resolve_cli_auth_from_namespace
-from .batch_error_policy import (
-    add_error_policy_argument,
-    append_item_failure,
-    should_continue_on_item_error,
-)
 from .alerts.common import (
     CONTACT_POINT_KIND,
     CONTACT_POINTS_SUBDIR,
@@ -48,35 +43,40 @@ from .alerts.common import (
     POLICIES_SUBDIR,
     RAW_EXPORT_SUBDIR,
     RESOURCE_SUBDIR_BY_KIND,
+    ROOT_INDEX_KIND,
     RULE_KIND,
     RULES_SUBDIR,
     TEMPLATE_KIND,
     TEMPLATES_SUBDIR,
+    TOOL_API_VERSION,
+    TOOL_SCHEMA_VERSION,
 )
 from .alerts.provisioning import (
     build_compare_document,
     build_contact_point_export_document,
+    build_contact_point_import_payload,
     build_diff_label,
     build_empty_root_index,
     build_import_operation,
     build_linked_dashboard_metadata,
     build_mute_timing_export_document,
+    build_mute_timing_import_payload,
     build_policies_export_document,
     build_resource_identity,
     build_rule_export_document,
+    build_rule_import_payload,
     build_template_export_document,
+    build_template_import_payload,
     determine_import_action,
     fetch_live_compare_document,
     load_panel_id_map as load_panel_id_map_impl,
     load_string_map as load_string_map_impl,
     prepare_import_payload_for_target,
+    rewrite_rule_dashboard_linkage,
     serialize_compare_document,
 )
 from .clients.alert_client import GrafanaAlertClient
-from .http_transport import (
-    DEFAULT_HTTP_TRANSPORT,
-    HTTP_TRANSPORT_CHOICES,
-)
+from .http_transport import build_json_http_transport
 
 
 DEFAULT_URL = "http://127.0.0.1:3000"
@@ -96,22 +96,13 @@ HELP_EPILOG = """Examples:
     grafana-util alert import --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json
 """
 
-
-def build_subcommand_examples(*sections: tuple[str, str]) -> str:
-    blocks = []
-    for title, command in sections:
-        blocks.append("%s:\n  %s" % (title, command))
-    return "Examples:\n\n" + "\n\n".join(blocks)
-
-
 def add_common_args(parser: argparse.ArgumentParser) -> None:
-    connection_group = parser.add_argument_group("Connection And Auth")
-    connection_group.add_argument(
+    parser.add_argument(
         "--url",
         default=DEFAULT_URL,
         help=f"Grafana base URL (default: {DEFAULT_URL})",
     )
-    connection_group.add_argument(
+    parser.add_argument(
         "--token",
         "--api-token",
         dest="api_token",
@@ -121,7 +112,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
             "Falls back to GRAFANA_API_TOKEN."
         ),
     )
-    connection_group.add_argument(
+    parser.add_argument(
         "--prompt-token",
         action="store_true",
         help=(
@@ -129,7 +120,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
             "--token on the command line."
         ),
     )
-    connection_group.add_argument(
+    parser.add_argument(
         "--basic-user",
         dest="username",
         default=None,
@@ -138,7 +129,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
             "Falls back to GRAFANA_USERNAME."
         ),
     )
-    connection_group.add_argument(
+    parser.add_argument(
         "--basic-password",
         dest="password",
         default=None,
@@ -147,7 +138,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
             "Falls back to GRAFANA_PASSWORD."
         ),
     )
-    connection_group.add_argument(
+    parser.add_argument(
         "--prompt-password",
         action="store_true",
         help=(
@@ -155,30 +146,21 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
             "passing --basic-password on the command line."
         ),
     )
-    connection_group.add_argument(
+    parser.add_argument(
         "--timeout",
         type=int,
         default=DEFAULT_TIMEOUT,
         help=f"HTTP timeout in seconds (default: {DEFAULT_TIMEOUT}).",
     )
-    connection_group.add_argument(
+    parser.add_argument(
         "--verify-ssl",
         action="store_true",
         help="Enable TLS certificate verification. Verification is disabled by default.",
     )
-    connection_group.add_argument(
-        "--http-transport",
-        choices=HTTP_TRANSPORT_CHOICES,
-        default=DEFAULT_HTTP_TRANSPORT,
-        help=(
-            "Select the HTTP transport implementation. " "Use auto, requests, or httpx."
-        ),
-    )
 
 
 def add_export_args(parser: argparse.ArgumentParser) -> None:
-    export_group = parser.add_argument_group("Export Settings")
-    export_group.add_argument(
+    parser.add_argument(
         "--output-dir",
         default=DEFAULT_OUTPUT_DIR,
         help=(
@@ -186,7 +168,7 @@ def add_export_args(parser: argparse.ArgumentParser) -> None:
             f"under {RAW_EXPORT_SUBDIR}/."
         ),
     )
-    export_group.add_argument(
+    parser.add_argument(
         "--flat",
         action="store_true",
         help=(
@@ -194,7 +176,7 @@ def add_export_args(parser: argparse.ArgumentParser) -> None:
             "resource directories instead of nested folder/group directories."
         ),
     )
-    export_group.add_argument(
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite existing exported files if they already exist.",
@@ -202,28 +184,27 @@ def add_export_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_list_args(parser: argparse.ArgumentParser) -> None:
-    output_group = parser.add_argument_group("Output Options")
-    output_group.add_argument(
+    parser.add_argument(
         "--table",
         action="store_true",
         help="Render list output as a table. This is the default.",
     )
-    output_group.add_argument(
+    parser.add_argument(
         "--csv",
         action="store_true",
         help="Render list output as CSV.",
     )
-    output_group.add_argument(
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Render list output as JSON.",
     )
-    output_group.add_argument(
+    parser.add_argument(
         "--no-header",
         action="store_true",
         help="Omit the table header row.",
     )
-    output_group.add_argument(
+    parser.add_argument(
         "--output-format",
         choices=LIST_OUTPUT_FORMAT_CHOICES,
         default=None,
@@ -238,8 +219,7 @@ def add_list_args(parser: argparse.ArgumentParser) -> None:
 def add_import_args(parser: argparse.ArgumentParser, diff_mode: bool = False) -> None:
     dir_flag = "--diff-dir" if diff_mode else "--import-dir"
     verb = "Compare" if diff_mode else "Import"
-    input_group = parser.add_argument_group("Input")
-    input_group.add_argument(
+    parser.add_argument(
         dir_flag,
         dest="diff_dir" if diff_mode else "import_dir",
         required=True,
@@ -250,19 +230,18 @@ def add_import_args(parser: argparse.ArgumentParser, diff_mode: bool = False) ->
         )
         + f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly.",
     )
-    behavior_group = parser.add_argument_group("Behavior")
     if not diff_mode:
-        behavior_group.add_argument(
+        parser.add_argument(
             "--replace-existing",
             action="store_true",
             help="Update existing resources with the same identity instead of failing on import.",
         )
-        behavior_group.add_argument(
+        parser.add_argument(
             "--dry-run",
             action="store_true",
             help="Show whether each import file would create or update resources without changing Grafana.",
         )
-    behavior_group.add_argument(
+    parser.add_argument(
         "--dashboard-uid-map",
         default=None,
         help=(
@@ -270,7 +249,7 @@ def add_import_args(parser: argparse.ArgumentParser, diff_mode: bool = False) ->
             "for linked alert-rule repair during import."
         ),
     )
-    behavior_group.add_argument(
+    parser.add_argument(
         "--panel-id-map",
         default=None,
         help=(
@@ -279,17 +258,9 @@ def add_import_args(parser: argparse.ArgumentParser, diff_mode: bool = False) ->
         ),
     )
     if diff_mode:
-        parser.set_defaults(
-            replace_existing=False,
-            dry_run=False,
-            output_dir=DEFAULT_OUTPUT_DIR,
-            flat=False,
-            overwrite=False,
-        )
+        parser.set_defaults(replace_existing=False, dry_run=False, output_dir=DEFAULT_OUTPUT_DIR, flat=False, overwrite=False)
     else:
-        parser.set_defaults(
-            diff_dir=None, output_dir=DEFAULT_OUTPUT_DIR, flat=False, overwrite=False
-        )
+        parser.set_defaults(diff_dir=None, output_dir=DEFAULT_OUTPUT_DIR, flat=False, overwrite=False)
 
 
 def build_legacy_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
@@ -302,8 +273,7 @@ def build_legacy_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
     )
     add_common_args(parser)
     add_export_args(parser)
-    mode_group = parser.add_argument_group("Input Source")
-    mode_group = mode_group.add_mutually_exclusive_group()
+    mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument(
         "--import-dir",
         default=None,
@@ -320,18 +290,17 @@ def build_legacy_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
             f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly."
         ),
     )
-    behavior_group = parser.add_argument_group("Legacy Import Behavior")
-    behavior_group.add_argument(
+    parser.add_argument(
         "--replace-existing",
         action="store_true",
         help="Update existing resources with the same identity instead of failing on import.",
     )
-    behavior_group.add_argument(
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Show whether each import file would create or update resources without changing Grafana.",
     )
-    behavior_group.add_argument(
+    parser.add_argument(
         "--dashboard-uid-map",
         default=None,
         help=(
@@ -339,7 +308,7 @@ def build_legacy_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
             "for linked alert-rule repair during import."
         ),
     )
-    behavior_group.add_argument(
+    parser.add_argument(
         "--panel-id-map",
         default=None,
         help=(
@@ -347,7 +316,6 @@ def build_legacy_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
             "target panel ID for linked alert-rule repair during import."
         ),
     )
-    add_error_policy_argument(parser, "alerting resource")
     parser.set_defaults(alert_command=None)
     return parser
 
@@ -365,17 +333,10 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
     export_parser = subparsers.add_parser(
         "export",
         help="Export alerting resources into raw/ JSON files.",
-        epilog=build_subcommand_examples(
-            (
-                "Export alerting resources into raw files",
-                'grafana-util alert export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-dir ./alerts --overwrite',
-            ),
-        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_common_args(export_parser)
     add_export_args(export_parser)
-    add_error_policy_argument(export_parser, "alerting resource")
     export_parser.set_defaults(
         alert_command="export",
         import_dir=None,
@@ -389,37 +350,19 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
     import_parser = subparsers.add_parser(
         "import",
         help="Import alerting resource JSON files through the Grafana API.",
-        epilog=build_subcommand_examples(
-            (
-                "Preview an alert import before writing",
-                "grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dry-run",
-            ),
-            (
-                "Repair linked dashboard and panel references during import",
-                "grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json",
-            ),
-        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_common_args(import_parser)
     add_import_args(import_parser, diff_mode=False)
-    add_error_policy_argument(import_parser, "alerting resource")
     import_parser.set_defaults(alert_command="import")
 
     diff_parser = subparsers.add_parser(
         "diff",
         help="Compare local alerting export files against live Grafana resources.",
-        epilog=build_subcommand_examples(
-            (
-                "Compare exported alerting files with Grafana",
-                "grafana-util alert diff --url http://localhost:3000 --diff-dir ./alerts/raw",
-            ),
-        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_common_args(diff_parser)
     add_import_args(diff_parser, diff_mode=True)
-    add_error_policy_argument(diff_parser, "alerting resource")
     diff_parser.set_defaults(alert_command="diff")
 
     for command_name, help_text in (
@@ -431,18 +374,6 @@ def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
         list_parser = subparsers.add_parser(
             command_name,
             help=help_text,
-            epilog=build_subcommand_examples(
-                (
-                    "Render %s as a table" % command_name,
-                    "grafana-util alert %s --url http://localhost:3000 --output-format table"
-                    % command_name,
-                ),
-                (
-                    "Render %s as JSON" % command_name,
-                    "grafana-util alert %s --url http://localhost:3000 --output-format json"
-                    % command_name,
-                ),
-            ),
             formatter_class=argparse.RawDescriptionHelpFormatter,
         )
         add_common_args(list_parser)
@@ -501,14 +432,10 @@ def _normalize_output_format_args(
 ) -> None:
     """Convert `--output-format` aliases into exclusive output-mode booleans."""
     output_format = getattr(args, "output_format", None)
-    if output_format is None or not str(getattr(args, "alert_command", "")).startswith(
-        "list-"
-    ):
+    if output_format is None or not str(getattr(args, "alert_command", "")).startswith("list-"):
         return
-    if (
-        bool(getattr(args, "table", False))
-        or bool(getattr(args, "csv", False))
-        or bool(getattr(args, "json", False))
+    if bool(getattr(args, "table", False)) or bool(getattr(args, "csv", False)) or bool(
+        getattr(args, "json", False)
     ):
         parser.error(
             "--output-format cannot be combined with --table, --csv, or --json for alert list commands."
@@ -563,15 +490,12 @@ def load_panel_id_map(path_value: Optional[str]) -> dict[str, dict[str, str]]:
 
 def render_compare_json(payload: dict[str, Any]) -> str:
     """Render compare payloads with stable ordering for readable diff output."""
-    return (
-        json.dumps(
-            payload,
-            indent=2,
-            sort_keys=True,
-            ensure_ascii=False,
-        )
-        + "\n"
-    )
+    return json.dumps(
+        payload,
+        indent=2,
+        sort_keys=True,
+        ensure_ascii=False,
+    ) + "\n"
 
 
 def print_unified_diff(
@@ -608,7 +532,9 @@ def load_json_file(path: Path) -> Any:
 
 
 def build_resource_dirs(raw_dir: Path) -> dict[str, Path]:
-    return {kind: raw_dir / subdir for kind, subdir in RESOURCE_SUBDIR_BY_KIND.items()}
+    return {
+        kind: raw_dir / subdir for kind, subdir in RESOURCE_SUBDIR_BY_KIND.items()
+    }
 
 
 def build_rule_output_path(output_dir: Path, rule: dict[str, Any], flat: bool) -> Path:
@@ -670,7 +596,9 @@ def discover_alert_resource_files(import_dir: Path) -> list[Path]:
         )
 
     files = [
-        path for path in sorted(import_dir.rglob("*.json")) if path.name != "index.json"
+        path
+        for path in sorted(import_dir.rglob("*.json"))
+        if path.name != "index.json"
     ]
     if not files:
         raise GrafanaError(f"No alerting resource JSON files found in {import_dir}")
@@ -777,45 +705,27 @@ def export_rule_documents(
     root_index: dict[str, list[dict[str, str]]],
     flat: bool,
     overwrite: bool,
-    args: argparse.Namespace,
-    failures: list[dict[str, str]],
 ) -> None:
     """Export alert rules and append rule entries to the root index."""
     for rule in rules:
-        try:
-            normalized_rule = copy.deepcopy(rule)
-            linked_dashboard = build_linked_dashboard_metadata(client, rule)
-            if linked_dashboard:
-                normalized_rule["__linkedDashboardMetadata__"] = linked_dashboard
-            document = build_rule_export_document(normalized_rule)
-            spec = document["spec"]
-            output_path = build_rule_output_path(resource_dirs[RULE_KIND], spec, flat)
-            write_json(document, output_path, overwrite)
-            item = {
-                "kind": RULE_KIND,
-                "uid": str(spec.get("uid") or ""),
-                "title": str(spec.get("title") or ""),
-                "folderUID": str(spec.get("folderUID") or ""),
-                "ruleGroup": str(spec.get("ruleGroup") or ""),
-                "path": str(output_path),
-            }
-            root_index[RULES_SUBDIR].append(item)
-            print(f"Exported alert rule {item['uid'] or 'unknown'} -> {output_path}")
-        except Exception as exc:
-            if not should_continue_on_item_error(args):
-                raise
-            failure = append_item_failure(
-                failures,
-                RULE_KIND,
-                str(rule.get("uid") or rule.get("title") or "unknown"),
-                str(rule.get("uid") or rule.get("title") or "unknown"),
-                exc,
-            )
-            print(
-                "Continuing after alerting resource export error kind=%s id=%s: %s"
-                % (failure["kind"], failure["identity"], failure["error"]),
-                file=sys.stderr,
-            )
+        normalized_rule = copy.deepcopy(rule)
+        linked_dashboard = build_linked_dashboard_metadata(client, rule)
+        if linked_dashboard:
+            normalized_rule["__linkedDashboardMetadata__"] = linked_dashboard
+        document = build_rule_export_document(normalized_rule)
+        spec = document["spec"]
+        output_path = build_rule_output_path(resource_dirs[RULE_KIND], spec, flat)
+        write_json(document, output_path, overwrite)
+        item = {
+            "kind": RULE_KIND,
+            "uid": str(spec.get("uid") or ""),
+            "title": str(spec.get("title") or ""),
+            "folderUID": str(spec.get("folderUID") or ""),
+            "ruleGroup": str(spec.get("ruleGroup") or ""),
+            "path": str(output_path),
+        }
+        root_index[RULES_SUBDIR].append(item)
+        print(f"Exported alert rule {item['uid'] or 'unknown'} -> {output_path}")
 
 
 def export_contact_point_documents(
@@ -824,44 +734,26 @@ def export_contact_point_documents(
     root_index: dict[str, list[dict[str, str]]],
     flat: bool,
     overwrite: bool,
-    args: argparse.Namespace,
-    failures: list[dict[str, str]],
 ) -> None:
     """Export contact points and append contact-point entries to the root index."""
     for contact_point in contact_points:
-        try:
-            document = build_contact_point_export_document(contact_point)
-            spec = document["spec"]
-            output_path = build_contact_point_output_path(
-                resource_dirs[CONTACT_POINT_KIND], spec, flat
-            )
-            write_json(document, output_path, overwrite)
-            item = {
-                "kind": CONTACT_POINT_KIND,
-                "uid": str(spec.get("uid") or ""),
-                "name": str(spec.get("name") or ""),
-                "type": str(spec.get("type") or ""),
-                "path": str(output_path),
-            }
-            root_index[CONTACT_POINTS_SUBDIR].append(item)
-            print(
-                f"Exported contact point {item['uid'] or item['name'] or 'unknown'} -> {output_path}"
-            )
-        except Exception as exc:
-            if not should_continue_on_item_error(args):
-                raise
-            failure = append_item_failure(
-                failures,
-                CONTACT_POINT_KIND,
-                str(contact_point.get("uid") or contact_point.get("name") or "unknown"),
-                str(contact_point.get("uid") or contact_point.get("name") or "unknown"),
-                exc,
-            )
-            print(
-                "Continuing after alerting resource export error kind=%s id=%s: %s"
-                % (failure["kind"], failure["identity"], failure["error"]),
-                file=sys.stderr,
-            )
+        document = build_contact_point_export_document(contact_point)
+        spec = document["spec"]
+        output_path = build_contact_point_output_path(
+            resource_dirs[CONTACT_POINT_KIND], spec, flat
+        )
+        write_json(document, output_path, overwrite)
+        item = {
+            "kind": CONTACT_POINT_KIND,
+            "uid": str(spec.get("uid") or ""),
+            "name": str(spec.get("name") or ""),
+            "type": str(spec.get("type") or ""),
+            "path": str(output_path),
+        }
+        root_index[CONTACT_POINTS_SUBDIR].append(item)
+        print(
+            f"Exported contact point {item['uid'] or item['name'] or 'unknown'} -> {output_path}"
+        )
 
 
 def export_mute_timing_documents(
@@ -870,40 +762,22 @@ def export_mute_timing_documents(
     root_index: dict[str, list[dict[str, str]]],
     flat: bool,
     overwrite: bool,
-    args: argparse.Namespace,
-    failures: list[dict[str, str]],
 ) -> None:
     """Export mute timings and append mute-timing entries to the root index."""
     for mute_timing in mute_timings:
-        try:
-            document = build_mute_timing_export_document(mute_timing)
-            spec = document["spec"]
-            output_path = build_mute_timing_output_path(
-                resource_dirs[MUTE_TIMING_KIND], spec, flat
-            )
-            write_json(document, output_path, overwrite)
-            item = {
-                "kind": MUTE_TIMING_KIND,
-                "name": str(spec.get("name") or ""),
-                "path": str(output_path),
-            }
-            root_index[MUTE_TIMINGS_SUBDIR].append(item)
-            print(f"Exported mute timing {item['name'] or 'unknown'} -> {output_path}")
-        except Exception as exc:
-            if not should_continue_on_item_error(args):
-                raise
-            failure = append_item_failure(
-                failures,
-                MUTE_TIMING_KIND,
-                str(mute_timing.get("name") or "unknown"),
-                str(mute_timing.get("name") or "unknown"),
-                exc,
-            )
-            print(
-                "Continuing after alerting resource export error kind=%s id=%s: %s"
-                % (failure["kind"], failure["identity"], failure["error"]),
-                file=sys.stderr,
-            )
+        document = build_mute_timing_export_document(mute_timing)
+        spec = document["spec"]
+        output_path = build_mute_timing_output_path(
+            resource_dirs[MUTE_TIMING_KIND], spec, flat
+        )
+        write_json(document, output_path, overwrite)
+        item = {
+            "kind": MUTE_TIMING_KIND,
+            "name": str(spec.get("name") or ""),
+            "path": str(output_path),
+        }
+        root_index[MUTE_TIMINGS_SUBDIR].append(item)
+        print(f"Exported mute timing {item['name'] or 'unknown'} -> {output_path}")
 
 
 def export_policies_document(
@@ -911,39 +785,21 @@ def export_policies_document(
     resource_dirs: dict[str, Path],
     root_index: dict[str, list[dict[str, str]]],
     overwrite: bool,
-    args: argparse.Namespace,
-    failures: list[dict[str, str]],
 ) -> None:
     """Export the single notification policy tree and append its index entry."""
-    try:
-        policies_document = build_policies_export_document(policies)
-        policies_path = build_policies_output_path(resource_dirs[POLICIES_KIND])
-        write_json(policies_document, policies_path, overwrite)
-        policies_item = {
-            "kind": POLICIES_KIND,
-            "receiver": str(policies_document["spec"].get("receiver") or ""),
-            "path": str(policies_path),
-        }
-        root_index[POLICIES_SUBDIR].append(policies_item)
-        print(
-            "Exported notification policies "
-            f"{policies_item['receiver'] or 'unknown'} -> {policies_path}"
-        )
-    except Exception as exc:
-        if not should_continue_on_item_error(args):
-            raise
-        failure = append_item_failure(
-            failures,
-            POLICIES_KIND,
-            str(policies.get("receiver") or "root"),
-            str(policies.get("receiver") or "root"),
-            exc,
-        )
-        print(
-            "Continuing after alerting resource export error kind=%s id=%s: %s"
-            % (failure["kind"], failure["identity"], failure["error"]),
-            file=sys.stderr,
-        )
+    policies_document = build_policies_export_document(policies)
+    policies_path = build_policies_output_path(resource_dirs[POLICIES_KIND])
+    write_json(policies_document, policies_path, overwrite)
+    policies_item = {
+        "kind": POLICIES_KIND,
+        "receiver": str(policies_document["spec"].get("receiver") or ""),
+        "path": str(policies_path),
+    }
+    root_index[POLICIES_SUBDIR].append(policies_item)
+    print(
+        "Exported notification policies "
+        f"{policies_item['receiver'] or 'unknown'} -> {policies_path}"
+    )
 
 
 def export_template_documents(
@@ -952,40 +808,22 @@ def export_template_documents(
     root_index: dict[str, list[dict[str, str]]],
     flat: bool,
     overwrite: bool,
-    args: argparse.Namespace,
-    failures: list[dict[str, str]],
 ) -> None:
     """Export notification templates and append template entries to the root index."""
     for template in templates:
-        try:
-            document = build_template_export_document(template)
-            spec = document["spec"]
-            output_path = build_template_output_path(
-                resource_dirs[TEMPLATE_KIND], spec, flat
-            )
-            write_json(document, output_path, overwrite)
-            item = {
-                "kind": TEMPLATE_KIND,
-                "name": str(spec.get("name") or ""),
-                "path": str(output_path),
-            }
-            root_index[TEMPLATES_SUBDIR].append(item)
-            print(f"Exported template {item['name'] or 'unknown'} -> {output_path}")
-        except Exception as exc:
-            if not should_continue_on_item_error(args):
-                raise
-            failure = append_item_failure(
-                failures,
-                TEMPLATE_KIND,
-                str(template.get("name") or "unknown"),
-                str(template.get("name") or "unknown"),
-                exc,
-            )
-            print(
-                "Continuing after alerting resource export error kind=%s id=%s: %s"
-                % (failure["kind"], failure["identity"], failure["error"]),
-                file=sys.stderr,
-            )
+        document = build_template_export_document(template)
+        spec = document["spec"]
+        output_path = build_template_output_path(
+            resource_dirs[TEMPLATE_KIND], spec, flat
+        )
+        write_json(document, output_path, overwrite)
+        item = {
+            "kind": TEMPLATE_KIND,
+            "name": str(spec.get("name") or ""),
+            "path": str(output_path),
+        }
+        root_index[TEMPLATES_SUBDIR].append(item)
+        print(f"Exported template {item['name'] or 'unknown'} -> {output_path}")
 
 
 def write_resource_indexes(
@@ -1036,7 +874,6 @@ def export_alerting_resources(args: argparse.Namespace) -> int:
     templates = client.list_templates()
 
     root_index = build_empty_root_index()
-    failures = []
     export_rule_documents(
         client,
         rules,
@@ -1044,8 +881,6 @@ def export_alerting_resources(args: argparse.Namespace) -> int:
         root_index,
         flat=args.flat,
         overwrite=args.overwrite,
-        args=args,
-        failures=failures,
     )
     export_contact_point_documents(
         contact_points,
@@ -1053,8 +888,6 @@ def export_alerting_resources(args: argparse.Namespace) -> int:
         root_index,
         flat=args.flat,
         overwrite=args.overwrite,
-        args=args,
-        failures=failures,
     )
     export_mute_timing_documents(
         mute_timings,
@@ -1062,16 +895,12 @@ def export_alerting_resources(args: argparse.Namespace) -> int:
         root_index,
         flat=args.flat,
         overwrite=args.overwrite,
-        args=args,
-        failures=failures,
     )
     export_policies_document(
         policies,
         resource_dirs,
         root_index,
         overwrite=args.overwrite,
-        args=args,
-        failures=failures,
     )
     export_template_documents(
         templates,
@@ -1079,21 +908,12 @@ def export_alerting_resources(args: argparse.Namespace) -> int:
         root_index,
         flat=args.flat,
         overwrite=args.overwrite,
-        args=args,
-        failures=failures,
     )
     write_resource_indexes(resource_dirs, root_index)
 
     index_path = output_dir / "index.json"
     write_json(root_index, index_path, overwrite=True)
-    exported_count = sum(
-        len(root_index[subdir]) for subdir in RESOURCE_SUBDIR_BY_KIND.values()
-    )
-    summary = format_export_summary(root_index, index_path)
-    if failures:
-        print("%s failed=%s exported=%s" % (summary, len(failures), exported_count))
-        return 1
-    print(summary)
+    print(format_export_summary(root_index, index_path))
     return 0
 
 
@@ -1143,9 +963,7 @@ def import_contact_point_document(
         existing = {str(item.get("uid") or "") for item in client.list_contact_points()}
         if uid in existing:
             result = client.update_contact_point(uid, payload)
-            return "updated", str(
-                result.get("uid") or uid or payload.get("name") or "unknown"
-            )
+            return "updated", str(result.get("uid") or uid or payload.get("name") or "unknown")
 
     result = client.create_contact_point(payload)
     return "created", str(result.get("uid") or uid or payload.get("name") or "unknown")
@@ -1178,7 +996,9 @@ def build_template_update_payload(
     existing_names = {str(item.get("name") or "") for item in client.list_templates()}
     exists = name in existing_names
     if exists and not replace_existing:
-        raise GrafanaError(f"Template {name!r} already exists. Use --replace-existing.")
+        raise GrafanaError(
+            f"Template {name!r} already exists. Use --replace-existing."
+        )
 
     template_payload = dict(payload)
     if exists:
@@ -1240,76 +1060,39 @@ def import_alerting_resources(args: argparse.Namespace) -> int:
     policies_seen = 0
     dashboard_uid_map = load_string_map(args.dashboard_uid_map, "Dashboard UID map")
     panel_id_map = load_panel_id_map(args.panel_id_map)
-    failures = []
-    imported_count = 0
 
     for resource_file in resource_files:
-        try:
-            document = load_json_file(resource_file)
-            kind, payload = build_import_operation(document)
-            payload = prepare_import_payload_for_target(
+        document = load_json_file(resource_file)
+        kind, payload = build_import_operation(document)
+        payload = prepare_import_payload_for_target(
+            client,
+            kind,
+            payload,
+            document,
+            dashboard_uid_map,
+            panel_id_map,
+        )
+        policies_seen = count_policy_documents(kind, policies_seen)
+        identity = build_resource_identity(kind, payload)
+        if args.dry_run:
+            action = determine_import_action(
                 client,
                 kind,
                 payload,
-                document,
-                dashboard_uid_map,
-                panel_id_map,
+                args.replace_existing,
             )
-            policies_seen = count_policy_documents(kind, policies_seen)
-            identity = build_resource_identity(kind, payload)
-            if args.dry_run:
-                action = determine_import_action(
-                    client,
-                    kind,
-                    payload,
-                    args.replace_existing,
-                )
-                print(
-                    f"Dry-run {resource_file} -> kind={kind} id={identity} action={action}"
-                )
-            else:
-                action, identity = import_resource_document(client, kind, payload, args)
-                imported_count += 1
-                print(
-                    f"Imported {resource_file} -> kind={kind} id={identity} action={action}"
-                )
-        except Exception as exc:
-            if not should_continue_on_item_error(args):
-                raise
-            failure = append_item_failure(
-                failures,
-                "alerting-resource",
-                str(resource_file.name),
-                str(resource_file),
-                exc,
-            )
-            print(
-                "Continuing after alerting resource import error file=%s: %s"
-                % (failure["source"], failure["error"]),
-                file=sys.stderr,
-            )
+            print(f"Dry-run {resource_file} -> kind={kind} id={identity} action={action}")
+            continue
+
+        action, identity = import_resource_document(client, kind, payload, args)
+
+        print(f"Imported {resource_file} -> kind={kind} id={identity} action={action}")
 
     if args.dry_run:
-        if failures:
-            print(
-                "Dry-run checked %s alerting resource files from %s; failed %s file(s)"
-                % (len(resource_files), import_dir, len(failures))
-            )
-        else:
-            print(
-                f"Dry-run checked {len(resource_files)} alerting resource files from {import_dir}"
-            )
+        print(f"Dry-run checked {len(resource_files)} alerting resource files from {import_dir}")
     else:
-        if failures:
-            print(
-                "Imported %s alerting resource files from %s; failed %s file(s)"
-                % (imported_count, import_dir, len(failures))
-            )
-        else:
-            print(
-                f"Imported {len(resource_files)} alerting resource files from {import_dir}"
-            )
-    return 1 if failures else 0
+        print(f"Imported {len(resource_files)} alerting resource files from {import_dir}")
+    return 0
 
 
 def diff_alerting_resources(args: argparse.Namespace) -> int:
@@ -1321,77 +1104,52 @@ def diff_alerting_resources(args: argparse.Namespace) -> int:
     dashboard_uid_map = load_string_map(args.dashboard_uid_map, "Dashboard UID map")
     panel_id_map = load_panel_id_map(args.panel_id_map)
     differences = 0
-    failures = []
 
     for resource_file in resource_files:
-        try:
-            document = load_json_file(resource_file)
-            kind, payload = build_import_operation(document)
-            payload = prepare_import_payload_for_target(
-                client,
-                kind,
-                payload,
-                document,
-                dashboard_uid_map,
-                panel_id_map,
-            )
-            policies_seen = count_policy_documents(kind, policies_seen)
-            identity = build_resource_identity(kind, payload)
-            local_compare = build_compare_document(kind, payload)
-            remote_compare = fetch_live_compare_document(client, kind, payload)
-            if remote_compare is None:
-                print(
-                    f"Diff missing-remote {resource_file} -> kind={kind} id={identity}"
-                )
-                print_unified_diff(
-                    {},
-                    local_compare,
-                    build_diff_label("remote", resource_file, kind, identity),
-                    build_diff_label("local", resource_file, kind, identity),
-                )
-                differences += 1
-                continue
-
-            if serialize_compare_document(local_compare) == serialize_compare_document(
-                remote_compare
-            ):
-                print(f"Diff same {resource_file} -> kind={kind} id={identity}")
-                continue
-
-            print(f"Diff different {resource_file} -> kind={kind} id={identity}")
+        document = load_json_file(resource_file)
+        kind, payload = build_import_operation(document)
+        payload = prepare_import_payload_for_target(
+            client,
+            kind,
+            payload,
+            document,
+            dashboard_uid_map,
+            panel_id_map,
+        )
+        policies_seen = count_policy_documents(kind, policies_seen)
+        identity = build_resource_identity(kind, payload)
+        local_compare = build_compare_document(kind, payload)
+        remote_compare = fetch_live_compare_document(client, kind, payload)
+        if remote_compare is None:
+            print(f"Diff missing-remote {resource_file} -> kind={kind} id={identity}")
             print_unified_diff(
-                remote_compare,
+                {},
                 local_compare,
                 build_diff_label("remote", resource_file, kind, identity),
                 build_diff_label("local", resource_file, kind, identity),
             )
             differences += 1
-        except Exception as exc:
-            if not should_continue_on_item_error(args):
-                raise
-            failure = append_item_failure(
-                failures,
-                "alerting-resource",
-                str(resource_file.name),
-                str(resource_file),
-                exc,
-            )
-            print(
-                "Continuing after alerting resource diff error file=%s: %s"
-                % (failure["source"], failure["error"]),
-                file=sys.stderr,
-            )
+            continue
 
-    if differences or failures:
-        if not failures:
-            print(
-                "Found "
-                f"{differences} alerting differences across {len(resource_files)} files."
-            )
-            return 1
+        if serialize_compare_document(local_compare) == serialize_compare_document(
+            remote_compare
+        ):
+            print(f"Diff same {resource_file} -> kind={kind} id={identity}")
+            continue
+
+        print(f"Diff different {resource_file} -> kind={kind} id={identity}")
+        print_unified_diff(
+            remote_compare,
+            local_compare,
+            build_diff_label("remote", resource_file, kind, identity),
+            build_diff_label("local", resource_file, kind, identity),
+        )
+        differences += 1
+
+    if differences:
         print(
-            "Found %s alerting differences across %s files; failed %s file(s)."
-            % (differences, len(resource_files), len(failures))
+            "Found "
+            f"{differences} alerting differences across {len(resource_files)} files."
         )
         return 1
 
@@ -1407,7 +1165,6 @@ def build_client(args: argparse.Namespace) -> GrafanaAlertClient:
         headers=headers,
         timeout=args.timeout,
         verify_ssl=args.verify_ssl,
-        transport_name=args.http_transport,
     )
 
 
@@ -1444,9 +1201,7 @@ def list_alert_resources(args: argparse.Namespace) -> int:
     if args.csv:
         render_alert_list_csv(rows, fields)
         return 0
-    for line in build_alert_list_table(
-        rows, fields, headers, include_header=not args.no_header
-    ):
+    for line in build_alert_list_table(rows, fields, headers, include_header=not args.no_header):
         print(line)
     return 0
 

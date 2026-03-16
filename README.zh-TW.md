@@ -39,25 +39,24 @@
 - **預覽機制 (Dry-run)**：在實際寫入前，完整呈現預期行為（Create/Update/Skip），確保操作符合預期。
 
 ### 3. 智慧搬遷與備份 (Smart Backup & Migration)
-- **資料夾識別 (Folder-aware)**：自動重建資料夾結構，支援路徑自動對應，解決跨環境遷移時的路徑差異問題。
+- **資料夾感知 (Folder-aware)**：自動重建資料夾結構，支援路徑匹配，解決跨環境遷移的對應問題。
 - **狀態重播 (State Replay)**：將 Grafana 狀態轉化為可版本控管（Git-ops friendly）的 JSON 格式，實現環境間的快速還原或對等重製。
 
-
 ### 4. 治理導向的分析 (Governance Inspection)
-- 深入分析 Dashboard 結構、資料來源使用情況與查詢語句盤點，識別多餘資源。
-- 專為大規模環境設計的分頁擷取與效能最佳化（由 Rust 核心補強）。
+- 深入分析 Dashboard 結構、資料來源使用情況與查詢語句盤點，識別冗餘資源。
+- 專為大規模環境設計的分頁抓取與效能優化（由 Rust 核心補強）。
 
 ### 支援矩陣 (Support Matrix)
 
 | 模組 | 盤點 / 檢視 | 新增 / 修改 / 刪除 | 匯出 / 匯入 / 差異比對 | 備註 |
 | --- | --- | --- | --- | --- |
-| Dashboard | Yes | No | Yes | 以匯入驅動變更，支援資料夾識別遷移、dry-run，以及路由式多組織匯出/匯入與組織缺失時自動建立 |
-| Alerting | Yes | No | Yes | 以匯入驅動規則 / 聯絡點（Contact Point）作業流程 |
-| Datasource | Yes | Yes | Yes | 支援 dry-run、diff、全組織匯出，以及路由式多組織匯入與組織缺失時自動建立 |
+| Dashboard | Yes | No | Yes | 以 import 驅動變更，支援 folder-aware 遷移、dry-run，以及 routed multi-org 匯出/匯入與缺 org 自動建立 |
+| Alerting | Yes | No | Yes | 以 import 驅動 rule / contact point 作業流程 |
+| Datasource | Yes | Yes | Yes | 支援 dry-run、diff、all-org 匯出，以及 routed multi-org 匯入與缺 org 自動建立 |
 | Access User | Yes | Yes | Yes | 支援 `--password-file` / `--prompt-user-password` 與 `--set-password-file` / `--prompt-set-password` |
-| Access Org | Yes | Yes | Yes | 匯入時可重播組織成員關係 |
+| Access Org | Yes | Yes | Yes | 匯入時可重播 org membership |
 | Access Team | Yes | Yes | Yes | 成員關係可匯出 / 匯入 / diff |
-| Access Service Account | Yes | Yes | Yes | 支援快照匯出/匯入/diff，以及 token 新增/刪除作業流程 |
+| Access Service Account | Yes | Yes | Yes | 支援 snapshot export/import/diff，以及 token add/delete 作業流程 |
 
 ---
 

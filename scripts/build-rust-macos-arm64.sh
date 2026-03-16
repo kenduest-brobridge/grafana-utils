@@ -6,8 +6,6 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RUST_DIR="${REPO_ROOT}/rust"
 OUTPUT_DIR="${REPO_ROOT}/dist/macos-arm64"
 
-bash "${REPO_ROOT}/scripts/set-version.sh" --sync-from-file >/dev/null
-
 if [[ "$(uname -s)" != "Darwin" ]]; then
   echo "Error: build-rust-macos-arm64 must run on macOS." >&2
   exit 1

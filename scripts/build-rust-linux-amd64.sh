@@ -8,8 +8,6 @@ OUTPUT_DIR="${REPO_ROOT}/dist/linux-amd64"
 RUST_IMAGE="${RUST_IMAGE:-rust:1.89-bookworm}"
 TARGET_TRIPLE="x86_64-unknown-linux-gnu"
 
-bash "${REPO_ROOT}/scripts/set-version.sh" --sync-from-file >/dev/null
-
 if ! command -v docker >/dev/null 2>&1; then
   echo "Error: docker is required for Linux amd64 Rust builds." >&2
   exit 1

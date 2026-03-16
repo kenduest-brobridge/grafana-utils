@@ -918,4 +918,4 @@ http2 = ["httpx"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9"
-content-hash = "540f1b362babc9fe8b1beebf3f5229b4551e8dc603d51bfcb1d8b5f1e753a8aa"
+content-hash = "fa6ddebbdec1ab3bbcb3208eac0be08457ba7682f0881dfaf0263e7b08f993d7"

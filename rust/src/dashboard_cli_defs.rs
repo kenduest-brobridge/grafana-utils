@@ -1,6 +1,6 @@
 //! Clap schema for dashboard CLI commands.
 //! Hosts dashboard command enums/args and parser helpers consumed by the dashboard runtime module.
-use clap::{error::ErrorKind, Args, CommandFactory, Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 use crate::common::{resolve_auth_headers, Result};
@@ -9,19 +9,6 @@ use crate::http::{JsonHttpClient, JsonHttpClientConfig};
 use super::{
     DEFAULT_EXPORT_DIR, DEFAULT_IMPORT_MESSAGE, DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT, DEFAULT_URL,
 };
-
-const DASHBOARD_LIST_HELP_EXAMPLES: &str =
-    "Examples:\n\n  Table output with folder paths:\n    grafana-util dashboard list --url http://localhost:3000 --table --show-folder-path\n\n  JSON output for scripting:\n    grafana-util dashboard list --url http://localhost:3000 --output-format json\n\n  CSV output without a header row:\n    grafana-util dashboard list --url http://localhost:3000 --csv --no-header";
-const DASHBOARD_EXPORT_HELP_EXAMPLES: &str =
-    "Examples:\n\n  Export dashboards into raw/ and prompt/ variants:\n    grafana-util dashboard export --url http://localhost:3000 --export-dir ./dashboards --overwrite\n\n  Export every visible org into per-org directories:\n    grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./dashboards --overwrite";
-const DASHBOARD_IMPORT_HELP_EXAMPLES: &str =
-    "Examples:\n\n  Preview import actions as a table:\n    grafana-util dashboard import --url http://localhost:3000 --import-dir ./dashboards/raw --replace-existing --dry-run --output-format table\n\n  Replay routed exports and create missing orgs:\n    grafana-util dashboard import --url http://localhost:3000 --import-dir ./dashboards --use-export-org --create-missing-orgs --replace-existing";
-const DASHBOARD_DIFF_HELP_EXAMPLES: &str =
-    "Examples:\n\n  Compare local raw exports against live Grafana:\n    grafana-util dashboard diff --url http://localhost:3000 --import-dir ./dashboards/raw\n\n  Compare only one explicit org:\n    grafana-util dashboard diff --url http://localhost:3000 --import-dir ./dashboards --org-id 2";
-const DASHBOARD_INSPECT_EXPORT_HELP_EXAMPLES: &str =
-    "Examples:\n\n  Render a query inventory table:\n    grafana-util dashboard inspect-export --import-dir ./dashboards/raw --view query --format table\n\n  Render governance JSON:\n    grafana-util dashboard inspect-export --import-dir ./dashboards/raw --view governance --format json";
-const DASHBOARD_INSPECT_LIVE_HELP_EXAMPLES: &str =
-    "Examples:\n\n  Analyze live dashboards as a summary table:\n    grafana-util dashboard inspect-live --url http://localhost:3000 --view summary --format table\n\n  Render live query inventory as tree-table output:\n    grafana-util dashboard inspect-live --url http://localhost:3000 --view query --format table --layout tree";
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum SimpleOutputFormat {
@@ -37,7 +24,7 @@ pub enum DryRunOutputFormat {
     Json,
 }
 
-#[derive(Debug, Clone, Args, Default)]
+#[derive(Debug, Clone, Args)]
 pub struct CommonCliArgs {
     #[arg(long, default_value = DEFAULT_URL, help = "Grafana base URL.")]
     pub url: String,
@@ -81,7 +68,7 @@ pub struct CommonCliArgs {
 
 #[derive(Debug, Clone, Args)]
 pub struct ExportArgs {
-    #[command(flatten, next_help_heading = "Connection And Auth")]
+    #[command(flatten)]
     pub common: CommonCliArgs,
     #[arg(
         long,
@@ -151,7 +138,7 @@ pub struct ExportArgs {
 
 #[derive(Debug, Clone, Args)]
 pub struct ListArgs {
-    #[command(flatten, next_help_heading = "Connection And Auth")]
+    #[command(flatten)]
     pub common: CommonCliArgs,
     #[arg(long, default_value_t = DEFAULT_PAGE_SIZE, help = "Dashboard search page size.")]
     pub page_size: usize,
@@ -174,24 +161,22 @@ pub struct ListArgs {
         help = "For table or CSV output, fetch each dashboard payload and include resolved datasource names in the list output. JSON already includes datasource names and UIDs by default. This is slower because it makes extra API calls per dashboard."
     )]
     pub with_sources: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help_heading = "Output Options", help = "Render dashboard summaries as a table.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render dashboard summaries as a table.")]
     pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help_heading = "Output Options", help = "Render dashboard summaries as CSV.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render dashboard summaries as CSV.")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help_heading = "Output Options", help = "Render dashboard summaries as JSON.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render dashboard summaries as JSON.")]
     pub json: bool,
     #[arg(
         long,
         value_enum,
         conflicts_with_all = ["table", "csv", "json"],
-        help_heading = "Output Options",
         help = "Alternative single-flag output selector. Use table, csv, or json."
     )]
     pub output_format: Option<SimpleOutputFormat>,
     #[arg(
         long,
         default_value_t = false,
-        help_heading = "Output Options",
         help = "Do not print table headers when rendering the default table output."
     )]
     pub no_header: bool,
@@ -199,26 +184,24 @@ pub struct ListArgs {
 
 #[derive(Debug, Clone, Args)]
 pub struct ListDataSourcesArgs {
-    #[command(flatten, next_help_heading = "Connection And Auth")]
+    #[command(flatten)]
     pub common: CommonCliArgs,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help_heading = "Output Options", help = "Render datasource summaries as a table.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render datasource summaries as a table.")]
     pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help_heading = "Output Options", help = "Render datasource summaries as CSV.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render datasource summaries as CSV.")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help_heading = "Output Options", help = "Render datasource summaries as JSON.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render datasource summaries as JSON.")]
     pub json: bool,
     #[arg(
         long,
         value_enum,
         conflicts_with_all = ["table", "csv", "json"],
-        help_heading = "Output Options",
         help = "Alternative single-flag output selector. Use table, csv, or json."
     )]
     pub output_format: Option<SimpleOutputFormat>,
     #[arg(
         long,
         default_value_t = false,
-        help_heading = "Output Options",
         help = "Do not print table headers when rendering the default table output."
     )]
     pub no_header: bool,
@@ -226,12 +209,11 @@ pub struct ListDataSourcesArgs {
 
 #[derive(Debug, Clone, Args)]
 pub struct ImportArgs {
-    #[command(flatten, next_help_heading = "Connection And Auth")]
+    #[command(flatten)]
     pub common: CommonCliArgs,
     #[arg(
         long,
         conflicts_with = "use_export_org",
-        help_heading = "Import Input And Org Routing",
         help = "Import dashboards into this Grafana org ID instead of the current org. This switches the whole import run to one explicit destination org and requires Basic auth."
     )]
     pub org_id: Option<i64>,
@@ -239,7 +221,6 @@ pub struct ImportArgs {
         long,
         default_value_t = false,
         conflicts_with = "require_matching_export_org",
-        help_heading = "Import Input And Org Routing",
         help = "Import a combined multi-org export root by routing each org-specific raw export back into the matching Grafana org. This requires Basic auth."
     )]
     pub use_export_org: bool,
@@ -247,7 +228,6 @@ pub struct ImportArgs {
         long = "only-org-id",
         requires = "use_export_org",
         conflicts_with = "org_id",
-        help_heading = "Import Input And Org Routing",
         help = "With --use-export-org, import only these exported source org IDs. Repeat the flag to select multiple orgs."
     )]
     pub only_org_id: Vec<i64>,
@@ -255,82 +235,66 @@ pub struct ImportArgs {
         long,
         default_value_t = false,
         requires = "use_export_org",
-        help_heading = "Import Input And Org Routing",
         help = "With --use-export-org, create a missing destination org when an exported source org ID does not exist in Grafana. The new org is created from the exported org name and then used as the import target."
     )]
     pub create_missing_orgs: bool,
     #[arg(
         long,
-        help_heading = "Import Input And Org Routing",
         help = "Import dashboards from this directory. Use the raw/ export directory for single-org import, or the combined export root when --use-export-org is enabled."
     )]
     pub import_dir: PathBuf,
     #[arg(
         long,
-        help_heading = "Import Behavior",
         help = "Force every imported dashboard into one destination Grafana folder UID. This overrides any folder UID carried by the exported dashboard files."
     )]
     pub import_folder_uid: Option<String>,
     #[arg(
         long,
         default_value_t = false,
-        help_heading = "Import Behavior",
         help = "Use the exported raw folder inventory to create any missing destination folders before import. In dry-run mode, also report folder missing/match/mismatch state first."
     )]
     pub ensure_folders: bool,
     #[arg(
         long,
         default_value_t = false,
-        help_heading = "Import Behavior",
         help = "Update an existing destination dashboard when the imported dashboard UID already exists. Without this flag, existing UIDs are blocked."
     )]
     pub replace_existing: bool,
     #[arg(
         long,
         default_value_t = false,
-        help_heading = "Import Behavior",
         help = "Reconcile only dashboards whose UID already exists in Grafana. Missing destination UIDs are skipped instead of created."
     )]
     pub update_existing_only: bool,
     #[arg(
         long,
         default_value_t = false,
-        help_heading = "Import Behavior",
         help = "Only update an existing dashboard when the source raw folder path matches the destination Grafana folder path exactly. Missing dashboards still follow the active create/skip mode."
     )]
     pub require_matching_folder_path: bool,
     #[arg(
         long,
         default_value_t = false,
-        help_heading = "Import Safety",
         help = "Fail the import when the raw export orgId metadata does not match the target Grafana org for this run. This is a safety check for accidental cross-org imports."
     )]
     pub require_matching_export_org: bool,
-    #[arg(
-        long,
-        default_value = DEFAULT_IMPORT_MESSAGE,
-        help_heading = "Import Behavior",
-        help = "Version-history message to attach to each imported dashboard revision in Grafana."
-    )]
+    #[arg(long, default_value = DEFAULT_IMPORT_MESSAGE, help = "Version-history message to attach to each imported dashboard revision in Grafana.")]
     pub import_message: String,
     #[arg(
         long,
         default_value_t = false,
-        help_heading = "Dry-Run Output",
         help = "Preview what import would do without changing Grafana. This reports whether each dashboard would create, update, or be skipped/blocked."
     )]
     pub dry_run: bool,
     #[arg(
         long,
         default_value_t = false,
-        help_heading = "Dry-Run Output",
         help = "For --dry-run only, render a compact table instead of per-dashboard log lines. With --ensure-folders, the folder check is also shown in table form."
     )]
     pub table: bool,
     #[arg(
         long,
         default_value_t = false,
-        help_heading = "Dry-Run Output",
         help = "For --dry-run only, render one JSON document with mode, folder checks, dashboard actions, and summary counts."
     )]
     pub json: bool,
@@ -338,37 +302,26 @@ pub struct ImportArgs {
         long,
         value_enum,
         conflicts_with_all = ["table", "json"],
-        help_heading = "Dry-Run Output",
         help = "Alternative single-flag output selector for --dry-run output. Use text, table, or json."
     )]
     pub output_format: Option<DryRunOutputFormat>,
     #[arg(
         long,
         default_value_t = false,
-        help_heading = "Dry-Run Output",
         help = "For --dry-run --table only, omit the table header row."
     )]
     pub no_header: bool,
     #[arg(
         long,
-        default_value_t = false,
-        help_heading = "Import Safety",
-        help = "Keep processing remaining dashboards if one item fails; return a non-zero exit status when any item fails."
-    )]
-    pub continue_on_error: bool,
-    #[arg(
-        long,
         value_delimiter = ',',
         requires = "dry_run",
         value_parser = parse_dashboard_import_output_column,
-        help_heading = "Dry-Run Output",
         help = "For --dry-run --table only, render only these comma-separated columns. Supported values: uid, destination, action, folder_path, source_folder_path, destination_folder_path, reason, file."
     )]
     pub output_columns: Vec<String>,
     #[arg(
         long,
         default_value_t = false,
-        help_heading = "Progress And Logging",
         help = "Show concise per-dashboard import progress in <current>/<total> form while processing files. Use this for long-running batch imports."
     )]
     pub progress: bool,
@@ -376,7 +329,6 @@ pub struct ImportArgs {
         short = 'v',
         long,
         default_value_t = false,
-        help_heading = "Progress And Logging",
         help = "Show detailed per-item import output, including target paths, dry-run actions, and folder status details. Overrides --progress output."
     )]
     pub verbose: bool,
@@ -384,7 +336,7 @@ pub struct ImportArgs {
 
 #[derive(Debug, Clone, Args)]
 pub struct DiffArgs {
-    #[command(flatten, next_help_heading = "Connection And Auth")]
+    #[command(flatten)]
     pub common: CommonCliArgs,
     #[arg(
         long,
@@ -411,8 +363,6 @@ pub enum InspectExportReportFormat {
     Json,
     Tree,
     TreeTable,
-    DatasourceSummary,
-    DatasourceSummaryJson,
     Governance,
     GovernanceJson,
 }
@@ -427,35 +377,10 @@ pub enum InspectOutputFormat {
     ReportJson,
     ReportTree,
     ReportTreeTable,
-    DatasourceSummary,
-    DatasourceSummaryJson,
     Governance,
     GovernanceJson,
 }
-/// Preferred selector for which inspection view to render.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub enum InspectView {
-    Summary,
-    Query,
-    Datasource,
-    Governance,
-}
 
-/// Preferred selector for output encoding within inspect views.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub enum InspectRenderFormat {
-    Text,
-    Table,
-    Csv,
-    Json,
-}
-
-/// Preferred selector for query-oriented inspect layouts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub enum InspectLayout {
-    Flat,
-    Tree,
-}
 #[derive(Debug, Clone, Args)]
 pub struct InspectExportArgs {
     #[arg(
@@ -468,7 +393,6 @@ pub struct InspectExportArgs {
         default_value_t = false,
         conflicts_with = "report",
         conflicts_with = "table",
-        help_heading = "Output Options",
         help = "Render the export analysis as JSON."
     )]
     pub json: bool,
@@ -477,70 +401,38 @@ pub struct InspectExportArgs {
         default_value_t = false,
         conflicts_with = "report",
         conflicts_with = "json",
-        help_heading = "Output Options",
         help = "Render the export analysis as a table-oriented summary."
     )]
     pub table: bool,
     #[arg(
         long,
         value_enum,
-        conflicts_with_all = ["json", "table", "report", "output_format"],
-        help_heading = "Output Options",
-        help = "Preferred inspect selector for what to render. Use summary, query, datasource, or governance. Combine with --format and optional --layout instead of legacy --output-format."
-    )]
-    pub view: Option<InspectView>,
-    #[arg(
-        long,
-        value_enum,
-        requires = "view",
-        conflicts_with_all = ["json", "table", "report", "output_format"],
-        help_heading = "Output Options",
-        help = "Preferred inspect selector for output encoding. Use text, table, csv, or json with --view."
-    )]
-    pub format: Option<InspectRenderFormat>,
-    #[arg(
-        long,
-        value_enum,
-        requires = "view",
-        conflicts_with_all = ["json", "table", "report", "output_format"],
-        help_heading = "Output Options",
-        help = "Preferred inspect selector for query layout. Use flat or tree with --view query."
-    )]
-    pub layout: Option<InspectLayout>,
-    #[arg(
-        long,
-        value_enum,
         num_args = 0..=1,
         default_missing_value = "table",
         conflicts_with_all = ["json", "table"],
-        help_heading = "Output Options",
-        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for machine-readable output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report datasource-summary or --report datasource-summary-json for datasource dependency aggregates, --report governance for datasource governance tables, or --report governance-json for governance JSON."
+        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for machine-readable output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report governance for datasource governance tables, or --report governance-json for governance JSON."
     )]
     pub report: Option<InspectExportReportFormat>,
     #[arg(
         long,
         value_enum,
-        conflicts_with_all = ["view", "format", "layout"],
-        help_heading = "Output Options",
-        help = "Legacy single-flag output selector for inspect output. Prefer --view plus --format (and --layout for query views)."
+        conflicts_with_all = ["json", "table", "report"],
+        help = "Alternative single-flag output selector for inspect output. Use text, table, json, report-table, report-csv, report-json, report-tree, report-tree-table, governance, or governance-json."
     )]
     pub output_format: Option<InspectOutputFormat>,
     #[arg(
         long,
         value_delimiter = ',',
-        help_heading = "Output Options",
-        help = "For query-table output, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
+        help = "For --report table, csv, or tree-table output, or the equivalent report-like --output-format values, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
     )]
     pub report_columns: Vec<String>,
     #[arg(
         long,
-        help_heading = "Output Options",
         help = "For --report output or report-like --output-format values, include only rows whose datasource label exactly matches this value."
     )]
     pub report_filter_datasource: Option<String>,
     #[arg(
         long,
-        help_heading = "Output Options",
         help = "For --report output or report-like --output-format values, include only rows whose panel id exactly matches this value."
     )]
     pub report_filter_panel_id: Option<String>,
@@ -553,7 +445,6 @@ pub struct InspectExportArgs {
     #[arg(
         long,
         default_value_t = false,
-        help_heading = "Output Options",
         help = "Do not print table headers when rendering the table summary, table-like --report output, or compatible --output-format values."
     )]
     pub no_header: bool,
@@ -561,7 +452,7 @@ pub struct InspectExportArgs {
 
 #[derive(Debug, Clone, Args)]
 pub struct InspectLiveArgs {
-    #[command(flatten, next_help_heading = "Connection And Auth")]
+    #[command(flatten)]
     pub common: CommonCliArgs,
     #[arg(long, default_value_t = DEFAULT_PAGE_SIZE, help = "Dashboard search page size.")]
     pub page_size: usize,
@@ -583,7 +474,6 @@ pub struct InspectLiveArgs {
         default_value_t = false,
         conflicts_with = "report",
         conflicts_with = "table",
-        help_heading = "Output Options",
         help = "Render the live inspection analysis as JSON."
     )]
     pub json: bool,
@@ -592,70 +482,38 @@ pub struct InspectLiveArgs {
         default_value_t = false,
         conflicts_with = "report",
         conflicts_with = "json",
-        help_heading = "Output Options",
         help = "Render the live inspection analysis as a table-oriented summary."
     )]
     pub table: bool,
     #[arg(
         long,
         value_enum,
-        conflicts_with_all = ["json", "table", "report", "output_format"],
-        help_heading = "Output Options",
-        help = "Preferred inspect selector for what to render. Use summary, query, datasource, or governance. Combine with --format and optional --layout instead of legacy --output-format."
-    )]
-    pub view: Option<InspectView>,
-    #[arg(
-        long,
-        value_enum,
-        requires = "view",
-        conflicts_with_all = ["json", "table", "report", "output_format"],
-        help_heading = "Output Options",
-        help = "Preferred inspect selector for output encoding. Use text, table, csv, or json with --view."
-    )]
-    pub format: Option<InspectRenderFormat>,
-    #[arg(
-        long,
-        value_enum,
-        requires = "view",
-        conflicts_with_all = ["json", "table", "report", "output_format"],
-        help_heading = "Output Options",
-        help = "Preferred inspect selector for query layout. Use flat or tree with --view query."
-    )]
-    pub layout: Option<InspectLayout>,
-    #[arg(
-        long,
-        value_enum,
         num_args = 0..=1,
         default_missing_value = "table",
         conflicts_with_all = ["json", "table"],
-        help_heading = "Output Options",
-        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for alternate output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report datasource-summary or --report datasource-summary-json for datasource dependency aggregates, --report governance for datasource governance tables, or --report governance-json for governance JSON."
+        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for alternate output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report governance for datasource governance tables, or --report governance-json for governance JSON."
     )]
     pub report: Option<InspectExportReportFormat>,
     #[arg(
         long,
         value_enum,
-        conflicts_with_all = ["view", "format", "layout"],
-        help_heading = "Output Options",
-        help = "Legacy single-flag output selector for inspect output. Prefer --view plus --format (and --layout for query views)."
+        conflicts_with_all = ["json", "table", "report"],
+        help = "Alternative single-flag output selector for inspect output. Use text, table, json, report-table, report-csv, report-json, report-tree, report-tree-table, governance, or governance-json."
     )]
     pub output_format: Option<InspectOutputFormat>,
     #[arg(
         long,
         value_delimiter = ',',
-        help_heading = "Output Options",
-        help = "For query-table output, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
+        help = "For --report table, csv, or tree-table output, or the equivalent report-like --output-format values, limit the query report to the selected columns. Supported values: dashboard_uid, dashboard_title, folder_path, panel_id, panel_title, panel_type, ref_id, datasource, datasource_uid, query_field, metrics, measurements, buckets, query."
     )]
     pub report_columns: Vec<String>,
     #[arg(
         long,
-        help_heading = "Output Options",
         help = "For --report output or report-like --output-format values, include only rows whose datasource label exactly matches this value."
     )]
     pub report_filter_datasource: Option<String>,
     #[arg(
         long,
-        help_heading = "Output Options",
         help = "For --report output or report-like --output-format values, include only rows whose panel id exactly matches this value."
     )]
     pub report_filter_panel_id: Option<String>,
@@ -668,7 +526,6 @@ pub struct InspectLiveArgs {
     #[arg(
         long,
         default_value_t = false,
-        help_heading = "Output Options",
         help = "Do not print headers when rendering table, csv, or tree-table inspection output, including compatible --output-format values."
     )]
     pub no_header: bool,
@@ -678,37 +535,34 @@ pub struct InspectLiveArgs {
 pub enum DashboardCommand {
     #[command(
         name = "list",
-        about = "List dashboard summaries without writing export files.",
-        after_help = DASHBOARD_LIST_HELP_EXAMPLES
+        visible_alias = "list-dashboard",
+        about = "List dashboard summaries without writing export files."
     )]
     List(ListArgs),
+    #[command(name = "list-data-sources", about = "List Grafana data sources.")]
+    ListDataSources(ListDataSourcesArgs),
     #[command(
         name = "export",
-        about = "Export dashboards to raw/ and prompt/ JSON files.",
-        after_help = DASHBOARD_EXPORT_HELP_EXAMPLES
+        visible_alias = "export-dashboard",
+        about = "Export dashboards to raw/ and prompt/ JSON files."
     )]
     Export(ExportArgs),
     #[command(
         name = "import",
-        about = "Import dashboard JSON files through the Grafana API.",
-        after_help = DASHBOARD_IMPORT_HELP_EXAMPLES
+        visible_alias = "import-dashboard",
+        about = "Import dashboard JSON files through the Grafana API."
     )]
     Import(ImportArgs),
-    #[command(
-        about = "Compare local raw dashboard files against live Grafana dashboards.",
-        after_help = DASHBOARD_DIFF_HELP_EXAMPLES
-    )]
+    #[command(about = "Compare local raw dashboard files against live Grafana dashboards.")]
     Diff(DiffArgs),
     #[command(
         name = "inspect-export",
-        about = "Analyze a raw dashboard export directory and summarize its structure.",
-        after_help = DASHBOARD_INSPECT_EXPORT_HELP_EXAMPLES
+        about = "Analyze a raw dashboard export directory and summarize its structure."
     )]
     InspectExport(InspectExportArgs),
     #[command(
         name = "inspect-live",
-        about = "Analyze live Grafana dashboards via a temporary raw-export snapshot.",
-        after_help = DASHBOARD_INSPECT_LIVE_HELP_EXAMPLES
+        about = "Analyze live Grafana dashboards via a temporary raw-export snapshot."
     )]
     InspectLive(InspectLiveArgs),
 }
@@ -792,132 +646,17 @@ fn normalize_dry_run_output_format(
     }
 }
 
-fn inspect_report_from_view_format_layout(
-    view: InspectView,
-    format: Option<InspectRenderFormat>,
-    layout: Option<InspectLayout>,
-) -> std::result::Result<(bool, bool, Option<InspectExportReportFormat>), String> {
-    let chosen_format = format.unwrap_or(match view {
-        InspectView::Summary => InspectRenderFormat::Text,
-        InspectView::Query => InspectRenderFormat::Table,
-        InspectView::Datasource | InspectView::Governance => InspectRenderFormat::Table,
-    });
-    let chosen_layout = layout.unwrap_or(match view {
-        InspectView::Query => InspectLayout::Flat,
-        _ => InspectLayout::Flat,
-    });
-    match view {
-        InspectView::Summary => {
-            if layout.is_some() {
-                return Err("--layout is only supported with --view query.".to_string());
-            }
-            match chosen_format {
-                InspectRenderFormat::Text => Ok((false, false, None)),
-                InspectRenderFormat::Table => Ok((false, true, None)),
-                InspectRenderFormat::Json => Ok((true, false, None)),
-                InspectRenderFormat::Csv => {
-                    Err("--view summary supports only --format text, table, or json.".to_string())
-                }
-            }
-        }
-        InspectView::Query => match (chosen_format, chosen_layout) {
-            (InspectRenderFormat::Table, InspectLayout::Flat) => {
-                Ok((false, false, Some(InspectExportReportFormat::Table)))
-            }
-            (InspectRenderFormat::Table, InspectLayout::Tree) => {
-                Ok((false, false, Some(InspectExportReportFormat::TreeTable)))
-            }
-            (InspectRenderFormat::Csv, InspectLayout::Flat) => {
-                Ok((false, false, Some(InspectExportReportFormat::Csv)))
-            }
-            (InspectRenderFormat::Json, InspectLayout::Flat) => {
-                Ok((false, false, Some(InspectExportReportFormat::Json)))
-            }
-            (InspectRenderFormat::Text, InspectLayout::Tree) => {
-                Ok((false, false, Some(InspectExportReportFormat::Tree)))
-            }
-            (InspectRenderFormat::Text, InspectLayout::Flat) => {
-                Err("--view query with --format text requires --layout tree.".to_string())
-            }
-            (InspectRenderFormat::Csv | InspectRenderFormat::Json, InspectLayout::Tree) => Err(
-                "--layout tree is only supported with --format table or text for --view query."
-                    .to_string(),
-            ),
-        },
-        InspectView::Datasource => {
-            if layout.is_some() {
-                return Err("--layout is only supported with --view query.".to_string());
-            }
-            match chosen_format {
-                InspectRenderFormat::Table => Ok((
-                    false,
-                    false,
-                    Some(InspectExportReportFormat::DatasourceSummary),
-                )),
-                InspectRenderFormat::Json => Ok((
-                    false,
-                    false,
-                    Some(InspectExportReportFormat::DatasourceSummaryJson),
-                )),
-                InspectRenderFormat::Text | InspectRenderFormat::Csv => {
-                    Err("--view datasource supports only --format table or json.".to_string())
-                }
-            }
-        }
-        InspectView::Governance => {
-            if layout.is_some() {
-                return Err("--layout is only supported with --view query.".to_string());
-            }
-            match chosen_format {
-                InspectRenderFormat::Table => {
-                    Ok((false, false, Some(InspectExportReportFormat::Governance)))
-                }
-                InspectRenderFormat::Json => Ok((
-                    false,
-                    false,
-                    Some(InspectExportReportFormat::GovernanceJson),
-                )),
-                InspectRenderFormat::Text | InspectRenderFormat::Csv => {
-                    Err("--view governance supports only --format table or json.".to_string())
-                }
-            }
-        }
-    }
-}
-
-fn normalize_inspect_args(
-    json: &mut bool,
-    table: &mut bool,
-    report: &mut Option<InspectExportReportFormat>,
-    output_format: Option<InspectOutputFormat>,
-    view: Option<InspectView>,
-    format: Option<InspectRenderFormat>,
-    layout: Option<InspectLayout>,
-) -> std::result::Result<(), String> {
-    if view.is_none() && format.is_none() && layout.is_none() {
-        return Ok(());
-    }
-    if view.is_none() {
-        return Err("--format and --layout require --view.".to_string());
-    }
-    let (normalized_json, normalized_table, normalized_report) =
-        inspect_report_from_view_format_layout(view.expect("validated"), format, layout)?;
-    *json = normalized_json;
-    *table = normalized_table;
-    *report = normalized_report;
-    let _ = output_format;
-    Ok(())
-}
-
-/// Normalize dashboard CLI variants into a common output-mode flag contract.
-///
-/// Legacy boolean output switches and enum-style aliases are collapsed into the
-/// shared handler shape before dispatch.
-pub(crate) fn try_normalize_dashboard_cli_args(
-    mut args: DashboardCliArgs,
-) -> std::result::Result<DashboardCliArgs, String> {
+// Normalize dashboard subcommand variants so legacy and explicit flags end up with
+// the same boolean state contract for command handlers.
+pub fn normalize_dashboard_cli_args(mut args: DashboardCliArgs) -> DashboardCliArgs {
     match &mut args.command {
         DashboardCommand::List(list_args) => normalize_simple_output_format(
+            &mut list_args.table,
+            &mut list_args.csv,
+            &mut list_args.json,
+            list_args.output_format,
+        ),
+        DashboardCommand::ListDataSources(list_args) => normalize_simple_output_format(
             &mut list_args.table,
             &mut list_args.csv,
             &mut list_args.json,
@@ -928,35 +667,9 @@ pub(crate) fn try_normalize_dashboard_cli_args(
             &mut import_args.json,
             import_args.output_format,
         ),
-        DashboardCommand::InspectExport(inspect_args) => normalize_inspect_args(
-            &mut inspect_args.json,
-            &mut inspect_args.table,
-            &mut inspect_args.report,
-            inspect_args.output_format,
-            inspect_args.view,
-            inspect_args.format,
-            inspect_args.layout,
-        )?,
-        DashboardCommand::InspectLive(inspect_args) => normalize_inspect_args(
-            &mut inspect_args.json,
-            &mut inspect_args.table,
-            &mut inspect_args.report,
-            inspect_args.output_format,
-            inspect_args.view,
-            inspect_args.format,
-            inspect_args.layout,
-        )?,
         _ => {}
     }
-    Ok(args)
-}
-
-pub fn normalize_dashboard_cli_args(args: DashboardCliArgs) -> DashboardCliArgs {
-    try_normalize_dashboard_cli_args(args).unwrap_or_else(|message| {
-        DashboardCliArgs::command()
-            .error(ErrorKind::ArgumentConflict, message)
-            .exit()
-    })
+    args
 }
 
 pub fn build_auth_context(common: &CommonCliArgs) -> Result<DashboardAuthContext> {

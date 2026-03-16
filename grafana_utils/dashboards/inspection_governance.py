@@ -1,6 +1,6 @@
 """Dashboard inspection governance document helpers."""
 
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional
 
 
 def _unique_strings(values: Iterable[Any]) -> list[str]:
@@ -16,7 +16,7 @@ def _unique_strings(values: Iterable[Any]) -> list[str]:
 
 
 def _resolve_datasource_inventory(
-    summary_document: dict[str, Any],
+    summary_document: dict[str, Any]
 ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     by_uid = {}
     by_name = {}
@@ -162,8 +162,7 @@ def build_datasource_family_coverage_records(
         record["datasourceNames"].add(datasource_name)
         record["dashboardUids"].add(str(query.get("dashboardUid") or ""))
         record["panelKeys"].add(
-            "%s:%s"
-            % (str(query.get("dashboardUid") or ""), str(query.get("panelId") or ""))
+            "%s:%s" % (str(query.get("dashboardUid") or ""), str(query.get("panelId") or ""))
         )
         record["queryCount"] = int(record.get("queryCount") or 0) + 1
 
@@ -175,12 +174,8 @@ def build_datasource_family_coverage_records(
                 "family": family,
                 "datasourceTypes": _unique_strings(record["datasourceTypes"]),
                 "datasourceCount": len(record["datasourceUids"]),
-                "dashboardCount": len(
-                    [item for item in record["dashboardUids"] if item]
-                ),
-                "panelCount": len(
-                    [item for item in record["panelKeys"] if item != ":"]
-                ),
+                "dashboardCount": len([item for item in record["dashboardUids"] if item]),
+                "panelCount": len([item for item in record["panelKeys"] if item != ":"]),
                 "queryCount": int(record["queryCount"] or 0),
             }
         )
@@ -238,8 +233,7 @@ def build_datasource_coverage_records(
         record["queryFields"].add(str(query.get("queryField") or ""))
         record["dashboardUids"].add(str(query.get("dashboardUid") or ""))
         record["panelKeys"].add(
-            "%s:%s"
-            % (str(query.get("dashboardUid") or ""), str(query.get("panelId") or ""))
+            "%s:%s" % (str(query.get("dashboardUid") or ""), str(query.get("panelId") or ""))
         )
         record["queryCount"] = int(record.get("queryCount") or 0) + 1
         record["orphaned"] = False
@@ -253,12 +247,8 @@ def build_datasource_coverage_records(
                 "datasource": record["datasource"],
                 "family": record["family"],
                 "queryCount": int(record["queryCount"] or 0),
-                "dashboardCount": len(
-                    [item for item in record["dashboardUids"] if item]
-                ),
-                "panelCount": len(
-                    [item for item in record["panelKeys"] if item != ":"]
-                ),
+                "dashboardCount": len([item for item in record["dashboardUids"] if item]),
+                "panelCount": len([item for item in record["panelKeys"] if item != ":"]),
                 "queryFields": _unique_strings(record["queryFields"]),
                 "orphaned": bool(record.get("orphaned")),
             }
@@ -372,9 +362,7 @@ def build_export_inspection_governance_document(
         "summary": {
             "dashboardCount": int(summary.get("dashboardCount") or 0),
             "queryRecordCount": int(report_summary.get("queryRecordCount") or 0),
-            "datasourceInventoryCount": int(
-                summary.get("datasourceInventoryCount") or 0
-            ),
+            "datasourceInventoryCount": int(summary.get("datasourceInventoryCount") or 0),
             "datasourceFamilyCount": len(family_records),
             "datasourceCoverageCount": len(datasource_records),
             "mixedDatasourceDashboardCount": int(

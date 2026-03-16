@@ -23,22 +23,38 @@ Caveats:
 import sys
 
 from .dashboard_cli import (
+    DEFAULT_TIMEOUT,
+    DEFAULT_URL,
     GrafanaError,
+    HelpFullAction,
+    add_common_cli_args,
+    resolve_auth,
 )
 from .datasource.parser import (
     DATASOURCE_EXPORT_FILENAME,
     DEFAULT_EXPORT_DIR,
     EXPORT_METADATA_FILENAME,
+    HELP_FULL_EXAMPLES,
+    IMPORT_DRY_RUN_COLUMN_ALIASES,
+    IMPORT_DRY_RUN_COLUMN_HEADERS,
+    IMPORT_DRY_RUN_OUTPUT_FORMAT_CHOICES,
     LIVE_MUTATION_DRY_RUN_OUTPUT_FORMAT_CHOICES,
+    LIST_OUTPUT_FORMAT_CHOICES,
     ROOT_INDEX_KIND,
     TOOL_SCHEMA_VERSION,
     add_add_cli_args,
     add_delete_cli_args,
+    add_diff_cli_args,
+    add_export_cli_args,
+    add_import_cli_args,
+    add_list_cli_args,
     add_modify_cli_args,
     build_parser,
 )
 from .datasource import workflows as datasource_workflows
 from .datasource.workflows import (
+    _print_datasource_unified_diff,
+    _serialize_datasource_diff_record,
     build_client,
     build_effective_import_client,
     build_existing_datasource_lookups,
@@ -48,8 +64,15 @@ from .datasource.workflows import (
     build_import_payload,
     determine_datasource_action,
     determine_import_mode,
+    diff_datasources,
+    dispatch_datasource_command,
+    export_datasources,
+    exporter_api_error_type,
     fetch_datasource_by_uid_if_exists,
+    import_datasources,
+    list_datasources,
     load_import_bundle,
+    load_json_document,
     modify_datasource as workflow_modify_datasource,
     parse_import_dry_run_columns,
     render_data_source_csv,
@@ -77,10 +100,8 @@ def _normalize_output_format_args(args, parser):
     if output_format is None:
         return
     if getattr(args, "command", None) == "list":
-        if (
-            bool(getattr(args, "table", False))
-            or bool(getattr(args, "csv", False))
-            or bool(getattr(args, "json", False))
+        if bool(getattr(args, "table", False)) or bool(getattr(args, "csv", False)) or bool(
+            getattr(args, "json", False)
         ):
             parser.error(
                 "--output-format cannot be combined with --table, --csv, or --json for datasource list."
@@ -130,9 +151,7 @@ def _validate_datasource_org_routing_args(args, parser):
     command = getattr(args, "command", None)
     if command == "export":
         if bool(getattr(args, "all_orgs", False)) and getattr(args, "org_id", None):
-            parser.error(
-                "--all-orgs cannot be combined with --org-id for datasource export."
-            )
+            parser.error("--all-orgs cannot be combined with --org-id for datasource export.")
         return
     if command != "import":
         return
@@ -140,13 +159,9 @@ def _validate_datasource_org_routing_args(args, parser):
     if getattr(args, "only_org_id", None) and not use_export_org:
         parser.error("--only-org-id requires --use-export-org for datasource import.")
     if bool(getattr(args, "create_missing_orgs", False)) and not use_export_org:
-        parser.error(
-            "--create-missing-orgs requires --use-export-org for datasource import."
-        )
+        parser.error("--create-missing-orgs requires --use-export-org for datasource import.")
     if use_export_org and getattr(args, "org_id", None):
-        parser.error(
-            "--use-export-org cannot be combined with --org-id for datasource import."
-        )
+        parser.error("--use-export-org cannot be combined with --org-id for datasource import.")
     if use_export_org and bool(getattr(args, "require_matching_export_org", False)):
         parser.error(
             "--use-export-org cannot be combined with --require-matching-export-org for datasource import."

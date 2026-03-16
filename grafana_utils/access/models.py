@@ -10,6 +10,7 @@ from .common import (
     DEFAULT_PAGE_SIZE,
     OUTPUT_FIELDS,
     SERVICE_ACCOUNT_OUTPUT_FIELDS,
+    SERVICE_ACCOUNT_TOKEN_OUTPUT_FIELDS,
     TEAM_OUTPUT_FIELDS,
 )
 
@@ -81,7 +82,9 @@ def normalize_global_user(item: dict[str, Any]) -> dict[str, Any]:
         "email": str(item.get("email") or ""),
         "name": str(item.get("name") or ""),
         "orgRole": normalize_org_role(item.get("orgRole") or item.get("role")),
-        "grafanaAdmin": normalize_bool(item.get("isGrafanaAdmin", item.get("isAdmin"))),
+        "grafanaAdmin": normalize_bool(
+            item.get("isGrafanaAdmin", item.get("isAdmin"))
+        ),
         "scope": "global",
         "teams": [],
     }
@@ -162,9 +165,7 @@ def build_user_rows(
         users = [normalize_org_user(item) for item in raw_users]
 
     users = [user for user in users if user_matches_filters(user, args)]
-    users.sort(
-        key=lambda item: (str(item.get("login") or ""), str(item.get("email") or ""))
-    )
+    users.sort(key=lambda item: (str(item.get("login") or ""), str(item.get("email") or "")))
     if args.with_teams:
         attach_team_memberships(users, client)
     return paginate_users(users, args.page, args.per_page)
@@ -295,9 +296,7 @@ def build_team_rows(
     )
     teams = [normalize_team(item) for item in raw_teams]
     teams = [team for team in teams if team_matches_filters(team, args)]
-    teams.sort(
-        key=lambda item: (str(item.get("name") or ""), str(item.get("email") or ""))
-    )
+    teams.sort(key=lambda item: (str(item.get("name") or ""), str(item.get("email") or "")))
     if args.with_members:
         attach_team_members(teams, client)
     return paginate_teams(teams, args.page, args.per_page)
@@ -476,7 +475,8 @@ def format_service_account_summary_line(service_account: dict[str, Any]) -> str:
             "name=%s" % (service_account.get("name") or ""),
             "login=%s" % (service_account.get("login") or ""),
             "role=%s" % (service_account.get("role") or ""),
-            "disabled=%s" % bool_label(normalize_bool(service_account.get("disabled"))),
+            "disabled=%s"
+            % bool_label(normalize_bool(service_account.get("disabled"))),
             "tokens=%s" % (service_account.get("tokens") or "0"),
             "orgId=%s" % (service_account.get("orgId") or ""),
         ]

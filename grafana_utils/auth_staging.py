@@ -22,13 +22,18 @@ def format_cli_auth_error_message(message: str) -> str:
             "Choose either token auth (--token / --api-token / --prompt-token) or Basic auth "
             "(--basic-user with --basic-password / --prompt-password), not both."
         )
-    if message == "Choose either an explicit API token or --prompt-token, not both.":
+    if (
+        message
+        == "Choose either an explicit API token or --prompt-token, not both."
+    ):
         return "Choose either --token / --api-token or --prompt-token, not both."
     if (
         message
         == "Choose either an explicit Basic auth password or --prompt-password, not both."
     ):
-        return "Choose either --basic-password or --prompt-password, not both."
+        return (
+            "Choose either --basic-password or --prompt-password, not both."
+        )
     if (
         message
         == "Basic auth requires both username and password or --prompt-password."
@@ -47,7 +52,10 @@ def format_cli_auth_error_message(message: str) -> str:
             "Basic auth requires both --basic-user and "
             "--basic-password or --prompt-password."
         )
-    if message == "Authentication required. Provide a token or Basic auth credentials.":
+    if (
+        message
+        == "Authentication required. Provide a token or Basic auth credentials."
+    ):
         return (
             "Authentication required. Set --token / --api-token / "
             "--prompt-token / GRAFANA_API_TOKEN or --basic-user and --basic-password / "
@@ -75,9 +83,9 @@ def _env_value(env: Optional[dict[str, str]], name: str) -> Optional[str]:
 
 
 def _encode_basic_auth(username: str, password: str) -> str:
-    encoded = base64.b64encode(("%s:%s" % (username, password)).encode("utf-8")).decode(
-        "ascii"
-    )
+    encoded = base64.b64encode(
+        ("%s:%s" % (username, password)).encode("utf-8")
+    ).decode("ascii")
     return "Basic %s" % encoded
 
 
@@ -115,7 +123,9 @@ def resolve_auth_headers(
             "Choose either an explicit API token or --prompt-token, not both."
         )
     if (token or prompt_token) and (username or password or prompt_password):
-        raise AuthConfigError("Choose either token auth or Basic auth, not both.")
+        raise AuthConfigError(
+            "Choose either token auth or Basic auth, not both."
+        )
     if prompt_password and password:
         raise AuthConfigError(
             "Choose either an explicit Basic auth password or --prompt-password, not both."

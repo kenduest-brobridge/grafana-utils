@@ -9,9 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::common::{
-    message, object_field, sanitize_path_component, string_field, value_as_object, Result,
-};
+use crate::common::{message, object_field, string_field, value_as_object, Result};
 
 use super::dashboard_inspect_analyzer_flux;
 use super::dashboard_inspect_analyzer_loki;
@@ -21,10 +19,8 @@ use super::dashboard_inspect_governance::{
     build_export_inspection_governance_document, render_governance_table_report,
 };
 use super::dashboard_inspect_render::{
-    render_csv, render_datasource_summary_report, render_grouped_query_report,
-    render_grouped_query_table_report, render_simple_table,
+    render_csv, render_grouped_query_report, render_grouped_query_table_report, render_simple_table,
 };
-use super::dashboard_inspect_report::build_export_inspection_datasource_summary_document;
 use super::*;
 
 pub(crate) const DATASOURCE_FAMILY_PROMETHEUS: &str = "prometheus";
@@ -850,12 +846,6 @@ fn map_output_format_to_report(
         InspectOutputFormat::ReportJson => Some(InspectExportReportFormat::Json),
         InspectOutputFormat::ReportTree => Some(InspectExportReportFormat::Tree),
         InspectOutputFormat::ReportTreeTable => Some(InspectExportReportFormat::TreeTable),
-        InspectOutputFormat::DatasourceSummary => {
-            Some(InspectExportReportFormat::DatasourceSummary)
-        }
-        InspectOutputFormat::DatasourceSummaryJson => {
-            Some(InspectExportReportFormat::DatasourceSummaryJson)
-        }
         InspectOutputFormat::Governance => Some(InspectExportReportFormat::Governance),
         InspectOutputFormat::GovernanceJson => Some(InspectExportReportFormat::GovernanceJson),
     }
@@ -1040,28 +1030,6 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
             args.report_filter_datasource.as_deref(),
             args.report_filter_panel_id.as_deref(),
         );
-        if report_format == InspectExportReportFormat::DatasourceSummary
-            || report_format == InspectExportReportFormat::DatasourceSummaryJson
-        {
-            let summary = build_export_inspection_summary(&args.import_dir)?;
-            let document = build_export_inspection_datasource_summary_document(
-                &summary,
-                &report,
-                args.report_filter_datasource.as_deref(),
-            );
-            if report_format == InspectExportReportFormat::DatasourceSummaryJson {
-                println!("{}", serde_json::to_string_pretty(&document)?);
-            } else {
-                for line in render_datasource_summary_report(
-                    &summary.import_dir,
-                    &document,
-                    !args.no_header,
-                ) {
-                    println!("{line}");
-                }
-            }
-            return Ok(summary.dashboard_count);
-        }
         if report_format == InspectExportReportFormat::Governance
             || report_format == InspectExportReportFormat::GovernanceJson
         {
@@ -1274,15 +1242,7 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
             })
             .collect::<Vec<Vec<String>>>();
         for line in render_simple_table(
-            &[
-                "ORG_ID",
-                "UID",
-                "NAME",
-                "TYPE",
-                "ACCESS",
-                "URL",
-                "IS_DEFAULT",
-            ],
+            &["ORG_ID", "UID", "NAME", "TYPE", "ACCESS", "URL", "IS_DEFAULT"],
             &orphaned_rows,
             !args.no_header,
         ) {
@@ -1341,128 +1301,6 @@ impl Drop for TempInspectLiveDir {
     }
 }
 
-fn build_inspect_live_all_orgs_output_dir(output_dir: &Path, org: &Map<String, Value>) -> PathBuf {
-    let org_id = super::dashboard_list::org_id_value(org)
-        .map(|value| sanitize_path_component(&value.to_string()))
-        .unwrap_or_else(|_| "unknown".to_string());
-    let org_name = sanitize_path_component(&string_field(org, "name", "org"));
-    output_dir.join(format!("org_{org_id}_{org_name}"))
-}
-
-fn materialize_live_inspection_export_with_request<F>(
-    request_json: &mut F,
-    args: &InspectLiveArgs,
-    root_dir: &Path,
-) -> Result<PathBuf>
-where
-    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
-{
-    let raw_dir = root_dir.join(RAW_EXPORT_SUBDIR);
-    fs::create_dir_all(&raw_dir)?;
-
-    let orgs = if args.all_orgs {
-        super::dashboard_list::list_orgs_with_request(|method, path, params, payload| {
-            request_json(method, path, params, payload)
-        })?
-    } else if let Some(org_id) = args.org_id {
-        let mut scoped_request = |method: Method,
-                                  path: &str,
-                                  params: &[(String, String)],
-                                  payload: Option<&Value>|
-         -> Result<Option<Value>> {
-            let mut scoped_params = params.to_vec();
-            scoped_params.push(("orgId".to_string(), org_id.to_string()));
-            request_json(method, path, &scoped_params, payload)
-        };
-        vec![super::dashboard_list::fetch_current_org_with_request(
-            &mut scoped_request,
-        )?]
-    } else {
-        vec![super::dashboard_list::fetch_current_org_with_request(
-            |method, path, params, payload| request_json(method, path, params, payload),
-        )?]
-    };
-
-    let mut index_items = Vec::new();
-    let mut folder_inventory = Vec::new();
-    let mut datasource_inventory = Vec::new();
-    let mut dashboard_count = 0usize;
-
-    for org in orgs {
-        let org_id = super::dashboard_list::org_id_value(&org)?;
-        let scoped_output_dir = if args.all_orgs {
-            build_inspect_live_all_orgs_output_dir(&raw_dir, &org)
-        } else {
-            raw_dir.clone()
-        };
-        let mut scoped_request = |method: Method,
-                                  path: &str,
-                                  params: &[(String, String)],
-                                  payload: Option<&Value>|
-         -> Result<Option<Value>> {
-            let mut scoped_params = params.to_vec();
-            if args.all_orgs || args.org_id.is_some() {
-                scoped_params.push(("orgId".to_string(), org_id.to_string()));
-            }
-            request_json(method, path, &scoped_params, payload)
-        };
-
-        let summaries = super::dashboard_list::attach_dashboard_org_metadata(
-            &super::list_dashboard_summaries_with_request(&mut scoped_request, args.page_size)?,
-            &org,
-        );
-        if summaries.is_empty() {
-            continue;
-        }
-        dashboard_count += summaries.len();
-        folder_inventory.extend(super::collect_folder_inventory_with_request(
-            &mut scoped_request,
-            &summaries,
-        )?);
-        datasource_inventory.extend(
-            super::list_datasources_with_request(&mut scoped_request)?
-                .iter()
-                .map(|datasource| super::build_datasource_inventory_record(datasource, &org))
-                .collect::<Vec<DatasourceInventoryItem>>(),
-        );
-
-        for summary in summaries {
-            let uid = string_field(&summary, "uid", "");
-            if uid.is_empty() {
-                continue;
-            }
-            let payload = super::fetch_dashboard_with_request(&mut scoped_request, &uid)?;
-            let raw_document = build_preserved_web_import_document(&payload)?;
-            let raw_path = build_output_path(&scoped_output_dir, &summary, false);
-            write_dashboard(&raw_document, &raw_path, true)?;
-            let mut item = build_dashboard_index_item(&summary, &uid);
-            item.raw_path = Some(raw_path.display().to_string());
-            index_items.push(item);
-        }
-    }
-
-    let raw_index = build_variant_index(
-        &index_items,
-        |item| item.raw_path.as_deref(),
-        "grafana-web-import-preserve-uid",
-    );
-    let raw_metadata = build_export_metadata(
-        RAW_EXPORT_SUBDIR,
-        dashboard_count,
-        Some("grafana-web-import-preserve-uid"),
-        Some(FOLDER_INVENTORY_FILENAME),
-        Some(DATASOURCE_INVENTORY_FILENAME),
-    );
-    write_json_document(&raw_index, &raw_dir.join("index.json"))?;
-    write_json_document(&raw_metadata, &raw_dir.join(EXPORT_METADATA_FILENAME))?;
-    write_json_document(&folder_inventory, &raw_dir.join(FOLDER_INVENTORY_FILENAME))?;
-    write_json_document(
-        &datasource_inventory,
-        &raw_dir.join(DATASOURCE_INVENTORY_FILENAME),
-    )?;
-    Ok(raw_dir)
-}
-
 fn build_live_export_args(args: &InspectLiveArgs, export_dir: PathBuf) -> ExportArgs {
     ExportArgs {
         common: args.common.clone(),
@@ -1490,9 +1328,6 @@ fn build_export_inspect_args_from_live(
         table: args.table,
         report: args.report,
         output_format: args.output_format,
-        view: args.view,
-        format: args.format,
-        layout: args.layout,
         report_columns: args.report_columns.clone(),
         report_filter_datasource: args.report_filter_datasource.clone(),
         report_filter_panel_id: args.report_filter_panel_id.clone(),
@@ -1508,14 +1343,15 @@ pub(crate) fn inspect_live_dashboards_with_request<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
+    if args.all_orgs {
+        return Err(message(
+            "inspect-live does not yet support --all-orgs. Export dashboards first or inspect one org at a time.",
+        ));
+    }
     let temp_dir = TempInspectLiveDir::new()?;
-    let import_dir = if args.all_orgs {
-        materialize_live_inspection_export_with_request(&mut request_json, args, &temp_dir.path)?
-    } else {
-        let export_args = build_live_export_args(args, temp_dir.path.clone());
-        let _ = dashboard_export::export_dashboards_with_request(&mut request_json, &export_args)?;
-        temp_dir.path.join(RAW_EXPORT_SUBDIR)
-    };
-    let inspect_args = build_export_inspect_args_from_live(args, import_dir);
+    let export_args = build_live_export_args(args, temp_dir.path.clone());
+    let _ = dashboard_export::export_dashboards_with_request(&mut request_json, &export_args)?;
+    let inspect_args =
+        build_export_inspect_args_from_live(args, temp_dir.path.join(RAW_EXPORT_SUBDIR));
     analyze_export_dir(&inspect_args)
 }

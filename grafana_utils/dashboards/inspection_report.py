@@ -11,7 +11,7 @@ from .common import (
     GrafanaError,
 )
 from .inspection_analyzers import build_query_field_and_text, dispatch_query_analysis
-from .transformer import is_builtin_datasource_ref
+from .transformer import is_builtin_datasource_ref, is_placeholder_string
 
 
 REPORT_COLUMN_HEADERS = OrderedDict(
@@ -55,10 +55,6 @@ INSPECT_REPORT_FORMAT_CHOICES = (
     "tree-table",
     "governance",
     "governance-json",
-    "graph-json",
-    "graph-dot",
-    "graph-governance",
-    "graph-governance-json",
 )
 NORMALIZED_QUERY_REPORT_FIELDS = (
     "dashboardUid",
@@ -88,12 +84,6 @@ INSPECT_EXPORT_HELP_FULL_EXAMPLES = (
     "  Inspect one raw export as datasource governance JSON:\n"
     "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
     "--output-format governance-json\n\n"
-    "  Inspect one raw export as dependency graph JSON:\n"
-    "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
-    "--output-format graph-json\n\n"
-    "  Inspect one raw export as dependency graph DOT:\n"
-    "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
-    "--output-format graph-dot\n\n"
     "  Inspect one raw export as dashboard-first grouped tables:\n"
     "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
     "--output-format report-tree-table\n\n"
@@ -117,12 +107,6 @@ INSPECT_LIVE_HELP_FULL_EXAMPLES = (
     "  Inspect live dashboards as datasource governance JSON:\n"
     "    grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin "
     "--basic-password admin --output-format governance-json\n\n"
-    "  Inspect live dashboards as dependency graph JSON:\n"
-    "    grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin "
-    "--basic-password admin --output-format graph-json\n\n"
-    "  Inspect live dashboards as dependency graph DOT:\n"
-    "    grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin "
-    "--basic-password admin --output-format graph-dot\n\n"
     "  Inspect live dashboards as dashboard-first grouped tables:\n"
     "    grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin "
     "--basic-password admin --output-format report-tree-table\n\n"
@@ -171,14 +155,11 @@ def build_export_inspection_report_document(
             import_dir,
             folder_lookup,
         )
-        folder_path = (
-            str(
-                (folder_record or {}).get("path")
-                or (folder_record or {}).get("title")
-                or DEFAULT_FOLDER_TITLE
-            ).strip()
+        folder_path = str(
+            (folder_record or {}).get("path")
+            or (folder_record or {}).get("title")
             or DEFAULT_FOLDER_TITLE
-        )
+        ).strip() or DEFAULT_FOLDER_TITLE
         for panel in deps["iter_dashboard_panels"](dashboard.get("panels")):
             targets = panel.get("targets")
             if not isinstance(targets, list):
@@ -209,7 +190,9 @@ def build_export_inspection_report_document(
     )
     return {
         "summary": {
-            "dashboardCount": len(set(record["dashboardUid"] for record in records)),
+            "dashboardCount": len(
+                set(record["dashboardUid"] for record in records)
+            ),
             "queryRecordCount": len(records),
         },
         "queries": records,
@@ -296,8 +279,6 @@ def describe_panel_datasource_uid(
             if name and datasources_by_name.get(name):
                 return str(datasources_by_name[name].get("uid") or "")
     return ""
-
-
 def build_query_report_record(
     dashboard: dict[str, Any],
     folder_path: str,
@@ -403,19 +384,14 @@ def filter_export_inspection_report_document(
         dict(record)
         for record in list(document.get("queries") or [])
         if (
-            (
-                not datasource_label
-                or str(record.get("datasource") or "") == datasource_label
-            )
+            (not datasource_label or str(record.get("datasource") or "") == datasource_label)
             and (not panel_id or str(record.get("panelId") or "") == panel_id)
         )
     ]
     return {
         "summary": {
             "dashboardCount": len(
-                set(
-                    str(record.get("dashboardUid") or "") for record in filtered_records
-                )
+                set(str(record.get("dashboardUid") or "") for record in filtered_records)
             ),
             "queryRecordCount": len(filtered_records),
         },
@@ -424,7 +400,7 @@ def filter_export_inspection_report_document(
 
 
 def build_grouped_export_inspection_report_document(
-    document: dict[str, Any],
+    document: dict[str, Any]
 ) -> dict[str, Any]:
     """Normalize one flat inspection report into dashboard-first grouped form."""
     query_records = list(document.get("queries") or [])
@@ -499,3 +475,13 @@ def build_grouped_export_inspection_report_document(
         },
         "dashboards": dashboard_records,
     }
+
+
+from .inspection_render import (  # noqa: E402
+    format_report_column_value,
+    render_export_inspection_grouped_report,
+    render_export_inspection_report_csv,
+    render_export_inspection_report_tables,
+    render_export_inspection_table_section,
+    render_export_inspection_tree_tables,
+)

@@ -5,7 +5,6 @@ from urllib import parse
 
 from ..dashboards.common import GrafanaApiError, GrafanaError
 from ..http_transport import (
-    DEFAULT_HTTP_TRANSPORT,
     HttpTransportApiError,
     HttpTransportError,
     JsonHttpTransport,
@@ -22,20 +21,17 @@ class GrafanaClient:
         headers: dict[str, str],
         timeout: int,
         verify_ssl: bool,
-        transport_name: str = DEFAULT_HTTP_TRANSPORT,
         transport: Optional[JsonHttpTransport] = None,
     ) -> None:
         self.base_url = base_url
         self.headers = dict(headers)
         self.timeout = timeout
         self.verify_ssl = verify_ssl
-        self.transport_name = transport_name
         self.transport = transport or build_json_http_transport(
             base_url=base_url,
             headers={"Accept": "application/json", **headers},
             timeout=timeout,
             verify_ssl=verify_ssl,
-            transport_name=transport_name,
         )
 
     def request_json(
@@ -135,9 +131,7 @@ class GrafanaClient:
         """Fetch the full dashboard wrapper or return None when the UID is missing."""
         data = None
         try:
-            data = self.request_json(
-                "/api/dashboards/uid/%s" % parse.quote(uid, safe="")
-            )
+            data = self.request_json("/api/dashboards/uid/%s" % parse.quote(uid, safe=""))
         except GrafanaApiError as exc:
             if exc.status_code == 404:
                 return None
@@ -198,5 +192,4 @@ class GrafanaClient:
             headers=headers,
             timeout=self.timeout,
             verify_ssl=self.verify_ssl,
-            transport_name=self.transport_name,
         )

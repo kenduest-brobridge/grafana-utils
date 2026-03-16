@@ -18,12 +18,10 @@ Caveats:
 import argparse
 from collections import OrderedDict
 
-from ..batch_error_policy import add_error_policy_argument
 from ..dashboard_cli import (
     HelpFullAction,
     add_common_cli_args,
 )
-
 DEFAULT_EXPORT_DIR = "datasources"
 DATASOURCE_EXPORT_FILENAME = "datasources.json"
 EXPORT_METADATA_FILENAME = "export-metadata.json"
@@ -60,24 +58,24 @@ HELP_FULL_EXAMPLES = (
     "--basic-user admin --basic-password admin --export-dir ./datasources --overwrite\n\n"
     "  Dry-run a live datasource create without changing Grafana:\n"
     "    grafana-util datasource add --url http://localhost:3000 "
-    '--token "$GRAFANA_API_TOKEN" --name prometheus-main --type prometheus '
+    "--token \"$GRAFANA_API_TOKEN\" --name prometheus-main --type prometheus "
     "--datasource-url http://prometheus:9090 --dry-run --table\n\n"
     "  Dry-run a live datasource modify by UID:\n"
     "    grafana-util datasource modify --url http://localhost:3000 "
-    '--token "$GRAFANA_API_TOKEN" --uid prom-main '
+    "--token \"$GRAFANA_API_TOKEN\" --uid prom-main "
     "--set-url http://prometheus-v2:9090 --dry-run --json\n\n"
     "  Dry-run a live datasource delete by UID:\n"
     "    grafana-util datasource delete --url http://localhost:3000 "
-    '--token "$GRAFANA_API_TOKEN" --uid prom-main --dry-run --json\n\n'
+    "--token \"$GRAFANA_API_TOKEN\" --uid prom-main --dry-run --json\n\n"
     "  Dry-run datasource import for the current org:\n"
     "    grafana-util datasource import --url http://localhost:3000 "
-    '--token "$GRAFANA_API_TOKEN" --import-dir ./datasources --dry-run --table\n\n'
+    "--token \"$GRAFANA_API_TOKEN\" --import-dir ./datasources --dry-run --table\n\n"
     "  Compare an exported datasource inventory against live Grafana:\n"
     "    grafana-util datasource diff --url http://localhost:3000 "
-    '--token "$GRAFANA_API_TOKEN" --diff-dir ./datasources\n\n'
+    "--token \"$GRAFANA_API_TOKEN\" --diff-dir ./datasources\n\n"
     "  List datasource inventory as JSON for scripting:\n"
     "    grafana-util datasource list --url http://localhost:3000 "
-    '--token "$GRAFANA_API_TOKEN" --json'
+    "--token \"$GRAFANA_API_TOKEN\" --json"
 )
 ROOT_HELP_EXAMPLES = (
     "Examples:\n\n"
@@ -111,7 +109,7 @@ EXPORT_HELP_EXAMPLES = (
 IMPORT_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  grafana-util datasource import --url http://localhost:3000 "
-    '--token "$GRAFANA_API_TOKEN" --import-dir ./datasources --dry-run --table\n'
+    "--token \"$GRAFANA_API_TOKEN\" --import-dir ./datasources --dry-run --table\n"
     "  grafana-util datasource import --url http://localhost:3000 "
     "--basic-user admin --basic-password admin --import-dir ./datasources "
     "--use-export-org --only-org-id 2 --create-missing-orgs --dry-run --json"
@@ -119,31 +117,31 @@ IMPORT_HELP_EXAMPLES = (
 DIFF_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  grafana-util datasource diff --url http://localhost:3000 "
-    '--token "$GRAFANA_API_TOKEN" --diff-dir ./datasources'
+    "--token \"$GRAFANA_API_TOKEN\" --diff-dir ./datasources"
 )
 ADD_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  grafana-util datasource add --url http://localhost:3000 "
-    '--token "$GRAFANA_API_TOKEN" --name prometheus-main --type prometheus '
+    "--token \"$GRAFANA_API_TOKEN\" --name prometheus-main --type prometheus "
     "--datasource-url http://prometheus:9090 --dry-run --table\n"
     "  grafana-util datasource add --url http://localhost:3000 "
-    '--token "$GRAFANA_API_TOKEN" --uid loki-main --name loki-main --type loki '
+    "--token \"$GRAFANA_API_TOKEN\" --uid loki-main --name loki-main --type loki "
     "--datasource-url http://loki:3100 --http-header X-Scope-OrgID=tenant-a --dry-run --json"
 )
 MODIFY_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  grafana-util datasource modify --url http://localhost:3000 "
-    '--token "$GRAFANA_API_TOKEN" --uid prom-main --set-url http://prometheus-v2:9090 '
+    "--token \"$GRAFANA_API_TOKEN\" --uid prom-main --set-url http://prometheus-v2:9090 "
     "--dry-run --json\n"
     "  grafana-util datasource modify --url http://localhost:3000 "
-    '--token "$GRAFANA_API_TOKEN" --uid prom-main --set-default true --dry-run --table'
+    "--token \"$GRAFANA_API_TOKEN\" --uid prom-main --set-default true --dry-run --table"
 )
 DELETE_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  grafana-util datasource delete --url http://localhost:3000 "
-    '--token "$GRAFANA_API_TOKEN" --uid prom-main --dry-run --json\n'
+    "--token \"$GRAFANA_API_TOKEN\" --uid prom-main --dry-run --json\n"
     "  grafana-util datasource delete --url http://localhost:3000 "
-    '--token "$GRAFANA_API_TOKEN" --name prometheus-main --dry-run --table'
+    "--token \"$GRAFANA_API_TOKEN\" --name prometheus-main --dry-run --table"
 )
 
 
@@ -218,7 +216,6 @@ def add_export_cli_args(parser):
         action="store_true",
         help="Preview the datasource export files that would be written without changing disk.",
     )
-    add_error_policy_argument(parser, "datasource")
 
 
 def add_import_cli_args(parser):
@@ -282,35 +279,6 @@ def add_import_cli_args(parser):
         help="Update an existing destination datasource when the imported datasource already exists.",
     )
     parser.add_argument(
-        "--secret-placeholder",
-        action="append",
-        default=None,
-        help=(
-            "Attach one placeholder declaration to datasource import in "
-            "DATASOURCE:FIELD=${secret:NAME} form. DATASOURCE matches the "
-            "imported datasource uid or name, and FIELD targets one "
-            "secureJsonData field such as basicAuthPassword or "
-            "httpHeaderValue1. Repeat for multiple datasource secret fields."
-        ),
-    )
-    parser.add_argument(
-        "--secret",
-        action="append",
-        default=None,
-        help=(
-            "Resolve one datasource secret placeholder in NAME=VALUE form. "
-            "Repeat for multiple placeholders."
-        ),
-    )
-    parser.add_argument(
-        "--secret-file",
-        default=None,
-        help=(
-            "Load datasource secret placeholder values from a JSON object file "
-            "mapping placeholder names to secret strings."
-        ),
-    )
-    parser.add_argument(
         "--update-existing-only",
         action="store_true",
         help="Only update existing destination datasources. Missing datasources are skipped instead of created.",
@@ -364,7 +332,6 @@ def add_import_cli_args(parser):
         action="store_true",
         help="Show detailed per-datasource import output. Overrides --progress output.",
     )
-    add_error_policy_argument(parser, "datasource")
 
 
 def add_diff_cli_args(parser):
@@ -377,7 +344,6 @@ def add_diff_cli_args(parser):
             "and export-metadata.json."
         ),
     )
-    add_error_policy_argument(parser, "datasource")
 
 
 def parse_bool_choice(value):
@@ -674,8 +640,6 @@ def add_delete_cli_args(parser):
             "--table or --json."
         ),
     )
-
-
 def build_parser(prog=None):
     parser = argparse.ArgumentParser(
         prog=prog or "grafana-util datasource",

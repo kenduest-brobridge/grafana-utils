@@ -16,10 +16,10 @@ def _render_table(headers: list[str], rows: list[list[str]]) -> list[str]:
     for row in rows:
         for index, value in enumerate(row):
             widths[index] = max(widths[index], len(value))
-    rendered = [
-        "  ".join(headers[index].ljust(widths[index]) for index in range(len(headers)))
-    ]
-    rendered.append("  ".join("-" * widths[index] for index in range(len(headers))))
+    rendered = ["  ".join(headers[index].ljust(widths[index]) for index in range(len(headers)))]
+    rendered.append(
+        "  ".join("-" * widths[index] for index in range(len(headers)))
+    )
     for row in rows:
         rendered.append(
             "  ".join(row[index].ljust(widths[index]) for index in range(len(headers)))

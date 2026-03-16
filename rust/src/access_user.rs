@@ -824,13 +824,11 @@ fn normalize_user_for_diff(record: &Map<String, Value>, include_teams: bool) -> 
     payload
 }
 
-type UserDiffMap = BTreeMap<String, (String, Map<String, Value>)>;
-
 fn build_user_diff_map(
     records: &[Map<String, Value>],
     source: &str,
     include_teams: bool,
-) -> Result<UserDiffMap> {
+) -> Result<BTreeMap<String, (String, Map<String, Value>)>> {
     let mut indexed = BTreeMap::new();
     for record in records {
         let login = string_field(record, "login", "");
@@ -1307,9 +1305,7 @@ fn resolve_user_modify_password(args: &UserModifyArgs) -> Result<Option<String>>
     if args.prompt_set_password {
         let password = prompt_password("Replacement Grafana user password: ")?;
         if password.is_empty() {
-            return Err(message(
-                "Prompted replacement user password cannot be empty.",
-            ));
+            return Err(message("Prompted replacement user password cannot be empty."));
         }
         return Ok(Some(password));
     }

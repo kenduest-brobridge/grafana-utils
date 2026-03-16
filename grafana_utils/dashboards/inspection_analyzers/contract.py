@@ -181,9 +181,7 @@ def extract_buckets(query: str) -> list[str]:
     )
 
 
-def build_default_query_analysis(
-    target: dict[str, Any], query_text: str
-) -> dict[str, list[str]]:
+def build_default_query_analysis(target: dict[str, Any], query_text: str) -> dict[str, list[str]]:
     del target
     return normalize_query_analysis(
         {

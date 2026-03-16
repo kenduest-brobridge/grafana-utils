@@ -88,23 +88,13 @@ def print_dashboard_import_progress(
                 )
             )
         else:
-            print(
-                "Imported %s -> uid=%s status=%s"
-                % (dashboard_file, uid, status or "unknown")
-            )
+            print("Imported %s -> uid=%s status=%s" % (dashboard_file, uid, status or "unknown"))
         return
     if getattr(args, "progress", False):
         if dry_run:
             print(
                 "Dry-run dashboard %s/%s: %s dest=%s action=%s%s"
-                % (
-                    index,
-                    total,
-                    uid,
-                    destination or "unknown",
-                    action_label,
-                    folder_segment,
-                )
+                % (index, total, uid, destination or "unknown", action_label, folder_segment)
             )
         else:
             print("Importing dashboard %s/%s: %s" % (index, total, uid))

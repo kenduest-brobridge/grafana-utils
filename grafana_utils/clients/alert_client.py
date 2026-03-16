@@ -5,7 +5,6 @@ from urllib import parse
 
 from ..alerts.common import GrafanaApiError, GrafanaError
 from ..http_transport import (
-    DEFAULT_HTTP_TRANSPORT,
     HttpTransportApiError,
     HttpTransportError,
     JsonHttpTransport,
@@ -22,16 +21,13 @@ class GrafanaAlertClient:
         headers: dict[str, str],
         timeout: int,
         verify_ssl: bool,
-        transport_name: str = DEFAULT_HTTP_TRANSPORT,
         transport: Optional[JsonHttpTransport] = None,
     ) -> None:
-        self.transport_name = transport_name
         self.transport = transport or build_json_http_transport(
             base_url=base_url,
             headers={"Accept": "application/json", **headers},
             timeout=timeout,
             verify_ssl=verify_ssl,
-            transport_name=transport_name,
         )
 
     def request_json(

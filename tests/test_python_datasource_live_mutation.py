@@ -115,12 +115,7 @@ class DatasourceLiveMutationTests(unittest.TestCase):
     def test_add_datasource_rejects_existing_uid_or_name(self):
         client = FakeDatasourceClient(
             datasources=[
-                {
-                    "id": 7,
-                    "uid": "prom-main",
-                    "name": "Prometheus Main",
-                    "type": "prometheus",
-                }
+                {"id": 7, "uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"}
             ]
         )
 
@@ -137,12 +132,7 @@ class DatasourceLiveMutationTests(unittest.TestCase):
     def test_plan_delete_datasource_returns_would_delete_for_uid_match(self):
         client = FakeDatasourceClient(
             datasources=[
-                {
-                    "id": 7,
-                    "uid": "prom-main",
-                    "name": "Prometheus Main",
-                    "type": "prometheus",
-                }
+                {"id": 7, "uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"}
             ]
         )
 
@@ -155,12 +145,7 @@ class DatasourceLiveMutationTests(unittest.TestCase):
     def test_delete_datasource_issues_delete_for_live_id(self):
         client = FakeDatasourceClient(
             datasources=[
-                {
-                    "id": 7,
-                    "uid": "prom-main",
-                    "name": "Prometheus Main",
-                    "type": "prometheus",
-                }
+                {"id": 7, "uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"}
             ]
         )
 
