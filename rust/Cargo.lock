@@ -310,7 +310,7 @@ dependencies = [
 
 [[package]]
 name = "grafana-utils-rust"
-version = "0.2.0-dev.1"
+version = "0.2.15"
 dependencies = [
  "base64",
  "clap",
