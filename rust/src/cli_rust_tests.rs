@@ -16,6 +16,14 @@ fn render_unified_help() -> String {
 }
 
 #[test]
+fn unified_help_mentions_screenshot_and_inspect_vars_examples() {
+    let help = render_unified_help();
+    assert!(help.contains("dashboard screenshot"));
+    assert!(help.contains("dashboard inspect-vars"));
+    assert!(help.contains("--dashboard-url"));
+}
+
+#[test]
 fn parse_cli_supports_dashboard_group_command() {
     let args: CliArgs = parse_cli_from([
         "grafana-util",
