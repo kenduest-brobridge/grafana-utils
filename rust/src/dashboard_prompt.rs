@@ -699,13 +699,17 @@ fn build_requires_block(
         "name": "Grafana",
         "version": "",
     })];
-    let mut mappings = ref_mapping.values().cloned().collect::<Vec<InputMapping>>();
-    mappings.sort_by(|left, right| left.input_name.cmp(&right.input_name));
-    for mapping in mappings {
+    let mut datasource_plugins = BTreeMap::new();
+    for mapping in ref_mapping.values() {
+        datasource_plugins
+            .entry(mapping.ds_type.clone())
+            .or_insert_with(|| mapping.plugin_name.clone());
+    }
+    for (plugin_id, plugin_name) in datasource_plugins {
         requires.push(json!({
             "type": "datasource",
-            "id": mapping.ds_type,
-            "name": mapping.ds_type,
+            "id": plugin_id,
+            "name": plugin_name,
             "version": "",
         }));
     }

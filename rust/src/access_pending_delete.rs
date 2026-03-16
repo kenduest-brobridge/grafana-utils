@@ -653,6 +653,8 @@ mod access_pending_delete_rust_tests {
             org_id: None,
             timeout: DEFAULT_TIMEOUT,
             verify_ssl: false,
+            insecure: false,
+            ca_cert: None,
         }
     }
 

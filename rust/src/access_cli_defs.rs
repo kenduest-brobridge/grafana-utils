@@ -73,6 +73,19 @@ pub struct CommonCliArgs {
         help = "Enable TLS certificate verification. Verification is disabled by default."
     )]
     pub verify_ssl: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["verify_ssl", "ca_cert"],
+        help = "Disable TLS certificate verification explicitly."
+    )]
+    pub insecure: bool,
+    #[arg(
+        long = "ca-cert",
+        value_name = "PATH",
+        help = "PEM bundle file to trust for Grafana TLS verification."
+    )]
+    pub ca_cert: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Args)]
@@ -115,6 +128,19 @@ pub struct CommonCliArgsNoOrgId {
         help = "Enable TLS certificate verification. Verification is disabled by default."
     )]
     pub verify_ssl: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["verify_ssl", "ca_cert"],
+        help = "Disable TLS certificate verification explicitly."
+    )]
+    pub insecure: bool,
+    #[arg(
+        long = "ca-cert",
+        value_name = "PATH",
+        help = "PEM bundle file to trust for Grafana TLS verification."
+    )]
+    pub ca_cert: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
@@ -1162,6 +1188,7 @@ pub struct AccessAuthContext {
     pub url: String,
     pub timeout: u64,
     pub verify_ssl: bool,
+    pub ca_cert: Option<PathBuf>,
     pub auth_mode: String,
     pub headers: Vec<(String, String)>,
 }
@@ -1218,7 +1245,8 @@ pub fn build_auth_context(common: &CommonCliArgs) -> Result<AccessAuthContext> {
     Ok(AccessAuthContext {
         url: common.url.clone(),
         timeout: common.timeout,
-        verify_ssl: common.verify_ssl,
+        verify_ssl: common.verify_ssl || common.ca_cert.is_some(),
+        ca_cert: common.ca_cert.clone(),
         auth_mode,
         headers,
     })
@@ -1246,7 +1274,8 @@ pub fn build_auth_context_no_org_id(common: &CommonCliArgsNoOrgId) -> Result<Acc
     Ok(AccessAuthContext {
         url: common.url.clone(),
         timeout: common.timeout,
-        verify_ssl: common.verify_ssl,
+        verify_ssl: common.verify_ssl || common.ca_cert.is_some(),
+        ca_cert: common.ca_cert.clone(),
         auth_mode,
         headers,
     })
@@ -1254,20 +1283,26 @@ pub fn build_auth_context_no_org_id(common: &CommonCliArgsNoOrgId) -> Result<Acc
 
 pub fn build_http_client(common: &CommonCliArgs) -> Result<JsonHttpClient> {
     let context = build_auth_context(common)?;
-    JsonHttpClient::new(JsonHttpClientConfig {
-        base_url: context.url,
-        headers: context.headers,
-        timeout_secs: context.timeout,
-        verify_ssl: context.verify_ssl,
-    })
+    JsonHttpClient::new_with_ca_cert(
+        JsonHttpClientConfig {
+            base_url: context.url,
+            headers: context.headers,
+            timeout_secs: context.timeout,
+            verify_ssl: context.verify_ssl,
+        },
+        context.ca_cert.as_deref(),
+    )
 }
 
 pub fn build_http_client_no_org_id(common: &CommonCliArgsNoOrgId) -> Result<JsonHttpClient> {
     let context = build_auth_context_no_org_id(common)?;
-    JsonHttpClient::new(JsonHttpClientConfig {
-        base_url: context.url,
-        headers: context.headers,
-        timeout_secs: context.timeout,
-        verify_ssl: context.verify_ssl,
-    })
+    JsonHttpClient::new_with_ca_cert(
+        JsonHttpClientConfig {
+            base_url: context.url,
+            headers: context.headers,
+            timeout_secs: context.timeout,
+            verify_ssl: context.verify_ssl,
+        },
+        context.ca_cert.as_deref(),
+    )
 }

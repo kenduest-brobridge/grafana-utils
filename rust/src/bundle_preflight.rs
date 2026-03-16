@@ -94,6 +94,17 @@ fn build_sync_specs_from_bundle(bundle: &Map<String, Value>) -> Vec<Value> {
     for item in bundle_section_items(bundle, "folders") {
         sync_specs.push(item);
     }
+    for item in bundle_section_items(bundle, "alerts") {
+        if let Some(object) = item.as_object() {
+            sync_specs.push(json!({
+                "kind": "alert",
+                "uid": object.get("uid"),
+                "title": object.get("title"),
+                "managedFields": object.get("managedFields").cloned().unwrap_or(Value::Array(Vec::new())),
+                "body": object.get("body").cloned().unwrap_or(Value::Object(Map::new())),
+            }));
+        }
+    }
     sync_specs
 }
 

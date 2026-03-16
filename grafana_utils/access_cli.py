@@ -191,7 +191,8 @@ def run(args):
         base_url=args.url,
         headers=headers,
         timeout=args.timeout,
-        verify_ssl=args.verify_ssl,
+        verify_ssl=bool(args.verify_ssl or getattr(args, "ca_cert", None)),
+        ca_cert=getattr(args, "ca_cert", None),
     )
     return dispatch_access_command(args, client, auth_mode)
 

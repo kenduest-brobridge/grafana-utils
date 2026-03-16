@@ -64,7 +64,11 @@ fn build_bundle_preflight_document_aggregates_sync_alert_and_provider_checks() {
                 "uid": "cpu-high",
                 "title": "CPU High",
                 "managedFields": ["condition", "contactPoints"],
-                "body": {"condition": "A > 90", "contactPoints": ["pagerduty-primary"]}
+                "body": {
+                    "condition": "A > 90",
+                    "datasourceUid": "prom-main",
+                    "contactPoints": ["pagerduty-primary"]
+                }
             }
         ]
     });

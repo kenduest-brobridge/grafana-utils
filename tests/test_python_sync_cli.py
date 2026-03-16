@@ -5,6 +5,7 @@ import json
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
 
@@ -363,7 +364,11 @@ class SyncCliTests(unittest.TestCase):
                     "kind": "alert",
                     "uid": "cpu-high",
                     "managedFields": ["condition", "contactPoints"],
-                    "body": {"condition": "A > 90", "contactPoints": ["pagerduty-primary"]},
+                    "body": {
+                        "condition": "A > 90",
+                        "datasourceUid": "prom-main",
+                        "contactPoints": ["pagerduty-primary"],
+                    },
                 }
             ],
         }
@@ -404,6 +409,14 @@ class SyncCliTests(unittest.TestCase):
             self.assertIn("syncPreflight", document)
             self.assertEqual(document["summary"]["providerBlockingCount"], 0)
             self.assertEqual(document["summary"]["secretBlockingCount"], 0)
+            checks = {
+                (item["kind"], item["identity"]): item
+                for item in document["syncPreflight"]["checks"]
+            }
+            self.assertEqual(
+                checks[("alert-datasource", "cpu-high->prom-main")]["status"],
+                "missing",
+            )
             self.assertEqual(
                 document["providerAssessment"]["plans"][0]["providers"][0]["providerName"],
                 "vault",
@@ -419,7 +432,11 @@ class SyncCliTests(unittest.TestCase):
                     "kind": "alert",
                     "uid": "cpu-high",
                     "managedFields": ["condition", "contactPoints"],
-                    "body": {"condition": "A > 90", "contactPoints": ["pagerduty-primary"]},
+                    "body": {
+                        "condition": "A > 90",
+                        "datasourceUid": "prom-main",
+                        "contactPoints": ["pagerduty-primary"],
+                    },
                 }
             ],
         }
@@ -454,7 +471,19 @@ class SyncCliTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             document = json.loads(stdout.getvalue())
-            self.assertEqual(document["summary"]["syncBlockingCount"], 0)
+            self.assertEqual(document["summary"]["syncBlockingCount"], 1)
+            checks = {
+                (item["kind"], item["identity"]): item
+                for item in document["syncPreflight"]["checks"]
+            }
+            self.assertEqual(
+                checks[("alert-datasource", "cpu-high->prom-main")]["status"],
+                "ok",
+            )
+            self.assertEqual(
+                checks[("alert-live-apply", "cpu-high")]["status"],
+                "blocked",
+            )
 
     def test_bundle_preflight_flags_missing_provider_and_secret_availability(self):
         source_bundle = {

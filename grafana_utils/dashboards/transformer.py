@@ -580,14 +580,17 @@ def build_requires_block(
 ) -> list[dict[str, str]]:
     """Build Grafana's __requires block for Grafana itself, datasources, and panels."""
     requires = [{"type": "grafana", "id": "grafana", "name": "Grafana", "version": ""}]
+    datasource_plugins = {}
+    for mapping in ref_mapping.values():
+        datasource_plugins.setdefault(mapping["type"], mapping["plugin_name"])
     requires.extend(
         {
             "type": "datasource",
-            "id": mapping["type"],
-            "name": mapping["type"],
+            "id": plugin_id,
+            "name": plugin_name,
             "version": "",
         }
-        for _, mapping in sorted(ref_mapping.items(), key=lambda item: item[1]["input_name"])
+        for plugin_id, plugin_name in sorted(datasource_plugins.items())
     )
     requires.extend(
         {

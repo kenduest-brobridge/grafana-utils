@@ -50,6 +50,8 @@ fn make_token_common() -> CommonCliArgs {
         org_id: None,
         timeout: 30,
         verify_ssl: false,
+        insecure: false,
+        ca_cert: None,
     }
 }
 
@@ -64,6 +66,8 @@ fn make_basic_common() -> CommonCliArgs {
         org_id: None,
         timeout: 30,
         verify_ssl: false,
+        insecure: false,
+        ca_cert: None,
     }
 }
 
@@ -77,6 +81,8 @@ fn make_basic_common_no_org_id() -> CommonCliArgsNoOrgId {
         prompt_token: false,
         timeout: 30,
         verify_ssl: false,
+        insecure: false,
+        ca_cert: None,
     }
 }
 
@@ -560,6 +566,56 @@ fn parse_cli_supports_prompt_token() {
         }
         _ => panic!("expected user list"),
     }
+}
+
+#[test]
+fn parse_cli_supports_insecure_and_ca_cert_flags() {
+    let args = parse_cli_from([
+        "grafana-access-utils",
+        "user",
+        "list",
+        "--ca-cert",
+        "/tmp/grafana-ca.pem",
+    ]);
+
+    match args.command {
+        AccessCommand::User {
+            command: UserCommand::List(list_args),
+        } => {
+            assert_eq!(
+                list_args.common.ca_cert.as_deref(),
+                Some(std::path::Path::new("/tmp/grafana-ca.pem"))
+            );
+            assert!(!list_args.common.verify_ssl);
+            assert!(!list_args.common.insecure);
+        }
+        _ => panic!("expected user list"),
+    }
+
+    let args = parse_cli_from(["grafana-access-utils", "user", "list", "--insecure"]);
+    match args.command {
+        AccessCommand::User {
+            command: UserCommand::List(list_args),
+        } => {
+            assert!(list_args.common.insecure);
+            assert_eq!(list_args.common.ca_cert, None);
+        }
+        _ => panic!("expected user list"),
+    }
+}
+
+#[test]
+fn build_auth_context_enables_verification_for_ca_cert() {
+    let mut common = make_token_common();
+    common.ca_cert = Some("/tmp/grafana-ca.pem".into());
+
+    let context = super::build_auth_context(&common).unwrap();
+
+    assert!(context.verify_ssl);
+    assert_eq!(
+        context.ca_cert.as_deref(),
+        Some(std::path::Path::new("/tmp/grafana-ca.pem"))
+    );
 }
 
 #[test]

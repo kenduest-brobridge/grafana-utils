@@ -134,6 +134,29 @@ def _build_dashboard_checks(spec, availability):
     return checks
 
 
+def _is_builtin_alert_datasource_ref(value):
+    return value in ("__expr__", "__dashboard__")
+
+
+def _collect_alert_datasource_uids(body):
+    datasource_uids = set()
+    direct_uid = _normalize_text(body.get("datasourceUid"))
+    if direct_uid and not _is_builtin_alert_datasource_ref(direct_uid):
+        datasource_uids.add(direct_uid)
+    for datasource_uid in _require_string_list(
+        body.get("datasourceUids"), "alert datasourceUids"
+    ):
+        if not _is_builtin_alert_datasource_ref(datasource_uid):
+            datasource_uids.add(datasource_uid)
+    for item in body.get("data") or []:
+        if not isinstance(item, Mapping):
+            continue
+        datasource_uid = _normalize_text(item.get("datasourceUid"))
+        if datasource_uid and not _is_builtin_alert_datasource_ref(datasource_uid):
+            datasource_uids.add(datasource_uid)
+    return sorted(datasource_uids)
+
+
 def _build_alert_checks(spec, availability):
     checks = [
         SyncPreflightCheck(
@@ -145,6 +168,24 @@ def _build_alert_checks(spec, availability):
         )
     ]
     body = _require_mapping(spec.body, "alert body")
+    available_uids = set(
+        _require_string_list(availability.get("datasourceUids"), "datasourceUids")
+    )
+    for datasource_uid in _collect_alert_datasource_uids(body):
+        status = "ok" if datasource_uid in available_uids else "missing"
+        checks.append(
+            SyncPreflightCheck(
+                kind="alert-datasource",
+                identity="%s->%s" % (spec.identity, datasource_uid),
+                status=status,
+                detail=(
+                    "Alert datasource is available."
+                    if status == "ok"
+                    else "Alert datasource is missing."
+                ),
+                blocking=status != "ok",
+            )
+        )
     contact_points = _require_string_list(body.get("contactPoints"), "alert contactPoints")
     available_contact_points = set(
         _require_string_list(availability.get("contactPoints"), "contactPoints")

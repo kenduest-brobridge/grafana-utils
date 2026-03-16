@@ -345,6 +345,7 @@ class AccessCliTests(unittest.TestCase):
             headers={},
             timeout=30,
             verify_ssl=False,
+            ca_cert=None,
             transport=transport,
         )
 
@@ -1297,6 +1298,27 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.prompt_token)
         self.assertIsNone(args.api_token)
 
+    def test_parse_args_supports_insecure_and_ca_cert(self):
+        args = access_utils.parse_args(
+            ["user", "list", "--ca-cert", "/tmp/grafana-ca.pem"]
+        )
+
+        self.assertEqual(args.ca_cert, "/tmp/grafana-ca.pem")
+        self.assertFalse(args.verify_ssl)
+        self.assertFalse(args.insecure)
+
+        args = access_utils.parse_args(["user", "list", "--insecure"])
+        self.assertTrue(args.insecure)
+        self.assertIsNone(args.ca_cert)
+
+    def test_parse_args_rejects_conflicting_tls_flags(self):
+        with self.assertRaisesRegex(SystemExit, "2"):
+            access_utils.parse_args(["user", "list", "--verify-ssl", "--insecure"])
+        with self.assertRaisesRegex(SystemExit, "2"):
+            access_utils.parse_args(
+                ["user", "list", "--ca-cert", "/tmp/grafana-ca.pem", "--insecure"]
+            )
+
     def test_parse_args_supports_service_account_export(self):
         args = access_utils.parse_args(
             [
@@ -1558,6 +1580,37 @@ class AccessCliTests(unittest.TestCase):
             "Choose either --token / --api-token or --prompt-token, not both.",
         ):
             access_utils.resolve_auth(args)
+
+    def test_run_builds_access_client_with_ca_cert(self):
+        args = argparse.Namespace(
+            url="https://grafana.example.com",
+            api_token="abc123",
+            prompt_token=False,
+            username=None,
+            password=None,
+            prompt_password=False,
+            org_id=None,
+            timeout=30,
+            verify_ssl=False,
+            ca_cert="/tmp/grafana-ca.pem",
+        )
+
+        with mock.patch.object(
+            access_utils, "GrafanaAccessClient", autospec=True
+        ) as client_cls, mock.patch.object(
+            access_utils, "dispatch_access_command", return_value=0
+        ) as dispatch:
+            result = access_utils.run(args)
+
+        self.assertEqual(result, 0)
+        client_cls.assert_called_once_with(
+            base_url="https://grafana.example.com",
+            headers={"Authorization": "Bearer abc123"},
+            timeout=30,
+            verify_ssl=True,
+            ca_cert="/tmp/grafana-ca.pem",
+        )
+        dispatch.assert_called_once()
 
     def test_resolve_user_secret_inputs_reads_new_user_password_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:

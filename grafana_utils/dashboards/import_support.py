@@ -225,13 +225,15 @@ def determine_dashboard_import_action(
         return "would-create"
 
     try:
-        client.fetch_dashboard(uid)
+        existing_payload = client.fetch_dashboard_if_exists(uid)
     except GrafanaApiError as exc:
-        if exc.status_code == 404:
-            if update_existing_only:
-                return "would-skip-missing"
-            return "would-create"
-        raise
+        if exc.status_code != 404:
+            raise
+        existing_payload = None
+    if existing_payload is None:
+        if update_existing_only:
+            return "would-skip-missing"
+        return "would-create"
 
     if replace_existing or update_existing_only:
         return "would-update"

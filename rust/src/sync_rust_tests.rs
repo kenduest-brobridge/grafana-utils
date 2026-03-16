@@ -113,7 +113,11 @@ fn build_sync_preflight_document_reports_plugin_dependency_and_alert_blocks() {
             "uid": "cpu-high",
             "title": "CPU High",
             "managedFields": ["condition", "contactPoints"],
-            "body": {"condition": "A > 90", "contactPoints": ["pagerduty-primary"]}
+            "body": {
+                "condition": "A > 90",
+                "datasourceUid": "loki-main",
+                "contactPoints": ["pagerduty-primary"]
+            }
         }),
     ];
     let availability = json!({
@@ -125,8 +129,8 @@ fn build_sync_preflight_document_reports_plugin_dependency_and_alert_blocks() {
     let document = build_sync_preflight_document(&desired_specs, Some(&availability)).unwrap();
 
     assert_eq!(document["kind"], json!(SYNC_PREFLIGHT_KIND));
-    assert_eq!(document["summary"]["checkCount"], json!(6));
-    assert_eq!(document["summary"]["blockingCount"], json!(4));
+    assert_eq!(document["summary"]["checkCount"], json!(7));
+    assert_eq!(document["summary"]["blockingCount"], json!(5));
     assert!(document["checks"]
         .as_array()
         .unwrap()
@@ -144,6 +148,13 @@ fn build_sync_preflight_document_reports_plugin_dependency_and_alert_blocks() {
         .unwrap()
         .iter()
         .any(|item| item["kind"] == "alert-live-apply" && item["status"] == "blocked"));
+    assert!(document["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["kind"] == "alert-datasource"
+            && item["identity"] == "cpu-high->loki-main"
+            && item["status"] == "missing"));
     assert!(document["checks"]
         .as_array()
         .unwrap()

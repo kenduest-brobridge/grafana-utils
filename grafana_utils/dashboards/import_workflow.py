@@ -7,6 +7,44 @@ from io import StringIO
 from pathlib import Path
 
 
+class _CachedDashboardImportClient:
+    """Per-import cache for repeated dashboard/folder GET lookups."""
+
+    def __init__(self, client):
+        self._client = client
+        self._dashboard_cache = {}
+        self._folder_cache = {}
+
+    def __getattr__(self, name):
+        return getattr(self._client, name)
+
+    def fetch_dashboard_if_exists(self, uid):
+        cache_key = str(uid or "")
+        if cache_key not in self._dashboard_cache:
+            self._dashboard_cache[cache_key] = self._client.fetch_dashboard_if_exists(uid)
+        return self._dashboard_cache[cache_key]
+
+    def fetch_dashboard(self, uid):
+        payload = self.fetch_dashboard_if_exists(uid)
+        if payload is None:
+            return self._client.fetch_dashboard(uid)
+        return payload
+
+    def fetch_folder_if_exists(self, uid):
+        cache_key = str(uid or "")
+        if cache_key not in self._folder_cache:
+            self._folder_cache[cache_key] = self._client.fetch_folder_if_exists(uid)
+        return self._folder_cache[cache_key]
+
+    def create_folder(self, uid, title, parent_uid=None):
+        result = self._client.create_folder(uid, title, parent_uid=parent_uid)
+        record = {"uid": uid, "title": title}
+        if parent_uid:
+            record["parentUid"] = parent_uid
+        self._folder_cache[str(uid or "")] = record
+        return result
+
+
 def _normalize_org_id(org):
     if not isinstance(org, dict):
         return None
@@ -363,6 +401,7 @@ def _run_import_dashboards_for_single_org(args, deps):
         )
     if org_id:
         client = client.with_org_id(str(org_id))
+    client = _CachedDashboardImportClient(client)
     import_dir = Path(args.import_dir)
     metadata = deps["load_export_metadata"](
         import_dir, expected_variant=deps["RAW_EXPORT_SUBDIR"]

@@ -21,6 +21,7 @@ class GrafanaAccessClient:
         headers: dict[str, str],
         timeout: int,
         verify_ssl: bool,
+        ca_cert: Optional[str] = None,
         transport: Optional[JsonHttpTransport] = None,
     ) -> None:
         self.transport = transport or build_json_http_transport(
@@ -28,6 +29,7 @@ class GrafanaAccessClient:
             headers={"Accept": "application/json", **headers},
             timeout=timeout,
             verify_ssl=verify_ssl,
+            ca_cert=ca_cert,
         )
 
     def request_json(

@@ -653,6 +653,7 @@ fn collect_query_report_rows(
     dashboard_uid: &str,
     dashboard_title: &str,
     folder_path: &str,
+    dashboard_file: &Path,
     rows: &mut Vec<ExportInspectionQueryRow>,
 ) {
     for panel in panels {
@@ -707,11 +708,19 @@ fn collect_query_report_rows(
                     metrics: analysis.metrics,
                     measurements: analysis.measurements,
                     buckets: analysis.buckets,
+                    file_path: dashboard_file.display().to_string(),
                 });
             }
         }
         if let Some(children) = panel_object.get("panels").and_then(Value::as_array) {
-            collect_query_report_rows(children, dashboard_uid, dashboard_title, folder_path, rows);
+            collect_query_report_rows(
+                children,
+                dashboard_uid,
+                dashboard_title,
+                folder_path,
+                dashboard_file,
+                rows,
+            );
         }
     }
 }
@@ -748,6 +757,7 @@ pub(crate) fn build_export_inspection_query_report(
                 &dashboard_uid,
                 &dashboard_title,
                 &folder_path,
+                dashboard_file,
                 &mut rows,
             );
         }

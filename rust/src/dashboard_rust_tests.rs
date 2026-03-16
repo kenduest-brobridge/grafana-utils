@@ -1639,6 +1639,7 @@ fn inspect_export_help_full_includes_extended_examples() {
     assert!(help.contains("Extended Examples:"));
     assert!(help.contains("--report tree-table"));
     assert!(help.contains("--report-filter-datasource"));
+    assert!(help.contains("--report-filter-panel-id 7"));
     assert!(help.contains("--report-columns"));
 }
 
@@ -1648,6 +1649,7 @@ fn inspect_live_help_full_includes_extended_examples() {
 
     assert!(help.contains("--help-full"));
     assert!(help.contains("Extended Examples:"));
+    assert!(help.contains("--token \"$GRAFANA_API_TOKEN\""));
     assert!(help.contains("--report tree-table"));
     assert!(help.contains("--report-filter-panel-id"));
     assert!(help.contains("--report-columns"));
@@ -1666,6 +1668,7 @@ fn maybe_render_dashboard_help_full_from_os_args_handles_missing_required_args()
     assert!(help.contains("inspect-export"));
     assert!(help.contains("Extended Examples:"));
     assert!(help.contains("--report tree-table"));
+    assert!(help.contains("--report-filter-panel-id 7"));
 }
 
 #[test]
@@ -3224,6 +3227,16 @@ fn build_external_export_document_adds_datasource_inputs() {
     assert_eq!(document["__inputs"][1]["label"], "Prom Main");
     assert_eq!(document["__inputs"][0]["pluginName"], "Loki");
     assert_eq!(document["__inputs"][1]["pluginName"], "Prometheus");
+    assert_eq!(
+        document["__requires"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|item| item["type"] == "datasource")
+            .map(|item| (item["id"].as_str().unwrap(), item["name"].as_str().unwrap()))
+            .collect::<Vec<_>>(),
+        vec![("loki", "Loki"), ("prometheus", "Prometheus")]
+    );
     assert_eq!(document["__elements"], json!({}));
 }
 
@@ -3283,6 +3296,67 @@ fn build_external_export_document_creates_input_from_datasource_template_variabl
         "${DS_PROMETHEUS}"
     );
     assert_eq!(document["panels"][0]["datasource"]["uid"], "$datasource");
+}
+
+#[test]
+fn build_external_export_document_deduplicates_same_type_datasource_requires() {
+    let payload = json!({
+        "dashboard": {
+            "id": 18,
+            "title": "Two Prometheus Query Dashboard",
+            "panels": [
+                {
+                    "id": 1,
+                    "type": "timeseries",
+                    "title": "Two Prometheus Panel",
+                    "datasource": {"type": "datasource", "uid": "-- Mixed --"},
+                    "targets": [
+                        {
+                            "refId": "A",
+                            "datasource": {"type": "prometheus", "uid": "prom_uid_1"},
+                            "expr": "up"
+                        },
+                        {
+                            "refId": "B",
+                            "datasource": {"type": "prometheus", "uid": "prom_uid_2"},
+                            "expr": "up"
+                        }
+                    ]
+                }
+            ]
+        }
+    });
+    let catalog = super::build_datasource_catalog(&[
+        json!({"uid": "prom_uid_1", "name": "Smoke Prometheus", "type": "prometheus"})
+            .as_object()
+            .unwrap()
+            .clone(),
+        json!({"uid": "prom_uid_2", "name": "Smoke Prometheus 2", "type": "prometheus"})
+            .as_object()
+            .unwrap()
+            .clone(),
+    ]);
+
+    let document = build_external_export_document(&payload, &catalog).unwrap();
+
+    assert_eq!(
+        document["panels"][0]["targets"][0]["datasource"]["uid"],
+        "${DS_SMOKE_PROMETHEUS}"
+    );
+    assert_eq!(
+        document["panels"][0]["targets"][1]["datasource"]["uid"],
+        "${DS_SMOKE_PROMETHEUS_2}"
+    );
+    assert_eq!(
+        document["__requires"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|item| item["type"] == "datasource")
+            .map(|item| (item["id"].as_str().unwrap(), item["name"].as_str().unwrap()))
+            .collect::<Vec<_>>(),
+        vec![("prometheus", "Prometheus")]
+    );
 }
 
 #[test]
@@ -4062,8 +4136,9 @@ fn build_export_inspection_query_report_keeps_prometheus_metrics_and_skips_label
 }
 
 #[test]
-fn resolve_report_column_ids_keep_datasource_uid_optional() {
+fn resolve_report_column_ids_include_file_by_default_and_allow_datasource_uid() {
     let default_columns = super::resolve_report_column_ids(&[]).unwrap();
+    assert!(default_columns.iter().any(|value| value == "file"));
     assert!(!default_columns
         .iter()
         .any(|value| value == "datasource_uid"));
@@ -4071,6 +4146,7 @@ fn resolve_report_column_ids_keep_datasource_uid_optional() {
     let selected = super::resolve_report_column_ids(&[
         "dashboard_uid".to_string(),
         "datasource_uid".to_string(),
+        "file".to_string(),
         "query".to_string(),
     ])
     .unwrap();
@@ -4079,13 +4155,14 @@ fn resolve_report_column_ids_keep_datasource_uid_optional() {
         vec![
             "dashboard_uid".to_string(),
             "datasource_uid".to_string(),
+            "file".to_string(),
             "query".to_string(),
         ]
     );
 }
 
 #[test]
-fn export_inspection_query_row_json_keeps_datasource_uid_field_when_empty() {
+fn export_inspection_query_row_json_keeps_datasource_uid_and_file_fields() {
     let row = super::ExportInspectionQueryRow {
         dashboard_uid: "main".to_string(),
         dashboard_title: "Main".to_string(),
@@ -4101,11 +4178,16 @@ fn export_inspection_query_row_json_keeps_datasource_uid_field_when_empty() {
         metrics: vec!["up".to_string()],
         measurements: Vec::new(),
         buckets: Vec::new(),
+        file_path: "/tmp/raw/main.json".to_string(),
     };
 
     let value = serde_json::to_value(&row).unwrap();
 
     assert_eq!(value["datasourceUid"], Value::String(String::new()));
+    assert_eq!(
+        value["file"],
+        Value::String("/tmp/raw/main.json".to_string())
+    );
 }
 
 #[test]
@@ -4161,6 +4243,7 @@ fn apply_query_report_filters_keep_matching_rows_only() {
                 metrics: vec!["up".to_string()],
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/main.json".to_string(),
             },
             super::ExportInspectionQueryRow {
                 dashboard_uid: "logs".to_string(),
@@ -4177,6 +4260,7 @@ fn apply_query_report_filters_keep_matching_rows_only() {
                 metrics: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/logs.json".to_string(),
             },
         ],
     };
@@ -4218,6 +4302,7 @@ fn normalize_query_report_groups_rows_by_dashboard_then_panel() {
                 metrics: vec!["up".to_string()],
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/main.json".to_string(),
             },
             super::ExportInspectionQueryRow {
                 dashboard_uid: "main".to_string(),
@@ -4234,6 +4319,7 @@ fn normalize_query_report_groups_rows_by_dashboard_then_panel() {
                 metrics: vec!["process_resident_memory_bytes".to_string()],
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/main.json".to_string(),
             },
             super::ExportInspectionQueryRow {
                 dashboard_uid: "logs".to_string(),
@@ -4250,6 +4336,7 @@ fn normalize_query_report_groups_rows_by_dashboard_then_panel() {
                 metrics: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/logs.json".to_string(),
             },
         ],
     };
@@ -4409,6 +4496,7 @@ fn render_grouped_query_report_displays_dashboard_panel_and_query_tree() {
                 metrics: vec!["up".to_string()],
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/main.json".to_string(),
             },
             super::ExportInspectionQueryRow {
                 dashboard_uid: "main".to_string(),
@@ -4425,6 +4513,7 @@ fn render_grouped_query_report_displays_dashboard_panel_and_query_tree() {
                 metrics: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/main.json".to_string(),
             },
         ],
     };
@@ -4472,6 +4561,7 @@ fn render_grouped_query_table_report_displays_dashboard_sections_with_tables() {
                 metrics: vec!["up".to_string()],
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/main.json".to_string(),
             },
             super::ExportInspectionQueryRow {
                 dashboard_uid: "main".to_string(),
@@ -4488,6 +4578,7 @@ fn render_grouped_query_table_report_displays_dashboard_sections_with_tables() {
                 metrics: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/main.json".to_string(),
             },
         ],
     };
@@ -4544,6 +4635,7 @@ fn render_grouped_query_table_report_includes_loki_analysis_columns() {
                 "app=~\"api|web\"".to_string(),
             ],
             buckets: vec!["5m".to_string()],
+            file_path: "/tmp/raw/logs-main.json".to_string(),
         }],
     };
 
@@ -4677,6 +4769,7 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
                 metrics: vec!["up".to_string()],
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/cpu-main.json".to_string(),
             },
             super::ExportInspectionQueryRow {
                 dashboard_uid: "mixed-main".to_string(),
@@ -4693,6 +4786,7 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
                 metrics: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
+                file_path: "/tmp/raw/mixed-main.json".to_string(),
             },
         ],
     };
@@ -4814,6 +4908,7 @@ fn render_governance_table_report_displays_sections() {
             metrics: vec!["count_over_time".to_string()],
             measurements: vec!["job=\"grafana\"".to_string()],
             buckets: vec!["5m".to_string()],
+            file_path: "/tmp/raw/logs-main.json".to_string(),
         }],
     };
 
@@ -6689,9 +6784,7 @@ fn import_dashboards_with_ensure_folders_creates_missing_folder_chain_from_raw_i
             "GET /api/dashboards/uid/abc",
             "GET /api/folders/child",
             "GET /api/folders/platform",
-            "GET /api/folders/platform",
             "POST /api/folders",
-            "GET /api/folders/child",
             "POST /api/folders",
             "POST /api/dashboards/db"
         ]
@@ -6807,8 +6900,7 @@ fn import_dashboards_with_dry_run_and_ensure_folders_checks_folder_inventory() {
         vec![
             "GET /api/folders/platform",
             "GET /api/folders/child",
-            "GET /api/dashboards/uid/abc",
-            "GET /api/folders/child"
+            "GET /api/dashboards/uid/abc"
         ]
     );
 }

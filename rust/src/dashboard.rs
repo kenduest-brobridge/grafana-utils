@@ -143,13 +143,14 @@ pub(crate) use dashboard_list::{
 };
 #[cfg(test)]
 pub(crate) use dashboard_live::build_folder_inventory_status;
+#[cfg(test)]
+pub(crate) use dashboard_live::collect_folder_inventory_statuses_with_request;
 pub(crate) use dashboard_live::{
-    build_datasource_inventory_record, build_folder_path,
-    collect_folder_inventory_statuses_with_request, collect_folder_inventory_with_request,
-    ensure_folder_inventory_entry_with_request, fetch_dashboard_if_exists_with_request,
-    fetch_dashboard_with_request, fetch_folder_if_exists_with_request,
-    format_folder_inventory_status_line, import_dashboard_request_with_request,
-    list_dashboard_summaries_with_request, list_datasources_with_request,
+    build_datasource_inventory_record, build_folder_path, collect_folder_inventory_with_request,
+    fetch_dashboard_if_exists_with_request, fetch_dashboard_with_request,
+    fetch_folder_if_exists_with_request, format_folder_inventory_status_line,
+    import_dashboard_request_with_request, list_dashboard_summaries_with_request,
+    list_datasources_with_request,
 };
 pub(crate) use dashboard_models::{
     DashboardIndexItem, DatasourceInventoryItem, ExportMetadata, FolderInventoryItem,

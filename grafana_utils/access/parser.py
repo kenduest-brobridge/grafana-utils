@@ -598,6 +598,17 @@ def add_common_cli_args(
         action="store_true",
         help="Enable TLS certificate verification. Verification is disabled by default.",
     )
+    parser.add_argument(
+        "--insecure",
+        action="store_true",
+        help="Disable TLS certificate verification explicitly.",
+    )
+    parser.add_argument(
+        "--ca-cert",
+        default=None,
+        metavar="PATH",
+        help="PEM bundle file to trust for Grafana TLS verification.",
+    )
 
 
 def add_user_list_cli_args(parser):
@@ -1217,6 +1228,7 @@ def parse_args(argv=None):
 
     args = parser.parse_args(argv)
     _normalize_output_format_args(args, parser)
+    _validate_tls_args(args, parser)
     return args
 
 
@@ -1233,3 +1245,12 @@ def _normalize_output_format_args(args, parser):
     args.table = output_format == "table"
     args.csv = output_format == "csv"
     args.json = output_format == "json"
+
+
+def _validate_tls_args(args, parser):
+    if bool(getattr(args, "verify_ssl", False)) and bool(
+        getattr(args, "insecure", False)
+    ):
+        parser.error("--verify-ssl cannot be combined with --insecure.")
+    if getattr(args, "ca_cert", None) and bool(getattr(args, "insecure", False)):
+        parser.error("--ca-cert cannot be combined with --insecure.")

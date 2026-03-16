@@ -1,8 +1,10 @@
 //! Shared HTTP transport for all Rust domains.
 //! Wraps reqwest blocking client creation, URL building, query encoding, and request/response error mapping.
+use std::fs;
+
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, ACCEPT, ACCEPT_ENCODING, CONTENT_TYPE};
-use reqwest::{Method, StatusCode, Url};
+use reqwest::{Certificate, Method, StatusCode, Url};
 use serde_json::Value;
 
 use crate::common::{api_response, message, Result};
@@ -22,6 +24,13 @@ pub struct JsonHttpClient {
 
 impl JsonHttpClient {
     pub fn new(config: JsonHttpClientConfig) -> Result<Self> {
+        Self::new_with_ca_cert(config, None)
+    }
+
+    pub fn new_with_ca_cert(
+        config: JsonHttpClientConfig,
+        ca_cert: Option<&std::path::Path>,
+    ) -> Result<Self> {
         let mut headers = HeaderMap::new();
         headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
         headers.insert(ACCEPT_ENCODING, HeaderValue::from_static("identity"));
@@ -33,12 +42,18 @@ impl JsonHttpClient {
             headers.insert(header_name, header_value);
         }
 
-        let client = Client::builder()
+        let mut builder = Client::builder()
             .default_headers(headers)
             .timeout(std::time::Duration::from_secs(config.timeout_secs))
             .danger_accept_invalid_certs(!config.verify_ssl)
-            .http1_only()
-            .build()?;
+            .http1_only();
+        if let Some(ca_cert_path) = ca_cert {
+            let pem_bundle = fs::read(ca_cert_path)?;
+            for cert in Certificate::from_pem_bundle(&pem_bundle)? {
+                builder = builder.add_root_certificate(cert);
+            }
+        }
+        let client = builder.build()?;
 
         Ok(Self {
             base_url: config.base_url.trim_end_matches('/').to_string(),

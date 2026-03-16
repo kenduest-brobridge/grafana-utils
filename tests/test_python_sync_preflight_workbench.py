@@ -31,7 +31,11 @@ class SyncPreflightWorkbenchTests(unittest.TestCase):
                     "uid": "cpu-high",
                     "title": "CPU High",
                     "managedFields": ["condition"],
-                    "body": {"condition": "A > 90", "contactPoints": ["pagerduty-primary"]},
+                    "body": {
+                        "condition": "A > 90",
+                        "datasourceUid": "prom-main",
+                        "contactPoints": ["pagerduty-primary"],
+                    },
                 },
             ],
             availability={
@@ -44,12 +48,16 @@ class SyncPreflightWorkbenchTests(unittest.TestCase):
             document["kind"],
             sync_preflight_workbench.SYNC_PREFLIGHT_KIND,
         )
-        self.assertEqual(document["summary"]["checkCount"], 4)
-        self.assertEqual(document["summary"]["blockingCount"], 3)
+        self.assertEqual(document["summary"]["checkCount"], 5)
+        self.assertEqual(document["summary"]["blockingCount"], 4)
         checks = {(item["kind"], item["identity"]): item for item in document["checks"]}
         self.assertEqual(checks[("datasource", "prom-main")]["status"], "create-planned")
         self.assertEqual(checks[("plugin", "prometheus")]["status"], "missing")
         self.assertEqual(checks[("alert-live-apply", "cpu-high")]["status"], "blocked")
+        self.assertEqual(
+            checks[("alert-datasource", "cpu-high->prom-main")]["status"],
+            "missing",
+        )
         self.assertEqual(
             checks[("alert-contact-point", "cpu-high->pagerduty-primary")]["status"],
             "missing",

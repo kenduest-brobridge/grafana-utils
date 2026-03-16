@@ -2,6 +2,7 @@
 """Replaceable JSON HTTP transport adapters for the Grafana CLI tools."""
 
 import json
+import ssl
 from typing import Any, Optional
 from urllib import parse
 
@@ -48,11 +49,18 @@ class BaseJsonHttpTransport(JsonHttpTransport):
         headers: dict[str, str],
         timeout: int,
         verify_ssl: bool,
+        ca_cert: Optional[str] = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.headers = dict(headers)
         self.timeout = timeout
         self.verify_ssl = verify_ssl
+        self.ca_cert = ca_cert
+
+    def verify_config(self) -> Any:
+        if self.ca_cert:
+            return self.ca_cert
+        return self.verify_ssl
 
     def build_url(
         self,
@@ -100,8 +108,9 @@ class RequestsJsonHttpTransport(BaseJsonHttpTransport):
         headers: dict[str, str],
         timeout: int,
         verify_ssl: bool,
+        ca_cert: Optional[str] = None,
     ) -> None:
-        super().__init__(base_url, headers, timeout, verify_ssl)
+        super().__init__(base_url, headers, timeout, verify_ssl, ca_cert=ca_cert)
         try:
             import requests
         except ImportError as exc:
@@ -126,7 +135,7 @@ class RequestsJsonHttpTransport(BaseJsonHttpTransport):
                 url=url,
                 json=payload,
                 timeout=self.timeout,
-                verify=self.verify_ssl,
+                verify=self.verify_config(),
             )
         except self._requests.RequestException as exc:
             raise HttpTransportError(f"Request failed for {url}: {exc}") from exc
@@ -149,8 +158,9 @@ class HttpxJsonHttpTransport(BaseJsonHttpTransport):
         headers: dict[str, str],
         timeout: int,
         verify_ssl: bool,
+        ca_cert: Optional[str] = None,
     ) -> None:
-        super().__init__(base_url, headers, timeout, verify_ssl)
+        super().__init__(base_url, headers, timeout, verify_ssl, ca_cert=ca_cert)
         try:
             import httpx
         except ImportError as exc:
@@ -158,10 +168,14 @@ class HttpxJsonHttpTransport(BaseJsonHttpTransport):
                 "The httpx transport is unavailable because httpx is not installed."
             ) from exc
         self._httpx = httpx
+        verify = self.verify_config()
+        if self.ca_cert:
+            context = ssl.create_default_context(cafile=self.ca_cert)
+            verify = context
         self._client = httpx.Client(
             headers=self.headers,
             timeout=self.timeout,
-            verify=self.verify_ssl,
+            verify=verify,
             http2=http2_is_available(),
         )
 
@@ -196,18 +210,43 @@ def build_json_http_transport(
     headers: dict[str, str],
     timeout: int,
     verify_ssl: bool,
+    ca_cert: Optional[str] = None,
     transport_name: str = DEFAULT_HTTP_TRANSPORT,
 ) -> JsonHttpTransport:
     """Build the requested JSON HTTP transport implementation."""
     normalized_name = str(transport_name or DEFAULT_HTTP_TRANSPORT).strip().lower()
     if normalized_name == AUTO_HTTP_TRANSPORT:
         if httpx_is_available() and http2_is_available():
-            return HttpxJsonHttpTransport(base_url, headers, timeout, verify_ssl)
-        return RequestsJsonHttpTransport(base_url, headers, timeout, verify_ssl)
+            return HttpxJsonHttpTransport(
+                base_url,
+                headers,
+                timeout,
+                verify_ssl,
+                ca_cert=ca_cert,
+            )
+        return RequestsJsonHttpTransport(
+            base_url,
+            headers,
+            timeout,
+            verify_ssl,
+            ca_cert=ca_cert,
+        )
     if normalized_name == REQUESTS_TRANSPORT:
-        return RequestsJsonHttpTransport(base_url, headers, timeout, verify_ssl)
+        return RequestsJsonHttpTransport(
+            base_url,
+            headers,
+            timeout,
+            verify_ssl,
+            ca_cert=ca_cert,
+        )
     if normalized_name == HTTPX_TRANSPORT:
-        return HttpxJsonHttpTransport(base_url, headers, timeout, verify_ssl)
+        return HttpxJsonHttpTransport(
+            base_url,
+            headers,
+            timeout,
+            verify_ssl,
+            ca_cert=ca_cert,
+        )
     raise HttpTransportError(
         f"Unsupported HTTP transport {transport_name!r}. "
         f"Use {AUTO_HTTP_TRANSPORT!r}, {REQUESTS_TRANSPORT!r}, or {HTTPX_TRANSPORT!r}."

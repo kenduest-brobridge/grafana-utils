@@ -44,6 +44,8 @@ pub(crate) struct ExportInspectionQueryRow {
     pub(crate) metrics: Vec<String>,
     pub(crate) measurements: Vec<String>,
     pub(crate) buckets: Vec<String>,
+    #[serde(rename = "file")]
+    pub(crate) file_path: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -104,6 +106,7 @@ pub(crate) const DEFAULT_REPORT_COLUMN_IDS: &[&str] = &[
     "measurements",
     "buckets",
     "query",
+    "file",
 ];
 
 pub(crate) const SUPPORTED_REPORT_COLUMN_IDS: &[&str] = &[
@@ -121,6 +124,7 @@ pub(crate) const SUPPORTED_REPORT_COLUMN_IDS: &[&str] = &[
     "measurements",
     "buckets",
     "query",
+    "file",
 ];
 
 pub(crate) fn build_query_report(
@@ -226,6 +230,7 @@ pub(crate) fn report_column_header(column_id: &str) -> &'static str {
         "measurements" => "MEASUREMENTS",
         "buckets" => "BUCKETS",
         "query" => "QUERY",
+        "file" => "FILE",
         _ => unreachable!("unsupported report column header"),
     }
 }
@@ -249,6 +254,7 @@ pub(crate) fn render_query_report_column(
         "measurements" => row.measurements.join(","),
         "buckets" => row.buckets.join(","),
         "query" => row.query_text.clone(),
+        "file" => row.file_path.clone(),
         _ => unreachable!("unsupported report column value"),
     }
 }

@@ -678,11 +678,11 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("raw/ export directory explicitly", help_text)
         self.assertIn("Extended examples:", help_text)
         self.assertIn("grafana-util dashboard inspect-export", help_text)
-        self.assertIn("--output-format report-tree-table", help_text)
+        self.assertIn("--report tree-table", help_text)
         self.assertIn("--report-filter-datasource prom-main", help_text)
+        self.assertIn("--report-filter-panel-id 7", help_text)
         self.assertIn("--report-columns panel_id,panel_title,datasource,query", help_text)
         self.assertNotIn("grafana-utils inspect-export", help_text)
-        self.assertNotIn("--report tree-table", help_text)
 
     def test_inspect_live_help_mentions_live_report_flags(self):
         stream = io.StringIO()
@@ -717,11 +717,11 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("--url", help_text)
         self.assertIn("Extended examples:", help_text)
         self.assertIn("grafana-util dashboard inspect-live", help_text)
-        self.assertIn("--output-format report-tree-table", help_text)
+        self.assertIn("--token \"$GRAFANA_API_TOKEN\"", help_text)
+        self.assertIn("--report tree-table", help_text)
         self.assertIn("--report-filter-panel-id 7", help_text)
         self.assertIn("--report-columns panel_id,panel_title,datasource,query", help_text)
         self.assertNotIn("grafana-utils inspect-live", help_text)
-        self.assertNotIn("--report tree-table", help_text)
 
     def test_parse_args_supports_import_mode(self):
         args = exporter.parse_args(["import-dashboard", "--import-dir", "dashboards"])
@@ -6066,6 +6066,14 @@ class ExporterTests(unittest.TestCase):
             {item["id"] for item in document["__requires"] if item["type"] == "datasource"},
             {"loki", "prometheus"},
         )
+        self.assertEqual(
+            [
+                (item["id"], item["name"])
+                for item in document["__requires"]
+                if item["type"] == "datasource"
+            ],
+            [("loki", "Loki"), ("prometheus", "Prometheus")],
+        )
         self.assertEqual(document["__elements"], {})
 
     def test_build_preserved_web_import_document_keeps_mixed_panel_query_datasources(self):
@@ -6170,6 +6178,14 @@ class ExporterTests(unittest.TestCase):
             {item["id"] for item in document["__requires"] if item["type"] == "datasource"},
             {"loki", "prometheus"},
         )
+        self.assertEqual(
+            [
+                (item["id"], item["name"])
+                for item in document["__requires"]
+                if item["type"] == "datasource"
+            ],
+            [("loki", "Loki"), ("prometheus", "Prometheus")],
+        )
 
     def test_build_external_export_document_keeps_distinct_same_type_datasources_separate(self):
         payload = {
@@ -6222,6 +6238,14 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(
             [item["name"] for item in document["__inputs"]],
             ["DS_SMOKE_PROMETHEUS", "DS_SMOKE_PROMETHEUS_2"],
+        )
+        self.assertEqual(
+            [
+                (item["id"], item["name"])
+                for item in document["__requires"]
+                if item["type"] == "datasource"
+            ],
+            [("prometheus", "Prometheus")],
         )
         self.assertNotIn("templating", document)
 
