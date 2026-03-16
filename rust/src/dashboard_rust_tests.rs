@@ -6,10 +6,10 @@ use super::{
     build_export_variant_dirs, build_external_export_document, build_folder_inventory_status,
     build_folder_path, build_import_auth_context, build_import_payload, build_output_path,
     build_preserved_web_import_document, build_root_export_index, diff_dashboards_with_request,
-    discover_dashboard_files, export_dashboards_with_request, format_dashboard_summary_line,
-    format_data_source_line, format_export_progress_line, format_export_verbose_line,
-    format_folder_inventory_status_line, format_import_progress_line, format_import_verbose_line,
-    import_dashboards_with_org_clients, import_dashboards_with_request, extract_dashboard_variables,
+    discover_dashboard_files, export_dashboards_with_request, extract_dashboard_variables,
+    format_dashboard_summary_line, format_data_source_line, format_export_progress_line,
+    format_export_verbose_line, format_folder_inventory_status_line, format_import_progress_line,
+    format_import_verbose_line, import_dashboards_with_org_clients, import_dashboards_with_request,
     infer_screenshot_output_format, list_dashboards_with_request, list_data_sources_with_request,
     parse_cli_from, render_dashboard_summary_csv, render_dashboard_summary_json,
     render_dashboard_summary_table, render_data_source_csv, render_data_source_json,
@@ -162,7 +162,10 @@ fn parse_cli_supports_screenshot_mode() {
                 Some("https://grafana.example.com/rendered/cpu-main")
             );
             assert!(screenshot_args.header_captured_at);
-            assert_eq!(screenshot_args.header_text.as_deref(), Some("Nightly capture"));
+            assert_eq!(
+                screenshot_args.header_text.as_deref(),
+                Some("Nightly capture")
+            );
             assert_eq!(
                 screenshot_args.vars,
                 vec!["env=prod".to_string(), "region=us-east-1".to_string()]

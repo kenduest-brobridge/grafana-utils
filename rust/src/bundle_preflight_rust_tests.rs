@@ -1,7 +1,7 @@
+use crate::alert_sync::{assess_alert_sync_specs, ALERT_SYNC_KIND};
 use crate::bundle_preflight::{
     build_bundle_preflight_document, render_bundle_preflight_text, BUNDLE_PREFLIGHT_KIND,
 };
-use crate::alert_sync::{assess_alert_sync_specs, ALERT_SYNC_KIND};
 use serde_json::json;
 
 #[test]
@@ -80,9 +80,12 @@ fn build_bundle_preflight_document_aggregates_sync_alert_and_provider_checks() {
         "providerNames": []
     });
 
-    let document =
-        build_bundle_preflight_document(&source_bundle, Some(&target_inventory), Some(&availability))
-            .unwrap();
+    let document = build_bundle_preflight_document(
+        &source_bundle,
+        Some(&target_inventory),
+        Some(&availability),
+    )
+    .unwrap();
 
     assert_eq!(document["kind"], json!(BUNDLE_PREFLIGHT_KIND));
     assert!(document.get("sourceSummary").is_some());
@@ -92,7 +95,12 @@ fn build_bundle_preflight_document_aggregates_sync_alert_and_provider_checks() {
     assert!(document.get("providerAssessment").is_some());
     assert_eq!(document["summary"]["alertPlanOnlyCount"], json!(1));
     assert_eq!(document["summary"]["providerBlockingCount"], json!(1));
-    assert!(document["summary"]["syncBlockingCount"].as_i64().unwrap_or(0) >= 1);
+    assert!(
+        document["summary"]["syncBlockingCount"]
+            .as_i64()
+            .unwrap_or(0)
+            >= 1
+    );
 }
 
 #[test]
@@ -113,5 +121,7 @@ fn render_bundle_preflight_text_renders_summary() {
 
     assert_eq!(lines[0], "Bundle preflight summary");
     assert!(lines.iter().any(|line| line.starts_with("Sync blocking: ")));
-    assert!(lines.iter().any(|line| line.starts_with("Provider blocking: ")));
+    assert!(lines
+        .iter()
+        .any(|line| line.starts_with("Provider blocking: ")));
 }

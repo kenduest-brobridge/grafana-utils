@@ -121,8 +121,6 @@ pub(crate) use dashboard_inspect_render::{
 };
 #[cfg(test)]
 pub(crate) use dashboard_inspect_report::normalize_query_report;
-#[cfg(test)]
-pub(crate) use dashboard_vars::extract_dashboard_variables;
 pub(crate) use dashboard_inspect_report::{
     build_export_inspection_query_report_document, build_query_report,
     refresh_filtered_query_report_summary, render_query_report_column, report_column_header,
@@ -166,6 +164,8 @@ pub(crate) use dashboard_prompt::{
 pub(crate) use dashboard_screenshot::{
     build_dashboard_capture_url, infer_screenshot_output_format, validate_screenshot_args,
 };
+#[cfg(test)]
+pub(crate) use dashboard_vars::extract_dashboard_variables;
 
 pub const DEFAULT_URL: &str = "http://localhost:3000";
 pub const DEFAULT_TIMEOUT: u64 = 30;
@@ -266,7 +266,9 @@ pub fn run_dashboard_cli_with_client(
             )?;
             Ok(())
         }
-        DashboardCommand::InspectVars(inspect_vars_args) => inspect_dashboard_variables(&inspect_vars_args),
+        DashboardCommand::InspectVars(inspect_vars_args) => {
+            inspect_dashboard_variables(&inspect_vars_args)
+        }
         DashboardCommand::Screenshot(screenshot_args) => {
             capture_dashboard_screenshot(&screenshot_args)
         }
@@ -335,7 +337,9 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
             )?;
             Ok(())
         }
-        DashboardCommand::InspectVars(inspect_vars_args) => inspect_dashboard_variables(&inspect_vars_args),
+        DashboardCommand::InspectVars(inspect_vars_args) => {
+            inspect_dashboard_variables(&inspect_vars_args)
+        }
         DashboardCommand::Screenshot(screenshot_args) => {
             capture_dashboard_screenshot(&screenshot_args)
         }

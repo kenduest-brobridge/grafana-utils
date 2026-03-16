@@ -3,8 +3,8 @@
 //! Maintainers should read the full architecture overview here:
 //! <docs/overview-rust.md>
 pub mod access;
-pub mod alert_sync;
 pub mod alert;
+pub mod alert_sync;
 pub mod bundle_preflight;
 pub mod cli;
 pub mod common;

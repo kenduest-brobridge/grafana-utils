@@ -94,7 +94,10 @@ fn parse_sync_cli_supports_review_command_with_note() {
 
     match args.command {
         SyncGroupCommand::Review(inner) => {
-            assert_eq!(inner.review_note, Some("manual review complete".to_string()));
+            assert_eq!(
+                inner.review_note,
+                Some("manual review complete".to_string())
+            );
         }
         _ => panic!("expected review"),
     }
@@ -119,7 +122,10 @@ fn parse_sync_cli_supports_apply_command() {
     match args.command {
         SyncGroupCommand::Apply(inner) => {
             assert_eq!(inner.plan_file, Path::new("./plan.json"));
-            assert_eq!(inner.preflight_file, Some(Path::new("./preflight.json").to_path_buf()));
+            assert_eq!(
+                inner.preflight_file,
+                Some(Path::new("./preflight.json").to_path_buf())
+            );
             assert_eq!(
                 inner.bundle_preflight_file,
                 Some(Path::new("./bundle-preflight.json").to_path_buf())
@@ -152,7 +158,10 @@ fn parse_sync_cli_supports_apply_command_with_reason_and_note() {
     match args.command {
         SyncGroupCommand::Apply(inner) => {
             assert_eq!(inner.approval_reason, Some("change-approved".to_string()));
-            assert_eq!(inner.apply_note, Some("local apply intent only".to_string()));
+            assert_eq!(
+                inner.apply_note,
+                Some("local apply intent only".to_string())
+            );
         }
         _ => panic!("expected apply"),
     }
@@ -741,7 +750,6 @@ fn run_sync_cli_apply_rejects_unreviewed_plan_file() {
 
     assert!(error.contains("marked reviewed"));
 }
-
 
 #[test]
 fn run_sync_cli_apply_requires_explicit_approval() {
@@ -1534,7 +1542,11 @@ fn run_sync_cli_bundle_preflight_accepts_local_bundle_inputs() {
         .unwrap(),
     )
     .unwrap();
-    fs::write(&target_inventory, serde_json::to_string_pretty(&json!({})).unwrap()).unwrap();
+    fs::write(
+        &target_inventory,
+        serde_json::to_string_pretty(&json!({})).unwrap(),
+    )
+    .unwrap();
 
     let result = run_sync_cli(SyncGroupCommand::BundlePreflight(SyncBundlePreflightArgs {
         source_bundle,

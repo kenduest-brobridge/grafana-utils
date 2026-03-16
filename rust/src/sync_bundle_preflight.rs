@@ -6,7 +6,9 @@
 //! - Keep Rust-side bundle planning pure and import-safe before any CLI wiring.
 
 use crate::common::{message, Result};
-use crate::datasource_provider::{build_provider_plan, iter_provider_names, summarize_provider_plan};
+use crate::datasource_provider::{
+    build_provider_plan, iter_provider_names, summarize_provider_plan,
+};
 use crate::sync_preflight::build_sync_preflight_document;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
@@ -97,7 +99,10 @@ fn build_provider_assessment(
         for provider_name in iter_provider_names(&plan.references) {
             let missing = !provider_names.contains(provider_name);
             checks.push(Value::Object(Map::from_iter(vec![
-                ("kind".to_string(), Value::String("secret-provider".to_string())),
+                (
+                    "kind".to_string(),
+                    Value::String("secret-provider".to_string()),
+                ),
                 (
                     "datasourceName".to_string(),
                     Value::String(plan.datasource_name.clone()),
@@ -178,7 +183,8 @@ pub fn build_sync_bundle_preflight_document(
             desired_specs.push(item.clone());
         }
     }
-    let sync_preflight = build_sync_preflight_document(&desired_specs, Some(&Value::Object(availability.clone())))?;
+    let sync_preflight =
+        build_sync_preflight_document(&desired_specs, Some(&Value::Object(availability.clone())))?;
     let provider_assessment = build_provider_assessment(
         source_bundle
             .get("datasources")

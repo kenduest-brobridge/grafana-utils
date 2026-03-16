@@ -102,9 +102,8 @@ fn build_datasource_checks(
             kind: "plugin".to_string(),
             identity: datasource_type,
             status: "missing".to_string(),
-            detail:
-                "Datasource plugin type is not listed in destination plugin availability."
-                    .to_string(),
+            detail: "Datasource plugin type is not listed in destination plugin availability."
+                .to_string(),
             blocking: true,
         });
     }
@@ -118,10 +117,8 @@ fn build_dashboard_checks(
     let available_uids = require_string_list(availability.get("datasourceUids"), "datasourceUids")?
         .into_iter()
         .collect::<BTreeSet<String>>();
-    let datasource_uids = require_string_list(
-        spec.body.get("datasourceUids"),
-        "dashboard datasourceUids",
-    )?;
+    let datasource_uids =
+        require_string_list(spec.body.get("datasourceUids"), "dashboard datasourceUids")?;
     Ok(datasource_uids
         .into_iter()
         .map(|datasource_uid| {
@@ -159,7 +156,8 @@ fn build_alert_checks(
                 .to_string(),
         blocking: true,
     }];
-    for contact_point in require_string_list(spec.body.get("contactPoints"), "alert contactPoints")? {
+    for contact_point in require_string_list(spec.body.get("contactPoints"), "alert contactPoints")?
+    {
         let available = available_contact_points.contains(&contact_point);
         checks.push(SyncPreflightCheck {
             kind: "alert-contact-point".to_string(),
@@ -193,15 +191,10 @@ pub fn build_sync_preflight_document(
                 kind: "folder".to_string(),
                 identity: spec.identity.clone(),
                 status: "ok".to_string(),
-                detail: "Folder sync does not require extra staged preflight checks."
-                    .to_string(),
+                detail: "Folder sync does not require extra staged preflight checks.".to_string(),
                 blocking: false,
             }),
-            other => {
-                return Err(message(format!(
-                    "Unsupported sync preflight kind {other}."
-                )))
-            }
+            other => return Err(message(format!("Unsupported sync preflight kind {other}."))),
         }
     }
     Ok(serde_json::json!({
@@ -234,7 +227,10 @@ pub fn render_sync_preflight_text(document: &Value) -> Result<Vec<String>> {
         "Sync preflight summary".to_string(),
         format!(
             "Checks: {} total, {} ok, {} blocking",
-            summary.get("checkCount").and_then(Value::as_i64).unwrap_or(0),
+            summary
+                .get("checkCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
             summary.get("okCount").and_then(Value::as_i64).unwrap_or(0),
             summary
                 .get("blockingCount")

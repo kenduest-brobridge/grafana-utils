@@ -30,7 +30,10 @@ pub enum SyncOutputFormat {
 }
 
 #[derive(Debug, Clone, Parser)]
-#[command(name = "grafana-util sync", about = "Local/document-only sync workflows.")]
+#[command(
+    name = "grafana-util sync",
+    about = "Local/document-only sync workflows."
+)]
 pub struct SyncCliArgs {
     #[command(subcommand)]
     pub command: SyncGroupCommand,
@@ -92,9 +95,15 @@ pub struct SyncReviewArgs {
         help = "Render the reviewed plan document as text or json."
     )]
     pub output: SyncOutputFormat,
-    #[arg(long, help = "Optional reviewer identity to record in the reviewed plan.")]
+    #[arg(
+        long,
+        help = "Optional reviewer identity to record in the reviewed plan."
+    )]
     pub reviewed_by: Option<String>,
-    #[arg(long, help = "Optional staged reviewed-at value to record in the reviewed plan.")]
+    #[arg(
+        long,
+        help = "Optional staged reviewed-at value to record in the reviewed plan."
+    )]
     pub reviewed_at: Option<String>,
     #[arg(long, help = "Optional review note to record in the reviewed plan.")]
     pub review_note: Option<String>,
@@ -127,9 +136,15 @@ pub struct SyncApplyArgs {
         help = "Render the apply intent document as text or json."
     )]
     pub output: SyncOutputFormat,
-    #[arg(long, help = "Optional apply actor identity to record in the apply intent.")]
+    #[arg(
+        long,
+        help = "Optional apply actor identity to record in the apply intent."
+    )]
     pub applied_by: Option<String>,
-    #[arg(long, help = "Optional staged applied-at value to record in the apply intent.")]
+    #[arg(
+        long,
+        help = "Optional staged applied-at value to record in the apply intent."
+    )]
     pub applied_at: Option<String>,
     #[arg(long, help = "Optional approval reason to record in the apply intent.")]
     pub approval_reason: Option<String>,
@@ -141,7 +156,10 @@ pub struct SyncApplyArgs {
 pub struct SyncPreflightArgs {
     #[arg(long, help = "JSON file containing the desired sync resource list.")]
     pub desired_file: PathBuf,
-    #[arg(long, help = "Optional JSON object file containing staged availability hints.")]
+    #[arg(
+        long,
+        help = "Optional JSON object file containing staged availability hints."
+    )]
     pub availability_file: Option<PathBuf>,
     #[arg(
         long,
@@ -154,11 +172,20 @@ pub struct SyncPreflightArgs {
 
 #[derive(Debug, Clone, Args)]
 pub struct SyncBundlePreflightArgs {
-    #[arg(long, help = "JSON file containing the staged multi-resource source bundle.")]
+    #[arg(
+        long,
+        help = "JSON file containing the staged multi-resource source bundle."
+    )]
     pub source_bundle: PathBuf,
-    #[arg(long, help = "JSON file containing the staged target inventory snapshot.")]
+    #[arg(
+        long,
+        help = "JSON file containing the staged target inventory snapshot."
+    )]
     pub target_inventory: PathBuf,
-    #[arg(long, help = "Optional JSON object file containing staged availability hints.")]
+    #[arg(
+        long,
+        help = "Optional JSON object file containing staged availability hints."
+    )]
     pub availability_file: Option<PathBuf>,
     #[arg(
         long,
@@ -187,15 +214,23 @@ pub enum SyncGroupCommand {
 
 fn load_json_value(path: &Path, label: &str) -> Result<Value> {
     let raw = fs::read_to_string(path)?;
-    serde_json::from_str(&raw)
-        .map_err(|error| message(format!("Invalid JSON in {} {}: {error}", label, path.display())))
+    serde_json::from_str(&raw).map_err(|error| {
+        message(format!(
+            "Invalid JSON in {} {}: {error}",
+            label,
+            path.display()
+        ))
+    })
 }
 
 fn load_json_array_file(path: &Path, label: &str) -> Result<Vec<Value>> {
     let value = load_json_value(path, label)?;
-    value.as_array()
-        .cloned()
-        .ok_or_else(|| message(format!("{label} file must contain a JSON array: {}", path.display())))
+    value.as_array().cloned().ok_or_else(|| {
+        message(format!(
+            "{label} file must contain a JSON array: {}",
+            path.display()
+        ))
+    })
 }
 
 fn load_optional_json_object_file(path: Option<&PathBuf>, label: &str) -> Result<Option<Value>> {
@@ -335,16 +370,12 @@ fn require_optional_stage(
         )));
     }
     match (
-        normalize_optional_text(
-            object.get("parentTraceId").and_then(Value::as_str),
-        ),
+        normalize_optional_text(object.get("parentTraceId").and_then(Value::as_str)),
         normalize_optional_text(expected_parent_trace_id),
     ) {
-        (Some(actual), Some(expected)) if actual != expected => {
-            Err(message(format!(
-                "{label} has unexpected lineage parentTraceId {actual:?}; expected {expected:?}."
-            )))
-        }
+        (Some(actual), Some(expected)) if actual != expected => Err(message(format!(
+            "{label} has unexpected lineage parentTraceId {actual:?}; expected {expected:?}."
+        ))),
         (Some(actual), None) => Err(message(format!(
             "{label} has unexpected lineage parentTraceId {actual:?}; expected no parent trace."
         ))),
@@ -384,9 +415,9 @@ fn require_matching_optional_trace_id(
             "{label} traceId {trace_id:?} does not match sync plan traceId {expected_trace_id:?}."
         )));
     }
-    if let Some(parent_trace_id) = normalize_optional_text(
-        object.get("parentTraceId").and_then(Value::as_str),
-    ) {
+    if let Some(parent_trace_id) =
+        normalize_optional_text(object.get("parentTraceId").and_then(Value::as_str))
+    {
         if parent_trace_id != expected_trace_id {
             return Err(message(format!(
                 "{label} parentTraceId {parent_trace_id:?} does not match sync plan traceId {expected_trace_id:?}."
@@ -409,11 +440,26 @@ pub fn render_sync_summary_text(document: &Value) -> Result<Vec<String>> {
         "Sync summary".to_string(),
         format!(
             "Resources: {} total, {} dashboards, {} datasources, {} folders, {} alerts",
-            summary.get("resourceCount").and_then(Value::as_i64).unwrap_or(0),
-            summary.get("dashboardCount").and_then(Value::as_i64).unwrap_or(0),
-            summary.get("datasourceCount").and_then(Value::as_i64).unwrap_or(0),
-            summary.get("folderCount").and_then(Value::as_i64).unwrap_or(0),
-            summary.get("alertCount").and_then(Value::as_i64).unwrap_or(0),
+            summary
+                .get("resourceCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
+            summary
+                .get("dashboardCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
+            summary
+                .get("datasourceCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
+            summary
+                .get("folderCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
+            summary
+                .get("alertCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
         ),
     ])
 }
@@ -438,8 +484,14 @@ pub fn render_sync_plan_text(document: &Value) -> Result<Vec<String>> {
         ),
         format!(
             "Lineage: stage={} step={} parent={}",
-            document.get("stage").and_then(Value::as_str).unwrap_or("missing"),
-            document.get("stepIndex").and_then(Value::as_i64).unwrap_or(0),
+            document
+                .get("stage")
+                .and_then(Value::as_str)
+                .unwrap_or("missing"),
+            document
+                .get("stepIndex")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
             document
                 .get("parentTraceId")
                 .and_then(Value::as_str)
@@ -447,11 +499,23 @@ pub fn render_sync_plan_text(document: &Value) -> Result<Vec<String>> {
         ),
         format!(
             "Summary: create={} update={} delete={} noop={} unmanaged={}",
-            summary.get("would_create").and_then(Value::as_i64).unwrap_or(0),
-            summary.get("would_update").and_then(Value::as_i64).unwrap_or(0),
-            summary.get("would_delete").and_then(Value::as_i64).unwrap_or(0),
+            summary
+                .get("would_create")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
+            summary
+                .get("would_update")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
+            summary
+                .get("would_delete")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
             summary.get("noop").and_then(Value::as_i64).unwrap_or(0),
-            summary.get("unmanaged").and_then(Value::as_i64).unwrap_or(0),
+            summary
+                .get("unmanaged")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
         ),
         format!(
             "Alerts: candidate={} plan-only={} blocked={}",
@@ -474,7 +538,10 @@ pub fn render_sync_plan_text(document: &Value) -> Result<Vec<String>> {
                 .get("reviewRequired")
                 .and_then(Value::as_bool)
                 .unwrap_or(false),
-            document.get("reviewed").and_then(Value::as_bool).unwrap_or(false),
+            document
+                .get("reviewed")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
         ),
     ];
     if let Some(reviewed_by) = document.get("reviewedBy").and_then(Value::as_str) {
@@ -514,8 +581,14 @@ pub fn render_sync_apply_intent_text(document: &Value) -> Result<Vec<String>> {
         ),
         format!(
             "Lineage: stage={} step={} parent={}",
-            document.get("stage").and_then(Value::as_str).unwrap_or("missing"),
-            document.get("stepIndex").and_then(Value::as_i64).unwrap_or(0),
+            document
+                .get("stage")
+                .and_then(Value::as_str)
+                .unwrap_or("missing"),
+            document
+                .get("stepIndex")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
             document
                 .get("parentTraceId")
                 .and_then(Value::as_str)
@@ -523,9 +596,18 @@ pub fn render_sync_apply_intent_text(document: &Value) -> Result<Vec<String>> {
         ),
         format!(
             "Summary: create={} update={} delete={} executable={}",
-            summary.get("would_create").and_then(Value::as_i64).unwrap_or(0),
-            summary.get("would_update").and_then(Value::as_i64).unwrap_or(0),
-            summary.get("would_delete").and_then(Value::as_i64).unwrap_or(0),
+            summary
+                .get("would_create")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
+            summary
+                .get("would_update")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
+            summary
+                .get("would_delete")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
             operations.len(),
         ),
         format!(
@@ -534,8 +616,14 @@ pub fn render_sync_apply_intent_text(document: &Value) -> Result<Vec<String>> {
                 .get("reviewRequired")
                 .and_then(Value::as_bool)
                 .unwrap_or(false),
-            document.get("reviewed").and_then(Value::as_bool).unwrap_or(false),
-            document.get("approved").and_then(Value::as_bool).unwrap_or(false),
+            document
+                .get("reviewed")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+            document
+                .get("approved")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
         ),
     ];
     if let Some(preflight_summary) = document.get("preflightSummary").and_then(Value::as_object) {
@@ -669,7 +757,9 @@ fn validate_apply_bundle_preflight(document: &Value) -> Result<Value> {
         .as_object()
         .ok_or_else(|| message("Sync bundle preflight document must be a JSON object."))?;
     if object.get("kind").and_then(Value::as_str) != Some(SYNC_BUNDLE_PREFLIGHT_KIND) {
-        return Err(message("Sync bundle preflight document kind is not supported."));
+        return Err(message(
+            "Sync bundle preflight document kind is not supported.",
+        ));
     }
     let summary = object
         .get("summary")
@@ -686,7 +776,9 @@ fn validate_apply_bundle_preflight(document: &Value) -> Result<Value> {
     let provider_blocking_count = summary
         .get("providerBlockingCount")
         .and_then(Value::as_i64)
-        .ok_or_else(|| message("Sync bundle preflight summary is missing providerBlockingCount."))?;
+        .ok_or_else(|| {
+            message("Sync bundle preflight summary is missing providerBlockingCount.")
+        })?;
     let blocking_count = sync_blocking_count + provider_blocking_count;
     if blocking_count > 0 {
         return Err(message(format!(
@@ -821,12 +913,12 @@ pub fn run_sync_cli(command: SyncGroupCommand) -> Result<()> {
             require_optional_stage(&plan, "Sync plan document", "plan", 1, None)?;
             let document = attach_lineage(
                 &attach_review_audit(
-                &mark_plan_reviewed(&plan, &args.review_token)?,
-                &trace_id,
-                args.reviewed_by.as_deref(),
-                args.reviewed_at.as_deref(),
-                args.review_note.as_deref(),
-            )?,
+                    &mark_plan_reviewed(&plan, &args.review_token)?,
+                    &trace_id,
+                    args.reviewed_by.as_deref(),
+                    args.reviewed_at.as_deref(),
+                    args.review_note.as_deref(),
+                )?,
                 "review",
                 2,
                 Some(&trace_id),
@@ -875,10 +967,10 @@ pub fn run_sync_cli(command: SyncGroupCommand) -> Result<()> {
                         args.applied_by.as_deref(),
                         args.applied_at.as_deref(),
                         args.approval_reason.as_deref(),
-                    args.apply_note.as_deref(),
+                        args.apply_note.as_deref(),
+                    )?,
+                    Some(&trace_id),
                 )?,
-                Some(&trace_id),
-            )?,
                 "apply",
                 3,
                 Some(&trace_id),

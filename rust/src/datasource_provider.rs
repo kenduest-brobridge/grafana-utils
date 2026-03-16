@@ -39,7 +39,10 @@ fn normalize_text(value: Option<&str>) -> String {
     value.unwrap_or("").trim().to_string()
 }
 
-pub fn parse_provider_reference(value: &Value, field_name: &str) -> Result<SecretProviderReference> {
+pub fn parse_provider_reference(
+    value: &Value,
+    field_name: &str,
+) -> Result<SecretProviderReference> {
     let field_name = field_name.trim().to_string();
     if field_name.is_empty() {
         return Err(message(
@@ -51,12 +54,14 @@ pub fn parse_provider_reference(value: &Value, field_name: &str) -> Result<Secre
             "Secret provider field '{field_name}' must use a placeholder string."
         ))
     })?;
-    if !token.starts_with(PROVIDER_REFERENCE_PREFIX) || !token.ends_with(PROVIDER_REFERENCE_SUFFIX) {
+    if !token.starts_with(PROVIDER_REFERENCE_PREFIX) || !token.ends_with(PROVIDER_REFERENCE_SUFFIX)
+    {
         return Err(message(format!(
             "Secret provider field '{field_name}' must use ${{provider:NAME:PATH}} references; opaque replay is not allowed."
         )));
     }
-    let inner = &token[PROVIDER_REFERENCE_PREFIX.len()..token.len() - PROVIDER_REFERENCE_SUFFIX.len()];
+    let inner =
+        &token[PROVIDER_REFERENCE_PREFIX.len()..token.len() - PROVIDER_REFERENCE_SUFFIX.len()];
     let (provider_name_raw, secret_path_raw) = inner.split_once(':').ok_or_else(|| {
         message(format!(
             "Secret provider field '{field_name}' must use ${{provider:NAME:PATH}} references."
@@ -95,13 +100,11 @@ pub fn collect_provider_references(
     Ok(references)
 }
 
-pub fn build_provider_plan(datasource_spec: &Map<String, Value>) -> Result<DatasourceSecretProviderPlan> {
-    let datasource_name = normalize_text(
-        datasource_spec.get("name").and_then(Value::as_str),
-    );
-    let datasource_type = normalize_text(
-        datasource_spec.get("type").and_then(Value::as_str),
-    );
+pub fn build_provider_plan(
+    datasource_spec: &Map<String, Value>,
+) -> Result<DatasourceSecretProviderPlan> {
+    let datasource_name = normalize_text(datasource_spec.get("name").and_then(Value::as_str));
+    let datasource_type = normalize_text(datasource_spec.get("type").and_then(Value::as_str));
     if datasource_name.is_empty() {
         return Err(message(
             "Datasource provider plan requires a datasource name.",
@@ -157,9 +160,7 @@ pub fn summarize_provider_plan(plan: &DatasourceSecretProviderPlan) -> Value {
     })
 }
 
-pub fn iter_provider_names(
-    references: &[SecretProviderReference],
-) -> impl Iterator<Item = &str> {
+pub fn iter_provider_names(references: &[SecretProviderReference]) -> impl Iterator<Item = &str> {
     let mut seen = HashSet::new();
     references.iter().filter_map(move |item| {
         if seen.insert(item.provider_name.as_str()) {

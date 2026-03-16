@@ -241,8 +241,9 @@ fn parse_cli_rejects_legacy_dashboard_direct_command() {
 
 #[test]
 fn parse_cli_rejects_legacy_alert_direct_command() {
-    let error = CliArgs::try_parse_from(["grafana-util", "export-alert", "--output-dir", "./alerts"])
-        .unwrap_err();
+    let error =
+        CliArgs::try_parse_from(["grafana-util", "export-alert", "--output-dir", "./alerts"])
+            .unwrap_err();
 
     assert!(error.to_string().contains("unrecognized subcommand"));
     assert!(error.to_string().contains("export-alert"));
@@ -321,7 +322,10 @@ fn parse_cli_supports_sync_apply_group_command_with_reason_and_note() {
         UnifiedCommand::Sync { command } => match command {
             SyncGroupCommand::Apply(inner) => {
                 assert_eq!(inner.approval_reason, Some("change-approved".to_string()));
-                assert_eq!(inner.apply_note, Some("local apply intent only".to_string()));
+                assert_eq!(
+                    inner.apply_note,
+                    Some("local apply intent only".to_string())
+                );
             }
             _ => panic!("expected sync apply"),
         },

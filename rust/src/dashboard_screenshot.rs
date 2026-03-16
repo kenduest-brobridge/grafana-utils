@@ -101,9 +101,8 @@ pub fn infer_screenshot_output_format(
 
 pub fn build_dashboard_capture_url(args: &ScreenshotArgs) -> Result<String> {
     let mut url = match args.dashboard_url.as_deref().map(str::trim) {
-        Some(value) if !value.is_empty() => {
-            Url::parse(value).map_err(|error| message(format!("Invalid --dashboard-url: {error}")))?
-        }
+        Some(value) if !value.is_empty() => Url::parse(value)
+            .map_err(|error| message(format!("Invalid --dashboard-url: {error}")))?,
         _ => Url::parse(args.common.url.trim_end_matches('/'))
             .map_err(|error| message(format!("Invalid Grafana base URL: {error}")))?,
     };
@@ -260,7 +259,8 @@ pub fn capture_dashboard_screenshot(args: &ScreenshotArgs) -> Result<()> {
                 )
                 .map_err(|error| message(format!("Failed to capture PNG screenshot: {error}")))?
             };
-            let bytes = apply_header_if_requested(bytes, &resolved_args, &header_spec, ImageFormat::Png)?;
+            let bytes =
+                apply_header_if_requested(bytes, &resolved_args, &header_spec, ImageFormat::Png)?;
             fs::write(&resolved_args.output, bytes)?;
         }
         ScreenshotOutputFormat::Jpeg => {
@@ -281,7 +281,8 @@ pub fn capture_dashboard_screenshot(args: &ScreenshotArgs) -> Result<()> {
                 )
                 .map_err(|error| message(format!("Failed to capture JPEG screenshot: {error}")))?
             };
-            let bytes = apply_header_if_requested(bytes, &resolved_args, &header_spec, ImageFormat::Jpeg)?;
+            let bytes =
+                apply_header_if_requested(bytes, &resolved_args, &header_spec, ImageFormat::Jpeg)?;
             fs::write(&resolved_args.output, bytes)?;
         }
         ScreenshotOutputFormat::Pdf => {
@@ -391,7 +392,10 @@ fn resolve_dashboard_uid(args: &ScreenshotArgs) -> Option<String> {
         })
 }
 
-fn find_panel_title(dashboard: &serde_json::Map<String, serde_json::Value>, panel_id: i64) -> Option<String> {
+fn find_panel_title(
+    dashboard: &serde_json::Map<String, serde_json::Value>,
+    panel_id: i64,
+) -> Option<String> {
     fn visit_panels(items: &[serde_json::Value], panel_id: i64) -> Option<String> {
         for item in items {
             let object = item.as_object()?;
@@ -525,12 +529,19 @@ fn compose_header_image(
     header_spec: &HeaderSpec,
     format: ImageFormat,
 ) -> Result<Vec<u8>> {
-    let screenshot = image::load_from_memory(&bytes)
-        .map_err(|error| message(format!("Failed to decode screenshot for header composition: {error}")))?;
+    let screenshot = image::load_from_memory(&bytes).map_err(|error| {
+        message(format!(
+            "Failed to decode screenshot for header composition: {error}"
+        ))
+    })?;
     let screenshot_rgba = screenshot.to_rgba8();
     let width = target_width.max(screenshot_rgba.width());
     let header_height = measure_header_height(header_spec);
-    let mut output = RgbaImage::from_pixel(width, header_height + screenshot_rgba.height(), Rgba([12, 16, 24, 255]));
+    let mut output = RgbaImage::from_pixel(
+        width,
+        header_height + screenshot_rgba.height(),
+        Rgba([12, 16, 24, 255]),
+    );
     paint_header_background(&mut output, width, header_height);
     draw_header_lines(&mut output, header_spec);
     output
@@ -539,7 +550,11 @@ fn compose_header_image(
     let mut encoded = std::io::Cursor::new(Vec::new());
     DynamicImage::ImageRgba8(output)
         .write_to(&mut encoded, format)
-        .map_err(|error| message(format!("Failed to encode screenshot header composition: {error}")))?;
+        .map_err(|error| {
+            message(format!(
+                "Failed to encode screenshot header composition: {error}"
+            ))
+        })?;
     Ok(encoded.into_inner())
 }
 
@@ -751,9 +766,10 @@ fn parse_dashboard_url_state(url: &Url) -> DashboardUrlState {
                 state.to = Some(value.into_owned());
             }
             _ if key.starts_with("var-") => {
-                state
-                    .vars
-                    .push((key.trim_start_matches("var-").to_string(), value.into_owned()));
+                state.vars.push((
+                    key.trim_start_matches("var-").to_string(),
+                    value.into_owned(),
+                ));
             }
             "theme" | "kiosk" | "viewPanel" => {}
             _ => {
@@ -800,7 +816,9 @@ fn collapse_sidebar_if_present(tab: &std::sync::Arc<headless_chrome::Tab>) -> Re
     Ok(())
 }
 
-fn prepare_dashboard_capture_dom(tab: &std::sync::Arc<headless_chrome::Tab>) -> Result<CaptureOffsets> {
+fn prepare_dashboard_capture_dom(
+    tab: &std::sync::Arc<headless_chrome::Tab>,
+) -> Result<CaptureOffsets> {
     tab.evaluate(
         r#"
 (() => {
@@ -1078,8 +1096,11 @@ Math.max(
             "#,
             height
         );
-        tab.evaluate(&scroll_script, false)
-            .map_err(|error| message(format!("Failed to scroll dashboard for --full-page: {error}")))?;
+        tab.evaluate(&scroll_script, false).map_err(|error| {
+            message(format!(
+                "Failed to scroll dashboard for --full-page: {error}"
+            ))
+        })?;
         thread::sleep(Duration::from_millis(1800));
 
         let next_height = read_numeric_expression(
@@ -1106,8 +1127,15 @@ Math.max(
         }
     }
 
-    tab.evaluate("window.scrollTo({ top: 0, left: 0, behavior: 'instant' })", false)
-        .map_err(|error| message(format!("Failed to reset dashboard scroll position: {error}")))?;
+    tab.evaluate(
+        "window.scrollTo({ top: 0, left: 0, behavior: 'instant' })",
+        false,
+    )
+    .map_err(|error| {
+        message(format!(
+            "Failed to reset dashboard scroll position: {error}"
+        ))
+    })?;
     thread::sleep(Duration::from_millis(300));
     Ok(())
 }
@@ -1152,14 +1180,25 @@ Math.max(
 
         let bytes = tab
             .capture_screenshot(format.clone(), quality, None, true)
-            .map_err(|error| message(format!("Failed to capture stitched screenshot segment: {error}")))?;
-        let segment = image::load_from_memory(&bytes)
-            .map_err(|error| message(format!("Failed to decode stitched screenshot segment: {error}")))?;
+            .map_err(|error| {
+                message(format!(
+                    "Failed to capture stitched screenshot segment: {error}"
+                ))
+            })?;
+        let segment = image::load_from_memory(&bytes).map_err(|error| {
+            message(format!(
+                "Failed to decode stitched screenshot segment: {error}"
+            ))
+        })?;
         let segment_rgba = segment.to_rgba8();
         let segment_height = segment_rgba.height();
         let segment_width = segment_rgba.width();
         let source_left = crop_left.min(segment_width.saturating_sub(1));
-        let source_top = if current_y <= 0.0 { 0 } else { crop_top.min(segment_height) };
+        let source_top = if current_y <= 0.0 {
+            0
+        } else {
+            crop_top.min(segment_height)
+        };
         let remaining_height = stitched.height().saturating_sub(destination_y);
         if remaining_height == 0 {
             break;
@@ -1198,10 +1237,16 @@ Math.max(
     match format {
         Page::CaptureScreenshotFormatOption::Png => final_image
             .write_to(&mut encoded, ImageFormat::Png)
-            .map_err(|error| message(format!("Failed to encode stitched PNG screenshot: {error}")))?,
+            .map_err(|error| {
+                message(format!("Failed to encode stitched PNG screenshot: {error}"))
+            })?,
         Page::CaptureScreenshotFormatOption::Jpeg => final_image
             .write_to(&mut encoded, ImageFormat::Jpeg)
-            .map_err(|error| message(format!("Failed to encode stitched JPEG screenshot: {error}")))?,
+            .map_err(|error| {
+                message(format!(
+                    "Failed to encode stitched JPEG screenshot: {error}"
+                ))
+            })?,
         Page::CaptureScreenshotFormatOption::Webp => {
             return Err(message(
                 "WEBP stitched screenshot encoding is not supported by this command.",
@@ -1216,9 +1261,11 @@ fn read_numeric_expression(
     expression: &str,
     minimum: f64,
 ) -> Result<f64> {
-    let remote = tab
-        .evaluate(expression, false)
-        .map_err(|error| message(format!("Failed to read page dimensions for --full-page: {error}")))?;
+    let remote = tab.evaluate(expression, false).map_err(|error| {
+        message(format!(
+            "Failed to read page dimensions for --full-page: {error}"
+        ))
+    })?;
     let raw = remote
         .value
         .and_then(|value| value.as_f64())
@@ -1276,7 +1323,9 @@ fn parse_query_fragment(query: &str) -> Result<DashboardUrlState> {
                         "Invalid --vars-query value. Each var-* item must have a non-empty name and value.",
                     ));
                 }
-                state.vars.retain(|(existing_name, _)| existing_name != &name);
+                state
+                    .vars
+                    .retain(|(existing_name, _)| existing_name != &name);
                 state.vars.push((name, value));
             }
             "theme" | "kiosk" | "viewPanel" => {}

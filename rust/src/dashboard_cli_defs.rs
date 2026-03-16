@@ -418,7 +418,11 @@ pub struct ScreenshotArgs {
         help = "Optional dashboard slug. When omitted, the runtime can reuse the UID as a fallback route segment."
     )]
     pub slug: Option<String>,
-    #[arg(long, help_heading = "Output Options", help = "Write the captured browser output to this file path.")]
+    #[arg(
+        long,
+        help_heading = "Output Options",
+        help = "Write the captured browser output to this file path."
+    )]
     pub output: PathBuf,
     #[arg(
         long,

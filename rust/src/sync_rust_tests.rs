@@ -3,8 +3,7 @@ use crate::sync_preflight::{
 };
 use crate::sync_workbench::{
     build_sync_apply_intent_document, build_sync_plan_document, build_sync_summary_document,
-    normalize_resource_spec, summarize_resource_specs, SYNC_APPLY_INTENT_KIND,
-    SYNC_SUMMARY_KIND,
+    normalize_resource_spec, summarize_resource_specs, SYNC_APPLY_INTENT_KIND, SYNC_SUMMARY_KIND,
 };
 use serde_json::json;
 
@@ -137,7 +136,9 @@ fn build_sync_preflight_document_reports_plugin_dependency_and_alert_blocks() {
         .as_array()
         .unwrap()
         .iter()
-        .any(|item| item["kind"] == "dashboard-datasource" && item["identity"] == "cpu-main->loki-main" && item["status"] == "missing"));
+        .any(|item| item["kind"] == "dashboard-datasource"
+            && item["identity"] == "cpu-main->loki-main"
+            && item["status"] == "missing"));
     assert!(document["checks"]
         .as_array()
         .unwrap()
@@ -166,7 +167,9 @@ fn render_sync_preflight_text_renders_deterministic_summary() {
 
     assert_eq!(lines[0], "Sync preflight summary");
     assert!(lines[1].contains("1 total"));
-    assert!(lines.iter().any(|line| line.contains("folder identity=ops status=ok")));
+    assert!(lines
+        .iter()
+        .any(|line| line.contains("folder identity=ops status=ok")));
 }
 
 #[test]

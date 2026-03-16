@@ -149,7 +149,10 @@ pub fn summarize_resource_specs(specs: &[SyncResourceSpec]) -> SyncSummary {
     SyncSummary {
         resource_count: specs.len(),
         dashboard_count: specs.iter().filter(|item| item.kind == "dashboard").count(),
-        datasource_count: specs.iter().filter(|item| item.kind == "datasource").count(),
+        datasource_count: specs
+            .iter()
+            .filter(|item| item.kind == "datasource")
+            .count(),
         folder_count: specs.iter().filter(|item| item.kind == "folder").count(),
         alert_count: specs.iter().filter(|item| item.kind == "alert").count(),
     }
@@ -181,7 +184,9 @@ pub fn build_sync_summary_document(raw_specs: &[Value]) -> Result<Value> {
     }))
 }
 
-fn build_index(specs: &[SyncResourceSpec]) -> Result<std::collections::BTreeMap<(String, String), SyncResourceSpec>> {
+fn build_index(
+    specs: &[SyncResourceSpec],
+) -> Result<std::collections::BTreeMap<(String, String), SyncResourceSpec>> {
     let mut index = std::collections::BTreeMap::new();
     for spec in specs {
         let key = (spec.kind.clone(), spec.identity.clone());
@@ -428,7 +433,10 @@ pub fn build_sync_apply_intent_document(plan_document: &Value, approve: bool) ->
         .get("reviewRequired")
         .and_then(Value::as_bool)
         .unwrap_or(false)
-        && !plan.get("reviewed").and_then(Value::as_bool).unwrap_or(false)
+        && !plan
+            .get("reviewed")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
     {
         return Err(message(
             "Refusing local sync apply intent before the reviewable plan is marked reviewed.",
