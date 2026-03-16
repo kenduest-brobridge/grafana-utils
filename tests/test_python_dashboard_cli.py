@@ -68,6 +68,7 @@ INSPECTION_RENDER_MODULE_PATH = (
 INSPECTION_SUMMARY_MODULE_PATH = (
     REPO_ROOT / "grafana_utils" / "dashboards" / "inspection_summary.py"
 )
+GOVERNANCE_GATE_MODULE_PATH = REPO_ROOT / "grafana_utils" / "dashboard_governance_gate.py"
 LISTING_MODULE_PATH = REPO_ROOT / "grafana_utils" / "dashboards" / "listing.py"
 OUTPUT_SUPPORT_MODULE_PATH = (
     REPO_ROOT / "grafana_utils" / "dashboards" / "output_support.py"
@@ -574,6 +575,11 @@ class ExporterTests(unittest.TestCase):
             filename=str(INSPECTION_SUMMARY_MODULE_PATH),
             feature_version=(3, 9),
         )
+
+    def test_dashboard_governance_gate_module_parses_as_python39_syntax(self):
+        source = GOVERNANCE_GATE_MODULE_PATH.read_text(encoding="utf-8")
+
+        ast.parse(source, filename=str(GOVERNANCE_GATE_MODULE_PATH), feature_version=(3, 9))
 
     def test_dashboard_listing_module_parses_as_python39_syntax(self):
         source = LISTING_MODULE_PATH.read_text(encoding="utf-8")

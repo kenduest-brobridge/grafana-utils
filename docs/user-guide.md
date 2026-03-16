@@ -1363,6 +1363,35 @@ Example output:
 4. Use `access service-account` and token commands for automation identities.
 5. Validate any snapshot migration with `access user diff` and `access team diff` before import.
 
+### 8.4 Dashboard governance gate in CI
+
+1. Export dashboards into a raw tree, or reuse the raw export committed in the repo.
+2. Generate the governance and flat query reports:
+
+```bash
+grafana-util dashboard inspect-export --import-dir ./dashboards/raw --report governance-json > governance.json
+grafana-util dashboard inspect-export --import-dir ./dashboards/raw --report json > queries.json
+```
+
+3. Evaluate a team policy file against those reports:
+
+```bash
+python3 scripts/check_dashboard_governance.py \
+  --policy examples/dashboard-governance-policy.json \
+  --governance governance.json \
+  --queries queries.json \
+  --json-output governance-check.json
+```
+
+4. Review `governance-check.json` in CI artifacts when the gate fails. The first-pass checker can block on:
+   - datasource family or uid allowlists
+   - unknown datasource identity
+   - mixed-datasource dashboards
+   - query count thresholds
+   - SQL `select *`
+   - missing SQL Grafana time filters
+   - broad Loki selectors or regexes
+
 9) Minimal SOP Commands
 -----------------------
 

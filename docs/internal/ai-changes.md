@@ -5,6 +5,22 @@ Historical note:
 - Older entries preserve the reasoning and follow-up state as of the entry date.
 - Active backlog now lives in `TODO.md`, while completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-16 - Add External Dashboard Governance Gate For CI
+- Summary: Added a first-pass external governance gate on top of the existing dashboard inspect outputs. The new Python module and thin script wrapper read a policy JSON plus `inspect-export --report governance-json` and `inspect-export --report json` artifacts, then emit CI-friendly text or JSON results with nonzero exit codes when blocking governance violations are present.
+- Tests: Added focused Python coverage for policy evaluation, query-count thresholds, text rendering, and CLI JSON-output behavior.
+- Test Run: `python3 -m unittest -v tests.test_python_dashboard_governance_gate`; `python3 -m unittest -v tests.test_python_dashboard_inspection_cli tests.test_python_dashboard_cli`
+- Validation: Confirmed the checker reports datasource allowlist failures, SQL/Loki rule failures, mixed-datasource dashboard findings, and query-count threshold breaches from inspect artifacts, and confirmed it can also write one normalized result JSON for CI artifact collection.
+- Impact: `grafana_utils/dashboard_governance_gate.py`, `scripts/check_dashboard_governance.py`, `examples/dashboard-governance-policy.json`, `tests/test_python_dashboard_governance_gate.py`, `docs/DEVELOPER.md`, `docs/user-guide.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. The checker is intentionally external to the main CLI contract, but the SQL time-filter and Loki broad-match heuristics are conservative first-pass rules that may need tuning before every team enables them as hard blockers.
+
+## 2026-03-16 - Align Python And Rust Dashboard Inspect Report Contracts
+- Summary: Closed the remaining inspect-export/live drift around the shared query-report contract. Python datasource report filtering now matches datasource label, uid, type, or family the same way Rust already did, and Rust normal/full help now advertises the full report-column set including `datasource_type`, `datasource_family`, and `file`, with synchronized extended examples.
+- Tests: Added focused Python help/filter coverage and tightened Rust help/full-help assertions around the richer report-column and datasource-filter contract.
+- Test Run: `python3 -m unittest -v tests.test_python_dashboard_inspection_cli`; `cargo test --manifest-path rust/Cargo.toml --quiet inspect_export_help_lists_datasource_uid_report_column`; `cargo test --manifest-path rust/Cargo.toml --quiet inspect_export_help_full_includes_extended_examples`; `cargo test --manifest-path rust/Cargo.toml --quiet inspect_live_help_full_includes_extended_examples`; `cargo test --manifest-path rust/Cargo.toml --quiet apply_query_report_filters_match_datasource_uid_type_and_family`; `make quality-rust`
+- Validation: Confirmed the Python inspect suite passes with datasource uid/type/family filtering, and confirmed Rust test/format/clippy checks pass with the aligned help text and full-help examples.
+- Impact: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/inspection_report.py`, `tests/test_python_dashboard_inspection_cli.py`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_help.rs`, `rust/src/dashboard_rust_tests.rs`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. The behavioral change only broadens Python datasource filtering to match the Rust implementation and updates help text/examples to the schema both runtimes already emit.
+
 ## 2026-03-16 - Let Rust Bundle Preflight Fall Back To Raw Alert Rule Documents
 - Summary: Taught the Rust bundle-preflight path to derive minimal staged alert sync specs from raw alert rule export documents under `alerting.rules[*].document` when a source bundle does not yet carry explicit top-level `alerts`. The fallback supports both `grafana-alert-rule` tool documents and plain rule documents, preserves the full rule spec as the alert body, and marks the staged alert as `managedFields=["condition"]` so the existing preflight checks can extract datasource and contact-point dependencies from rule `data` and notification settings.
 - Tests: Added a focused Rust bundle-preflight test that passes only raw `alerting.rules` documents and asserts the resulting sync-preflight output now reports missing alert datasource and contact-point dependencies.

@@ -1319,6 +1319,35 @@ grafana-util access service-account token delete --url http://localhost:3000 --t
 3. 需要 import/diff 前檢查：加 `--dry-run`
 4. 跨 org 風險高：加 `--org-id`、`--require-matching-export-org`
 
+### 8.5 在 CI 中做 dashboard 治理門禁
+
+1. 先準備 `raw/` dashboard 匯出目錄。
+2. 產出治理與 flat query JSON：
+
+```bash
+grafana-util dashboard inspect-export --import-dir ./dashboards/raw --report governance-json > governance.json
+grafana-util dashboard inspect-export --import-dir ./dashboards/raw --report json > queries.json
+```
+
+3. 用 policy 檔做治理檢查：
+
+```bash
+python3 scripts/check_dashboard_governance.py \
+  --policy examples/dashboard-governance-policy.json \
+  --governance governance.json \
+  --queries queries.json \
+  --json-output governance-check.json
+```
+
+4. 第一版 checker 目前可阻擋：
+   - 不在 allowlist 的 datasource family / uid
+   - 無法識別的 datasource
+   - mixed-datasource dashboard
+   - dashboard / panel query 數超標
+   - SQL `select *`
+   - 缺少 Grafana SQL time filter
+   - Loki 過寬 selector / regex
+
 9) 每命令 SOP（最短可跑版本）
 ------------------------------
 

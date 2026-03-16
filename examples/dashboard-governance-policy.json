@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "datasources": {
+    "allowedFamilies": ["prometheus", "loki"],
+    "allowedUids": ["prom-main", "logs-main"],
+    "forbidUnknown": true,
+    "forbidMixedFamilies": true
+  },
+  "queries": {
+    "maxQueriesPerDashboard": 80,
+    "maxQueriesPerPanel": 8,
+    "forbidSelectStar": true,
+    "requireSqlTimeFilter": true,
+    "forbidBroadLokiRegex": true
+  },
+  "enforcement": {
+    "failOnWarnings": false
+  }
+}

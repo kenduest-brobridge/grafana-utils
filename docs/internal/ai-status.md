@@ -5,6 +5,20 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-16 - Task: Add External Dashboard Governance Gate For CI
+- State: Done
+- Scope: `grafana_utils/dashboard_governance_gate.py`, `scripts/check_dashboard_governance.py`, `examples/dashboard-governance-policy.json`, `tests/test_python_dashboard_governance_gate.py`, `docs/DEVELOPER.md`, `docs/user-guide.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The repo already had mature `inspect-export` governance/query reports, but there was no checked-in policy gate that could consume those reports in CI and fail builds when dashboards violated datasource or query-governance rules.
+- Current Update: Added a first-pass external governance checker module plus thin script wrapper that reads a policy JSON, one `governance-json` report, and one flat query-report JSON, then emits text or JSON results with nonzero exit codes for blocking violations. The first-pass rules cover datasource family/uid allowlists, unknown datasource identity, mixed-datasource dashboards, query-count thresholds, SQL `select *`, missing SQL time-filter macros, and broad Loki selectors.
+- Result: The repo now has an operator-usable CI gate that can turn existing inspect artifacts into governance enforcement without locking the main dashboard CLI into one team's policy contract.
+
+## 2026-03-16 - Task: Align Python And Rust Dashboard Inspect Report Contracts
+- State: Done
+- Scope: `grafana_utils/dashboard_cli.py`, `grafana_utils/dashboards/inspection_report.py`, `tests/test_python_dashboard_inspection_cli.py`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_help.rs`, `rust/src/dashboard_rust_tests.rs`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust inspect report rendering already emitted `datasource_type`, `datasource_family`, and `file`, and Rust datasource filtering already matched datasource label, uid, type, or family. Python still documented datasource-label-only filtering, and the remaining inspect backlog item was tracking help/filter/schema drift between the two runtimes.
+- Current Update: Aligned the shared inspect-export/live contract across Python and Rust by keeping datasource filter matching on label, uid, type, or family in both runtimes, updating normal/full help text to advertise the richer report-column set, and tightening focused tests around the shared filter/help behavior.
+- Result: Python and Rust inspect-export/live now present the same operator-facing datasource filter semantics and the same report-column contract in help text and focused tests, so the active inspect parity backlog item is no longer current.
+
 ## 2026-03-16 - Task: Let Rust Bundle Preflight Fall Back To Raw Alert Rule Documents
 - State: Done
 - Scope: `rust/src/sync_bundle_preflight.rs`, `rust/src/sync_bundle_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

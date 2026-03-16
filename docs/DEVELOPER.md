@@ -561,6 +561,46 @@ Development environment notes:
 - Keep `python3 -m pip install ...` commands for packaged-install validation and release checks.
 - The project still builds through the existing Python packaging backend; Poetry only standardizes environment management here.
 
+Dashboard governance gate notes:
+
+- keep inspect extraction and policy evaluation as separate layers:
+  - `grafana-util dashboard inspect-export --report governance-json` and `--report json` extract facts
+  - `scripts/check_dashboard_governance.py` applies team-specific policy and returns a CI-friendly exit code
+- the first-pass gate consumes:
+  - one policy JSON such as `examples/dashboard-governance-policy.json`
+  - one governance report from `dashboard inspect-export --report governance-json`
+  - one flat query report from `dashboard inspect-export --report json`
+- the first-pass blocking rules are:
+  - datasource family allowlist
+  - datasource uid allowlist
+  - unknown datasource identity
+  - mixed-datasource dashboards reported by governance risk records
+  - max queries per dashboard
+  - max queries per panel
+  - SQL `select *`
+  - missing SQL Grafana time-filter macros
+  - broad Loki selectors and regexes
+- raw governance `riskRecords` are surfaced as warnings in the checker result. Set `enforcement.failOnWarnings=true` in the policy file if CI should fail when those warnings are present.
+- keep the gate external until the policy contract settles across teams; that lets operators change policy without forcing a new CLI/runtime contract.
+
+Example CI flow:
+
+```bash
+grafana-util dashboard inspect-export \
+  --import-dir ./dashboards/raw \
+  --report governance-json > governance.json
+
+grafana-util dashboard inspect-export \
+  --import-dir ./dashboards/raw \
+  --report json > queries.json
+
+python3 scripts/check_dashboard_governance.py \
+  --policy examples/dashboard-governance-policy.json \
+  --governance governance.json \
+  --queries queries.json \
+  --json-output governance-check.json
+```
+
 Rust live smoke test notes:
 
 - `make test-rust-live` runs `scripts/test-rust-live-grafana.sh`
