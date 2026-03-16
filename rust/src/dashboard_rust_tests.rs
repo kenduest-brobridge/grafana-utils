@@ -423,14 +423,9 @@ fn parse_cli_supports_export_org_scope_flags() {
 
 #[test]
 fn parse_cli_rejects_conflicting_export_org_scope_flags() {
-    let error = DashboardCliArgs::try_parse_from([
-        "grafana-util",
-        "export",
-        "--org-id",
-        "7",
-        "--all-orgs",
-    ])
-    .unwrap_err();
+    let error =
+        DashboardCliArgs::try_parse_from(["grafana-util", "export", "--org-id", "7", "--all-orgs"])
+            .unwrap_err();
 
     assert!(error.to_string().contains("--org-id"));
     assert!(error.to_string().contains("--all-orgs"));
@@ -3126,10 +3121,8 @@ fn build_export_inspection_summary_reports_structure_and_datasources() {
     assert_eq!(summary.orphaned_datasources[0].uid, "unused-main");
     assert_eq!(summary.mixed_dashboards[0].uid, "mixed");
 
-    let summary_json = serde_json::to_value(super::build_export_inspection_summary_document(
-        &summary,
-    ))
-    .unwrap();
+    let summary_json =
+        serde_json::to_value(super::build_export_inspection_summary_document(&summary)).unwrap();
     assert_eq!(summary_json["summary"]["dashboardCount"], Value::from(2));
     assert_eq!(summary_json["summary"]["folderCount"], Value::from(2));
     assert_eq!(summary_json["summary"]["queryCount"], Value::from(3));
@@ -4621,12 +4614,16 @@ fn import_dashboards_with_create_missing_orgs_during_dry_run_previews_org_creati
     .unwrap();
 
     assert_eq!(count, 0);
-    assert_eq!(admin_calls, vec![("GET".to_string(), "/api/orgs".to_string())]);
+    assert_eq!(
+        admin_calls,
+        vec![("GET".to_string(), "/api/orgs".to_string())]
+    );
     assert!(import_calls.is_empty());
 }
 
 #[test]
-fn import_dashboards_with_use_export_org_dry_run_filters_selected_orgs_without_creating_missing_targets() {
+fn import_dashboards_with_use_export_org_dry_run_filters_selected_orgs_without_creating_missing_targets(
+) {
     let temp = tempdir().unwrap();
     let export_root = temp.path().join("exports");
     let org_two_raw = export_root.join("org_2_Org_Two").join("raw");
@@ -4695,7 +4692,11 @@ fn import_dashboards_with_use_export_org_dry_run_filters_selected_orgs_without_c
             }
         },
         |target_org_id, scoped_args| {
-            import_calls.push((target_org_id, scoped_args.import_dir.clone(), scoped_args.org_id));
+            import_calls.push((
+                target_org_id,
+                scoped_args.import_dir.clone(),
+                scoped_args.org_id,
+            ));
             Ok(0)
         },
         |_target_org_id, scoped_args| {
@@ -4816,7 +4817,11 @@ fn build_routed_import_dry_run_json_with_request_reports_orgs_and_dashboards() {
                         "".to_string(),
                         "".to_string(),
                         "".to_string(),
-                        scoped_args.import_dir.join("dash.json").display().to_string(),
+                        scoped_args
+                            .import_dir
+                            .join("dash.json")
+                            .display()
+                            .to_string(),
                     ]],
                     skipped_missing_count: 0,
                     skipped_folder_mismatch_count: 0,
@@ -5051,16 +5056,25 @@ fn import_dashboards_with_use_export_org_filters_selected_orgs_and_creates_missi
                 (reqwest::Method::GET, "/api/orgs") => Ok(Some(json!([]))),
                 (reqwest::Method::POST, "/api/orgs") => {
                     assert_eq!(
-                        payload.and_then(|value| value.as_object()).unwrap().get("name"),
+                        payload
+                            .and_then(|value| value.as_object())
+                            .unwrap()
+                            .get("name"),
                         Some(&json!("Org Two"))
                     );
                     Ok(Some(json!({"orgId": "9"})))
                 }
-                _ => Err(super::message(format!("unexpected request {method} {path}"))),
+                _ => Err(super::message(format!(
+                    "unexpected request {method} {path}"
+                ))),
             }
         },
         |target_org_id, scoped_args| {
-            import_calls.push((target_org_id, scoped_args.import_dir.clone(), scoped_args.org_id));
+            import_calls.push((
+                target_org_id,
+                scoped_args.import_dir.clone(),
+                scoped_args.org_id,
+            ));
             assert!(!scoped_args.use_export_org);
             assert!(scoped_args.only_org_id.is_empty());
             assert!(!scoped_args.create_missing_orgs);
@@ -5088,10 +5102,7 @@ fn import_dashboards_with_use_export_org_filters_selected_orgs_and_creates_missi
             ("POST".to_string(), "/api/orgs".to_string()),
         ]
     );
-    assert_eq!(
-        import_calls,
-        vec![(9, org_two_raw.clone(), Some(9))]
-    );
+    assert_eq!(import_calls, vec![(9, org_two_raw.clone(), Some(9))]);
 }
 
 #[test]

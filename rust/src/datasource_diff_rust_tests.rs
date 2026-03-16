@@ -1,9 +1,6 @@
 // Datasource diff unit tests.
 // Validates compare status/classification and mismatch reporting around import-vs-live contract data.
-#[path = "datasource_diff.rs"]
-mod datasource_diff;
-
-use datasource_diff::{
+use crate::datasource::datasource_diff::{
     build_datasource_diff_report, normalize_export_records, normalize_live_records,
     DatasourceDiffStatus,
 };

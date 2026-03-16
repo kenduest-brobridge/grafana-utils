@@ -85,7 +85,9 @@ pub enum UnifiedCommand {
     Import(ImportArgs),
     #[command(about = "Compatibility direct form; prefer `grafana-util dashboard diff`.")]
     Diff(DiffArgs),
-    #[command(about = "Compatibility direct form; prefer `grafana-util dashboard inspect-export`.")]
+    #[command(
+        about = "Compatibility direct form; prefer `grafana-util dashboard inspect-export`."
+    )]
     InspectExport(InspectExportArgs),
     #[command(about = "Compatibility direct form; prefer `grafana-util dashboard inspect-live`.")]
     InspectLive(InspectLiveArgs),

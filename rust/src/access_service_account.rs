@@ -22,6 +22,9 @@ use super::{
     ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME, DEFAULT_PAGE_SIZE,
 };
 
+type DiffPayload = (String, Map<String, Value>);
+type DiffPayloadMap = BTreeMap<String, DiffPayload>;
+
 fn list_service_accounts_with_request<F>(
     mut request_json: F,
     query: Option<&str>,
@@ -353,7 +356,7 @@ fn build_record_diff_fields(left: &Map<String, Value>, right: &Map<String, Value
 fn build_service_account_diff_map(
     records: &[Map<String, Value>],
     source: &str,
-) -> Result<BTreeMap<String, (String, Map<String, Value>)>> {
+) -> Result<DiffPayloadMap> {
     let mut indexed = BTreeMap::new();
     for record in records {
         let name = string_field(record, "name", "");

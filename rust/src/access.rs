@@ -23,10 +23,10 @@ use crate::http::JsonHttpClient;
 
 #[path = "access_cli_defs.rs"]
 mod access_cli_defs;
-#[path = "access_pending_delete.rs"]
-mod access_pending_delete;
 #[path = "access_org.rs"]
 mod access_org;
+#[path = "access_pending_delete.rs"]
+mod access_pending_delete;
 #[path = "access_render.rs"]
 mod access_render;
 #[path = "access_service_account.rs"]
@@ -37,8 +37,8 @@ mod access_team;
 mod access_user;
 
 pub use access_cli_defs::{
-    build_auth_context, build_http_client, normalize_access_cli_args, parse_cli_from, root_command,
-    build_http_client_no_org_id, AccessAuthContext, AccessCliArgs, AccessCommand, CommonCliArgs,
+    build_auth_context, build_http_client, build_http_client_no_org_id, normalize_access_cli_args,
+    parse_cli_from, root_command, AccessAuthContext, AccessCliArgs, AccessCommand, CommonCliArgs,
     DryRunOutputFormat, OrgAddArgs, OrgCommand, OrgDeleteArgs, OrgExportArgs, OrgImportArgs,
     OrgListArgs, OrgModifyArgs, Scope, ServiceAccountAddArgs, ServiceAccountCommand,
     ServiceAccountDiffArgs, ServiceAccountExportArgs, ServiceAccountImportArgs,
@@ -56,13 +56,13 @@ pub use access_pending_delete::{
 };
 
 #[cfg(test)]
+pub(crate) use access_org::{
+    delete_org_with_request, list_orgs_with_request, modify_org_with_request,
+};
+#[cfg(test)]
 pub(crate) use access_pending_delete::{
     delete_service_account_token_with_request, delete_service_account_with_request,
     delete_team_with_request,
-};
-#[cfg(test)]
-pub(crate) use access_org::{
-    delete_org_with_request, list_orgs_with_request, modify_org_with_request,
 };
 #[cfg(test)]
 pub(crate) use access_service_account::{

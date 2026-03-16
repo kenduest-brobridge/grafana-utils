@@ -1242,7 +1242,15 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
             })
             .collect::<Vec<Vec<String>>>();
         for line in render_simple_table(
-            &["ORG_ID", "UID", "NAME", "TYPE", "ACCESS", "URL", "IS_DEFAULT"],
+            &[
+                "ORG_ID",
+                "UID",
+                "NAME",
+                "TYPE",
+                "ACCESS",
+                "URL",
+                "IS_DEFAULT",
+            ],
             &orphaned_rows,
             !args.no_header,
         ) {

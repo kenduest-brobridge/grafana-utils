@@ -665,13 +665,11 @@ fn resolve_target_client(common: &CommonCliArgs, org_id: Option<i64>) -> Result<
 fn validate_import_org_auth(common: &CommonCliArgs, args: &DatasourceImportArgs) -> Result<()> {
     let context = build_auth_context(common)?;
     if (args.org_id.is_some() || args.use_export_org) && context.auth_mode != "basic" {
-        return Err(message(
-            if args.use_export_org {
-                "Datasource import with --use-export-org requires Basic auth (--basic-user / --basic-password)."
-            } else {
-                "Datasource import with --org-id requires Basic auth (--basic-user / --basic-password)."
-            },
-        ));
+        return Err(message(if args.use_export_org {
+            "Datasource import with --use-export-org requires Basic auth (--basic-user / --basic-password)."
+        } else {
+            "Datasource import with --org-id requires Basic auth (--basic-user / --basic-password)."
+        }));
     }
     Ok(())
 }
@@ -1257,7 +1255,10 @@ fn collect_source_org_names(
     Ok(org_names)
 }
 
-fn parse_export_org_scope(import_root: &Path, scope_dir: &Path) -> Result<DatasourceExportOrgScope> {
+fn parse_export_org_scope(
+    import_root: &Path,
+    scope_dir: &Path,
+) -> Result<DatasourceExportOrgScope> {
     let metadata = parse_export_metadata(&scope_dir.join(EXPORT_METADATA_FILENAME))?;
     let export_org_ids = collect_source_org_ids(scope_dir, &metadata)?;
     let (source_org_id, source_org_name_from_dir) = if export_org_ids.is_empty() {
@@ -1466,7 +1467,8 @@ fn resolve_export_org_target_plan(
         )));
     }
     let created = create_org(admin_client, &scope.source_org_name)?;
-    let created_org_id = org_id_string_from_value(created.get("orgId").or_else(|| created.get("id")));
+    let created_org_id =
+        org_id_string_from_value(created.get("orgId").or_else(|| created.get("id")));
     if created_org_id.is_empty() {
         return Err(message(format!(
             "Grafana did not return a usable orgId after creating destination org '{}' for exported org {}.",
@@ -1840,9 +1842,10 @@ fn build_routed_datasource_import_dry_run_json(args: &DatasourceImportArgs) -> R
             scoped_args.create_missing_orgs = false;
             scoped_args.import_dir = plan.import_dir.clone();
             let scoped_client = build_http_client_for_org(&args.common, target_org_id)?;
-            build_datasource_import_dry_run_json_value(
-                &collect_datasource_import_dry_run_report(&scoped_client, &scoped_args)?,
-            )
+            build_datasource_import_dry_run_json_value(&collect_datasource_import_dry_run_report(
+                &scoped_client,
+                &scoped_args,
+            )?)
         } else {
             serde_json::json!({
                 "mode": describe_datasource_import_mode(args.replace_existing, args.update_existing_only),
@@ -1904,7 +1907,10 @@ fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> Result<usize
     for scope in scopes {
         let plan = resolve_export_org_target_plan(&admin_client, args, &scope)?;
         let datasource_count = load_import_records(&plan.import_dir)?.1.len();
-        org_rows.push(build_routed_datasource_import_org_row(&plan, datasource_count));
+        org_rows.push(build_routed_datasource_import_org_row(
+            &plan,
+            datasource_count,
+        ));
         plans.push(plan);
     }
     if args.dry_run && args.table {
@@ -2883,7 +2889,11 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                             &Value::Array(records.clone().into_iter().map(Value::Object).collect()),
                             args.overwrite,
                         )?;
-                        write_json_file(&index_path, &build_export_index(&records), args.overwrite)?;
+                        write_json_file(
+                            &index_path,
+                            &build_export_index(&records),
+                            args.overwrite,
+                        )?;
                         write_json_file(
                             &metadata_path,
                             &build_datasource_export_metadata(records.len()),

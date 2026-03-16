@@ -26,6 +26,9 @@ fn normalize_access_identity(value: &str) -> String {
     value.trim().to_ascii_lowercase()
 }
 
+type DiffPayload = (String, Map<String, Value>);
+type DiffPayloadMap = BTreeMap<String, DiffPayload>;
+
 fn user_id_from_record(record: &Map<String, Value>) -> String {
     let user_id = scalar_text(record.get("userId"));
     if user_id.is_empty() {
@@ -85,7 +88,7 @@ fn build_team_diff_map(
     records: &[Map<String, Value>],
     source: &str,
     include_members: bool,
-) -> Result<BTreeMap<String, (String, Map<String, Value>)>> {
+) -> Result<DiffPayloadMap> {
     let mut indexed = BTreeMap::new();
     for record in records {
         let team_name = string_field(record, "name", "");
@@ -1100,10 +1103,7 @@ where
             .map(|identity| normalize_access_identity(identity))
             .collect::<BTreeSet<String>>();
 
-        let existing = match lookup_team_by_name(&mut request_json, &team_name).ok() {
-            Some(team) => Some(team),
-            None => None,
-        };
+        let existing = lookup_team_by_name(&mut request_json, &team_name).ok();
 
         let existing_team_id = existing.as_ref().and_then(|team| {
             let team_id = scalar_text(team.get("teamId"));
