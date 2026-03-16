@@ -217,6 +217,7 @@ INSPECT_OUTPUT_FORMAT_CHOICES = (
 )
 VARIABLE_OUTPUT_FORMAT_CHOICES = ("table", "csv", "json")
 SCREENSHOT_OUTPUT_FORMAT_CHOICES = ("png", "jpeg", "pdf")
+SCREENSHOT_FULL_PAGE_OUTPUT_CHOICES = ("single", "tiles", "manifest")
 SCREENSHOT_THEME_CHOICES = ("light", "dark")
 
 
@@ -912,9 +913,21 @@ def add_screenshot_cli_args(parser: argparse.ArgumentParser) -> None:
         help="Browser viewport height in pixels.",
     )
     parser.add_argument(
+        "--device-scale-factor",
+        type=float,
+        default=1.0,
+        help="Browser device scale factor for higher-density raster capture (default: 1.0).",
+    )
+    parser.add_argument(
         "--full-page",
         action="store_true",
         help="Capture the full scrollable page instead of only the initial viewport.",
+    )
+    parser.add_argument(
+        "--full-page-output",
+        choices=SCREENSHOT_FULL_PAGE_OUTPUT_CHOICES,
+        default="single",
+        help="When --full-page is enabled, write one stitched file, a tiles directory, or a tiles directory plus manifest metadata.",
     )
     parser.add_argument(
         "--wait-ms",
@@ -926,6 +939,31 @@ def add_screenshot_cli_args(parser: argparse.ArgumentParser) -> None:
         "--browser-path",
         default=None,
         help="Optional Chromium or Chrome executable path for browser-driven capture.",
+    )
+    parser.add_argument(
+        "--print-capture-url",
+        action="store_true",
+        help="Print the resolved Grafana capture URL before the browser capture starts.",
+    )
+    parser.add_argument(
+        "--header-title",
+        default=None,
+        help="Optional header title text to prepend above PNG/JPEG captures. Use __auto__ to derive a title from the dashboard metadata.",
+    )
+    parser.add_argument(
+        "--header-url",
+        default=None,
+        help="Optional header URL line to prepend above PNG/JPEG captures. Use __auto__ to render the resolved Grafana capture URL.",
+    )
+    parser.add_argument(
+        "--header-captured-at",
+        action="store_true",
+        help="Append one capture timestamp line in the generated PNG/JPEG header block.",
+    )
+    parser.add_argument(
+        "--header-text",
+        default=None,
+        help="Optional free-form note text to append below other generated PNG/JPEG header lines.",
     )
 
 
