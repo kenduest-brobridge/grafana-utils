@@ -1,6 +1,6 @@
 [package]
 name = "grafana-utils-rust"
-version = "0.2.14"
+version = "0.2.15"
 edition = "2021"
 license = "Apache-2.0"
 description = "Rust rewrite scaffold for Grafana dashboard and alerting utilities."
