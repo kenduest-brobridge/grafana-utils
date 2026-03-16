@@ -400,12 +400,14 @@ pub struct ScreenshotArgs {
     pub common: CommonCliArgs,
     #[arg(
         long,
+        required_unless_present = "dashboard_url",
         help_heading = "Target Options",
         help = "Grafana dashboard UID to capture from the browser-rendered UI. Required unless --dashboard-url is provided."
     )]
     pub dashboard_uid: Option<String>,
     #[arg(
         long,
+        required_unless_present = "dashboard_uid",
         help_heading = "Target Options",
         help = "Full Grafana dashboard URL. When provided, the runtime can reuse URL state such as var-*, from, to, orgId, and panelId."
     )]
@@ -551,11 +553,13 @@ pub struct InspectVarsArgs {
     pub common: CommonCliArgs,
     #[arg(
         long,
+        required_unless_present = "dashboard_url",
         help = "Grafana dashboard UID whose templating variables should be listed. Required unless --dashboard-url is provided."
     )]
     pub dashboard_uid: Option<String>,
     #[arg(
         long,
+        required_unless_present = "dashboard_uid",
         help = "Full Grafana dashboard URL. When provided, the runtime can derive the dashboard UID from the URL path."
     )]
     pub dashboard_url: Option<String>,

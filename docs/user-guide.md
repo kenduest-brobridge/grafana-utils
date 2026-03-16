@@ -67,7 +67,7 @@ Default URLs:
 
 ### Command Domains
 
-- Dashboard: `dashboard export`, `dashboard list`, `dashboard import`, `dashboard diff`, `dashboard inspect-export`, `dashboard inspect-live`
+- Dashboard: `dashboard export`, `dashboard list`, `dashboard import`, `dashboard diff`, `dashboard inspect-export`, `dashboard inspect-live`, `dashboard inspect-vars`, `dashboard screenshot`
 - Alert: `alert export`, `alert import`, `alert diff`, `alert list-rules`, `alert list-contact-points`, `alert list-mute-timings`, `alert list-templates`
 - Datasource: `datasource list`, `datasource export`, `datasource import`, `datasource diff`
 - Access: `access org list`, `access org add`, `access org modify`, `access org delete`, `access org export`, `access org import`, `access user list`, `access user add`, `access user modify`, `access user delete`, `access user export`, `access user import`, `access user diff`, `access team list`, `access team add`, `access team modify`, `access team delete`, `access team export`, `access team import`, `access team diff`, `access service-account list`, `access service-account add`, `access service-account export`, `access service-account import`, `access service-account diff`, `access service-account delete`, `access service-account token add`, `access service-account token delete`
@@ -350,6 +350,62 @@ Example output:
     "status": "ok"
   }
 ]
+```
+
+### 3.8 `dashboard inspect-vars`
+
+Purpose: inspect live dashboard templating variables before replaying browser-like state into `dashboard screenshot`.
+
+| Option | Purpose | Difference / scenario |
+| --- | --- | --- |
+| `--dashboard-uid` | Target one dashboard by UID | Best for API-driven inspection |
+| `--dashboard-url` | Reuse a full browser dashboard URL | Auto-derives UID and current query state |
+| `--vars-query` | Overlay `${__all_variables}`-style query fragments | Useful when you only have `var-*` output |
+| `--org-id` | Inspect in one explicit org | Adds `X-Grafana-Org-Id` |
+| `--output-format` | Choose table, csv, or json | JSON is best for scripting |
+| `--no-header` | Hide table/CSV headers | Cleaner shell pipelines |
+
+Example command:
+```bash
+grafana-util dashboard inspect-vars --url https://192.168.1.112:3000 --dashboard-uid rYdddlPWk --vars-query 'var-datasource=bMcTJFtVz&var-job=node-exporter&var-node=192.168.1.112:9100&var-diskdevices=%5Ba-z%5D%2B%7Cnvme%5B0-9%5D%2Bn%5B0-9%5D%2B%7Cmmcblk%5B0-9%5D%2B&refresh=1m&showCategory=Panel%20links&timezone=browser' --basic-user admin --basic-password admin --output-format table
+```
+
+Example output:
+```text
+NAME         TYPE        LABEL       CURRENT                                DATASOURCE     OPTIONS
+datasource   datasource  Datasource  bMcTJFtVz
+job          query       Job         node-exporter                          ${datasource}
+node         query       Host        192.168.1.112:9100                     ${datasource}
+diskdevices  custom                  [a-z]+|nvme[0-9]+n[0-9]+|mmcblk[0-9]+                 [a-z]+|nvme[0-9]+n[0-9]+|mmcblk[0-9]+
+```
+
+### 3.9 `dashboard screenshot`
+
+Purpose: open one Grafana dashboard in headless Chromium and capture PNG, JPEG, or PDF output with browser-like state replay.
+
+| Option | Purpose | Difference / scenario |
+| --- | --- | --- |
+| `--dashboard-uid` / `--dashboard-url` | Choose dashboard target | URL mode preserves browser query state directly |
+| `--panel-id` | Capture one solo panel | Uses the Grafana `d-solo` route |
+| `--vars-query` | Replay `var-*` plus compatible query keys | Supports `refresh`, `showCategory`, `timezone`, and `${__all_variables}`-style fragments |
+| `--print-capture-url` | Print the final resolved URL | Best for troubleshooting capture state |
+| `--full-page` | Stitch a tall dashboard image | Browser-style long screenshot |
+| `--browser-path` | Pin the Chrome/Chromium binary | Useful on workstations with multiple browsers |
+| `--header-title`, `--header-url`, `--header-captured-at`, `--header-text` | Add a dark header block above PNG/JPEG output | Header is composed after capture, so it does not disturb Grafana layout |
+
+Example command:
+```bash
+grafana-util dashboard screenshot --url https://192.168.1.112:3000 --dashboard-uid rYdddlPWk --panel-id 20 --vars-query 'var-datasource=bMcTJFtVz&var-job=node-exporter&var-node=192.168.1.112:9100&var-diskdevices=%5Ba-z%5D%2B%7Cnvme%5B0-9%5D%2Bn%5B0-9%5D%2B%7Cmmcblk%5B0-9%5D%2B&refresh=1m&showCategory=Panel%20links&timezone=browser' --basic-user admin --basic-password admin --output /tmp/node-exporter-full-panel-20-header.png --header-title --header-url --header-captured-at --header-text 'Solo panel debug capture' --print-capture-url --browser-path '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --wait-ms 20000
+```
+
+Example output:
+```text
+Capture URL: https://192.168.1.112:3000/d-solo/rYdddlPWk/node-exporter-full?refresh=1m&showCategory=Panel+links&timezone=browser&panelId=20&viewPanel=20&theme=dark&kiosk=tv&var-datasource=bMcTJFtVz&var-job=node-exporter&var-node=192.168.1.112%3A9100&var-diskdevices=%5Ba-z%5D%2B%7Cnvme%5B0-9%5D%2Bn%5B0-9%5D%2B%7Cmmcblk%5B0-9%5D%2B
+```
+
+Validated output file:
+```text
+/tmp/node-exporter-full-panel-20-header-v2.png
 ```
 
 4) Alert Commands

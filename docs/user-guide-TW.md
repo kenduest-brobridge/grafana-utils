@@ -56,7 +56,7 @@ grafana-access-utils <access-command> [options]
 
 ### 命令分區（快速導覽）
 
-- Dashboard：`dashboard export`、`dashboard list`、`dashboard import`、`dashboard diff`、`dashboard inspect-export`、`dashboard inspect-live`
+- Dashboard：`dashboard export`、`dashboard list`、`dashboard import`、`dashboard diff`、`dashboard inspect-export`、`dashboard inspect-live`、`dashboard inspect-vars`、`dashboard screenshot`
 - Alert：`alert export`、`alert import`、`alert diff`、`alert list-rules`、`alert list-contact-points`、`alert list-mute-timings`、`alert list-templates`
 - Datasource：`datasource list`、`datasource export`、`datasource import`、`datasource diff`
 - Access：`access org list`、`access org add`、`access org modify`、`access org delete`、`access org export`、`access org import`、`access user list`、`access user add`、`access user modify`、`access user delete`、`access user export`、`access user import`、`access user diff`、`access team list`、`access team add`、`access team modify`、`access team delete`、`access team export`、`access team import`、`access team diff`、`access service-account list`、`access service-account add`、`access service-account export`、`access service-account import`、`access service-account diff`、`access service-account delete`、`access service-account token add`、`access service-account token delete`
@@ -314,6 +314,62 @@ grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user adm
     "status": "ok"
   }
 ]
+```
+
+### 3.8 `dashboard inspect-vars`
+
+**用途**：在執行 `dashboard screenshot` 前，先檢查 live dashboard 的 templating variables 與目前 query state。
+
+| 參數 | 用途 | 差異 / 情境 |
+| --- | --- | --- |
+| `--dashboard-uid` | 指定 dashboard UID | 適合 API 導向檢查 |
+| `--dashboard-url` | 直接沿用完整瀏覽器 URL | 自動帶入 UID 與 query state |
+| `--vars-query` | 疊加 `${__all_variables}` 形式的 query fragment | 只有 `var-*` 片段時很好用 |
+| `--org-id` | 指定單一 org | 送出 `X-Grafana-Org-Id` |
+| `--output-format` | 指定 table、csv、json | 腳本通常用 json |
+| `--no-header` | 隱藏 table/CSV 表頭 | shell pipeline 較乾淨 |
+
+範例指令：
+```bash
+grafana-util dashboard inspect-vars --url https://192.168.1.112:3000 --dashboard-uid rYdddlPWk --vars-query 'var-datasource=bMcTJFtVz&var-job=node-exporter&var-node=192.168.1.112:9100&var-diskdevices=%5Ba-z%5D%2B%7Cnvme%5B0-9%5D%2Bn%5B0-9%5D%2B%7Cmmcblk%5B0-9%5D%2B&refresh=1m&showCategory=Panel%20links&timezone=browser' --basic-user admin --basic-password admin --output-format table
+```
+
+範例輸出：
+```text
+NAME         TYPE        LABEL       CURRENT                                DATASOURCE     OPTIONS
+datasource   datasource  Datasource  bMcTJFtVz
+job          query       Job         node-exporter                          ${datasource}
+node         query       Host        192.168.1.112:9100                     ${datasource}
+diskdevices  custom                  [a-z]+|nvme[0-9]+n[0-9]+|mmcblk[0-9]+                 [a-z]+|nvme[0-9]+n[0-9]+|mmcblk[0-9]+
+```
+
+### 3.9 `dashboard screenshot`
+
+**用途**：以 headless Chromium 開啟 Grafana dashboard，並輸出 PNG、JPEG、PDF；可重播接近瀏覽器當下的 state。
+
+| 參數 | 用途 | 差異 / 情境 |
+| --- | --- | --- |
+| `--dashboard-uid` / `--dashboard-url` | 選擇 dashboard 目標 | URL 模式可直接保留瀏覽器 query state |
+| `--panel-id` | 擷取單一 panel | 使用 Grafana `d-solo` route |
+| `--vars-query` | 重播 `var-*` 與相容 query key | 支援 `refresh`、`showCategory`、`timezone` 與 `${__all_variables}` 片段 |
+| `--print-capture-url` | 印出最終解析後的 URL | 除錯時非常實用 |
+| `--full-page` | 輸出長頁 dashboard 圖 | 瀏覽器式 full-page 擷取 |
+| `--browser-path` | 指定 Chrome/Chromium 路徑 | 工作站有多個瀏覽器時可固定版本 |
+| `--header-title`、`--header-url`、`--header-captured-at`、`--header-text` | 在 PNG/JPEG 前面加深色 header 區塊 | header 在最終圖片合成，不會干擾 Grafana layout |
+
+範例指令：
+```bash
+grafana-util dashboard screenshot --url https://192.168.1.112:3000 --dashboard-uid rYdddlPWk --panel-id 20 --vars-query 'var-datasource=bMcTJFtVz&var-job=node-exporter&var-node=192.168.1.112:9100&var-diskdevices=%5Ba-z%5D%2B%7Cnvme%5B0-9%5D%2Bn%5B0-9%5D%2B%7Cmmcblk%5B0-9%5D%2B&refresh=1m&showCategory=Panel%20links&timezone=browser' --basic-user admin --basic-password admin --output /tmp/node-exporter-full-panel-20-header.png --header-title --header-url --header-captured-at --header-text 'Solo panel debug capture' --print-capture-url --browser-path '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --wait-ms 20000
+```
+
+範例輸出：
+```text
+Capture URL: https://192.168.1.112:3000/d-solo/rYdddlPWk/node-exporter-full?refresh=1m&showCategory=Panel+links&timezone=browser&panelId=20&viewPanel=20&theme=dark&kiosk=tv&var-datasource=bMcTJFtVz&var-job=node-exporter&var-node=192.168.1.112%3A9100&var-diskdevices=%5Ba-z%5D%2B%7Cnvme%5B0-9%5D%2Bn%5B0-9%5D%2B%7Cmmcblk%5B0-9%5D%2B
+```
+
+已驗證輸出檔：
+```text
+/tmp/node-exporter-full-panel-20-header-v2.png
 ```
 
 4) alert 命令

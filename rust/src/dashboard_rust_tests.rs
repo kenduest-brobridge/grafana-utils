@@ -252,6 +252,23 @@ fn screenshot_help_mentions_capture_options() {
 }
 
 #[test]
+fn screenshot_parser_requires_dashboard_uid_or_dashboard_url() {
+    let error = DashboardCliArgs::try_parse_from([
+        "grafana-util",
+        "screenshot",
+        "--output",
+        "./cpu-main.png",
+        "--token",
+        "secret",
+    ])
+    .unwrap_err()
+    .to_string();
+
+    assert!(error.contains("--dashboard-uid"));
+    assert!(error.contains("--dashboard-url"));
+}
+
+#[test]
 fn build_dashboard_capture_url_includes_panel_time_theme_and_vars() {
     let args = match parse_cli_from([
         "grafana-util",
