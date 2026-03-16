@@ -298,9 +298,8 @@ pub(crate) fn build_export_inspection_datasource_summary_document(
         } else {
             inventory.uid.clone()
         };
-        let matches_filter = datasource_filter.map_or(true, |filter| {
-            inventory.uid == filter || inventory.name == filter
-        });
+        let matches_filter = datasource_filter
+            .is_none_or(|filter| inventory.uid == filter || inventory.name == filter);
         let state = by_key.remove(&key);
         if !matches_filter && state.is_none() {
             continue;

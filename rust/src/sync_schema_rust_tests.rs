@@ -184,7 +184,7 @@ fn rust_sync_schema_index_matches_schema_files() {
         .unwrap();
     assert_eq!(artifacts.len(), 5);
 
-    let expected = vec![
+    let expected = [
         ("summary", false),
         ("plan", true),
         ("preflight", true),

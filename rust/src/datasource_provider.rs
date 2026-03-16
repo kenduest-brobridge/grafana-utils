@@ -160,9 +160,7 @@ pub fn summarize_provider_plan(plan: &DatasourceSecretProviderPlan) -> Value {
     })
 }
 
-pub fn iter_provider_names<'a>(
-    references: &'a [SecretProviderReference],
-) -> impl Iterator<Item = &'a str> {
+pub fn iter_provider_names(references: &[SecretProviderReference]) -> impl Iterator<Item = &str> {
     let mut seen = HashSet::new();
     references.iter().filter_map(move |item| {
         if seen.insert(item.provider_name.as_str()) {

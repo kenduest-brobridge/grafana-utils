@@ -1381,7 +1381,7 @@ where
             &folder_path,
             &normalized_source_folder_path,
             normalized_destination_folder_path.as_deref(),
-            &folder_match_reason,
+            folder_match_reason,
         ));
     }
     if args.continue_on_error && failed_count > 0 {
@@ -1762,7 +1762,7 @@ where
                     &folder_path,
                     &normalized_source_folder_path,
                     normalized_destination_folder_path.as_deref(),
-                    &folder_match_reason,
+                    folder_match_reason,
                 ));
             } else if args.verbose {
                 println!(
@@ -1858,8 +1858,9 @@ where
                 .get("folderUid")
                 .and_then(Value::as_str)
                 .unwrap_or("");
-            if !folder_uid.is_empty() && action != Some("would-fail-existing") {
-                if with_continue_on_error(args, dashboard_file, || {
+            if !folder_uid.is_empty()
+                && action != Some("would-fail-existing")
+                && with_continue_on_error(args, dashboard_file, || {
                     ensure_folder_inventory_entry_with_request(
                         &mut request_json,
                         &folders_by_uid,
@@ -1867,10 +1868,9 @@ where
                     )
                 })?
                 .is_none()
-                {
-                    failed_count += 1;
-                    continue;
-                }
+            {
+                failed_count += 1;
+                continue;
             }
         }
         if with_continue_on_error(args, dashboard_file, || {

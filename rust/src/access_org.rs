@@ -372,10 +372,7 @@ fn load_org_import_records(import_dir: &Path) -> Result<Vec<Map<String, Value>>>
     };
     records
         .into_iter()
-        .map(|value| {
-            value_as_object(&value, "Access import entry must be an object.")
-                .map(|object| object.clone())
-        })
+        .map(|value| value_as_object(&value, "Access import entry must be an object.").cloned())
         .collect()
 }
 
@@ -678,12 +675,12 @@ where
             }
             if !exported_id.is_empty()
                 && exported_id == existing_id
-                && string_field(&existing, "name", "") != desired_name
+                && string_field(existing, "name", "") != desired_name
             {
                 if args.dry_run {
                     println!(
                         "Would rename org {} -> {}",
-                        string_field(&existing, "name", ""),
+                        string_field(existing, "name", ""),
                         desired_name
                     );
                 } else {
@@ -739,7 +736,7 @@ where
                 Some(Value::Array(values)) => values
                     .iter()
                     .filter_map(|item| value_as_object(item, "Unexpected org user record.").ok())
-                    .map(|item| normalize_org_user_row(item))
+                    .map(normalize_org_user_row)
                     .collect::<Vec<Map<String, Value>>>(),
                 _ => Vec::new(),
             };

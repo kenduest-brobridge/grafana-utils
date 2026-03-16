@@ -259,6 +259,7 @@ pub fn run_dashboard_cli_with_client(
 ///
 /// Flow:
 /// 1) normalize args, 2) build or reuse client(s), 3) delegate to domain handlers.
+///
 /// Errors are surfaced directly to the CLI caller for consistent exit behavior.
 pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
     let args = normalize_dashboard_cli_args(args);

@@ -107,10 +107,7 @@ pub enum UnifiedCommand {
         alias = "al"
     )]
     Alert(AlertNamespaceArgs),
-    #[command(
-        about = "Access [user|team|org|service-account].",
-        alias = "ac"
-    )]
+    #[command(about = "Access [user|team|org|service-account].", alias = "ac")]
     Access(AccessCliArgs),
 }
 

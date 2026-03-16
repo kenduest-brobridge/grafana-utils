@@ -66,7 +66,8 @@ fn parse_cli_supports_dashboard_shortcut_alias_db() {
 
 #[test]
 fn parse_cli_routes_dashboard_list_data_sources_to_datasource_list() {
-    let args: CliArgs = parse_cli_from(["grafana-util", "dashboard", "list-data-sources", "--table"]);
+    let args: CliArgs =
+        parse_cli_from(["grafana-util", "dashboard", "list-data-sources", "--table"]);
 
     match args.command {
         UnifiedCommand::Datasource { command } => match command {
@@ -324,7 +325,9 @@ fn unified_help_mentions_alert_access_and_all_org_examples() {
     assert!(help.contains("--basic-user admin --basic-password admin --all-orgs"));
     assert!(help.contains("grafana-util dashboard inspect-export"));
     assert!(help.contains("Datasource [list|add|modify|delete|export|import|diff]."));
-    assert!(help.contains("Sync [summary|preflight|plan|review|assess-alerts|bundle-preflight|apply]."));
+    assert!(
+        help.contains("Sync [summary|preflight|plan|review|assess-alerts|bundle-preflight|apply].")
+    );
     assert!(help.contains("Dashboard [list|export|import|diff|inspect-export|inspect-live]."));
     assert!(help.contains("Alert [export|import|diff|list-rules|list-contact-points|list-mute-timings|list-templates]."));
     assert!(!help.contains("Compatibility shim remains available"));

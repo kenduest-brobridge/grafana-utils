@@ -824,11 +824,13 @@ fn normalize_user_for_diff(record: &Map<String, Value>, include_teams: bool) -> 
     payload
 }
 
+type UserDiffMap = BTreeMap<String, (String, Map<String, Value>)>;
+
 fn build_user_diff_map(
     records: &[Map<String, Value>],
     source: &str,
     include_teams: bool,
-) -> Result<BTreeMap<String, (String, Map<String, Value>)>> {
+) -> Result<UserDiffMap> {
     let mut indexed = BTreeMap::new();
     for record in records {
         let login = string_field(record, "login", "");

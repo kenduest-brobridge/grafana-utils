@@ -1747,7 +1747,7 @@ where
             request_json(
                 Method::DELETE,
                 &format!("/api/folders/{}", encode_path_segment(&operation.identity)),
-                &vec![("forceDeleteRules".to_string(), "false".to_string())],
+                &[("forceDeleteRules".to_string(), "false".to_string())],
                 None,
             )?
         }
@@ -2023,7 +2023,7 @@ fn build_sync_apply_live_text(document: &Value) -> Result<Vec<String>> {
         .ok_or_else(|| message("Sync apply intent document is missing operations."))?;
     let mut lines = Vec::new();
     lines.push("Sync apply intent".to_string());
-    lines.push(format!("Mode: local apply"));
+    lines.push("Mode: local apply".to_string());
     lines.push(format!("Operations: {}", operations.len()));
     if !operations.is_empty() {
         for operation in operations {
