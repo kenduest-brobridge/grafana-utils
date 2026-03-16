@@ -394,6 +394,13 @@ pub enum ScreenshotTheme {
     Dark,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum ScreenshotFullPageOutput {
+    Single,
+    Tiles,
+    Manifest,
+}
+
 #[derive(Debug, Clone, Args)]
 pub struct ScreenshotArgs {
     #[command(flatten)]
@@ -532,10 +539,25 @@ pub struct ScreenshotArgs {
     #[arg(
         long,
         help_heading = "Rendering Options",
+        default_value_t = 1.0,
+        help = "Browser device scale factor for higher-density raster capture."
+    )]
+    pub device_scale_factor: f64,
+    #[arg(
+        long,
+        help_heading = "Rendering Options",
         default_value_t = false,
         help = "Capture the full scrollable page instead of only the initial viewport. Ignored for PDF output."
     )]
     pub full_page: bool,
+    #[arg(
+        long,
+        help_heading = "Output Options",
+        value_enum,
+        default_value_t = ScreenshotFullPageOutput::Single,
+        help = "When --full-page is enabled, write one stitched file, a tiles directory, or a tiles directory plus manifest metadata."
+    )]
+    pub full_page_output: ScreenshotFullPageOutput,
     #[arg(
         long,
         help_heading = "Rendering Options",

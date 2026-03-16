@@ -348,9 +348,12 @@ diskdevices  custom                  [a-z]+|nvme[0-9]+n[0-9]+|mmcblk[0-9]+      
 | --- | --- | --- |
 | `--dashboard-uid` / `--dashboard-url` | 選擇 dashboard 目標 | URL 模式可直接保留瀏覽器 query state |
 | `--panel-id` | 擷取單一 panel | 使用 Grafana `d-solo` route |
+| `--width`、`--height` | 控制瀏覽器 viewport 尺寸 | 適合寬 dashboard 或 panel crop |
+| `--device-scale-factor` | 在不改變 CSS viewport 的情況下提高 raster 密度 | `2` 適合需要較銳利 PNG/JPEG 的情境 |
 | `--vars-query` | 重播 `var-*` 與相容 query key | 支援 `refresh`、`showCategory`、`timezone` 與 `${__all_variables}` 片段 |
 | `--print-capture-url` | 印出最終解析後的 URL | 除錯時非常實用 |
 | `--full-page` | 輸出長頁 dashboard 圖 | 瀏覽器式 full-page 擷取 |
+| `--full-page-output` | 保留單一大圖或改成分段檔案輸出 | `tiles` 會輸出 `part-0001.*` 等檔案；`manifest` 會再附 `manifest.json` |
 | `--browser-path` | 指定 Chrome/Chromium 路徑 | 工作站有多個瀏覽器時可固定版本 |
 | `--header-title`、`--header-url`、`--header-captured-at`、`--header-text` | 在 PNG/JPEG 前面加深色 header 區塊 | header 在最終圖片合成，不會干擾 Grafana layout |
 

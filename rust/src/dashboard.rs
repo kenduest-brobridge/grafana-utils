@@ -65,7 +65,8 @@ pub use dashboard_cli_defs::{
     parse_cli_from, CommonCliArgs, DashboardAuthContext, DashboardCliArgs, DashboardCommand,
     DiffArgs, ExportArgs, ImportArgs, InspectExportArgs, InspectExportReportFormat,
     InspectLiveArgs, InspectOutputFormat, InspectVarsArgs, ListArgs, ListDataSourcesArgs,
-    ScreenshotArgs, ScreenshotOutputFormat, ScreenshotTheme, SimpleOutputFormat,
+    ScreenshotArgs, ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme,
+    SimpleOutputFormat,
 };
 pub use dashboard_export::{
     build_export_variant_dirs, build_output_path, export_dashboards_with_client,

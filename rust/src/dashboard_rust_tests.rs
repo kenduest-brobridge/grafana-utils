@@ -17,8 +17,9 @@ use super::{
     validate_screenshot_args, CommonCliArgs, DashboardCliArgs, DashboardCommand, DiffArgs,
     ExportArgs, FolderInventoryStatusKind, ImportArgs, InspectExportArgs,
     InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs, ListDataSourcesArgs,
-    ScreenshotOutputFormat, ScreenshotTheme, SimpleOutputFormat, DATASOURCE_INVENTORY_FILENAME,
-    EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME, TOOL_SCHEMA_VERSION,
+    ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme, SimpleOutputFormat,
+    DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME,
+    TOOL_SCHEMA_VERSION,
 };
 use crate::common::api_response;
 use clap::{CommandFactory, Parser};
@@ -129,7 +130,11 @@ fn parse_cli_supports_screenshot_mode() {
         "1600",
         "--height",
         "900",
+        "--device-scale-factor",
+        "2",
         "--full-page",
+        "--full-page-output",
+        "manifest",
         "--wait-ms",
         "9000",
         "--browser-path",
@@ -177,7 +182,12 @@ fn parse_cli_supports_screenshot_mode() {
             );
             assert_eq!(screenshot_args.width, 1600);
             assert_eq!(screenshot_args.height, 900);
+            assert_eq!(screenshot_args.device_scale_factor, 2.0);
             assert!(screenshot_args.full_page);
+            assert_eq!(
+                screenshot_args.full_page_output,
+                ScreenshotFullPageOutput::Manifest
+            );
             assert_eq!(screenshot_args.wait_ms, 9000);
             assert_eq!(
                 screenshot_args.browser_path,
@@ -215,7 +225,12 @@ fn parse_cli_screenshot_defaults_match_browser_capture_defaults() {
             assert_eq!(screenshot_args.output_format, None);
             assert_eq!(screenshot_args.width, 1440);
             assert_eq!(screenshot_args.height, 1024);
+            assert_eq!(screenshot_args.device_scale_factor, 1.0);
             assert!(!screenshot_args.full_page);
+            assert_eq!(
+                screenshot_args.full_page_output,
+                ScreenshotFullPageOutput::Single
+            );
             assert_eq!(screenshot_args.wait_ms, 5000);
             assert_eq!(screenshot_args.browser_path, None);
             assert_eq!(screenshot_args.header_title, None);
@@ -246,6 +261,8 @@ fn screenshot_help_mentions_capture_options() {
     assert!(help.contains("--header-text"));
     assert!(help.contains("--var"));
     assert!(help.contains("--browser-path"));
+    assert!(help.contains("--device-scale-factor"));
+    assert!(help.contains("--full-page-output"));
     assert!(help.contains("Target Options"));
     assert!(help.contains("State Options"));
     assert!(help.contains("Rendering Options"));
@@ -616,6 +633,79 @@ fn validate_screenshot_args_rejects_invalid_var_assignment() {
 
     let error = validate_screenshot_args(&args).unwrap_err().to_string();
     assert!(error.contains("Invalid --var value 'env'"));
+}
+
+#[test]
+fn validate_screenshot_args_rejects_split_output_without_full_page() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--dashboard-uid",
+        "cpu-main",
+        "--output",
+        "./cpu-main.png",
+        "--full-page-output",
+        "tiles",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::Screenshot(args) => args,
+        other => panic!("expected screenshot args, got {other:?}"),
+    };
+
+    let error = validate_screenshot_args(&args).unwrap_err().to_string();
+    assert!(error.contains("--full-page-output tiles or manifest requires --full-page"));
+}
+
+#[test]
+fn validate_screenshot_args_rejects_invalid_device_scale_factor() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--dashboard-uid",
+        "cpu-main",
+        "--output",
+        "./cpu-main.png",
+        "--device-scale-factor",
+        "0",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::Screenshot(args) => args,
+        other => panic!("expected screenshot args, got {other:?}"),
+    };
+
+    let error = validate_screenshot_args(&args).unwrap_err().to_string();
+    assert!(error.contains("--device-scale-factor must be greater than 0"));
+}
+
+#[test]
+fn validate_screenshot_args_rejects_pdf_split_output() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--dashboard-uid",
+        "cpu-main",
+        "--output",
+        "./cpu-main.pdf",
+        "--full-page",
+        "--full-page-output",
+        "manifest",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::Screenshot(args) => args,
+        other => panic!("expected screenshot args, got {other:?}"),
+    };
+
+    let error = validate_screenshot_args(&args).unwrap_err().to_string();
+    assert!(error.contains("PDF output does not support --full-page-output tiles or manifest"));
 }
 
 #[test]
