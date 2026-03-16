@@ -51,7 +51,7 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(exc.exception.code, 0)
         help_text = stdout.getvalue()
         self.assertIn("grafana-util sync", help_text)
-        self.assertIn("{plan,review,preflight,assess-alerts,bundle-preflight,apply}", help_text)
+        self.assertIn("{plan,review,preflight,assess-alerts,bundle-preflight,bundle,apply}", help_text)
 
     def test_parse_args_dashboard_without_subcommand_prints_dashboard_help(self):
         stdout = io.StringIO()

@@ -1410,3 +1410,74 @@ class DashboardInspectionTests(unittest.TestCase):
         self.assertEqual(result, 0)
         payload = json.loads(stdout.getvalue())
         self.assertEqual(payload["summary"]["dashboardCount"], 1)
+
+    def test_inspect_export_outputs_dependency_contract_json(self):
+        args = exporter.parse_args(
+            [
+                "inspect-export",
+                "--import-dir",
+                "dashboards/raw",
+                "--report",
+                "dependency",
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self.write_summary_fixture(
+                import_dir,
+                dashboards=[
+                    {
+                        "path": Path("General") / "CPU_Main__cpu-main.json",
+                        "dashboard": {
+                            "id": None,
+                            "uid": "cpu-main",
+                            "title": "CPU Main",
+                            "panels": [
+                                {
+                                    "id": 7,
+                                    "title": "CPU",
+                                    "type": "timeseries",
+                                    "targets": [
+                                        {
+                                            "refId": "A",
+                                            "expr": "sum(rate(node_cpu_seconds_total[5m]))",
+                                        }
+                                    ],
+                                    "datasource": {"uid": "prom-main", "type": "prometheus"},
+                                }
+                            ],
+                        },
+                    }
+                ],
+                datasources=[
+                    {
+                        "uid": "prom-main",
+                        "name": "Prometheus Main",
+                        "type": "prometheus",
+                        "access": "proxy",
+                        "url": "http://prometheus:9090",
+                        "isDefault": True,
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    }
+                ],
+                folders=[],
+            )
+            args.import_dir = str(import_dir)
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = exporter.inspect_export(args)
+
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(result, 0)
+        self.assertEqual(
+            payload["kind"],
+            "grafana-utils-dashboard-dependency-contract",
+        )
+        self.assertEqual(payload["queryCount"], 1)
+        self.assertEqual(payload["datasourceCount"], 1)
+        self.assertEqual(len(payload["queries"]), 1)
+        self.assertEqual(payload["queries"][0]["datasourceFamily"], "prometheus")
+        self.assertEqual(len(payload["datasourceUsage"]), 1)
+        self.assertEqual(payload["datasourceUsage"][0]["datasource"], "prom-main")

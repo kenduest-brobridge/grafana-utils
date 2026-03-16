@@ -1451,6 +1451,32 @@ fn parse_cli_supports_inspect_export_output_format_flag() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_export_output_format_dependency_flag() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--output-format",
+        "report-dependency",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
+            assert_eq!(
+                inspect_args.output_format,
+                Some(InspectOutputFormat::ReportDependency)
+            );
+            assert_eq!(inspect_args.report, None);
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_inspect_export_report_json_flag() {
     let args = parse_cli_from([
         "grafana-util",
@@ -1533,6 +1559,56 @@ fn parse_cli_supports_inspect_export_report_tree_table_flag() {
             assert_eq!(
                 inspect_args.report,
                 Some(InspectExportReportFormat::TreeTable)
+            );
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_inspect_export_report_dependency_flag() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--report",
+        "dependency",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
+            assert_eq!(
+                inspect_args.report,
+                Some(InspectExportReportFormat::Dependency)
+            );
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_inspect_export_report_dependency_json_flag() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--report",
+        "dependency-json",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
+            assert_eq!(
+                inspect_args.report,
+                Some(InspectExportReportFormat::DependencyJson)
             );
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
@@ -1671,6 +1747,32 @@ fn parse_cli_supports_inspect_live_output_format_flag() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_live_output_format_dependency_json_flag() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-live",
+        "--url",
+        "https://grafana.example.com",
+        "--output-format",
+        "report-dependency-json",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectLive(inspect_args) => {
+            assert_eq!(inspect_args.common.url, "https://grafana.example.com");
+            assert_eq!(
+                inspect_args.output_format,
+                Some(InspectOutputFormat::ReportDependencyJson)
+            );
+            assert_eq!(inspect_args.report, None);
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-live command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_inspect_live_report_tree_table_flag() {
     let args = parse_cli_from([
         "grafana-util",
@@ -1687,6 +1789,31 @@ fn parse_cli_supports_inspect_live_report_tree_table_flag() {
             assert_eq!(
                 inspect_args.report,
                 Some(InspectExportReportFormat::TreeTable)
+            );
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-live command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_inspect_live_report_dependency_flag() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-live",
+        "--url",
+        "https://grafana.example.com",
+        "--report",
+        "dependency",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectLive(inspect_args) => {
+            assert_eq!(inspect_args.common.url, "https://grafana.example.com");
+            assert_eq!(
+                inspect_args.report,
+                Some(InspectExportReportFormat::Dependency)
             );
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
@@ -4835,6 +4962,27 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_json_report() 
         json: false,
         table: false,
         report: Some(InspectExportReportFormat::Json),
+        output_format: None,
+        report_columns: vec!["dashboard_uid".to_string()],
+        report_filter_datasource: None,
+        report_filter_panel_id: None,
+        help_full: false,
+        no_header: false,
+    };
+
+    let error = super::validate_inspect_export_report_args(&args).unwrap_err();
+    assert!(error.to_string().contains(
+        "--report-columns is only supported with report-table, report-csv, report-tree-table, or the equivalent --report modes"
+    ));
+}
+
+#[test]
+fn validate_inspect_export_report_args_rejects_report_columns_for_dependency_report() {
+    let args = InspectExportArgs {
+        import_dir: PathBuf::from("./dashboards/raw"),
+        json: false,
+        table: false,
+        report: Some(InspectExportReportFormat::Dependency),
         output_format: None,
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,

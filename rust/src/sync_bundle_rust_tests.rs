@@ -171,6 +171,61 @@ fn build_sync_source_bundle_document_keeps_normalized_alert_specs() {
 }
 
 #[test]
+fn build_sync_source_bundle_document_includes_alert_contract() {
+    let source_bundle = build_sync_source_bundle_document(
+        &[
+            json!({
+                "kind": "dashboard",
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "body": {"datasourceUids": ["prom-main"]},
+            }),
+            json!({
+                "kind": "dashboard",
+                "uid": "logs-main",
+                "title": "Logs Main",
+                "body": {"datasourceUids": ["loki-main"]},
+            }),
+        ],
+        &[json!({
+            "kind": "datasource",
+            "uid": "prom-main",
+            "name": "Prometheus Main",
+            "title": "Prometheus Main",
+            "body": {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"},
+        })],
+        &[],
+        &[],
+        Some(&json!({
+            "rules": [{
+                "sourcePath": "rules/infra/cpu-high.json",
+                "document": {
+                    "kind": "grafana-alert-rule",
+                    "metadata": {
+                        "uid": "cpu-high",
+                        "title": "CPU High",
+                    },
+                    "spec": {
+                        "uid": "cpu-high",
+                        "title": "CPU High",
+                    },
+                },
+            }],
+            "contactPoints": [{"uid": "pagerduty-primary", "name": "PagerDuty Primary"}],
+            "summary": {"ruleCount": 1, "contactPointCount": 1},
+        })),
+        None,
+    )
+    .unwrap();
+
+    let contract = &source_bundle["alertContract"];
+    assert_eq!(contract["kind"], json!("grafana-utils-sync-alert-contract"));
+    assert_eq!(contract["summary"]["total"], json!(2));
+    assert_eq!(contract["summary"]["safeForSync"], json!(2));
+    assert_eq!(contract["resources"].as_array().unwrap().len(), 2);
+}
+
+#[test]
 fn build_sync_bundle_preflight_document_falls_back_to_alerting_rule_documents() {
     let source_bundle = json!({
         "dashboards": [],

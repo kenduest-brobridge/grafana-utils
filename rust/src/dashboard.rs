@@ -47,6 +47,8 @@ mod dashboard_inspect_render;
 mod dashboard_inspect_report;
 #[path = "dashboard_inspect_summary.rs"]
 mod dashboard_inspect_summary;
+#[path = "dashboard_inspection_dependency_contract.rs"]
+mod dashboard_inspection_dependency_contract;
 #[path = "dashboard_list.rs"]
 mod dashboard_list;
 #[path = "dashboard_live.rs"]
@@ -55,6 +57,8 @@ mod dashboard_live;
 mod dashboard_models;
 #[path = "dashboard_prompt.rs"]
 mod dashboard_prompt;
+#[path = "dashboard_reference_models.rs"]
+mod dashboard_reference_models;
 #[path = "dashboard_screenshot.rs"]
 mod dashboard_screenshot;
 #[path = "dashboard_vars.rs"]

@@ -22,6 +22,7 @@ use super::dashboard_inspect_governance::{
 use super::dashboard_inspect_render::{
     render_csv, render_grouped_query_report, render_grouped_query_table_report, render_simple_table,
 };
+use super::dashboard_inspection_dependency_contract::build_offline_dependency_contract;
 use super::*;
 
 pub(crate) const DATASOURCE_FAMILY_PROMETHEUS: &str = "prometheus";
@@ -927,6 +928,10 @@ fn map_output_format_to_report(
         InspectOutputFormat::ReportJson => Some(InspectExportReportFormat::Json),
         InspectOutputFormat::ReportTree => Some(InspectExportReportFormat::Tree),
         InspectOutputFormat::ReportTreeTable => Some(InspectExportReportFormat::TreeTable),
+        InspectOutputFormat::ReportDependency => Some(InspectExportReportFormat::Dependency),
+        InspectOutputFormat::ReportDependencyJson => {
+            Some(InspectExportReportFormat::DependencyJson)
+        }
         InspectOutputFormat::Governance => Some(InspectExportReportFormat::Governance),
         InspectOutputFormat::GovernanceJson => Some(InspectExportReportFormat::GovernanceJson),
     }
@@ -1128,6 +1133,26 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
         if report_format == InspectExportReportFormat::Json {
             let document = build_export_inspection_query_report_document(&report);
             println!("{}", serde_json::to_string_pretty(&document)?);
+            return Ok(report.summary.dashboard_count);
+        }
+        if report_format == InspectExportReportFormat::Dependency
+            || report_format == InspectExportReportFormat::DependencyJson
+        {
+            let metadata = load_export_metadata(&args.import_dir, Some(RAW_EXPORT_SUBDIR))?;
+            let datasource_inventory =
+                load_datasource_inventory(&args.import_dir, metadata.as_ref())?;
+            let report_document = build_export_inspection_query_report_document(&report);
+            let query_rows = report_document
+                .queries
+                .iter()
+                .map(|row| {
+                    serde_json::to_value(row).map_err(|error| {
+                        message(format!("failed to serialize dependency query row: {error}"))
+                    })
+                })
+                .collect::<Result<Vec<Value>>>()?;
+            let payload = build_offline_dependency_contract(&query_rows, &datasource_inventory);
+            println!("{}", serde_json::to_string_pretty(&payload)?);
             return Ok(report.summary.dashboard_count);
         }
         if report_format == InspectExportReportFormat::Tree {

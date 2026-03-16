@@ -212,6 +212,10 @@ INSPECT_OUTPUT_FORMAT_CHOICES = (
     "report-json",
     "report-tree",
     "report-tree-table",
+    "report-dependency",
+    "dependency",
+    "dependency-json",
+    "report-dependency-json",
     "governance",
     "governance-json",
 )
@@ -652,7 +656,8 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
         help=(
             "Single-flag output selector for inspect output. "
             "Use text, table, json, report-table, report-csv, report-json, "
-            "report-tree, report-tree-table, governance, or governance-json. "
+            "report-tree, report-tree-table, dependency, dependency-json, "
+            "governance, or governance-json. "
             "Use this instead of the legacy output flags. "
             "This cannot be combined with hidden legacy output flags."
         ),
@@ -740,7 +745,8 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
         help=(
             "Single-flag output selector for inspect output. "
             "Use text, table, json, report-table, report-csv, report-json, "
-            "report-tree, report-tree-table, governance, or governance-json. "
+            "report-tree, report-tree-table, dependency, dependency-json, "
+            "governance, or governance-json. "
             "Use this instead of the legacy output flags. "
             "This cannot be combined with hidden legacy output flags."
         ),

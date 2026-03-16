@@ -5,6 +5,7 @@
 //! - Keep staged sync summary contracts import-safe and free of Grafana I/O.
 
 use crate::common::{message, Result};
+use crate::sync_bundle_alert_contracts::build_alert_bundle_contract_document;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
@@ -197,6 +198,13 @@ pub fn build_sync_source_bundle_document(
     let alerting = alerting
         .cloned()
         .unwrap_or_else(|| Value::Object(Map::new()));
+    let alerting_contract_source = if alerting.get("alerting").is_some() {
+        alerting.clone()
+    } else {
+        let mut root = Map::new();
+        root.insert("alerting".to_string(), alerting.clone());
+        Value::Object(root)
+    };
     let metadata = metadata
         .cloned()
         .unwrap_or_else(|| Value::Object(Map::new()));
@@ -205,6 +213,7 @@ pub fn build_sync_source_bundle_document(
         .and_then(Value::as_object)
         .cloned()
         .unwrap_or_default();
+    let alert_contract = build_alert_bundle_contract_document(&alerting_contract_source);
     Ok(serde_json::json!({
         "kind": SYNC_SOURCE_BUNDLE_KIND,
         "schemaVersion": SYNC_SOURCE_BUNDLE_SCHEMA_VERSION,
@@ -223,6 +232,7 @@ pub fn build_sync_source_bundle_document(
         "folders": folders,
         "alerts": alerts,
         "alerting": alerting,
+        "alertContract": alert_contract,
         "metadata": metadata,
     }))
 }

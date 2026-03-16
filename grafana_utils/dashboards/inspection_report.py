@@ -61,6 +61,8 @@ INSPECT_REPORT_FORMAT_CHOICES = (
     "csv",
     "tree",
     "tree-table",
+    "dependency",
+    "dependency-json",
     "governance",
     "governance-json",
 )
