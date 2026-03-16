@@ -1,7 +1,7 @@
 //! Shared HTTP transport for all Rust domains.
 //! Wraps reqwest blocking client creation, URL building, query encoding, and request/response error mapping.
 use reqwest::blocking::Client;
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue, ACCEPT, CONTENT_TYPE};
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue, ACCEPT, ACCEPT_ENCODING, CONTENT_TYPE};
 use reqwest::{Method, StatusCode, Url};
 use serde_json::Value;
 
@@ -24,6 +24,7 @@ impl JsonHttpClient {
     pub fn new(config: JsonHttpClientConfig) -> Result<Self> {
         let mut headers = HeaderMap::new();
         headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
+        headers.insert(ACCEPT_ENCODING, HeaderValue::from_static("identity"));
         for (name, value) in config.headers {
             let header_name = HeaderName::from_bytes(name.as_bytes())
                 .map_err(|_| message(format!("Invalid header name: {name}")))?;
@@ -36,6 +37,7 @@ impl JsonHttpClient {
             .default_headers(headers)
             .timeout(std::time::Duration::from_secs(config.timeout_secs))
             .danger_accept_invalid_certs(!config.verify_ssl)
+            .http1_only()
             .build()?;
 
         Ok(Self {
@@ -64,17 +66,18 @@ impl JsonHttpClient {
 
         let response = request.send()?;
         let status = response.status();
-        let body = response.text()?;
+        let body = response.bytes()?;
+        let body_text = String::from_utf8_lossy(&body).to_string();
 
         if status.is_client_error() || status.is_server_error() {
-            return Err(api_response(status.as_u16(), url.to_string(), body));
+            return Err(api_response(status.as_u16(), url.to_string(), body_text));
         }
 
-        if body.trim().is_empty() || status == StatusCode::NO_CONTENT {
+        if body_text.trim().is_empty() || status == StatusCode::NO_CONTENT {
             return Ok(None);
         }
 
-        Ok(Some(serde_json::from_str(&body)?))
+        Ok(Some(serde_json::from_slice(&body)?))
     }
 
     // Centralized URL constructor for path+query assembly.

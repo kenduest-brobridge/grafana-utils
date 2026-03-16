@@ -8,8 +8,10 @@ description = "Rust rewrite scaffold for Grafana dashboard and alerting utilitie
 [dependencies]
 base64 = "0.22"
 clap = { version = "4.5", features = ["derive"] }
+headless_chrome = "1"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 regex = "1"
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "brotli", "deflate", "gzip", "json", "rustls-tls"] }
 rpassword = "7"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

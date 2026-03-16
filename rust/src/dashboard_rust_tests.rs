@@ -2,22 +2,23 @@
 // Covers parser surfaces, formatter/output contracts, and export/import/inspect/list/diff behavior with
 // in-memory/mocked request fixtures.
 use super::{
-    attach_dashboard_folder_paths_with_request, build_export_metadata, build_export_variant_dirs,
-    build_external_export_document, build_folder_inventory_status, build_folder_path,
-    build_import_auth_context, build_import_payload, build_output_path,
+    attach_dashboard_folder_paths_with_request, build_dashboard_capture_url, build_export_metadata,
+    build_export_variant_dirs, build_external_export_document, build_folder_inventory_status,
+    build_folder_path, build_import_auth_context, build_import_payload, build_output_path,
     build_preserved_web_import_document, build_root_export_index, diff_dashboards_with_request,
     discover_dashboard_files, export_dashboards_with_request, format_dashboard_summary_line,
     format_data_source_line, format_export_progress_line, format_export_verbose_line,
     format_folder_inventory_status_line, format_import_progress_line, format_import_verbose_line,
-    import_dashboards_with_org_clients, import_dashboards_with_request,
-    list_dashboards_with_request, list_data_sources_with_request, parse_cli_from,
-    render_dashboard_summary_csv, render_dashboard_summary_json, render_dashboard_summary_table,
-    render_data_source_csv, render_data_source_json, render_data_source_table,
-    render_import_dry_run_json, render_import_dry_run_table, CommonCliArgs, DashboardCliArgs,
-    DashboardCommand, DiffArgs, ExportArgs, FolderInventoryStatusKind, ImportArgs,
-    InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs,
-    ListDataSourcesArgs, DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME,
-    FOLDER_INVENTORY_FILENAME, TOOL_SCHEMA_VERSION,
+    import_dashboards_with_org_clients, import_dashboards_with_request, extract_dashboard_variables,
+    infer_screenshot_output_format, list_dashboards_with_request, list_data_sources_with_request,
+    parse_cli_from, render_dashboard_summary_csv, render_dashboard_summary_json,
+    render_dashboard_summary_table, render_data_source_csv, render_data_source_json,
+    render_data_source_table, render_import_dry_run_json, render_import_dry_run_table,
+    validate_screenshot_args, CommonCliArgs, DashboardCliArgs, DashboardCommand, DiffArgs,
+    ExportArgs, FolderInventoryStatusKind, ImportArgs, InspectExportArgs,
+    InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs, ListDataSourcesArgs,
+    ScreenshotOutputFormat, ScreenshotTheme, SimpleOutputFormat, DATASOURCE_INVENTORY_FILENAME,
+    EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME, TOOL_SCHEMA_VERSION,
 };
 use crate::common::api_response;
 use clap::{CommandFactory, Parser};
@@ -93,6 +94,457 @@ fn render_dashboard_help() -> String {
     let mut output = Vec::new();
     command.write_long_help(&mut output).unwrap();
     String::from_utf8(output).unwrap()
+}
+
+#[test]
+fn parse_cli_supports_screenshot_mode() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--url",
+        "https://grafana.example.com",
+        "--dashboard-uid",
+        "cpu-main",
+        "--slug",
+        "cpu-overview",
+        "--output",
+        "./cpu-main.pdf",
+        "--panel-id",
+        "7",
+        "--org-id",
+        "3",
+        "--from",
+        "now-6h",
+        "--to",
+        "now",
+        "--var",
+        "env=prod",
+        "--var",
+        "region=us-east-1",
+        "--theme",
+        "light",
+        "--output-format",
+        "pdf",
+        "--width",
+        "1600",
+        "--height",
+        "900",
+        "--full-page",
+        "--wait-ms",
+        "9000",
+        "--browser-path",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+        "--prompt-token",
+    ]);
+
+    match args.command {
+        DashboardCommand::Screenshot(screenshot_args) => {
+            assert_eq!(screenshot_args.common.url, "https://grafana.example.com");
+            assert!(screenshot_args.common.prompt_token);
+            assert_eq!(screenshot_args.dashboard_uid.as_deref(), Some("cpu-main"));
+            assert_eq!(screenshot_args.slug.as_deref(), Some("cpu-overview"));
+            assert_eq!(screenshot_args.output, PathBuf::from("./cpu-main.pdf"));
+            assert_eq!(screenshot_args.panel_id, Some(7));
+            assert_eq!(screenshot_args.org_id, Some(3));
+            assert_eq!(screenshot_args.from.as_deref(), Some("now-6h"));
+            assert_eq!(screenshot_args.to.as_deref(), Some("now"));
+            assert_eq!(screenshot_args.vars_query, None);
+            assert!(!screenshot_args.print_capture_url);
+            assert_eq!(
+                screenshot_args.vars,
+                vec!["env=prod".to_string(), "region=us-east-1".to_string()]
+            );
+            assert_eq!(screenshot_args.theme, ScreenshotTheme::Light);
+            assert_eq!(
+                screenshot_args.output_format,
+                Some(ScreenshotOutputFormat::Pdf)
+            );
+            assert_eq!(screenshot_args.width, 1600);
+            assert_eq!(screenshot_args.height, 900);
+            assert!(screenshot_args.full_page);
+            assert_eq!(screenshot_args.wait_ms, 9000);
+            assert_eq!(
+                screenshot_args.browser_path,
+                Some(PathBuf::from(
+                    "/Applications/Chromium.app/Contents/MacOS/Chromium"
+                ))
+            );
+        }
+        other => panic!("expected screenshot args, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_cli_screenshot_defaults_match_browser_capture_defaults() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--dashboard-uid",
+        "cpu-main",
+        "--output",
+        "./cpu-main.png",
+        "--token",
+        "secret",
+    ]);
+
+    match args.command {
+        DashboardCommand::Screenshot(screenshot_args) => {
+            assert_eq!(screenshot_args.slug, None);
+            assert_eq!(screenshot_args.panel_id, None);
+            assert_eq!(screenshot_args.org_id, None);
+            assert_eq!(screenshot_args.from, None);
+            assert_eq!(screenshot_args.to, None);
+            assert!(screenshot_args.vars.is_empty());
+            assert_eq!(screenshot_args.theme, ScreenshotTheme::Dark);
+            assert_eq!(screenshot_args.output_format, None);
+            assert_eq!(screenshot_args.width, 1440);
+            assert_eq!(screenshot_args.height, 1024);
+            assert!(!screenshot_args.full_page);
+            assert_eq!(screenshot_args.wait_ms, 5000);
+            assert_eq!(screenshot_args.browser_path, None);
+        }
+        other => panic!("expected screenshot args, got {other:?}"),
+    }
+}
+
+#[test]
+fn screenshot_help_mentions_capture_options() {
+    let root_help = render_dashboard_help();
+    assert!(root_help.contains("screenshot"));
+    assert!(root_help.contains("inspect-vars"));
+
+    let help = render_dashboard_subcommand_help("screenshot");
+    assert!(help.contains("--dashboard-uid"));
+    assert!(help.contains("--dashboard-url"));
+    assert!(help.contains("--output"));
+    assert!(help.contains("--panel-id"));
+    assert!(help.contains("--vars-query"));
+    assert!(help.contains("--print-capture-url"));
+    assert!(help.contains("--var"));
+    assert!(help.contains("--browser-path"));
+}
+
+#[test]
+fn build_dashboard_capture_url_includes_panel_time_theme_and_vars() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--url",
+        "https://grafana.example.com/root",
+        "--dashboard-uid",
+        "cpu-main",
+        "--slug",
+        "cpu-overview",
+        "--output",
+        "./cpu-main.png",
+        "--panel-id",
+        "4",
+        "--org-id",
+        "7",
+        "--from",
+        "now-6h",
+        "--to",
+        "now",
+        "--var",
+        "env=prod",
+        "--var",
+        "region=us-east-1",
+        "--theme",
+        "dark",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::Screenshot(args) => args,
+        other => panic!("expected screenshot args, got {other:?}"),
+    };
+
+    let url = build_dashboard_capture_url(&args).unwrap();
+    assert!(url.starts_with("https://grafana.example.com/d-solo/cpu-main/cpu-overview?"));
+    assert!(url.contains("panelId=4"));
+    assert!(url.contains("viewPanel=4"));
+    assert!(url.contains("orgId=7"));
+    assert!(url.contains("from=now-6h"));
+    assert!(url.contains("to=now"));
+    assert!(url.contains("theme=dark"));
+    assert!(url.contains("kiosk=tv"));
+    assert!(url.contains("var-env=prod"));
+    assert!(url.contains("var-region=us-east-1"));
+}
+
+#[test]
+fn build_dashboard_capture_url_supports_datasource_style_template_variables() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--url",
+        "https://grafana.example.com",
+        "--dashboard-uid",
+        "infra-main",
+        "--output",
+        "./infra-main.png",
+        "--var",
+        "datasource=prom-main",
+        "--var",
+        "cluster=prod-a",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::Screenshot(args) => args,
+        other => panic!("expected screenshot args, got {other:?}"),
+    };
+
+    let url = build_dashboard_capture_url(&args).unwrap();
+    assert!(url.contains("theme=dark"));
+    assert!(url.contains("var-datasource=prom-main"));
+    assert!(url.contains("var-cluster=prod-a"));
+}
+
+#[test]
+fn build_dashboard_capture_url_reuses_full_dashboard_url_state() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--dashboard-url",
+        "https://grafana.example.com/d/infra-main/infra-overview?orgId=9&from=now-12h&to=now&var-datasource=prom-main&var-cluster=prod-a",
+        "--output",
+        "./infra-main.png",
+        "--var",
+        "cluster=prod-b",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::Screenshot(args) => args,
+        other => panic!("expected screenshot args, got {other:?}"),
+    };
+
+    let url = build_dashboard_capture_url(&args).unwrap();
+    assert!(url.starts_with("https://grafana.example.com/d/infra-main/infra-overview?"));
+    assert!(url.contains("orgId=9"));
+    assert!(url.contains("from=now-12h"));
+    assert!(url.contains("to=now"));
+    assert!(url.contains("var-datasource=prom-main"));
+    assert!(url.contains("var-cluster=prod-b"));
+}
+
+#[test]
+fn build_dashboard_capture_url_merges_vars_query_between_url_and_explicit_vars() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--dashboard-url",
+        "https://grafana.example.com/d/infra-main/infra-overview?var-env=prod&var-cluster=old",
+        "--vars-query",
+        "var-cluster=mid&var-host=web01",
+        "--var",
+        "host=web02",
+        "--output",
+        "./infra-main.png",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::Screenshot(args) => args,
+        other => panic!("expected screenshot args, got {other:?}"),
+    };
+
+    let url = build_dashboard_capture_url(&args).unwrap();
+    assert!(url.contains("var-env=prod"));
+    assert!(url.contains("var-cluster=mid"));
+    assert!(url.contains("var-host=web02"));
+}
+
+#[test]
+fn build_dashboard_capture_url_preserves_non_var_query_from_vars_query() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--url",
+        "https://grafana.example.com",
+        "--dashboard-uid",
+        "infra-main",
+        "--vars-query",
+        "var-job=node-exporter&refresh=1m&showCategory=Panel%20links&timezone=browser",
+        "--output",
+        "./infra-main.png",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::Screenshot(args) => args,
+        other => panic!("expected screenshot args, got {other:?}"),
+    };
+
+    let url = build_dashboard_capture_url(&args).unwrap();
+    assert!(url.contains("var-job=node-exporter"));
+    assert!(url.contains("refresh=1m"));
+    assert!(url.contains("showCategory=Panel+links") || url.contains("showCategory=Panel%20links"));
+    assert!(url.contains("timezone=browser"));
+}
+
+#[test]
+fn parse_screenshot_args_accepts_print_capture_url() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--url",
+        "https://grafana.example.com",
+        "--dashboard-uid",
+        "infra-main",
+        "--print-capture-url",
+        "--output",
+        "./infra-main.png",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::Screenshot(args) => args,
+        other => panic!("expected screenshot args, got {other:?}"),
+    };
+
+    assert!(args.print_capture_url);
+}
+
+#[test]
+fn parse_inspect_vars_args_supports_dashboard_url_only() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "inspect-vars",
+        "--dashboard-url",
+        "https://grafana.example.com/d/infra-main/infra-overview?var-datasource=prom-main",
+        "--output-format",
+        "json",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::InspectVars(args) => args,
+        other => panic!("expected inspect-vars args, got {other:?}"),
+    };
+
+    assert_eq!(args.dashboard_uid, None);
+    assert_eq!(
+        args.dashboard_url.as_deref(),
+        Some("https://grafana.example.com/d/infra-main/infra-overview?var-datasource=prom-main")
+    );
+    assert_eq!(args.output_format, Some(SimpleOutputFormat::Json));
+    assert_eq!(args.vars_query, None);
+}
+
+#[test]
+fn parse_inspect_vars_args_accepts_vars_query() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "inspect-vars",
+        "--dashboard-uid",
+        "infra-main",
+        "--vars-query",
+        "var-datasource=prom-main&var-cluster=prod-a",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::InspectVars(args) => args,
+        other => panic!("expected inspect-vars args, got {other:?}"),
+    };
+
+    assert_eq!(args.dashboard_uid.as_deref(), Some("infra-main"));
+    assert_eq!(
+        args.vars_query.as_deref(),
+        Some("var-datasource=prom-main&var-cluster=prod-a")
+    );
+}
+
+#[test]
+fn extract_dashboard_variables_reads_current_and_options() {
+    let dashboard = json!({
+        "templating": {
+            "list": [
+                {
+                    "name": "datasource",
+                    "type": "datasource",
+                    "label": "Datasource",
+                    "query": "prometheus",
+                    "current": {"text": "Prom Main", "value": "prom-main"},
+                    "options": [
+                        {"text": "Prom Main", "value": "prom-main"},
+                        {"text": "Prom DR", "value": "prom-dr"}
+                    ]
+                },
+                {
+                    "name": "cluster",
+                    "type": "query",
+                    "label": "Cluster",
+                    "datasource": {"uid": "prom-main", "type": "prometheus"},
+                    "current": {"text": ["prod-a", "prod-b"], "value": ["prod-a", "prod-b"]},
+                    "multi": true,
+                    "includeAll": true,
+                    "options": [{"text": "prod-a", "value": "prod-a"}]
+                }
+            ]
+        }
+    });
+
+    let rows = extract_dashboard_variables(dashboard.as_object().unwrap()).unwrap();
+    assert_eq!(rows.len(), 2);
+    assert_eq!(rows[0].name, "datasource");
+    assert_eq!(rows[0].current, "Prom Main (prom-main)");
+    assert_eq!(rows[0].option_count, 2);
+    assert_eq!(rows[1].name, "cluster");
+    assert_eq!(rows[1].datasource, "prom-main");
+    assert_eq!(rows[1].current, "prod-a|prod-b");
+    assert!(rows[1].multi);
+    assert!(rows[1].include_all);
+}
+
+#[test]
+fn infer_screenshot_output_format_uses_extension_and_explicit_override() {
+    assert_eq!(
+        infer_screenshot_output_format(Path::new("/tmp/cpu-main.jpeg"), None).unwrap(),
+        ScreenshotOutputFormat::Jpeg
+    );
+    assert_eq!(
+        infer_screenshot_output_format(
+            Path::new("/tmp/cpu-main.anything"),
+            Some(ScreenshotOutputFormat::Pdf)
+        )
+        .unwrap(),
+        ScreenshotOutputFormat::Pdf
+    );
+}
+
+#[test]
+fn validate_screenshot_args_rejects_invalid_var_assignment() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "screenshot",
+        "--dashboard-uid",
+        "cpu-main",
+        "--output",
+        "./cpu-main.png",
+        "--var",
+        "env",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::Screenshot(args) => args,
+        other => panic!("expected screenshot args, got {other:?}"),
+    };
+
+    let error = validate_screenshot_args(&args).unwrap_err().to_string();
+    assert!(error.contains("Invalid --var value 'env'"));
 }
 
 #[test]
@@ -1228,8 +1680,8 @@ fn parse_cli_rejects_conflicting_list_org_scope_flags() {
 
 #[test]
 fn parse_cli_rejects_legacy_list_alias() {
-    let error = DashboardCliArgs::try_parse_from(["grafana-util", "list-dashboard", "--json"])
-        .unwrap_err();
+    let error =
+        DashboardCliArgs::try_parse_from(["grafana-util", "list-dashboard", "--json"]).unwrap_err();
 
     assert!(error.to_string().contains("unrecognized subcommand"));
     assert!(error.to_string().contains("list-dashboard"));

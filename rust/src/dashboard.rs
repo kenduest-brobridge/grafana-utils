@@ -55,12 +55,17 @@ mod dashboard_live;
 mod dashboard_models;
 #[path = "dashboard_prompt.rs"]
 mod dashboard_prompt;
+#[path = "dashboard_screenshot.rs"]
+mod dashboard_screenshot;
+#[path = "dashboard_vars.rs"]
+mod dashboard_vars;
 
 pub use dashboard_cli_defs::{
     build_auth_context, build_http_client, build_http_client_for_org, normalize_dashboard_cli_args,
     parse_cli_from, CommonCliArgs, DashboardAuthContext, DashboardCliArgs, DashboardCommand,
     DiffArgs, ExportArgs, ImportArgs, InspectExportArgs, InspectExportReportFormat,
-    InspectLiveArgs, InspectOutputFormat, ListArgs, ListDataSourcesArgs,
+    InspectLiveArgs, InspectOutputFormat, InspectVarsArgs, ListArgs, ListDataSourcesArgs,
+    ScreenshotArgs, ScreenshotOutputFormat, ScreenshotTheme, SimpleOutputFormat,
 };
 pub use dashboard_export::{
     build_export_variant_dirs, build_output_path, export_dashboards_with_client,
@@ -79,6 +84,8 @@ pub use dashboard_prompt::build_external_export_document;
 use dashboard_export::export_dashboards_with_org_clients;
 use dashboard_inspect::analyze_export_dir;
 use dashboard_list::list_dashboards_with_org_clients;
+use dashboard_screenshot::capture_dashboard_screenshot;
+use dashboard_vars::inspect_dashboard_variables;
 
 #[cfg(test)]
 pub(crate) use dashboard_export::{
@@ -114,6 +121,8 @@ pub(crate) use dashboard_inspect_render::{
 };
 #[cfg(test)]
 pub(crate) use dashboard_inspect_report::normalize_query_report;
+#[cfg(test)]
+pub(crate) use dashboard_vars::extract_dashboard_variables;
 pub(crate) use dashboard_inspect_report::{
     build_export_inspection_query_report_document, build_query_report,
     refresh_filtered_query_report_summary, render_query_report_column, report_column_header,
@@ -152,6 +161,10 @@ pub(crate) use dashboard_prompt::{
     build_datasource_catalog, collect_datasource_refs, datasource_type_alias,
     is_builtin_datasource_ref, is_placeholder_string, lookup_datasource,
     resolve_datasource_type_alias,
+};
+#[cfg(test)]
+pub(crate) use dashboard_screenshot::{
+    build_dashboard_capture_url, infer_screenshot_output_format, validate_screenshot_args,
 };
 
 pub const DEFAULT_URL: &str = "http://localhost:3000";
@@ -253,6 +266,10 @@ pub fn run_dashboard_cli_with_client(
             )?;
             Ok(())
         }
+        DashboardCommand::InspectVars(inspect_vars_args) => inspect_dashboard_variables(&inspect_vars_args),
+        DashboardCommand::Screenshot(screenshot_args) => {
+            capture_dashboard_screenshot(&screenshot_args)
+        }
     }
 }
 
@@ -317,6 +334,10 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
                 &inspect_args,
             )?;
             Ok(())
+        }
+        DashboardCommand::InspectVars(inspect_vars_args) => inspect_dashboard_variables(&inspect_vars_args),
+        DashboardCommand::Screenshot(screenshot_args) => {
+            capture_dashboard_screenshot(&screenshot_args)
         }
     }
 }

@@ -381,6 +381,161 @@ pub enum InspectOutputFormat {
     GovernanceJson,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum ScreenshotOutputFormat {
+    Png,
+    Jpeg,
+    Pdf,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum ScreenshotTheme {
+    Light,
+    Dark,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct ScreenshotArgs {
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(
+        long,
+        help = "Grafana dashboard UID to capture from the browser-rendered UI. Required unless --dashboard-url is provided."
+    )]
+    pub dashboard_uid: Option<String>,
+    #[arg(
+        long,
+        help = "Full Grafana dashboard URL. When provided, the runtime can reuse URL state such as var-*, from, to, orgId, and panelId."
+    )]
+    pub dashboard_url: Option<String>,
+    #[arg(
+        long,
+        help = "Optional dashboard slug. When omitted, the runtime can reuse the UID as a fallback route segment."
+    )]
+    pub slug: Option<String>,
+    #[arg(long, help = "Write the captured browser output to this file path.")]
+    pub output: PathBuf,
+    #[arg(
+        long,
+        help = "Capture only this Grafana panel ID through the solo dashboard route."
+    )]
+    pub panel_id: Option<i64>,
+    #[arg(
+        long,
+        help = "Scope the browser session to this Grafana org ID by sending X-Grafana-Org-Id."
+    )]
+    pub org_id: Option<i64>,
+    #[arg(
+        long,
+        help = "Grafana time range start, for example now-6h or 2026-03-16T00:00:00Z."
+    )]
+    pub from: Option<String>,
+    #[arg(
+        long,
+        help = "Grafana time range end, for example now or 2026-03-16T12:00:00Z."
+    )]
+    pub to: Option<String>,
+    #[arg(
+        long,
+        value_name = "QUERY",
+        help = "Grafana variable query-string fragment, for example 'var-env=prod&var-host=web01'. Useful for pasting ${__all_variables} expansion output."
+    )]
+    pub vars_query: Option<String>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Print the final resolved Grafana capture URL before launching Chromium."
+    )]
+    pub print_capture_url: bool,
+    #[arg(
+        long = "var",
+        value_name = "NAME=VALUE",
+        help = "Repeatable Grafana template variable assignment. Example: --var env=prod --var region=us-east-1."
+    )]
+    pub vars: Vec<String>,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = ScreenshotTheme::Dark,
+        help = "Override the Grafana UI theme used for the browser capture."
+    )]
+    pub theme: ScreenshotTheme,
+    #[arg(
+        long,
+        value_enum,
+        help = "Force the output format instead of inferring it from the output filename."
+    )]
+    pub output_format: Option<ScreenshotOutputFormat>,
+    #[arg(
+        long,
+        default_value_t = 1440,
+        help = "Browser viewport width in pixels."
+    )]
+    pub width: u32,
+    #[arg(
+        long,
+        default_value_t = 1024,
+        help = "Browser viewport height in pixels."
+    )]
+    pub height: u32,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Capture the full scrollable page instead of only the initial viewport. Ignored for PDF output."
+    )]
+    pub full_page: bool,
+    #[arg(
+        long,
+        default_value_t = 5000,
+        help = "Extra wait time in milliseconds after navigation so Grafana panels can finish rendering."
+    )]
+    pub wait_ms: u64,
+    #[arg(
+        long,
+        help = "Optional Chromium or Chrome executable path for the headless browser session."
+    )]
+    pub browser_path: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct InspectVarsArgs {
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(
+        long,
+        help = "Grafana dashboard UID whose templating variables should be listed. Required unless --dashboard-url is provided."
+    )]
+    pub dashboard_uid: Option<String>,
+    #[arg(
+        long,
+        help = "Full Grafana dashboard URL. When provided, the runtime can derive the dashboard UID from the URL path."
+    )]
+    pub dashboard_url: Option<String>,
+    #[arg(
+        long,
+        value_name = "QUERY",
+        help = "Grafana variable query-string fragment, for example 'var-env=prod&var-host=web01'. This overlays current values in inspect-vars output."
+    )]
+    pub vars_query: Option<String>,
+    #[arg(
+        long,
+        help = "Scope the variable inspection to this Grafana org ID by sending X-Grafana-Org-Id."
+    )]
+    pub org_id: Option<i64>,
+    #[arg(
+        long,
+        value_enum,
+        help = "Render dashboard variables as table, csv, or json. Defaults to table."
+    )]
+    pub output_format: Option<SimpleOutputFormat>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Do not print table or CSV headers when rendering inspect-vars output."
+    )]
+    pub no_header: bool,
+}
+
 #[derive(Debug, Clone, Args)]
 pub struct InspectExportArgs {
     #[arg(
@@ -533,13 +688,22 @@ pub struct InspectLiveArgs {
 
 #[derive(Debug, Clone, Subcommand)]
 pub enum DashboardCommand {
-    #[command(name = "list", about = "List dashboard summaries without writing export files.")]
+    #[command(
+        name = "list",
+        about = "List dashboard summaries without writing export files."
+    )]
     List(ListArgs),
     #[command(name = "list-data-sources", about = "List Grafana data sources.")]
     ListDataSources(ListDataSourcesArgs),
-    #[command(name = "export", about = "Export dashboards to raw/ and prompt/ JSON files.")]
+    #[command(
+        name = "export",
+        about = "Export dashboards to raw/ and prompt/ JSON files."
+    )]
     Export(ExportArgs),
-    #[command(name = "import", about = "Import dashboard JSON files through the Grafana API.")]
+    #[command(
+        name = "import",
+        about = "Import dashboard JSON files through the Grafana API."
+    )]
     Import(ImportArgs),
     #[command(about = "Compare local raw dashboard files against live Grafana dashboards.")]
     Diff(DiffArgs),
@@ -553,12 +717,22 @@ pub enum DashboardCommand {
         about = "Analyze live Grafana dashboards via a temporary raw-export snapshot."
     )]
     InspectLive(InspectLiveArgs),
+    #[command(
+        name = "inspect-vars",
+        about = "List dashboard templating variables and datasource-like choices from live Grafana."
+    )]
+    InspectVars(InspectVarsArgs),
+    #[command(
+        name = "screenshot",
+        about = "Open one Grafana dashboard in a headless browser and capture PNG, JPEG, or PDF output."
+    )]
+    Screenshot(ScreenshotArgs),
 }
 
 #[derive(Debug, Clone, Parser)]
 #[command(
     about = "Export or import Grafana dashboards.",
-    after_help = "Examples:\n\n  Export dashboards from local Grafana with Basic auth:\n    grafana-util export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite\n\n  Export dashboards with an API token:\n    export GRAFANA_API_TOKEN='your-token'\n    grafana-util export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n  Export into a flat directory layout instead of per-folder subdirectories:\n    grafana-util export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --flat\n\n  Compare raw dashboard exports against local Grafana:\n    grafana-util diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw"
+    after_help = "Examples:\n\n  Export dashboards from local Grafana with Basic auth:\n    grafana-util export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite\n\n  Export dashboards with an API token:\n    export GRAFANA_API_TOKEN='your-token'\n    grafana-util export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n  Export into a flat directory layout instead of per-folder subdirectories:\n    grafana-util export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --flat\n\n  Compare raw dashboard exports against local Grafana:\n    grafana-util diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw\n\n  Capture a browser-rendered dashboard screenshot:\n    grafana-util screenshot --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --dashboard-uid cpu-main --output ./cpu-main.png --from now-6h --to now"
 )]
 pub struct DashboardCliArgs {
     #[command(subcommand)]

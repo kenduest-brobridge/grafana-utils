@@ -5,6 +5,13 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-16 - Task: Add Rust Dashboard Screenshot Command
+- State: Done
+- Scope: `rust/Cargo.toml`, `rust/src/cli.rs`, `rust/src/dashboard.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_screenshot.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The Rust dashboard CLI currently supports list/export/import/diff/inspect workflows only. There is no screenshot or PDF capture subcommand, no browser automation runtime, and no code path that can capture the rendered Grafana dashboard UI as an image or PDF.
+- Current Update: Added a Rust-only `dashboard screenshot` workflow with clap args for dashboard UID, slug, panel id, time range, repeatable `--var`, theme, viewport, wait time, browser path, org header, and output format selection. Added a new browser-capture module that launches Chromium through `headless_chrome`, reuses the existing auth header builder, constructs dashboard or solo-panel URLs, reserves a local debug port explicitly, hides Grafana chrome before capture, derives a clip from live page dimensions for `--full-page`, and writes PNG, JPEG, or PDF output after a render wait. Fixed the initial screenshot bugs where the capture path passed the wrong `headless_chrome` flag and where full-page dimension reads expected a JSON object instead of primitive values, then tightened the DOM cleanup to collapse the left menu first, hide sticky/fixed top bars more aggressively, and preserve datasource-style template variable routing through repeatable `--var NAME=VALUE` query pairs.
+- Result: The Rust dashboard CLI now supports `grafana-util dashboard screenshot ...` through unified dispatch, the new screenshot helper behavior is covered by focused parser/help/URL/validation tests, the Rust `dashboard` plus `cli` test targets pass, and live checks against both local Docker Grafana and the user-provided remote dashboard produced browser-rendered full-page PNG output with the sidebar removed while keeping dark-mode and template-variable-driven dashboard selection intact.
+
 ## 2026-03-16 - Task: Recover Sync And Workbench Modules After Reverse
 - State: Done
 - Scope: `grafana_utils/unified_cli.py`, `grafana_utils/sync_cli.py`, `grafana_utils/gitops_sync.py`, `grafana_utils/*workbench.py`, `tests/test_python_unified_cli.py`, `tests/test_python_sync_cli.py`, `tests/test_python_*workbench.py`, `rust/src/lib.rs`, `rust/src/cli.rs`, `rust/src/sync.rs`, `rust/src/sync_*.rs`, `rust/src/alert_sync.rs`, `rust/src/bundle_preflight.rs`, `rust/src/datasource_provider.rs`, `rust/src/cli_rust_tests.rs`, `docs/internal/*.md`, `VERSION`, `scripts/set-version.sh`
@@ -1023,3 +1030,23 @@ Historical note:
 - Baseline: The Python access workflows already had `diff_users_with_client` and `diff_teams_with_client`, but the top-level Python facade did not re-export those helpers and the public docs still described Python access snapshots and drift comparison as Rust-only.
 - Current Update: Re-exported Python access export/import/diff helpers from `grafana_utils.access_cli`, added dispatch coverage for `access user diff` and `access team diff`, and updated the English/Traditional Chinese README plus both user guides so access user/team export, import, and diff are documented as supported Python workflows.
 - Result: Python and Rust now present the same supported access command surface for user/team snapshot export, import, and diff in the operator docs, and the Python facade/tests explicitly cover the diff entrypoints.
+## 2026-03-16 - Task: Refine Rust Dashboard Screenshot Chrome Hiding
+- State: Done
+- Scope: `rust/src/dashboard_screenshot.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The Rust `dashboard screenshot` command could hide the Grafana sidebar, but remote full-page captures still kept the top toolbar/header in the output.
+- Current Update: Extended the browser DOM preparation step to hide fixed/sticky top chrome in addition to the sidebar before stitched full-page capture. Live validation against the remote Grafana dashboard `eei8l48f3s3k0f` now produces a dark-mode full-page PNG without the top toolbar.
+- Result: Browser-rendered full-page screenshots are cleaner and closer to report-style output, while dashboard variables can still be selected through repeatable `--var name=value` assignments.
+
+## 2026-03-16 - Task: Accept Full Grafana Dashboard URLs for Screenshot and Variable Inspection
+- State: Done
+- Scope: `rust/src/cli.rs`, `rust/src/dashboard.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_screenshot.rs`, `rust/src/dashboard_vars.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust screenshot capture required separate `--url` plus `--dashboard-uid`, and the new variable inspection helper did not exist.
+- Current Update: Added `dashboard inspect-vars`, allowed both `dashboard screenshot` and `dashboard inspect-vars` to accept a full Grafana dashboard URL, and taught screenshot URL-building to reuse URL state such as `var-*`, `from`, `to`, `orgId`, and `panelId` while still letting explicit CLI flags override those values.
+- Result: Operators can now paste a browser dashboard URL directly into the Rust CLI and preserve its current variable/query-string state without manually re-entering every `--var`.
+
+## 2026-03-16 - Task: Strengthen Rust Screenshot Query-State Debugging and Readiness
+- State: Done
+- Scope: `rust/Cargo.toml`, `rust/src/http.rs`, `rust/src/dashboard_cli_defs.rs`, `rust/src/dashboard_screenshot.rs`, `rust/src/dashboard_vars.rs`, `rust/src/dashboard_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `--vars-query` only overlaid `var-*` values, screenshot runs could not print the final resolved URL, API inspection on one remote Grafana hit response-body decode errors, and browser capture could stop at Grafana's loading spinner or SPA navigation wait.
+- Current Update: Extended screenshot query-fragment parsing to preserve non-variable query keys such as `refresh`, `showCategory`, and `timezone`; added `--print-capture-url`; forced the Rust HTTP client onto a more compatible JSON-bytes/HTTP1.1 path; and tightened screenshot readiness to wait for panel content while avoiding the stuck navigation event path. Live validation against dashboard `rYdddlPWk` confirmed the final capture URL and preserved query state.
+- Result: Screenshot/debug workflows now expose the exact resolved URL, keep more Grafana browser state intact, and are more reliable against remote Grafana instances that previously failed in API decode or browser-ready handling.

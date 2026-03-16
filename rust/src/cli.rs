@@ -23,7 +23,8 @@ use crate::alert::{
 use crate::common::Result;
 use crate::dashboard::{
     run_dashboard_cli, DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs, ImportArgs,
-    InspectExportArgs, InspectLiveArgs, ListArgs, ListDataSourcesArgs,
+    InspectExportArgs, InspectLiveArgs, InspectVarsArgs, ListArgs, ListDataSourcesArgs,
+    ScreenshotArgs,
 };
 use crate::datasource::{run_datasource_cli, DatasourceGroupCommand};
 use crate::sync::{run_sync_cli, SyncGroupCommand};
@@ -49,6 +50,10 @@ pub enum DashboardGroupCommand {
     InspectExport(InspectExportArgs),
     #[command(about = "Analyze live Grafana dashboards without writing a persistent export.")]
     InspectLive(InspectLiveArgs),
+    #[command(about = "List dashboard templating variables from live Grafana.")]
+    InspectVars(InspectVarsArgs),
+    #[command(about = "Open one dashboard in a headless browser and capture image or PDF output.")]
+    Screenshot(ScreenshotArgs),
 }
 
 #[derive(Debug, Clone, Subcommand)]
@@ -123,6 +128,12 @@ fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
         }
         DashboardGroupCommand::InspectLive(inner) => {
             wrap_dashboard(DashboardCommand::InspectLive(inner))
+        }
+        DashboardGroupCommand::InspectVars(inner) => {
+            wrap_dashboard(DashboardCommand::InspectVars(inner))
+        }
+        DashboardGroupCommand::Screenshot(inner) => {
+            wrap_dashboard(DashboardCommand::Screenshot(inner))
         }
     }
 }
