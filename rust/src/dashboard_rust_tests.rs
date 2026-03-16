@@ -2722,14 +2722,24 @@ fn collect_dashboard_source_names_prefers_datasource_names() {
         }
     });
     let catalog = super::build_datasource_catalog(&[
-        json!({"uid": "prom_uid", "name": "Prom Main", "type": "prometheus"})
-            .as_object()
-            .unwrap()
-            .clone(),
-        json!({"uid": "loki_uid", "name": "Loki Logs", "type": "loki"})
-            .as_object()
-            .unwrap()
-            .clone(),
+        json!({
+            "uid": "prom_uid",
+            "name": "Prom Main",
+            "type": "prometheus",
+            "pluginVersion": "11.0.0"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+        json!({
+            "uid": "loki_uid",
+            "name": "Loki Logs",
+            "type": "loki",
+            "meta": {"info": {"version": "3.1.0"}}
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
     ]);
 
     let (sources, source_uids) =
@@ -3200,14 +3210,24 @@ fn build_external_export_document_adds_datasource_inputs() {
         }
     });
     let catalog = super::build_datasource_catalog(&[
-        json!({"uid": "prom_uid", "name": "Prom Main", "type": "prometheus"})
-            .as_object()
-            .unwrap()
-            .clone(),
-        json!({"uid": "loki_uid", "name": "Loki Logs", "type": "loki"})
-            .as_object()
-            .unwrap()
-            .clone(),
+        json!({
+            "uid": "prom_uid",
+            "name": "Prom Main",
+            "type": "prometheus",
+            "pluginVersion": "11.0.0"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+        json!({
+            "uid": "loki_uid",
+            "name": "Loki Logs",
+            "type": "loki",
+            "meta": {"info": {"version": "3.1.0"}}
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
     ]);
 
     let document = build_external_export_document(&payload, &catalog).unwrap();
@@ -3233,9 +3253,16 @@ fn build_external_export_document_adds_datasource_inputs() {
             .unwrap()
             .iter()
             .filter(|item| item["type"] == "datasource")
-            .map(|item| (item["id"].as_str().unwrap(), item["name"].as_str().unwrap()))
+            .map(|item| (
+                item["id"].as_str().unwrap(),
+                item["name"].as_str().unwrap(),
+                item["version"].as_str().unwrap()
+            ))
             .collect::<Vec<_>>(),
-        vec![("loki", "Loki"), ("prometheus", "Prometheus")]
+        vec![
+            ("loki", "Loki", "3.1.0"),
+            ("prometheus", "Prometheus", "11.0.0"),
+        ]
     );
     assert_eq!(document["__elements"], json!({}));
 }
@@ -3327,14 +3354,23 @@ fn build_external_export_document_deduplicates_same_type_datasource_requires() {
         }
     });
     let catalog = super::build_datasource_catalog(&[
-        json!({"uid": "prom_uid_1", "name": "Smoke Prometheus", "type": "prometheus"})
-            .as_object()
-            .unwrap()
-            .clone(),
-        json!({"uid": "prom_uid_2", "name": "Smoke Prometheus 2", "type": "prometheus"})
-            .as_object()
-            .unwrap()
-            .clone(),
+        json!({
+            "uid": "prom_uid_1",
+            "name": "Smoke Prometheus",
+            "type": "prometheus",
+            "pluginVersion": "11.0.0"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+        json!({
+            "uid": "prom_uid_2",
+            "name": "Smoke Prometheus 2",
+            "type": "prometheus"
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
     ]);
 
     let document = build_external_export_document(&payload, &catalog).unwrap();
@@ -3353,9 +3389,13 @@ fn build_external_export_document_deduplicates_same_type_datasource_requires() {
             .unwrap()
             .iter()
             .filter(|item| item["type"] == "datasource")
-            .map(|item| (item["id"].as_str().unwrap(), item["name"].as_str().unwrap()))
+            .map(|item| (
+                item["id"].as_str().unwrap(),
+                item["name"].as_str().unwrap(),
+                item["version"].as_str().unwrap()
+            ))
             .collect::<Vec<_>>(),
-        vec![("prometheus", "Prometheus")]
+        vec![("prometheus", "Prometheus", "11.0.0")]
     );
 }
 
@@ -4142,10 +4182,18 @@ fn resolve_report_column_ids_include_file_by_default_and_allow_datasource_uid() 
     assert!(!default_columns
         .iter()
         .any(|value| value == "datasource_uid"));
+    assert!(default_columns
+        .iter()
+        .any(|value| value == "datasource_type"));
+    assert!(default_columns
+        .iter()
+        .any(|value| value == "datasource_family"));
 
     let selected = super::resolve_report_column_ids(&[
         "dashboard_uid".to_string(),
         "datasource_uid".to_string(),
+        "datasource_type".to_string(),
+        "datasource_family".to_string(),
         "file".to_string(),
         "query".to_string(),
     ])
@@ -4155,6 +4203,8 @@ fn resolve_report_column_ids_include_file_by_default_and_allow_datasource_uid() 
         vec![
             "dashboard_uid".to_string(),
             "datasource_uid".to_string(),
+            "datasource_type".to_string(),
+            "datasource_family".to_string(),
             "file".to_string(),
             "query".to_string(),
         ]
@@ -4173,6 +4223,8 @@ fn export_inspection_query_row_json_keeps_datasource_uid_and_file_fields() {
         ref_id: "A".to_string(),
         datasource: "prom-main".to_string(),
         datasource_uid: String::new(),
+        datasource_type: "prometheus".to_string(),
+        datasource_family: "prometheus".to_string(),
         query_field: "expr".to_string(),
         query_text: "up".to_string(),
         metrics: vec!["up".to_string()],
@@ -4184,6 +4236,14 @@ fn export_inspection_query_row_json_keeps_datasource_uid_and_file_fields() {
     let value = serde_json::to_value(&row).unwrap();
 
     assert_eq!(value["datasourceUid"], Value::String(String::new()));
+    assert_eq!(
+        value["datasourceType"],
+        Value::String("prometheus".to_string())
+    );
+    assert_eq!(
+        value["datasourceFamily"],
+        Value::String("prometheus".to_string())
+    );
     assert_eq!(
         value["file"],
         Value::String("/tmp/raw/main.json".to_string())
@@ -4238,6 +4298,8 @@ fn apply_query_report_filters_keep_matching_rows_only() {
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
                 datasource_uid: "prom-uid".to_string(),
+                datasource_type: "prometheus".to_string(),
+                datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
@@ -4255,6 +4317,8 @@ fn apply_query_report_filters_keep_matching_rows_only() {
                 ref_id: "A".to_string(),
                 datasource: "logs-main".to_string(),
                 datasource_uid: "logs-uid".to_string(),
+                datasource_type: "loki".to_string(),
+                datasource_family: "loki".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "{job=\"grafana\"}".to_string(),
                 metrics: Vec::new(),
@@ -4297,6 +4361,8 @@ fn normalize_query_report_groups_rows_by_dashboard_then_panel() {
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
                 datasource_uid: "prom-main".to_string(),
+                datasource_type: "prometheus".to_string(),
+                datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
@@ -4314,6 +4380,8 @@ fn normalize_query_report_groups_rows_by_dashboard_then_panel() {
                 ref_id: "B".to_string(),
                 datasource: "prom-main".to_string(),
                 datasource_uid: "prom-main".to_string(),
+                datasource_type: "prometheus".to_string(),
+                datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "process_resident_memory_bytes".to_string(),
                 metrics: vec!["process_resident_memory_bytes".to_string()],
@@ -4331,6 +4399,8 @@ fn normalize_query_report_groups_rows_by_dashboard_then_panel() {
                 ref_id: "A".to_string(),
                 datasource: "loki-main".to_string(),
                 datasource_uid: "loki-main".to_string(),
+                datasource_type: "loki".to_string(),
+                datasource_family: "loki".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "{job=\"grafana\"}".to_string(),
                 metrics: Vec::new(),
@@ -4491,6 +4561,8 @@ fn render_grouped_query_report_displays_dashboard_panel_and_query_tree() {
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
                 datasource_uid: "prom-main".to_string(),
+                datasource_type: "prometheus".to_string(),
+                datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
@@ -4508,6 +4580,8 @@ fn render_grouped_query_report_displays_dashboard_panel_and_query_tree() {
                 ref_id: "B".to_string(),
                 datasource: "loki-main".to_string(),
                 datasource_uid: "loki-main".to_string(),
+                datasource_type: "loki".to_string(),
+                datasource_family: "loki".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "{job=\"grafana\"}".to_string(),
                 metrics: Vec::new(),
@@ -4527,11 +4601,12 @@ fn render_grouped_query_report_displays_dashboard_panel_and_query_tree() {
     assert!(output.contains("  Panel: CPU (id=7, type=timeseries, queries=1)"));
     assert!(output.contains("  Panel: Logs (id=8, type=logs, queries=1)"));
     assert!(output.contains(
-        "    Query: refId=A datasource=prom-main datasourceUid=prom-main field=expr metrics=up"
+        "    Query: refId=A datasource=prom-main datasourceUid=prom-main datasourceType=prometheus datasourceFamily=prometheus field=expr metrics=up"
     ));
     assert!(output.contains("      up"));
-    assert!(output
-        .contains("    Query: refId=B datasource=loki-main datasourceUid=loki-main field=expr"));
+    assert!(output.contains(
+        "    Query: refId=B datasource=loki-main datasourceUid=loki-main datasourceType=loki datasourceFamily=loki field=expr"
+    ));
     assert!(output.contains("      {job=\"grafana\"}"));
 }
 
@@ -4556,6 +4631,8 @@ fn render_grouped_query_table_report_displays_dashboard_sections_with_tables() {
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
                 datasource_uid: "prom-main".to_string(),
+                datasource_type: "prometheus".to_string(),
+                datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
@@ -4573,6 +4650,8 @@ fn render_grouped_query_table_report_displays_dashboard_sections_with_tables() {
                 ref_id: "B".to_string(),
                 datasource: "loki-main".to_string(),
                 datasource_uid: "loki-main".to_string(),
+                datasource_type: "loki".to_string(),
+                datasource_family: "loki".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "{job=\"grafana\"}".to_string(),
                 metrics: Vec::new(),
@@ -4622,6 +4701,8 @@ fn render_grouped_query_table_report_includes_loki_analysis_columns() {
             ref_id: "A".to_string(),
             datasource: "loki-main".to_string(),
             datasource_uid: "loki-main".to_string(),
+            datasource_type: "loki".to_string(),
+            datasource_family: "loki".to_string(),
             query_field: "expr".to_string(),
             query_text: "{job=\"varlogs\",app=~\"api|web\"} |= \"error\" | json [5m]".to_string(),
             metrics: vec![
@@ -4764,6 +4845,8 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
                 datasource_uid: "prom-main".to_string(),
+                datasource_type: "prometheus".to_string(),
+                datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
@@ -4781,6 +4864,8 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
                 ref_id: "B".to_string(),
                 datasource: "custom-main".to_string(),
                 datasource_uid: String::new(),
+                datasource_type: "custom-plugin".to_string(),
+                datasource_family: "unknown".to_string(),
                 query_field: "query".to_string(),
                 query_text: "custom_query".to_string(),
                 metrics: Vec::new(),
@@ -4903,6 +4988,8 @@ fn render_governance_table_report_displays_sections() {
             ref_id: "A".to_string(),
             datasource: "logs-main".to_string(),
             datasource_uid: "logs-main".to_string(),
+            datasource_type: "loki".to_string(),
+            datasource_family: "loki".to_string(),
             query_field: "expr".to_string(),
             query_text: "{job=\"grafana\"}".to_string(),
             metrics: vec!["count_over_time".to_string()],

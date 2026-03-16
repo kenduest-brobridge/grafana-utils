@@ -106,7 +106,10 @@ fn build_sync_preflight_document_reports_plugin_dependency_and_alert_blocks() {
             "kind": "dashboard",
             "uid": "cpu-main",
             "title": "CPU Main",
-            "body": {"datasourceUids": ["loki-main", "prom-main"]}
+            "body": {
+                "datasourceUids": ["loki-main", "prom-main"],
+                "datasourceNames": ["Prometheus Main"]
+            }
         }),
         json!({
             "kind": "alert",
@@ -116,21 +119,24 @@ fn build_sync_preflight_document_reports_plugin_dependency_and_alert_blocks() {
             "body": {
                 "condition": "A > 90",
                 "datasourceUid": "loki-main",
-                "contactPoints": ["pagerduty-primary"]
+                "datasourceName": "Prometheus Main",
+                "contactPoints": ["pagerduty-primary"],
+                "notificationSettings": {"receiver": "slack-primary"}
             }
         }),
     ];
     let availability = json!({
         "pluginIds": ["prometheus"],
         "datasourceUids": ["prom-main"],
+        "datasourceNames": [],
         "contactPoints": []
     });
 
     let document = build_sync_preflight_document(&desired_specs, Some(&availability)).unwrap();
 
     assert_eq!(document["kind"], json!(SYNC_PREFLIGHT_KIND));
-    assert_eq!(document["summary"]["checkCount"], json!(7));
-    assert_eq!(document["summary"]["blockingCount"], json!(5));
+    assert_eq!(document["summary"]["checkCount"], json!(10));
+    assert_eq!(document["summary"]["blockingCount"], json!(8));
     assert!(document["checks"]
         .as_array()
         .unwrap()
@@ -142,6 +148,13 @@ fn build_sync_preflight_document_reports_plugin_dependency_and_alert_blocks() {
         .iter()
         .any(|item| item["kind"] == "dashboard-datasource"
             && item["identity"] == "cpu-main->loki-main"
+            && item["status"] == "missing"));
+    assert!(document["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["kind"] == "dashboard-datasource-name"
+            && item["identity"] == "cpu-main->Prometheus Main"
             && item["status"] == "missing"));
     assert!(document["checks"]
         .as_array()
@@ -159,7 +172,21 @@ fn build_sync_preflight_document_reports_plugin_dependency_and_alert_blocks() {
         .as_array()
         .unwrap()
         .iter()
+        .any(|item| item["kind"] == "alert-datasource-name"
+            && item["identity"] == "cpu-high->Prometheus Main"
+            && item["status"] == "missing"));
+    assert!(document["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
         .any(|item| item["kind"] == "alert-contact-point" && item["status"] == "missing"));
+    assert!(document["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["kind"] == "alert-contact-point"
+            && item["identity"] == "cpu-high->slack-primary"
+            && item["status"] == "missing"));
 }
 
 #[test]

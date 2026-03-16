@@ -10,6 +10,8 @@ use serde_json::{Map, Value};
 
 pub const SYNC_SUMMARY_KIND: &str = "grafana-utils-sync-summary";
 pub const SYNC_SUMMARY_SCHEMA_VERSION: i64 = 1;
+pub const SYNC_SOURCE_BUNDLE_KIND: &str = "grafana-utils-sync-source-bundle";
+pub const SYNC_SOURCE_BUNDLE_SCHEMA_VERSION: i64 = 1;
 pub const SYNC_PLAN_KIND: &str = "grafana-utils-sync-plan";
 pub const SYNC_PLAN_SCHEMA_VERSION: i64 = 1;
 pub const SYNC_APPLY_INTENT_KIND: &str = "grafana-utils-sync-apply-intent";
@@ -182,6 +184,106 @@ pub fn build_sync_summary_document(raw_specs: &[Value]) -> Result<Value> {
             })
         }).collect::<Vec<_>>(),
     }))
+}
+
+pub fn build_sync_source_bundle_document(
+    dashboards: &[Value],
+    datasources: &[Value],
+    folders: &[Value],
+    alerting: Option<&Value>,
+    metadata: Option<&Value>,
+) -> Result<Value> {
+    let alerting = alerting
+        .cloned()
+        .unwrap_or_else(|| Value::Object(Map::new()));
+    let metadata = metadata
+        .cloned()
+        .unwrap_or_else(|| Value::Object(Map::new()));
+    let alerting_summary = alerting
+        .get("summary")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+    Ok(serde_json::json!({
+        "kind": SYNC_SOURCE_BUNDLE_KIND,
+        "schemaVersion": SYNC_SOURCE_BUNDLE_SCHEMA_VERSION,
+        "summary": {
+            "dashboardCount": dashboards.len(),
+            "datasourceCount": datasources.len(),
+            "folderCount": folders.len(),
+            "alertRuleCount": alerting_summary.get("ruleCount").and_then(Value::as_i64).unwrap_or(0),
+            "contactPointCount": alerting_summary.get("contactPointCount").and_then(Value::as_i64).unwrap_or(0),
+            "muteTimingCount": alerting_summary.get("muteTimingCount").and_then(Value::as_i64).unwrap_or(0),
+            "policyCount": alerting_summary.get("policyCount").and_then(Value::as_i64).unwrap_or(0),
+            "templateCount": alerting_summary.get("templateCount").and_then(Value::as_i64).unwrap_or(0),
+        },
+        "dashboards": dashboards,
+        "datasources": datasources,
+        "folders": folders,
+        "alerts": Vec::<Value>::new(),
+        "alerting": alerting,
+        "metadata": metadata,
+    }))
+}
+
+pub fn render_sync_source_bundle_text(document: &Value) -> Result<Vec<String>> {
+    if document.get("kind").and_then(Value::as_str) != Some(SYNC_SOURCE_BUNDLE_KIND) {
+        return Err(message(
+            "Sync source bundle document kind is not supported.",
+        ));
+    }
+    let summary = document
+        .get("summary")
+        .and_then(Value::as_object)
+        .cloned()
+        .ok_or_else(|| message("Sync source bundle document is missing summary."))?;
+    Ok(vec![
+        "Sync source bundle".to_string(),
+        format!(
+            "Dashboards: {}",
+            summary
+                .get("dashboardCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0)
+        ),
+        format!(
+            "Datasources: {}",
+            summary
+                .get("datasourceCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0)
+        ),
+        format!(
+            "Folders: {}",
+            summary
+                .get("folderCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0)
+        ),
+        format!(
+            "Alerting: rules={} contact-points={} mute-timings={} policies={} templates={}",
+            summary
+                .get("alertRuleCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
+            summary
+                .get("contactPointCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
+            summary
+                .get("muteTimingCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
+            summary
+                .get("policyCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
+            summary
+                .get("templateCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0),
+        ),
+    ])
 }
 
 fn build_index(

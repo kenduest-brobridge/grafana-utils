@@ -117,9 +117,17 @@ fn build_dashboard_checks(
     let available_uids = require_string_list(availability.get("datasourceUids"), "datasourceUids")?
         .into_iter()
         .collect::<BTreeSet<String>>();
+    let available_names =
+        require_string_list(availability.get("datasourceNames"), "datasourceNames")?
+            .into_iter()
+            .collect::<BTreeSet<String>>();
     let datasource_uids =
         require_string_list(spec.body.get("datasourceUids"), "dashboard datasourceUids")?;
-    Ok(datasource_uids
+    let datasource_names = require_string_list(
+        spec.body.get("datasourceNames"),
+        "dashboard datasourceNames",
+    )?;
+    let mut checks = datasource_uids
         .into_iter()
         .map(|datasource_uid| {
             let available = available_uids.contains(&datasource_uid);
@@ -136,7 +144,23 @@ fn build_dashboard_checks(
                 blocking: !available,
             }
         })
-        .collect())
+        .collect::<Vec<_>>();
+    checks.extend(datasource_names.into_iter().map(|datasource_name| {
+        let available = available_names.contains(&datasource_name);
+        SyncPreflightCheck {
+            kind: "dashboard-datasource-name".to_string(),
+            identity: format!("{}->{}", spec.identity, datasource_name),
+            status: if available { "ok" } else { "missing" }.to_string(),
+            detail: if available {
+                "Referenced datasource name is available for dashboard sync."
+            } else {
+                "Referenced datasource name is missing for dashboard sync."
+            }
+            .to_string(),
+            blocking: !available,
+        }
+    }));
+    Ok(checks)
 }
 
 fn is_builtin_alert_datasource_ref(value: &str) -> bool {
@@ -171,12 +195,62 @@ fn collect_alert_datasource_uids(body: &Map<String, Value>) -> Result<Vec<String
     Ok(datasource_uids.into_iter().collect())
 }
 
+fn collect_alert_datasource_names(body: &Map<String, Value>) -> Result<Vec<String>> {
+    let mut datasource_names = BTreeSet::new();
+    let direct_name = normalize_text(body.get("datasourceName"));
+    if !direct_name.is_empty() {
+        datasource_names.insert(direct_name);
+    }
+    for datasource_name in
+        require_string_list(body.get("datasourceNames"), "alert datasourceNames")?
+    {
+        datasource_names.insert(datasource_name);
+    }
+    for item in body
+        .get("data")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        let Some(object) = item.as_object() else {
+            continue;
+        };
+        let datasource_name = normalize_text(object.get("datasourceName"));
+        if !datasource_name.is_empty() {
+            datasource_names.insert(datasource_name);
+        }
+    }
+    Ok(datasource_names.into_iter().collect())
+}
+
+fn collect_alert_contact_points(body: &Map<String, Value>) -> Result<Vec<String>> {
+    let mut contact_points = require_string_list(body.get("contactPoints"), "alert contactPoints")?
+        .into_iter()
+        .collect::<BTreeSet<String>>();
+    let receiver = normalize_text(body.get("receiver"));
+    if !receiver.is_empty() {
+        contact_points.insert(receiver);
+    }
+    if let Some(notification_settings) = body.get("notificationSettings").and_then(Value::as_object)
+    {
+        let receiver = normalize_text(notification_settings.get("receiver"));
+        if !receiver.is_empty() {
+            contact_points.insert(receiver);
+        }
+    }
+    Ok(contact_points.into_iter().collect())
+}
+
 fn build_alert_checks(
     spec: &SyncResourceSpec,
     availability: &Map<String, Value>,
 ) -> Result<Vec<SyncPreflightCheck>> {
     let available_datasource_uids =
         require_string_list(availability.get("datasourceUids"), "datasourceUids")?
+            .into_iter()
+            .collect::<BTreeSet<String>>();
+    let available_datasource_names =
+        require_string_list(availability.get("datasourceNames"), "datasourceNames")?
             .into_iter()
             .collect::<BTreeSet<String>>();
     let available_contact_points =
@@ -208,8 +282,22 @@ fn build_alert_checks(
             blocking: !available,
         });
     }
-    for contact_point in require_string_list(spec.body.get("contactPoints"), "alert contactPoints")?
-    {
+    for datasource_name in collect_alert_datasource_names(&body)? {
+        let available = available_datasource_names.contains(&datasource_name);
+        checks.push(SyncPreflightCheck {
+            kind: "alert-datasource-name".to_string(),
+            identity: format!("{}->{}", spec.identity, datasource_name),
+            status: if available { "ok" } else { "missing" }.to_string(),
+            detail: if available {
+                "Alert datasource name is available."
+            } else {
+                "Alert datasource name is missing."
+            }
+            .to_string(),
+            blocking: !available,
+        });
+    }
+    for contact_point in collect_alert_contact_points(&body)? {
         let available = available_contact_points.contains(&contact_point);
         checks.push(SyncPreflightCheck {
             kind: "alert-contact-point".to_string(),

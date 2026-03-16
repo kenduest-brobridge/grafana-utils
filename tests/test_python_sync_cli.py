@@ -248,7 +248,7 @@ class SyncCliTests(unittest.TestCase):
                 "body": {"type": "prometheus"},
             }
         ]
-        availability = {"pluginIds": [], "datasourceUids": []}
+        availability = {"pluginIds": [], "datasourceUids": [], "datasourceNames": []}
         with tempfile.TemporaryDirectory() as tmpdir:
             desired_path = Path(tmpdir) / "desired.json"
             availability_path = Path(tmpdir) / "availability.json"
@@ -283,13 +283,23 @@ class SyncCliTests(unittest.TestCase):
                 "kind": "alert",
                 "uid": "cpu-high",
                 "managedFields": ["condition", "contactPoints"],
-                "body": {"condition": "A > 90", "contactPoints": ["pagerduty-primary"]},
+                "body": {
+                    "condition": "A > 90",
+                    "contactPoints": ["pagerduty-primary"],
+                    "receiver": "cp-1",
+                },
+            },
+            {
+                "kind": "dashboard",
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "body": {"datasourceNames": ["Prometheus Main"]},
             },
         ]
         client = FakeSyncGrafanaClient(
             datasources=[{"uid": "prom-main", "name": "Prometheus Main"}],
             plugins=[{"id": "prometheus"}],
-            contact_points=[{"name": "pagerduty-primary"}],
+            contact_points=[{"name": "pagerduty-primary", "uid": "cp-1"}],
         )
         with tempfile.TemporaryDirectory() as tmpdir:
             desired_path = Path(tmpdir) / "desired.json"
@@ -312,6 +322,11 @@ class SyncCliTests(unittest.TestCase):
             output = stdout.getvalue()
             self.assertIn("datasource identity=prom-main status=ok", output)
             self.assertIn("alert-contact-point identity=cpu-high->pagerduty-primary status=ok", output)
+            self.assertIn("alert-contact-point identity=cpu-high->cp-1 status=ok", output)
+            self.assertIn(
+                "dashboard-datasource-name identity=cpu-main->Prometheus Main status=ok",
+                output,
+            )
 
     def test_assess_alerts_renders_json(self):
         alerts = [
@@ -367,7 +382,9 @@ class SyncCliTests(unittest.TestCase):
                     "body": {
                         "condition": "A > 90",
                         "datasourceUid": "prom-main",
+                        "datasourceName": "Prometheus Main",
                         "contactPoints": ["pagerduty-primary"],
+                        "notificationSettings": {"receiver": "slack-primary"},
                     },
                 }
             ],
@@ -376,6 +393,7 @@ class SyncCliTests(unittest.TestCase):
         availability = {
             "pluginIds": [],
             "datasourceUids": [],
+            "datasourceNames": [],
             "contactPoints": [],
             "providerNames": ["vault"],
             "secretPlaceholderNames": ["prom-basic-auth"],
@@ -418,6 +436,14 @@ class SyncCliTests(unittest.TestCase):
                 "missing",
             )
             self.assertEqual(
+                checks[("alert-datasource-name", "cpu-high->Prometheus Main")]["status"],
+                "missing",
+            )
+            self.assertEqual(
+                checks[("alert-contact-point", "cpu-high->slack-primary")]["status"],
+                "missing",
+            )
+            self.assertEqual(
                 document["providerAssessment"]["plans"][0]["providers"][0]["providerName"],
                 "vault",
             )
@@ -435,7 +461,9 @@ class SyncCliTests(unittest.TestCase):
                     "body": {
                         "condition": "A > 90",
                         "datasourceUid": "prom-main",
+                        "datasourceName": "Prometheus Main",
                         "contactPoints": ["pagerduty-primary"],
+                        "notificationSettings": {"receiver": "slack-primary"},
                     },
                 }
             ],
@@ -444,7 +472,7 @@ class SyncCliTests(unittest.TestCase):
         client = FakeSyncGrafanaClient(
             datasources=[{"uid": "prom-main", "name": "Prometheus Main"}],
             plugins=[{"id": "prometheus"}],
-            contact_points=[{"name": "pagerduty-primary"}],
+            contact_points=[{"name": "pagerduty-primary"}, {"uid": "slack-primary"}],
         )
         with tempfile.TemporaryDirectory() as tmpdir:
             source_path = Path(tmpdir) / "source.json"
@@ -481,6 +509,14 @@ class SyncCliTests(unittest.TestCase):
                 "ok",
             )
             self.assertEqual(
+                checks[("alert-datasource-name", "cpu-high->Prometheus Main")]["status"],
+                "ok",
+            )
+            self.assertEqual(
+                checks[("alert-contact-point", "cpu-high->slack-primary")]["status"],
+                "ok",
+            )
+            self.assertEqual(
                 checks[("alert-live-apply", "cpu-high")]["status"],
                 "blocked",
             )
@@ -503,7 +539,12 @@ class SyncCliTests(unittest.TestCase):
             ],
         }
         target_inventory = {"environment": "prod", "dashboards": [], "datasources": []}
-        availability = {"pluginIds": ["loki"], "datasourceUids": [], "contactPoints": []}
+        availability = {
+            "pluginIds": ["loki"],
+            "datasourceUids": [],
+            "datasourceNames": [],
+            "contactPoints": [],
+        }
         with tempfile.TemporaryDirectory() as tmpdir:
             source_path = Path(tmpdir) / "source.json"
             target_path = Path(tmpdir) / "target.json"
@@ -539,6 +580,131 @@ class SyncCliTests(unittest.TestCase):
                 document["secretAssessment"]["checks"][0]["status"],
                 "missing",
             )
+
+    def test_bundle_packages_dashboard_and_alert_exports(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            dashboard_dir = root / "dashboards" / "raw"
+            alert_dir = root / "alerts" / "raw"
+            dashboard_dir.mkdir(parents=True)
+            (alert_dir / "rules" / "infra" / "cpu").mkdir(parents=True)
+            (alert_dir / "contact-points" / "Webhook_Main").mkdir(parents=True)
+            (alert_dir / "policies").mkdir(parents=True)
+            metadata_path = root / "metadata.json"
+            output_path = root / "bundle.json"
+
+            (dashboard_dir / "export-metadata.json").write_text(
+                json.dumps({"kind": "grafana-dashboard-export-metadata"}),
+                encoding="utf-8",
+            )
+            (dashboard_dir / "folders.json").write_text(
+                json.dumps(
+                    [
+                        {
+                            "uid": "ops",
+                            "title": "Operations",
+                            "path": "Operations",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (dashboard_dir / "datasources.json").write_text(
+                json.dumps(
+                    [
+                        {
+                            "uid": "prom-main",
+                            "name": "Prometheus Main",
+                            "type": "prometheus",
+                            "access": "proxy",
+                            "url": "http://prometheus:9090",
+                            "isDefault": False,
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (dashboard_dir / "cpu__cpu-main.json").write_text(
+                json.dumps(
+                    {
+                        "dashboard": {
+                            "id": None,
+                            "uid": "cpu-main",
+                            "title": "CPU Main",
+                            "panels": [],
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (alert_dir / "export-metadata.json").write_text(
+                json.dumps({"kind": "grafana-alert-export-metadata"}),
+                encoding="utf-8",
+            )
+            (
+                alert_dir / "rules" / "infra" / "cpu" / "CPU_High__rule-uid.json"
+            ).write_text(
+                json.dumps({"kind": "grafana-alert-rule", "spec": {"uid": "rule-uid"}}),
+                encoding="utf-8",
+            )
+            (
+                alert_dir
+                / "contact-points"
+                / "Webhook_Main"
+                / "Webhook_Main__cp-uid.json"
+            ).write_text(
+                json.dumps({"kind": "grafana-alert-contact-point", "spec": {"uid": "cp-uid"}}),
+                encoding="utf-8",
+            )
+            (alert_dir / "policies" / "notification-policies.json").write_text(
+                json.dumps({"kind": "grafana-alert-notification-policies"}),
+                encoding="utf-8",
+            )
+            metadata_path.write_text(
+                json.dumps({"environment": "staging"}),
+                encoding="utf-8",
+            )
+
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = sync_cli.main(
+                    [
+                        "bundle",
+                        "--dashboard-export-dir",
+                        str(dashboard_dir),
+                        "--alert-export-dir",
+                        str(alert_dir),
+                        "--metadata-file",
+                        str(metadata_path),
+                        "--output-file",
+                        str(output_path),
+                        "--output",
+                        "json",
+                    ]
+                )
+
+            self.assertEqual(result, 0)
+            document = json.loads(stdout.getvalue())
+            self.assertEqual(document["kind"], "grafana-utils-sync-source-bundle")
+            self.assertEqual(document["summary"]["dashboardCount"], 1)
+            self.assertEqual(document["summary"]["datasourceCount"], 1)
+            self.assertEqual(document["summary"]["folderCount"], 1)
+            self.assertEqual(document["summary"]["alertRuleCount"], 1)
+            self.assertEqual(document["summary"]["contactPointCount"], 1)
+            self.assertEqual(document["summary"]["policyCount"], 1)
+            self.assertEqual(document["metadata"]["environment"], "staging")
+            self.assertEqual(
+                json.loads(output_path.read_text(encoding="utf-8"))["kind"],
+                "grafana-utils-sync-source-bundle",
+            )
+
+    def test_bundle_requires_at_least_one_input(self):
+        stderr = io.StringIO()
+        with redirect_stderr(stderr):
+            result = sync_cli.main(["bundle"])
+
+        self.assertEqual(result, 1)
+        self.assertIn("requires at least one export input", stderr.getvalue())
 
     def test_review_marks_plan_reviewed(self):
         desired = [

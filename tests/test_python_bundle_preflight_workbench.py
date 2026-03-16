@@ -58,7 +58,9 @@ class BundlePreflightWorkbenchTests(unittest.TestCase):
                     "body": {
                         "condition": "A > 90",
                         "datasourceUid": "prom-main",
+                        "datasourceName": "Prometheus Main",
                         "contactPoints": ["pagerduty-primary"],
+                        "notificationSettings": {"receiver": "slack-primary"},
                     },
                 }
             ],
@@ -80,6 +82,7 @@ class BundlePreflightWorkbenchTests(unittest.TestCase):
             availability={
                 "pluginIds": [],
                 "datasourceUids": [],
+                "datasourceNames": [],
                 "contactPoints": [],
                 "providerNames": [],
                 "secretPlaceholderNames": [],
@@ -108,6 +111,7 @@ class BundlePreflightWorkbenchTests(unittest.TestCase):
             availability={
                 "pluginIds": [],
                 "datasourceUids": [],
+                "datasourceNames": [],
                 "contactPoints": [],
                 "providerNames": [],
                 "secretPlaceholderNames": [],

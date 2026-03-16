@@ -191,6 +191,7 @@ run_user_smoke() {
 
   access_cli user delete \
     --url "${GRAFANA_URL}" \
+    --insecure \
     --token "${GRAFANA_API_TOKEN}" \
     --scope org \
     --login access-org-delete \
@@ -218,6 +219,7 @@ run_user_smoke() {
 
   access_cli user delete \
     --url "${GRAFANA_URL}" \
+    --insecure \
     --basic-user "${GRAFANA_USER}" \
     --basic-password "${GRAFANA_PASSWORD}" \
     --scope global \
@@ -238,7 +240,7 @@ run_user_smoke() {
 }
 
 run_team_smoke() {
-  local team_json
+  local team_json delete_json
 
   access_cli user add \
     --url "${GRAFANA_URL}" \
@@ -296,6 +298,62 @@ run_team_smoke() {
   )"
   [[ "$(printf '%s' "${team_json}" | jq -r '.[0].members | length')" == "0" ]] \
     || fail "team modify did not remove seeded members/admins"
+
+  delete_json="$(
+    access_cli team delete \
+      --url "${GRAFANA_URL}" \
+      --insecure \
+      --token "${GRAFANA_API_TOKEN}" \
+      --name access-ops \
+      --yes \
+      --json
+  )"
+  [[ "$(printf '%s' "${delete_json}" | jq -r '.name')" == "access-ops" ]] \
+    || fail "team delete did not remove the created team"
+
+  team_json="$(
+    access_cli team list \
+      --url "${GRAFANA_URL}" \
+      --token "${GRAFANA_API_TOKEN}" \
+      --name access-ops \
+      --json
+  )"
+  [[ "$(printf '%s' "${team_json}" | jq 'length')" == "0" ]] \
+    || fail "team delete did not remove the target team from list output"
+}
+
+run_org_smoke() {
+  local org_json list_json
+
+  org_json="$(
+    access_cli org add \
+      --url "${GRAFANA_URL}" \
+      --basic-user "${GRAFANA_USER}" \
+      --basic-password "${GRAFANA_PASSWORD}" \
+      --name access-live-delete-target \
+      --json
+  )"
+  [[ "$(printf '%s' "${org_json}" | jq -r '.name')" == "access-live-delete-target" ]] \
+    || fail "org add did not create the live delete target"
+
+  access_cli org delete \
+    --url "${GRAFANA_URL}" \
+    --insecure \
+    --basic-user "${GRAFANA_USER}" \
+    --basic-password "${GRAFANA_PASSWORD}" \
+    --name access-live-delete-target \
+    --yes >/dev/null
+
+  list_json="$(
+    access_cli org list \
+      --url "${GRAFANA_URL}" \
+      --basic-user "${GRAFANA_USER}" \
+      --basic-password "${GRAFANA_PASSWORD}" \
+      --name access-live-delete-target \
+      --json
+  )"
+  [[ "$(printf '%s' "${list_json}" | jq 'length')" == "0" ]] \
+    || fail "org delete did not remove the target organization"
 }
 
 run_service_account_smoke() {
@@ -467,6 +525,7 @@ main() {
   create_api_token
   run_user_smoke
   run_team_smoke
+  run_org_smoke
   run_service_account_smoke
   printf 'Python access live Grafana smoke test passed against %s using %s\n' "${GRAFANA_URL}" "${GRAFANA_IMAGE}"
 }

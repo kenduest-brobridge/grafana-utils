@@ -18,7 +18,8 @@ use crate::sync_preflight::{
     build_sync_preflight_document, render_sync_preflight_text, SYNC_PREFLIGHT_KIND,
 };
 use crate::sync_workbench::{
-    build_sync_apply_intent_document, build_sync_plan_document, build_sync_summary_document,
+    build_sync_apply_intent_document, build_sync_plan_document, build_sync_source_bundle_document,
+    build_sync_summary_document, render_sync_source_bundle_text,
 };
 
 pub const DEFAULT_REVIEW_TOKEN: &str = "reviewed-sync-plan";
@@ -196,6 +197,42 @@ pub struct SyncBundlePreflightArgs {
     pub output: SyncOutputFormat,
 }
 
+#[derive(Debug, Clone, Args)]
+pub struct SyncBundleArgs {
+    #[arg(
+        long,
+        help = "Path to one existing dashboard raw export directory such as ./dashboards/raw."
+    )]
+    pub dashboard_export_dir: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Path to one existing alert raw export directory such as ./alerts/raw."
+    )]
+    pub alert_export_dir: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Optional standalone datasource inventory JSON file to include or prefer over dashboards/raw/datasources.json."
+    )]
+    pub datasource_export_file: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Optional JSON object file containing extra bundle metadata."
+    )]
+    pub metadata_file: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Optional JSON file path to write the source bundle artifact."
+    )]
+    pub output_file: Option<PathBuf>,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = SyncOutputFormat::Text,
+        help = "Render the source bundle document as text or json."
+    )]
+    pub output: SyncOutputFormat,
+}
+
 #[derive(Debug, Clone, Subcommand)]
 pub enum SyncGroupCommand {
     #[command(about = "Build a staged sync plan from local desired and live JSON files.")]
@@ -210,6 +247,10 @@ pub enum SyncGroupCommand {
     Preflight(SyncPreflightArgs),
     #[command(about = "Build a staged bundle-level sync preflight document from local JSON.")]
     BundlePreflight(SyncBundlePreflightArgs),
+    #[command(
+        about = "Package exported dashboards, alerting resources, datasource inventory, and metadata into one local source bundle."
+    )]
+    Bundle(SyncBundleArgs),
 }
 
 fn load_json_value(path: &Path, label: &str) -> Result<Value> {
@@ -247,6 +288,264 @@ fn load_optional_json_object_file(path: Option<&PathBuf>, label: &str) -> Result
             Ok(Some(value))
         }
     }
+}
+
+fn discover_json_files(root: &Path, ignored_names: &[&str]) -> Result<Vec<PathBuf>> {
+    fn visit(current: &Path, ignored_names: &[&str], files: &mut Vec<PathBuf>) -> Result<()> {
+        for entry in fs::read_dir(current)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                visit(&path, ignored_names, files)?;
+                continue;
+            }
+            if path.extension().and_then(|value| value.to_str()) != Some("json") {
+                continue;
+            }
+            let Some(file_name) = path.file_name().and_then(|value| value.to_str()) else {
+                continue;
+            };
+            if ignored_names.contains(&file_name) {
+                continue;
+            }
+            files.push(path);
+        }
+        Ok(())
+    }
+    let mut files = Vec::new();
+    visit(root, ignored_names, &mut files)?;
+    files.sort();
+    Ok(files)
+}
+
+fn normalize_dashboard_bundle_item(document: &Value, source_path: &str) -> Result<Value> {
+    let mut body = if let Some(body) = document.get("dashboard").and_then(Value::as_object) {
+        body.clone()
+    } else {
+        require_json_object(document, "Dashboard export document")?.clone()
+    };
+    body.remove("id");
+    let uid = body
+        .get("uid")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            message(format!(
+                "Dashboard export document is missing dashboard.uid: {source_path}"
+            ))
+        })?;
+    let title = body
+        .get("title")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(uid);
+    Ok(serde_json::json!({
+        "kind": "dashboard",
+        "uid": uid,
+        "title": title,
+        "body": body,
+        "sourcePath": source_path,
+    }))
+}
+
+fn normalize_folder_bundle_item(document: &Value) -> Result<Value> {
+    let object = require_json_object(document, "Folder inventory record")?;
+    let uid = object
+        .get("uid")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| message("Folder inventory record is missing uid."))?;
+    let title = object
+        .get("title")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(uid);
+    let mut body = Map::new();
+    body.insert("title".to_string(), Value::String(title.to_string()));
+    if let Some(parent_uid) = object
+        .get("parentUid")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        body.insert(
+            "parentUid".to_string(),
+            Value::String(parent_uid.to_string()),
+        );
+    }
+    if let Some(path) = object
+        .get("path")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        body.insert("path".to_string(), Value::String(path.to_string()));
+    }
+    Ok(serde_json::json!({
+        "kind": "folder",
+        "uid": uid,
+        "title": title,
+        "body": body,
+        "sourcePath": object.get("sourcePath").cloned().unwrap_or(Value::String(String::new())),
+    }))
+}
+
+fn normalize_datasource_bundle_item(document: &Value) -> Result<Value> {
+    let object = require_json_object(document, "Datasource inventory record")?;
+    let uid = object
+        .get("uid")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .unwrap_or("");
+    let name = object
+        .get("name")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .unwrap_or("");
+    if uid.is_empty() && name.is_empty() {
+        return Err(message("Datasource inventory record requires uid or name."));
+    }
+    let title = if name.is_empty() { uid } else { name };
+    Ok(serde_json::json!({
+        "kind": "datasource",
+        "uid": uid,
+        "name": title,
+        "title": title,
+        "body": {
+            "uid": uid,
+            "name": title,
+            "type": object.get("type").cloned().unwrap_or(Value::String(String::new())),
+            "access": object.get("access").cloned().unwrap_or(Value::String(String::new())),
+            "url": object.get("url").cloned().unwrap_or(Value::String(String::new())),
+            "isDefault": object.get("isDefault").cloned().unwrap_or(Value::Bool(false)),
+        },
+        "sourcePath": object.get("sourcePath").cloned().unwrap_or(Value::String(String::new())),
+    }))
+}
+
+fn classify_alert_export_path(relative_path: &str) -> Option<&'static str> {
+    let first = relative_path.split('/').next().unwrap_or("");
+    match first {
+        "rules" => Some("rules"),
+        "contact-points" => Some("contactPoints"),
+        "mute-timings" => Some("muteTimings"),
+        "policies" => Some("policies"),
+        "templates" => Some("templates"),
+        _ => None,
+    }
+}
+
+type DashboardBundleSections = (Vec<Value>, Vec<Value>, Vec<Value>, Map<String, Value>);
+
+fn load_dashboard_bundle_sections(export_dir: &Path) -> Result<DashboardBundleSections> {
+    let mut dashboards = Vec::new();
+    for path in discover_json_files(
+        export_dir,
+        &[
+            "index.json",
+            "export-metadata.json",
+            "folders.json",
+            "datasources.json",
+        ],
+    )? {
+        let source_path = path
+            .strip_prefix(export_dir)
+            .unwrap_or(&path)
+            .to_string_lossy()
+            .replace('\\', "/");
+        dashboards.push(normalize_dashboard_bundle_item(
+            &load_json_value(&path, "Dashboard export document")?,
+            &source_path,
+        )?);
+    }
+    let folders_path = export_dir.join("folders.json");
+    let folders = if folders_path.is_file() {
+        load_json_array_file(&folders_path, "Dashboard folder inventory")?
+            .into_iter()
+            .map(|item| normalize_folder_bundle_item(&item))
+            .collect::<Result<Vec<_>>>()?
+    } else {
+        Vec::new()
+    };
+    let datasources_path = export_dir.join("datasources.json");
+    let datasources = if datasources_path.is_file() {
+        load_json_array_file(&datasources_path, "Dashboard datasource inventory")?
+            .into_iter()
+            .map(|item| normalize_datasource_bundle_item(&item))
+            .collect::<Result<Vec<_>>>()?
+    } else {
+        Vec::new()
+    };
+    let mut metadata = Map::new();
+    let export_metadata_path = export_dir.join("export-metadata.json");
+    if export_metadata_path.is_file() {
+        metadata.insert(
+            "dashboardExport".to_string(),
+            load_json_value(&export_metadata_path, "Dashboard export metadata")?,
+        );
+    }
+    metadata.insert(
+        "dashboardExportDir".to_string(),
+        Value::String(export_dir.display().to_string()),
+    );
+    Ok((dashboards, datasources, folders, metadata))
+}
+
+fn load_alerting_bundle_section(export_dir: &Path) -> Result<Value> {
+    let mut alerting = Map::from_iter(vec![
+        ("rules".to_string(), Value::Array(Vec::<Value>::new())),
+        (
+            "contactPoints".to_string(),
+            Value::Array(Vec::<Value>::new()),
+        ),
+        ("muteTimings".to_string(), Value::Array(Vec::<Value>::new())),
+        ("policies".to_string(), Value::Array(Vec::<Value>::new())),
+        ("templates".to_string(), Value::Array(Vec::<Value>::new())),
+    ]);
+    for path in discover_json_files(export_dir, &["index.json", "export-metadata.json"])? {
+        let relative_path = path
+            .strip_prefix(export_dir)
+            .unwrap_or(&path)
+            .to_string_lossy()
+            .replace('\\', "/");
+        let Some(section) = classify_alert_export_path(&relative_path) else {
+            continue;
+        };
+        let item = serde_json::json!({
+            "sourcePath": relative_path,
+            "document": load_json_value(&path, "Alert export document")?,
+        });
+        alerting
+            .entry(section.to_string())
+            .or_insert_with(|| Value::Array(Vec::new()))
+            .as_array_mut()
+            .expect("alerting section array")
+            .push(item);
+    }
+    let summary = serde_json::json!({
+        "ruleCount": alerting.get("rules").and_then(Value::as_array).map(|items| items.len()).unwrap_or(0),
+        "contactPointCount": alerting.get("contactPoints").and_then(Value::as_array).map(|items| items.len()).unwrap_or(0),
+        "muteTimingCount": alerting.get("muteTimings").and_then(Value::as_array).map(|items| items.len()).unwrap_or(0),
+        "policyCount": alerting.get("policies").and_then(Value::as_array).map(|items| items.len()).unwrap_or(0),
+        "templateCount": alerting.get("templates").and_then(Value::as_array).map(|items| items.len()).unwrap_or(0),
+    });
+    alerting.insert("summary".to_string(), summary);
+    let export_metadata_path = export_dir.join("export-metadata.json");
+    if export_metadata_path.is_file() {
+        alerting.insert(
+            "exportMetadata".to_string(),
+            load_json_value(&export_metadata_path, "Alert export metadata")?,
+        );
+    }
+    alerting.insert(
+        "exportDir".to_string(),
+        Value::String(export_dir.display().to_string()),
+    );
+    Ok(Value::Object(alerting))
 }
 
 fn fnv1a64_hex(input: &str) -> String {
@@ -891,6 +1190,69 @@ fn emit_text_or_json(document: &Value, lines: Vec<String>, output: SyncOutputFor
     Ok(())
 }
 
+fn run_sync_bundle(args: SyncBundleArgs) -> Result<()> {
+    if args.dashboard_export_dir.is_none()
+        && args.alert_export_dir.is_none()
+        && args.datasource_export_file.is_none()
+        && args.metadata_file.is_none()
+    {
+        return Err(message(
+            "Sync bundle requires at least one export input such as --dashboard-export-dir, --alert-export-dir, --datasource-export-file, or --metadata-file.",
+        ));
+    }
+    let mut dashboards = Vec::new();
+    let mut datasources = Vec::new();
+    let mut folders = Vec::new();
+    let mut metadata = Map::new();
+    if let Some(export_dir) = args.dashboard_export_dir.as_ref() {
+        let (dashboard_items, dashboard_datasources, folder_items, dashboard_metadata) =
+            load_dashboard_bundle_sections(export_dir)?;
+        dashboards = dashboard_items;
+        datasources.extend(dashboard_datasources);
+        folders = folder_items;
+        metadata.extend(dashboard_metadata);
+    }
+    if let Some(datasource_export_file) = args.datasource_export_file.as_ref() {
+        datasources = load_json_array_file(datasource_export_file, "Datasource export inventory")?
+            .into_iter()
+            .map(|item| normalize_datasource_bundle_item(&item))
+            .collect::<Result<Vec<_>>>()?;
+        metadata.insert(
+            "datasourceExportFile".to_string(),
+            Value::String(datasource_export_file.display().to_string()),
+        );
+    }
+    let alerting = match args.alert_export_dir.as_ref() {
+        Some(export_dir) => load_alerting_bundle_section(export_dir)?,
+        None => Value::Object(Map::new()),
+    };
+    if let Some(extra_metadata) =
+        load_optional_json_object_file(args.metadata_file.as_ref(), "Sync bundle metadata input")?
+    {
+        if let Some(object) = extra_metadata.as_object() {
+            metadata.extend(object.clone());
+        }
+    }
+    let document = build_sync_source_bundle_document(
+        &dashboards,
+        &datasources,
+        &folders,
+        Some(&alerting),
+        Some(&Value::Object(metadata)),
+    )?;
+    if let Some(output_file) = args.output_file.as_ref() {
+        fs::write(
+            output_file,
+            format!("{}\n", serde_json::to_string_pretty(&document)?),
+        )?;
+    }
+    emit_text_or_json(
+        &document,
+        render_sync_source_bundle_text(&document)?,
+        args.output,
+    )
+}
+
 pub fn run_sync_cli(command: SyncGroupCommand) -> Result<()> {
     match command {
         SyncGroupCommand::Plan(args) => {
@@ -1018,6 +1380,7 @@ pub fn run_sync_cli(command: SyncGroupCommand) -> Result<()> {
                 args.output,
             )
         }
+        SyncGroupCommand::Bundle(args) => run_sync_bundle(args),
     }
 }
 

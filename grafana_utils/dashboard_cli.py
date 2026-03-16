@@ -173,12 +173,19 @@ from .dashboards.inspection_workflow import (
     materialize_live_inspection_export as run_materialize_live_inspection_export,
 )
 from .dashboards.inspection_workflow import run_inspect_export, run_inspect_live
+from .dashboards.screenshot import (
+    capture_dashboard_screenshot as run_capture_dashboard_screenshot,
+)
 from .dashboards.transformer import (
     build_datasource_catalog,
     build_external_export_document,
     build_preserved_web_import_document,
     collect_datasource_refs,
     is_builtin_datasource_ref,
+)
+from .dashboards.variable_inspection import (
+    render_dashboard_variable_document,
+    inspect_dashboard_variables_with_client,
 )
 from .http_transport import build_json_http_transport
 
@@ -208,6 +215,9 @@ INSPECT_OUTPUT_FORMAT_CHOICES = (
     "governance",
     "governance-json",
 )
+VARIABLE_OUTPUT_FORMAT_CHOICES = ("table", "csv", "json")
+SCREENSHOT_OUTPUT_FORMAT_CHOICES = ("png", "jpeg", "pdf")
+SCREENSHOT_THEME_CHOICES = ("light", "dark")
 
 
 class HelpFullAction(argparse.Action):
@@ -787,6 +797,138 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_inspect_vars_cli_args(parser: argparse.ArgumentParser) -> None:
+    add_common_cli_args(parser)
+    parser.add_argument(
+        "--dashboard-uid",
+        default=None,
+        help="Grafana dashboard UID whose templating variables should be listed. Required unless --dashboard-url is provided.",
+    )
+    parser.add_argument(
+        "--dashboard-url",
+        default=None,
+        help="Full Grafana dashboard URL. When provided, the runtime can derive the dashboard UID from the URL path.",
+    )
+    parser.add_argument(
+        "--vars-query",
+        default=None,
+        help="Grafana variable query-string fragment, for example 'var-env=prod&var-host=web01'. This overlays current values in inspect-vars output.",
+    )
+    parser.add_argument(
+        "--org-id",
+        default=None,
+        help="Scope the variable inspection to this Grafana org ID by sending X-Grafana-Org-Id.",
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=VARIABLE_OUTPUT_FORMAT_CHOICES,
+        default="table",
+        help="Render dashboard variables as table, csv, or json (default: table).",
+    )
+    parser.add_argument(
+        "--no-header",
+        action="store_true",
+        help="Do not print table or CSV headers when rendering inspect-vars output.",
+    )
+
+
+def add_screenshot_cli_args(parser: argparse.ArgumentParser) -> None:
+    add_common_cli_args(parser)
+    parser.add_argument(
+        "--dashboard-uid",
+        default=None,
+        help="Grafana dashboard UID to capture from the browser-rendered UI. Required unless --dashboard-url is provided.",
+    )
+    parser.add_argument(
+        "--dashboard-url",
+        default=None,
+        help="Full Grafana dashboard URL. When provided, the runtime can reuse URL state such as var-*, from, to, orgId, and panelId.",
+    )
+    parser.add_argument(
+        "--slug",
+        default=None,
+        help="Optional dashboard slug. When omitted, the runtime falls back to the dashboard UID.",
+    )
+    parser.add_argument(
+        "--output",
+        required=True,
+        help="Write the captured browser output to this file path.",
+    )
+    parser.add_argument(
+        "--panel-id",
+        default=None,
+        help="Capture only this Grafana panel ID through the solo dashboard route.",
+    )
+    parser.add_argument(
+        "--org-id",
+        default=None,
+        help="Scope the browser session to this Grafana org ID by sending X-Grafana-Org-Id.",
+    )
+    parser.add_argument(
+        "--from",
+        dest="from_value",
+        default=None,
+        help="Grafana time range start, for example now-6h.",
+    )
+    parser.add_argument(
+        "--to",
+        default=None,
+        help="Grafana time range end, for example now.",
+    )
+    parser.add_argument(
+        "--vars-query",
+        default=None,
+        help="Grafana variable query-string fragment, for example 'var-env=prod&var-host=web01'.",
+    )
+    parser.add_argument(
+        "--var",
+        dest="vars",
+        action="append",
+        default=None,
+        help="Repeatable Grafana template variable assignment. Example: --var env=prod --var region=us-east-1.",
+    )
+    parser.add_argument(
+        "--theme",
+        choices=SCREENSHOT_THEME_CHOICES,
+        default="dark",
+        help="Override the Grafana UI theme used for the browser capture (default: dark).",
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=SCREENSHOT_OUTPUT_FORMAT_CHOICES,
+        default=None,
+        help="Force the output format instead of inferring it from the output filename.",
+    )
+    parser.add_argument(
+        "--width",
+        type=int,
+        default=1440,
+        help="Browser viewport width in pixels.",
+    )
+    parser.add_argument(
+        "--height",
+        type=int,
+        default=1024,
+        help="Browser viewport height in pixels.",
+    )
+    parser.add_argument(
+        "--full-page",
+        action="store_true",
+        help="Capture the full scrollable page instead of only the initial viewport.",
+    )
+    parser.add_argument(
+        "--wait-ms",
+        type=int,
+        default=5000,
+        help="Extra wait time in milliseconds after navigation so Grafana panels can finish rendering.",
+    )
+    parser.add_argument(
+        "--browser-path",
+        default=None,
+        help="Optional Chromium or Chrome executable path for browser-driven capture.",
+    )
+
+
 def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     """Build dashboard CLI parser and normalize mutually-exclusive dashboard subcommand input.
 
@@ -881,6 +1023,16 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_inspect_live_cli_args(inspect_live_parser)
+    inspect_vars_parser = subparsers.add_parser(
+        "inspect-vars",
+        help="List dashboard templating variables and datasource-like choices from live Grafana.",
+    )
+    add_inspect_vars_cli_args(inspect_vars_parser)
+    screenshot_parser = subparsers.add_parser(
+        "screenshot",
+        help="Capture one Grafana dashboard or panel through a browser backend.",
+    )
+    add_screenshot_cli_args(screenshot_parser)
 
     args = parser.parse_args(argv)
     _normalize_output_format_args(args, parser)
@@ -1067,6 +1219,36 @@ def inspect_export(args: argparse.Namespace) -> int:
     return run_inspect_export(args, _build_inspection_workflow_deps())
 
 
+def inspect_vars(args: argparse.Namespace) -> int:
+    """Inspect one live dashboard's templating variables."""
+    client = build_client(args)
+    if getattr(args, "org_id", None):
+        client = client.with_org_id(args.org_id)
+    document = inspect_dashboard_variables_with_client(
+        client,
+        dashboard_uid=getattr(args, "dashboard_uid", None),
+        dashboard_url=getattr(args, "dashboard_url", None),
+        vars_query=getattr(args, "vars_query", None),
+    )
+    rendered = render_dashboard_variable_document(
+        document,
+        output_format=getattr(args, "output_format", "table"),
+        include_header=not bool(getattr(args, "no_header", False)),
+    )
+    if rendered:
+        print(rendered)
+    return 0
+
+
+def screenshot_dashboard(args: argparse.Namespace) -> int:
+    """Capture one browser-rendered dashboard or panel image/PDF."""
+    client = build_client(args)
+    result = run_capture_dashboard_screenshot(args, client=client)
+    if isinstance(result, dict) and result.get("output"):
+        print(str(result["output"]))
+    return 0
+
+
 def _build_import_workflow_deps() -> dict[str, Any]:
     return build_import_workflow_deps_from_runtime(
         {
@@ -1156,6 +1338,10 @@ def main(argv: Optional[list[str]] = None) -> int:
             return inspect_export(args)
         if args.command == "inspect-live":
             return inspect_live(args)
+        if args.command == "inspect-vars":
+            return inspect_vars(args)
+        if args.command == "screenshot":
+            return screenshot_dashboard(args)
         if args.command == "import-dashboard":
             return import_dashboards(args)
         if args.command == "diff":

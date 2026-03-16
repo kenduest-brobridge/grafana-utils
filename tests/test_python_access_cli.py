@@ -1311,6 +1311,37 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.insecure)
         self.assertIsNone(args.ca_cert)
 
+    def test_parse_args_supports_insecure_on_destructive_commands(self):
+        cases = [
+            ["user", "delete", "--login", "alice", "--scope", "org", "--yes", "--insecure"],
+            ["team", "delete", "--name", "ops", "--yes", "--insecure"],
+            ["org", "delete", "--name", "platform", "--yes", "--insecure"],
+            [
+                "service-account",
+                "delete",
+                "--name",
+                "svc",
+                "--yes",
+                "--insecure",
+            ],
+            [
+                "service-account",
+                "token",
+                "delete",
+                "--name",
+                "svc",
+                "--token-name",
+                "cli-token",
+                "--yes",
+                "--insecure",
+            ],
+        ]
+
+        for argv in cases:
+            args = access_utils.parse_args(argv)
+            self.assertTrue(args.insecure, msg="expected --insecure for %r" % (argv,))
+            self.assertIsNone(getattr(args, "ca_cert", None))
+
     def test_parse_args_rejects_conflicting_tls_flags(self):
         with self.assertRaisesRegex(SystemExit, "2"):
             access_utils.parse_args(["user", "list", "--verify-ssl", "--insecure"])

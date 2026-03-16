@@ -715,7 +715,13 @@ fn format_export_summary(root_index: &Map<String, Value>, index_path: &Path) -> 
     )
 }
 
-fn get_rule_linkage(rule: &Map<String, Value>) -> Option<BTreeMap<String, String>> {
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct RuleLinkage {
+    dashboard_uid: String,
+    panel_id: Option<String>,
+}
+
+fn get_rule_linkage(rule: &Map<String, Value>) -> Option<RuleLinkage> {
     let annotations = rule.get("annotations")?.as_object()?;
     let dashboard_uid = annotations
         .get("__dashboardUid__")
@@ -726,11 +732,10 @@ fn get_rule_linkage(rule: &Map<String, Value>) -> Option<BTreeMap<String, String
     if dashboard_uid.is_empty() {
         return None;
     }
-    let mut linkage = BTreeMap::from([("dashboardUid".to_string(), dashboard_uid)]);
-    if let Some(panel_id) = annotations.get("__panelId__") {
-        linkage.insert("panelId".to_string(), value_to_string(panel_id));
-    }
-    Some(linkage)
+    Some(RuleLinkage {
+        dashboard_uid,
+        panel_id: annotations.get("__panelId__").map(value_to_string),
+    })
 }
 
 fn find_panel_by_id(panels: Option<&Vec<Value>>, panel_id: &str) -> Option<Map<String, Value>> {
@@ -756,13 +761,16 @@ fn build_linked_dashboard_metadata(
         return Ok(None);
     };
 
-    let dashboard_uid = linkage.get("dashboardUid").cloned().unwrap_or_default();
     let mut metadata = Map::new();
-    for (key, value) in linkage {
-        metadata.insert(key, Value::String(value));
+    metadata.insert(
+        "dashboardUid".to_string(),
+        Value::String(linkage.dashboard_uid.clone()),
+    );
+    if let Some(panel_id) = linkage.panel_id.clone() {
+        metadata.insert("panelId".to_string(), Value::String(panel_id));
     }
 
-    let dashboard_payload = match client.get_dashboard(&dashboard_uid) {
+    let dashboard_payload = match client.get_dashboard(&linkage.dashboard_uid) {
         Ok(payload) => payload,
         Err(error) if error.status_code() == Some(404) => return Ok(Some(metadata)),
         Err(error) => return Err(error),
@@ -912,8 +920,8 @@ fn rewrite_rule_dashboard_linkage(
         return Ok(payload.clone());
     };
 
-    let source_dashboard_uid = linkage.get("dashboardUid").cloned().unwrap_or_default();
-    let source_panel_id = linkage.get("panelId").cloned().unwrap_or_default();
+    let source_dashboard_uid = linkage.dashboard_uid.clone();
+    let source_panel_id = linkage.panel_id.clone().unwrap_or_default();
     let dashboard_uid = dashboard_uid_map
         .get(&source_dashboard_uid)
         .cloned()

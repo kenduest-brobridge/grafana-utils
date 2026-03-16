@@ -92,7 +92,7 @@ struct ResolvedDatasourceIdentity {
 
 // Collapse datasource type names into normalized family labels used in governance
 // summaries and risk grouping.
-fn normalize_family_name(datasource_type: &str) -> String {
+pub(crate) fn normalize_family_name(datasource_type: &str) -> String {
     match datasource_type.trim().to_ascii_lowercase().as_str() {
         "" => "unknown".to_string(),
         "grafana-postgresql-datasource" => "postgres".to_string(),

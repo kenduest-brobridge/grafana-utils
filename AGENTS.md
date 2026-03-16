@@ -61,7 +61,7 @@ For external command usage and operator examples, prefer `README.md`, `README.zh
 
 ## Coding Style & Naming Conventions
 
-- Target Python syntax compatible with RHEL 8 environments; keep scripts parseable by Python 3.6 grammar.
+- Target Python 3.9+ syntax and runtime behavior. Prefer Python 3.9 built-in generics in touched code and do not preserve Python 3.6-era syntax constraints.
 - Use 4-space indentation and standard library modules unless a dependency is clearly justified.
 - Prefer descriptive snake_case for functions, variables, and test names.
 - Keep CLI help text concrete and operator-focused.

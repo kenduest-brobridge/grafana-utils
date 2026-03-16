@@ -24,6 +24,8 @@ REPORT_COLUMN_HEADERS = OrderedDict(
         ("panelType", "PANEL_TYPE"),
         ("refId", "REF_ID"),
         ("datasource", "DATASOURCE"),
+        ("datasourceType", "DATASOURCE_TYPE"),
+        ("datasourceFamily", "DATASOURCE_FAMILY"),
         ("queryField", "QUERY_FIELD"),
         ("metrics", "METRICS"),
         ("measurements", "MEASUREMENTS"),
@@ -43,6 +45,8 @@ REPORT_COLUMN_ALIASES = {
     "ref_id": "refId",
     "query_field": "queryField",
     "datasource_uid": "datasourceUid",
+    "datasource_type": "datasourceType",
+    "datasource_family": "datasourceFamily",
 }
 SUPPORTED_REPORT_COLUMN_HEADERS = OrderedDict(
     list(REPORT_COLUMN_HEADERS.items()) + list(OPTIONAL_REPORT_COLUMN_HEADERS.items())
@@ -66,6 +70,8 @@ NORMALIZED_QUERY_REPORT_FIELDS = (
     "refId",
     "datasource",
     "datasourceUid",
+    "datasourceType",
+    "datasourceFamily",
     "queryField",
     "query",
     "metrics",
@@ -279,6 +285,48 @@ def describe_panel_datasource_uid(
             if name and datasources_by_name.get(name):
                 return str(datasources_by_name[name].get("uid") or "")
     return ""
+
+
+def _normalize_datasource_family_name(datasource_type: str) -> str:
+    lowered = str(datasource_type or "").strip().lower()
+    if not lowered:
+        return "unknown"
+    aliases = {
+        "grafana-postgresql-datasource": "postgres",
+        "grafana-mysql-datasource": "mysql",
+    }
+    return aliases.get(lowered, lowered)
+
+
+def describe_panel_datasource_type(
+    panel: dict[str, Any],
+    target: dict[str, Any],
+    datasources_by_uid: dict[str, dict[str, str]],
+    datasources_by_name: dict[str, dict[str, str]],
+) -> str:
+    """Resolve one best-effort datasource plugin type for a panel/query target."""
+    for ref in (target.get("datasource"), panel.get("datasource")):
+        if isinstance(ref, dict):
+            uid = str(ref.get("uid") or "").strip()
+            name = str(ref.get("name") or "").strip()
+            inventory = None
+            if uid:
+                inventory = datasources_by_uid.get(uid)
+            if inventory is None and name:
+                inventory = datasources_by_name.get(name)
+            if inventory is not None:
+                return str(inventory.get("type") or "").strip()
+            ref_type = str(ref.get("type") or "").strip()
+            if ref_type:
+                return ref_type
+        elif isinstance(ref, str):
+            name = ref.strip()
+            inventory = datasources_by_uid.get(name) or datasources_by_name.get(name)
+            if inventory is not None:
+                return str(inventory.get("type") or "").strip()
+    return ""
+
+
 def build_query_report_record(
     dashboard: dict[str, Any],
     folder_path: str,
@@ -317,6 +365,12 @@ def build_query_report_record(
             target,
             datasources_by_name,
         ),
+        "datasourceType": describe_panel_datasource_type(
+            panel,
+            target,
+            datasources_by_uid,
+            datasources_by_name,
+        ),
         "queryField": query_field,
         "query": query_text,
         "metrics": analysis["metrics"],
@@ -324,6 +378,9 @@ def build_query_report_record(
         "buckets": analysis["buckets"],
         "file": str(dashboard_file),
     }
+    record["datasourceFamily"] = _normalize_datasource_family_name(
+        record["datasourceType"]
+    )
     normalized = {}
     for field in NORMALIZED_QUERY_REPORT_FIELDS:
         value = record.get(field)
@@ -359,6 +416,8 @@ def parse_report_columns(value: Optional[str]) -> Optional[list[str]]:
                     list(REPORT_COLUMN_ALIASES.keys())
                     + [
                         "datasourceUid",
+                        "datasourceType",
+                        "datasourceFamily",
                         "datasource",
                         "metrics",
                         "measurements",

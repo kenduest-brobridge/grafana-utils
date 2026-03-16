@@ -552,7 +552,11 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertEqual(payload["queries"][0]["dashboardUid"], "infra-main")
             self.assertEqual(payload["queries"][0]["panelId"], "7")
             self.assertEqual(payload["queries"][0]["datasourceUid"], "prom-main")
+            self.assertEqual(payload["queries"][0]["datasourceType"], "prometheus")
+            self.assertEqual(payload["queries"][0]["datasourceFamily"], "prometheus")
             self.assertEqual(payload["queries"][0]["metrics"], ["node_cpu_seconds_total"])
+            self.assertEqual(payload["queries"][1]["datasourceType"], "influxdb")
+            self.assertEqual(payload["queries"][1]["datasourceFamily"], "influxdb")
             self.assertEqual(payload["queries"][1]["buckets"], ["prod"])
             self.assertEqual(payload["queries"][1]["measurements"], ["cpu"])
 
@@ -894,15 +898,18 @@ class DashboardInspectionTests(unittest.TestCase):
                     "--report",
                     "csv",
                     "--report-columns",
-                    "dashboard_uid,datasource_uid,datasource,query",
+                    "dashboard_uid,datasource_uid,datasource,datasource_family,query",
                 ]
             )
             _, csv_columns_output = self.run_inspect(csv_columns_args)
             self.assertIn(
-                "dashboard_uid,datasource_uid,datasource,query",
+                "dashboard_uid,datasource_uid,datasource,datasource_family,query",
                 csv_columns_output.splitlines()[0],
             )
-            self.assertIn("infra-main,prom-main,prom-main,up", csv_columns_output)
+            self.assertIn(
+                "infra-main,prom-main,prom-main,prometheus,up",
+                csv_columns_output,
+            )
 
     def test_inspect_export_filters_query_report(self):
         with tempfile.TemporaryDirectory() as tmpdir:

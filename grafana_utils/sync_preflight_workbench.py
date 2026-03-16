@@ -115,7 +115,13 @@ def _build_dashboard_checks(spec, availability):
     checks = []
     body = _require_mapping(spec.body, "dashboard body")
     datasource_uids = _require_string_list(body.get("datasourceUids"), "dashboard datasourceUids")
+    datasource_names = _require_string_list(
+        body.get("datasourceNames"), "dashboard datasourceNames"
+    )
     available_uids = set(_require_string_list(availability.get("datasourceUids"), "datasourceUids"))
+    available_names = set(
+        _require_string_list(availability.get("datasourceNames"), "datasourceNames")
+    )
     for datasource_uid in datasource_uids:
         status = "ok" if datasource_uid in available_uids else "missing"
         checks.append(
@@ -127,6 +133,21 @@ def _build_dashboard_checks(spec, availability):
                     "Referenced datasource is available for dashboard sync."
                     if status == "ok"
                     else "Referenced datasource is missing for dashboard sync."
+                ),
+                blocking=status != "ok",
+            )
+        )
+    for datasource_name in datasource_names:
+        status = "ok" if datasource_name in available_names else "missing"
+        checks.append(
+            SyncPreflightCheck(
+                kind="dashboard-datasource-name",
+                identity="%s->%s" % (spec.identity, datasource_name),
+                status=status,
+                detail=(
+                    "Referenced datasource name is available for dashboard sync."
+                    if status == "ok"
+                    else "Referenced datasource name is missing for dashboard sync."
                 ),
                 blocking=status != "ok",
             )
@@ -157,6 +178,39 @@ def _collect_alert_datasource_uids(body):
     return sorted(datasource_uids)
 
 
+def _collect_alert_datasource_names(body):
+    datasource_names = set()
+    direct_name = _normalize_text(body.get("datasourceName"))
+    if direct_name:
+        datasource_names.add(direct_name)
+    for datasource_name in _require_string_list(
+        body.get("datasourceNames"), "alert datasourceNames"
+    ):
+        datasource_names.add(datasource_name)
+    for item in body.get("data") or []:
+        if not isinstance(item, Mapping):
+            continue
+        datasource_name = _normalize_text(item.get("datasourceName"))
+        if datasource_name:
+            datasource_names.add(datasource_name)
+    return sorted(datasource_names)
+
+
+def _collect_alert_contact_points(body):
+    contact_points = set(
+        _require_string_list(body.get("contactPoints"), "alert contactPoints")
+    )
+    receiver = _normalize_text(body.get("receiver"))
+    if receiver:
+        contact_points.add(receiver)
+    notification_settings = body.get("notificationSettings")
+    if isinstance(notification_settings, Mapping):
+        receiver = _normalize_text(notification_settings.get("receiver"))
+        if receiver:
+            contact_points.add(receiver)
+    return sorted(contact_points)
+
+
 def _build_alert_checks(spec, availability):
     checks = [
         SyncPreflightCheck(
@@ -170,6 +224,9 @@ def _build_alert_checks(spec, availability):
     body = _require_mapping(spec.body, "alert body")
     available_uids = set(
         _require_string_list(availability.get("datasourceUids"), "datasourceUids")
+    )
+    available_names = set(
+        _require_string_list(availability.get("datasourceNames"), "datasourceNames")
     )
     for datasource_uid in _collect_alert_datasource_uids(body):
         status = "ok" if datasource_uid in available_uids else "missing"
@@ -186,7 +243,22 @@ def _build_alert_checks(spec, availability):
                 blocking=status != "ok",
             )
         )
-    contact_points = _require_string_list(body.get("contactPoints"), "alert contactPoints")
+    for datasource_name in _collect_alert_datasource_names(body):
+        status = "ok" if datasource_name in available_names else "missing"
+        checks.append(
+            SyncPreflightCheck(
+                kind="alert-datasource-name",
+                identity="%s->%s" % (spec.identity, datasource_name),
+                status=status,
+                detail=(
+                    "Alert datasource name is available."
+                    if status == "ok"
+                    else "Alert datasource name is missing."
+                ),
+                blocking=status != "ok",
+            )
+        )
+    contact_points = _collect_alert_contact_points(body)
     available_contact_points = set(
         _require_string_list(availability.get("contactPoints"), "contactPoints")
     )

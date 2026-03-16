@@ -36,6 +36,7 @@ struct ResolvedDatasource {
     key: String,
     input_label: String,
     ds_type: String,
+    plugin_version: String,
 }
 
 #[derive(Clone, Debug)]
@@ -44,6 +45,7 @@ struct InputMapping {
     label: String,
     plugin_name: String,
     ds_type: String,
+    plugin_version: String,
 }
 
 pub struct DatasourceCatalog {
@@ -192,7 +194,34 @@ fn build_resolved_datasource(
         key,
         input_label,
         ds_type,
+        plugin_version: String::new(),
     }
+}
+
+fn datasource_plugin_version(datasource: &Map<String, Value>) -> String {
+    if let Some(version) = datasource
+        .get("pluginVersion")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+    {
+        return version.to_string();
+    }
+    if let Some(version) = datasource
+        .get("version")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+    {
+        return version.to_string();
+    }
+    datasource
+        .get("meta")
+        .and_then(Value::as_object)
+        .and_then(|meta| meta.get("info"))
+        .and_then(Value::as_object)
+        .and_then(|info| info.get("version"))
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string()
 }
 
 pub(crate) fn lookup_datasource(
@@ -243,11 +272,9 @@ fn resolve_string_datasource_ref(
             )));
         }
         let label = string_field(&datasource, "name", reference);
-        return Ok(build_resolved_datasource(
-            format!("uid:{uid}"),
-            ds_type,
-            label,
-        ));
+        let mut resolved = build_resolved_datasource(format!("uid:{uid}"), ds_type, label);
+        resolved.plugin_version = datasource_plugin_version(&datasource);
+        return Ok(resolved);
     }
 
     if let Some(datasource_type) = resolve_datasource_type_alias(reference, datasource_catalog) {
@@ -305,16 +332,16 @@ fn resolve_object_datasource_ref(
     let mut resolved_type = ds_type.unwrap_or_default().to_string();
     let mut resolved_label = name.unwrap_or(uid.unwrap_or_default()).to_string();
     let mut resolved_uid = uid.unwrap_or(name.unwrap_or_default()).to_string();
-    if let Some(datasource) = datasource {
+    if let Some(ref datasource) = datasource {
         if resolved_type.is_empty() {
-            resolved_type = string_field(&datasource, "type", "");
+            resolved_type = string_field(datasource, "type", "");
         }
-        let datasource_name = string_field(&datasource, "name", "");
+        let datasource_name = string_field(datasource, "name", "");
         if !datasource_name.is_empty() {
             resolved_label = datasource_name;
         }
         if resolved_uid.is_empty() {
-            resolved_uid = string_field(&datasource, "uid", "");
+            resolved_uid = string_field(datasource, "uid", "");
         }
     }
 
@@ -331,11 +358,12 @@ fn resolve_object_datasource_ref(
         resolved_label = resolved_type.clone();
     }
 
-    Ok(Some(build_resolved_datasource(
-        format!("uid:{resolved_uid}"),
-        resolved_type,
-        resolved_label,
-    )))
+    let mut resolved =
+        build_resolved_datasource(format!("uid:{resolved_uid}"), resolved_type, resolved_label);
+    if let Some(datasource) = datasource {
+        resolved.plugin_version = datasource_plugin_version(&datasource);
+    }
+    Ok(Some(resolved))
 }
 
 fn resolve_datasource_ref(
@@ -389,6 +417,7 @@ fn allocate_input_mapping(
         },
         plugin_name: format_plugin_name(&resolved.ds_type),
         ds_type: resolved.ds_type.clone(),
+        plugin_version: resolved.plugin_version.clone(),
     };
     ref_mapping.insert(mapping_key, mapping.clone());
     mapping
@@ -701,16 +730,19 @@ fn build_requires_block(
     })];
     let mut datasource_plugins = BTreeMap::new();
     for mapping in ref_mapping.values() {
-        datasource_plugins
+        let entry = datasource_plugins
             .entry(mapping.ds_type.clone())
-            .or_insert_with(|| mapping.plugin_name.clone());
+            .or_insert_with(|| (mapping.plugin_name.clone(), mapping.plugin_version.clone()));
+        if entry.1.is_empty() && !mapping.plugin_version.is_empty() {
+            *entry = (mapping.plugin_name.clone(), mapping.plugin_version.clone());
+        }
     }
-    for (plugin_id, plugin_name) in datasource_plugins {
+    for (plugin_id, (plugin_name, plugin_version)) in datasource_plugins {
         requires.push(json!({
             "type": "datasource",
             "id": plugin_id,
             "name": plugin_name,
-            "version": "",
+            "version": plugin_version,
         }));
     }
     for panel_type in panel_types {

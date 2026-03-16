@@ -16,6 +16,7 @@ Architecture:
 import argparse
 import json
 import sys
+from pathlib import Path
 from urllib import parse
 
 from .dashboard_cli import (
@@ -38,9 +39,11 @@ from .gitops_sync import (
     SyncOperation,
     SyncPlan,
     build_apply_intent,
+    build_sync_source_bundle_document,
     build_sync_plan,
     mark_plan_reviewed,
     plan_to_document,
+    render_sync_source_bundle_text,
 )
 from .sync_preflight_workbench import (
     build_sync_preflight_document,
@@ -78,6 +81,11 @@ BUNDLE_PREFLIGHT_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n"
     "  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --availability-file ./availability.json --output json"
+)
+BUNDLE_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n"
+    "  grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --datasource-export-file ./datasources/datasources.json --metadata-file ./metadata.json --output json"
 )
 
 
@@ -249,6 +257,44 @@ def build_parser(prog=None):
         choices=("text", "json"),
         default="text",
         help="Render the bundle preflight document as text or json (default: text).",
+    )
+
+    bundle_parser = subparsers.add_parser(
+        "bundle",
+        help="Package exported dashboards, alerting resources, datasource inventory, and metadata into one portable source bundle.",
+        epilog=BUNDLE_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    bundle_parser.add_argument(
+        "--dashboard-export-dir",
+        default=None,
+        help="Path to one existing dashboard raw export directory such as ./dashboards/raw.",
+    )
+    bundle_parser.add_argument(
+        "--alert-export-dir",
+        default=None,
+        help="Path to one existing alert raw export directory such as ./alerts/raw.",
+    )
+    bundle_parser.add_argument(
+        "--datasource-export-file",
+        default=None,
+        help="Optional standalone datasource inventory JSON file to include or prefer over dashboards/raw/datasources.json.",
+    )
+    bundle_parser.add_argument(
+        "--metadata-file",
+        default=None,
+        help="Optional JSON object file containing extra bundle metadata.",
+    )
+    bundle_parser.add_argument(
+        "--output-file",
+        default=None,
+        help="Optional JSON file path to write the source bundle artifact.",
+    )
+    bundle_parser.add_argument(
+        "--output",
+        choices=("text", "json"),
+        default="text",
+        help="Render the source bundle as text or json (default: text).",
     )
 
     apply_parser = subparsers.add_parser(
@@ -524,7 +570,7 @@ def _load_optional_object_file(path, label):
 def _merge_availability(base, extra):
     merged = dict(base or {})
     for key, value in (extra or {}).items():
-        if key in ("datasourceUids", "pluginIds", "contactPoints"):
+        if key in ("datasourceUids", "datasourceNames", "pluginIds", "contactPoints"):
             existing = list(merged.get(key) or [])
             seen = set(str(item) for item in existing)
             for item in value or []:
@@ -542,6 +588,7 @@ def fetch_live_availability(client):
     """Fetch one conservative live availability snapshot from Grafana."""
     availability = {
         "datasourceUids": [],
+        "datasourceNames": [],
         "pluginIds": [],
         "contactPoints": [],
     }
@@ -549,8 +596,11 @@ def fetch_live_availability(client):
         if not isinstance(datasource, dict):
             continue
         uid = _normalize_string(datasource.get("uid"))
+        name = _normalize_string(datasource.get("name"))
         if uid:
             availability["datasourceUids"].append(uid)
+        if name:
+            availability["datasourceNames"].append(name)
 
     plugins = client.request_json("/api/plugins")
     if not isinstance(plugins, list):
@@ -572,7 +622,7 @@ def fetch_live_availability(client):
         uid = _normalize_string(item.get("uid"))
         if name:
             availability["contactPoints"].append(name)
-        elif uid:
+        if uid:
             availability["contactPoints"].append(uid)
     return availability
 
@@ -583,6 +633,243 @@ def _emit_text_or_json(document, lines, output):
         return
     for line in lines:
         print(line)
+
+
+def _load_optional_array_file(path, label):
+    if not path:
+        return []
+    document = load_json_document(path)
+    return _require_resource_list(document, label)
+
+
+def _discover_json_files(root, ignored_names):
+    files = []
+    for path in sorted(Path(root).rglob("*.json")):
+        if path.name in ignored_names:
+            continue
+        files.append(path)
+    return files
+
+
+def _dashboard_body_from_export(document):
+    if isinstance(document, dict) and isinstance(document.get("dashboard"), dict):
+        body = dict(document.get("dashboard") or {})
+    else:
+        body = _copy_mapping(document, "Dashboard export document")
+    body.pop("id", None)
+    return body
+
+
+def _normalize_dashboard_bundle_item(document, source_path):
+    body = _dashboard_body_from_export(document)
+    uid = _normalize_string(body.get("uid"))
+    title = _normalize_string(body.get("title"), uid)
+    if not uid:
+        raise GrafanaError("Dashboard export document is missing dashboard.uid: %s" % source_path)
+    return {
+        "kind": "dashboard",
+        "uid": uid,
+        "title": title or uid,
+        "body": body,
+        "sourcePath": source_path,
+    }
+
+
+def _normalize_folder_bundle_item(record):
+    record = _copy_mapping(record, "Folder inventory record")
+    uid = _normalize_string(record.get("uid"))
+    title = _normalize_string(record.get("title"), uid)
+    body = {"title": title or uid}
+    parent_uid = _normalize_string(record.get("parentUid"))
+    if parent_uid:
+        body["parentUid"] = parent_uid
+    path = _normalize_string(record.get("path"))
+    if path:
+        body["path"] = path
+    return {
+        "kind": "folder",
+        "uid": uid,
+        "title": title or uid,
+        "body": body,
+        "sourcePath": _normalize_string(record.get("sourcePath")),
+    }
+
+
+def _normalize_datasource_bundle_item(record):
+    record = _copy_mapping(record, "Datasource inventory record")
+    uid = _normalize_string(record.get("uid"))
+    name = _normalize_string(record.get("name"), uid)
+    if not (uid or name):
+        raise GrafanaError("Datasource inventory record requires uid or name.")
+    body = {
+        "uid": uid,
+        "name": name or uid,
+        "type": _normalize_string(record.get("type")),
+        "access": _normalize_string(record.get("access")),
+        "url": _normalize_string(record.get("url")),
+        "isDefault": bool(record.get("isDefault")),
+    }
+    return {
+        "kind": "datasource",
+        "uid": uid,
+        "name": name or uid,
+        "title": name or uid,
+        "body": body,
+        "sourcePath": _normalize_string(record.get("sourcePath")),
+    }
+
+
+def _classify_alert_export_path(relative_path):
+    parts = list(Path(relative_path).parts)
+    if not parts:
+        return None
+    root = parts[0]
+    mapping = {
+        "rules": "rules",
+        "contact-points": "contactPoints",
+        "mute-timings": "muteTimings",
+        "policies": "policies",
+        "templates": "templates",
+    }
+    return mapping.get(root)
+
+
+def _load_dashboard_bundle_sections(export_dir):
+    root = Path(export_dir)
+    dashboards = [
+        _normalize_dashboard_bundle_item(
+            load_json_document(str(path)),
+            path.relative_to(root).as_posix(),
+        )
+        for path in _discover_json_files(
+            root,
+            ("index.json", "export-metadata.json", "folders.json", "datasources.json"),
+        )
+    ]
+    folders = [
+        _normalize_folder_bundle_item(item)
+        for item in _load_optional_array_file(root / "folders.json", "Dashboard folder inventory")
+    ]
+    datasources = [
+        _normalize_datasource_bundle_item(item)
+        for item in _load_optional_array_file(
+            root / "datasources.json",
+            "Dashboard datasource inventory",
+        )
+    ]
+    metadata = {}
+    export_metadata_path = root / "export-metadata.json"
+    if export_metadata_path.is_file():
+        metadata["dashboardExport"] = _require_object(
+            load_json_document(str(export_metadata_path)),
+            "Dashboard export metadata",
+        )
+    metadata["dashboardExportDir"] = str(root)
+    return dashboards, datasources, folders, metadata
+
+
+def _load_alerting_bundle_section(export_dir):
+    root = Path(export_dir)
+    alerting = {
+        "summary": {
+            "ruleCount": 0,
+            "contactPointCount": 0,
+            "muteTimingCount": 0,
+            "policyCount": 0,
+            "templateCount": 0,
+        },
+        "rules": [],
+        "contactPoints": [],
+        "muteTimings": [],
+        "policies": [],
+        "templates": [],
+    }
+    for path in _discover_json_files(root, ("index.json", "export-metadata.json")):
+        relative_path = path.relative_to(root).as_posix()
+        section = _classify_alert_export_path(relative_path)
+        if not section:
+            continue
+        alerting[section].append(
+            {
+                "sourcePath": relative_path,
+                "document": load_json_document(str(path)),
+            }
+        )
+    alerting["summary"] = {
+        "ruleCount": len(alerting["rules"]),
+        "contactPointCount": len(alerting["contactPoints"]),
+        "muteTimingCount": len(alerting["muteTimings"]),
+        "policyCount": len(alerting["policies"]),
+        "templateCount": len(alerting["templates"]),
+    }
+    export_metadata_path = root / "export-metadata.json"
+    if export_metadata_path.is_file():
+        alerting["exportMetadata"] = _require_object(
+            load_json_document(str(export_metadata_path)),
+            "Alert export metadata",
+        )
+    alerting["exportDir"] = str(root)
+    return alerting
+
+
+def run_bundle(args):
+    if not any(
+        (
+            getattr(args, "dashboard_export_dir", None),
+            getattr(args, "alert_export_dir", None),
+            getattr(args, "datasource_export_file", None),
+            getattr(args, "metadata_file", None),
+        )
+    ):
+        raise GrafanaError(
+            "Sync bundle requires at least one export input such as --dashboard-export-dir, --alert-export-dir, --datasource-export-file, or --metadata-file."
+        )
+    dashboards = []
+    datasources = []
+    folders = []
+    metadata = {}
+    if getattr(args, "dashboard_export_dir", None):
+        (
+            dashboards,
+            dashboard_datasources,
+            folders,
+            dashboard_metadata,
+        ) = _load_dashboard_bundle_sections(args.dashboard_export_dir)
+        datasources.extend(dashboard_datasources)
+        metadata.update(dashboard_metadata)
+    if getattr(args, "datasource_export_file", None):
+        datasources = [
+            _normalize_datasource_bundle_item(item)
+            for item in _load_optional_array_file(
+                args.datasource_export_file,
+                "Datasource export inventory",
+            )
+        ]
+        metadata["datasourceExportFile"] = str(args.datasource_export_file)
+    alerting = {}
+    if getattr(args, "alert_export_dir", None):
+        alerting = _load_alerting_bundle_section(args.alert_export_dir)
+    metadata.update(
+        _load_optional_object_file(
+            getattr(args, "metadata_file", None),
+            "Sync bundle metadata input",
+        )
+    )
+    document = build_sync_source_bundle_document(
+        dashboards=dashboards,
+        datasources=datasources,
+        folders=folders,
+        alerting=alerting,
+        metadata=metadata,
+    )
+    if getattr(args, "output_file", None):
+        write_json_document(args.output_file, document)
+    _emit_text_or_json(
+        document,
+        render_sync_source_bundle_text(document),
+        getattr(args, "output", "text"),
+    )
+    return 0
 
 
 def run_preflight(args):
@@ -861,6 +1148,8 @@ def main(argv=None):
             return run_assess_alerts(args)
         if args.command == "bundle-preflight":
             return run_bundle_preflight(args)
+        if args.command == "bundle":
+            return run_bundle(args)
         return run_apply(args)
     except GrafanaError as exc:
         print("Error: %s" % exc, file=sys.stderr)
@@ -876,6 +1165,7 @@ __all__ = [
     "parse_args",
     "run_assess_alerts",
     "run_apply",
+    "run_bundle",
     "run_bundle_preflight",
     "run_plan",
     "run_preflight",

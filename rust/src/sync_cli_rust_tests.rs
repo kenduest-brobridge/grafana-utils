@@ -1,7 +1,8 @@
 use super::{
     render_sync_apply_intent_text, render_sync_plan_text, render_sync_summary_text, run_sync_cli,
-    SyncApplyArgs, SyncBundlePreflightArgs, SyncCliArgs, SyncGroupCommand, SyncOutputFormat,
-    SyncPlanArgs, SyncPreflightArgs, SyncReviewArgs, SyncSummaryArgs, DEFAULT_REVIEW_TOKEN,
+    SyncApplyArgs, SyncBundleArgs, SyncBundlePreflightArgs, SyncCliArgs, SyncGroupCommand,
+    SyncOutputFormat, SyncPlanArgs, SyncPreflightArgs, SyncReviewArgs, SyncSummaryArgs,
+    DEFAULT_REVIEW_TOKEN,
 };
 use clap::Parser;
 use serde_json::json;
@@ -164,6 +165,53 @@ fn parse_sync_cli_supports_apply_command_with_reason_and_note() {
             );
         }
         _ => panic!("expected apply"),
+    }
+}
+
+#[test]
+fn parse_sync_cli_supports_bundle_command() {
+    let args = SyncCliArgs::parse_from([
+        "grafana-util",
+        "bundle",
+        "--dashboard-export-dir",
+        "./dashboards/raw",
+        "--alert-export-dir",
+        "./alerts/raw",
+        "--datasource-export-file",
+        "./datasources.json",
+        "--metadata-file",
+        "./metadata.json",
+        "--output-file",
+        "./bundle.json",
+        "--output",
+        "json",
+    ]);
+
+    match args.command {
+        SyncGroupCommand::Bundle(inner) => {
+            assert_eq!(
+                inner.dashboard_export_dir,
+                Some(Path::new("./dashboards/raw").to_path_buf())
+            );
+            assert_eq!(
+                inner.alert_export_dir,
+                Some(Path::new("./alerts/raw").to_path_buf())
+            );
+            assert_eq!(
+                inner.datasource_export_file,
+                Some(Path::new("./datasources.json").to_path_buf())
+            );
+            assert_eq!(
+                inner.metadata_file,
+                Some(Path::new("./metadata.json").to_path_buf())
+            );
+            assert_eq!(
+                inner.output_file,
+                Some(Path::new("./bundle.json").to_path_buf())
+            );
+            assert_eq!(inner.output, SyncOutputFormat::Json);
+        }
+        _ => panic!("expected bundle"),
     }
 }
 
@@ -364,6 +412,88 @@ fn run_sync_cli_plan_accepts_local_inputs() {
     }));
 
     assert!(result.is_ok());
+}
+
+#[test]
+fn run_sync_cli_bundle_writes_source_bundle_artifact() {
+    let temp = tempdir().unwrap();
+    let dashboard_export_dir = temp.path().join("dashboards").join("raw");
+    let alert_export_dir = temp.path().join("alerts").join("raw");
+    fs::create_dir_all(&dashboard_export_dir).unwrap();
+    fs::create_dir_all(alert_export_dir.join("rules")).unwrap();
+    fs::write(
+        dashboard_export_dir.join("cpu.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "panels": []
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        dashboard_export_dir.join("folders.json"),
+        serde_json::to_string_pretty(&json!([
+            {"uid": "ops", "title": "Operations", "path": "Operations"}
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        dashboard_export_dir.join("datasources.json"),
+        serde_json::to_string_pretty(&json!([
+            {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"}
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        alert_export_dir.join("rules").join("cpu-high.json"),
+        serde_json::to_string_pretty(&json!({
+            "groups": [{"name": "CPU Alerts"}]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let metadata_file = temp.path().join("metadata.json");
+    fs::write(
+        &metadata_file,
+        serde_json::to_string_pretty(&json!({
+            "bundleLabel": "smoke-bundle"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let output_file = temp.path().join("bundle.json");
+
+    let result = run_sync_cli(SyncGroupCommand::Bundle(SyncBundleArgs {
+        dashboard_export_dir: Some(dashboard_export_dir.clone()),
+        alert_export_dir: Some(alert_export_dir.clone()),
+        datasource_export_file: None,
+        metadata_file: Some(metadata_file.clone()),
+        output_file: Some(output_file.clone()),
+        output: SyncOutputFormat::Json,
+    }));
+
+    assert!(result.is_ok());
+    let bundle: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&output_file).unwrap()).unwrap();
+    assert_eq!(bundle["kind"], json!("grafana-utils-sync-source-bundle"));
+    assert_eq!(bundle["summary"]["dashboardCount"], json!(1));
+    assert_eq!(bundle["summary"]["datasourceCount"], json!(1));
+    assert_eq!(bundle["summary"]["folderCount"], json!(1));
+    assert_eq!(bundle["summary"]["alertRuleCount"], json!(1));
+    assert_eq!(bundle["metadata"]["bundleLabel"], json!("smoke-bundle"));
+    assert_eq!(
+        bundle["metadata"]["dashboardExportDir"],
+        json!(dashboard_export_dir.display().to_string())
+    );
+    assert_eq!(
+        bundle["alerting"]["exportDir"],
+        json!(alert_export_dir.display().to_string())
+    );
 }
 
 #[test]

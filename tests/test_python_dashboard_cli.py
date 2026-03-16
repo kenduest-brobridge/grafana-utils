@@ -1279,9 +1279,16 @@ class ExporterTests(unittest.TestCase):
     def test_parse_report_columns_accepts_snake_case_aliases(self):
         self.assertEqual(
             exporter.parse_report_columns(
-                "dashboard_uid,panel_title,query_field,datasource_uid"
+                "dashboard_uid,panel_title,query_field,datasource_uid,datasource_type,datasource_family"
             ),
-            ["dashboardUid", "panelTitle", "queryField", "datasourceUid"],
+            [
+                "dashboardUid",
+                "panelTitle",
+                "queryField",
+                "datasourceUid",
+                "datasourceType",
+                "datasourceFamily",
+            ],
         )
 
     def test_dispatch_query_analysis_uses_prometheus_analyzer(self):
@@ -6033,8 +6040,18 @@ class ExporterTests(unittest.TestCase):
         }
         catalog = exporter.build_datasource_catalog(
             [
-                {"uid": "prom_uid", "name": "Prom Main", "type": "prometheus"},
-                {"uid": "loki_uid", "name": "Loki Logs", "type": "loki"},
+                {
+                    "uid": "prom_uid",
+                    "name": "Prom Main",
+                    "type": "prometheus",
+                    "pluginVersion": "11.0.0",
+                },
+                {
+                    "uid": "loki_uid",
+                    "name": "Loki Logs",
+                    "type": "loki",
+                    "meta": {"info": {"version": "3.1.0"}},
+                },
             ]
         )
 
@@ -6068,11 +6085,11 @@ class ExporterTests(unittest.TestCase):
         )
         self.assertEqual(
             [
-                (item["id"], item["name"])
+                (item["id"], item["name"], item["version"])
                 for item in document["__requires"]
                 if item["type"] == "datasource"
             ],
-            [("loki", "Loki"), ("prometheus", "Prometheus")],
+            [("loki", "Loki", "3.1.0"), ("prometheus", "Prometheus", "11.0.0")],
         )
         self.assertEqual(document["__elements"], {})
 
@@ -6147,8 +6164,18 @@ class ExporterTests(unittest.TestCase):
         }
         catalog = exporter.build_datasource_catalog(
             [
-                {"uid": "prom_uid", "name": "Smoke Prometheus", "type": "prometheus"},
-                {"uid": "loki_uid", "name": "Smoke Loki", "type": "loki"},
+                {
+                    "uid": "prom_uid",
+                    "name": "Smoke Prometheus",
+                    "type": "prometheus",
+                    "pluginVersion": "11.0.0",
+                },
+                {
+                    "uid": "loki_uid",
+                    "name": "Smoke Loki",
+                    "type": "loki",
+                    "meta": {"info": {"version": "3.1.0"}},
+                },
             ]
         )
 
@@ -6180,11 +6207,11 @@ class ExporterTests(unittest.TestCase):
         )
         self.assertEqual(
             [
-                (item["id"], item["name"])
+                (item["id"], item["name"], item["version"])
                 for item in document["__requires"]
                 if item["type"] == "datasource"
             ],
-            [("loki", "Loki"), ("prometheus", "Prometheus")],
+            [("loki", "Loki", "3.1.0"), ("prometheus", "Prometheus", "11.0.0")],
         )
 
     def test_build_external_export_document_keeps_distinct_same_type_datasources_separate(self):
@@ -6216,7 +6243,12 @@ class ExporterTests(unittest.TestCase):
         }
         catalog = exporter.build_datasource_catalog(
             [
-                {"uid": "prom_uid_1", "name": "Smoke Prometheus", "type": "prometheus"},
+                {
+                    "uid": "prom_uid_1",
+                    "name": "Smoke Prometheus",
+                    "type": "prometheus",
+                    "pluginVersion": "11.0.0",
+                },
                 {"uid": "prom_uid_2", "name": "Smoke Prometheus 2", "type": "prometheus"},
             ]
         )
@@ -6241,11 +6273,11 @@ class ExporterTests(unittest.TestCase):
         )
         self.assertEqual(
             [
-                (item["id"], item["name"])
+                (item["id"], item["name"], item["version"])
                 for item in document["__requires"]
                 if item["type"] == "datasource"
             ],
-            [("prometheus", "Prometheus")],
+            [("prometheus", "Prometheus", "11.0.0")],
         )
         self.assertNotIn("templating", document)
 

@@ -128,6 +128,12 @@ pub(crate) fn render_grouped_query_report(report: &ExportInspectionQueryReport) 
                 if !query.datasource_uid.is_empty() {
                     details.push(format!("datasourceUid={}", query.datasource_uid));
                 }
+                if !query.datasource_type.is_empty() {
+                    details.push(format!("datasourceType={}", query.datasource_type));
+                }
+                if !query.datasource_family.is_empty() {
+                    details.push(format!("datasourceFamily={}", query.datasource_family));
+                }
                 if !query.query_field.is_empty() {
                     details.push(format!("field={}", query.query_field));
                 }

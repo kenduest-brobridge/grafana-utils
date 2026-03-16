@@ -67,7 +67,9 @@ fn build_bundle_preflight_document_aggregates_sync_alert_and_provider_checks() {
                 "body": {
                     "condition": "A > 90",
                     "datasourceUid": "prom-main",
-                    "contactPoints": ["pagerduty-primary"]
+                    "datasourceName": "Prometheus Main",
+                    "contactPoints": ["pagerduty-primary"],
+                    "notificationSettings": {"receiver": "slack-primary"}
                 }
             }
         ]
@@ -80,6 +82,7 @@ fn build_bundle_preflight_document_aggregates_sync_alert_and_provider_checks() {
     let availability = json!({
         "pluginIds": [],
         "datasourceUids": [],
+        "datasourceNames": [],
         "contactPoints": [],
         "providerNames": []
     });

@@ -37,6 +37,10 @@ pub(crate) struct ExportInspectionQueryRow {
     pub(crate) datasource: String,
     #[serde(rename = "datasourceUid")]
     pub(crate) datasource_uid: String,
+    #[serde(rename = "datasourceType")]
+    pub(crate) datasource_type: String,
+    #[serde(rename = "datasourceFamily")]
+    pub(crate) datasource_family: String,
     #[serde(rename = "queryField")]
     pub(crate) query_field: String,
     #[serde(rename = "query")]
@@ -101,6 +105,8 @@ pub(crate) const DEFAULT_REPORT_COLUMN_IDS: &[&str] = &[
     "panel_type",
     "ref_id",
     "datasource",
+    "datasource_type",
+    "datasource_family",
     "query_field",
     "metrics",
     "measurements",
@@ -119,6 +125,8 @@ pub(crate) const SUPPORTED_REPORT_COLUMN_IDS: &[&str] = &[
     "ref_id",
     "datasource",
     "datasource_uid",
+    "datasource_type",
+    "datasource_family",
     "query_field",
     "metrics",
     "measurements",
@@ -225,6 +233,8 @@ pub(crate) fn report_column_header(column_id: &str) -> &'static str {
         "ref_id" => "REF_ID",
         "datasource" => "DATASOURCE",
         "datasource_uid" => "DATASOURCE_UID",
+        "datasource_type" => "DATASOURCE_TYPE",
+        "datasource_family" => "DATASOURCE_FAMILY",
         "query_field" => "QUERY_FIELD",
         "metrics" => "METRICS",
         "measurements" => "MEASUREMENTS",
@@ -249,6 +259,8 @@ pub(crate) fn render_query_report_column(
         "ref_id" => row.ref_id.clone(),
         "datasource" => row.datasource.clone(),
         "datasource_uid" => row.datasource_uid.clone(),
+        "datasource_type" => row.datasource_type.clone(),
+        "datasource_family" => row.datasource_family.clone(),
         "query_field" => row.query_field.clone(),
         "metrics" => row.metrics.join(","),
         "measurements" => row.measurements.join(","),

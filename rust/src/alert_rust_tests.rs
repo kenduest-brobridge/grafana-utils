@@ -3,9 +3,10 @@
 use super::{
     build_compare_diff_text, build_contact_point_export_document, build_contact_point_output_path,
     build_empty_root_index, build_import_operation, build_rule_export_document,
-    build_rule_output_path, detect_document_kind, expect_object_list, parse_cli_from,
-    parse_template_list_response, root_command, serialize_compare_document, AlertCliArgs,
-    CONTACT_POINT_KIND, ROOT_INDEX_KIND, RULE_KIND, TOOL_API_VERSION, TOOL_SCHEMA_VERSION,
+    build_rule_output_path, detect_document_kind, expect_object_list, get_rule_linkage,
+    parse_cli_from, parse_template_list_response, root_command, serialize_compare_document,
+    AlertCliArgs, CONTACT_POINT_KIND, ROOT_INDEX_KIND, RULE_KIND, TOOL_API_VERSION,
+    TOOL_SCHEMA_VERSION,
 };
 use serde_json::json;
 use std::path::Path;
@@ -119,6 +120,23 @@ fn build_contact_point_export_document_wraps_tool_document() {
     );
     assert_eq!(document["kind"], CONTACT_POINT_KIND);
     assert!(document["spec"].get("provenance").is_none());
+}
+
+#[test]
+fn get_rule_linkage_returns_typed_dashboard_and_panel_ids() {
+    let linkage = get_rule_linkage(
+        json!({
+            "annotations": {
+                "__dashboardUid__": "dash-uid",
+                "__panelId__": 7
+            }
+        })
+        .as_object()
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(linkage.dashboard_uid, "dash-uid");
+    assert_eq!(linkage.panel_id.as_deref(), Some("7"));
 }
 
 #[test]

@@ -85,6 +85,7 @@ Commit message default for this repo:
 ## Python Baseline
 
 - Both Python entrypoints now target Python 3.9+ syntax and runtime support.
+- Python 3.9+ is the repo baseline, not only packaging metadata. Do not preserve Python 3.6 or RHEL 8 parser compatibility in new changes.
 - Prefer Python 3.9 built-in generics such as `list[str]`, `dict[str, Any]`, and `tuple[str, ...]` in touched code.
 - Avoid Python 3.10 union syntax such as `str | None`.
 - Keep using `typing.Optional`, `typing.Any`, `typing.Iterable`, and similar helpers where Python 3.9 still needs them.
@@ -571,8 +572,10 @@ Python access live smoke test notes:
 - `make test-access-live` runs `scripts/test-python-access-live-grafana.sh`
 - the script defaults to `grafana/grafana:12.4.1` and binds Grafana to a random localhost port unless `GRAFANA_PORT` is set explicitly
 - user coverage: add, modify, global delete, org delete, global list, org list
-- team coverage: add, list, modify
+- team coverage: add, list, modify, delete
+- org coverage: add, delete, list
 - service-account coverage: add, export, import dry-run/live replay, diff changed/same, delete, token add, token delete, list
+- destructive-path transport coverage: the live script now runs representative delete commands with `--insecure` against the local HTTP Grafana testbed; `--ca-cert` remains covered at parser/runtime unit level because this smoke path does not start Grafana over TLS
 - useful overrides: `GRAFANA_IMAGE`, `GRAFANA_PORT`, `GRAFANA_USER`, `GRAFANA_PASSWORD`, `PYTHON_BIN`
 
 Python datasource live smoke test notes:

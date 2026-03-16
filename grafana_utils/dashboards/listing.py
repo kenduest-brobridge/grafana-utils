@@ -234,7 +234,7 @@ def resolve_dashboard_source_metadata(
         except datasource_error:
             resolved = None
         if resolved is not None:
-            label = resolved.get("label")
+            label = getattr(resolved, "input_label", "")
             if isinstance(label, str) and label:
                 source_names.add(label)
 
