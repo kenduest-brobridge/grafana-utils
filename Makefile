@@ -1,4 +1,4 @@
-.PHONY: help poetry-install poetry-lock poetry-test poetry-quality-python build build-python build-rust build-rust-macos-arm64 build-rust-linux-amd64 build-rust-linux-amd64-zig seed-grafana-sample-data destroy-grafana-sample-data reset-grafana-all-data test test-python test-rust fmt-rust-check lint-rust quality quality-python quality-rust test-rust-live test-access-live test-python-datasource-live
+.PHONY: help print-version sync-version set-release-version set-dev-version poetry-install poetry-lock poetry-test poetry-quality-python build build-python build-rust build-rust-macos-arm64 build-rust-linux-amd64 build-rust-linux-amd64-zig seed-grafana-sample-data destroy-grafana-sample-data reset-grafana-all-data test test-python test-rust fmt-rust-check lint-rust quality quality-python quality-rust test-rust-live test-access-live test-python-datasource-live
 
 PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
@@ -6,10 +6,15 @@ POETRY ?= poetry
 CARGO ?= cargo
 RUST_DIR ?= rust
 PYTHON_DIST_DIR ?= dist
+DEV_ITERATION ?= 1
 
 help:
 	@printf '%s\n' \
 		'Available targets:' \
+		'  make print-version  Show VERSION plus Python/Rust package versions' \
+		'  make sync-version   Sync pyproject.toml, rust/Cargo.toml, and rust/Cargo.lock from VERSION' \
+		'  make set-release-version VERSION=X.Y.Z  Set VERSION and package metadata to a release version' \
+		'  make set-dev-version VERSION=X.Y.Z DEV_ITERATION=N  Set VERSION and package metadata to a preview version' \
 		'  make poetry-install  Install the Poetry-managed development environment' \
 		'  make poetry-lock   Refresh poetry.lock from pyproject.toml' \
 		'  make poetry-test   Run the Python unittest suite inside Poetry' \
@@ -34,6 +39,20 @@ help:
 		'  make test-rust-live Start Grafana in Docker and run the Rust live smoke test' \
 		'  make test-access-live Start Grafana in Docker and run the Python access live smoke test' \
 		'  make test-python-datasource-live Start Grafana in Docker and run the Python datasource live smoke test'
+
+print-version:
+	bash ./scripts/set-version.sh --print-current
+
+sync-version:
+	bash ./scripts/set-version.sh --sync-from-file
+
+set-release-version:
+	@test -n "$(VERSION)" || { echo "Usage: make set-release-version VERSION=X.Y.Z"; exit 1; }
+	bash ./scripts/set-version.sh --version "$(VERSION)"
+
+set-dev-version:
+	@test -n "$(VERSION)" || { echo "Usage: make set-dev-version VERSION=X.Y.Z DEV_ITERATION=N"; exit 1; }
+	bash ./scripts/set-version.sh --version "$(VERSION).dev$(DEV_ITERATION)"
 
 poetry-install:
 	$(POETRY) install --with dev

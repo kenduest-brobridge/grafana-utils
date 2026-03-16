@@ -4,14 +4,28 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+MAKEFILE_PATH = REPO_ROOT / "Makefile"
+CI_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 PYPROJECT_PATH = REPO_ROOT / "pyproject.toml"
 MODULE_ENTRYPOINT_PATH = REPO_ROOT / "grafana_utils" / "__main__.py"
 POETRY_LOCK_PATH = REPO_ROOT / "poetry.lock"
+SET_VERSION_SCRIPT_PATH = REPO_ROOT / "scripts" / "set-version.sh"
+VERSION_PATH = REPO_ROOT / "VERSION"
 
 
 class PackagingTests(unittest.TestCase):
     def test_pyproject_exists(self):
         self.assertTrue(PYPROJECT_PATH.is_file())
+
+    def test_repo_commits_makefile_version_sources(self):
+        self.assertTrue(MAKEFILE_PATH.is_file())
+        self.assertTrue(SET_VERSION_SCRIPT_PATH.is_file())
+        self.assertTrue(VERSION_PATH.is_file())
+
+    def test_ci_python_quality_installs_project_runtime_dependencies(self):
+        content = CI_WORKFLOW_PATH.read_text(encoding="utf-8")
+
+        self.assertIn("python3 -m pip install --upgrade pip .", content)
 
     def test_pyproject_declares_console_scripts(self):
         content = PYPROJECT_PATH.read_text(encoding="utf-8")
@@ -54,6 +68,14 @@ class PackagingTests(unittest.TestCase):
 
     def test_repo_commits_poetry_lock(self):
         self.assertTrue(POETRY_LOCK_PATH.is_file())
+
+    def test_makefile_declares_version_targets(self):
+        content = MAKEFILE_PATH.read_text(encoding="utf-8")
+
+        self.assertIn("print-version:", content)
+        self.assertIn("sync-version:", content)
+        self.assertIn("set-release-version:", content)
+        self.assertIn("set-dev-version:", content)
 
 
 if __name__ == "__main__":
