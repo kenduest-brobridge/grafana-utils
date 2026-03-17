@@ -10,6 +10,7 @@ PYPROJECT_PATH = REPO_ROOT / "pyproject.toml"
 MODULE_ENTRYPOINT_PATH = REPO_ROOT / "grafana_utils" / "__main__.py"
 POETRY_LOCK_PATH = REPO_ROOT / "poetry.lock"
 SET_VERSION_SCRIPT_PATH = REPO_ROOT / "scripts" / "set-version.sh"
+BUILD_RUST_MACOS_ARM64_SCRIPT_PATH = REPO_ROOT / "scripts" / "build-rust-macos-arm64.sh"
 VERSION_PATH = REPO_ROOT / "VERSION"
 
 
@@ -75,6 +76,12 @@ class PackagingTests(unittest.TestCase):
         self.assertIn("sync-version:", content)
         self.assertIn("set-release-version:", content)
         self.assertIn("set-dev-version:", content)
+
+    def test_macos_arm64_build_script_resigns_copied_binary(self):
+        content = BUILD_RUST_MACOS_ARM64_SCRIPT_PATH.read_text(encoding="utf-8")
+
+        self.assertIn('cp "${RUST_DIR}/target/release/grafana-util" "${OUTPUT_DIR}/grafana-util"', content)
+        self.assertIn('codesign --force --sign - "${OUTPUT_DIR}/grafana-util"', content)
 
 
 if __name__ == "__main__":

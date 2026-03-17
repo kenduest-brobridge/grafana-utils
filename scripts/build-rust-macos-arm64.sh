@@ -24,5 +24,6 @@ mkdir -p "${OUTPUT_DIR}"
 )
 
 cp "${RUST_DIR}/target/release/grafana-util" "${OUTPUT_DIR}/grafana-util"
+codesign --force --sign - "${OUTPUT_DIR}/grafana-util"
 echo "Built macOS arm64 Rust binaries:"
 echo "  ${OUTPUT_DIR}/grafana-util"
