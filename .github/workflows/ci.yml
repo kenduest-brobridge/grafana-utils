@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install Python dependencies
-        run: python3 -m pip install --upgrade pip requests
+        run: python3 -m pip install --upgrade pip .
       - name: Run Python quality gate
         run: make quality-python
 
