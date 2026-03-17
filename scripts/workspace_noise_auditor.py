@@ -109,6 +109,10 @@ def render_noise_report(root: Path) -> list[str]:
 
 def main() -> int:
     """CLI entry point for local manual workspace scans."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 102, 63
+
     from argparse import ArgumentParser
 
     parser = ArgumentParser(description="Scan for likely workspace noise files.")

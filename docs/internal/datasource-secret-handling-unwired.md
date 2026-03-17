@@ -10,7 +10,7 @@ before any CLI, bundle, or provider wiring lands.
 - New Python helper module:
   - `grafana_utils/datasource_secret_workbench.py`
 - New unit tests:
-  - `tests/test_python_datasource_secret_workbench.py`
+  - `python/tests/test_python_datasource_secret_workbench.py`
 
 ## Current Behavior
 

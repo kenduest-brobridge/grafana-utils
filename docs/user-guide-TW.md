@@ -508,6 +508,9 @@ default_message    Alert: {{ .CommonLabels.alertname }}
 ops_summary        [{{ .Status }}] {{ .CommonLabels.severity }}
 ```
 
+跨 org 說明：
+- `--org-id` 與 `--all-orgs` 在 alert list 命令中只支援 Basic Auth，因為 Grafana org 切換需要管理員式 org scope 變更。
+
 5) datasource 命令
 ------------------
 
@@ -517,6 +520,8 @@ ops_summary        [{{ .Status }}] {{ .CommonLabels.severity }}
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
+| `--org-id` | 限定單一 org | 需搭配 Basic Auth |
+| `--all-orgs` | 彙整所有可見 org | 跨 org 盤點，需搭配 Basic Auth |
 | `--table` | 表格輸出 | 人工掃描 |
 | `--csv` | CSV 輸出 | 報表 |
 | `--json` | JSON 輸出 | 腳本 |
@@ -535,6 +540,9 @@ prom-main          prometheus-main    prometheus   http://prometheus:9090
 loki-prod          loki-prod          loki         http://loki:3100
 tempo-prod         tempo-prod         tempo        http://tempo:3200
 ```
+
+跨 org 說明：
+- `--org-id` 與 `--all-orgs` 只支援 Basic Auth，因為 datasource list 需要透過 Grafana 管理員式 org 切換來盤點資料。
 
 ### 5.2 `datasource export`
 
@@ -1392,9 +1400,11 @@ grafana-util alert export --url <URL> --token <TOKEN> --output-dir <DIR> [--flat
 grafana-util alert import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw --replace-existing [--dry-run] [--dashboard-uid-map <FILE>] [--panel-id-map <FILE>]
 grafana-util alert diff --url <URL> --basic-user <USER> --basic-password <PASS> --diff-dir <DIR>/raw [--dashboard-uid-map <FILE>] [--panel-id-map <FILE>]
 grafana-util alert list-rules --url <URL> --token <TOKEN> [--table|--csv|--json]
+grafana-util alert list-rules --url <URL> --basic-user <USER> --basic-password <PASS> [--org-id <ORG_ID>|--all-orgs] [--table|--csv|--json]
 
 # datasource
 grafana-util datasource list --url <URL> --token <TOKEN> [--table|--csv|--json]
+grafana-util datasource list --url <URL> --basic-user <USER> --basic-password <PASS> [--org-id <ORG_ID>|--all-orgs] [--table|--csv|--json]
 grafana-util datasource add --url <URL> --token <TOKEN> --name <NAME> --type <TYPE> [--uid <UID>] [--access proxy|direct] [--datasource-url <URL>] [--basic-auth] [--basic-auth-user <USER>] [--basic-auth-password <PASS>] [--user <USER>] [--password <PASS>] [--with-credentials] [--http-header NAME=VALUE] [--tls-skip-verify] [--server-name <NAME>] [--json-data <JSON>] [--secure-json-data <JSON>] [--dry-run] [--table|--json|--output-format text|table|json]
 grafana-util datasource export --url <URL> --basic-user <USER> --basic-password <PASS> --export-dir <DIR> [--overwrite] [--dry-run] [--org-id <ORG_ID>|--all-orgs]
 grafana-util datasource import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR> --replace-existing [--org-id <ORG_ID>] [--use-export-org [--only-org-id <ORG_ID>]... [--create-missing-orgs]] [--dry-run] [--output-format table|text|json] [--output-columns uid,name,type,destination,action,org_id,file]
@@ -1466,7 +1476,9 @@ grafana-util access service-account token delete --url <URL> --token <TOKEN> --n
 | dashboard list | 可用（不可用 token，需 Grafana 帳號密碼） | 可用（不可用 token，需 Grafana 帳號密碼） |
 | dashboard export | 可用（不可用 token，需 Grafana 帳號密碼） | 可用（不可用 token，需 Grafana 帳號密碼） |
 | dashboard import | 可用（不可用 token，需 Grafana 帳號密碼） | 不可 |
+| datasource list | 可用（不可用 token，需 Grafana 帳號密碼） | 可用（不可用 token，需 Grafana 帳號密碼） |
 | datasource export | 可用（不可用 token，需 Grafana 帳號密碼） | 可用（不可用 token，需 Grafana 帳號密碼） |
 | datasource import | 可用（不可用 token，需 Grafana 帳號密碼） | 不可 |
-| alert 全部 | 不支援 `org-id`/`all-orgs` | 不支援 |
+| alert list-* | 可用（不可用 token，需 Grafana 帳號密碼） | 可用（不可用 token，需 Grafana 帳號密碼） |
+| alert export/import/diff | 不支援 `org-id`/`all-orgs` | 不支援 |
 | access 全部 | 用 `--scope` 替代 | 不支援 |

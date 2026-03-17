@@ -2,10 +2,11 @@
 __pycache__/
 old/
 dashboards/
-!grafana_utils/dashboards/
-!grafana_utils/dashboards/__init__.py
-!grafana_utils/dashboards/common.py
-!grafana_utils/dashboards/transformer.py
+!python/grafana_utils/dashboards/
+!python/grafana_utils/dashboards/**/
+!python/grafana_utils/dashboards/**/*.py
+python/grafana_utils/dashboards/**/__pycache__/
+python/grafana_utils/dashboards/**/*.pyc
 build/
 dist/
 *.egg-info/

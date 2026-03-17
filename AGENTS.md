@@ -2,32 +2,32 @@
 
 ## Project Structure & Module Organization
 
-- `grafana_utils/dashboard_cli.py`: packaged dashboard implementation.
-- `grafana_utils/alert_cli.py`: packaged alerting implementation.
-- `grafana_utils/access_cli.py`: packaged access-management implementation.
-- `grafana_utils/access/parser.py`: Python access CLI argparse definitions.
-- `grafana_utils/access/workflows.py`: Python access user, org, team, and service-account workflows.
-- `grafana_utils/unified_cli.py`: unified Python CLI dispatcher.
-- `grafana_utils/http_transport.py`: shared replaceable HTTP transport layer.
-- `grafana_utils/__main__.py`: source-tree module entrypoint for running the unified CLI directly from the repo checkout.
+- `python/grafana_utils/dashboard_cli.py`: packaged dashboard implementation.
+- `python/grafana_utils/alert_cli.py`: packaged alerting implementation.
+- `python/grafana_utils/access_cli.py`: packaged access-management implementation.
+- `python/grafana_utils/access/parser.py`: Python access CLI argparse definitions.
+- `python/grafana_utils/access/workflows.py`: Python access user, org, team, and service-account workflows.
+- `python/grafana_utils/unified_cli.py`: unified Python CLI dispatcher.
+- `python/grafana_utils/http_transport.py`: shared replaceable HTTP transport layer.
+- `python/grafana_utils/__main__.py`: source-tree module entrypoint for running the unified CLI directly from the repo checkout.
 - `pyproject.toml`: package metadata and console-script entrypoints.
 - `rust/src/`: Rust implementation for dashboard, alerting, access, and unified dispatch.
 - `rust/src/access_org.rs`: Rust access org list/add/modify/delete/export/import implementation.
-- `tests/`: Python unit tests.
+- `python/tests/`: Python unit tests.
 - `Makefile`: root shortcuts for Python wheel builds, Rust release builds, and test runs.
 - `README.md`: GitHub-facing usage and operator examples.
 - `docs/DEVELOPER.md`: maintainer notes, internal behavior, and implementation tradeoffs.
 - `docs/internal/ai-status.md` and `docs/internal/ai-changes.md`: internal change trace files for meaningful feature work.
 
-Keep implementation code in `grafana_utils/` and keep `python/` wrappers thin unless a new workflow clearly deserves its own module.
+Keep Python implementation and source-tree entrypoints under `python/grafana_utils/` so the repo uses one clear parent path for Python code. Python imports remain `grafana_utils.*`.
 
 ## Build, Test, and Development Commands
 
 - `poetry install --with dev`: create the standard Python development environment for this repo.
-- `poetry run python -m unittest -v`: run the full Python test suite from the Poetry-managed environment.
-- `poetry run python -m unittest -v tests/test_python_alert_cli.py`: run alerting Python tests only from the Poetry-managed environment.
-- `poetry run python -m unittest -v tests/test_python_dashboard_cli.py`: run dashboard Python tests only from the Poetry-managed environment.
-- `poetry run python -m unittest -v tests/test_python_access_cli.py`: run access Python tests only from the Poetry-managed environment.
+- `PYTHONPATH=python poetry run python -m unittest -v`: run the full Python test suite from the Poetry-managed environment.
+- `PYTHONPATH=python poetry run python -m unittest -v python/python/tests/test_python_alert_cli.py`: run alerting Python tests only from the Poetry-managed environment.
+- `PYTHONPATH=python poetry run python -m unittest -v python/python/tests/test_python_dashboard_cli.py`: run dashboard Python tests only from the Poetry-managed environment.
+- `PYTHONPATH=python poetry run python -m unittest -v python/python/tests/test_python_access_cli.py`: run access Python tests only from the Poetry-managed environment.
 - `python3 -m pip install .`: install the package into the active Python environment.
 - `python3 -m pip install --user .`: install the package into the current user's Python environment.
 - `python3 -m pip install '.[http2]'`: install the optional HTTP/2 transport dependencies on Python 3.9+.
@@ -36,10 +36,10 @@ Keep implementation code in `grafana_utils/` and keep `python/` wrappers thin un
 - `make build`: build both the Python wheel and the Rust release binaries.
 - `make test`: run both the Python and Rust test suites.
 - `make test-rust-live`: start Docker Grafana and run the Rust live smoke test script.
-- `python3 -m unittest -v`: run the full test suite.
-- `python3 -m unittest -v tests/test_python_alert_cli.py`: run alerting Python tests only.
-- `python3 -m unittest -v tests/test_python_dashboard_cli.py`: run dashboard Python tests only.
-- `python3 -m unittest -v tests/test_python_access_cli.py`: run access Python tests only.
+- `PYTHONPATH=python python3 -m unittest -v`: run the full test suite.
+- `PYTHONPATH=python python3 -m unittest -v python/python/tests/test_python_alert_cli.py`: run alerting Python tests only.
+- `PYTHONPATH=python python3 -m unittest -v python/python/tests/test_python_dashboard_cli.py`: run dashboard Python tests only.
+- `PYTHONPATH=python python3 -m unittest -v python/python/tests/test_python_access_cli.py`: run access Python tests only.
 - `cd rust && cargo test --quiet`: run the full Rust test suite.
 
 Use Poetry-first commands for Python development and test execution. Keep the `pip install` commands for packaged-install validation, local release checks, or environments that intentionally skip Poetry.
@@ -83,7 +83,7 @@ For external command usage and operator examples, prefer `README.md`, `README.zh
 ## Testing Guidelines
 
 - Tests use `unittest`.
-- Name Python test files `tests/test_python_*.py` and test methods `test_*`.
+- Name Python test files `python/python/tests/test_python_*.py` and test methods `test_*`.
 - Keep Rust unit tests in `rust/src/*_rust_tests.rs` when the filename needs to distinguish them from Python tests.
 - Add or update tests for every user-visible behavior change.
 - For CLI UX changes, test parser behavior or `format_help()` output directly.

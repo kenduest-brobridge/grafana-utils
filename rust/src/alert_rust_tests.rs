@@ -1,12 +1,13 @@
-// Alert domain test suite.
-// Validates export/import/diff document shaping, kind detection, and CLI parser/help behavior.
+//! Alert domain test suite.
+//! Validates export/import/diff document shaping, kind detection, and CLI parser/help
+//! behavior.
 use super::{
     build_compare_diff_text, build_contact_point_export_document, build_contact_point_output_path,
     build_empty_root_index, build_import_operation, build_rule_export_document,
     build_rule_output_path, detect_document_kind, expect_object_list, get_rule_linkage,
     load_panel_id_map, load_string_map, parse_cli_from, parse_template_list_response, root_command,
-    serialize_compare_document, AlertCliArgs, CONTACT_POINT_KIND, ROOT_INDEX_KIND, RULE_KIND,
-    TOOL_API_VERSION, TOOL_SCHEMA_VERSION,
+    serialize_compare_document, serialize_rule_list_rows, AlertCliArgs, CONTACT_POINT_KIND,
+    ROOT_INDEX_KIND, RULE_KIND, TOOL_API_VERSION, TOOL_SCHEMA_VERSION,
 };
 use serde_json::json;
 use std::fs;
@@ -17,6 +18,19 @@ fn render_alert_help() -> String {
     let mut command = root_command();
     let mut output = Vec::new();
     command.write_long_help(&mut output).unwrap();
+    String::from_utf8(output).unwrap()
+}
+
+fn render_alert_subcommand_help(path: &[&str]) -> String {
+    let mut command = root_command();
+    let mut current = &mut command;
+    for segment in path {
+        current = current
+            .find_subcommand_mut(segment)
+            .unwrap_or_else(|| panic!("missing alert subcommand help for {segment}"));
+    }
+    let mut output = Vec::new();
+    current.write_long_help(&mut output).unwrap();
     String::from_utf8(output).unwrap()
 }
 
@@ -269,6 +283,8 @@ fn parse_cli_supports_list_rules_subcommand() {
     assert_eq!(args.list_kind, Some(super::AlertListKind::Rules));
     assert!(args.json);
     assert!(!args.csv);
+    assert_eq!(args.org_id, None);
+    assert!(!args.all_orgs);
 }
 
 #[test]
@@ -279,6 +295,68 @@ fn parse_cli_supports_list_rules_output_format_csv() {
     assert!(args.csv);
     assert!(!args.table);
     assert!(!args.json);
+}
+
+#[test]
+fn parse_cli_supports_list_rules_org_routing_flags() {
+    let org_args: AlertCliArgs = parse_cli_from([
+        "grafana-util alert",
+        "list-rules",
+        "--org-id",
+        "7",
+        "--json",
+    ]);
+    assert_eq!(org_args.org_id, Some(7));
+    assert!(!org_args.all_orgs);
+
+    let all_orgs_args: AlertCliArgs =
+        parse_cli_from(["grafana-util alert", "list-rules", "--all-orgs", "--json"]);
+    assert_eq!(all_orgs_args.org_id, None);
+    assert!(all_orgs_args.all_orgs);
+}
+
+#[test]
+fn parse_cli_rejects_list_rules_org_id_with_all_orgs() {
+    let error = root_command()
+        .try_get_matches_from([
+            "grafana-util alert",
+            "list-rules",
+            "--org-id",
+            "7",
+            "--all-orgs",
+        ])
+        .unwrap_err();
+    assert!(error.to_string().contains("--org-id"));
+    assert!(error.to_string().contains("--all-orgs"));
+}
+
+#[test]
+fn help_mentions_list_org_routing_flags() {
+    let help = render_alert_subcommand_help(&["list-rules"]);
+    assert!(help.contains("--org-id"));
+    assert!(help.contains("--all-orgs"));
+    assert!(help.contains("This requires Basic auth."));
+}
+
+#[test]
+fn serialize_rule_list_rows_includes_org_scope_columns_when_present() {
+    let rows = serialize_rule_list_rows(&[json!({
+        "uid": "rule-uid",
+        "title": "CPU High",
+        "folderUID": "infra-folder",
+        "ruleGroup": "cpu",
+        "org": {
+            "id": 7,
+            "name": "Platform"
+        }
+    })
+    .as_object()
+    .unwrap()
+    .clone()]);
+
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].get("org").map(String::as_str), Some("Platform"));
+    assert_eq!(rows[0].get("orgId").map(String::as_str), Some("7"));
 }
 
 #[test]

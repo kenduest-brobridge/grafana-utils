@@ -17,7 +17,7 @@ implementation shape.
 - New Python helper module:
   - `grafana_utils/sync_preflight_workbench.py`
 - New unit tests:
-  - `tests/test_python_sync_preflight_workbench.py`
+  - `python/tests/test_python_sync_preflight_workbench.py`
 
 ## Current Behavior
 

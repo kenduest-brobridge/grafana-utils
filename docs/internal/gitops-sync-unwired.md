@@ -20,7 +20,7 @@ before CLI wiring and live Grafana mutation paths landed.
 - New Python helper module:
   - `grafana_utils/gitops_sync.py`
 - New unit tests:
-  - `tests/test_python_gitops_sync.py`
+  - `python/tests/test_python_gitops_sync.py`
 
 ## Current Behavior
 

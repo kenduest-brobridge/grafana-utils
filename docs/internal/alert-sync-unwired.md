@@ -18,7 +18,7 @@ from before the sync CLI and live alert apply paths landed.
 - New Python helper module:
   - `grafana_utils/alert_sync_workbench.py`
 - New unit tests:
-  - `tests/test_python_alert_sync_workbench.py`
+  - `python/tests/test_python_alert_sync_workbench.py`
 
 ## Current Behavior
 

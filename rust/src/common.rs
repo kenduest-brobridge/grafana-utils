@@ -10,6 +10,7 @@ use std::fs;
 use std::path::Path;
 use thiserror::Error;
 
+/// Enum definition for GrafanaCliError.
 #[derive(Debug, Error)]
 pub enum GrafanaCliError {
     #[error("{0}")]
@@ -28,12 +29,15 @@ pub enum GrafanaCliError {
     Http(#[from] reqwest::Error),
 }
 
+/// Type alias for Result.
 pub type Result<T> = std::result::Result<T, GrafanaCliError>;
 
+/// message.
 pub fn message(text: impl Into<String>) -> GrafanaCliError {
     GrafanaCliError::Message(text.into())
 }
 
+/// api response.
 pub fn api_response(
     status_code: u16,
     url: impl Into<String>,
@@ -47,6 +51,7 @@ pub fn api_response(
 }
 
 impl GrafanaCliError {
+    /// status code.
     pub fn status_code(&self) -> Option<u16> {
         match self {
             GrafanaCliError::ApiResponse { status_code, .. } => Some(*status_code),
@@ -55,6 +60,7 @@ impl GrafanaCliError {
     }
 }
 
+/// env value.
 pub fn env_value(name: &str) -> Option<String> {
     match env::var(name) {
         Ok(value) if !value.trim().is_empty() => Some(value),
@@ -62,6 +68,10 @@ pub fn env_value(name: &str) -> Option<String> {
     }
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn resolve_auth_headers(
     api_token: Option<&str>,
     username: Option<&str>,
@@ -180,6 +190,7 @@ GRAFANA_USERNAME and GRAFANA_PASSWORD.",
     ))
 }
 
+/// sanitize path component.
 pub fn sanitize_path_component(value: &str) -> String {
     let invalid = Regex::new(r"[^\w.\- ]+").expect("invalid hard-coded regex");
     let spaces = Regex::new(r"\s+").expect("invalid hard-coded regex");
@@ -196,6 +207,7 @@ pub fn sanitize_path_component(value: &str) -> String {
     }
 }
 
+/// value as object.
 pub fn value_as_object<'a>(
     value: &'a Value,
     error_message: &str,
@@ -206,6 +218,7 @@ pub fn value_as_object<'a>(
     }
 }
 
+/// object field.
 pub fn object_field<'a>(
     object: &'a Map<String, Value>,
     key: &str,
@@ -213,7 +226,12 @@ pub fn object_field<'a>(
     object.get(key).and_then(Value::as_object)
 }
 
+/// string field.
 pub fn string_field(object: &Map<String, Value>, key: &str, default: &str) -> String {
+    // Call graph (hierarchy): this function is used in related modules.
+    // Upstream callers: 無
+    // Downstream callees: 無
+
     object
         .get(key)
         .and_then(Value::as_str)
@@ -222,6 +240,7 @@ pub fn string_field(object: &Map<String, Value>, key: &str, default: &str) -> St
         .to_string()
 }
 
+/// load json object file.
 pub fn load_json_object_file(path: &Path, object_label: &str) -> Result<Value> {
     let raw = fs::read_to_string(path)?;
     let value: Value = serde_json::from_str(&raw)?;
@@ -234,6 +253,7 @@ pub fn load_json_object_file(path: &Path, object_label: &str) -> Result<Value> {
     Ok(value)
 }
 
+/// write json file.
 pub fn write_json_file(path: &Path, payload: &Value, overwrite: bool) -> Result<()> {
     if path.exists() && !overwrite {
         return Err(message(format!(

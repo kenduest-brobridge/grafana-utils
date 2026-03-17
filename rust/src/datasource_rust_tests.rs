@@ -1,9 +1,11 @@
-// Datasource domain test suite.
-// Exercises parsing + import/export/diff helpers, including mocked datasource matching and contract fixtures.
+//! Datasource domain test suite.
+//! Exercises parsing + import/export/diff helpers, including mocked datasource matching
+//! and contract fixtures.
 use super::{
     build_add_payload, build_import_payload, build_modify_payload, build_modify_updates,
     diff_datasources_with_live, discover_export_org_import_scopes, load_import_records,
-    parse_json_object_argument, render_import_table, render_live_mutation_json,
+    parse_json_object_argument, render_data_source_csv, render_data_source_json,
+    render_data_source_table, render_import_table, render_live_mutation_json,
     render_live_mutation_table, resolve_delete_match, resolve_live_mutation_match, resolve_match,
     run_datasource_cli, CommonCliArgs, DatasourceCliArgs, DatasourceImportArgs,
     DatasourceImportRecord,
@@ -34,12 +36,12 @@ fn live_datasource(
 
 fn load_contract_cases() -> Vec<Value> {
     serde_json::from_str(include_str!(
-        "../../tests/fixtures/datasource_contract_cases.json"
+        "../../fixtures/datasource_contract_cases.json"
     ))
     .unwrap()
 }
 
-fn test_common_args() -> CommonCliArgs {
+fn test_datasource_common_args() -> CommonCliArgs {
     CommonCliArgs {
         url: "http://grafana.example".to_string(),
         api_token: None,
@@ -61,8 +63,25 @@ fn datasource_root_help_includes_examples() {
 
     assert!(help.contains("Examples:"));
     assert!(help.contains("grafana-util datasource list"));
+    assert!(help.contains("--all-orgs"));
     assert!(help.contains("grafana-util datasource add"));
     assert!(help.contains("grafana-util datasource import"));
+}
+
+#[test]
+fn list_help_explains_org_scope_flags() {
+    let mut command = DatasourceCliArgs::command();
+    let subcommand = command
+        .find_subcommand_mut("list")
+        .unwrap_or_else(|| panic!("missing datasource list help"));
+    let mut output = Vec::new();
+    subcommand.write_long_help(&mut output).unwrap();
+    let help = String::from_utf8(output).unwrap();
+
+    assert!(help.contains("--org-id"));
+    assert!(help.contains("--all-orgs"));
+    assert!(help.contains("Requires Basic auth"));
+    assert!(help.contains("Examples:"));
 }
 
 #[test]
@@ -185,6 +204,99 @@ fn parse_datasource_list_supports_output_format_json() {
         }
         _ => panic!("expected datasource list"),
     }
+}
+
+#[test]
+fn parse_datasource_list_supports_org_scope_flags() {
+    let args = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util",
+        "list",
+        "--org-id",
+        "7",
+        "--output-format",
+        "csv",
+    ]);
+
+    match args.command {
+        super::DatasourceGroupCommand::List(inner) => {
+            assert_eq!(inner.org_id, Some(7));
+            assert!(!inner.all_orgs);
+            assert!(inner.csv);
+        }
+        _ => panic!("expected datasource list"),
+    }
+}
+
+#[test]
+fn parse_datasource_list_supports_all_orgs_flag() {
+    let args =
+        DatasourceCliArgs::parse_normalized_from(["grafana-util", "list", "--all-orgs", "--json"]);
+
+    match args.command {
+        super::DatasourceGroupCommand::List(inner) => {
+            assert!(inner.all_orgs);
+            assert_eq!(inner.org_id, None);
+            assert!(inner.json);
+        }
+        _ => panic!("expected datasource list"),
+    }
+}
+
+#[test]
+fn parse_datasource_list_rejects_conflicting_org_scope_flags() {
+    let error =
+        DatasourceCliArgs::try_parse_from(["grafana-util", "list", "--org-id", "7", "--all-orgs"])
+            .unwrap_err();
+
+    assert!(error.to_string().contains("--org-id"));
+    assert!(error.to_string().contains("--all-orgs"));
+}
+
+#[test]
+fn render_data_source_table_includes_org_columns_when_present() {
+    let datasources = vec![json!({
+        "uid": "prom-main",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "url": "http://prometheus:9090",
+        "isDefault": true,
+        "org": "Main Org.",
+        "orgId": "1"
+    })
+    .as_object()
+    .unwrap()
+    .clone()];
+
+    let lines = render_data_source_table(&datasources, true);
+
+    assert!(lines[0].contains("ORG"));
+    assert!(lines[0].contains("ORG_ID"));
+    assert!(lines[2].contains("Main Org."));
+    assert!(lines[2].contains("1"));
+}
+
+#[test]
+fn render_data_source_csv_and_json_include_org_fields_when_present() {
+    let datasources = vec![json!({
+        "uid": "prom-main",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "url": "http://prometheus:9090",
+        "isDefault": true,
+        "org": "Main Org.",
+        "orgId": "1"
+    })
+    .as_object()
+    .unwrap()
+    .clone()];
+
+    let csv = render_data_source_csv(&datasources);
+    let json_value = render_data_source_json(&datasources);
+
+    assert_eq!(csv[0], "uid,name,type,url,isDefault,org,orgId");
+    assert!(csv[1].contains("Main Org."));
+    assert_eq!(json_value[0]["org"], Value::String("Main Org.".to_string()));
+    assert_eq!(json_value[0]["orgId"], Value::String("1".to_string()));
 }
 
 #[test]
@@ -928,7 +1040,7 @@ fn discover_export_org_import_scopes_reads_selected_multi_org_root() {
         ],
     );
     let args = DatasourceImportArgs {
-        common: test_common_args(),
+        common: test_datasource_common_args(),
         import_dir: import_root,
         org_id: None,
         use_export_org: true,
@@ -968,7 +1080,7 @@ fn discover_export_org_import_scopes_errors_when_selected_org_missing() {
         )],
     );
     let args = DatasourceImportArgs {
-        common: test_common_args(),
+        common: test_datasource_common_args(),
         import_dir: import_root,
         org_id: None,
         use_export_org: true,

@@ -17,7 +17,7 @@ implementation shape.
 - New Python helper module:
   - `grafana_utils/bundle_preflight_workbench.py`
 - New unit tests:
-  - `tests/test_python_bundle_preflight_workbench.py`
+  - `python/tests/test_python_bundle_preflight_workbench.py`
 
 ## Current Behavior
 

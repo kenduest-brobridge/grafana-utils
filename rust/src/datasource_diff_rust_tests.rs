@@ -1,5 +1,6 @@
-// Datasource diff unit tests.
-// Validates compare status/classification and mismatch reporting around import-vs-live contract data.
+//! Datasource diff unit tests.
+//! Validates compare status/classification and mismatch reporting around import-vs-live
+//! contract data.
 use crate::datasource::datasource_diff::{
     build_datasource_diff_report, normalize_export_records, normalize_live_records,
     DatasourceDiffStatus,
@@ -8,7 +9,7 @@ use serde_json::{json, Value};
 
 fn load_contract_cases() -> Vec<Value> {
     serde_json::from_str(include_str!(
-        "../../tests/fixtures/datasource_contract_cases.json"
+        "../../fixtures/datasource_contract_cases.json"
     ))
     .unwrap()
 }

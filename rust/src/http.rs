@@ -9,6 +9,7 @@ use serde_json::Value;
 
 use crate::common::{api_response, message, Result};
 
+/// Struct definition for JsonHttpClientConfig.
 #[derive(Debug, Clone)]
 pub struct JsonHttpClientConfig {
     pub base_url: String,
@@ -17,16 +18,22 @@ pub struct JsonHttpClientConfig {
     pub verify_ssl: bool,
 }
 
+/// Struct definition for JsonHttpClient.
 pub struct JsonHttpClient {
     base_url: String,
     client: Client,
 }
 
 impl JsonHttpClient {
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn new(config: JsonHttpClientConfig) -> Result<Self> {
         Self::new_with_ca_cert(config, None)
     }
 
+    /// new with ca cert.
     pub fn new_with_ca_cert(
         config: JsonHttpClientConfig,
         ca_cert: Option<&std::path::Path>,
@@ -61,8 +68,8 @@ impl JsonHttpClient {
         })
     }
 
-    // Low-level HTTP execution hook used by all domain clients.
-    // Returns decoded JSON on success and maps non-2xx responses through domain Result errors.
+    /// Low-level HTTP execution hook used by all domain clients.
+    /// Returns decoded JSON on success and maps non-2xx responses through domain Result errors.
     pub fn request_json(
         &self,
         method: Method,
@@ -70,6 +77,10 @@ impl JsonHttpClient {
         params: &[(String, String)],
         payload: Option<&Value>,
     ) -> Result<Option<Value>> {
+        // Call graph (hierarchy): this function is used in related modules.
+        // Upstream callers: 無
+        // Downstream callees: common.rs:api_response, dashboard_list.rs:header, http.rs:build_url
+
         let url = self.build_url(path, params)?;
         let mut request = self.client.request(method, url.clone());
         if payload.is_some() {

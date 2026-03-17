@@ -1,23 +1,34 @@
-// Unified CLI test suite.
-// Focuses on canonical command routing and ensures handlers receive the expected domain payload shapes.
-use super::{dispatch_with_handlers, parse_cli_from, CliArgs, UnifiedCommand};
+//! Unified CLI test suite.
+//! Focuses on canonical command routing and ensures handlers receive the expected
+//! domain payload shapes.
+use super::{
+    dispatch_with_handlers, maybe_render_unified_help_from_os_args, parse_cli_from,
+    render_unified_help_full_text, render_unified_help_text, CliArgs, UnifiedCommand,
+};
 use crate::dashboard::DashboardCommand;
 use crate::datasource::DatasourceGroupCommand;
 use crate::sync::{SyncGroupCommand, SyncOutputFormat, DEFAULT_REVIEW_TOKEN};
-use clap::{CommandFactory, Parser};
+use clap::Parser;
 use std::cell::RefCell;
 use std::path::Path;
 
 fn render_unified_help() -> String {
-    let mut command = CliArgs::command();
-    let mut output = Vec::new();
-    command.write_long_help(&mut output).unwrap();
-    String::from_utf8(output).unwrap()
+    render_unified_help_text(false)
+}
+
+fn render_unified_help_full() -> String {
+    render_unified_help_full_text(false)
 }
 
 #[test]
 fn unified_help_mentions_screenshot_and_inspect_vars_examples() {
     let help = render_unified_help();
+    assert!(help.contains("--help-full"));
+    assert!(help.contains("Print help with extended examples"));
+    assert!(help.contains("[Dashboard Export] Export dashboards with Basic auth"));
+    assert!(help.contains("[Dashboard Export] Export dashboards across all visible orgs"));
+    assert!(help.contains("--basic-user admin --basic-password admin"));
+    assert!(help.contains("--all-orgs"));
     assert!(help.contains("dashboard screenshot"));
     assert!(help.contains("dashboard inspect-vars"));
     assert!(help.contains("--dashboard-url"));
@@ -220,7 +231,11 @@ fn parse_cli_supports_access_group() {
 fn unified_help_mentions_alert_access_and_shims() {
     let help = render_unified_help();
     assert!(help.contains("grafana-util access user list"));
-    assert!(help.contains("grafana-access-utils"));
+    assert!(help.contains("[Alert Export]"));
+    assert!(help.contains("[Datasource Inventory]"));
+    assert!(help.contains("[Access Inventory]"));
+    assert!(help.contains("[Sync Planning]"));
+    assert!(help.contains("[Sync Apply]"));
     assert!(help.contains("datasource"));
     assert!(help.contains("Run datasource list, export, import, and diff workflows."));
     assert!(help.contains("grafana-util sync plan --desired-file ./desired.json --fetch-live"));
@@ -235,6 +250,114 @@ fn unified_help_mentions_alert_access_and_shims() {
     assert!(help.contains("[aliases: ds]"));
     assert!(help.contains("[aliases: sy]"));
     assert!(!help.contains("Compatibility direct form"));
+}
+
+#[test]
+fn render_unified_help_text_colorizes_example_labels_when_requested() {
+    let help = render_unified_help_text(true);
+    assert!(help.contains("\u{1b}[1;36m[Dashboard Export]\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[1;31m[Alert Export]\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[1;32m[Datasource Inventory]\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[1;33m[Access Inventory]\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[1;34m[Sync Planning]\u{1b}[0m"));
+}
+
+#[test]
+fn render_unified_help_text_colorizes_bracketed_usage_tokens_when_requested() {
+    let help = render_unified_help_text(true);
+    assert!(help.contains("\u{1b}[1m\u{1b}[32mUsage:\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[1m\u{1b}[36m<COMMAND>\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[33m[aliases: \u{1b}[0m\u{1b}[33mdb\u{1b}[0m\u{1b}[33m]\u{1b}[0m"));
+}
+
+#[test]
+fn unified_help_full_appends_extended_examples() {
+    let help = render_unified_help_full();
+    assert!(help.contains("Extended Examples:"));
+    assert!(help.contains("[Dashboard Inspect Export]"));
+    assert!(help.contains("grafana-util sync review --plan-file ./sync-plan.json"));
+}
+
+#[test]
+fn unified_help_full_colorizes_extended_example_labels_when_requested() {
+    let help = render_unified_help_full_text(true);
+    assert!(help.contains("\u{1b}[1;36m[Dashboard Inspect Export]\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[1;31m[Alert Import]\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[1;32m[Datasource Import]\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[1;33m[Access Team Import]\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[1;34m[Sync Review]\u{1b}[0m"));
+}
+
+#[test]
+fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags() {
+    let root_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "--help"], false).unwrap();
+    assert!(root_help.contains("[Dashboard Export]"));
+    assert!(root_help.contains("--help-full"));
+
+    let short_help = maybe_render_unified_help_from_os_args(["grafana-util", "-h"], false).unwrap();
+    assert!(short_help.contains("[Sync Apply]"));
+    assert!(short_help.contains("Print help with extended examples"));
+
+    let full_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "--help-full"], false).unwrap();
+    assert!(full_help.contains("Extended Examples:"));
+    assert!(full_help.contains("[Alert Import]"));
+
+    let alert_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "alert", "--help-full"], false)
+            .unwrap();
+    assert!(alert_help.contains("Extended Examples:"));
+    assert!(alert_help.contains("[Alert List]"));
+
+    let datasource_help = maybe_render_unified_help_from_os_args(
+        ["grafana-util", "datasource", "--help-full"],
+        false,
+    )
+    .unwrap();
+    assert!(datasource_help.contains("[Datasource Diff]"));
+
+    let access_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "access", "--help-full"], false)
+            .unwrap();
+    assert!(access_help.contains("[Access Token Add]"));
+
+    let sync_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "sync", "--help-full"], false)
+            .unwrap();
+    assert!(sync_help.contains("[Sync Apply]"));
+
+    let alert_short_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "alert", "-h"], false).unwrap();
+    assert!(alert_short_help.contains("--help-full"));
+
+    let datasource_short_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "datasource", "-h"], false)
+            .unwrap();
+    assert!(datasource_short_help.contains("--help-full"));
+
+    let access_short_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "access", "-h"], false).unwrap();
+    assert!(access_short_help.contains("--help-full"));
+
+    let sync_short_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "sync", "-h"], false).unwrap();
+    assert!(sync_short_help.contains("--help-full"));
+
+    assert!(
+        maybe_render_unified_help_from_os_args(["grafana-util", "dashboard", "--help"], false)
+            .is_none()
+    );
+    assert!(maybe_render_unified_help_from_os_args(
+        ["grafana-util", "dashboard", "--help-full"],
+        false
+    )
+    .is_none());
+    assert!(maybe_render_unified_help_from_os_args(
+        ["grafana-util", "alert", "export", "--help-full"],
+        false
+    )
+    .is_none());
 }
 
 #[test]
@@ -323,7 +446,10 @@ fn parse_cli_supports_sync_plan_group_command() {
         UnifiedCommand::Sync { command } => match command {
             SyncGroupCommand::Plan(inner) => {
                 assert_eq!(inner.desired_file, Path::new("./desired.json"));
-                assert_eq!(inner.live_file, Some(Path::new("./live.json").to_path_buf()));
+                assert_eq!(
+                    inner.live_file,
+                    Some(Path::new("./live.json").to_path_buf())
+                );
                 assert_eq!(inner.trace_id, Some("trace-explicit".to_string()));
                 assert_eq!(inner.output, SyncOutputFormat::Json);
             }

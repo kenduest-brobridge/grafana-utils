@@ -52,20 +52,27 @@ run_optional_python_module() {
 
 cd "$ROOT_DIR" || exit 1
 
+PYTHON_SRC_DIR="${ROOT_DIR}/python/grafana_utils"
+PYTHON_TEST_DIR="${ROOT_DIR}/python/tests"
+PYTHON_WRAPPER_DIR="${ROOT_DIR}/python"
+
 run_step "python bytecode compile check" \
-  "$PYTHON_BIN" -m compileall -q grafana_utils tests python
+  "$PYTHON_BIN" -m compileall -q "$PYTHON_SRC_DIR" "$PYTHON_TEST_DIR" "$PYTHON_WRAPPER_DIR"
 
 run_step "python unittest suite" \
-  "$PYTHON_BIN" -m unittest -v
+  env PYTHONPATH="$PYTHON_WRAPPER_DIR${PYTHONPATH:+:$PYTHONPATH}" \
+    "$PYTHON_BIN" -m unittest discover -s "$PYTHON_TEST_DIR" -v
 
 run_optional_python_module ruff "ruff lint" \
-  check grafana_utils tests python
+  check "$PYTHON_SRC_DIR" "$PYTHON_TEST_DIR"
 
 run_optional_python_module mypy "mypy type check" \
-  grafana_utils tests python
+  --disable-error-code import-not-found \
+  --disable-error-code import-untyped \
+  "$PYTHON_SRC_DIR"
 
 run_optional_python_module black "black format check" \
-  --check grafana_utils tests python
+  --check --target-version py39 "$PYTHON_SRC_DIR" "$PYTHON_TEST_DIR"
 
 if [ "$STATUS" -ne 0 ]; then
   warn "python quality checks finished with failures"

@@ -1,0 +1,1878 @@
+# Rust 呼叫層級關係（核心層）
+
+僅包含 `rust/src/*.rs` 非測試實作（排除 `*_rust_tests.rs`），以便專注產品邏輯。
+
+## 全域入口（無同檔直接上游）
+
+
+## 全域高流量（呼叫數前 120）
+
+- pub `run_sync_cli` @ `sync.rs:2572`（呼叫 34 / 被呼叫 0）
+- pub `run_datasource_cli` @ `datasource.rs:2723`（呼叫 30 / 被呼叫 0）
+- `export_alerting_resources` @ `alert.rs:1150`（呼叫 23 / 被呼叫 1）
+- pub `capture_dashboard_screenshot` @ `dashboard_screenshot.rs:238`（呼叫 17 / 被呼叫 2）
+- pub `list_alert_resources` @ `alert_list.rs:256`（呼叫 14 / 被呼叫 1）
+- `diff_alerting_resources` @ `alert.rs:1675`（呼叫 12 / 被呼叫 1）
+- `import_alerting_resources` @ `alert.rs:1612`（呼叫 10 / 被呼叫 1）
+- pub `build_external_export_document` @ `dashboard_prompt.rs:783`（呼叫 10 / 被呼叫 0）
+- `run_sync_bundle` @ `sync.rs:2496`（呼叫 10 / 被呼叫 1）
+- pub `run_dashboard_cli_with_client` @ `dashboard.rs:243`（呼叫 9 / 被呼叫 0）
+- `fetch_live_compare_document` @ `alert.rs:1427`（呼叫 8 / 被呼叫 1）
+- `import_datasources_by_export_org` @ `datasource.rs:2016`（呼叫 8 / 被呼叫 1）
+- `import_datasources_with_client` @ `datasource.rs:1807`（呼叫 8 / 被呼叫 2）
+- pub `build_import_operation` @ `alert.rs:740`（呼叫 7 / 被呼叫 2）
+- `rewrite_rule_dashboard_linkage` @ `alert.rs:1096`（呼叫 7 / 被呼叫 1）
+- pub `build_bundle_preflight_document` @ `bundle_preflight.rs:168`（呼叫 7 / 被呼叫 0）
+- pub `run_dashboard_cli` @ `dashboard.rs:312`（呼叫 7 / 被呼叫 0）
+- `build_routed_datasource_import_dry_run_json` @ `datasource.rs:1939`（呼叫 7 / 被呼叫 1）
+- pub `normalize_resource_spec` @ `sync_workbench.rs:127`（呼叫 7 / 被呼叫 0）
+- `write_full_page_output` @ `dashboard_screenshot.rs:1397`（呼叫 6 / 被呼叫 1）
+- `collect_datasource_import_dry_run_report` @ `datasource.rs:1649`（呼叫 6 / 被呼叫 2）
+- `execute_live_apply_with_request` @ `sync.rs:2232`（呼叫 6 / 被呼叫 1）
+- `load_dashboard_bundle_sections` @ `sync.rs:1012`（呼叫 6 / 被呼叫 1）
+- pub `build_sync_preflight_document` @ `sync_preflight.rs:363`（呼叫 6 / 被呼叫 3）
+- `build_team_live_records_for_diff` @ `access_team.rs:114`（呼叫 5 / 被呼叫 0）
+- `build_linked_dashboard_metadata` @ `alert.rs:940`（呼叫 5 / 被呼叫 1）
+- `import_resource_document` @ `alert.rs:1596`（呼叫 5 / 被呼叫 1）
+- `resolve_dashboard_metadata` @ `dashboard_screenshot.rs:429`（呼叫 5 / 被呼叫 1）
+- `normalize_alert_rule_sync_spec` @ `sync.rs:1252`（呼叫 5 / 被呼叫 1）
+- `require_matching_optional_trace_id` @ `sync.rs:1518`（呼叫 5 / 被呼叫 1）
+- `collect_alert_section` @ `sync_bundle_alert_contracts.rs:200`（呼叫 5 / 被呼叫 1）
+- pub `build_sync_bundle_preflight_document` @ `sync_bundle_preflight.rs:253`（呼叫 5 / 被呼叫 1）
+- `build_alert_checks` @ `sync_preflight.rs:266`（呼叫 5 / 被呼叫 1）
+- `add_or_remove_member` @ `access_team.rs:676`（呼叫 4 / 被呼叫 0）
+- pub `build_contact_point_import_payload` @ `alert.rs:641`（呼叫 4 / 被呼叫 1）
+- pub `build_mute_timing_import_payload` @ `alert.rs:674`（呼叫 4 / 被呼叫 1）
+- pub `build_rule_import_payload` @ `alert.rs:617`（呼叫 4 / 被呼叫 4）
+- pub `build_template_import_payload` @ `alert.rs:718`（呼叫 4 / 被呼叫 1）
+- `determine_import_action` @ `alert.rs:1409`（呼叫 4 / 被呼叫 1）
+- `import_rule_document` @ `alert.rs:1489`（呼叫 4 / 被呼叫 1）
+- `import_template_document` @ `alert.rs:1551`（呼叫 4 / 被呼叫 1）
+- `resolve_dashboard_uid_fallback` @ `alert.rs:1057`（呼叫 4 / 被呼叫 1）
+- pub `run_alert_cli` @ `alert.rs:1762`（呼叫 4 / 被呼叫 0）
+- `list_items_for_kind` @ `alert_list.rs:240`（呼叫 4 / 被呼叫 1）
+- pub `assess_alert_sync_specs` @ `alert_sync.rs:82`（呼叫 4 / 被呼叫 2）
+- `build_provider_assessment` @ `bundle_preflight.rs:113`（呼叫 4 / 被呼叫 1）
+- pub `maybe_render_unified_help_from_os_args` @ `cli.rs:160`（呼叫 4 / 被呼叫 0）
+- `build_local_compare_document` @ `dashboard_import.rs:582`（呼叫 4 / 被呼叫 0）
+- `resolve_existing_dashboard_folder_path_with_request` @ `dashboard_import.rs:783`（呼叫 4 / 被呼叫 0）
+- `resolve_target_org_plan_for_export_scope_with_request` @ `dashboard_import.rs:494`（呼叫 4 / 被呼叫 0）
+- `resolve_dashboard_list_columns` @ `dashboard_list.rs:212`（呼叫 4 / 被呼叫 0）
+- `prepare_templating_for_external_import` @ `dashboard_prompt.rs:508`（呼叫 4 / 被呼叫 1）
+- `resolve_object_datasource_ref` @ `dashboard_prompt.rs:334`（呼叫 4 / 被呼叫 1）
+- `resolve_string_datasource_ref` @ `dashboard_prompt.rs:280`（呼叫 4 / 被呼叫 1）
+- pub `build_dashboard_capture_url` @ `dashboard_screenshot.rs:128`（呼叫 4 / 被呼叫 1）
+- `compose_header_image` @ `dashboard_screenshot.rs:618`（呼叫 4 / 被呼叫 1）
+- pub `validate_screenshot_args` @ `dashboard_screenshot.rs:33`（呼叫 4 / 被呼叫 1）
+- `build_dashboard_variable_document` @ `dashboard_vars.rs:151`（呼叫 4 / 被呼叫 0）
+- `export_datasource_scope` @ `datasource.rs:1092`（呼叫 4 / 被呼叫 1）
+- `parse_export_org_scope` @ `datasource.rs:1372`（呼叫 4 / 被呼叫 1）
+- `resolve_export_org_target_plan` @ `datasource.rs:1539`（呼叫 4 / 被呼叫 2）
+- `require_optional_stage` @ `sync.rs:1473`（呼叫 4 / 被呼叫 1）
+- `build_provider_assessment` @ `sync_bundle_preflight.rs:62`（呼叫 4 / 被呼叫 1）
+- pub `build_sync_plan_document` @ `sync_workbench.rs:475`（呼叫 4 / 被呼叫 1）
+- pub `run_access_cli` @ `access.rs:273`（呼叫 3 / 被呼叫 0）
+- `lookup_org_by_identity` @ `access_org.rs:379`（呼叫 3 / 被呼叫 0）
+- `list_service_accounts_with_request` @ `access_pending_delete.rs:293`（呼叫 3 / 被呼叫 1）
+- `list_teams_with_request` @ `access_pending_delete.rs:137`（呼叫 3 / 被呼叫 1）
+- `list_service_accounts_with_request` @ `access_service_account.rs:33`（呼叫 3 / 被呼叫 2）
+- `load_service_account_import_records` @ `access_service_account.rs:230`（呼叫 3 / 被呼叫 0）
+- `build_team_diff_map` @ `access_team.rs:87`（呼叫 3 / 被呼叫 0）
+- `list_teams_with_request` @ `access_team.rs:468`（呼叫 3 / 被呼叫 1）
+- `load_team_import_records` @ `access_team.rs:387`（呼叫 3 / 被呼叫 0）
+- `build_user_diff_map` @ `access_user.rs:836`（呼叫 3 / 被呼叫 0）
+- `build_user_export_records` @ `access_user.rs:298`（呼叫 3 / 被呼叫 0）
+- `build_user_export_records_for_diff` @ `access_user.rs:865`（呼叫 3 / 被呼叫 0）
+- `load_access_import_records` @ `access_user.rs:140`（呼叫 3 / 被呼叫 0）
+- pub `build_contact_point_export_document` @ `alert.rs:449`（呼叫 3 / 被呼叫 1）
+- pub `build_mute_timing_export_document` @ `alert.rs:466`（呼叫 3 / 被呼叫 1）
+- pub `build_policies_export_document` @ `alert.rs:483`（呼叫 3 / 被呼叫 1）
+- pub `build_rule_export_document` @ `alert.rs:422`（呼叫 3 / 被呼叫 1）
+- pub `build_template_export_document` @ `alert.rs:500`（呼叫 3 / 被呼叫 1）
+- `import_contact_point_document` @ `alert.rs:1509`（呼叫 3 / 被呼叫 1）
+- `import_mute_timing_document` @ `alert.rs:1530`（呼叫 3 / 被呼叫 1）
+- pub `load_panel_id_map` @ `alert.rs:286`（呼叫 3 / 被呼叫 1）
+- pub `load_string_map` @ `alert.rs:269`（呼叫 3 / 被呼叫 1）
+- pub `render_bundle_preflight_text` @ `bundle_preflight.rs:221`（呼叫 3 / 被呼叫 0）
+- pub `render_unified_help_text` @ `cli.rs:110`（呼叫 3 / 被呼叫 2）
+- `build_remote_compare_document` @ `dashboard_import.rs:597`（呼叫 3 / 被呼叫 0）
+- `determine_dashboard_import_action_with_request` @ `dashboard_import.rs:638`（呼叫 3 / 被呼叫 0）
+- `determine_import_folder_uid_override_with_request` @ `dashboard_import.rs:671`（呼叫 3 / 被呼叫 0）
+- `ensure_folder_inventory_entry_cached` @ `dashboard_import.rs:916`（呼叫 3 / 被呼叫 0）
+- `parse_export_org_scope` @ `dashboard_import.rs:277`（呼叫 3 / 被呼叫 1）
+- `resolve_source_dashboard_folder_path` @ `dashboard_import.rs:738`（呼叫 3 / 被呼叫 0）
+- `validate_matching_export_org_with_request` @ `dashboard_import.rs:452`（呼叫 3 / 被呼叫 0）
+- `collect_query_report_rows` @ `dashboard_inspect.rs:719`（呼叫 3 / 被呼叫 0）
+- `prepare_inspect_live_import_dir` @ `dashboard_inspect.rs:1551`（呼叫 3 / 被呼叫 0）
+- `dashboard_list_value` @ `dashboard_list.rs:243`（呼叫 3 / 被呼叫 1）
+- `resolve_placeholder_object_ref` @ `dashboard_prompt.rs:313`（呼叫 3 / 被呼叫 1）
+- `load_diff_record_values` @ `datasource.rs:1241`（呼叫 3 / 被呼叫 0）
+- `load_import_records` @ `datasource.rs:1174`（呼叫 3 / 被呼叫 4）
+- `validate_matching_export_org` @ `datasource.rs:1611`（呼叫 3 / 被呼叫 2）
+- `from_map` @ `datasource_diff.rs:81`（呼叫 3 / 被呼叫 0）
+- pub `build_provider_plan` @ `datasource_provider.rs:117`（呼叫 3 / 被呼叫 2）
+- pub `request_json` @ `http.rs:73`（呼叫 3 / 被呼叫 0）
+- `attach_apply_audit` @ `sync.rs:2453`（呼叫 3 / 被呼叫 1）
+- `attach_review_audit` @ `sync.rs:2426`（呼叫 3 / 被呼叫 1）
+- `attach_trace_id` @ `sync.rs:1407`（呼叫 3 / 被呼叫 1）
+- `fetch_live_availability_with_request` @ `sync.rs:731`（呼叫 3 / 被呼叫 1）
+- `fetch_live_resource_specs_with_request` @ `sync.rs:508`（呼叫 3 / 被呼叫 1）
+- `load_alerting_bundle_section` @ `sync.rs:1066`（呼叫 3 / 被呼叫 1）
+- `merge_availability` @ `sync.rs:470`（呼叫 3 / 被呼叫 1）
+- `collect_alert_specs` @ `sync_bundle_preflight.rs:217`（呼叫 3 / 被呼叫 1）
+- pub `render_sync_bundle_preflight_text` @ `sync_bundle_preflight.rs:332`（呼叫 3 / 被呼叫 1）
+- `collect_alert_datasource_uids` @ `sync_preflight.rs:192`（呼叫 3 / 被呼叫 1）
+- pub `render_sync_preflight_text` @ `sync_preflight.rs:413`（呼叫 3 / 被呼叫 1）
+- `request_array` @ `access.rs:100`（呼叫 2 / 被呼叫 5）
+- `request_object` @ `access.rs:84`（呼叫 2 / 被呼叫 33）
+- pub `build_http_client` @ `access_cli_defs.rs:1407`（呼叫 2 / 被呼叫 0）
+- pub `build_http_client_no_org_id` @ `access_cli_defs.rs:1428`（呼叫 2 / 被呼叫 1）
+
+## `access.rs`
+
+- `request_object` @ `access.rs:84`（上游 33 / 下游 2）
+  - 呼叫: common.rs:message, common.rs:value_as_object
+  - 被呼叫: access_org.rs:add_user_to_org_with_request, access_org.rs:create_organization_with_request, access_org.rs:delete_organization_with_request, access_org.rs:update_org_user_role_with_request, access_org.rs:update_organization_with_request, access_pending_delete.rs:delete_service_account_api_with_request, access_pending_delete.rs:delete_service_account_token_api_with_request, access_pending_delete.rs:delete_team_api_with_request, access_pending_delete.rs:get_service_account_with_request, access_pending_delete.rs:get_team_with_request ...
+- `request_array` @ `access.rs:100`（上游 5 / 下游 2）
+  - 呼叫: common.rs:message, common.rs:value_as_object
+  - 被呼叫: access_org.rs:list_org_users_with_request, access_org.rs:list_organizations_with_request, access_team.rs:list_team_members_with_request, access_user.rs:iter_global_users_with_request, access_user.rs:list_user_teams_with_request
+- `run_access_cli_with_client` @ `access.rs:123`（上游 1 / 下游 1）
+  - 呼叫: access.rs:run_access_cli_with_request
+  - 被呼叫: access.rs:run_access_cli
+- `run_access_cli_with_request` @ `access.rs:138`（上游 1 / 下游 0）
+  - 被呼叫: access.rs:run_access_cli_with_client
+- `run_access_cli` @ `access.rs:273`（上游 0 / 下游 3）
+  - 呼叫: access.rs:run_access_cli_with_client, access_cli_defs.rs:build_http_client_no_org_id, access_cli_defs.rs:normalize_access_cli_args
+
+## `access_cli_defs.rs`
+
+- `parse_cli_from` @ `access_cli_defs.rs:1165`（上游 0 / 下游 1）
+  - 呼叫: access_cli_defs.rs:normalize_access_cli_args
+- `apply_list_output_format` @ `access_cli_defs.rs:1179`（上游 1 / 下游 0）
+  - 被呼叫: access_cli_defs.rs:normalize_access_cli_args
+- `apply_dry_run_output_format` @ `access_cli_defs.rs:1194`（上游 1 / 下游 0）
+  - 被呼叫: access_cli_defs.rs:normalize_access_cli_args
+- `normalize_access_cli_args` @ `access_cli_defs.rs:1208`（上游 2 / 下游 2）
+  - 呼叫: access_cli_defs.rs:apply_dry_run_output_format, access_cli_defs.rs:apply_list_output_format
+  - 被呼叫: access.rs:run_access_cli, access_cli_defs.rs:parse_cli_from
+- `root_command` @ `access_cli_defs.rs:1276`（上游 0 / 下游 0）
+- `parse_bool_text` @ `access_cli_defs.rs:1297`（上游 0 / 下游 0）
+- `parse_positive_usize` @ `access_cli_defs.rs:1309`（上游 0 / 下游 0）
+- `parse_service_account_role` @ `access_cli_defs.rs:1323`（上游 0 / 下游 0）
+- `build_auth_context` @ `access_cli_defs.rs:1338`（上游 1 / 下游 1）
+  - 呼叫: common.rs:resolve_auth_headers
+  - 被呼叫: access_cli_defs.rs:build_http_client
+- `build_auth_context_no_org_id` @ `access_cli_defs.rs:1374`（上游 2 / 下游 1）
+  - 呼叫: common.rs:resolve_auth_headers
+  - 被呼叫: access_cli_defs.rs:build_http_client_no_org_id, access_org.rs:validate_basic_auth_only
+- `build_http_client` @ `access_cli_defs.rs:1407`（上游 0 / 下游 2）
+  - 呼叫: access_cli_defs.rs:build_auth_context, http.rs:new_with_ca_cert
+- `build_http_client_no_org_id` @ `access_cli_defs.rs:1428`（上游 1 / 下游 2）
+  - 呼叫: access_cli_defs.rs:build_auth_context_no_org_id, http.rs:new_with_ca_cert
+  - 被呼叫: access.rs:run_access_cli
+
+## `access_org.rs`
+
+- `validate_basic_auth_only` @ `access_org.rs:18`（上游 0 / 下游 2）
+  - 呼叫: access_cli_defs.rs:build_auth_context_no_org_id, common.rs:message
+- `list_organizations_with_request` @ `access_org.rs:29`（上游 1 / 下游 1）
+  - 呼叫: access.rs:request_array
+  - 被呼叫: access_org.rs:lookup_org_by_identity
+- `create_organization_with_request` @ `access_org.rs:43`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `update_organization_with_request` @ `access_org.rs:60`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `delete_organization_with_request` @ `access_org.rs:78`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `list_org_users_with_request` @ `access_org.rs:95`（上游 2 / 下游 1）
+  - 呼叫: access.rs:request_array
+  - 被呼叫: access_user.rs:build_user_export_records, access_user.rs:build_user_export_records_for_diff
+- `add_user_to_org_with_request` @ `access_org.rs:112`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `update_org_user_role_with_request` @ `access_org.rs:137`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `normalize_org_user_row` @ `access_org.rs:161`（上游 0 / 下游 0）
+- `normalize_org_row` @ `access_org.rs:197`（上游 1 / 下游 1）
+  - 呼叫: common.rs:value_as_object
+  - 被呼叫: access_org.rs:lookup_org_by_identity
+- `org_matches` @ `access_org.rs:233`（上游 0 / 下游 0）
+- `org_table_rows` @ `access_org.rs:255`（上游 0 / 下游 0）
+- `org_summary_line` @ `access_org.rs:267`（上游 0 / 下游 0）
+- `assert_not_overwrite` @ `access_org.rs:276`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+- `build_org_export_metadata` @ `access_org.rs:286`（上游 0 / 下游 0）
+- `load_org_import_records` @ `access_org.rs:315`（上游 0 / 下游 2）
+  - 呼叫: common.rs:message, common.rs:value_as_object
+- `lookup_org_by_identity` @ `access_org.rs:379`（上游 0 / 下游 3）
+  - 呼叫: access_org.rs:list_organizations_with_request, access_org.rs:normalize_org_row, common.rs:message
+
+## `access_pending_delete.rs`
+
+- `validate_confirmation` @ `access_pending_delete.rs:86`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+- `render_single_object_json` @ `access_pending_delete.rs:95`（上游 1 / 下游 0）
+  - 被呼叫: access_pending_delete.rs:render_single_object_json_returns_object_payload
+- `validate_exactly_one_identity` @ `access_pending_delete.rs:100`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: access_pending_delete.rs:validate_token_identity
+- `validate_token_identity` @ `access_pending_delete.rs:118`（上游 0 / 下游 2）
+  - 呼叫: access_pending_delete.rs:validate_exactly_one_identity, common.rs:message
+- `list_teams_with_request` @ `access_pending_delete.rs:137`（上游 1 / 下游 3）
+  - 呼叫: access.rs:request_object, common.rs:message, common.rs:value_as_object
+  - 被呼叫: access_pending_delete.rs:lookup_team_by_name
+- `lookup_team_by_name` @ `access_pending_delete.rs:171`（上游 0 / 下游 2）
+  - 呼叫: access_pending_delete.rs:list_teams_with_request, common.rs:message
+- `get_team_with_request` @ `access_pending_delete.rs:183`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `delete_team_api_with_request` @ `access_pending_delete.rs:198`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `team_delete_result` @ `access_pending_delete.rs:213`（上游 0 / 下游 0）
+- `team_delete_summary_line` @ `access_pending_delete.rs:245`（上游 0 / 下游 0）
+- `list_service_accounts_with_request` @ `access_pending_delete.rs:293`（上游 1 / 下游 3）
+  - 呼叫: access.rs:request_object, common.rs:message, common.rs:value_as_object
+  - 被呼叫: access_pending_delete.rs:lookup_service_account_by_name
+- `lookup_service_account_by_name` @ `access_pending_delete.rs:333`（上游 0 / 下游 2）
+  - 呼叫: access_pending_delete.rs:list_service_accounts_with_request, common.rs:message
+- `get_service_account_with_request` @ `access_pending_delete.rs:350`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `delete_service_account_api_with_request` @ `access_pending_delete.rs:370`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `service_account_delete_result` @ `access_pending_delete.rs:390`（上游 0 / 下游 0）
+- `service_account_delete_summary_line` @ `access_pending_delete.rs:418`（上游 0 / 下游 0）
+- `list_service_account_tokens_with_request` @ `access_pending_delete.rs:480`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, common.rs:value_as_object
+  - 被呼叫: access_pending_delete.rs:lookup_service_account_token_by_name
+- `lookup_service_account_token_by_name` @ `access_pending_delete.rs:511`（上游 0 / 下游 2）
+  - 呼叫: access_pending_delete.rs:list_service_account_tokens_with_request, common.rs:message
+- `delete_service_account_token_api_with_request` @ `access_pending_delete.rs:531`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `service_account_token_delete_result` @ `access_pending_delete.rs:552`（上游 0 / 下游 0）
+- `service_account_token_delete_summary_line` @ `access_pending_delete.rs:600`（上游 0 / 下游 0）
+- `common_args` @ `access_pending_delete.rs:673`（上游 3 / 下游 0）
+  - 被呼叫: access_pending_delete.rs:validate_service_account_delete_requires_identity, access_pending_delete.rs:validate_service_account_token_delete_requires_token_selector, access_pending_delete.rs:validate_team_delete_requires_confirmation
+- `validate_team_delete_requires_confirmation` @ `access_pending_delete.rs:690`（上游 0 / 下游 1）
+  - 呼叫: access_pending_delete.rs:common_args
+- `validate_service_account_delete_requires_identity` @ `access_pending_delete.rs:706`（上游 0 / 下游 1）
+  - 呼叫: access_pending_delete.rs:common_args
+- `validate_service_account_token_delete_requires_token_selector` @ `access_pending_delete.rs:724`（上游 0 / 下游 1）
+  - 呼叫: access_pending_delete.rs:common_args
+- `render_single_object_json_returns_object_payload` @ `access_pending_delete.rs:744`（上游 0 / 下游 1）
+  - 呼叫: access_pending_delete.rs:render_single_object_json
+
+## `access_render.rs`
+
+- `csv_escape` @ `access_render.rs:115`（上游 0 / 下游 0）
+- `exact_text_matches` @ `access_render.rs:386`（上游 0 / 下游 0）
+
+## `access_service_account.rs`
+
+- `list_service_accounts_with_request` @ `access_service_account.rs:33`（上游 2 / 下游 3）
+  - 呼叫: access.rs:request_object, common.rs:message, common.rs:value_as_object
+  - 被呼叫: access_service_account.rs:list_all_service_accounts_with_request, access_service_account.rs:lookup_service_account_id_by_name
+- `create_service_account_with_request` @ `access_service_account.rs:72`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `update_service_account_with_request` @ `access_service_account.rs:89`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `create_service_account_token_with_request` @ `access_service_account.rs:107`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `lookup_service_account_id_by_name` @ `access_service_account.rs:125`（上游 0 / 下游 2）
+  - 呼叫: access_service_account.rs:list_service_accounts_with_request, common.rs:message
+- `list_all_service_accounts_with_request` @ `access_service_account.rs:142`（上游 0 / 下游 1）
+  - 呼叫: access_service_account.rs:list_service_accounts_with_request
+- `normalize_service_account_for_diff` @ `access_service_account.rs:166`（上游 1 / 下游 0）
+  - 被呼叫: access_service_account.rs:build_service_account_diff_map
+- `render_single_object_json` @ `access_service_account.rs:187`（上游 1 / 下游 0）
+  - 被呼叫: access_service_account.rs:render_single_object_json_returns_object_payload
+- `assert_not_overwrite` @ `access_service_account.rs:191`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+- `build_service_account_export_metadata` @ `access_service_account.rs:201`（上游 0 / 下游 0）
+- `load_service_account_import_records` @ `access_service_account.rs:230`（上游 0 / 下游 3）
+  - 呼叫: common.rs:load_json_object_file, common.rs:message, common.rs:value_as_object
+- `build_service_account_import_dry_run_row` @ `access_service_account.rs:308`（上游 0 / 下游 0）
+- `build_service_account_import_dry_run_rows` @ `access_service_account.rs:322`（上游 0 / 下游 0）
+- `validate_service_account_import_dry_run_output` @ `access_service_account.rs:335`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+- `build_record_diff_fields` @ `access_service_account.rs:349`（上游 0 / 下游 0）
+- `build_service_account_diff_map` @ `access_service_account.rs:363`（上游 0 / 下游 2）
+  - 呼叫: access_service_account.rs:normalize_service_account_for_diff, common.rs:message
+- `render_single_object_json_returns_object_payload` @ `access_service_account.rs:921`（上游 0 / 下游 1）
+  - 呼叫: access_service_account.rs:render_single_object_json
+
+## `access_team.rs`
+
+- `normalize_access_identity` @ `access_team.rs:25`（上游 5 / 下游 0）
+  - 被呼叫: access_team.rs:build_membership_payloads, access_team.rs:build_team_diff_map, access_team.rs:build_team_live_records_for_diff, access_team.rs:parse_access_identity_list, access_team.rs:sorted_membership_union
+- `user_id_from_record` @ `access_team.rs:32`（上游 1 / 下游 0）
+  - 被呼叫: access_team.rs:add_or_remove_member
+- `sorted_membership_union` @ `access_team.rs:41`（上游 0 / 下游 1）
+  - 呼叫: access_team.rs:normalize_access_identity
+- `normalize_team_for_diff` @ `access_team.rs:53`（上游 1 / 下游 1）
+  - 呼叫: access_team.rs:parse_access_identity_list
+  - 被呼叫: access_team.rs:build_team_diff_map
+- `build_team_diff_map` @ `access_team.rs:87`（上游 0 / 下游 3）
+  - 呼叫: access_team.rs:normalize_access_identity, access_team.rs:normalize_team_for_diff, common.rs:message
+- `build_team_live_records_for_diff` @ `access_team.rs:114`（上游 0 / 下游 5）
+  - 呼叫: access_team.rs:iter_teams_with_request, access_team.rs:list_team_members_with_request, access_team.rs:normalize_access_identity, access_team.rs:team_member_identity, access_team.rs:team_member_is_admin
+- `build_record_diff_fields` @ `access_team.rs:176`（上游 0 / 下游 0）
+- `build_membership_payloads` @ `access_team.rs:264`（上游 0 / 下游 1）
+  - 呼叫: access_team.rs:normalize_access_identity
+- `parse_access_identity_list` @ `access_team.rs:280`（上游 1 / 下游 1）
+  - 呼叫: access_team.rs:normalize_access_identity
+  - 被呼叫: access_team.rs:normalize_team_for_diff
+- `build_team_import_dry_run_row` @ `access_team.rs:307`（上游 0 / 下游 0）
+- `build_team_import_dry_run_rows` @ `access_team.rs:321`（上游 0 / 下游 0）
+- `validate_team_import_dry_run_output` @ `access_team.rs:334`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+- `assert_not_overwrite` @ `access_team.rs:348`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+- `build_team_access_export_metadata` @ `access_team.rs:358`（上游 0 / 下游 0）
+- `load_team_import_records` @ `access_team.rs:387`（上游 0 / 下游 3）
+  - 呼叫: common.rs:load_json_object_file, common.rs:message, common.rs:value_as_object
+- `list_teams_with_request` @ `access_team.rs:468`（上游 1 / 下游 3）
+  - 呼叫: access.rs:request_object, common.rs:message, common.rs:value_as_object
+  - 被呼叫: access_team.rs:iter_teams_with_request
+- `list_team_members_with_request` @ `access_team.rs:501`（上游 1 / 下游 1）
+  - 呼叫: access.rs:request_array
+  - 被呼叫: access_team.rs:build_team_live_records_for_diff
+- `get_team_with_request` @ `access_team.rs:518`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `create_team_with_request` @ `access_team.rs:532`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `add_team_member_with_request` @ `access_team.rs:546`（上游 1 / 下游 1）
+  - 呼叫: access.rs:request_object
+  - 被呼叫: access_team.rs:add_or_remove_member
+- `remove_team_member_with_request` @ `access_team.rs:567`（上游 1 / 下游 1）
+  - 呼叫: access.rs:request_object
+  - 被呼叫: access_team.rs:add_or_remove_member
+- `update_team_members_with_request` @ `access_team.rs:585`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `iter_teams_with_request` @ `access_team.rs:625`（上游 1 / 下游 1）
+  - 呼叫: access_team.rs:list_teams_with_request
+  - 被呼叫: access_team.rs:build_team_live_records_for_diff
+- `validate_team_modify_args` @ `access_team.rs:646`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+- `team_member_identity` @ `access_team.rs:662`（上游 1 / 下游 0）
+  - 被呼叫: access_team.rs:build_team_live_records_for_diff
+- `team_member_is_admin` @ `access_team.rs:671`（上游 1 / 下游 0）
+  - 被呼叫: access_team.rs:build_team_live_records_for_diff
+- `add_or_remove_member` @ `access_team.rs:676`（上游 0 / 下游 4）
+  - 呼叫: access_team.rs:add_team_member_with_request, access_team.rs:remove_team_member_with_request, access_team.rs:user_id_from_record, common.rs:message
+- `team_modify_result` @ `access_team.rs:767`（上游 0 / 下游 0）
+- `team_modify_summary_line` @ `access_team.rs:799`（上游 0 / 下游 0）
+
+## `access_user.rs`
+
+- `build_access_import_dry_run_row` @ `access_user.rs:26`（上游 0 / 下游 0）
+- `build_access_import_dry_run_rows` @ `access_user.rs:40`（上游 0 / 下游 0）
+- `validate_user_import_dry_run_output` @ `access_user.rs:53`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+- `normalize_access_identity` @ `access_user.rs:67`（上游 2 / 下游 0）
+  - 被呼叫: access_user.rs:build_user_diff_map, access_user.rs:parse_access_identity_list
+- `parse_access_identity_list` @ `access_user.rs:74`（上游 1 / 下游 1）
+  - 呼叫: access_user.rs:normalize_access_identity
+  - 被呼叫: access_user.rs:normalize_user_for_diff
+- `assert_not_overwrite` @ `access_user.rs:101`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+- `build_access_export_metadata` @ `access_user.rs:111`（上游 0 / 下游 0）
+- `load_access_import_records` @ `access_user.rs:140`（上游 0 / 下游 3）
+  - 呼叫: common.rs:load_json_object_file, common.rs:message, common.rs:value_as_object
+- `lookup_team_with_request` @ `access_user.rs:221`（上游 0 / 下游 2）
+  - 呼叫: access.rs:request_object, common.rs:message
+- `add_team_member_for_user_with_request` @ `access_user.rs:257`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `remove_team_member_for_user_with_request` @ `access_user.rs:279`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `build_user_export_records` @ `access_user.rs:298`（上游 0 / 下游 3）
+  - 呼叫: access_org.rs:list_org_users_with_request, access_user.rs:iter_global_users_with_request, access_user.rs:list_user_teams_with_request
+- `normalize_bool_for_diff` @ `access_user.rs:786`（上游 1 / 下游 0）
+  - 被呼叫: access_user.rs:normalize_user_for_diff
+- `normalize_user_for_diff` @ `access_user.rs:793`（上游 1 / 下游 2）
+  - 呼叫: access_user.rs:normalize_bool_for_diff, access_user.rs:parse_access_identity_list
+  - 被呼叫: access_user.rs:build_user_diff_map
+- `build_user_diff_map` @ `access_user.rs:836`（上游 0 / 下游 3）
+  - 呼叫: access_user.rs:normalize_access_identity, access_user.rs:normalize_user_for_diff, common.rs:message
+- `build_user_export_records_for_diff` @ `access_user.rs:865`（上游 0 / 下游 3）
+  - 呼叫: access_org.rs:list_org_users_with_request, access_user.rs:iter_global_users_with_request, access_user.rs:list_user_teams_with_request
+- `build_record_diff_fields` @ `access_user.rs:906`（上游 0 / 下游 0）
+- `iter_global_users_with_request` @ `access_user.rs:1004`（上游 3 / 下游 1）
+  - 呼叫: access.rs:request_array
+  - 被呼叫: access_user.rs:build_user_export_records, access_user.rs:build_user_export_records_for_diff, access_user.rs:lookup_global_user_by_identity
+- `list_user_teams_with_request` @ `access_user.rs:1039`（上游 2 / 下游 1）
+  - 呼叫: access.rs:request_array
+  - 被呼叫: access_user.rs:build_user_export_records, access_user.rs:build_user_export_records_for_diff
+- `get_user_with_request` @ `access_user.rs:1056`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `create_user_with_request` @ `access_user.rs:1070`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `update_user_with_request` @ `access_user.rs:1084`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `update_user_password_with_request` @ `access_user.rs:1102`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `update_user_org_role_with_request` @ `access_user.rs:1123`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `update_user_permissions_with_request` @ `access_user.rs:1144`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `delete_global_user_with_request` @ `access_user.rs:1165`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `delete_org_user_with_request` @ `access_user.rs:1182`（上游 0 / 下游 1）
+  - 呼叫: access.rs:request_object
+- `lookup_global_user_by_identity` @ `access_user.rs:1196`（上游 0 / 下游 2）
+  - 呼叫: access_user.rs:iter_global_users_with_request, common.rs:message
+- `validate_basic_auth_only` @ `access_user.rs:1234`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+- `validate_user_scope_auth` @ `access_user.rs:1244`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+- `validate_user_modify_args` @ `access_user.rs:1256`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+- `read_secret_file` @ `access_user.rs:1279`（上游 2 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: access_user.rs:resolve_user_add_password, access_user.rs:resolve_user_modify_password
+- `resolve_user_add_password` @ `access_user.rs:1291`（上游 0 / 下游 2）
+  - 呼叫: access_user.rs:read_secret_file, common.rs:message
+- `resolve_user_modify_password` @ `access_user.rs:1310`（上游 0 / 下游 2）
+  - 呼叫: access_user.rs:read_secret_file, common.rs:message
+- `validate_user_delete_args` @ `access_user.rs:1329`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+
+## `alert.rs`
+
+- `resource_subdir_by_kind` @ `alert.rs:87`（上游 3 / 下游 0）
+  - 被呼叫: alert.rs:build_resource_dirs, alert.rs:detect_document_kind, alert.rs:write_resource_indexes
+- `build_rule_output_path` @ `alert.rs:101`（上游 1 / 下游 1）
+  - 呼叫: common.rs:sanitize_path_component
+  - 被呼叫: alert.rs:export_alerting_resources
+- `build_contact_point_output_path` @ `alert.rs:119`（上游 1 / 下游 1）
+  - 呼叫: common.rs:sanitize_path_component
+  - 被呼叫: alert.rs:export_alerting_resources
+- `build_mute_timing_output_path` @ `alert.rs:138`（上游 1 / 下游 1）
+  - 呼叫: common.rs:sanitize_path_component
+  - 被呼叫: alert.rs:export_alerting_resources
+- `build_policies_output_path` @ `alert.rs:156`（上游 1 / 下游 0）
+  - 被呼叫: alert.rs:export_alerting_resources
+- `build_template_output_path` @ `alert.rs:164`（上游 1 / 下游 1）
+  - 呼叫: common.rs:sanitize_path_component
+  - 被呼叫: alert.rs:export_alerting_resources
+- `build_resource_dirs` @ `alert.rs:182`（上游 1 / 下游 1）
+  - 呼叫: alert.rs:resource_subdir_by_kind
+  - 被呼叫: alert.rs:export_alerting_resources
+- `discover_alert_resource_files` @ `alert.rs:190`（上游 2 / 下游 2）
+  - 呼叫: alert.rs:collect_json_files, common.rs:message
+  - 被呼叫: alert.rs:diff_alerting_resources, alert.rs:import_alerting_resources
+- `collect_json_files` @ `alert.rs:224`（上游 1 / 下游 0）
+  - 被呼叫: alert.rs:discover_alert_resource_files
+- `derive_dashboard_slug` @ `alert.rs:240`（上游 3 / 下游 0）
+  - 被呼叫: alert.rs:build_linked_dashboard_metadata, alert.rs:filter_dashboard_search_matches, alert.rs:resolve_dashboard_uid_fallback
+- `load_string_map` @ `alert.rs:269`（上游 1 / 下游 3）
+  - 呼叫: alert.rs:value_to_string, common.rs:load_json_object_file, common.rs:value_as_object
+  - 被呼叫: alert.rs:load
+- `load_panel_id_map` @ `alert.rs:286`（上游 1 / 下游 3）
+  - 呼叫: alert.rs:value_to_string, common.rs:load_json_object_file, common.rs:value_as_object
+  - 被呼叫: alert.rs:load
+- `load` @ `alert.rs:324`（上游 2 / 下游 2）
+  - 呼叫: alert.rs:load_panel_id_map, alert.rs:load_string_map
+  - 被呼叫: alert.rs:diff_alerting_resources, alert.rs:import_alerting_resources
+- `resolve_dashboard_uid` @ `alert.rs:334`（上游 1 / 下游 0）
+  - 被呼叫: alert.rs:rewrite_rule_dashboard_linkage
+- `resolve_panel_id` @ `alert.rs:341`（上游 1 / 下游 0）
+  - 被呼叫: alert.rs:rewrite_rule_dashboard_linkage
+- `value_to_string` @ `alert.rs:353`（上游 2 / 下游 0）
+  - 被呼叫: alert.rs:load_panel_id_map, alert.rs:load_string_map
+- `strip_server_managed_fields` @ `alert.rs:362`（上游 10 / 下游 0）
+  - 被呼叫: alert.rs:build_contact_point_export_document, alert.rs:build_contact_point_import_payload, alert.rs:build_mute_timing_export_document, alert.rs:build_mute_timing_import_payload, alert.rs:build_policies_export_document, alert.rs:build_rule_export_document, alert.rs:build_rule_import_payload, alert.rs:build_template_export_document, alert.rs:build_template_import_payload, alert.rs:fetch_live_compare_document
+- `build_rule_metadata` @ `alert.rs:379`（上游 1 / 下游 0）
+  - 被呼叫: alert.rs:build_rule_export_document
+- `build_contact_point_metadata` @ `alert.rs:388`（上游 1 / 下游 0）
+  - 被呼叫: alert.rs:build_contact_point_export_document
+- `build_mute_timing_metadata` @ `alert.rs:396`（上游 1 / 下游 0）
+  - 被呼叫: alert.rs:build_mute_timing_export_document
+- `build_policies_metadata` @ `alert.rs:400`（上游 1 / 下游 0）
+  - 被呼叫: alert.rs:build_policies_export_document
+- `build_template_metadata` @ `alert.rs:404`（上游 1 / 下游 0）
+  - 被呼叫: alert.rs:build_template_export_document
+- `build_tool_document` @ `alert.rs:408`（上游 5 / 下游 0）
+  - 被呼叫: alert.rs:build_contact_point_export_document, alert.rs:build_mute_timing_export_document, alert.rs:build_policies_export_document, alert.rs:build_rule_export_document, alert.rs:build_template_export_document
+- `build_rule_export_document` @ `alert.rs:422`（上游 1 / 下游 3）
+  - 呼叫: alert.rs:build_rule_metadata, alert.rs:build_tool_document, alert.rs:strip_server_managed_fields
+  - 被呼叫: alert.rs:export_alerting_resources
+- `build_contact_point_export_document` @ `alert.rs:449`（上游 1 / 下游 3）
+  - 呼叫: alert.rs:build_contact_point_metadata, alert.rs:build_tool_document, alert.rs:strip_server_managed_fields
+  - 被呼叫: alert.rs:export_alerting_resources
+- `build_mute_timing_export_document` @ `alert.rs:466`（上游 1 / 下游 3）
+  - 呼叫: alert.rs:build_mute_timing_metadata, alert.rs:build_tool_document, alert.rs:strip_server_managed_fields
+  - 被呼叫: alert.rs:export_alerting_resources
+- `build_policies_export_document` @ `alert.rs:483`（上游 1 / 下游 3）
+  - 呼叫: alert.rs:build_policies_metadata, alert.rs:build_tool_document, alert.rs:strip_server_managed_fields
+  - 被呼叫: alert.rs:export_alerting_resources
+- `build_template_export_document` @ `alert.rs:500`（上游 1 / 下游 3）
+  - 呼叫: alert.rs:build_template_metadata, alert.rs:build_tool_document, alert.rs:strip_server_managed_fields
+  - 被呼叫: alert.rs:export_alerting_resources
+- `reject_provisioning_export` @ `alert.rs:514`（上游 5 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: alert.rs:build_contact_point_import_payload, alert.rs:build_mute_timing_import_payload, alert.rs:build_policies_import_payload, alert.rs:build_rule_import_payload, alert.rs:build_template_import_payload
+- `detect_document_kind` @ `alert.rs:528`（上游 1 / 下游 2）
+  - 呼叫: alert.rs:resource_subdir_by_kind, common.rs:message
+  - 被呼叫: alert.rs:build_import_operation
+- `extract_tool_spec` @ `alert.rs:569`（上游 5 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: alert.rs:build_contact_point_import_payload, alert.rs:build_mute_timing_import_payload, alert.rs:build_policies_import_payload, alert.rs:build_rule_import_payload, alert.rs:build_template_import_payload
+- `build_rule_import_payload` @ `alert.rs:617`（上游 4 / 下游 4）
+  - 呼叫: alert.rs:extract_tool_spec, alert.rs:reject_provisioning_export, alert.rs:strip_server_managed_fields, common.rs:message
+  - 被呼叫: alert.rs:build_import_operation, sync.rs:apply_alert_operation_with_request, sync.rs:fetch_live_resource_specs_with_request, sync.rs:normalize_alert_rule_sync_spec
+- `build_contact_point_import_payload` @ `alert.rs:641`（上游 1 / 下游 4）
+  - 呼叫: alert.rs:extract_tool_spec, alert.rs:reject_provisioning_export, alert.rs:strip_server_managed_fields, common.rs:message
+  - 被呼叫: alert.rs:build_import_operation
+- `build_mute_timing_import_payload` @ `alert.rs:674`（上游 1 / 下游 4）
+  - 呼叫: alert.rs:extract_tool_spec, alert.rs:reject_provisioning_export, alert.rs:strip_server_managed_fields, common.rs:message
+  - 被呼叫: alert.rs:build_import_operation
+- `build_policies_import_payload` @ `alert.rs:709`（上游 1 / 下游 2）
+  - 呼叫: alert.rs:extract_tool_spec, alert.rs:reject_provisioning_export
+  - 被呼叫: alert.rs:build_import_operation
+- `build_template_import_payload` @ `alert.rs:718`（上游 1 / 下游 4）
+  - 呼叫: alert.rs:extract_tool_spec, alert.rs:reject_provisioning_export, alert.rs:strip_server_managed_fields, common.rs:message
+  - 被呼叫: alert.rs:build_import_operation
+- `build_import_operation` @ `alert.rs:740`（上游 2 / 下游 7）
+  - 呼叫: alert.rs:build_contact_point_import_payload, alert.rs:build_mute_timing_import_payload, alert.rs:build_policies_import_payload, alert.rs:build_rule_import_payload, alert.rs:build_template_import_payload, alert.rs:detect_document_kind, common.rs:value_as_object
+  - 被呼叫: alert.rs:diff_alerting_resources, alert.rs:import_alerting_resources
+- `build_empty_root_index` @ `alert.rs:762`（上游 1 / 下游 0）
+  - 被呼叫: alert.rs:export_alerting_resources
+- `build_compare_document` @ `alert.rs:786`（上游 2 / 下游 0）
+  - 被呼叫: alert.rs:diff_alerting_resources, alert.rs:fetch_live_compare_document
+- `canonicalize_value` @ `alert.rs:793`（上游 2 / 下游 0）
+  - 被呼叫: alert.rs:build_compare_diff_text, alert.rs:serialize_compare_document
+- `serialize_compare_document` @ `alert.rs:807`（上游 1 / 下游 1）
+  - 呼叫: alert.rs:canonicalize_value
+  - 被呼叫: alert.rs:diff_alerting_resources
+- `build_compare_diff_text` @ `alert.rs:811`（上游 1 / 下游 1）
+  - 呼叫: alert.rs:canonicalize_value
+  - 被呼叫: alert.rs:diff_alerting_resources
+- `build_resource_identity` @ `alert.rs:831`（上游 2 / 下游 0）
+  - 被呼叫: alert.rs:diff_alerting_resources, alert.rs:import_alerting_resources
+- `append_root_index_item` @ `alert.rs:848`（上游 1 / 下游 0）
+  - 被呼叫: alert.rs:export_alerting_resources
+- `write_resource_indexes` @ `alert.rs:857`（上游 1 / 下游 2）
+  - 呼叫: alert.rs:resource_subdir_by_kind, common.rs:write_json_file
+  - 被呼叫: alert.rs:export_alerting_resources
+- `format_export_summary` @ `alert.rs:874`（上游 1 / 下游 0）
+  - 被呼叫: alert.rs:export_alerting_resources
+- `get_rule_linkage` @ `alert.rs:908`（上游 2 / 下游 0）
+  - 被呼叫: alert.rs:build_linked_dashboard_metadata, alert.rs:rewrite_rule_dashboard_linkage
+- `find_panel_by_id` @ `alert.rs:925`（上游 1 / 下游 0）
+  - 被呼叫: alert.rs:build_linked_dashboard_metadata
+- `build_linked_dashboard_metadata` @ `alert.rs:940`（上游 1 / 下游 5）
+  - 呼叫: alert.rs:derive_dashboard_slug, alert.rs:find_panel_by_id, alert.rs:get_rule_linkage, alert_client.rs:get_dashboard, common.rs:status_code
+  - 被呼叫: alert.rs:export_alerting_resources
+- `filter_dashboard_search_matches` @ `alert.rs:1010`（上游 1 / 下游 1）
+  - 呼叫: alert.rs:derive_dashboard_slug
+  - 被呼叫: alert.rs:resolve_dashboard_uid_fallback
+- `resolve_dashboard_uid_fallback` @ `alert.rs:1057`（上游 1 / 下游 4）
+  - 呼叫: alert.rs:derive_dashboard_slug, alert.rs:filter_dashboard_search_matches, alert_client.rs:search_dashboards, common.rs:message
+  - 被呼叫: alert.rs:rewrite_rule_dashboard_linkage
+- `rewrite_rule_dashboard_linkage` @ `alert.rs:1096`（上游 1 / 下游 7）
+  - 呼叫: alert.rs:get_rule_linkage, alert.rs:resolve_dashboard_uid, alert.rs:resolve_dashboard_uid_fallback, alert.rs:resolve_panel_id, alert_client.rs:get_dashboard, common.rs:message, common.rs:status_code
+  - 被呼叫: alert.rs:prepare_import_payload_for_target
+- `export_alerting_resources` @ `alert.rs:1150`（上游 1 / 下游 23）
+  - 呼叫: alert.rs:append_root_index_item, alert.rs:build_contact_point_export_document, alert.rs:build_contact_point_output_path, alert.rs:build_empty_root_index, alert.rs:build_linked_dashboard_metadata, alert.rs:build_mute_timing_export_document, alert.rs:build_mute_timing_output_path, alert.rs:build_policies_export_document, alert.rs:build_policies_output_path, alert.rs:build_resource_dirs ...
+  - 被呼叫: alert.rs:run_alert_cli
+- `count_policy_documents` @ `alert.rs:1303`（上游 2 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: alert.rs:diff_alerting_resources, alert.rs:import_alerting_resources
+- `prepare_import_payload_for_target` @ `alert.rs:1316`（上游 2 / 下游 1）
+  - 呼叫: alert.rs:rewrite_rule_dashboard_linkage
+  - 被呼叫: alert.rs:diff_alerting_resources, alert.rs:import_alerting_resources
+- `determine_rule_import_action` @ `alert.rs:1329`（上游 1 / 下游 2）
+  - 呼叫: alert_client.rs:get_alert_rule, common.rs:status_code
+  - 被呼叫: alert.rs:determine_import_action
+- `determine_contact_point_import_action` @ `alert.rs:1346`（上游 1 / 下游 1）
+  - 呼叫: alert_client.rs:list_contact_points
+  - 被呼叫: alert.rs:determine_import_action
+- `determine_mute_timing_import_action` @ `alert.rs:1367`（上游 1 / 下游 1）
+  - 呼叫: alert_client.rs:list_mute_timings
+  - 被呼叫: alert.rs:determine_import_action
+- `determine_template_import_action` @ `alert.rs:1388`（上游 1 / 下游 1）
+  - 呼叫: alert_client.rs:list_templates
+  - 被呼叫: alert.rs:determine_import_action
+- `determine_import_action` @ `alert.rs:1409`（上游 1 / 下游 4）
+  - 呼叫: alert.rs:determine_contact_point_import_action, alert.rs:determine_mute_timing_import_action, alert.rs:determine_rule_import_action, alert.rs:determine_template_import_action
+  - 被呼叫: alert.rs:import_alerting_resources
+- `fetch_live_compare_document` @ `alert.rs:1427`（上游 1 / 下游 8）
+  - 呼叫: alert.rs:build_compare_document, alert.rs:strip_server_managed_fields, alert_client.rs:get_alert_rule, alert_client.rs:get_notification_policies, alert_client.rs:get_template, alert_client.rs:list_contact_points, alert_client.rs:list_mute_timings, common.rs:status_code
+  - 被呼叫: alert.rs:diff_alerting_resources
+- `import_rule_document` @ `alert.rs:1489`（上游 1 / 下游 4）
+  - 呼叫: alert_client.rs:create_alert_rule, alert_client.rs:get_alert_rule, alert_client.rs:update_alert_rule, common.rs:status_code
+  - 被呼叫: alert.rs:import_resource_document
+- `import_contact_point_document` @ `alert.rs:1509`（上游 1 / 下游 3）
+  - 呼叫: alert_client.rs:create_contact_point, alert_client.rs:list_contact_points, alert_client.rs:update_contact_point
+  - 被呼叫: alert.rs:import_resource_document
+- `import_mute_timing_document` @ `alert.rs:1530`（上游 1 / 下游 3）
+  - 呼叫: alert_client.rs:create_mute_timing, alert_client.rs:list_mute_timings, alert_client.rs:update_mute_timing
+  - 被呼叫: alert.rs:import_resource_document
+- `import_template_document` @ `alert.rs:1551`（上游 1 / 下游 4）
+  - 呼叫: alert_client.rs:get_template, alert_client.rs:list_templates, alert_client.rs:update_template, common.rs:message
+  - 被呼叫: alert.rs:import_resource_document
+- `import_policies_document` @ `alert.rs:1585`（上游 1 / 下游 1）
+  - 呼叫: alert_client.rs:update_notification_policies
+  - 被呼叫: alert.rs:import_resource_document
+- `import_resource_document` @ `alert.rs:1596`（上游 1 / 下游 5）
+  - 呼叫: alert.rs:import_contact_point_document, alert.rs:import_mute_timing_document, alert.rs:import_policies_document, alert.rs:import_rule_document, alert.rs:import_template_document
+  - 被呼叫: alert.rs:import_alerting_resources
+- `import_alerting_resources` @ `alert.rs:1612`（上游 1 / 下游 10）
+  - 呼叫: alert.rs:build_import_operation, alert.rs:build_resource_identity, alert.rs:count_policy_documents, alert.rs:determine_import_action, alert.rs:discover_alert_resource_files, alert.rs:import_resource_document, alert.rs:load, alert.rs:prepare_import_payload_for_target, common.rs:load_json_object_file, common.rs:message
+  - 被呼叫: alert.rs:run_alert_cli
+- `diff_alerting_resources` @ `alert.rs:1675`（上游 1 / 下游 12）
+  - 呼叫: alert.rs:build_compare_diff_text, alert.rs:build_compare_document, alert.rs:build_import_operation, alert.rs:build_resource_identity, alert.rs:count_policy_documents, alert.rs:discover_alert_resource_files, alert.rs:fetch_live_compare_document, alert.rs:load, alert.rs:prepare_import_payload_for_target, alert.rs:serialize_compare_document ...
+  - 被呼叫: alert.rs:run_alert_cli
+- `run_alert_cli` @ `alert.rs:1762`（上游 0 / 下游 4）
+  - 呼叫: alert.rs:diff_alerting_resources, alert.rs:export_alerting_resources, alert.rs:import_alerting_resources, alert_list.rs:list_alert_resources
+
+## `alert_cli_defs.rs`
+
+- `cli_args_from_common` @ `alert_cli_defs.rs:326`（上游 1 / 下游 0）
+  - 被呼叫: alert_cli_defs.rs:normalize_alert_namespace_args
+- `empty_legacy_args` @ `alert_cli_defs.rs:355`（上游 1 / 下游 0）
+  - 被呼叫: alert_cli_defs.rs:normalize_alert_group_command
+- `parse_cli_from` @ `alert_cli_defs.rs:390`（上游 0 / 下游 1）
+  - 呼叫: alert_cli_defs.rs:normalize_alert_namespace_args
+- `root_command` @ `alert_cli_defs.rs:403`（上游 0 / 下游 0）
+- `normalize_alert_namespace_args` @ `alert_cli_defs.rs:413`（上游 3 / 下游 1）
+  - 呼叫: alert_cli_defs.rs:cli_args_from_common
+  - 被呼叫: alert_cli_defs.rs:normalize_alert_group_command, alert_cli_defs.rs:parse_cli_from, cli.rs:dispatch_with_handlers
+- `normalize_alert_group_command` @ `alert_cli_defs.rs:529`（上游 0 / 下游 2）
+  - 呼叫: alert_cli_defs.rs:empty_legacy_args, alert_cli_defs.rs:normalize_alert_namespace_args
+- `build_auth_context` @ `alert_cli_defs.rs:544`（上游 0 / 下游 1）
+  - 呼叫: common.rs:resolve_auth_headers
+
+## `alert_client.rs`
+
+- `new` @ `alert_client.rs:21`（上游 1 / 下游 0）
+  - 被呼叫: alert_client.rs:parse_template_list_response
+- `request_json` @ `alert_client.rs:32`（上游 18 / 下游 0）
+  - 被呼叫: alert_client.rs:create_alert_rule, alert_client.rs:create_contact_point, alert_client.rs:create_mute_timing, alert_client.rs:get_alert_rule, alert_client.rs:get_dashboard, alert_client.rs:get_notification_policies, alert_client.rs:get_template, alert_client.rs:list_alert_rules, alert_client.rs:list_contact_points, alert_client.rs:list_mute_timings ...
+- `list_alert_rules` @ `alert_client.rs:46`（上游 2 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object_list, alert_client.rs:request_json
+  - 被呼叫: alert.rs:export_alerting_resources, alert_list.rs:list_items_for_kind
+- `list_orgs` @ `alert_client.rs:57`（上游 0 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object_list, alert_client.rs:request_json
+- `search_dashboards` @ `alert_client.rs:69`（上游 1 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object_list, alert_client.rs:request_json
+  - 被呼叫: alert.rs:resolve_dashboard_uid_fallback
+- `get_dashboard` @ `alert_client.rs:89`（上游 2 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object, alert_client.rs:request_json
+  - 被呼叫: alert.rs:build_linked_dashboard_metadata, alert.rs:rewrite_rule_dashboard_linkage
+- `get_alert_rule` @ `alert_client.rs:105`（上游 3 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object, alert_client.rs:request_json
+  - 被呼叫: alert.rs:determine_rule_import_action, alert.rs:fetch_live_compare_document, alert.rs:import_rule_document
+- `create_alert_rule` @ `alert_client.rs:121`（上游 1 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object, alert_client.rs:request_json
+  - 被呼叫: alert.rs:import_rule_document
+- `update_alert_rule` @ `alert_client.rs:137`（上游 1 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object, alert_client.rs:request_json
+  - 被呼叫: alert.rs:import_rule_document
+- `list_contact_points` @ `alert_client.rs:157`（上游 5 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object_list, alert_client.rs:request_json
+  - 被呼叫: alert.rs:determine_contact_point_import_action, alert.rs:export_alerting_resources, alert.rs:fetch_live_compare_document, alert.rs:import_contact_point_document, alert_list.rs:list_items_for_kind
+- `create_contact_point` @ `alert_client.rs:173`（上游 1 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object, alert_client.rs:request_json
+  - 被呼叫: alert.rs:import_contact_point_document
+- `update_contact_point` @ `alert_client.rs:189`（上游 1 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object, alert_client.rs:request_json
+  - 被呼叫: alert.rs:import_contact_point_document
+- `list_mute_timings` @ `alert_client.rs:209`（上游 5 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object_list, alert_client.rs:request_json
+  - 被呼叫: alert.rs:determine_mute_timing_import_action, alert.rs:export_alerting_resources, alert.rs:fetch_live_compare_document, alert.rs:import_mute_timing_document, alert_list.rs:list_items_for_kind
+- `create_mute_timing` @ `alert_client.rs:220`（上游 1 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object, alert_client.rs:request_json
+  - 被呼叫: alert.rs:import_mute_timing_document
+- `update_mute_timing` @ `alert_client.rs:236`（上游 1 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object, alert_client.rs:request_json
+  - 被呼叫: alert.rs:import_mute_timing_document
+- `get_notification_policies` @ `alert_client.rs:256`（上游 2 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object, alert_client.rs:request_json
+  - 被呼叫: alert.rs:export_alerting_resources, alert.rs:fetch_live_compare_document
+- `update_notification_policies` @ `alert_client.rs:267`（上游 1 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object, alert_client.rs:request_json
+  - 被呼叫: alert.rs:import_policies_document
+- `list_templates` @ `alert_client.rs:286`（上游 4 / 下游 2）
+  - 呼叫: alert_client.rs:parse_template_list_response, alert_client.rs:request_json
+  - 被呼叫: alert.rs:determine_template_import_action, alert.rs:export_alerting_resources, alert.rs:import_template_document, alert_list.rs:list_items_for_kind
+- `get_template` @ `alert_client.rs:299`（上游 2 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object, alert_client.rs:request_json
+  - 被呼叫: alert.rs:fetch_live_compare_document, alert.rs:import_template_document
+- `update_template` @ `alert_client.rs:315`（上游 1 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object, alert_client.rs:request_json
+  - 被呼叫: alert.rs:import_template_document
+- `expect_object` @ `alert_client.rs:334`（上游 12 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: alert_client.rs:create_alert_rule, alert_client.rs:create_contact_point, alert_client.rs:create_mute_timing, alert_client.rs:get_alert_rule, alert_client.rs:get_dashboard, alert_client.rs:get_notification_policies, alert_client.rs:get_template, alert_client.rs:update_alert_rule, alert_client.rs:update_contact_point, alert_client.rs:update_mute_timing ...
+- `expect_object_list` @ `alert_client.rs:342`（上游 6 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: alert_client.rs:list_alert_rules, alert_client.rs:list_contact_points, alert_client.rs:list_mute_timings, alert_client.rs:list_orgs, alert_client.rs:parse_template_list_response, alert_client.rs:search_dashboards
+- `parse_template_list_response` @ `alert_client.rs:361`（上游 1 / 下游 2）
+  - 呼叫: alert_client.rs:expect_object_list, alert_client.rs:new
+  - 被呼叫: alert_client.rs:list_templates
+
+## `alert_list.rs`
+
+- `auth_header_is_basic` @ `alert_list.rs:18`（上游 1 / 下游 0）
+  - 被呼叫: alert_list.rs:list_alert_resources
+- `build_alert_client_for_org` @ `alert_list.rs:24`（上游 1 / 下游 0）
+  - 被呼叫: alert_list.rs:list_alert_resources
+- `org_name_value` @ `alert_list.rs:32`（上游 3 / 下游 0）
+  - 被呼叫: alert_list.rs:serialize_contact_point_list_rows, alert_list.rs:serialize_mute_timing_list_rows, alert_list.rs:serialize_template_list_rows
+- `org_id_value` @ `alert_list.rs:36`（上游 5 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: alert_list.rs:list_alert_resources, alert_list.rs:serialize_contact_point_list_rows, alert_list.rs:serialize_mute_timing_list_rows, alert_list.rs:serialize_template_list_rows, dashboard_import.rs:resolve_import_target_org_id_with_request
+- `csv_escape` @ `alert_list.rs:42`（上游 1 / 下游 0）
+  - 被呼叫: alert_list.rs:render_alert_csv
+- `render_alert_table` @ `alert_list.rs:50`（上游 1 / 下游 0）
+  - 被呼叫: alert_list.rs:list_alert_resources
+- `render_alert_csv` @ `alert_list.rs:101`（上游 1 / 下游 1）
+  - 呼叫: alert_list.rs:csv_escape
+  - 被呼叫: alert_list.rs:list_alert_resources
+- `serialize_contact_point_list_rows` @ `alert_list.rs:137`（上游 1 / 下游 2）
+  - 呼叫: alert_list.rs:org_id_value, alert_list.rs:org_name_value
+  - 被呼叫: alert_list.rs:list_alert_resources
+- `serialize_mute_timing_list_rows` @ `alert_list.rs:157`（上游 1 / 下游 2）
+  - 呼叫: alert_list.rs:org_id_value, alert_list.rs:org_name_value
+  - 被呼叫: alert_list.rs:list_alert_resources
+- `serialize_template_list_rows` @ `alert_list.rs:181`（上游 1 / 下游 2）
+  - 呼叫: alert_list.rs:org_id_value, alert_list.rs:org_name_value
+  - 被呼叫: alert_list.rs:list_alert_resources
+- `append_org_scope` @ `alert_list.rs:197`（上游 1 / 下游 0）
+  - 被呼叫: alert_list.rs:list_alert_resources
+- `rows_include_org_scope` @ `alert_list.rs:209`（上游 1 / 下游 0）
+  - 被呼叫: alert_list.rs:list_alert_resources
+- `fields_with_org_scope` @ `alert_list.rs:214`（上游 1 / 下游 0）
+  - 被呼叫: alert_list.rs:list_alert_resources
+- `headers_with_org_scope` @ `alert_list.rs:226`（上游 1 / 下游 0）
+  - 被呼叫: alert_list.rs:list_alert_resources
+- `list_items_for_kind` @ `alert_list.rs:240`（上游 1 / 下游 4）
+  - 呼叫: alert_client.rs:list_alert_rules, alert_client.rs:list_contact_points, alert_client.rs:list_mute_timings, alert_client.rs:list_templates
+  - 被呼叫: alert_list.rs:list_alert_resources
+- `list_alert_resources` @ `alert_list.rs:256`（上游 1 / 下游 14）
+  - 呼叫: alert_list.rs:append_org_scope, alert_list.rs:auth_header_is_basic, alert_list.rs:build_alert_client_for_org, alert_list.rs:fields_with_org_scope, alert_list.rs:headers_with_org_scope, alert_list.rs:list_items_for_kind, alert_list.rs:org_id_value, alert_list.rs:render_alert_csv, alert_list.rs:render_alert_table, alert_list.rs:rows_include_org_scope ...
+  - 被呼叫: alert.rs:run_alert_cli
+
+## `alert_sync.rs`
+
+- `normalize_text` @ `alert_sync.rs:37`（上游 2 / 下游 0）
+  - 被呼叫: alert_sync.rs:assess_alert_sync_specs, alert_sync.rs:normalize_managed_fields
+- `require_object` @ `alert_sync.rs:51`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: alert_sync.rs:assess_alert_sync_specs
+- `normalize_managed_fields` @ `alert_sync.rs:59`（上游 1 / 下游 2）
+  - 呼叫: alert_sync.rs:normalize_text, common.rs:message
+  - 被呼叫: alert_sync.rs:assess_alert_sync_specs
+- `assess_alert_sync_specs` @ `alert_sync.rs:82`（上游 2 / 下游 4）
+  - 呼叫: alert_sync.rs:normalize_managed_fields, alert_sync.rs:normalize_text, alert_sync.rs:require_object, common.rs:message
+  - 被呼叫: bundle_preflight.rs:build_bundle_preflight_document, sync.rs:run_sync_cli
+
+## `bundle_preflight.rs`
+
+- `require_object` @ `bundle_preflight.rs:23`（上游 2 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: bundle_preflight.rs:build_bundle_preflight_document, bundle_preflight.rs:render_bundle_preflight_text
+- `normalize_text` @ `bundle_preflight.rs:31`（上游 2 / 下游 0）
+  - 被呼叫: bundle_preflight.rs:render_bundle_preflight_text, bundle_preflight.rs:require_string_list
+- `require_string_list` @ `bundle_preflight.rs:45`（上游 1 / 下游 2）
+  - 呼叫: bundle_preflight.rs:normalize_text, common.rs:message
+  - 被呼叫: bundle_preflight.rs:build_provider_assessment
+- `bundle_section_items` @ `bundle_preflight.rs:65`（上游 2 / 下游 0）
+  - 被呼叫: bundle_preflight.rs:build_bundle_preflight_document, bundle_preflight.rs:build_sync_specs_from_bundle
+- `build_sync_specs_from_bundle` @ `bundle_preflight.rs:73`（上游 1 / 下游 1）
+  - 呼叫: bundle_preflight.rs:bundle_section_items
+  - 被呼叫: bundle_preflight.rs:build_bundle_preflight_document
+- `build_provider_assessment` @ `bundle_preflight.rs:113`（上游 1 / 下游 4）
+  - 呼叫: bundle_preflight.rs:require_string_list, datasource_provider.rs:build_provider_plan, datasource_provider.rs:iter_provider_names, datasource_provider.rs:summarize_provider_plan
+  - 被呼叫: bundle_preflight.rs:build_bundle_preflight_document
+- `build_bundle_preflight_document` @ `bundle_preflight.rs:168`（上游 0 / 下游 7）
+  - 呼叫: alert_sync.rs:assess_alert_sync_specs, bundle_preflight.rs:build_provider_assessment, bundle_preflight.rs:build_sync_specs_from_bundle, bundle_preflight.rs:bundle_section_items, bundle_preflight.rs:require_object, sync_preflight.rs:build_sync_preflight_document, sync_workbench.rs:build_sync_summary_document
+- `render_bundle_preflight_text` @ `bundle_preflight.rs:221`（上游 0 / 下游 3）
+  - 呼叫: bundle_preflight.rs:normalize_text, bundle_preflight.rs:require_object, common.rs:message
+
+## `cli.rs`
+
+- `colorize_unified_help_examples` @ `cli.rs:72`（上游 3 / 下游 0）
+  - 被呼叫: cli.rs:render_domain_help_full_text, cli.rs:render_unified_help_full_text, cli.rs:render_unified_help_text
+- `render_long_help_with_color_choice` @ `cli.rs:84`（上游 3 / 下游 0）
+  - 被呼叫: cli.rs:render_domain_help_full_text, cli.rs:render_domain_help_text, cli.rs:render_unified_help_text
+- `inject_help_full_hint` @ `cli.rs:99`（上游 2 / 下游 0）
+  - 被呼叫: cli.rs:render_domain_help_text, cli.rs:render_unified_help_text
+- `render_unified_help_text` @ `cli.rs:110`（上游 2 / 下游 3）
+  - 呼叫: cli.rs:colorize_unified_help_examples, cli.rs:inject_help_full_hint, cli.rs:render_long_help_with_color_choice
+  - 被呼叫: cli.rs:maybe_render_unified_help_from_os_args, cli.rs:render_unified_help_full_text
+- `render_domain_help_text` @ `cli.rs:127`（上游 1 / 下游 2）
+  - 呼叫: cli.rs:inject_help_full_hint, cli.rs:render_long_help_with_color_choice
+  - 被呼叫: cli.rs:maybe_render_unified_help_from_os_args
+- `render_domain_help_full_text` @ `cli.rs:131`（上游 1 / 下游 2）
+  - 呼叫: cli.rs:colorize_unified_help_examples, cli.rs:render_long_help_with_color_choice
+  - 被呼叫: cli.rs:maybe_render_unified_help_from_os_args
+- `render_unified_help_full_text` @ `cli.rs:149`（上游 1 / 下游 2）
+  - 呼叫: cli.rs:colorize_unified_help_examples, cli.rs:render_unified_help_text
+  - 被呼叫: cli.rs:maybe_render_unified_help_from_os_args
+- `maybe_render_unified_help_from_os_args` @ `cli.rs:160`（上游 0 / 下游 4）
+  - 呼叫: cli.rs:render_domain_help_full_text, cli.rs:render_domain_help_text, cli.rs:render_unified_help_full_text, cli.rs:render_unified_help_text
+- `parse_cli_from` @ `cli.rs:287`（上游 0 / 下游 0）
+- `wrap_dashboard` @ `cli.rs:299`（上游 1 / 下游 0）
+  - 被呼叫: cli.rs:wrap_dashboard_group
+- `wrap_dashboard_group` @ `cli.rs:303`（上游 1 / 下游 1）
+  - 呼叫: cli.rs:wrap_dashboard
+  - 被呼叫: cli.rs:dispatch_with_handlers
+- `dispatch_with_handlers` @ `cli.rs:329`（上游 1 / 下游 2）
+  - 呼叫: alert_cli_defs.rs:normalize_alert_namespace_args, cli.rs:wrap_dashboard_group
+  - 被呼叫: cli.rs:run_cli
+- `run_cli` @ `cli.rs:357`（上游 0 / 下游 1）
+  - 呼叫: cli.rs:dispatch_with_handlers
+
+## `common.rs`
+
+- `message` @ `common.rs:36`（上游 188 / 下游 0）
+  - 被呼叫: access.rs:request_array, access.rs:request_object, access_org.rs:assert_not_overwrite, access_org.rs:load_org_import_records, access_org.rs:lookup_org_by_identity, access_org.rs:validate_basic_auth_only, access_pending_delete.rs:list_service_account_tokens_with_request, access_pending_delete.rs:list_service_accounts_with_request, access_pending_delete.rs:list_teams_with_request, access_pending_delete.rs:lookup_service_account_by_name ...
+- `api_response` @ `common.rs:41`（上游 1 / 下游 0）
+  - 被呼叫: http.rs:request_json
+- `status_code` @ `common.rs:55`（上游 6 / 下游 0）
+  - 被呼叫: alert.rs:build_linked_dashboard_metadata, alert.rs:determine_rule_import_action, alert.rs:fetch_live_compare_document, alert.rs:import_rule_document, alert.rs:rewrite_rule_dashboard_linkage, datasource.rs:fetch_datasource_by_uid_if_exists
+- `env_value` @ `common.rs:64`（上游 1 / 下游 0）
+  - 被呼叫: common.rs:resolve_auth_headers_with_prompt
+- `resolve_auth_headers` @ `common.rs:75`（上游 4 / 下游 1）
+  - 呼叫: common.rs:resolve_auth_headers_with_prompt
+  - 被呼叫: access_cli_defs.rs:build_auth_context, access_cli_defs.rs:build_auth_context_no_org_id, alert_cli_defs.rs:build_auth_context, dashboard_cli_defs.rs:build_auth_context
+- `resolve_auth_headers_with_prompt` @ `common.rs:93`（上游 1 / 下游 2）
+  - 呼叫: common.rs:env_value, common.rs:message
+  - 被呼叫: common.rs:resolve_auth_headers
+- `sanitize_path_component` @ `common.rs:194`（上游 7 / 下游 0）
+  - 被呼叫: alert.rs:build_contact_point_output_path, alert.rs:build_mute_timing_output_path, alert.rs:build_rule_output_path, alert.rs:build_template_output_path, dashboard_export.rs:build_all_orgs_output_dir, dashboard_export.rs:build_output_path, datasource.rs:build_all_orgs_output_dir
+- `value_as_object` @ `common.rs:211`（上游 24 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: access.rs:request_array, access.rs:request_object, access_org.rs:load_org_import_records, access_org.rs:normalize_org_row, access_pending_delete.rs:list_service_account_tokens_with_request, access_pending_delete.rs:list_service_accounts_with_request, access_pending_delete.rs:list_teams_with_request, access_service_account.rs:list_service_accounts_with_request, access_service_account.rs:load_service_account_import_records, access_team.rs:list_teams_with_request ...
+- `object_field` @ `common.rs:222`（上游 7 / 下游 0）
+  - 被呼叫: dashboard_import.rs:build_remote_compare_document, dashboard_import.rs:determine_import_folder_uid_override_with_request, dashboard_import.rs:resolve_existing_dashboard_folder_path_with_request, dashboard_import.rs:resolve_source_dashboard_folder_path, dashboard_inspect.rs:resolve_export_folder_path, dashboard_screenshot.rs:resolve_dashboard_metadata, dashboard_vars.rs:build_dashboard_variable_document
+- `string_field` @ `common.rs:230`（上游 0 / 下游 0）
+- `load_json_object_file` @ `common.rs:244`（上游 8 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: access_service_account.rs:load_service_account_import_records, access_team.rs:load_team_import_records, access_user.rs:load_access_import_records, alert.rs:diff_alerting_resources, alert.rs:import_alerting_resources, alert.rs:load_panel_id_map, alert.rs:load_string_map, datasource.rs:parse_export_metadata
+- `write_json_file` @ `common.rs:257`（上游 4 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: alert.rs:export_alerting_resources, alert.rs:write_resource_indexes, datasource.rs:export_datasource_scope, datasource.rs:run_datasource_cli
+
+## `dashboard.rs`
+
+- `run_dashboard_cli_with_client` @ `dashboard.rs:243`（上游 0 / 下游 9）
+  - 呼叫: common.rs:message, dashboard_export.rs:export_dashboards_with_client, dashboard_help.rs:render_inspect_export_help_full, dashboard_help.rs:render_inspect_live_help_full, dashboard_import.rs:diff_dashboards_with_client, dashboard_import.rs:import_dashboards_with_client, dashboard_list.rs:list_dashboards_with_client, dashboard_list.rs:list_data_sources_with_client, dashboard_screenshot.rs:capture_dashboard_screenshot
+- `run_dashboard_cli` @ `dashboard.rs:312`（上游 0 / 下游 7）
+  - 呼叫: common.rs:message, dashboard_cli_defs.rs:normalize_dashboard_cli_args, dashboard_help.rs:render_inspect_export_help_full, dashboard_help.rs:render_inspect_live_help_full, dashboard_import.rs:diff_dashboards_with_client, dashboard_list.rs:list_data_sources_with_client, dashboard_screenshot.rs:capture_dashboard_screenshot
+
+## `dashboard_cli_defs.rs`
+
+- `parse_cli_from` @ `dashboard_cli_defs.rs:868`（上游 0 / 下游 1）
+  - 呼叫: dashboard_cli_defs.rs:normalize_dashboard_cli_args
+- `parse_dashboard_import_output_column` @ `dashboard_cli_defs.rs:882`（上游 0 / 下游 0）
+- `parse_dashboard_list_output_column` @ `dashboard_cli_defs.rs:904`（上游 0 / 下游 0）
+- `parse_inspect_report_column` @ `dashboard_cli_defs.rs:925`（上游 0 / 下游 0）
+- `normalize_simple_output_format` @ `dashboard_cli_defs.rs:958`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_cli_defs.rs:normalize_dashboard_cli_args
+- `normalize_dry_run_output_format` @ `dashboard_cli_defs.rs:974`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_cli_defs.rs:normalize_dashboard_cli_args
+- `normalize_dashboard_cli_args` @ `dashboard_cli_defs.rs:988`（上游 2 / 下游 2）
+  - 呼叫: dashboard_cli_defs.rs:normalize_dry_run_output_format, dashboard_cli_defs.rs:normalize_simple_output_format
+  - 被呼叫: dashboard.rs:run_dashboard_cli, dashboard_cli_defs.rs:parse_cli_from
+- `build_auth_context` @ `dashboard_cli_defs.rs:1016`（上游 2 / 下游 1）
+  - 呼叫: common.rs:resolve_auth_headers
+  - 被呼叫: dashboard_cli_defs.rs:build_http_client, dashboard_cli_defs.rs:build_http_client_for_org
+- `build_http_client` @ `dashboard_cli_defs.rs:1048`（上游 0 / 下游 1）
+  - 呼叫: dashboard_cli_defs.rs:build_auth_context
+- `build_http_client_for_org` @ `dashboard_cli_defs.rs:1066`（上游 6 / 下游 1）
+  - 呼叫: dashboard_cli_defs.rs:build_auth_context
+  - 被呼叫: dashboard_vars.rs:build_inspect_vars_client, datasource.rs:build_routed_datasource_import_dry_run_json, datasource.rs:import_datasources_by_export_org, datasource.rs:resolve_target_client, datasource.rs:run_datasource_cli, sync.rs:build_sync_http_client
+
+## `dashboard_export.rs`
+
+- `build_output_path` @ `dashboard_export.rs:31`（上游 0 / 下游 1）
+  - 呼叫: common.rs:sanitize_path_component
+- `build_all_orgs_output_dir` @ `dashboard_export.rs:50`（上游 0 / 下游 1）
+  - 呼叫: common.rs:sanitize_path_component
+- `build_export_variant_dirs` @ `dashboard_export.rs:63`（上游 0 / 下游 0）
+- `export_dashboards_with_client` @ `dashboard_export.rs:341`（上游 1 / 下游 0）
+  - 被呼叫: dashboard.rs:run_dashboard_cli_with_client
+
+## `dashboard_files.rs`
+
+- `validate_export_metadata` @ `dashboard_files.rs:86`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+- `collect_json_files` @ `dashboard_files.rs:139`（上游 0 / 下游 0）
+
+## `dashboard_help.rs`
+
+- `render_dashboard_subcommand_help_text` @ `dashboard_help.rs:7`（上游 2 / 下游 0）
+  - 被呼叫: dashboard_help.rs:render_inspect_export_help_full, dashboard_help.rs:render_inspect_live_help_full
+- `render_inspect_export_help_full` @ `dashboard_help.rs:21`（上游 3 / 下游 1）
+  - 呼叫: dashboard_help.rs:render_dashboard_subcommand_help_text
+  - 被呼叫: dashboard.rs:run_dashboard_cli, dashboard.rs:run_dashboard_cli_with_client, dashboard_help.rs:maybe_render_dashboard_help_full_from_os_args
+- `render_inspect_live_help_full` @ `dashboard_help.rs:31`（上游 3 / 下游 1）
+  - 呼叫: dashboard_help.rs:render_dashboard_subcommand_help_text
+  - 被呼叫: dashboard.rs:run_dashboard_cli, dashboard.rs:run_dashboard_cli_with_client, dashboard_help.rs:maybe_render_dashboard_help_full_from_os_args
+- `maybe_render_dashboard_help_full_from_os_args` @ `dashboard_help.rs:38`（上游 0 / 下游 2）
+  - 呼叫: dashboard_help.rs:render_inspect_export_help_full, dashboard_help.rs:render_inspect_live_help_full
+
+## `dashboard_import.rs`
+
+- `fetch_dashboard_if_exists_cached` @ `dashboard_import.rs:24`（上游 3 / 下游 0）
+  - 被呼叫: dashboard_import.rs:determine_dashboard_import_action_with_request, dashboard_import.rs:determine_import_folder_uid_override_with_request, dashboard_import.rs:resolve_existing_dashboard_folder_path_with_request
+- `fetch_folder_if_exists_cached` @ `dashboard_import.rs:45`（上游 4 / 下游 0）
+  - 被呼叫: dashboard_import.rs:collect_folder_inventory_statuses_cached, dashboard_import.rs:ensure_folder_inventory_entry_cached, dashboard_import.rs:resolve_dashboard_import_folder_path_with_request, dashboard_import.rs:resolve_existing_dashboard_folder_path_with_request
+- `create_folder_entry_with_request` @ `dashboard_import.rs:66`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_import.rs:ensure_folder_inventory_entry_cached
+- `cached_parent_uid_from_folder` @ `dashboard_import.rs:93`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_import.rs:build_cached_folder_inventory_status
+- `build_cached_folder_inventory_status` @ `dashboard_import.rs:103`（上游 1 / 下游 1）
+  - 呼叫: dashboard_import.rs:cached_parent_uid_from_folder
+  - 被呼叫: dashboard_import.rs:collect_folder_inventory_statuses_cached
+- `validate_import_org_auth` @ `dashboard_import.rs:136`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+- `load_export_org_ids` @ `dashboard_import.rs:162`（上游 2 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_import.rs:parse_export_org_scope, dashboard_import.rs:validate_matching_export_org_with_request
+- `load_export_org_names` @ `dashboard_import.rs:202`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_import.rs:parse_export_org_scope
+- `org_id_string_from_value` @ `dashboard_import.rs:269`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_import.rs:resolve_target_org_plan_for_export_scope_with_request
+- `parse_export_org_scope` @ `dashboard_import.rs:277`（上游 1 / 下游 3）
+  - 呼叫: common.rs:message, dashboard_import.rs:load_export_org_ids, dashboard_import.rs:load_export_org_names
+  - 被呼叫: dashboard_import.rs:discover_export_org_import_scopes
+- `discover_export_org_import_scopes` @ `dashboard_import.rs:330`（上游 0 / 下游 2）
+  - 呼叫: common.rs:message, dashboard_import.rs:parse_export_org_scope
+- `create_org_with_request` @ `dashboard_import.rs:397`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_import.rs:resolve_target_org_plan_for_export_scope_with_request
+- `resolve_import_target_org_id_with_request` @ `dashboard_import.rs:417`（上游 1 / 下游 1）
+  - 呼叫: alert_list.rs:org_id_value
+  - 被呼叫: dashboard_import.rs:validate_matching_export_org_with_request
+- `list_orgs_cached` @ `dashboard_import.rs:437`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_import.rs:resolve_target_org_plan_for_export_scope_with_request
+- `validate_matching_export_org_with_request` @ `dashboard_import.rs:452`（上游 0 / 下游 3）
+  - 呼叫: common.rs:message, dashboard_import.rs:load_export_org_ids, dashboard_import.rs:resolve_import_target_org_id_with_request
+- `resolve_target_org_plan_for_export_scope_with_request` @ `dashboard_import.rs:494`（上游 0 / 下游 4）
+  - 呼叫: common.rs:message, dashboard_import.rs:create_org_with_request, dashboard_import.rs:list_orgs_cached, dashboard_import.rs:org_id_string_from_value
+- `build_compare_document` @ `dashboard_import.rs:570`（上游 2 / 下游 0）
+  - 被呼叫: dashboard_import.rs:build_local_compare_document, dashboard_import.rs:build_remote_compare_document
+- `build_local_compare_document` @ `dashboard_import.rs:582`（上游 0 / 下游 4）
+  - 呼叫: common.rs:message, common.rs:value_as_object, dashboard_import.rs:build_compare_document, datasource.rs:build_import_payload
+- `build_remote_compare_document` @ `dashboard_import.rs:597`（上游 0 / 下游 3）
+  - 呼叫: common.rs:object_field, common.rs:value_as_object, dashboard_import.rs:build_compare_document
+- `serialize_compare_document` @ `dashboard_import.rs:613`（上游 0 / 下游 0）
+- `build_compare_diff_text` @ `dashboard_import.rs:617`（上游 0 / 下游 0）
+- `determine_dashboard_import_action_with_request` @ `dashboard_import.rs:638`（上游 0 / 下游 3）
+  - 呼叫: common.rs:message, common.rs:value_as_object, dashboard_import.rs:fetch_dashboard_if_exists_cached
+- `determine_import_folder_uid_override_with_request` @ `dashboard_import.rs:671`（上游 0 / 下游 3）
+  - 呼叫: common.rs:object_field, common.rs:value_as_object, dashboard_import.rs:fetch_dashboard_if_exists_cached
+- `describe_import_action` @ `dashboard_import.rs:716`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_import.rs:build_import_dry_run_record
+- `normalize_folder_path` @ `dashboard_import.rs:729`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_import.rs:build_folder_path_match_result
+- `resolve_source_dashboard_folder_path` @ `dashboard_import.rs:738`（上游 0 / 下游 3）
+  - 呼叫: common.rs:message, common.rs:object_field, common.rs:value_as_object
+- `resolve_existing_dashboard_folder_path_with_request` @ `dashboard_import.rs:783`（上游 0 / 下游 4）
+  - 呼叫: common.rs:object_field, common.rs:value_as_object, dashboard_import.rs:fetch_dashboard_if_exists_cached, dashboard_import.rs:fetch_folder_if_exists_cached
+- `build_folder_path_match_result` @ `dashboard_import.rs:822`（上游 0 / 下游 1）
+  - 呼叫: dashboard_import.rs:normalize_folder_path
+- `apply_folder_path_guard_to_action` @ `dashboard_import.rs:854`（上游 0 / 下游 0）
+- `resolve_dashboard_import_folder_path_with_request` @ `dashboard_import.rs:862`（上游 0 / 下游 2）
+  - 呼叫: common.rs:value_as_object, dashboard_import.rs:fetch_folder_if_exists_cached
+- `collect_folder_inventory_statuses_cached` @ `dashboard_import.rs:897`（上游 0 / 下游 2）
+  - 呼叫: dashboard_import.rs:build_cached_folder_inventory_status, dashboard_import.rs:fetch_folder_if_exists_cached
+- `ensure_folder_inventory_entry_cached` @ `dashboard_import.rs:916`（上游 0 / 下游 3）
+  - 呼叫: common.rs:message, dashboard_import.rs:create_folder_entry_with_request, dashboard_import.rs:fetch_folder_if_exists_cached
+- `build_import_dry_run_record` @ `dashboard_import.rs:984`（上游 0 / 下游 1）
+  - 呼叫: dashboard_import.rs:describe_import_action
+- `build_folder_inventory_dry_run_record` @ `dashboard_import.rs:1006`（上游 0 / 下游 0）
+- `build_routed_import_org_row` @ `dashboard_import.rs:1152`（上游 0 / 下游 0）
+- `resolve_dashboard_import_table_columns` @ `dashboard_import.rs:1219`（上游 0 / 下游 0）
+- `build_import_dry_run_json_value` @ `dashboard_import.rs:1333`（上游 0 / 下游 0）
+- `import_dashboards_with_client` @ `dashboard_import.rs:2072`（上游 1 / 下游 0）
+  - 被呼叫: dashboard.rs:run_dashboard_cli_with_client
+- `diff_dashboards_with_client` @ `dashboard_import.rs:2343`（上游 2 / 下游 0）
+  - 被呼叫: dashboard.rs:run_dashboard_cli, dashboard.rs:run_dashboard_cli_with_client
+
+## `dashboard_inspect.rs`
+
+- `resolve_export_folder_path` @ `dashboard_inspect.rs:55`（上游 0 / 下游 2）
+  - 呼叫: common.rs:object_field, dashboard_inspect.rs:new
+- `collect_panel_stats` @ `dashboard_inspect.rs:94`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_inspect.rs:count_dashboard_panels_and_queries
+- `count_dashboard_panels_and_queries` @ `dashboard_inspect.rs:113`（上游 0 / 下游 1）
+  - 呼叫: dashboard_inspect.rs:collect_panel_stats
+- `summarize_datasource_ref` @ `dashboard_inspect.rs:128`（上游 0 / 下游 0）
+- `summarize_datasource_uid` @ `dashboard_inspect.rs:154`（上游 0 / 下游 0）
+- `summarize_datasource_type` @ `dashboard_inspect.rs:176`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_inspect.rs:collect_query_report_rows
+- `summarize_datasource_inventory_usage` @ `dashboard_inspect.rs:226`（上游 0 / 下游 1）
+  - 呼叫: dashboard_inspect.rs:new
+- `string_list_field` @ `dashboard_inspect.rs:330`（上游 0 / 下游 0）
+- `quoted_captures` @ `dashboard_inspect.rs:346`（上游 1 / 下游 1）
+  - 呼叫: dashboard_inspect.rs:new
+  - 被呼叫: dashboard_inspect.rs:extract_metric_names
+- `ordered_unique_push` @ `dashboard_inspect.rs:359`（上游 0 / 下游 0）
+- `datasource_type_from_reference` @ `dashboard_inspect.rs:369`（上游 0 / 下游 0）
+- `extract_metric_names` @ `dashboard_inspect.rs:402`（上游 0 / 下游 2）
+  - 呼叫: dashboard_inspect.rs:new, dashboard_inspect.rs:quoted_captures
+- `strip_sql_comments` @ `dashboard_inspect.rs:625`（上游 0 / 下游 1）
+  - 呼叫: dashboard_inspect.rs:new
+- `normalize_sql_identifier` @ `dashboard_inspect.rs:634`（上游 0 / 下游 0）
+- `collect_query_report_rows` @ `dashboard_inspect.rs:719`（上游 0 / 下游 3）
+  - 呼叫: dashboard_inspect.rs:new, dashboard_inspect.rs:summarize_datasource_type, dashboard_reference_models.rs:normalize_family_name
+- `map_output_format_to_report` @ `dashboard_inspect.rs:950`（上游 0 / 下游 0）
+- `effective_inspect_report_format` @ `dashboard_inspect.rs:969`（上游 0 / 下游 0）
+- `effective_inspect_json` @ `dashboard_inspect.rs:974`（上游 0 / 下游 0）
+- `effective_inspect_table` @ `dashboard_inspect.rs:978`（上游 0 / 下游 0）
+- `new` @ `dashboard_inspect.rs:1454`（上游 7 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_inspect.rs:collect_query_report_rows, dashboard_inspect.rs:extract_metric_names, dashboard_inspect.rs:prepare_inspect_live_import_dir, dashboard_inspect.rs:quoted_captures, dashboard_inspect.rs:resolve_export_folder_path, dashboard_inspect.rs:strip_sql_comments, dashboard_inspect.rs:summarize_datasource_inventory_usage
+- `drop` @ `dashboard_inspect.rs:1469`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_screenshot.rs:reserve_debug_port
+- `build_live_export_args` @ `dashboard_inspect.rs:1474`（上游 0 / 下游 0）
+- `build_export_inspect_args_from_live` @ `dashboard_inspect.rs:1491`（上游 0 / 下游 0）
+- `load_json_array_file` @ `dashboard_inspect.rs:1509`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_inspect.rs:prepare_inspect_live_import_dir
+- `copy_dir_recursive` @ `dashboard_inspect.rs:1527`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_inspect.rs:prepare_inspect_live_import_dir
+- `prepare_inspect_live_import_dir` @ `dashboard_inspect.rs:1551`（上游 0 / 下游 3）
+  - 呼叫: dashboard_inspect.rs:copy_dir_recursive, dashboard_inspect.rs:load_json_array_file, dashboard_inspect.rs:new
+
+## `dashboard_inspect_analyzer_flux.rs`
+
+- 無可辨識函式。
+
+## `dashboard_inspect_analyzer_loki.rs`
+
+- `ordered_unique_push` @ `dashboard_inspect_analyzer_loki.rs:8`（上游 4 / 下游 0）
+  - 被呼叫: dashboard_inspect_analyzer_loki.rs:extract_loki_label_matchers, dashboard_inspect_analyzer_loki.rs:extract_loki_pipeline_metrics, dashboard_inspect_analyzer_loki.rs:extract_loki_range_windows, dashboard_inspect_analyzer_loki.rs:extract_loki_stream_selectors
+- `extract_loki_stream_selectors` @ `dashboard_inspect_analyzer_loki.rs:18`（上游 0 / 下游 1）
+  - 呼叫: dashboard_inspect_analyzer_loki.rs:ordered_unique_push
+- `extract_loki_label_matchers` @ `dashboard_inspect_analyzer_loki.rs:27`（上游 0 / 下游 1）
+  - 呼叫: dashboard_inspect_analyzer_loki.rs:ordered_unique_push
+- `extract_loki_pipeline_metrics` @ `dashboard_inspect_analyzer_loki.rs:39`（上游 0 / 下游 1）
+  - 呼叫: dashboard_inspect_analyzer_loki.rs:ordered_unique_push
+- `extract_loki_range_windows` @ `dashboard_inspect_analyzer_loki.rs:86`（上游 0 / 下游 1）
+  - 呼叫: dashboard_inspect_analyzer_loki.rs:ordered_unique_push
+
+## `dashboard_inspect_analyzer_prometheus.rs`
+
+- 無可辨識函式。
+
+## `dashboard_inspect_analyzer_sql.rs`
+
+- 無可辨識函式。
+
+## `dashboard_inspect_governance.rs`
+
+- `build_inventory_lookup` @ `dashboard_inspect_governance.rs:135`（上游 0 / 下游 0）
+- `resolve_datasource_identity` @ `dashboard_inspect_governance.rs:154`（上游 0 / 下游 0）
+- `build_risk_metadata` @ `dashboard_inspect_governance.rs:205`（上游 0 / 下游 0）
+
+## `dashboard_inspect_render.rs`
+
+- `escape_csv` @ `dashboard_inspect_render.rs:10`（上游 0 / 下游 0）
+
+## `dashboard_inspect_report.rs`
+
+- `normalize_report_column_id` @ `dashboard_inspect_report.rs:163`（上游 0 / 下游 0）
+
+## `dashboard_inspect_summary.rs`
+
+- 無可辨識函式。
+
+## `dashboard_inspection_dependency_contract.rs`
+
+- `as_json` @ `dashboard_inspection_dependency_contract.rs:28`（上游 0 / 下游 0）
+- `as_json` @ `dashboard_inspection_dependency_contract.rs:56`（上游 0 / 下游 1）
+  - 呼叫: dashboard_inspection_dependency_contract.rs:query_signature_key
+- `query_signature_key` @ `dashboard_inspection_dependency_contract.rs:149`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_inspection_dependency_contract.rs:as_json
+- `parse_query_text_families` @ `dashboard_inspection_dependency_contract.rs:153`（上游 0 / 下游 2）
+  - 呼叫: dashboard_reference_models.rs:dedupe_strings, dashboard_reference_models.rs:normalize_family_name
+
+## `dashboard_list.rs`
+
+- `dashboard_org_id_cell` @ `dashboard_list.rs:113`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_list.rs:dashboard_list_value
+- `header` @ `dashboard_list.rs:164`（上游 1 / 下游 0）
+  - 被呼叫: http.rs:request_json
+- `csv_key` @ `dashboard_list.rs:178`（上游 0 / 下游 0）
+- `parse_dashboard_list_column` @ `dashboard_list.rs:193`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_list.rs:resolve_dashboard_list_columns
+- `resolve_dashboard_list_columns` @ `dashboard_list.rs:212`（上游 0 / 下游 4）
+  - 呼叫: dashboard_list.rs:parse_dashboard_list_column, dashboard_list.rs:summaries_include_org_metadata, dashboard_list.rs:summaries_include_source_uids, dashboard_list.rs:summaries_include_sources
+- `dashboard_list_value` @ `dashboard_list.rs:243`（上游 1 / 下游 3）
+  - 呼叫: dashboard_list.rs:dashboard_org_id_cell, dashboard_list.rs:dashboard_source_uids, dashboard_list.rs:dashboard_sources_cell
+  - 被呼叫: dashboard_list.rs:build_dashboard_summary_row_for_columns
+- `build_dashboard_summary_row_for_columns` @ `dashboard_list.rs:263`（上游 0 / 下游 1）
+  - 呼叫: dashboard_list.rs:dashboard_list_value
+- `dashboard_list_needs_sources` @ `dashboard_list.rs:273`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_list.rs:collect_list_dashboards_with_request
+- `dashboard_sources` @ `dashboard_list.rs:282`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_list.rs:dashboard_sources_cell
+- `dashboard_source_uids` @ `dashboard_list.rs:293`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_list.rs:dashboard_list_value
+- `dashboard_sources_cell` @ `dashboard_list.rs:304`（上游 1 / 下游 1）
+  - 呼叫: dashboard_list.rs:dashboard_sources
+  - 被呼叫: dashboard_list.rs:dashboard_list_value
+- `summaries_include_sources` @ `dashboard_list.rs:313`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_list.rs:resolve_dashboard_list_columns
+- `summaries_include_org_metadata` @ `dashboard_list.rs:319`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_list.rs:resolve_dashboard_list_columns
+- `summaries_include_source_uids` @ `dashboard_list.rs:325`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_list.rs:resolve_dashboard_list_columns
+- `build_data_source_record` @ `dashboard_list.rs:449`（上游 0 / 下游 0）
+- `lookup_unique_datasource_name_by_type` @ `dashboard_list.rs:551`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_list.rs:resolve_datasource_source_name
+- `resolve_datasource_source_name` @ `dashboard_list.rs:576`（上游 0 / 下游 1）
+  - 呼叫: dashboard_list.rs:lookup_unique_datasource_name_by_type
+- `resolve_datasource_source_uid` @ `dashboard_list.rs:636`（上游 0 / 下游 0）
+- `attach_dashboard_sources_with_request` @ `dashboard_list.rs:697`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_list.rs:collect_list_dashboards_with_request
+- `collect_list_dashboards_with_request` @ `dashboard_list.rs:732`（上游 0 / 下游 2）
+  - 呼叫: dashboard_list.rs:attach_dashboard_sources_with_request, dashboard_list.rs:dashboard_list_needs_sources
+- `render_dashboard_list_output` @ `dashboard_list.rs:770`（上游 0 / 下游 0）
+- `list_dashboards_with_client` @ `dashboard_list.rs:827`（上游 1 / 下游 0）
+  - 被呼叫: dashboard.rs:run_dashboard_cli_with_client
+- `list_data_sources_with_client` @ `dashboard_list.rs:915`（上游 2 / 下游 0）
+  - 被呼叫: dashboard.rs:run_dashboard_cli, dashboard.rs:run_dashboard_cli_with_client
+
+## `dashboard_live.rs`
+
+- `list_dashboard_summaries` @ `dashboard_live.rs:68`（上游 0 / 下游 0）
+- `parent_uid_from_folder` @ `dashboard_live.rs:236`（上游 0 / 下游 0）
+- `fetch_dashboard` @ `dashboard_live.rs:362`（上游 2 / 下游 0）
+  - 被呼叫: dashboard_screenshot.rs:resolve_dashboard_metadata, dashboard_vars.rs:build_dashboard_variable_document
+- `import_dashboard_request` @ `dashboard_live.rs:407`（上游 0 / 下游 0）
+- `list_datasources` @ `dashboard_live.rs:443`（上游 5 / 下游 0）
+  - 被呼叫: datasource.rs:build_export_records, datasource.rs:build_list_records, datasource.rs:collect_datasource_import_dry_run_report, datasource.rs:import_datasources_with_client, datasource.rs:run_datasource_cli
+
+## `dashboard_models.rs`
+
+- 無可辨識函式。
+
+## `dashboard_prompt.rs`
+
+- `known_datasource_type` @ `dashboard_prompt.rs:12`（上游 0 / 下游 0）
+- `extract_placeholder_name` @ `dashboard_prompt.rs:83`（上游 3 / 下游 0）
+  - 被呼叫: dashboard_prompt.rs:is_generated_input_placeholder, dashboard_prompt.rs:resolve_placeholder_object_ref, dashboard_prompt.rs:rewrite_template_variable_datasource
+- `is_generated_input_placeholder` @ `dashboard_prompt.rs:93`（上游 0 / 下游 1）
+  - 呼叫: dashboard_prompt.rs:extract_placeholder_name
+- `make_input_name` @ `dashboard_prompt.rs:148`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_prompt.rs:allocate_input_mapping
+- `format_plugin_name` @ `dashboard_prompt.rs:171`（上游 4 / 下游 0）
+  - 被呼叫: dashboard_prompt.rs:build_resolved_datasource, dashboard_prompt.rs:make_input_label, dashboard_prompt.rs:resolve_placeholder_object_ref, dashboard_prompt.rs:resolve_string_datasource_ref
+- `make_input_label` @ `dashboard_prompt.rs:195`（上游 1 / 下游 1）
+  - 呼叫: dashboard_prompt.rs:format_plugin_name
+  - 被呼叫: dashboard_prompt.rs:allocate_input_mapping
+- `build_resolved_datasource` @ `dashboard_prompt.rs:204`（上游 3 / 下游 1）
+  - 呼叫: dashboard_prompt.rs:format_plugin_name
+  - 被呼叫: dashboard_prompt.rs:resolve_object_datasource_ref, dashboard_prompt.rs:resolve_placeholder_object_ref, dashboard_prompt.rs:resolve_string_datasource_ref
+- `datasource_plugin_version` @ `dashboard_prompt.rs:219`（上游 2 / 下游 0）
+  - 被呼叫: dashboard_prompt.rs:resolve_object_datasource_ref, dashboard_prompt.rs:resolve_string_datasource_ref
+- `resolve_string_datasource_ref` @ `dashboard_prompt.rs:280`（上游 1 / 下游 4）
+  - 呼叫: common.rs:message, dashboard_prompt.rs:build_resolved_datasource, dashboard_prompt.rs:datasource_plugin_version, dashboard_prompt.rs:format_plugin_name
+  - 被呼叫: dashboard_prompt.rs:resolve_datasource_ref
+- `resolve_placeholder_object_ref` @ `dashboard_prompt.rs:313`（上游 1 / 下游 3）
+  - 呼叫: dashboard_prompt.rs:build_resolved_datasource, dashboard_prompt.rs:extract_placeholder_name, dashboard_prompt.rs:format_plugin_name
+  - 被呼叫: dashboard_prompt.rs:resolve_object_datasource_ref
+- `resolve_object_datasource_ref` @ `dashboard_prompt.rs:334`（上游 1 / 下游 4）
+  - 呼叫: common.rs:message, dashboard_prompt.rs:build_resolved_datasource, dashboard_prompt.rs:datasource_plugin_version, dashboard_prompt.rs:resolve_placeholder_object_ref
+  - 被呼叫: dashboard_prompt.rs:resolve_datasource_ref
+- `resolve_datasource_ref` @ `dashboard_prompt.rs:389`（上游 3 / 下游 2）
+  - 呼叫: dashboard_prompt.rs:resolve_object_datasource_ref, dashboard_prompt.rs:resolve_string_datasource_ref
+  - 被呼叫: dashboard_prompt.rs:build_external_export_document, dashboard_prompt.rs:prepare_templating_for_external_import, dashboard_prompt.rs:replace_datasource_refs_in_dashboard
+- `allocate_input_mapping` @ `dashboard_prompt.rs:409`（上游 2 / 下游 2）
+  - 呼叫: dashboard_prompt.rs:make_input_label, dashboard_prompt.rs:make_input_name
+  - 被呼叫: dashboard_prompt.rs:build_external_export_document, dashboard_prompt.rs:prepare_templating_for_external_import
+- `rewrite_template_variable_query` @ `dashboard_prompt.rs:446`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_prompt.rs:prepare_templating_for_external_import
+- `rewrite_template_variable_datasource` @ `dashboard_prompt.rs:473`（上游 1 / 下游 1）
+  - 呼叫: dashboard_prompt.rs:extract_placeholder_name
+  - 被呼叫: dashboard_prompt.rs:prepare_templating_for_external_import
+- `prepare_templating_for_external_import` @ `dashboard_prompt.rs:508`（上游 1 / 下游 4）
+  - 呼叫: dashboard_prompt.rs:allocate_input_mapping, dashboard_prompt.rs:resolve_datasource_ref, dashboard_prompt.rs:rewrite_template_variable_datasource, dashboard_prompt.rs:rewrite_template_variable_query
+  - 被呼叫: dashboard_prompt.rs:build_external_export_document
+- `replace_datasource_refs_in_dashboard` @ `dashboard_prompt.rs:577`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, dashboard_prompt.rs:resolve_datasource_ref
+  - 被呼叫: dashboard_prompt.rs:build_external_export_document
+- `ensure_datasource_template_variable` @ `dashboard_prompt.rs:628`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_prompt.rs:build_external_export_document
+- `rewrite_panel_datasources_to_template_variable` @ `dashboard_prompt.rs:667`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_prompt.rs:build_external_export_document
+- `collect_panel_types` @ `dashboard_prompt.rs:706`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_prompt.rs:build_external_export_document
+- `build_input_definitions` @ `dashboard_prompt.rs:721`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_prompt.rs:build_external_export_document
+- `build_requires_block` @ `dashboard_prompt.rs:741`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_prompt.rs:build_external_export_document
+- `build_external_export_document` @ `dashboard_prompt.rs:783`（上游 0 / 下游 10）
+  - 呼叫: common.rs:message, dashboard_prompt.rs:allocate_input_mapping, dashboard_prompt.rs:build_input_definitions, dashboard_prompt.rs:build_requires_block, dashboard_prompt.rs:collect_panel_types, dashboard_prompt.rs:ensure_datasource_template_variable, dashboard_prompt.rs:prepare_templating_for_external_import, dashboard_prompt.rs:replace_datasource_refs_in_dashboard, dashboard_prompt.rs:resolve_datasource_ref, dashboard_prompt.rs:rewrite_panel_datasources_to_template_variable
+
+## `dashboard_reference_models.rs`
+
+- `normalize_text` @ `dashboard_reference_models.rs:10`（上游 2 / 下游 0）
+  - 被呼叫: dashboard_reference_models.rs:build_query_reference_payload, dashboard_reference_models.rs:from_value
+- `from_value` @ `dashboard_reference_models.rs:41`（上游 0 / 下游 1）
+  - 呼叫: dashboard_reference_models.rs:normalize_text
+- `identity` @ `dashboard_reference_models.rs:68`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_reference_models.rs:build_dependency_lookup
+- `from_value` @ `dashboard_reference_models.rs:94`（上游 0 / 下游 1）
+  - 呼叫: dashboard_reference_models.rs:normalize_text
+- `blank` @ `dashboard_reference_models.rs:188`（上游 0 / 下游 0）
+- `normalize_family_name` @ `dashboard_reference_models.rs:224`（上游 3 / 下游 0）
+  - 被呼叫: dashboard_inspect.rs:collect_query_report_rows, dashboard_inspection_dependency_contract.rs:parse_query_text_families, dashboard_reference_models.rs:build_query_reference_payload
+- `build_query_reference_payload` @ `dashboard_reference_models.rs:250`（上游 0 / 下游 2）
+  - 呼叫: dashboard_reference_models.rs:normalize_family_name, dashboard_reference_models.rs:normalize_text
+- `dedupe_strings` @ `dashboard_reference_models.rs:299`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_inspection_dependency_contract.rs:parse_query_text_families
+- `build_dependency_lookup` @ `dashboard_reference_models.rs:316`（上游 0 / 下游 1）
+  - 呼叫: dashboard_reference_models.rs:identity
+
+## `dashboard_screenshot.rs`
+
+- `validate_screenshot_args` @ `dashboard_screenshot.rs:33`（上游 1 / 下游 4）
+  - 呼叫: common.rs:message, dashboard_screenshot.rs:infer_screenshot_output_format, dashboard_screenshot.rs:parse_query_fragment, dashboard_screenshot.rs:parse_var_assignment
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot
+- `infer_screenshot_output_format` @ `dashboard_screenshot.rs:97`（上游 2 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot, dashboard_screenshot.rs:validate_screenshot_args
+- `build_dashboard_capture_url` @ `dashboard_screenshot.rs:128`（上游 1 / 下游 4）
+  - 呼叫: common.rs:message, dashboard_screenshot.rs:parse_dashboard_url_state, dashboard_screenshot.rs:parse_query_fragment, dashboard_screenshot.rs:parse_var_assignment
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot
+- `capture_dashboard_screenshot` @ `dashboard_screenshot.rs:238`（上游 2 / 下游 17）
+  - 呼叫: common.rs:message, dashboard_screenshot.rs:apply_header_if_requested, dashboard_screenshot.rs:build_browser, dashboard_screenshot.rs:build_browser_headers, dashboard_screenshot.rs:build_dashboard_capture_url, dashboard_screenshot.rs:build_header_spec, dashboard_screenshot.rs:build_screenshot_clip, dashboard_screenshot.rs:capture_full_page_segments, dashboard_screenshot.rs:collapse_sidebar_if_present, dashboard_screenshot.rs:configure_capture_viewport ...
+  - 被呼叫: dashboard.rs:run_dashboard_cli, dashboard.rs:run_dashboard_cli_with_client
+- `resolve_dashboard_metadata` @ `dashboard_screenshot.rs:429`（上游 1 / 下游 5）
+  - 呼叫: common.rs:object_field, common.rs:value_as_object, dashboard_live.rs:fetch_dashboard, dashboard_screenshot.rs:find_panel_title, dashboard_screenshot.rs:resolve_dashboard_uid
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot
+- `resolve_dashboard_uid` @ `dashboard_screenshot.rs:472`（上游 1 / 下游 1）
+  - 呼叫: dashboard_screenshot.rs:parse_dashboard_url_state
+  - 被呼叫: dashboard_screenshot.rs:resolve_dashboard_metadata
+- `find_panel_title` @ `dashboard_screenshot.rs:487`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_screenshot.rs:resolve_dashboard_metadata
+- `build_header_spec` @ `dashboard_screenshot.rs:515`（上游 1 / 下游 2）
+  - 呼叫: dashboard_screenshot.rs:resolve_header_title, dashboard_screenshot.rs:resolve_optional_header_field
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot
+- `resolve_header_title` @ `dashboard_screenshot.rs:561`（上游 2 / 下游 1）
+  - 呼叫: dashboard_screenshot.rs:resolve_auto_title
+  - 被呼叫: dashboard_screenshot.rs:build_full_page_manifest, dashboard_screenshot.rs:build_header_spec
+- `resolve_auto_title` @ `dashboard_screenshot.rs:572`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_screenshot.rs:resolve_header_title
+- `resolve_optional_header_field` @ `dashboard_screenshot.rs:597`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_screenshot.rs:build_header_spec
+- `apply_header_if_requested` @ `dashboard_screenshot.rs:605`（上游 2 / 下游 1）
+  - 呼叫: dashboard_screenshot.rs:compose_header_image
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot, dashboard_screenshot.rs:write_full_page_output
+- `compose_header_image` @ `dashboard_screenshot.rs:618`（上游 1 / 下游 4）
+  - 呼叫: common.rs:message, dashboard_screenshot.rs:draw_header_lines, dashboard_screenshot.rs:measure_header_height, dashboard_screenshot.rs:paint_header_background
+  - 被呼叫: dashboard_screenshot.rs:apply_header_if_requested
+- `measure_header_height` @ `dashboard_screenshot.rs:653`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_screenshot.rs:compose_header_image
+- `paint_header_background` @ `dashboard_screenshot.rs:665`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_screenshot.rs:compose_header_image
+- `draw_header_lines` @ `dashboard_screenshot.rs:690`（上游 1 / 下游 1）
+  - 呼叫: dashboard_screenshot.rs:draw_text_line
+  - 被呼叫: dashboard_screenshot.rs:compose_header_image
+- `draw_text_line` @ `dashboard_screenshot.rs:698`（上游 1 / 下游 1）
+  - 呼叫: dashboard_screenshot.rs:draw_glyph
+  - 被呼叫: dashboard_screenshot.rs:draw_header_lines
+- `draw_glyph` @ `dashboard_screenshot.rs:716`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_screenshot.rs:draw_text_line
+- `wait_for_dashboard_ready` @ `dashboard_screenshot.rs:746`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot
+- `parse_dashboard_url_state` @ `dashboard_screenshot.rs:836`（上游 2 / 下游 0）
+  - 被呼叫: dashboard_screenshot.rs:build_dashboard_capture_url, dashboard_screenshot.rs:resolve_dashboard_uid
+- `collapse_sidebar_if_present` @ `dashboard_screenshot.rs:881`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot
+- `prepare_dashboard_capture_dom` @ `dashboard_screenshot.rs:915`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, dashboard_screenshot.rs:read_numeric_expression
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot
+- `build_screenshot_clip` @ `dashboard_screenshot.rs:1121`（上游 1 / 下游 1）
+  - 呼叫: dashboard_screenshot.rs:read_numeric_expression
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot
+- `warm_full_page_render` @ `dashboard_screenshot.rs:1161`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, dashboard_screenshot.rs:read_numeric_expression
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot
+- `capture_full_page_segments` @ `dashboard_screenshot.rs:1239`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, dashboard_screenshot.rs:read_numeric_expression
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot
+- `stitch_full_page_capture` @ `dashboard_screenshot.rs:1351`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_screenshot.rs:write_full_page_output
+- `encode_rgba_image` @ `dashboard_screenshot.rs:1367`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_screenshot.rs:write_full_page_output
+- `write_full_page_output` @ `dashboard_screenshot.rs:1397`（上游 1 / 下游 6）
+  - 呼叫: common.rs:message, dashboard_screenshot.rs:apply_header_if_requested, dashboard_screenshot.rs:build_full_page_manifest, dashboard_screenshot.rs:build_segment_output_dir, dashboard_screenshot.rs:encode_rgba_image, dashboard_screenshot.rs:stitch_full_page_capture
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot
+- `build_segment_output_dir` @ `dashboard_screenshot.rs:1469`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_screenshot.rs:write_full_page_output
+- `build_full_page_manifest` @ `dashboard_screenshot.rs:1485`（上游 1 / 下游 1）
+  - 呼叫: dashboard_screenshot.rs:resolve_header_title
+  - 被呼叫: dashboard_screenshot.rs:write_full_page_output
+- `read_numeric_expression` @ `dashboard_screenshot.rs:1550`（上游 4 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_screenshot.rs:build_screenshot_clip, dashboard_screenshot.rs:capture_full_page_segments, dashboard_screenshot.rs:prepare_dashboard_capture_dom, dashboard_screenshot.rs:warm_full_page_render
+- `parse_var_assignment` @ `dashboard_screenshot.rs:1567`（上游 2 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_screenshot.rs:build_dashboard_capture_url, dashboard_screenshot.rs:validate_screenshot_args
+- `parse_query_fragment` @ `dashboard_screenshot.rs:1592`（上游 2 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_screenshot.rs:build_dashboard_capture_url, dashboard_screenshot.rs:validate_screenshot_args
+- `build_browser_headers` @ `dashboard_screenshot.rs:1645`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot
+- `build_browser` @ `dashboard_screenshot.rs:1653`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, dashboard_screenshot.rs:reserve_debug_port
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot
+- `configure_capture_viewport` @ `dashboard_screenshot.rs:1677`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: dashboard_screenshot.rs:capture_dashboard_screenshot
+- `reserve_debug_port` @ `dashboard_screenshot.rs:1705`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, dashboard_inspect.rs:drop
+  - 被呼叫: dashboard_screenshot.rs:build_browser
+
+## `dashboard_vars.rs`
+
+- `build_inspect_vars_client` @ `dashboard_vars.rs:97`（上游 0 / 下游 2）
+  - 呼叫: common.rs:message, dashboard_cli_defs.rs:build_http_client_for_org
+- `resolve_dashboard_uid` @ `dashboard_vars.rs:122`（上游 0 / 下游 1）
+  - 呼叫: common.rs:message
+- `build_dashboard_variable_document` @ `dashboard_vars.rs:151`（上游 0 / 下游 4）
+  - 呼叫: common.rs:message, common.rs:object_field, common.rs:value_as_object, dashboard_live.rs:fetch_dashboard
+- `apply_vars_query_overrides` @ `dashboard_vars.rs:172`（上游 0 / 下游 0）
+- `build_variable_table_rows` @ `dashboard_vars.rs:253`（上游 0 / 下游 1）
+  - 呼叫: dashboard_vars.rs:summarize_options
+- `summarize_options` @ `dashboard_vars.rs:271`（上游 1 / 下游 0）
+  - 被呼叫: dashboard_vars.rs:build_variable_table_rows
+- `format_current_value` @ `dashboard_vars.rs:288`（上游 0 / 下游 1）
+  - 呼叫: dashboard_vars.rs:format_compact_value
+- `format_option_value` @ `dashboard_vars.rs:310`（上游 0 / 下游 1）
+  - 呼叫: dashboard_vars.rs:format_compact_value
+- `format_compact_value` @ `dashboard_vars.rs:333`（上游 2 / 下游 0）
+  - 被呼叫: dashboard_vars.rs:format_current_value, dashboard_vars.rs:format_option_value
+
+## `datasource.rs`
+
+- `normalize_output_formats` @ `datasource.rs:492`（上游 1 / 下游 0）
+  - 被呼叫: datasource.rs:parse_normalized_from
+- `normalize_datasource_group_command` @ `datasource.rs:526`（上游 1 / 下游 0）
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `parse_datasource_import_output_column` @ `datasource.rs:563`（上游 0 / 下游 0）
+- `parse_bool_choice` @ `datasource.rs:582`（上游 0 / 下游 0）
+- `fetch_current_org` @ `datasource.rs:655`（上游 4 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: datasource.rs:build_export_records, datasource.rs:build_list_records, datasource.rs:collect_datasource_import_dry_run_report, datasource.rs:validate_matching_export_org
+- `list_orgs` @ `datasource.rs:665`（上游 2 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: datasource.rs:resolve_export_org_target_plan, datasource.rs:run_datasource_cli
+- `create_org` @ `datasource.rs:680`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: datasource.rs:resolve_export_org_target_plan
+- `org_id_string_from_value` @ `datasource.rs:692`（上游 1 / 下游 0）
+  - 被呼叫: datasource.rs:resolve_export_org_target_plan
+- `build_all_orgs_output_dir` @ `datasource.rs:700`（上游 1 / 下游 1）
+  - 呼叫: common.rs:sanitize_path_component
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `resolve_target_client` @ `datasource.rs:709`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, dashboard_cli_defs.rs:build_http_client_for_org
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `validate_import_org_auth` @ `datasource.rs:723`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `describe_datasource_import_mode` @ `datasource.rs:735`（上游 2 / 下游 0）
+  - 被呼叫: datasource.rs:build_routed_datasource_import_dry_run_json, datasource.rs:collect_datasource_import_dry_run_report
+- `build_datasource_export_metadata` @ `datasource.rs:748`（上游 2 / 下游 0）
+  - 被呼叫: datasource.rs:export_datasource_scope, datasource.rs:run_datasource_cli
+- `data_source_rows_include_org_scope` @ `datasource.rs:782`（上游 3 / 下游 0）
+  - 被呼叫: datasource.rs:render_data_source_csv, datasource.rs:render_data_source_json, datasource.rs:render_data_source_table
+- `build_data_source_record` @ `datasource.rs:789`（上游 3 / 下游 0）
+  - 被呼叫: datasource.rs:render_data_source_csv, datasource.rs:render_data_source_json, datasource.rs:render_data_source_table
+- `render_data_source_table` @ `datasource.rs:815`（上游 1 / 下游 2）
+  - 呼叫: datasource.rs:build_data_source_record, datasource.rs:data_source_rows_include_org_scope
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `render_data_source_csv` @ `datasource.rs:858`（上游 1 / 下游 2）
+  - 呼叫: datasource.rs:build_data_source_record, datasource.rs:data_source_rows_include_org_scope
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `render_data_source_json` @ `datasource.rs:881`（上游 1 / 下游 2）
+  - 呼叫: datasource.rs:build_data_source_record, datasource.rs:data_source_rows_include_org_scope
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `build_list_records` @ `datasource.rs:905`（上游 1 / 下游 2）
+  - 呼叫: dashboard_live.rs:list_datasources, datasource.rs:fetch_current_org
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `build_export_index` @ `datasource.rs:923`（上游 2 / 下游 0）
+  - 被呼叫: datasource.rs:export_datasource_scope, datasource.rs:run_datasource_cli
+- `build_all_orgs_export_index` @ `datasource.rs:976`（上游 1 / 下游 0）
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `build_all_orgs_export_metadata` @ `datasource.rs:1001`（上游 1 / 下游 0）
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `build_export_records` @ `datasource.rs:1038`（上游 2 / 下游 2）
+  - 呼叫: dashboard_live.rs:list_datasources, datasource.rs:fetch_current_org
+  - 被呼叫: datasource.rs:export_datasource_scope, datasource.rs:run_datasource_cli
+- `export_datasource_scope` @ `datasource.rs:1092`（上游 1 / 下游 4）
+  - 呼叫: common.rs:write_json_file, datasource.rs:build_datasource_export_metadata, datasource.rs:build_export_index, datasource.rs:build_export_records
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `parse_export_metadata` @ `datasource.rs:1127`（上游 3 / 下游 2）
+  - 呼叫: common.rs:load_json_object_file, common.rs:message
+  - 被呼叫: datasource.rs:load_diff_record_values, datasource.rs:load_import_records, datasource.rs:parse_export_org_scope
+- `validate_datasource_contract_record` @ `datasource.rs:1154`（上游 2 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: datasource.rs:load_diff_record_values, datasource.rs:load_import_records
+- `load_import_records` @ `datasource.rs:1174`（上游 4 / 下游 3）
+  - 呼叫: common.rs:message, datasource.rs:parse_export_metadata, datasource.rs:validate_datasource_contract_record
+  - 被呼叫: datasource.rs:build_routed_datasource_import_dry_run_json, datasource.rs:collect_datasource_import_dry_run_report, datasource.rs:import_datasources_by_export_org, datasource.rs:import_datasources_with_client
+- `load_diff_record_values` @ `datasource.rs:1241`（上游 0 / 下游 3）
+  - 呼叫: common.rs:message, datasource.rs:parse_export_metadata, datasource.rs:validate_datasource_contract_record
+- `collect_source_org_ids` @ `datasource.rs:1296`（上游 2 / 下游 0）
+  - 被呼叫: datasource.rs:parse_export_org_scope, datasource.rs:validate_matching_export_org
+- `collect_source_org_names` @ `datasource.rs:1334`（上游 1 / 下游 0）
+  - 被呼叫: datasource.rs:parse_export_org_scope
+- `parse_export_org_scope` @ `datasource.rs:1372`（上游 1 / 下游 4）
+  - 呼叫: common.rs:message, datasource.rs:collect_source_org_ids, datasource.rs:collect_source_org_names, datasource.rs:parse_export_metadata
+  - 被呼叫: datasource.rs:discover_export_org_import_scopes
+- `discover_export_org_import_scopes` @ `datasource.rs:1458`（上游 2 / 下游 2）
+  - 呼叫: common.rs:message, datasource.rs:parse_export_org_scope
+  - 被呼叫: datasource.rs:build_routed_datasource_import_dry_run_json, datasource.rs:import_datasources_by_export_org
+- `resolve_export_org_target_plan` @ `datasource.rs:1539`（上游 2 / 下游 4）
+  - 呼叫: common.rs:message, datasource.rs:create_org, datasource.rs:list_orgs, datasource.rs:org_id_string_from_value
+  - 被呼叫: datasource.rs:build_routed_datasource_import_dry_run_json, datasource.rs:import_datasources_by_export_org
+- `validate_matching_export_org` @ `datasource.rs:1611`（上游 2 / 下游 3）
+  - 呼叫: common.rs:message, datasource.rs:collect_source_org_ids, datasource.rs:fetch_current_org
+  - 被呼叫: datasource.rs:collect_datasource_import_dry_run_report, datasource.rs:import_datasources_with_client
+- `collect_datasource_import_dry_run_report` @ `datasource.rs:1649`（上游 2 / 下游 6）
+  - 呼叫: dashboard_live.rs:list_datasources, datasource.rs:describe_datasource_import_mode, datasource.rs:fetch_current_org, datasource.rs:load_import_records, datasource.rs:resolve_match, datasource.rs:validate_matching_export_org
+  - 被呼叫: datasource.rs:build_routed_datasource_import_dry_run_json, datasource.rs:import_datasources_with_client
+- `build_datasource_import_dry_run_json_value` @ `datasource.rs:1705`（上游 2 / 下游 0）
+  - 被呼叫: datasource.rs:build_routed_datasource_import_dry_run_json, datasource.rs:print_datasource_import_dry_run_report
+- `print_datasource_import_dry_run_report` @ `datasource.rs:1764`（上游 1 / 下游 2）
+  - 呼叫: datasource.rs:build_datasource_import_dry_run_json_value, datasource.rs:render_import_table
+  - 被呼叫: datasource.rs:import_datasources_with_client
+- `import_datasources_with_client` @ `datasource.rs:1807`（上游 2 / 下游 8）
+  - 呼叫: common.rs:message, dashboard_live.rs:list_datasources, datasource.rs:build_import_payload, datasource.rs:collect_datasource_import_dry_run_report, datasource.rs:load_import_records, datasource.rs:print_datasource_import_dry_run_report, datasource.rs:resolve_match, datasource.rs:validate_matching_export_org
+  - 被呼叫: datasource.rs:import_datasources_by_export_org, datasource.rs:run_datasource_cli
+- `build_routed_datasource_import_org_row` @ `datasource.rs:1880`（上游 1 / 下游 0）
+  - 被呼叫: datasource.rs:import_datasources_by_export_org
+- `render_routed_datasource_import_org_table` @ `datasource.rs:1900`（上游 1 / 下游 0）
+  - 被呼叫: datasource.rs:import_datasources_by_export_org
+- `build_routed_datasource_import_dry_run_json` @ `datasource.rs:1939`（上游 1 / 下游 7）
+  - 呼叫: dashboard_cli_defs.rs:build_http_client_for_org, datasource.rs:build_datasource_import_dry_run_json_value, datasource.rs:collect_datasource_import_dry_run_report, datasource.rs:describe_datasource_import_mode, datasource.rs:discover_export_org_import_scopes, datasource.rs:load_import_records, datasource.rs:resolve_export_org_target_plan
+  - 被呼叫: datasource.rs:import_datasources_by_export_org
+- `import_datasources_by_export_org` @ `datasource.rs:2016`（上游 1 / 下游 8）
+  - 呼叫: dashboard_cli_defs.rs:build_http_client_for_org, datasource.rs:build_routed_datasource_import_dry_run_json, datasource.rs:build_routed_datasource_import_org_row, datasource.rs:discover_export_org_import_scopes, datasource.rs:import_datasources_with_client, datasource.rs:load_import_records, datasource.rs:render_routed_datasource_import_org_table, datasource.rs:resolve_export_org_target_plan
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `resolve_match` @ `datasource.rs:2073`（上游 2 / 下游 0）
+  - 被呼叫: datasource.rs:collect_datasource_import_dry_run_report, datasource.rs:import_datasources_with_client
+- `build_import_payload` @ `datasource.rs:2147`（上游 2 / 下游 0）
+  - 被呼叫: dashboard_import.rs:build_local_compare_document, datasource.rs:import_datasources_with_client
+- `parse_json_object_argument` @ `datasource.rs:2161`（上游 2 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: datasource.rs:build_add_payload, datasource.rs:build_modify_updates
+- `build_add_payload` @ `datasource.rs:2181`（上游 1 / 下游 1）
+  - 呼叫: datasource.rs:parse_json_object_argument
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `build_modify_updates` @ `datasource.rs:2224`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, datasource.rs:parse_json_object_argument
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `fetch_datasource_by_uid_if_exists` @ `datasource.rs:2261`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, common.rs:status_code
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `build_modify_payload` @ `datasource.rs:2282`（上游 1 / 下游 0）
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `resolve_live_mutation_match` @ `datasource.rs:2353`（上游 2 / 下游 0）
+  - 被呼叫: datasource.rs:resolve_delete_match, datasource.rs:run_datasource_cli
+- `resolve_delete_match` @ `datasource.rs:2441`（上游 1 / 下游 1）
+  - 呼叫: datasource.rs:resolve_live_mutation_match
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `render_live_mutation_table` @ `datasource.rs:2460`（上游 1 / 下游 0）
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `render_live_mutation_json` @ `datasource.rs:2497`（上游 1 / 下游 0）
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `validate_live_mutation_dry_run_args` @ `datasource.rs:2552`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: datasource.rs:run_datasource_cli
+- `render_import_table` @ `datasource.rs:2582`（上游 1 / 下游 0）
+  - 被呼叫: datasource.rs:print_datasource_import_dry_run_report
+- `render_diff_identity` @ `datasource.rs:2650`（上游 1 / 下游 0）
+  - 被呼叫: datasource.rs:print_datasource_diff_report
+- `print_datasource_diff_report` @ `datasource.rs:2666`（上游 0 / 下游 1）
+  - 呼叫: datasource.rs:render_diff_identity
+- `run_datasource_cli` @ `datasource.rs:2723`（上游 0 / 下游 30）
+  - 呼叫: common.rs:message, common.rs:write_json_file, dashboard_cli_defs.rs:build_http_client_for_org, dashboard_live.rs:list_datasources, datasource.rs:build_add_payload, datasource.rs:build_all_orgs_export_index, datasource.rs:build_all_orgs_export_metadata, datasource.rs:build_all_orgs_output_dir, datasource.rs:build_datasource_export_metadata, datasource.rs:build_export_index ...
+- `parse_normalized_from` @ `datasource.rs:3187`（上游 0 / 下游 1）
+  - 呼叫: datasource.rs:normalize_output_formats
+
+## `datasource_diff.rs`
+
+- `from_map` @ `datasource_diff.rs:81`（上游 0 / 下游 3）
+  - 呼叫: datasource_diff.rs:bool_field, datasource_diff.rs:normalize_org_id, datasource_diff.rs:string_field
+- `comparison_key` @ `datasource_diff.rs:93`（上游 0 / 下游 0）
+- `build_entry_from_pair` @ `datasource_diff.rs:192`（上游 0 / 下游 1）
+  - 呼叫: datasource_diff.rs:diff_records
+- `build_summary` @ `datasource_diff.rs:212`（上游 0 / 下游 0）
+- `diff_records` @ `datasource_diff.rs:235`（上游 1 / 下游 1）
+  - 呼叫: datasource_diff.rs:push_difference
+  - 被呼叫: datasource_diff.rs:build_entry_from_pair
+- `push_difference` @ `datasource_diff.rs:262`（上游 1 / 下游 0）
+  - 被呼叫: datasource_diff.rs:diff_records
+- `string_field` @ `datasource_diff.rs:278`（上游 2 / 下游 0）
+  - 被呼叫: datasource_diff.rs:from_map, datasource_diff.rs:normalize_org_id
+- `bool_field` @ `datasource_diff.rs:294`（上游 1 / 下游 0）
+  - 被呼叫: datasource_diff.rs:from_map
+- `normalize_org_id` @ `datasource_diff.rs:308`（上游 1 / 下游 1）
+  - 呼叫: datasource_diff.rs:string_field
+  - 被呼叫: datasource_diff.rs:from_map
+
+## `datasource_provider.rs`
+
+- `normalize_text` @ `datasource_provider.rs:42`（上游 1 / 下游 0）
+  - 被呼叫: datasource_provider.rs:build_provider_plan
+- `parse_provider_reference` @ `datasource_provider.rs:47`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: datasource_provider.rs:collect_provider_references
+- `collect_provider_references` @ `datasource_provider.rs:95`（上游 1 / 下游 1）
+  - 呼叫: datasource_provider.rs:parse_provider_reference
+  - 被呼叫: datasource_provider.rs:build_provider_plan
+- `build_provider_plan` @ `datasource_provider.rs:117`（上游 2 / 下游 3）
+  - 呼叫: common.rs:message, datasource_provider.rs:collect_provider_references, datasource_provider.rs:normalize_text
+  - 被呼叫: bundle_preflight.rs:build_provider_assessment, sync_bundle_preflight.rs:build_provider_assessment
+- `summarize_provider_plan` @ `datasource_provider.rs:164`（上游 2 / 下游 0）
+  - 被呼叫: bundle_preflight.rs:build_provider_assessment, sync_bundle_preflight.rs:build_provider_assessment
+- `iter_provider_names` @ `datasource_provider.rs:183`（上游 2 / 下游 0）
+  - 被呼叫: bundle_preflight.rs:build_provider_assessment, sync_bundle_preflight.rs:build_provider_assessment
+
+## `help_styles.rs`
+
+- 無可辨識函式。
+
+## `http.rs`
+
+- `new` @ `http.rs:32`（上游 1 / 下游 1）
+  - 呼叫: http.rs:new_with_ca_cert
+  - 被呼叫: http.rs:new_with_ca_cert
+- `new_with_ca_cert` @ `http.rs:37`（上游 3 / 下游 2）
+  - 呼叫: common.rs:message, http.rs:new
+  - 被呼叫: access_cli_defs.rs:build_http_client, access_cli_defs.rs:build_http_client_no_org_id, http.rs:new
+- `request_json` @ `http.rs:73`（上游 0 / 下游 3）
+  - 呼叫: common.rs:api_response, dashboard_list.rs:header, http.rs:build_url
+- `build_url` @ `http.rs:111`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: http.rs:request_json
+
+## `lib.rs`
+
+- 無可辨識函式。
+
+## `sync.rs`
+
+- `load_json_value` @ `sync.rs:410`（上游 5 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync.rs:load_alerting_bundle_section, sync.rs:load_dashboard_bundle_sections, sync.rs:load_json_array_file, sync.rs:load_optional_json_object_file, sync.rs:run_sync_cli
+- `load_json_array_file` @ `sync.rs:421`（上游 3 / 下游 2）
+  - 呼叫: common.rs:message, sync.rs:load_json_value
+  - 被呼叫: sync.rs:load_dashboard_bundle_sections, sync.rs:run_sync_bundle, sync.rs:run_sync_cli
+- `load_optional_json_object_file` @ `sync.rs:431`（上游 2 / 下游 2）
+  - 呼叫: common.rs:message, sync.rs:load_json_value
+  - 被呼叫: sync.rs:run_sync_bundle, sync.rs:run_sync_cli
+- `build_sync_http_client` @ `sync.rs:447`（上游 3 / 下游 1）
+  - 呼叫: dashboard_cli_defs.rs:build_http_client_for_org
+  - 被呼叫: sync.rs:execute_live_apply, sync.rs:fetch_live_availability, sync.rs:fetch_live_resource_specs
+- `append_unique_strings` @ `sync.rs:457`（上游 2 / 下游 0）
+  - 被呼叫: sync.rs:fetch_live_availability_with_request, sync.rs:merge_availability
+- `merge_availability` @ `sync.rs:470`（上游 1 / 下游 3）
+  - 呼叫: common.rs:message, sync.rs:append_unique_strings, sync.rs:require_json_object
+  - 被呼叫: sync.rs:run_sync_cli
+- `fetch_live_resource_specs_with_request` @ `sync.rs:508`（上游 1 / 下游 3）
+  - 呼叫: alert.rs:build_rule_import_payload, common.rs:message, sync.rs:require_json_object
+  - 被呼叫: sync.rs:fetch_live_resource_specs
+- `fetch_live_resource_specs` @ `sync.rs:719`（上游 1 / 下游 2）
+  - 呼叫: sync.rs:build_sync_http_client, sync.rs:fetch_live_resource_specs_with_request
+  - 被呼叫: sync.rs:run_sync_cli
+- `fetch_live_availability_with_request` @ `sync.rs:731`（上游 1 / 下游 3）
+  - 呼叫: common.rs:message, sync.rs:append_unique_strings, sync.rs:require_json_object
+  - 被呼叫: sync.rs:fetch_live_availability
+- `fetch_live_availability` @ `sync.rs:852`（上游 1 / 下游 2）
+  - 呼叫: sync.rs:build_sync_http_client, sync.rs:fetch_live_availability_with_request
+  - 被呼叫: sync.rs:run_sync_cli
+- `discover_json_files` @ `sync.rs:859`（上游 2 / 下游 0）
+  - 被呼叫: sync.rs:load_alerting_bundle_section, sync.rs:load_dashboard_bundle_sections
+- `normalize_dashboard_bundle_item` @ `sync.rs:887`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, sync.rs:require_json_object
+  - 被呼叫: sync.rs:load_dashboard_bundle_sections
+- `normalize_folder_bundle_item` @ `sync.rs:919`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, sync.rs:require_json_object
+  - 被呼叫: sync.rs:load_dashboard_bundle_sections
+- `normalize_datasource_bundle_item` @ `sync.rs:963`（上游 2 / 下游 2）
+  - 呼叫: common.rs:message, sync.rs:require_json_object
+  - 被呼叫: sync.rs:load_dashboard_bundle_sections, sync.rs:run_sync_bundle
+- `classify_alert_export_path` @ `sync.rs:998`（上游 1 / 下游 0）
+  - 被呼叫: sync.rs:load_alerting_bundle_section
+- `load_dashboard_bundle_sections` @ `sync.rs:1012`（上游 1 / 下游 6）
+  - 呼叫: sync.rs:discover_json_files, sync.rs:load_json_array_file, sync.rs:load_json_value, sync.rs:normalize_dashboard_bundle_item, sync.rs:normalize_datasource_bundle_item, sync.rs:normalize_folder_bundle_item
+  - 被呼叫: sync.rs:run_sync_bundle
+- `load_alerting_bundle_section` @ `sync.rs:1066`（上游 1 / 下游 3）
+  - 呼叫: sync.rs:classify_alert_export_path, sync.rs:discover_json_files, sync.rs:load_json_value
+  - 被呼叫: sync.rs:run_sync_bundle
+- `add_non_empty_text_field` @ `sync.rs:1119`（上游 1 / 下游 0）
+  - 被呼叫: sync.rs:normalize_alert_rule_sync_spec
+- `extract_rule_dependency_lists` @ `sync.rs:1133`（上游 1 / 下游 0）
+  - 被呼叫: sync.rs:normalize_alert_rule_sync_spec
+- `extract_rule_contact_points` @ `sync.rs:1201`（上游 1 / 下游 0）
+  - 被呼叫: sync.rs:normalize_alert_rule_sync_spec
+- `normalize_rule_group_rule_document` @ `sync.rs:1225`（上游 1 / 下游 0）
+  - 被呼叫: sync.rs:build_alert_sync_specs
+- `normalize_alert_rule_sync_spec` @ `sync.rs:1252`（上游 1 / 下游 5）
+  - 呼叫: alert.rs:build_rule_import_payload, common.rs:message, sync.rs:add_non_empty_text_field, sync.rs:extract_rule_contact_points, sync.rs:extract_rule_dependency_lists
+  - 被呼叫: sync.rs:build_alert_sync_specs
+- `build_alert_sync_specs` @ `sync.rs:1341`（上游 1 / 下游 2）
+  - 呼叫: sync.rs:normalize_alert_rule_sync_spec, sync.rs:normalize_rule_group_rule_document
+  - 被呼叫: sync.rs:run_sync_bundle
+- `fnv1a64_hex` @ `sync.rs:1384`（上游 1 / 下游 0）
+  - 被呼叫: sync.rs:derive_trace_id
+- `normalize_trace_id` @ `sync.rs:1393`（上游 2 / 下游 0）
+  - 被呼叫: sync.rs:attach_trace_id, sync.rs:get_trace_id
+- `derive_trace_id` @ `sync.rs:1402`（上游 1 / 下游 1）
+  - 呼叫: sync.rs:fnv1a64_hex
+  - 被呼叫: sync.rs:attach_trace_id
+- `attach_trace_id` @ `sync.rs:1407`（上游 1 / 下游 3）
+  - 呼叫: common.rs:message, sync.rs:derive_trace_id, sync.rs:normalize_trace_id
+  - 被呼叫: sync.rs:run_sync_cli
+- `get_trace_id` @ `sync.rs:1420`（上游 2 / 下游 1）
+  - 呼叫: sync.rs:normalize_trace_id
+  - 被呼叫: sync.rs:require_matching_optional_trace_id, sync.rs:require_trace_id
+- `require_trace_id` @ `sync.rs:1424`（上游 2 / 下游 2）
+  - 呼叫: common.rs:message, sync.rs:get_trace_id
+  - 被呼叫: sync.rs:mark_plan_reviewed, sync.rs:run_sync_cli
+- `normalize_optional_text` @ `sync.rs:1428`（上游 5 / 下游 0）
+  - 被呼叫: sync.rs:attach_apply_audit, sync.rs:attach_lineage, sync.rs:attach_review_audit, sync.rs:require_matching_optional_trace_id, sync.rs:require_optional_stage
+- `deterministic_stage_marker` @ `sync.rs:1437`（上游 2 / 下游 0）
+  - 被呼叫: sync.rs:attach_apply_audit, sync.rs:attach_review_audit
+- `attach_lineage` @ `sync.rs:1441`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, sync.rs:normalize_optional_text
+  - 被呼叫: sync.rs:run_sync_cli
+- `require_json_object` @ `sync.rs:1461`（上游 12 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync.rs:fetch_live_availability_with_request, sync.rs:fetch_live_resource_specs_with_request, sync.rs:load_operation_object, sync.rs:merge_availability, sync.rs:normalize_dashboard_bundle_item, sync.rs:normalize_datasource_bundle_item, sync.rs:normalize_folder_bundle_item, sync.rs:require_matching_optional_trace_id, sync.rs:require_optional_stage, sync.rs:resolve_live_datasource_target_with_request ...
+- `has_lineage_metadata` @ `sync.rs:1467`（上游 2 / 下游 0）
+  - 被呼叫: sync.rs:require_matching_optional_trace_id, sync.rs:require_optional_stage
+- `require_optional_stage` @ `sync.rs:1473`（上游 1 / 下游 4）
+  - 呼叫: common.rs:message, sync.rs:has_lineage_metadata, sync.rs:normalize_optional_text, sync.rs:require_json_object
+  - 被呼叫: sync.rs:run_sync_cli
+- `require_matching_optional_trace_id` @ `sync.rs:1518`（上游 1 / 下游 5）
+  - 呼叫: common.rs:message, sync.rs:get_trace_id, sync.rs:has_lineage_metadata, sync.rs:normalize_optional_text, sync.rs:require_json_object
+  - 被呼叫: sync.rs:run_sync_cli
+- `render_sync_summary_text` @ `sync.rs:1566`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync.rs:run_sync_cli
+- `render_alert_sync_assessment_text` @ `sync.rs:1607`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync.rs:run_sync_cli
+- `render_sync_plan_text` @ `sync.rs:1676`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync.rs:run_sync_cli
+- `render_sync_apply_intent_text` @ `sync.rs:1772`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync.rs:run_sync_cli
+- `load_operation_object` @ `sync.rs:1898`（上游 1 / 下游 1）
+  - 呼叫: sync.rs:require_json_object
+  - 被呼叫: sync.rs:execute_live_apply_with_request
+- `apply_folder_operation_with_request` @ `sync.rs:1902`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync.rs:execute_live_apply_with_request
+- `apply_dashboard_operation_with_request` @ `sync.rs:1979`（上游 1 / 下游 0）
+  - 被呼叫: sync.rs:execute_live_apply_with_request
+- `resolve_live_datasource_target_with_request` @ `sync.rs:2045`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, sync.rs:require_json_object
+  - 被呼叫: sync.rs:apply_datasource_operation_with_request
+- `apply_datasource_operation_with_request` @ `sync.rs:2072`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, sync.rs:resolve_live_datasource_target_with_request
+  - 被呼叫: sync.rs:execute_live_apply_with_request
+- `apply_alert_operation_with_request` @ `sync.rs:2164`（上游 1 / 下游 2）
+  - 呼叫: alert.rs:build_rule_import_payload, common.rs:message
+  - 被呼叫: sync.rs:execute_live_apply_with_request
+- `execute_live_apply_with_request` @ `sync.rs:2232`（上游 1 / 下游 6）
+  - 呼叫: common.rs:message, sync.rs:apply_alert_operation_with_request, sync.rs:apply_dashboard_operation_with_request, sync.rs:apply_datasource_operation_with_request, sync.rs:apply_folder_operation_with_request, sync.rs:load_operation_object
+  - 被呼叫: sync.rs:execute_live_apply
+- `execute_live_apply` @ `sync.rs:2273`（上游 1 / 下游 2）
+  - 呼叫: sync.rs:build_sync_http_client, sync.rs:execute_live_apply_with_request
+  - 被呼叫: sync.rs:run_sync_cli
+- `mark_plan_reviewed` @ `sync.rs:2287`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, sync.rs:require_trace_id
+  - 被呼叫: sync.rs:run_sync_cli
+- `validate_apply_preflight` @ `sync.rs:2304`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, sync.rs:require_json_object
+  - 被呼叫: sync.rs:run_sync_cli
+- `validate_apply_bundle_preflight` @ `sync.rs:2356`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, sync.rs:require_json_object
+  - 被呼叫: sync.rs:run_sync_cli
+- `attach_preflight_summary` @ `sync.rs:2401`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync.rs:run_sync_cli
+- `attach_bundle_preflight_summary` @ `sync.rs:2412`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync.rs:run_sync_cli
+- `attach_review_audit` @ `sync.rs:2426`（上游 1 / 下游 3）
+  - 呼叫: common.rs:message, sync.rs:deterministic_stage_marker, sync.rs:normalize_optional_text
+  - 被呼叫: sync.rs:run_sync_cli
+- `attach_apply_audit` @ `sync.rs:2453`（上游 1 / 下游 3）
+  - 呼叫: common.rs:message, sync.rs:deterministic_stage_marker, sync.rs:normalize_optional_text
+  - 被呼叫: sync.rs:run_sync_cli
+- `emit_text_or_json` @ `sync.rs:2484`（上游 2 / 下游 0）
+  - 被呼叫: sync.rs:run_sync_bundle, sync.rs:run_sync_cli
+- `run_sync_bundle` @ `sync.rs:2496`（上游 1 / 下游 10）
+  - 呼叫: common.rs:message, sync.rs:build_alert_sync_specs, sync.rs:emit_text_or_json, sync.rs:load_alerting_bundle_section, sync.rs:load_dashboard_bundle_sections, sync.rs:load_json_array_file, sync.rs:load_optional_json_object_file, sync.rs:normalize_datasource_bundle_item, sync_workbench.rs:build_sync_source_bundle_document, sync_workbench.rs:render_sync_source_bundle_text
+  - 被呼叫: sync.rs:run_sync_cli
+- `run_sync_cli` @ `sync.rs:2572`（上游 0 / 下游 34）
+  - 呼叫: alert_sync.rs:assess_alert_sync_specs, common.rs:message, sync.rs:attach_apply_audit, sync.rs:attach_bundle_preflight_summary, sync.rs:attach_lineage, sync.rs:attach_preflight_summary, sync.rs:attach_review_audit, sync.rs:attach_trace_id, sync.rs:emit_text_or_json, sync.rs:execute_live_apply ...
+
+## `sync_bundle_alert_contracts.rs`
+
+- `from_kind_and_identity` @ `sync_bundle_alert_contracts.rs:35`（上游 1 / 下游 1）
+  - 呼叫: sync_bundle_alert_contracts.rs:is_kind_considered_sync_safe
+  - 被呼叫: sync_bundle_alert_contracts.rs:collect_alert_section
+- `as_json` @ `sync_bundle_alert_contracts.rs:73`（上游 1 / 下游 0）
+  - 被呼叫: sync_bundle_alert_contracts.rs:build_alert_bundle_contract_document
+- `is_kind_considered_sync_safe` @ `sync_bundle_alert_contracts.rs:122`（上游 1 / 下游 0）
+  - 被呼叫: sync_bundle_alert_contracts.rs:from_kind_and_identity
+- `resolve_string` @ `sync_bundle_alert_contracts.rs:126`（上游 3 / 下游 0）
+  - 被呼叫: sync_bundle_alert_contracts.rs:collect_alert_section, sync_bundle_alert_contracts.rs:extract_identity, sync_bundle_alert_contracts.rs:extract_title
+- `extract_identity` @ `sync_bundle_alert_contracts.rs:134`（上游 1 / 下游 1）
+  - 呼叫: sync_bundle_alert_contracts.rs:resolve_string
+  - 被呼叫: sync_bundle_alert_contracts.rs:collect_alert_section
+- `extract_title` @ `sync_bundle_alert_contracts.rs:154`（上游 1 / 下游 1）
+  - 呼叫: sync_bundle_alert_contracts.rs:resolve_string
+  - 被呼叫: sync_bundle_alert_contracts.rs:collect_alert_section
+- `append_references` @ `sync_bundle_alert_contracts.rs:174`（上游 1 / 下游 0）
+  - 被呼叫: sync_bundle_alert_contracts.rs:collect_alert_section
+- `collect_alert_section` @ `sync_bundle_alert_contracts.rs:200`（上游 1 / 下游 5）
+  - 呼叫: sync_bundle_alert_contracts.rs:append_references, sync_bundle_alert_contracts.rs:extract_identity, sync_bundle_alert_contracts.rs:extract_title, sync_bundle_alert_contracts.rs:from_kind_and_identity, sync_bundle_alert_contracts.rs:resolve_string
+  - 被呼叫: sync_bundle_alert_contracts.rs:collect_alert_bundle_contracts
+- `collect_alert_bundle_contracts` @ `sync_bundle_alert_contracts.rs:231`（上游 1 / 下游 1）
+  - 呼叫: sync_bundle_alert_contracts.rs:collect_alert_section
+  - 被呼叫: sync_bundle_alert_contracts.rs:build_alert_bundle_contract_document
+- `build_alert_bundle_contract_document` @ `sync_bundle_alert_contracts.rs:289`（上游 1 / 下游 2）
+  - 呼叫: sync_bundle_alert_contracts.rs:as_json, sync_bundle_alert_contracts.rs:collect_alert_bundle_contracts
+  - 被呼叫: sync_workbench.rs:build_sync_source_bundle_document
+
+## `sync_bundle_preflight.rs`
+
+- `normalize_text` @ `sync_bundle_preflight.rs:21`（上游 3 / 下游 0）
+  - 被呼叫: sync_bundle_preflight.rs:normalize_alert_bundle_item, sync_bundle_preflight.rs:render_sync_bundle_preflight_text, sync_bundle_preflight.rs:require_string_list
+- `require_object` @ `sync_bundle_preflight.rs:29`（上游 2 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync_bundle_preflight.rs:build_sync_bundle_preflight_document, sync_bundle_preflight.rs:render_sync_bundle_preflight_text
+- `require_array` @ `sync_bundle_preflight.rs:37`（上游 2 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync_bundle_preflight.rs:build_sync_bundle_preflight_document, sync_bundle_preflight.rs:collect_alert_specs
+- `require_string_list` @ `sync_bundle_preflight.rs:45`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, sync_bundle_preflight.rs:normalize_text
+  - 被呼叫: sync_bundle_preflight.rs:build_provider_assessment
+- `build_provider_assessment` @ `sync_bundle_preflight.rs:62`（上游 1 / 下游 4）
+  - 呼叫: datasource_provider.rs:build_provider_plan, datasource_provider.rs:iter_provider_names, datasource_provider.rs:summarize_provider_plan, sync_bundle_preflight.rs:require_string_list
+  - 被呼叫: sync_bundle_preflight.rs:build_sync_bundle_preflight_document
+- `extract_alert_rule_spec` @ `sync_bundle_preflight.rs:171`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync_bundle_preflight.rs:collect_alert_specs
+- `normalize_alert_bundle_item` @ `sync_bundle_preflight.rs:186`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, sync_bundle_preflight.rs:normalize_text
+  - 被呼叫: sync_bundle_preflight.rs:collect_alert_specs
+- `collect_alert_specs` @ `sync_bundle_preflight.rs:217`（上游 1 / 下游 3）
+  - 呼叫: sync_bundle_preflight.rs:extract_alert_rule_spec, sync_bundle_preflight.rs:normalize_alert_bundle_item, sync_bundle_preflight.rs:require_array
+  - 被呼叫: sync_bundle_preflight.rs:build_sync_bundle_preflight_document
+- `build_sync_bundle_preflight_document` @ `sync_bundle_preflight.rs:253`（上游 1 / 下游 5）
+  - 呼叫: sync_bundle_preflight.rs:build_provider_assessment, sync_bundle_preflight.rs:collect_alert_specs, sync_bundle_preflight.rs:require_array, sync_bundle_preflight.rs:require_object, sync_preflight.rs:build_sync_preflight_document
+  - 被呼叫: sync.rs:run_sync_cli
+- `render_sync_bundle_preflight_text` @ `sync_bundle_preflight.rs:332`（上游 1 / 下游 3）
+  - 呼叫: common.rs:message, sync_bundle_preflight.rs:normalize_text, sync_bundle_preflight.rs:require_object
+  - 被呼叫: sync.rs:run_sync_cli
+
+## `sync_preflight.rs`
+
+- `normalize_text` @ `sync_preflight.rs:30`（上游 6 / 下游 0）
+  - 被呼叫: sync_preflight.rs:build_datasource_checks, sync_preflight.rs:collect_alert_contact_points, sync_preflight.rs:collect_alert_datasource_names, sync_preflight.rs:collect_alert_datasource_uids, sync_preflight.rs:render_sync_preflight_text, sync_preflight.rs:require_string_list
+- `require_object` @ `sync_preflight.rs:38`（上游 3 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync_preflight.rs:build_alert_checks, sync_preflight.rs:build_sync_preflight_document, sync_preflight.rs:render_sync_preflight_text
+- `require_string_list` @ `sync_preflight.rs:46`（上游 6 / 下游 2）
+  - 呼叫: common.rs:message, sync_preflight.rs:normalize_text
+  - 被呼叫: sync_preflight.rs:build_alert_checks, sync_preflight.rs:build_dashboard_checks, sync_preflight.rs:build_datasource_checks, sync_preflight.rs:collect_alert_contact_points, sync_preflight.rs:collect_alert_datasource_names, sync_preflight.rs:collect_alert_datasource_uids
+- `build_datasource_checks` @ `sync_preflight.rs:63`（上游 1 / 下游 2）
+  - 呼叫: sync_preflight.rs:normalize_text, sync_preflight.rs:require_string_list
+  - 被呼叫: sync_preflight.rs:build_sync_preflight_document
+- `build_dashboard_checks` @ `sync_preflight.rs:116`（上游 1 / 下游 1）
+  - 呼叫: sync_preflight.rs:require_string_list
+  - 被呼叫: sync_preflight.rs:build_sync_preflight_document
+- `is_builtin_alert_datasource_ref` @ `sync_preflight.rs:188`（上游 1 / 下游 0）
+  - 被呼叫: sync_preflight.rs:collect_alert_datasource_uids
+- `collect_alert_datasource_uids` @ `sync_preflight.rs:192`（上游 1 / 下游 3）
+  - 呼叫: sync_preflight.rs:is_builtin_alert_datasource_ref, sync_preflight.rs:normalize_text, sync_preflight.rs:require_string_list
+  - 被呼叫: sync_preflight.rs:build_alert_checks
+- `collect_alert_datasource_names` @ `sync_preflight.rs:220`（上游 1 / 下游 2）
+  - 呼叫: sync_preflight.rs:normalize_text, sync_preflight.rs:require_string_list
+  - 被呼叫: sync_preflight.rs:build_alert_checks
+- `collect_alert_contact_points` @ `sync_preflight.rs:248`（上游 1 / 下游 2）
+  - 呼叫: sync_preflight.rs:normalize_text, sync_preflight.rs:require_string_list
+  - 被呼叫: sync_preflight.rs:build_alert_checks
+- `build_alert_checks` @ `sync_preflight.rs:266`（上游 1 / 下游 5）
+  - 呼叫: sync_preflight.rs:collect_alert_contact_points, sync_preflight.rs:collect_alert_datasource_names, sync_preflight.rs:collect_alert_datasource_uids, sync_preflight.rs:require_object, sync_preflight.rs:require_string_list
+  - 被呼叫: sync_preflight.rs:build_sync_preflight_document
+- `build_sync_preflight_document` @ `sync_preflight.rs:363`（上游 3 / 下游 6）
+  - 呼叫: common.rs:message, sync_preflight.rs:build_alert_checks, sync_preflight.rs:build_dashboard_checks, sync_preflight.rs:build_datasource_checks, sync_preflight.rs:require_object, sync_workbench.rs:normalize_resource_specs
+  - 被呼叫: bundle_preflight.rs:build_bundle_preflight_document, sync.rs:run_sync_cli, sync_bundle_preflight.rs:build_sync_bundle_preflight_document
+- `render_sync_preflight_text` @ `sync_preflight.rs:413`（上游 1 / 下游 3）
+  - 呼叫: common.rs:message, sync_preflight.rs:normalize_text, sync_preflight.rs:require_object
+  - 被呼叫: sync.rs:run_sync_cli
+
+## `sync_workbench.rs`
+
+- `normalize_text` @ `sync_workbench.rs:52`（上游 4 / 下游 0）
+  - 被呼叫: sync_workbench.rs:extract_identity, sync_workbench.rs:extract_title, sync_workbench.rs:normalize_resource_spec, sync_workbench.rs:normalize_string_list
+- `require_object` @ `sync_workbench.rs:67`（上游 2 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync_workbench.rs:extract_body, sync_workbench.rs:normalize_resource_spec
+- `normalize_string_list` @ `sync_workbench.rs:75`（上游 1 / 下游 2）
+  - 呼叫: common.rs:message, sync_workbench.rs:normalize_text
+  - 被呼叫: sync_workbench.rs:normalize_resource_spec
+- `extract_identity` @ `sync_workbench.rs:93`（上游 1 / 下游 1）
+  - 呼叫: sync_workbench.rs:normalize_text
+  - 被呼叫: sync_workbench.rs:normalize_resource_spec
+- `extract_title` @ `sync_workbench.rs:103`（上游 1 / 下游 1）
+  - 呼叫: sync_workbench.rs:normalize_text
+  - 被呼叫: sync_workbench.rs:normalize_resource_spec
+- `extract_body` @ `sync_workbench.rs:113`（上游 1 / 下游 1）
+  - 呼叫: sync_workbench.rs:require_object
+  - 被呼叫: sync_workbench.rs:normalize_resource_spec
+- `normalize_resource_spec` @ `sync_workbench.rs:127`（上游 0 / 下游 7）
+  - 呼叫: common.rs:message, sync_workbench.rs:extract_body, sync_workbench.rs:extract_identity, sync_workbench.rs:extract_title, sync_workbench.rs:normalize_string_list, sync_workbench.rs:normalize_text, sync_workbench.rs:require_object
+- `normalize_resource_specs` @ `sync_workbench.rs:167`（上游 3 / 下游 0）
+  - 被呼叫: sync_preflight.rs:build_sync_preflight_document, sync_workbench.rs:build_sync_plan_document, sync_workbench.rs:build_sync_summary_document
+- `summarize_resource_specs` @ `sync_workbench.rs:175`（上游 1 / 下游 0）
+  - 被呼叫: sync_workbench.rs:build_sync_summary_document
+- `build_sync_summary_document` @ `sync_workbench.rs:192`（上游 2 / 下游 2）
+  - 呼叫: sync_workbench.rs:normalize_resource_specs, sync_workbench.rs:summarize_resource_specs
+  - 被呼叫: bundle_preflight.rs:build_bundle_preflight_document, sync.rs:run_sync_cli
+- `build_sync_source_bundle_document` @ `sync_workbench.rs:222`（上游 1 / 下游 1）
+  - 呼叫: sync_bundle_alert_contracts.rs:build_alert_bundle_contract_document
+  - 被呼叫: sync.rs:run_sync_bundle
+- `render_sync_source_bundle_text` @ `sync_workbench.rs:276`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync.rs:run_sync_bundle
+- `build_index` @ `sync_workbench.rs:336`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync_workbench.rs:build_sync_plan_document
+- `compare_body` @ `sync_workbench.rs:353`（上游 1 / 下游 0）
+  - 被呼叫: sync_workbench.rs:build_sync_plan_document
+- `build_alert_assessment_document` @ `sync_workbench.rs:384`（上游 1 / 下游 0）
+  - 被呼叫: sync_workbench.rs:build_sync_plan_document
+- `build_sync_plan_document` @ `sync_workbench.rs:475`（上游 1 / 下游 4）
+  - 呼叫: sync_workbench.rs:build_alert_assessment_document, sync_workbench.rs:build_index, sync_workbench.rs:compare_body, sync_workbench.rs:normalize_resource_specs
+  - 被呼叫: sync.rs:run_sync_cli
+- `build_sync_apply_intent_document` @ `sync_workbench.rs:586`（上游 1 / 下游 1）
+  - 呼叫: common.rs:message
+  - 被呼叫: sync.rs:run_sync_cli
+

@@ -8,11 +8,16 @@ use crate::http::{JsonHttpClient, JsonHttpClientConfig};
 
 use super::AlertAuthContext;
 
+/// Struct definition for GrafanaAlertClient.
 pub struct GrafanaAlertClient {
     http: JsonHttpClient,
 }
 
 impl GrafanaAlertClient {
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn new(context: &AlertAuthContext) -> Result<Self> {
         Ok(Self {
             http: JsonHttpClient::new(JsonHttpClientConfig {
@@ -34,6 +39,10 @@ impl GrafanaAlertClient {
         self.http.request_json(method, path, params, payload)
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn list_alert_rules(&self) -> Result<Vec<Map<String, Value>>> {
         expect_object_list(
             self.request_json(Method::GET, "/api/v1/provisioning/alert-rules", &[], None)?,
@@ -41,6 +50,22 @@ impl GrafanaAlertClient {
         )
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
+    pub fn list_orgs(&self) -> Result<Vec<Map<String, Value>>> {
+        // Call graph (hierarchy): this function is used in related modules.
+        // Upstream callers: 無
+        // Downstream callees: alert_client.rs:expect_object_list, alert_client.rs:request_json
+
+        expect_object_list(
+            self.request_json(Method::GET, "/api/orgs", &[], None)?,
+            "Unexpected /api/orgs payload from Grafana.",
+        )
+    }
+
+    /// search dashboards.
     pub fn search_dashboards(&self, query: &str) -> Result<Vec<Map<String, Value>>> {
         expect_object_list(
             self.request_json(
@@ -57,6 +82,10 @@ impl GrafanaAlertClient {
         )
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn get_dashboard(&self, uid: &str) -> Result<Map<String, Value>> {
         expect_object(
             self.request_json(
@@ -69,6 +98,10 @@ impl GrafanaAlertClient {
         )
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn get_alert_rule(&self, uid: &str) -> Result<Map<String, Value>> {
         expect_object(
             self.request_json(
@@ -81,6 +114,10 @@ impl GrafanaAlertClient {
         )
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn create_alert_rule(&self, payload: &Map<String, Value>) -> Result<Map<String, Value>> {
         expect_object(
             self.request_json(
@@ -93,6 +130,10 @@ impl GrafanaAlertClient {
         )
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn update_alert_rule(
         &self,
         uid: &str,
@@ -109,6 +150,10 @@ impl GrafanaAlertClient {
         )
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn list_contact_points(&self) -> Result<Vec<Map<String, Value>>> {
         expect_object_list(
             self.request_json(
@@ -121,6 +166,10 @@ impl GrafanaAlertClient {
         )
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn create_contact_point(&self, payload: &Map<String, Value>) -> Result<Map<String, Value>> {
         expect_object(
             self.request_json(
@@ -133,6 +182,10 @@ impl GrafanaAlertClient {
         )
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn update_contact_point(
         &self,
         uid: &str,
@@ -149,6 +202,10 @@ impl GrafanaAlertClient {
         )
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn list_mute_timings(&self) -> Result<Vec<Map<String, Value>>> {
         expect_object_list(
             self.request_json(Method::GET, "/api/v1/provisioning/mute-timings", &[], None)?,
@@ -156,6 +213,10 @@ impl GrafanaAlertClient {
         )
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn create_mute_timing(&self, payload: &Map<String, Value>) -> Result<Map<String, Value>> {
         expect_object(
             self.request_json(
@@ -168,6 +229,10 @@ impl GrafanaAlertClient {
         )
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn update_mute_timing(
         &self,
         name: &str,
@@ -184,6 +249,10 @@ impl GrafanaAlertClient {
         )
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn get_notification_policies(&self) -> Result<Map<String, Value>> {
         expect_object(
             self.request_json(Method::GET, "/api/v1/provisioning/policies", &[], None)?,
@@ -191,6 +260,10 @@ impl GrafanaAlertClient {
         )
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn update_notification_policies(
         &self,
         payload: &Map<String, Value>,
@@ -206,6 +279,10 @@ impl GrafanaAlertClient {
         )
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn list_templates(&self) -> Result<Vec<Map<String, Value>>> {
         parse_template_list_response(self.request_json(
             Method::GET,
@@ -215,6 +292,10 @@ impl GrafanaAlertClient {
         )?)
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn get_template(&self, name: &str) -> Result<Map<String, Value>> {
         expect_object(
             self.request_json(
@@ -227,6 +308,10 @@ impl GrafanaAlertClient {
         )
     }
 
+    /// Purpose: implementation note.
+    ///
+    /// Args: see function signature.
+    /// Returns: see implementation.
     pub fn update_template(
         &self,
         name: &str,
@@ -253,6 +338,7 @@ fn expect_object(value: Option<Value>, error_message: &str) -> Result<Map<String
     }
 }
 
+/// expect object list.
 pub fn expect_object_list(
     value: Option<Value>,
     error_message: &str,
@@ -270,9 +356,13 @@ pub fn expect_object_list(
         .collect())
 }
 
-// Interpret Grafana template-list responses in the one supported shape for
-// alerting imports: either empty/null or a JSON array of template objects.
+/// Interpret Grafana template-list responses in the one supported shape for
+/// alerting imports: either empty/null or a JSON array of template objects.
 pub fn parse_template_list_response(value: Option<Value>) -> Result<Vec<Map<String, Value>>> {
+    // Call graph (hierarchy): this function is used in related modules.
+    // Upstream callers: alert_client.rs:list_templates, alert_rust_tests.rs:template_list_null_is_treated_as_empty_in_live_client_path
+    // Downstream callees: alert_client.rs:expect_object_list, alert_client.rs:new
+
     match value {
         None | Some(Value::Null) => Ok(Vec::new()),
         Some(value) => expect_object_list(

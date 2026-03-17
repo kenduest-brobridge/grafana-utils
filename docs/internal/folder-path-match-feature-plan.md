@@ -243,7 +243,7 @@ Expected existing-file changes later, once approved:
   - track mismatch skip counts
 - `grafana_utils/dashboards/folder_support.py`
   - add helper(s) if needed for stable source/destination full-path resolution
-- `tests/test_python_dashboard_cli.py`
+- `python/tests/test_python_dashboard_cli.py`
   - parser/help coverage
   - dry-run coverage
   - live import skip coverage

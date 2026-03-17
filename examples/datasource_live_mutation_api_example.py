@@ -19,6 +19,7 @@ from grafana_utils.datasource.live_mutation_render import (
 
 
 def build_client():
+    """Build client implementation."""
     return GrafanaDatasourceClient(
         base_url="http://localhost:3000",
         headers={"Authorization": "Bearer REPLACE_ME"},
@@ -28,6 +29,8 @@ def build_client():
 
 
 def example_add_dry_run():
+    """Example add dry run implementation."""
+
     client = build_client()
     spec = {
         "uid": "prom-main",
@@ -49,6 +52,8 @@ def example_add_dry_run():
 
 
 def example_add_live():
+    """Example add live implementation."""
+
     client = build_client()
     spec = {
         "uid": "prom-main",
@@ -64,6 +69,8 @@ def example_add_live():
 
 
 def example_delete_dry_run():
+    """Example delete dry run implementation."""
+
     client = build_client()
     plan = delete_datasource(client, uid="prom-main", dry_run=True)
     record = build_live_mutation_dry_run_record("delete", plan, uid="prom-main")
@@ -76,6 +83,8 @@ def example_delete_dry_run():
 
 
 def example_delete_live():
+    """Example delete live implementation."""
+
     client = build_client()
     result = delete_datasource(client, uid="prom-main", dry_run=False)
     print("# delete live")

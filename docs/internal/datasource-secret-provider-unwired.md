@@ -10,7 +10,7 @@ secrets before any external provider integration lands.
 - New Python helper module:
   - `grafana_utils/datasource_secret_provider_workbench.py`
 - New unit tests:
-  - `tests/test_python_datasource_secret_provider_workbench.py`
+  - `python/tests/test_python_datasource_secret_provider_workbench.py`
 
 ## Current Behavior
 

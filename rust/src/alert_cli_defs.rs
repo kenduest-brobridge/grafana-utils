@@ -11,13 +11,15 @@ use super::{ALERT_HELP_TEXT, DEFAULT_OUTPUT_DIR, DEFAULT_TIMEOUT, DEFAULT_URL};
 #[command(
     name = "grafana-util alert",
     about = "Export, import, or diff Grafana alerting resources.",
-    after_help = ALERT_HELP_TEXT
+    after_help = ALERT_HELP_TEXT,
+    styles = crate::help_styles::CLI_HELP_STYLES
 )]
 struct AlertCliRoot {
     #[command(flatten)]
     args: AlertNamespaceArgs,
 }
 
+/// Struct definition for AlertCommonArgs.
 #[derive(Debug, Clone, Args)]
 pub struct AlertCommonArgs {
     #[arg(long, default_value = DEFAULT_URL, help = "Grafana base URL.")]
@@ -60,6 +62,7 @@ pub struct AlertCommonArgs {
     pub verify_ssl: bool,
 }
 
+/// Struct definition for AlertLegacyArgs.
 #[derive(Debug, Clone, Args)]
 pub struct AlertLegacyArgs {
     #[command(flatten)]
@@ -118,6 +121,7 @@ pub struct AlertLegacyArgs {
     pub panel_id_map: Option<PathBuf>,
 }
 
+/// Struct definition for AlertExportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct AlertExportArgs {
     #[command(flatten)]
@@ -142,6 +146,7 @@ pub struct AlertExportArgs {
     pub overwrite: bool,
 }
 
+/// Struct definition for AlertImportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct AlertImportArgs {
     #[command(flatten)]
@@ -175,6 +180,7 @@ pub struct AlertImportArgs {
     pub panel_id_map: Option<PathBuf>,
 }
 
+/// Struct definition for AlertDiffArgs.
 #[derive(Debug, Clone, Args)]
 pub struct AlertDiffArgs {
     #[command(flatten)]
@@ -196,6 +202,7 @@ pub struct AlertDiffArgs {
     pub panel_id_map: Option<PathBuf>,
 }
 
+/// Enum definition for AlertListKind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AlertListKind {
     Rules,
@@ -204,6 +211,7 @@ pub enum AlertListKind {
     Templates,
 }
 
+/// Enum definition for AlertListOutputFormat.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum AlertListOutputFormat {
     Table,
@@ -211,10 +219,24 @@ pub enum AlertListOutputFormat {
     Json,
 }
 
+/// Struct definition for AlertListArgs.
 #[derive(Debug, Clone, Args)]
 pub struct AlertListArgs {
     #[command(flatten)]
     pub common: AlertCommonArgs,
+    #[arg(
+        long,
+        conflicts_with = "all_orgs",
+        help = "List alerting resources from this Grafana org ID. This requires Basic auth."
+    )]
+    pub org_id: Option<i64>,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with = "org_id",
+        help = "Enumerate all visible Grafana orgs and aggregate alerting inventory across them. This requires Basic auth."
+    )]
+    pub all_orgs: bool,
     #[arg(
         long,
         default_value_t = false,
@@ -236,6 +258,7 @@ pub struct AlertListArgs {
     pub no_header: bool,
 }
 
+/// Enum definition for AlertGroupCommand.
 #[derive(Debug, Clone, Subcommand)]
 pub enum AlertGroupCommand {
     #[command(about = "Export alerting resources into raw/ JSON files.")]
@@ -260,6 +283,7 @@ pub enum AlertGroupCommand {
     ListTemplates(AlertListArgs),
 }
 
+/// Struct definition for AlertNamespaceArgs.
 #[derive(Debug, Clone, Args)]
 #[command(args_conflicts_with_subcommands = true)]
 pub struct AlertNamespaceArgs {
@@ -269,6 +293,7 @@ pub struct AlertNamespaceArgs {
     pub legacy: AlertLegacyArgs,
 }
 
+/// Struct definition for AlertCliArgs.
 #[derive(Debug, Clone)]
 pub struct AlertCliArgs {
     pub url: String,
@@ -288,6 +313,8 @@ pub struct AlertCliArgs {
     pub dashboard_uid_map: Option<PathBuf>,
     pub panel_id_map: Option<PathBuf>,
     pub verify_ssl: bool,
+    pub org_id: Option<i64>,
+    pub all_orgs: bool,
     pub list_kind: Option<AlertListKind>,
     pub table: bool,
     pub csv: bool,
@@ -295,6 +322,7 @@ pub struct AlertCliArgs {
     pub no_header: bool,
 }
 
+/// cli args from common.
 pub fn cli_args_from_common(common: AlertCommonArgs) -> AlertCliArgs {
     AlertCliArgs {
         url: common.url,
@@ -314,6 +342,8 @@ pub fn cli_args_from_common(common: AlertCommonArgs) -> AlertCliArgs {
         dashboard_uid_map: None,
         panel_id_map: None,
         verify_ssl: common.verify_ssl,
+        org_id: None,
+        all_orgs: false,
         list_kind: None,
         table: false,
         csv: false,
@@ -346,6 +376,7 @@ fn empty_legacy_args() -> AlertLegacyArgs {
     }
 }
 
+/// Struct definition for AlertAuthContext.
 #[derive(Debug, Clone)]
 pub struct AlertAuthContext {
     pub url: String,
@@ -354,22 +385,31 @@ pub struct AlertAuthContext {
     pub headers: Vec<(String, String)>,
 }
 
-// Parse alert argv into the namespace model and normalize it immediately into a
-// flattened AlertCliArgs that downstream dispatch can execute directly.
+/// Parse alert argv into the namespace model and normalize it immediately into a
+/// flattened AlertCliArgs that downstream dispatch can execute directly.
 pub fn parse_cli_from<I, T>(iter: I) -> AlertCliArgs
 where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
+    // Call graph (hierarchy): this function is used in related modules.
+    // Upstream callers: 無
+    // Downstream callees: alert_cli_defs.rs:normalize_alert_namespace_args
+
     normalize_alert_namespace_args(AlertCliRoot::parse_from(iter).args)
 }
 
+/// root command.
 pub fn root_command() -> Command {
+    // Call graph (hierarchy): this function is used in related modules.
+    // Upstream callers: 無
+    // Downstream callees: 無
+
     AlertCliRoot::command()
 }
 
-// Lift nested alert command variants into one canonical argument struct and
-// apply single-output-mode migration for list commands.
+/// Lift nested alert command variants into one canonical argument struct and
+/// apply single-output-mode migration for list commands.
 pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs {
     fn apply_output_format(args: &mut AlertCliArgs, output_format: Option<AlertListOutputFormat>) {
         match output_format {
@@ -407,6 +447,8 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
         Some(AlertGroupCommand::ListRules(inner)) => {
             let mut args = cli_args_from_common(inner.common);
             args.list_kind = Some(AlertListKind::Rules);
+            args.org_id = inner.org_id;
+            args.all_orgs = inner.all_orgs;
             args.table = inner.table;
             args.csv = inner.csv;
             args.json = inner.json;
@@ -417,6 +459,8 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
         Some(AlertGroupCommand::ListContactPoints(inner)) => {
             let mut args = cli_args_from_common(inner.common);
             args.list_kind = Some(AlertListKind::ContactPoints);
+            args.org_id = inner.org_id;
+            args.all_orgs = inner.all_orgs;
             args.table = inner.table;
             args.csv = inner.csv;
             args.json = inner.json;
@@ -427,6 +471,8 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
         Some(AlertGroupCommand::ListMuteTimings(inner)) => {
             let mut args = cli_args_from_common(inner.common);
             args.list_kind = Some(AlertListKind::MuteTimings);
+            args.org_id = inner.org_id;
+            args.all_orgs = inner.all_orgs;
             args.table = inner.table;
             args.csv = inner.csv;
             args.json = inner.json;
@@ -437,6 +483,8 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
         Some(AlertGroupCommand::ListTemplates(inner)) => {
             let mut args = cli_args_from_common(inner.common);
             args.list_kind = Some(AlertListKind::Templates);
+            args.org_id = inner.org_id;
+            args.all_orgs = inner.all_orgs;
             args.table = inner.table;
             args.csv = inner.csv;
             args.json = inner.json;
@@ -464,6 +512,8 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
                 dashboard_uid_map: legacy.dashboard_uid_map,
                 panel_id_map: legacy.panel_id_map,
                 verify_ssl: legacy.common.verify_ssl,
+                org_id: None,
+                all_orgs: false,
                 list_kind: None,
                 table: false,
                 csv: false,
@@ -474,16 +524,28 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
     }
 }
 
-// Small adapter for callers that already have a concrete group command and need
-// the full normalized AlertCliArgs form.
+/// Small adapter for callers that already have a concrete group command and need
+/// the full normalized AlertCliArgs form.
 pub fn normalize_alert_group_command(command: AlertGroupCommand) -> AlertCliArgs {
+    // Call graph (hierarchy): this function is used in related modules.
+    // Upstream callers: 無
+    // Downstream callees: alert_cli_defs.rs:empty_legacy_args, alert_cli_defs.rs:normalize_alert_namespace_args
+
     normalize_alert_namespace_args(AlertNamespaceArgs {
         command: Some(command),
         legacy: empty_legacy_args(),
     })
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_auth_context(args: &AlertCliArgs) -> Result<AlertAuthContext> {
+    // Call graph (hierarchy): this function is used in related modules.
+    // Upstream callers: 無
+    // Downstream callees: common.rs:resolve_auth_headers
+
     Ok(AlertAuthContext {
         url: args.url.clone(),
         timeout: args.timeout,

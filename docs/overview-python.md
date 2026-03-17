@@ -133,13 +133,13 @@ Python CLI 的定位是保留一個統一進入點、穩定的域名封裝與可
 
 ## 6) 維護者驗證指令
 
-- `python3 -m unittest -v`（所有 Python 測試）
-- `python3 -m unittest -v tests/test_python_dashboard_cli.py`
-- `python3 -m unittest -v tests/test_python_dashboard_inspection_cli.py`
-- `python3 -m unittest -v tests/test_python_access_cli.py`
-- `python3 -m unittest -v tests/test_python_alert_cli.py`
-- `python3 -m unittest -v tests/test_python_datasource_cli.py`
-- `python3 -m unittest -v tests/test_python_packaging.py`
+- `PYTHONPATH=python python3 -m unittest -v`（所有 Python 測試）
+- `PYTHONPATH=python python3 -m unittest -v python/python/tests/test_python_dashboard_cli.py`
+- `PYTHONPATH=python python3 -m unittest -v python/python/tests/test_python_dashboard_inspection_cli.py`
+- `PYTHONPATH=python python3 -m unittest -v python/python/tests/test_python_access_cli.py`
+- `PYTHONPATH=python python3 -m unittest -v python/python/tests/test_python_alert_cli.py`
+- `PYTHONPATH=python python3 -m unittest -v python/python/tests/test_python_datasource_cli.py`
+- `PYTHONPATH=python python3 -m unittest -v python/python/tests/test_python_packaging.py`
 
 ## 7) 設計意圖（摘要）
 

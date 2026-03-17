@@ -116,6 +116,8 @@ grafana-util dashboard export \
   --overwrite
 ```
 
+`dashboard export` writes `raw/` API-import JSON, `prompt/` UI-import JSON, and raw inventory metadata including `folders.json`, `datasources.json`, and `permissions.json` for dashboard/folder ACL backup.
+
 **Preview Changes Before Importing:**
 ```bash
 grafana-util dashboard import \

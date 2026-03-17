@@ -18,7 +18,7 @@ live Grafana datasources before CLI wiring landed.
 - New Python helper module:
   - `grafana_utils/datasource/live_mutation.py`
 - New unit tests:
-  - `tests/test_python_datasource_live_mutation.py`
+  - `python/tests/test_python_datasource_live_mutation.py`
 
 ## Current Behavior
 
