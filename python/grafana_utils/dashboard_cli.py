@@ -610,7 +610,7 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
     output_group.add_argument(
         "--table",
         action="store_true",
-        help="For --dry-run only, render a compact table instead of per-dashboard log lines. With --ensure-folders, the folder check is also shown in table form.",
+        help="For --dry-run only, render output in table form instead of per-dashboard log lines. With --ensure-folders, the folder check is also shown in table form.",
     )
     output_group.add_argument(
         "--json",
