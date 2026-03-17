@@ -1,5 +1,22 @@
 # ai-changes.md
 
+## 2026-03-17 - Add Unified Root Help-Full Rendering
+- Summary: Expanded Rust unified help-full support beyond the root command. The CLI now intercepts `grafana-util --help-full` plus top-level `grafana-util alert|datasource|access|sync --help-full`, reuses each command's normal help output, and appends an `Extended Examples:` block instead of letting clap reject `--help-full` as unknown. The bracketed extended-example labels now also participate in the same domain color-highlighting used for existing root examples when output is attached to a TTY.
+- Tests: Updated the Rust unified CLI tests to cover root and top-level domain `--help-full` interception, plus ANSI colorization of extended example labels.
+- Test Run: `cd rust && cargo test --quiet cli_rust_tests`; `bash ./scripts/build-rust-macos-arm64.sh`; `./dist/macos-arm64/grafana-util --help-full`; `./dist/macos-arm64/grafana-util alert --help-full`; `./dist/macos-arm64/grafana-util datasource --help-full`; `./dist/macos-arm64/grafana-util access --help-full`; `./dist/macos-arm64/grafana-util sync --help-full` (pass)
+- Validation: Verified the rebuilt Apple Silicon dist binary renders the extended help blocks for root, `alert`, `datasource`, `access`, and `sync`. Confirmed via tests that the extended `[Label]` markers are ANSI-colorized in TTY mode.
+- Impact: `rust/src/cli.rs`, `rust/src/cli_rust_tests.rs`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low risk. The change is isolated to pre-parse help rendering and shared label-color decoration; command execution and existing dashboard inspect `--help-full` paths are unchanged.
+- Follow-up: If later needed, the same pattern can be extended to nested subcommands such as `alert export --help-full` or `access user --help-full`, but that should stay deliberate because it increases special-case argv routing.
+
+## 2026-03-17 - Aggregate Rust Build Outputs Across Current Target Set
+- Summary: Changed the root Make workflow so `make build-rust` now builds both the native-host release artifact and the Docker-based Linux `amd64` artifact, then prints the final executable paths. Added `make build-rust-native` as the explicit local-only path so maintainers can still skip cross-build work when they only need `rust/target/release/grafana-util`.
+- Tests: Updated the maintainer docs to describe the new split between the aggregate and native-only Rust build targets.
+- Test Run: Pending in this turn.
+- Validation: Pending in this turn.
+- Impact: `Makefile`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Moderate. `make build-rust` now depends on the Docker-based Linux build path, so environments without Docker must switch to `make build-rust-native` or the zig-specific Linux build target.
+
 ## 2026-03-17 - Retire Rust Access Shim Binary
 - Summary: Removed the leftover Rust `grafana-access-utils` compatibility binary so the crate now publishes one current executable model: `grafana-util <domain> <command>`. The access-domain help surface now renders as `grafana-util access`, and the unified help/docs no longer imply that a separate access executable is still part of the supported output.
 - Tests: Updated Rust parser/help assertions to use the unified access program name and removed the unified-help expectation for the retired shim.
@@ -1377,6 +1394,15 @@ Historical note:
 - Impact: `grafana-utils.py`, `tests/test_dump_grafana_dashboards.py`, `README.md`, `docs/internal/ai-status.md`
 - Rollback/Risk: Low to moderate operator-facing change because older `--output-dir` dashboard export invocations will no longer parse. The rename makes export intent more explicit.
 - Follow-up: None.
+
+## 2026-03-17 - Re-sign macOS Rust Dist Binary After Copy
+- Summary: Fixed the Apple Silicon Rust dist build so `scripts/build-rust-macos-arm64.sh` re-signs `dist/macos-arm64/grafana-util` after copying it from `rust/target/release/`. This avoids the macOS launch-time code-signing rejection that was killing the copied dist binary even for `--help`.
+- Tests: Added a packaging test that asserts the macOS build helper performs the re-sign step.
+- Test Run: `bash -n scripts/build-rust-macos-arm64.sh`; `python3 -m unittest -v tests/test_python_packaging.py`; `bash ./scripts/build-rust-macos-arm64.sh`; `./dist/macos-arm64/grafana-util --help` (pass)
+- Validation: Local macOS unified logs for the failing pre-fix binary showed `CODE SIGNING: ... rejecting invalid page ... dist/macos-arm64/grafana-util ... (cs_mtime ... != mtime ...)`. After re-signing the copied binary in the build helper, the rebuilt dist binary printed unified CLI help successfully from `dist/macos-arm64/`.
+- Impact: `scripts/build-rust-macos-arm64.sh`, `tests/test_python_packaging.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low risk. The change only affects the macOS Apple Silicon dist build helper and uses standard ad hoc signing on the copied local binary.
+- Follow-up: If other macOS artifact-copy paths are introduced later, re-sign the copied Mach-O outputs there as well instead of assuming the original build signature remains valid after copy.
 
 ## 2026-03-10 - Add Grafana Dashboard Import and Export Subcommands
 - Summary: Changed `grafana-utils.py` so dashboard mode selection is explicit at the CLI level. The script now requires `export` or `import` subcommands, and export-only and import-only options live on separate subparsers instead of being mixed together on one parser.

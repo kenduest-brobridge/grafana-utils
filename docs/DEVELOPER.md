@@ -191,6 +191,8 @@ Commit message default for this repo:
 
 ### Rust cross-build notes
 
+- `make build-rust` now runs the native release build plus the Docker-based Linux `amd64` cross-build and then prints the produced artifact paths.
+- `make build-rust-native` runs the local-host release build only and writes binaries under `rust/target/release/`.
 - `make build-rust-macos-arm64` runs `scripts/build-rust-macos-arm64.sh`.
 - That script is the explicit native release path for Apple Silicon Macs and copies binaries into `dist/macos-arm64/`.
 - `make build-rust-linux-amd64` runs `scripts/build-rust-linux-amd64.sh`.
@@ -228,7 +230,7 @@ The Python and Rust dashboard CLIs also have `inspect-export` for offline raw-ex
 
 The Python CLI also has `inspect-live`, which accepts the normal live dashboard auth/common args, materializes a temporary raw-export-like directory from live dashboard payloads plus current folder and datasource inventories, and then reuses the same summary/report inspection pipeline as `inspect-export`. This keeps the operator-facing output contract aligned while avoiding a second inspection implementation.
 
-`inspect-export` and `inspect-live` also expose `--help-full` on both the Python and Rust CLIs. Normal `-h/--help` stays concise, while `--help-full` prints that same subcommand help followed by a short examples block focused on `--output-format` report modes such as `report-table`, `report-tree`, `report-tree-table`, plus datasource/panel filters and `--report-columns`.
+The Rust unified CLI now exposes `--help-full` at the root and at the top-level domain roots `alert`, `datasource`, `access`, and `sync`, so commands such as `grafana-util --help-full` and `grafana-util datasource --help-full` print the normal help followed by extra focused examples. `inspect-export` and `inspect-live` additionally expose subcommand-level `--help-full` on both the Python and Rust CLIs. Normal `-h/--help` stays concise, while `--help-full` prints the same base help followed by extra focused examples.
 
 `inspect-export --output-format report-table` takes the same raw export input but emits one per-query record instead of the higher-level summary. Each record carries dashboard uid/title, folder path, panel id/title/type, target `refId`, resolved datasource label, a best-effort `datasourceUid`, the query field chosen from the target payload (`expr`, `query`, `rawSql`, and similar), the raw query text, and heuristic extraction fields such as `metrics`, `measurements`, and `buckets`. `--output-format report-json` emits the same flat record model as JSON for downstream analysis, `report-tree` / `report-tree-table` render the same underlying records in grouped forms with clearer operator intent, and `report-dependency` / `report-dependency-json` emit the maintained dashboard dependency contract built from those query rows plus datasource inventory. Rust now carries that dependency contract in dedicated modules and re-exports it through the crate surface so bundle/governance tooling can share the same reference model. Flux and SQL-family extraction remain heuristic and conservative: Flux currently uses `metrics` for pipeline/source function names plus `measurements`/`buckets` for `_measurement` and `bucket` references, while SQL-family queries currently use `measurements` for table/source references and `metrics` for coarse query-shape hints because the shared report contract does not yet expose dedicated table or shape fields.
 

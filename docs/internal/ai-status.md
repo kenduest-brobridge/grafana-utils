@@ -5,6 +5,13 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-17 - Task: Aggregate Rust Build Outputs Across Current Target Set
+- State: Done
+- Scope: `Makefile`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `make build-rust` only ran the native-host `cargo build --release` path, while the Linux `amd64` cross-build lived behind a separate target. That made the default Rust build path easy to misread as “all released artifacts” even though it only produced the local platform binary.
+- Current Update: Split the native-only path into `make build-rust-native`, changed `make build-rust` to aggregate the native build plus the Docker-based Linux `amd64` build, and had the Make targets print the produced artifact paths after success.
+- Result: The default Rust build target now matches the expectation of “build the current shipped target set” more closely, while maintainers still have an explicit native-only target when they only need the local executable.
+
 ## 2026-03-17 - Task: Retire Rust Access Shim Binary
 - State: Done
 - Scope: `rust/src/bin/grafana-access-utils.rs`, `rust/src/access_cli_defs.rs`, `rust/src/cli.rs`, `rust/src/access_rust_tests.rs`, `rust/src/cli_rust_tests.rs`, `docs/user-guide.md`, `docs/DEVELOPER.md`, `docs/overview-rust.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
@@ -1197,3 +1204,15 @@ Historical note:
 - Baseline: `--vars-query` only overlaid `var-*` values, screenshot runs could not print the final resolved URL, API inspection on one remote Grafana hit response-body decode errors, and browser capture could stop at Grafana's loading spinner or SPA navigation wait.
 - Current Update: Extended screenshot query-fragment parsing to preserve non-variable query keys such as `refresh`, `showCategory`, and `timezone`; added `--print-capture-url`; forced the Rust HTTP client onto a more compatible JSON-bytes/HTTP1.1 path; and tightened screenshot readiness to wait for panel content while avoiding the stuck navigation event path. Live validation against dashboard `rYdddlPWk` confirmed the final capture URL and preserved query state.
 - Result: Screenshot/debug workflows now expose the exact resolved URL, keep more Grafana browser state intact, and are more reliable against remote Grafana instances that previously failed in API decode or browser-ready handling.
+## 2026-03-17 - Task: Re-sign macOS Rust Dist Binary After Copy
+- State: Done
+- Scope: `scripts/build-rust-macos-arm64.sh`, `tests/test_python_packaging.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `scripts/build-rust-macos-arm64.sh` copies `rust/target/release/grafana-util` into `dist/macos-arm64/` without refreshing the copied Mach-O signature. On macOS, the copied `dist/macos-arm64/grafana-util` can then be killed at launch, including on `--help`, even though the original `rust/target/release/grafana-util` still runs.
+- Current Update: Added an explicit ad hoc `codesign --force --sign -` step after copying the native release binary into `dist/macos-arm64/`, and added a packaging test that asserts the macOS build script keeps that re-sign step.
+- Result: Rebuilt `dist/macos-arm64/grafana-util` now runs normally on Apple Silicon, including `--help`, and the local macOS log evidence points to the old copied binary being rejected because the copied file `mtime` no longer matched the validated code-signing state.
+## 2026-03-17 - Task: Add Unified Root Help-Full Rendering
+- State: Done
+- Scope: `rust/src/cli.rs`, `rust/src/cli_rust_tests.rs`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The Rust unified CLI only recognizes root `-h/--help`. `--help-full` existed only for `dashboard inspect-export` and `dashboard inspect-live`, so `grafana-util --help-full` and top-level domain forms such as `grafana-util alert --help-full` fell through to clap and errored as unexpected arguments.
+- Current Update: Added explicit unified interception for root `--help-full` plus top-level `alert`, `datasource`, `access`, and `sync` `--help-full`. Each path now reuses the normal help text and appends an `Extended Examples:` block with bracketed example labels, and TTY color mode now also highlights those extended labels with the same domain color scheme as the existing root examples.
+- Result: Rebuilt macOS arm64 binaries now render `grafana-util --help-full`, `grafana-util alert --help-full`, `grafana-util datasource --help-full`, `grafana-util access --help-full`, and `grafana-util sync --help-full` successfully, while the existing dashboard inspect `--help-full` behavior remains unchanged.
