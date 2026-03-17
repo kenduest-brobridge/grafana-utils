@@ -13,6 +13,7 @@ pub mod dashboard_inspection_dependency_contract;
 pub mod dashboard_reference_models;
 pub mod datasource;
 pub mod datasource_provider;
+pub mod help_styles;
 pub mod http;
 pub mod sync;
 pub mod sync_bundle_alert_contracts;

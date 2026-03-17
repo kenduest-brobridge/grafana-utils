@@ -467,7 +467,8 @@ pub enum DatasourceGroupCommand {
 #[command(
     name = "grafana-util datasource",
     about = "List, add, modify, delete, export, import, and diff Grafana datasources.",
-    after_help = DATASOURCE_ROOT_HELP_TEXT
+    after_help = DATASOURCE_ROOT_HELP_TEXT,
+    styles = crate::help_styles::CLI_HELP_STYLES
 )]
 pub struct DatasourceCliArgs {
     #[command(subcommand)]

@@ -11,7 +11,8 @@ use super::{ALERT_HELP_TEXT, DEFAULT_OUTPUT_DIR, DEFAULT_TIMEOUT, DEFAULT_URL};
 #[command(
     name = "grafana-util alert",
     about = "Export, import, or diff Grafana alerting resources.",
-    after_help = ALERT_HELP_TEXT
+    after_help = ALERT_HELP_TEXT,
+    styles = crate::help_styles::CLI_HELP_STYLES
 )]
 struct AlertCliRoot {
     #[command(flatten)]

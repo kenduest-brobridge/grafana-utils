@@ -1091,7 +1091,8 @@ pub enum AccessCommand {
 #[command(
     name = "grafana-util access",
     about = "List and manage Grafana users, orgs, teams, and service accounts.",
-    after_help = ACCESS_ROOT_HELP_TEXT
+    after_help = ACCESS_ROOT_HELP_TEXT,
+    styles = crate::help_styles::CLI_HELP_STYLES
 )]
 pub(crate) struct AccessCliRoot {
     #[command(flatten)]

@@ -22,6 +22,8 @@ fn render_unified_help_full() -> String {
 #[test]
 fn unified_help_mentions_screenshot_and_inspect_vars_examples() {
     let help = render_unified_help();
+    assert!(help.contains("--help-full"));
+    assert!(help.contains("Print help with extended examples"));
     assert!(help.contains("[Dashboard Export] Export dashboards with Basic auth"));
     assert!(help.contains("[Dashboard Export] Export dashboards across all visible orgs"));
     assert!(help.contains("--basic-user admin --basic-password admin"));
@@ -260,6 +262,14 @@ fn render_unified_help_text_colorizes_example_labels_when_requested() {
 }
 
 #[test]
+fn render_unified_help_text_colorizes_bracketed_usage_tokens_when_requested() {
+    let help = render_unified_help_text(true);
+    assert!(help.contains("\u{1b}[1m\u{1b}[32mUsage:\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[1m\u{1b}[36m<COMMAND>\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[33m[aliases: \u{1b}[0m\u{1b}[33mdb\u{1b}[0m\u{1b}[33m]\u{1b}[0m"));
+}
+
+#[test]
 fn unified_help_full_appends_extended_examples() {
     let help = render_unified_help_full();
     assert!(help.contains("Extended Examples:"));
@@ -282,9 +292,11 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
     let root_help =
         maybe_render_unified_help_from_os_args(["grafana-util", "--help"], false).unwrap();
     assert!(root_help.contains("[Dashboard Export]"));
+    assert!(root_help.contains("--help-full"));
 
     let short_help = maybe_render_unified_help_from_os_args(["grafana-util", "-h"], false).unwrap();
     assert!(short_help.contains("[Sync Apply]"));
+    assert!(short_help.contains("Print help with extended examples"));
 
     let full_help =
         maybe_render_unified_help_from_os_args(["grafana-util", "--help-full"], false).unwrap();
@@ -313,6 +325,23 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
         maybe_render_unified_help_from_os_args(["grafana-util", "sync", "--help-full"], false)
             .unwrap();
     assert!(sync_help.contains("[Sync Apply]"));
+
+    let alert_short_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "alert", "-h"], false).unwrap();
+    assert!(alert_short_help.contains("--help-full"));
+
+    let datasource_short_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "datasource", "-h"], false)
+            .unwrap();
+    assert!(datasource_short_help.contains("--help-full"));
+
+    let access_short_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "access", "-h"], false).unwrap();
+    assert!(access_short_help.contains("--help-full"));
+
+    let sync_short_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "sync", "-h"], false).unwrap();
+    assert!(sync_short_help.contains("--help-full"));
 
     assert!(
         maybe_render_unified_help_from_os_args(["grafana-util", "dashboard", "--help"], false)

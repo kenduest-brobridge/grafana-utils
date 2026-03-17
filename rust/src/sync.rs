@@ -48,7 +48,8 @@ pub enum SyncOutputFormat {
 #[command(
     name = "grafana-util sync",
     about = "Reviewable sync workflows with optional live Grafana fetch/apply paths.",
-    after_help = SYNC_ROOT_HELP_TEXT
+    after_help = SYNC_ROOT_HELP_TEXT,
+    styles = crate::help_styles::CLI_HELP_STYLES
 )]
 pub struct SyncCliArgs {
     #[command(subcommand)]

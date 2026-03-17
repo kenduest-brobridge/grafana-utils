@@ -14,7 +14,7 @@
 //! Caveats:
 //! - Do not add domain logic or HTTP transport details here.
 //! - Keep help output canonical-first so users discover formal commands.
-use clap::{CommandFactory, Parser, Subcommand};
+use clap::{ColorChoice, CommandFactory, Parser, Subcommand};
 
 use crate::access::{root_command as access_root_command, run_access_cli, AccessCliArgs};
 use crate::alert::{
@@ -31,6 +31,7 @@ use crate::datasource::{run_datasource_cli, DatasourceCliArgs, DatasourceGroupCo
 use crate::sync::{run_sync_cli, SyncCliArgs, SyncGroupCommand};
 
 const UNIFIED_HELP_TEXT: &str = "Examples:\n\n  [Dashboard Export] Export dashboards with Basic auth:\n    grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite\n\n  [Dashboard Export] Export dashboards across all visible orgs:\n    grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./dashboards --overwrite\n\n  [Dashboard Capture] Capture a dashboard screenshot from browser-like state:\n    grafana-util dashboard screenshot --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --token \"$GRAFANA_API_TOKEN\" --output ./cpu-main.png --full-page\n\n  [Dashboard Capture] Inspect dashboard variables before capture:\n    grafana-util dashboard inspect-vars --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --token \"$GRAFANA_API_TOKEN\"\n\n  [Alert Export] Export alerting resources through the unified binary:\n    grafana-util alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n\n  [Datasource Inventory] List datasource inventory through the unified binary:\n    grafana-util datasource list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n\n  [Access Inventory] List org users through the unified binary:\n    grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n\n  [Sync Planning] Build a sync plan directly from live Grafana state:\n    grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n\n  [Sync Apply] Apply a reviewed sync plan back to Grafana:\n    grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
+const HELP_FULL_HINT: &str = "Extended Help:\n  --help-full\n          Print help with extended examples\n";
 const UNIFIED_HELP_FULL_TEXT: &str = "\nExtended Examples:\n\n  [Dashboard Inspect Export] Render a grouped dashboard dependency table from raw exports:\n    grafana-util dashboard inspect-export --import-dir ./dashboards/raw --output-format report-tree-table --report-columns dashboard_uid,panel_title,datasource_uid,query\n\n  [Dashboard Inspect Live] Render datasource governance JSON directly from live Grafana:\n    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format governance-json\n\n  [Datasource Import] Dry-run a datasource import and keep the result machine-readable:\n    grafana-util datasource import --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --import-dir ./datasources --dry-run --json\n\n  [Access Team Import] Preview a destructive team sync before confirming:\n    grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --dry-run --output-format table\n\n  [Alert Import] Re-map linked alert dashboards during import:\n    grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json\n\n  [Sync Review] Stamp a plan as reviewed before apply:\n    grafana-util sync review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output json\n";
 const ALERT_HELP_FULL_TEXT: &str = "\nExtended Examples:\n\n  [Alert Export] Export alerting resources with overwrite enabled:\n    grafana-util alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n\n  [Alert Import] Preview a replace-existing import before execution:\n    grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dry-run\n\n  [Alert Import] Re-map linked dashboards and panels during import:\n    grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json\n\n  [Alert List] Render live alert rules as JSON:\n    grafana-util alert list-rules --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n";
 const DATASOURCE_HELP_FULL_TEXT: &str = "\nExtended Examples:\n\n  [Datasource List] Enumerate all visible org datasources as CSV:\n    grafana-util datasource list --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-format csv\n\n  [Datasource Add] Preview a new datasource contract as JSON:\n    grafana-util datasource add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name prometheus-main --type prometheus --datasource-url http://prometheus:9090 --dry-run --json\n\n  [Datasource Import] Import one exported org bundle with create-missing-orgs:\n    grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --use-export-org --only-org-id 2 --create-missing-orgs --dry-run --json\n\n  [Datasource Diff] Compare a local export directory with live Grafana:\n    grafana-util datasource diff --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --diff-dir ./datasources\n";
@@ -80,15 +81,31 @@ fn colorize_unified_help_examples(text: &str) -> String {
     )
 }
 
-fn render_long_help(command: &mut clap::Command) -> String {
-    let mut output = Vec::new();
-    command.write_long_help(&mut output).unwrap();
-    String::from_utf8(output).unwrap()
+fn render_long_help_with_color_choice(command: &mut clap::Command, colorize: bool) -> String {
+    let configured = std::mem::take(command).color(if colorize {
+        ColorChoice::Always
+    } else {
+        ColorChoice::Never
+    });
+    *command = configured;
+    let rendered = command.render_long_help();
+    if colorize {
+        rendered.ansi().to_string()
+    } else {
+        rendered.to_string()
+    }
+}
+
+fn inject_help_full_hint(help: String) -> String {
+    help.replace(
+        "\nExamples:\n",
+        &format!("\n{HELP_FULL_HINT}\nExamples:\n"),
+    )
 }
 
 pub fn render_unified_help_text(colorize: bool) -> String {
     let mut command = CliArgs::command();
-    let help = render_long_help(&mut command);
+    let help = inject_help_full_hint(render_long_help_with_color_choice(&mut command, colorize));
     if colorize {
         help.replace(
             UNIFIED_HELP_TEXT,
@@ -99,12 +116,16 @@ pub fn render_unified_help_text(colorize: bool) -> String {
     }
 }
 
+fn render_domain_help_text(mut command: clap::Command, colorize: bool) -> String {
+    inject_help_full_hint(render_long_help_with_color_choice(&mut command, colorize))
+}
+
 fn render_domain_help_full_text(
     mut command: clap::Command,
     extended_examples: &str,
     colorize: bool,
 ) -> String {
-    let mut help = render_long_help(&mut command);
+    let mut help = render_long_help_with_color_choice(&mut command, colorize);
     if colorize {
         help.push_str(&colorize_unified_help_examples(extended_examples));
     } else {
@@ -137,6 +158,20 @@ where
             Some(render_unified_help_text(colorize))
         }
         [_binary, flag] if flag == "--help-full" => Some(render_unified_help_full_text(colorize)),
+        [_binary, command, flag] if command == "alert" && (flag == "--help" || flag == "-h") => {
+            Some(render_domain_help_text(alert_root_command(), colorize))
+        }
+        [_binary, command, flag]
+            if command == "datasource" && (flag == "--help" || flag == "-h") =>
+        {
+            Some(render_domain_help_text(DatasourceCliArgs::command(), colorize))
+        }
+        [_binary, command, flag] if command == "access" && (flag == "--help" || flag == "-h") => {
+            Some(render_domain_help_text(access_root_command(), colorize))
+        }
+        [_binary, command, flag] if command == "sync" && (flag == "--help" || flag == "-h") => {
+            Some(render_domain_help_text(SyncCliArgs::command(), colorize))
+        }
         [_binary, command, flag] if command == "alert" && flag == "--help-full" => Some(
             render_domain_help_full_text(alert_root_command(), ALERT_HELP_FULL_TEXT, colorize),
         ),
@@ -218,7 +253,8 @@ pub enum UnifiedCommand {
 #[command(
     name = "grafana-util",
     about = "Unified Grafana dashboard, alerting, and access utility.",
-    after_help = UNIFIED_HELP_TEXT
+    after_help = UNIFIED_HELP_TEXT,
+    styles = crate::help_styles::CLI_HELP_STYLES
 )]
 pub struct CliArgs {
     #[command(subcommand)]
