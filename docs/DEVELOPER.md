@@ -75,16 +75,25 @@ Commit message default for this repo:
 - `scripts/build-rust-linux-amd64-zig.sh`: non-Docker Linux `amd64` Rust build helper using local `zig` and `cargo-zigbuild`
 - `scripts/seed-grafana-sample-data.sh`: idempotent developer seed helper for sample orgs, datasources, folders, and dashboards in a running Grafana
 - `scripts/test-rust-live-grafana.sh`: Docker-backed Grafana smoke test for the Rust CLIs
-- `scripts/set-version.sh`: shared maintainer helper that keeps `VERSION`, `pyproject.toml`, `rust/Cargo.toml`, and the root package entry in `rust/Cargo.lock` aligned for preview and release bumps
+- `scripts/set-version.sh`: shared maintainer helper that keeps `VERSION`, `pyproject.toml`, `rust/Cargo.toml`, and the root package entry in `rust/Cargo.lock` aligned for release bumps and optional preview bumps
 
 ## Version Workflow
 
 - `VERSION` is the checked-in maintainer version source used by `scripts/set-version.sh`.
 - Use `make print-version` to inspect the current `VERSION`, Python package version, Rust crate version, and Rust lockfile package version together.
 - Use `make sync-version` after editing `VERSION` manually to push that version into `pyproject.toml`, `rust/Cargo.toml`, and `rust/Cargo.lock`.
-- Use `make set-release-version VERSION=X.Y.Z` when preparing `main` for a release version.
-- Use `make set-dev-version VERSION=X.Y.Z DEV_ITERATION=N` when preparing `dev` for a preview version such as `X.Y.Z.devN` / `X.Y.Z-dev.N`.
-- Release merges can still conflict on version lines because `dev` and `main` intentionally carry different version forms, but the recovery path is now one version command instead of hand-editing three files.
+- Prefer keeping `dev` and `main` on the same plain checked-in version between releases so normal merges do not conflict on version lines by default.
+- Use `make set-release-version VERSION=X.Y.Z` when preparing `main` for a formal release version and the matching `vX.Y.Z` tag.
+- Use `make set-dev-version VERSION=X.Y.Z DEV_ITERATION=N` only when you intentionally need branch-specific preview artifacts such as `X.Y.Z.devN` / `X.Y.Z-dev.N`.
+- Preferred release ritual:
+  - keep day-to-day work on `dev`
+  - switch to `main`
+  - run `make set-release-version VERSION=X.Y.Z`
+  - merge `dev` into `main`
+  - keep the plain release values in `VERSION`, `pyproject.toml`, `rust/Cargo.toml`, and `rust/Cargo.lock` if a version conflict still appears
+  - run `make test`
+  - create tag `vX.Y.Z`
+- If `dev` is not carrying a preview-only version, there is no required post-release `.dev1` bump.
 
 ### Python CLI Boundaries
 

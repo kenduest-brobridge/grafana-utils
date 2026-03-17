@@ -14,7 +14,7 @@ help:
 		'  make print-version  Show VERSION plus Python/Rust package versions' \
 		'  make sync-version   Sync pyproject.toml, rust/Cargo.toml, and rust/Cargo.lock from VERSION' \
 		'  make set-release-version VERSION=X.Y.Z  Set VERSION and package metadata to a release version' \
-		'  make set-dev-version VERSION=X.Y.Z DEV_ITERATION=N  Set VERSION and package metadata to a preview version' \
+		'  make set-dev-version VERSION=X.Y.Z DEV_ITERATION=N  Optionally set VERSION and package metadata to a preview version' \
 		'  make poetry-install  Install the Poetry-managed development environment' \
 		'  make poetry-lock   Refresh poetry.lock from pyproject.toml' \
 		'  make poetry-test   Run the Python unittest suite inside Poetry' \
@@ -108,7 +108,7 @@ reset-grafana-all-data:
 test: test-python test-rust
 
 test-python:
-	$(PYTHON) -m unittest -v
+	PYTHONPATH=python $(PYTHON) -m unittest discover -s python/tests -v
 
 test-rust:
 	cd $(RUST_DIR) && $(CARGO) test

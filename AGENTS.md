@@ -51,9 +51,10 @@ For external command usage and operator examples, prefer `README.md`, `README.zh
 ## Versioning And Release Policy
 
 - Treat `dev` as the preview branch and `main` as the release branch.
-- On `dev`, Python package versions must use `X.Y.Z.devN` in `pyproject.toml`.
-- On `dev`, Rust package versions must use `X.Y.Z-dev.N` in `rust/Cargo.toml`.
-- On `main`, both Python and Rust package versions must use plain release versions `X.Y.Z` with no dev suffix.
+- Day-to-day work on `dev` does not need a mandatory `.devN` / `-dev.N` package version.
+- `dev` and `main` may carry the same plain checked-in package version between releases to reduce merge noise.
+- Use preview versions such as `X.Y.Z.devN` / `X.Y.Z-dev.N` only when a branch-specific preview artifact is intentionally needed.
+- On `main`, formal release tags and release artifacts must use plain release versions `X.Y.Z` with no dev suffix.
 - Formal releases must use Git tags in the form `vX.Y.Z`, created from `main`.
 - Release tags must match the plain release version already present in both `pyproject.toml` and `rust/Cargo.toml`.
 - Preview GitLab artifacts come from the `dev` and `main` branches; release GitLab artifacts come only from `vX.Y.Z` tags.

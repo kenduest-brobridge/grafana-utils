@@ -26,7 +26,9 @@ Options:
   --print-current  Print the current Python and Rust package versions.
   --version VALUE  Set both source versions from one version string.
                    Accepts Python dev form (X.Y.Z.devN), Rust dev form
-                   (X.Y.Z-dev.N), or release form (X.Y.Z).
+                   (X.Y.Z-dev.N), or release form (X.Y.Z). Preview forms
+                   are optional and are only needed for intentional
+                   branch-specific preview artifacts.
   --tag TAG        Set both source versions from one release tag like v0.2.9.
   --dry-run        Print the derived versions without editing files.
   -h, --help       Show this help text.
