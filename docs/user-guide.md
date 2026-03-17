@@ -14,20 +14,17 @@ grafana-util dashboard -h
 grafana-util alert -h
 grafana-util datasource -h
 grafana-util access -h
-grafana-access-utils -h
 ```
 
 Installed entrypoints:
 
 ```text
 grafana-util <domain> <command> [options]
-grafana-access-utils <access-command> [options]
 ```
 
 CLI notes:
 
 - `grafana-util` is the primary unified CLI.
-- `grafana-access-utils` is a compatibility launcher for access workflows.
 - Use the namespaced `grafana-util <domain> <command>` layout throughout this guide.
 - `dashboard list-data-sources` remains available under the dashboard command surface, but new datasource inventory workflows should prefer `datasource list`.
 

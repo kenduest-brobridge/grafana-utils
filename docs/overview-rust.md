@@ -29,9 +29,6 @@ Rust crate 提供四個 CLI domain 的核心執行能力：
     2. 否則交由 `cli::parse_cli_from` 與 `cli::run_cli`。
   - 只處理 process exit 邏輯，不處理 domain 行為。
 
-- `rust/src/bin/grafana-access-utils.rs`
-  - 兼容 shim，直接委派給 access domain 的 parser + runner。
-  - 用於保留舊命令相容鏈路。
 
 ### 2.2 Unified Dispatcher 層
 

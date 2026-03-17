@@ -63,7 +63,6 @@ Commit message default for this repo:
 - `grafana_utils/unified_cli.py`: unified Python entrypoint that dispatches canonical namespaced dashboard, datasource, alert, access, and sync workflows
 - `grafana_utils/__main__.py`: source-tree module entrypoint for the packaged unified CLI
 - `rust/src/cli.rs`: unified Rust entrypoint that dispatches dashboard, alert, and access workflows
-- `rust/src/bin/grafana-access-utils.rs`: thin Rust compatibility binary for the access-management CLI
 - `pyproject.toml`: build metadata, dependencies, and console-script entrypoints
 - `tests/test_python_dashboard_cli.py`: dashboard Python unit tests
 - `tests/test_python_dashboard_inspection_cli.py`: focused Python inspection summary/report tests kept separate from the broader dashboard CLI suite
@@ -109,7 +108,6 @@ Commit message default for this repo:
 
 - Mode selection is explicit.
 - Installed Python console script is `grafana-util`.
-- Rust still keeps `grafana-access-utils` as a compatibility binary.
 - Alert workflows no longer ship a separate `grafana-alert-utils` entrypoint; use `grafana-util alert ...`.
 - `grafana-util` is now the primary entrypoint for dashboard, datasource, alert, and access workflows.
 - Use `python3 -m grafana_utils dashboard list ...` to inspect live dashboard summaries.
@@ -485,8 +483,6 @@ Alerting import format notes:
 ### Current scope
 
 Primary access entrypoints are `python3 -m grafana_utils access ...` and `cargo run --bin grafana-util -- access ...`.
-
-Rust still keeps a compatibility shim via `cargo run --bin grafana-access-utils -- ...` for the same command surface:
 
 - `user list`
 - `user add`

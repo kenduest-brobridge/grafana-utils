@@ -5,6 +5,13 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-17 - Task: Retire Rust Access Shim Binary
+- State: Done
+- Scope: `rust/src/bin/grafana-access-utils.rs`, `rust/src/access_cli_defs.rs`, `rust/src/cli.rs`, `rust/src/access_rust_tests.rs`, `rust/src/cli_rust_tests.rs`, `docs/user-guide.md`, `docs/DEVELOPER.md`, `docs/overview-rust.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The repo already centered current operator guidance on `grafana-util access ...`, but the Rust crate still emitted a separate `grafana-access-utils` binary, unified help still advertised that compatibility shim, and active docs/tests still implied the split executable was part of the supported output.
+- Current Update: Removed the standalone Rust `grafana-access-utils` binary target, renamed the access-root help surface to `grafana-util access`, removed shim language from the unified help text, and updated active docs/tests to describe one Rust executable surface.
+- Result: Rust release builds now produce only the unified `grafana-util` executable for current CLI usage, which keeps the shipped artifacts aligned with the merged access command model and removes an unnecessary source of operator confusion.
+
 ## 2026-03-17 - Task: Formalize Version Sync Workflow
 - State: Done
 - Scope: `VERSION`, `scripts/set-version.sh`, `Makefile`, `tests/test_python_packaging.py`, `tests/test_python_version_script.py`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

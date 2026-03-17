@@ -1,5 +1,13 @@
 # ai-changes.md
 
+## 2026-03-17 - Retire Rust Access Shim Binary
+- Summary: Removed the leftover Rust `grafana-access-utils` compatibility binary so the crate now publishes one current executable model: `grafana-util <domain> <command>`. The access-domain help surface now renders as `grafana-util access`, and the unified help/docs no longer imply that a separate access executable is still part of the supported output.
+- Tests: Updated Rust parser/help assertions to use the unified access program name and removed the unified-help expectation for the retired shim.
+- Test Run: Pending in this turn.
+- Validation: Pending in this turn.
+- Impact: `rust/src/bin/grafana-access-utils.rs`, `rust/src/access_cli_defs.rs`, `rust/src/cli.rs`, `rust/src/access_rust_tests.rs`, `rust/src/cli_rust_tests.rs`, `docs/user-guide.md`, `docs/DEVELOPER.md`, `docs/overview-rust.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. Any local scripts still invoking the retired Rust binary name will need to switch to `grafana-util access ...`, but that matches the already-documented unified command shape and removes a misleading extra artifact from builds.
+
 ## 2026-03-17 - Formalize Version Sync Workflow
 - Summary: Promoted the existing but stale version helper into the supported maintainer workflow. `VERSION` now matches the current release line, `scripts/set-version.sh` now updates `pyproject.toml`, `rust/Cargo.toml`, and the root package entry in `rust/Cargo.lock`, and the root `Makefile` now exposes `print-version`, `sync-version`, `set-release-version`, and `set-dev-version` targets so release and preview bumps no longer require hand-editing multiple files.
 - Tests: Added focused Python coverage for the version script using isolated temporary files and added packaging assertions for the committed version workflow files and make targets.

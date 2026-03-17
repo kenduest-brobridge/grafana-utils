@@ -1089,7 +1089,7 @@ pub enum AccessCommand {
 
 #[derive(Debug, Clone, Parser)]
 #[command(
-    name = "grafana-access-utils",
+    name = "grafana-util access",
     about = "List and manage Grafana users, orgs, teams, and service accounts.",
     after_help = ACCESS_ROOT_HELP_TEXT
 )]
