@@ -380,7 +380,7 @@ class AccessCliTests(unittest.TestCase):
         source = MODULE_ENTRYPOINT_PATH.read_text(encoding="utf-8")
         self.assertIn("from .unified_cli import main", source)
 
-    def test_parse_args_without_command_prints_top_level_help(self):
+    def test_access_parse_args_without_command_prints_top_level_help(self):
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             with self.assertRaises(SystemExit) as exc:
@@ -390,7 +390,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("team", stdout.getvalue())
         self.assertIn("service-account", stdout.getvalue())
 
-    def test_parse_args_user_without_subcommand_prints_user_help(self):
+    def test_access_parse_args_user_without_subcommand_prints_user_help(self):
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             with self.assertRaises(SystemExit) as exc:
@@ -399,7 +399,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(exc.exception.code, 0)
         self.assertIn("list", stdout.getvalue())
 
-    def test_parse_args_team_without_subcommand_prints_team_help(self):
+    def test_access_parse_args_team_without_subcommand_prints_team_help(self):
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             with self.assertRaises(SystemExit) as exc:
@@ -408,7 +408,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(exc.exception.code, 0)
         self.assertIn("list", stdout.getvalue())
 
-    def test_parse_args_group_without_subcommand_prints_team_help(self):
+    def test_access_parse_args_group_without_subcommand_prints_team_help(self):
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             with self.assertRaises(SystemExit) as exc:
@@ -417,7 +417,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(exc.exception.code, 0)
         self.assertIn("delete", stdout.getvalue())
 
-    def test_parse_args_service_account_token_without_subcommand_prints_token_help(self):
+    def test_access_parse_args_service_account_token_without_subcommand_prints_token_help(self):
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             with self.assertRaises(SystemExit) as exc:
@@ -426,7 +426,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(exc.exception.code, 0)
         self.assertIn("add", stdout.getvalue())
 
-    def test_parse_args_supports_user_list_mode(self):
+    def test_access_parse_args_supports_user_list_mode(self):
         args = access_utils.parse_args(
             [
                 "user",
@@ -451,7 +451,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.per_page, 5)
         self.assertTrue(args.table)
 
-    def test_parse_args_supports_access_list_output_format(self):
+    def test_access_parse_args_supports_access_list_output_format(self):
         user_args = access_utils.parse_args(
             ["user", "list", "--output-format", "json"]
         )
@@ -474,11 +474,11 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(service_account_args.table)
         self.assertFalse(service_account_args.csv)
 
-    def test_parse_args_rejects_access_output_format_with_legacy_flags(self):
+    def test_access_parse_args_rejects_access_output_format_with_legacy_flags(self):
         with self.assertRaises(SystemExit):
             access_utils.parse_args(["user", "list", "--output-format", "table", "--json"])
 
-    def test_parse_args_supports_org_list_mode(self):
+    def test_access_parse_args_supports_org_list_mode(self):
         args = access_utils.parse_args(
             [
                 "org",
@@ -505,7 +505,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.with_users)
         self.assertTrue(args.json)
 
-    def test_parse_args_supports_org_add_mode(self):
+    def test_access_parse_args_supports_org_add_mode(self):
         args = access_utils.parse_args(
             [
                 "org",
@@ -527,7 +527,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.name, "Platform")
         self.assertTrue(args.json)
 
-    def test_parse_args_supports_org_modify_mode(self):
+    def test_access_parse_args_supports_org_modify_mode(self):
         args = access_utils.parse_args(
             [
                 "org",
@@ -552,7 +552,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.set_name, "Platform Two")
         self.assertTrue(args.json)
 
-    def test_parse_args_supports_org_delete_mode(self):
+    def test_access_parse_args_supports_org_delete_mode(self):
         args = access_utils.parse_args(
             [
                 "org",
@@ -576,7 +576,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.yes)
         self.assertTrue(args.json)
 
-    def test_parse_args_supports_org_export_mode(self):
+    def test_access_parse_args_supports_org_export_mode(self):
         args = access_utils.parse_args(
             [
                 "org",
@@ -599,7 +599,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.name, "Platform")
         self.assertTrue(args.with_users)
 
-    def test_parse_args_supports_org_import_mode(self):
+    def test_access_parse_args_supports_org_import_mode(self):
         args = access_utils.parse_args(
             [
                 "org",
@@ -623,7 +623,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.dry_run)
         self.assertTrue(args.yes)
 
-    def test_org_help_uses_basic_auth_and_no_token_flags(self):
+    def test_access_org_help_uses_basic_auth_and_no_token_flags(self):
         parser = access_utils.build_parser()
         org_list_parser = parser._subparsers._group_actions[0].choices["org"]._subparsers._group_actions[0].choices["list"]
         help_text = org_list_parser.format_help()
@@ -633,7 +633,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("--with-users", help_text)
         self.assertNotIn("--token", help_text)
 
-    def test_parse_args_supports_user_add_mode(self):
+    def test_access_parse_args_supports_user_add_mode(self):
         args = access_utils.parse_args(
             [
                 "user",
@@ -673,7 +673,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.grafana_admin, "true")
         self.assertTrue(args.json)
 
-    def test_parse_args_supports_user_add_password_file_mode(self):
+    def test_access_parse_args_supports_user_add_password_file_mode(self):
         args = access_utils.parse_args(
             [
                 "user",
@@ -696,7 +696,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.new_user_password_file, "/tmp/alice-password.txt")
         self.assertFalse(args.prompt_user_password)
 
-    def test_parse_args_supports_user_add_prompt_password_mode(self):
+    def test_access_parse_args_supports_user_add_prompt_password_mode(self):
         args = access_utils.parse_args(
             [
                 "user",
@@ -718,7 +718,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.prompt_user_password)
         self.assertIsNone(args.new_user_password_file)
 
-    def test_parse_args_rejects_multiple_user_add_password_sources(self):
+    def test_access_parse_args_rejects_multiple_user_add_password_sources(self):
         with self.assertRaises(SystemExit):
             access_utils.parse_args(
                 [
@@ -741,7 +741,7 @@ class AccessCliTests(unittest.TestCase):
                 ]
             )
 
-    def test_parse_args_supports_user_modify_mode(self):
+    def test_access_parse_args_supports_user_modify_mode(self):
         args = access_utils.parse_args(
             [
                 "user",
@@ -784,7 +784,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.set_grafana_admin, "true")
         self.assertTrue(args.json)
 
-    def test_parse_args_supports_user_modify_password_file_mode(self):
+    def test_access_parse_args_supports_user_modify_password_file_mode(self):
         args = access_utils.parse_args(
             [
                 "user",
@@ -803,7 +803,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.set_password_file, "/tmp/alice-password.txt")
         self.assertFalse(args.prompt_set_password)
 
-    def test_parse_args_supports_user_modify_prompt_password_mode(self):
+    def test_access_parse_args_supports_user_modify_prompt_password_mode(self):
         args = access_utils.parse_args(
             [
                 "user",
@@ -821,7 +821,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.prompt_set_password)
         self.assertIsNone(args.set_password_file)
 
-    def test_parse_args_rejects_multiple_user_modify_password_sources(self):
+    def test_access_parse_args_rejects_multiple_user_modify_password_sources(self):
         with self.assertRaises(SystemExit):
             access_utils.parse_args(
                 [
@@ -840,7 +840,7 @@ class AccessCliTests(unittest.TestCase):
                 ]
             )
 
-    def test_parse_args_supports_user_delete_mode(self):
+    def test_access_parse_args_supports_user_delete_mode(self):
         args = access_utils.parse_args(
             [
                 "user",
@@ -870,7 +870,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.yes)
         self.assertTrue(args.json)
 
-    def test_parse_args_supports_user_export_mode(self):
+    def test_access_parse_args_supports_user_export_mode(self):
         args = access_utils.parse_args(
             [
                 "user",
@@ -893,7 +893,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.scope, "global")
         self.assertTrue(args.with_teams)
 
-    def test_parse_args_supports_user_import_mode(self):
+    def test_access_parse_args_supports_user_import_mode(self):
         args = access_utils.parse_args(
             [
                 "user",
@@ -916,7 +916,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.scope, "global")
         self.assertTrue(args.replace_existing)
 
-    def test_parse_args_supports_user_diff_mode(self):
+    def test_access_parse_args_supports_user_diff_mode(self):
         args = access_utils.parse_args(
             [
                 "user",
@@ -939,7 +939,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.diff_dir, "/tmp/access-users")
         self.assertEqual(args.scope, "global")
 
-    def test_user_add_help_uses_basic_auth_and_local_password_flags(self):
+    def test_access_user_add_help_uses_basic_auth_and_local_password_flags(self):
         parser = access_utils.build_parser()
         user_add_parser = parser._subparsers._group_actions[0].choices["user"]._subparsers._group_actions[0].choices["add"]
         help_text = user_add_parser.format_help()
@@ -951,7 +951,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("--prompt-user-password", help_text)
         self.assertNotIn("--token", help_text)
 
-    def test_user_modify_help_uses_basic_auth_only(self):
+    def test_access_user_modify_help_uses_basic_auth_only(self):
         parser = access_utils.build_parser()
         user_modify_parser = parser._subparsers._group_actions[0].choices["user"]._subparsers._group_actions[0].choices["modify"]
         help_text = user_modify_parser.format_help()
@@ -963,7 +963,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("--prompt-set-password", help_text)
         self.assertNotIn("--token", help_text)
 
-    def test_user_delete_help_uses_scope_and_confirmation_flags(self):
+    def test_access_user_delete_help_uses_scope_and_confirmation_flags(self):
         parser = access_utils.build_parser()
         user_delete_parser = parser._subparsers._group_actions[0].choices["user"]._subparsers._group_actions[0].choices["delete"]
         help_text = user_delete_parser.format_help()
@@ -974,7 +974,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("Examples:", help_text)
         self.assertIn("grafana-util access user delete", help_text)
 
-    def test_parse_args_supports_team_list_mode(self):
+    def test_access_parse_args_supports_team_list_mode(self):
         args = access_utils.parse_args(
             [
                 "team",
@@ -1001,7 +1001,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.per_page, 5)
         self.assertTrue(args.json)
 
-    def test_parse_args_supports_team_export_mode(self):
+    def test_access_parse_args_supports_team_export_mode(self):
         args = access_utils.parse_args(
             [
                 "team",
@@ -1021,7 +1021,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.export_dir, "tmp-access-teams")
         self.assertTrue(args.with_members)
 
-    def test_parse_args_supports_team_import_mode(self):
+    def test_access_parse_args_supports_team_import_mode(self):
         args = access_utils.parse_args(
             [
                 "team",
@@ -1043,7 +1043,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.replace_existing)
         self.assertTrue(args.yes)
 
-    def test_parse_args_supports_team_diff_mode(self):
+    def test_access_parse_args_supports_team_diff_mode(self):
         args = access_utils.parse_args(
             [
                 "team",
@@ -1063,7 +1063,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.auth_password, "secret")
         self.assertEqual(args.diff_dir, "/tmp/access-teams")
 
-    def test_team_add_help_describes_initial_members_and_admins(self):
+    def test_access_team_add_help_describes_initial_members_and_admins(self):
         parser = access_utils.build_parser()
         team_add_parser = parser._subparsers._group_actions[0].choices["team"]._subparsers._group_actions[0].choices["add"]
         help_text = team_add_parser.format_help()
@@ -1075,14 +1075,14 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("Examples:", help_text)
         self.assertIn("grafana-util access team add", help_text)
 
-    def test_root_help_includes_examples(self):
+    def test_access_root_help_includes_examples(self):
         help_text = access_utils.build_parser().format_help()
 
         self.assertIn("Examples:", help_text)
         self.assertIn("grafana-util access user list", help_text)
         self.assertIn("grafana-util access service-account token add", help_text)
 
-    def test_service_account_token_delete_help_includes_confirmation_example(self):
+    def test_access_service_account_token_delete_help_includes_confirmation_example(self):
         parser = access_utils.build_parser()
         token_delete_parser = (
             parser._subparsers._group_actions[0]
@@ -1098,7 +1098,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("Examples:", help_text)
         self.assertIn("grafana-util access service-account token delete", help_text)
 
-    def test_parse_args_supports_team_add_mode(self):
+    def test_access_parse_args_supports_team_add_mode(self):
         args = access_utils.parse_args(
             [
                 "team",
@@ -1125,7 +1125,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.admin, ["carol"])
         self.assertTrue(args.json)
 
-    def test_parse_args_supports_team_modify_mode(self):
+    def test_access_parse_args_supports_team_modify_mode(self):
         args = access_utils.parse_args(
             [
                 "team",
@@ -1153,7 +1153,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.remove_admin, ["dave@example.com"])
         self.assertTrue(args.json)
 
-    def test_parse_args_supports_team_delete_mode(self):
+    def test_access_parse_args_supports_team_delete_mode(self):
         args = access_utils.parse_args(
             [
                 "team",
@@ -1171,7 +1171,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.yes)
         self.assertTrue(args.json)
 
-    def test_parse_args_supports_user_export_mode(self):
+    def test_access_parse_args_supports_user_export_mode(self):
         args = access_utils.parse_args(
             [
                 "user",
@@ -1200,7 +1200,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.overwrite)
         self.assertTrue(args.dry_run)
 
-    def test_parse_args_supports_user_import_mode(self):
+    def test_access_parse_args_supports_user_import_mode(self):
         args = access_utils.parse_args(
             [
                 "user",
@@ -1224,7 +1224,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.replace_existing)
         self.assertTrue(args.yes)
 
-    def test_parse_args_supports_team_export_mode(self):
+    def test_access_parse_args_supports_team_export_mode(self):
         args = access_utils.parse_args(
             [
                 "team",
@@ -1245,7 +1245,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.with_members)
         self.assertTrue(args.overwrite)
 
-    def test_parse_args_supports_team_import_mode(self):
+    def test_access_parse_args_supports_team_import_mode(self):
         args = access_utils.parse_args(
             [
                 "team",
@@ -1269,7 +1269,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.replace_existing)
         self.assertTrue(args.yes)
 
-    def test_parse_args_supports_group_alias_mode(self):
+    def test_access_parse_args_supports_group_alias_mode(self):
         args = access_utils.parse_args(
             [
                 "group",
@@ -1285,7 +1285,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.team_id, "7")
         self.assertTrue(args.yes)
 
-    def test_parse_args_supports_preferred_auth_aliases(self):
+    def test_access_parse_args_supports_preferred_auth_aliases(self):
         args = access_utils.parse_args(
             [
                 "user",
@@ -1304,13 +1304,13 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.password, "secret")
         self.assertFalse(args.prompt_password)
 
-    def test_parse_args_rejects_legacy_basic_auth_aliases(self):
+    def test_access_parse_args_rejects_legacy_basic_auth_aliases(self):
         with self.assertRaises(SystemExit):
             access_utils.parse_args(["user", "list", "--username", "admin", "--basic-password", "secret"])
         with self.assertRaises(SystemExit):
             access_utils.parse_args(["user", "list", "--basic-user", "admin", "--password", "secret"])
 
-    def test_parse_args_supports_prompt_password(self):
+    def test_access_parse_args_supports_prompt_password(self):
         args = access_utils.parse_args(
             ["user", "list", "--basic-user", "admin", "--prompt-password"]
         )
@@ -1319,13 +1319,13 @@ class AccessCliTests(unittest.TestCase):
         self.assertIsNone(args.password)
         self.assertTrue(args.prompt_password)
 
-    def test_parse_args_supports_prompt_token(self):
+    def test_access_parse_args_supports_prompt_token(self):
         args = access_utils.parse_args(["user", "list", "--prompt-token"])
 
         self.assertTrue(args.prompt_token)
         self.assertIsNone(args.api_token)
 
-    def test_parse_args_supports_insecure_and_ca_cert(self):
+    def test_access_parse_args_supports_insecure_and_ca_cert(self):
         args = access_utils.parse_args(
             ["user", "list", "--ca-cert", "/tmp/grafana-ca.pem"]
         )
@@ -1338,7 +1338,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.insecure)
         self.assertIsNone(args.ca_cert)
 
-    def test_parse_args_supports_insecure_on_destructive_commands(self):
+    def test_access_parse_args_supports_insecure_on_destructive_commands(self):
         cases = [
             ["user", "delete", "--login", "alice", "--scope", "org", "--yes", "--insecure"],
             ["team", "delete", "--name", "ops", "--yes", "--insecure"],
@@ -1369,7 +1369,7 @@ class AccessCliTests(unittest.TestCase):
             self.assertTrue(args.insecure, msg="expected --insecure for %r" % (argv,))
             self.assertIsNone(getattr(args, "ca_cert", None))
 
-    def test_parse_args_rejects_conflicting_tls_flags(self):
+    def test_access_parse_args_rejects_conflicting_tls_flags(self):
         with self.assertRaisesRegex(SystemExit, "2"):
             access_utils.parse_args(["user", "list", "--verify-ssl", "--insecure"])
         with self.assertRaisesRegex(SystemExit, "2"):
@@ -1377,7 +1377,7 @@ class AccessCliTests(unittest.TestCase):
                 ["user", "list", "--ca-cert", "/tmp/grafana-ca.pem", "--insecure"]
             )
 
-    def test_parse_args_supports_service_account_export(self):
+    def test_access_parse_args_supports_service_account_export(self):
         args = access_utils.parse_args(
             [
                 "service-account",
@@ -1395,7 +1395,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.overwrite)
         self.assertTrue(args.dry_run)
 
-    def test_parse_args_supports_service_account_import_and_diff(self):
+    def test_access_parse_args_supports_service_account_import_and_diff(self):
         import_args = access_utils.parse_args(
             [
                 "service-account",
@@ -1431,7 +1431,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(diff_args.command, "diff")
         self.assertEqual(diff_args.diff_dir, "/tmp/service-accounts")
 
-    def test_parse_args_supports_service_account_token_add(self):
+    def test_access_parse_args_supports_service_account_token_add(self):
         args = access_utils.parse_args(
             [
                 "service-account",
@@ -1455,7 +1455,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(args.seconds_to_live, 3600)
         self.assertTrue(args.json)
 
-    def test_parse_args_supports_service_account_delete(self):
+    def test_access_parse_args_supports_service_account_delete(self):
         args = access_utils.parse_args(
             [
                 "service-account",
@@ -1473,7 +1473,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.yes)
         self.assertTrue(args.json)
 
-    def test_parse_args_supports_service_account_token_delete(self):
+    def test_access_parse_args_supports_service_account_token_delete(self):
         args = access_utils.parse_args(
             [
                 "service-account",
@@ -1496,7 +1496,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(args.yes)
         self.assertTrue(args.json)
 
-    def test_build_request_headers_adds_org_id(self):
+    def test_access_build_request_headers_adds_org_id(self):
         args = argparse.Namespace(
             api_token="abc123",
             prompt_token=False,
@@ -1511,7 +1511,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(headers["Authorization"], "Bearer abc123")
         self.assertEqual(headers["X-Grafana-Org-Id"], "7")
 
-    def test_resolve_auth_supports_basic_auth(self):
+    def test_access_resolve_auth_supports_basic_auth(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=False,
@@ -1525,7 +1525,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(auth_mode, "basic")
         self.assertTrue(headers["Authorization"].startswith("Basic "))
 
-    def test_resolve_auth_prefers_explicit_basic_auth_over_env_token(self):
+    def test_access_resolve_auth_prefers_explicit_basic_auth_over_env_token(self):
         import os
 
         args = argparse.Namespace(
@@ -1550,7 +1550,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(auth_mode, "basic")
         self.assertTrue(headers["Authorization"].startswith("Basic "))
 
-    def test_resolve_auth_rejects_mixed_auth(self):
+    def test_access_resolve_auth_rejects_mixed_auth(self):
         args = argparse.Namespace(
             api_token="abc123",
             prompt_token=False,
@@ -1562,7 +1562,7 @@ class AccessCliTests(unittest.TestCase):
         with self.assertRaisesRegex(access_utils.GrafanaError, "Choose either token auth"):
             access_utils.resolve_auth(args)
 
-    def test_resolve_auth_supports_prompt_password(self):
+    def test_access_resolve_auth_supports_prompt_password(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=False,
@@ -1578,7 +1578,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertTrue(headers["Authorization"].startswith("Basic "))
         prompt.assert_called_once_with("Grafana Basic auth password: ")
 
-    def test_resolve_auth_supports_prompt_token(self):
+    def test_access_resolve_auth_supports_prompt_token(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=True,
@@ -1594,7 +1594,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(headers["Authorization"], "Bearer token-secret")
         prompt.assert_called_once_with("Grafana API token: ")
 
-    def test_resolve_auth_rejects_prompt_without_username(self):
+    def test_access_resolve_auth_rejects_prompt_without_username(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=False,
@@ -1609,7 +1609,7 @@ class AccessCliTests(unittest.TestCase):
         ):
             access_utils.resolve_auth(args)
 
-    def test_resolve_auth_rejects_prompt_with_explicit_password(self):
+    def test_access_resolve_auth_rejects_prompt_with_explicit_password(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=False,
@@ -1624,7 +1624,7 @@ class AccessCliTests(unittest.TestCase):
         ):
             access_utils.resolve_auth(args)
 
-    def test_resolve_auth_rejects_explicit_and_prompt_token(self):
+    def test_access_resolve_auth_rejects_explicit_and_prompt_token(self):
         args = argparse.Namespace(
             api_token="abc123",
             prompt_token=True,
@@ -1639,7 +1639,7 @@ class AccessCliTests(unittest.TestCase):
         ):
             access_utils.resolve_auth(args)
 
-    def test_run_builds_access_client_with_ca_cert(self):
+    def test_access_run_builds_access_client_with_ca_cert(self):
         args = argparse.Namespace(
             url="https://grafana.example.com",
             api_token="abc123",
@@ -1670,7 +1670,7 @@ class AccessCliTests(unittest.TestCase):
         )
         dispatch.assert_called_once()
 
-    def test_resolve_user_secret_inputs_reads_new_user_password_file(self):
+    def test_access_resolve_user_secret_inputs_reads_new_user_password_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             password_path = Path(temp_dir) / "new-user-password.txt"
             password_path.write_text("secret123\n", encoding="utf-8")
@@ -1686,7 +1686,7 @@ class AccessCliTests(unittest.TestCase):
 
         self.assertEqual(resolved.new_user_password, "secret123")
 
-    def test_resolve_user_secret_inputs_prompts_for_new_user_password(self):
+    def test_access_resolve_user_secret_inputs_prompts_for_new_user_password(self):
         args = argparse.Namespace(
             resource="user",
             command="add",
@@ -1701,7 +1701,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(resolved.new_user_password, "secret123")
         prompt.assert_called_once_with("New Grafana user password: ")
 
-    def test_resolve_user_secret_inputs_reads_set_password_file(self):
+    def test_access_resolve_user_secret_inputs_reads_set_password_file(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             password_path = Path(temp_dir) / "set-password.txt"
             password_path.write_text("new-secret\n", encoding="utf-8")
@@ -1717,7 +1717,7 @@ class AccessCliTests(unittest.TestCase):
 
         self.assertEqual(resolved.set_password, "new-secret")
 
-    def test_resolve_user_secret_inputs_prompts_for_set_password(self):
+    def test_access_resolve_user_secret_inputs_prompts_for_set_password(self):
         args = argparse.Namespace(
             resource="user",
             command="modify",
@@ -1732,39 +1732,39 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(resolved.set_password, "new-secret")
         prompt.assert_called_once_with("Updated Grafana user password: ")
 
-    def test_validate_user_list_auth_rejects_global_token_auth(self):
+    def test_access_validate_user_list_auth_rejects_global_token_auth(self):
         args = argparse.Namespace(scope="global", with_teams=False)
 
         with self.assertRaisesRegex(access_utils.GrafanaError, "does not support API token auth"):
             access_utils.validate_user_list_auth(args, "token")
 
-    def test_validate_user_list_auth_rejects_with_teams_token_auth(self):
+    def test_access_validate_user_list_auth_rejects_with_teams_token_auth(self):
         args = argparse.Namespace(scope="org", with_teams=True)
 
         with self.assertRaisesRegex(access_utils.GrafanaError, "does not support API token auth"):
             access_utils.validate_user_list_auth(args, "token")
 
-    def test_validate_user_add_auth_rejects_token_auth(self):
+    def test_access_validate_user_add_auth_rejects_token_auth(self):
         with self.assertRaisesRegex(access_utils.GrafanaError, "does not support API token auth"):
             access_utils.validate_user_add_auth("token")
 
-    def test_validate_user_modify_auth_rejects_token_auth(self):
+    def test_access_validate_user_modify_auth_rejects_token_auth(self):
         with self.assertRaisesRegex(access_utils.GrafanaError, "does not support API token auth"):
             access_utils.validate_user_modify_auth("token")
 
-    def test_validate_user_delete_auth_rejects_global_token_auth(self):
+    def test_access_validate_user_delete_auth_rejects_global_token_auth(self):
         args = argparse.Namespace(scope="global")
 
         with self.assertRaisesRegex(access_utils.GrafanaError, "does not support API token auth"):
             access_utils.validate_user_delete_auth(args, "token")
 
-    def test_validate_user_delete_args_requires_confirmation(self):
+    def test_access_validate_user_delete_args_requires_confirmation(self):
         args = argparse.Namespace(yes=False)
 
         with self.assertRaisesRegex(access_utils.GrafanaError, "requires --yes"):
             access_utils.validate_user_delete_args(args)
 
-    def test_validate_user_modify_args_requires_changes(self):
+    def test_access_validate_user_modify_args_requires_changes(self):
         args = argparse.Namespace(
             set_login=None,
             set_email=None,
@@ -1777,7 +1777,7 @@ class AccessCliTests(unittest.TestCase):
         with self.assertRaisesRegex(access_utils.GrafanaError, "requires at least one"):
             access_utils.validate_user_modify_args(args)
 
-    def test_validate_team_modify_args_requires_changes(self):
+    def test_access_validate_team_modify_args_requires_changes(self):
         args = argparse.Namespace(
             add_member=[],
             remove_member=[],
@@ -1788,7 +1788,7 @@ class AccessCliTests(unittest.TestCase):
         with self.assertRaisesRegex(access_utils.GrafanaError, "requires at least one"):
             access_utils.validate_team_modify_args(args)
 
-    def test_list_users_with_client_filters_org_users(self):
+    def test_access_list_users_with_client_filters_org_users(self):
         client = FakeAccessClient(
             org_users=[
                 {
@@ -1832,7 +1832,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("login=alice", rendered)
         self.assertNotIn("login=bob", rendered)
 
-    def test_build_user_rows_supports_global_scope_with_teams(self):
+    def test_access_build_user_rows_supports_global_scope_with_teams(self):
         client = FakeAccessClient(
             global_users=[
                 {
@@ -1869,7 +1869,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(len(users), 1)
         self.assertEqual(users[0]["teams"], ["Ops", "SRE"])
 
-    def test_render_user_json_is_machine_readable(self):
+    def test_access_render_user_json_is_machine_readable(self):
         payload = access_utils.render_user_json(
             [
                 {
@@ -1888,7 +1888,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn('"login": "alice"', payload)
         self.assertIn('"teams": [', payload)
 
-    def test_build_team_rows_filters_and_attaches_members(self):
+    def test_access_build_team_rows_filters_and_attaches_members(self):
         client = FakeAccessClient(
             teams=[
                 {
@@ -1926,7 +1926,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(len(teams), 1)
         self.assertEqual(teams[0]["members"], ["alice", "bob"])
 
-    def test_render_team_json_is_machine_readable(self):
+    def test_access_render_team_json_is_machine_readable(self):
         payload = access_utils.render_team_json(
             [
                 {
@@ -1942,7 +1942,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn('"name": "Ops"', payload)
         self.assertIn('"members": [', payload)
 
-    def test_list_teams_with_client_renders_table(self):
+    def test_access_list_teams_with_client_renders_table(self):
         client = FakeAccessClient(
             teams=[
                 {
@@ -1978,7 +1978,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("alice", rendered)
         self.assertIn("Listed 1 team(s)", rendered)
 
-    def test_modify_team_with_client_adds_and_removes_members(self):
+    def test_access_modify_team_with_client_adds_and_removes_members(self):
         client = FakeAccessClient(
             org_users=[
                 {"userId": 11, "login": "alice", "email": "alice@example.com"},
@@ -2019,7 +2019,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn('"addedMembers": [', output.getvalue())
         self.assertIn('"removedMembers": [', output.getvalue())
 
-    def test_add_team_with_client_creates_team_and_initial_memberships(self):
+    def test_access_add_team_with_client_creates_team_and_initial_memberships(self):
         client = FakeAccessClient(
             org_users=[
                 {"userId": 11, "login": "alice", "email": "alice@example.com"},
@@ -2061,7 +2061,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn('"teamId": "40"', output.getvalue())
         self.assertIn('"addedAdmins": [', output.getvalue())
 
-    def test_add_team_with_client_prints_text_summary_by_default(self):
+    def test_access_add_team_with_client_prints_text_summary_by_default(self):
         client = FakeAccessClient(
             org_users=[
                 {"userId": 11, "login": "alice", "email": "alice@example.com"},
@@ -2085,7 +2085,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("email=ops@example.com", output.getvalue())
         self.assertIn("addedMembers=alice@example.com", output.getvalue())
 
-    def test_add_team_with_client_requires_resolvable_initial_users(self):
+    def test_access_add_team_with_client_requires_resolvable_initial_users(self):
         client = FakeAccessClient()
         args = argparse.Namespace(
             name="Ops",
@@ -2098,7 +2098,7 @@ class AccessCliTests(unittest.TestCase):
         with self.assertRaisesRegex(access_utils.GrafanaError, "User not found by login or email"):
             access_utils.add_team_with_client(args, client)
 
-    def test_modify_team_with_client_updates_admins_with_bulk_payload(self):
+    def test_access_modify_team_with_client_updates_admins_with_bulk_payload(self):
         client = FakeAccessClient(
             org_users=[
                 {"userId": 21, "login": "owner", "email": "owner@example.com"},
@@ -2161,7 +2161,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("addedAdmins=carol@example.com", rendered)
         self.assertIn("removedAdmins=owner@example.com", rendered)
 
-    def test_modify_team_with_client_rejects_admin_changes_without_metadata(self):
+    def test_access_modify_team_with_client_rejects_admin_changes_without_metadata(self):
         client = FakeAccessClient(
             org_users=[
                 {"userId": 23, "login": "carol", "email": "carol@example.com"},
@@ -2192,7 +2192,7 @@ class AccessCliTests(unittest.TestCase):
         with self.assertRaisesRegex(access_utils.GrafanaError, "admin state metadata"):
             access_utils.modify_team_with_client(args, client)
 
-    def test_sync_team_members_for_import_updates_admin_and_membership_state(self):
+    def test_access_sync_team_members_for_import_updates_admin_and_membership_state(self):
         client = FakeAccessClient(org_users=[])
 
         existing_members = {
@@ -2242,7 +2242,7 @@ class AccessCliTests(unittest.TestCase):
             ],
         )
 
-    def test_delete_team_with_client_deletes_by_name(self):
+    def test_access_delete_team_with_client_deletes_by_name(self):
         client = FakeAccessClient(
             teams=[
                 {"id": 3, "name": "Ops", "email": "ops@example.com"},
@@ -2266,7 +2266,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn('"teamId": "3"', output.getvalue())
         self.assertIn('"name": "Ops"', output.getvalue())
 
-    def test_diff_users_with_client_returns_expected_difference_count(self):
+    def test_access_diff_users_with_client_returns_expected_difference_count(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             diff_dir = Path(temp_dir)
             (diff_dir / "users.json").write_text(
@@ -2326,7 +2326,7 @@ class AccessCliTests(unittest.TestCase):
             self.assertEqual(result, 4)
             self.assertIn("Diff checked", output.getvalue())
 
-    def test_diff_teams_with_client_returns_expected_difference_count(self):
+    def test_access_diff_teams_with_client_returns_expected_difference_count(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             diff_dir = Path(temp_dir)
             (diff_dir / "teams.json").write_text(
@@ -2354,7 +2354,7 @@ class AccessCliTests(unittest.TestCase):
             self.assertEqual(result, 3)
             self.assertIn("Diff checked", output.getvalue())
 
-    def test_list_orgs_with_client_renders_json_with_users(self):
+    def test_access_list_orgs_with_client_renders_json_with_users(self):
         client = FakeAccessClient(
             organizations=[
                 {"id": 1, "name": "Main Org."},
@@ -2391,7 +2391,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn('"name": "Main Org."', output.getvalue())
         self.assertIn('"users": [', output.getvalue())
 
-    def test_add_org_with_client_creates_organization(self):
+    def test_access_add_org_with_client_creates_organization(self):
         client = FakeAccessClient()
         args = argparse.Namespace(
             name="Platform",
@@ -2406,7 +2406,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(client.created_organizations, [{"name": "Platform"}])
         self.assertIn('"name": "Platform"', output.getvalue())
 
-    def test_modify_org_with_client_updates_name_by_org_id(self):
+    def test_access_modify_org_with_client_updates_name_by_org_id(self):
         client = FakeAccessClient(
             organizations=[
                 {"id": 7, "name": "Platform"},
@@ -2431,7 +2431,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("id=7", output.getvalue())
         self.assertIn("name=Platform Two", output.getvalue())
 
-    def test_delete_org_with_client_deletes_by_name(self):
+    def test_access_delete_org_with_client_deletes_by_name(self):
         client = FakeAccessClient(
             organizations=[
                 {"id": 7, "name": "Platform"},
@@ -2453,7 +2453,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn('"id": "7"', output.getvalue())
         self.assertIn('"name": "Platform"', output.getvalue())
 
-    def test_export_orgs_with_client_writes_org_bundle_with_users(self):
+    def test_access_export_orgs_with_client_writes_org_bundle_with_users(self):
         client = FakeAccessClient(
             organizations=[
                 {"id": 1, "name": "Main Org."},
@@ -2493,7 +2493,7 @@ class AccessCliTests(unittest.TestCase):
             self.assertEqual(bundle["records"][0]["users"][0]["login"], "alice")
             self.assertIn("Exported 1 org(s)", output.getvalue())
 
-    def test_import_orgs_with_client_creates_missing_org_and_adds_users(self):
+    def test_access_import_orgs_with_client_creates_missing_org_and_adds_users(self):
         client = FakeAccessClient()
         with tempfile.TemporaryDirectory() as temp_dir:
             payload = {
@@ -2535,7 +2535,7 @@ class AccessCliTests(unittest.TestCase):
             )
             self.assertIn("Import summary:", output.getvalue())
 
-    def test_list_service_accounts_with_client_renders_json(self):
+    def test_access_list_service_accounts_with_client_renders_json(self):
         client = FakeAccessClient(
             service_accounts=[
                 {
@@ -2566,7 +2566,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(client.service_account_searches, [("access", 1, 10)])
         self.assertIn('"name": "access-cli-test"', output.getvalue())
 
-    def test_add_user_with_client_uses_expected_payload_and_follow_up_calls(self):
+    def test_access_add_user_with_client_uses_expected_payload_and_follow_up_calls(self):
         client = FakeAccessClient()
         args = argparse.Namespace(
             login="alice",
@@ -2601,7 +2601,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn('"login": "alice"', output.getvalue())
         self.assertIn('"orgRole": "Editor"', output.getvalue())
 
-    def test_modify_user_with_client_updates_all_supported_fields(self):
+    def test_access_modify_user_with_client_updates_all_supported_fields(self):
         client = FakeAccessClient(
             global_users=[
                 {
@@ -2650,7 +2650,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn('"login": "alice2"', output.getvalue())
         self.assertIn('"orgRole": "Admin"', output.getvalue())
 
-    def test_modify_user_with_client_can_resolve_by_user_id(self):
+    def test_access_modify_user_with_client_can_resolve_by_user_id(self):
         client = FakeAccessClient(
             global_users=[
                 {
@@ -2684,7 +2684,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(client.updated_users, [("9", {"email": "alice3@example.com"})])
         self.assertIn("Modified user alice", output.getvalue())
 
-    def test_delete_user_with_client_deletes_global_user_by_login(self):
+    def test_access_delete_user_with_client_deletes_global_user_by_login(self):
         client = FakeAccessClient(
             global_users=[
                 {
@@ -2715,7 +2715,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn('"login": "alice"', output.getvalue())
         self.assertIn('"scope": "global"', output.getvalue())
 
-    def test_delete_user_with_client_removes_org_user_by_user_id(self):
+    def test_access_delete_user_with_client_removes_org_user_by_user_id(self):
         client = FakeAccessClient(
             org_users=[
                 {
@@ -2746,7 +2746,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("Deleted user bob", output.getvalue())
         self.assertIn("scope=org", output.getvalue())
 
-    def test_add_service_account_with_client_uses_expected_payload(self):
+    def test_access_add_service_account_with_client_uses_expected_payload(self):
         client = FakeAccessClient()
         args = argparse.Namespace(
             name="robot",
@@ -2767,7 +2767,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn('"role": "None"', output.getvalue())
         self.assertIn('"disabled": "true"', output.getvalue())
 
-    def test_export_service_accounts_with_client_writes_bundle(self):
+    def test_access_export_service_accounts_with_client_writes_bundle(self):
         client = FakeAccessClient(
             service_accounts=[
                 {
@@ -2798,7 +2798,7 @@ class AccessCliTests(unittest.TestCase):
             self.assertEqual(bundle["records"][0]["name"], "robot")
             self.assertIn("Exported 1 service-account(s)", output.getvalue())
 
-    def test_import_service_accounts_with_client_updates_existing(self):
+    def test_access_import_service_accounts_with_client_updates_existing(self):
         client = FakeAccessClient(
             service_accounts=[
                 {
@@ -2849,7 +2849,7 @@ class AccessCliTests(unittest.TestCase):
             )
             self.assertIn("Updated service-account robot", output.getvalue())
 
-    def test_diff_service_accounts_with_client_returns_expected_difference_count(self):
+    def test_access_diff_service_accounts_with_client_returns_expected_difference_count(self):
         client = FakeAccessClient(
             service_accounts=[
                 {
@@ -2891,7 +2891,7 @@ class AccessCliTests(unittest.TestCase):
             self.assertEqual(result, 3)
             self.assertIn("Diff checked", output.getvalue())
 
-    def test_lookup_service_account_id_by_name_finds_exact_match(self):
+    def test_access_lookup_service_account_id_by_name_finds_exact_match(self):
         client = FakeAccessClient(
             service_accounts=[
                 {"id": 4, "name": "robot", "login": "sa-robot"},
@@ -2906,7 +2906,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(service_account_id, "4")
         self.assertEqual(client.service_account_searches, [("robot", 1, 100)])
 
-    def test_add_service_account_token_with_client_resolves_name(self):
+    def test_access_add_service_account_token_with_client_resolves_name(self):
         client = FakeAccessClient(
             service_accounts=[
                 {"id": 7, "name": "robot", "login": "sa-robot"},
@@ -2932,7 +2932,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn('"serviceAccountId": "7"', output.getvalue())
         self.assertIn('"name": "robot-token"', output.getvalue())
 
-    def test_delete_service_account_with_client_deletes_by_name(self):
+    def test_access_delete_service_account_with_client_deletes_by_name(self):
         client = FakeAccessClient(
             service_accounts=[
                 {"id": 7, "name": "robot", "login": "sa-robot", "role": "Viewer"},
@@ -2956,7 +2956,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn("serviceAccountId=7", output.getvalue())
         self.assertIn("name=robot", output.getvalue())
 
-    def test_delete_service_account_token_with_client_resolves_token_name(self):
+    def test_access_delete_service_account_token_with_client_resolves_token_name(self):
         client = FakeAccessClient(
             service_accounts=[
                 {"id": 7, "name": "robot", "login": "sa-robot"},
@@ -2991,7 +2991,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertIn('"tokenId": "4"', output.getvalue())
         self.assertIn('"tokenName": "nightly"', output.getvalue())
 
-    def test_dispatch_access_command_routes_user_export_import(self):
+    def test_access_dispatch_access_command_routes_user_export_import(self):
         client = FakeAccessClient()
         args = argparse.Namespace(resource="user", command="export", export_dir="tmp", url="http://127.0.0.1:3000")
         with mock.patch("grafana_utils.access.workflows.export_users_with_client", return_value=77) as export_users:
@@ -3017,7 +3017,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(result, 99)
         diff_users.assert_called_once_with(args, client)
 
-    def test_dispatch_access_command_routes_team_export_import(self):
+    def test_access_dispatch_access_command_routes_team_export_import(self):
         client = FakeAccessClient()
         args = argparse.Namespace(resource="team", command="export", export_dir="tmp")
         with mock.patch("grafana_utils.access.workflows.export_teams_with_client", return_value=55) as export_teams:
@@ -3043,7 +3043,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(result, 44)
         diff_teams.assert_called_once_with(args, client)
 
-    def test_dispatch_access_command_routes_org_commands(self):
+    def test_access_dispatch_access_command_routes_org_commands(self):
         client = FakeAccessClient()
 
         args = argparse.Namespace(resource="org", command="list", with_users=False)
@@ -3089,7 +3089,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(result, 67)
         import_orgs.assert_called_once_with(args, client)
 
-    def test_dispatch_access_command_routes_service_account_export_import_diff(self):
+    def test_access_dispatch_access_command_routes_service_account_export_import_diff(self):
         client = FakeAccessClient()
         args = argparse.Namespace(resource="service-account", command="export", export_dir="tmp")
         with mock.patch("grafana_utils.access.workflows.export_service_accounts_with_client", return_value=33) as export_service_accounts:
@@ -3118,7 +3118,7 @@ class AccessCliTests(unittest.TestCase):
         self.assertEqual(result, 11)
         diff_service_accounts.assert_called_once_with(args, client)
 
-    def test_main_returns_one_on_auth_error(self):
+    def test_access_main_returns_one_on_auth_error(self):
         stderr = io.StringIO()
         with redirect_stderr(stderr):
             result = access_utils.main(

@@ -1,3 +1,7 @@
+"""
+Flux analyzer for dashboard query inspection.
+"""
+
 from typing import Any
 
 from .contract import (
@@ -10,6 +14,7 @@ from .contract import (
 
 
 def extract_flux_pipeline_functions(query: str) -> list[str]:
+    """Extract function names from Flux pipeline stages."""
     return unique_strings(
         extract_string_values(
             query,
@@ -19,6 +24,11 @@ def extract_flux_pipeline_functions(query: str) -> list[str]:
 
 
 def analyze_query(panel: dict[str, Any], target: dict[str, Any], query_field: str, query_text: str) -> dict[str, Any]:
+    """Build normalized analysis output for a Flux query."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 16
+
     del panel, target, query_field
     return normalize_query_analysis(
         {

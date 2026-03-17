@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 
 def sanitize_path_component(value: str) -> str:
+    """Sanitize path component implementation."""
     normalized = re.sub(r"[^\w.\- ]+", "_", value.strip(), flags=re.UNICODE)
     normalized = re.sub(r"\s+", "_", normalized)
     normalized = re.sub(r"_+", "_", normalized)
@@ -22,6 +23,11 @@ def build_output_path(
     default_dashboard_title: str,
     default_unknown_uid: str,
 ) -> Path:
+    """Build output path implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 9
+
     folder_title = summary.get("folderTitle") or default_folder_title
     folder_name = sanitize_path_component(str(folder_title))
     title = sanitize_path_component(
@@ -40,6 +46,10 @@ def build_all_orgs_output_dir(
     default_unknown_uid: str,
 ) -> Path:
     """Return one org-prefixed export directory for multi-org dashboard exports."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 9
+
     org_id = sanitize_path_component(str(org.get("id") or default_unknown_uid))
     org_name = sanitize_path_component(str(org.get("name") or "org"))
     return output_dir / ("org_%s_%s" % (org_id, org_name))
@@ -51,6 +61,10 @@ def build_export_variant_dirs(
     prompt_export_subdir: str,
 ) -> tuple[Path, Path]:
     """Return the raw/ and prompt/ export directories for one dashboard export root."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return output_dir / raw_export_subdir, output_dir / prompt_export_subdir
 
 
@@ -76,6 +90,10 @@ def write_dashboard(
     error_cls: Any,
 ) -> None:
     """Write one dashboard JSON file, creating parent directories as needed."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 59
+
     ensure_dashboard_write_target(output_path, overwrite, error_cls)
     output_path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
@@ -85,6 +103,10 @@ def write_dashboard(
 
 def write_json_document(payload: Any, output_path: Path) -> None:
     """Write a JSON file with the formatting used by this repository."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
@@ -99,6 +121,10 @@ def build_dashboard_index_item(
     default_org_id: str,
 ) -> dict[str, str]:
     """Build the shared root index metadata for one exported dashboard."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return {
         "uid": uid,
         "title": str(summary.get("title") or ""),
@@ -114,6 +140,10 @@ def build_variant_index(
     format_name: str,
 ) -> list[dict[str, str]]:
     """Build one variant-specific index file from the shared root index items."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return [
         {
             "uid": item["uid"],
@@ -137,6 +167,10 @@ def build_root_export_index(
     root_index_kind: str,
 ) -> dict[str, Any]:
     """Build the versioned root manifest for one dashboard export run."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return {
         "schemaVersion": tool_schema_version,
         "kind": root_index_kind,
@@ -158,6 +192,10 @@ def build_export_metadata(
     datasources_file: Optional[str] = None,
 ) -> dict[str, Any]:
     """Describe one export directory in a small, versioned manifest."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     metadata = {
         "schemaVersion": tool_schema_version,
         "kind": root_index_kind,

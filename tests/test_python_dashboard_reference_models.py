@@ -10,7 +10,7 @@ from grafana_utils.dashboards.reference_models import (
 
 
 class DashboardReferenceModelTests(unittest.TestCase):
-    def test_collect_datasource_reference_index_deduplicates(self):
+    def test_dashboard_reference_models_collect_datasource_reference_index_deduplicates(self):
         references = [
             {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"},
             {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"},
@@ -22,7 +22,7 @@ class DashboardReferenceModelTests(unittest.TestCase):
         self.assertIn("loki-main", index)
         self.assertEqual(index["prom-main"].datasource_type, "prometheus")
 
-    def test_dashboard_reference_from_mapping(self):
+    def test_dashboard_reference_models_dashboard_reference_from_mapping(self):
         record = DashboardReference.from_mapping(
             {
                 "uid": "cpu-main",
@@ -35,7 +35,7 @@ class DashboardReferenceModelTests(unittest.TestCase):
         self.assertEqual(record.title, "CPU Main")
         self.assertEqual(record.folder_path, "Platform / Infra")
 
-    def test_query_reference_uses_panel_fallback(self):
+    def test_dashboard_reference_models_query_reference_uses_panel_fallback(self):
         reference = DashboardQueryReference.from_mappings(
             dashboard={"uid": "cpu-main", "title": "CPU Main"},
             panel={"id": 7, "title": "CPU Usage", "type": "timeseries"},
@@ -52,7 +52,7 @@ class DashboardReferenceModelTests(unittest.TestCase):
         self.assertEqual(reference.panel.panel_id, "7")
         self.assertEqual(reference.query_field, "expr")
 
-    def test_dedupe_text_sequence(self):
+    def test_dashboard_reference_models_dedupe_text_sequence(self):
         values = ["a", "b", "a", "c", "", "b"]
         self.assertEqual(dedupe_text_sequence(values), ["a", "b", "c"])
 

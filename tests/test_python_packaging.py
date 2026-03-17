@@ -15,42 +15,42 @@ VERSION_PATH = REPO_ROOT / "VERSION"
 
 
 class PackagingTests(unittest.TestCase):
-    def test_pyproject_exists(self):
+    def test_packaging_pyproject_exists(self):
         self.assertTrue(PYPROJECT_PATH.is_file())
 
-    def test_repo_commits_makefile_version_sources(self):
+    def test_packaging_repo_commits_makefile_version_sources(self):
         self.assertTrue(MAKEFILE_PATH.is_file())
         self.assertTrue(SET_VERSION_SCRIPT_PATH.is_file())
         self.assertTrue(VERSION_PATH.is_file())
 
-    def test_ci_python_quality_installs_project_runtime_dependencies(self):
+    def test_packaging_ci_python_quality_installs_project_runtime_dependencies(self):
         content = CI_WORKFLOW_PATH.read_text(encoding="utf-8")
 
         self.assertIn("python3 -m pip install --upgrade pip .", content)
 
-    def test_pyproject_declares_console_scripts(self):
+    def test_packaging_pyproject_declares_console_scripts(self):
         content = PYPROJECT_PATH.read_text(encoding="utf-8")
 
         self.assertRegex(content, r'(?m)^\[project\.scripts\]$')
         self.assertRegex(content, r'(?m)^grafana-util = "grafana_utils\.unified_cli:main"$')
         self.assertNotRegex(content, r'(?m)^grafana-access-utils = ')
 
-    def test_pyproject_declares_base_requests_dependency(self):
+    def test_packaging_pyproject_declares_base_requests_dependency(self):
         content = PYPROJECT_PATH.read_text(encoding="utf-8")
 
         self.assertIn('requests>=2.27,<3', content)
 
-    def test_pyproject_requires_python39_or_newer(self):
+    def test_packaging_pyproject_requires_python39_or_newer(self):
         content = PYPROJECT_PATH.read_text(encoding="utf-8")
 
         self.assertIn('requires-python = ">=3.9"', content)
 
-    def test_pyproject_finds_package_submodules(self):
+    def test_packaging_pyproject_finds_package_submodules(self):
         content = PYPROJECT_PATH.read_text(encoding="utf-8")
 
         self.assertIn('include = ["grafana_utils", "grafana_utils.*"]', content)
 
-    def test_pyproject_declares_poetry_dev_group(self):
+    def test_packaging_pyproject_declares_poetry_dev_group(self):
         content = PYPROJECT_PATH.read_text(encoding="utf-8")
 
         self.assertRegex(content, r"(?m)^\[tool\.poetry\]$")
@@ -63,13 +63,13 @@ class PackagingTests(unittest.TestCase):
         self.assertIn('setuptools = ">=59"', content)
         self.assertIn('wheel = ">=0.45,<1"', content)
 
-    def test_package_declares_module_entrypoint(self):
+    def test_packaging_package_declares_module_entrypoint(self):
         self.assertTrue(MODULE_ENTRYPOINT_PATH.is_file())
 
-    def test_repo_commits_poetry_lock(self):
+    def test_packaging_repo_commits_poetry_lock(self):
         self.assertTrue(POETRY_LOCK_PATH.is_file())
 
-    def test_makefile_declares_version_targets(self):
+    def test_packaging_makefile_declares_version_targets(self):
         content = MAKEFILE_PATH.read_text(encoding="utf-8")
 
         self.assertIn("print-version:", content)
@@ -77,7 +77,7 @@ class PackagingTests(unittest.TestCase):
         self.assertIn("set-release-version:", content)
         self.assertIn("set-dev-version:", content)
 
-    def test_macos_arm64_build_script_resigns_copied_binary(self):
+    def test_packaging_macos_arm64_build_script_resigns_copied_binary(self):
         content = BUILD_RUST_MACOS_ARM64_SCRIPT_PATH.read_text(encoding="utf-8")
 
         self.assertIn('cp "${RUST_DIR}/target/release/grafana-util" "${OUTPUT_DIR}/grafana-util"', content)

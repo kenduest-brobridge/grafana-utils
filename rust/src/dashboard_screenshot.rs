@@ -29,7 +29,12 @@ use super::{
     ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme,
 };
 
+/// validate screenshot args.
 pub fn validate_screenshot_args(args: &ScreenshotArgs) -> Result<()> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: dashboard_rust_tests.rs:validate_screenshot_args_rejects_invalid_device_scale_factor, dashboard_rust_tests.rs:validate_screenshot_args_rejects_invalid_var_assignment, dashboard_rust_tests.rs:validate_screenshot_args_rejects_pdf_split_output, dashboard_rust_tests.rs:validate_screenshot_args_rejects_split_output_without_full_page, dashboard_screenshot.rs:capture_dashboard_screenshot
+// Downstream callees: common.rs:message, dashboard_screenshot.rs:infer_screenshot_output_format, dashboard_screenshot.rs:parse_query_fragment, dashboard_screenshot.rs:parse_var_assignment
+
     if args
         .dashboard_uid
         .as_deref()
@@ -88,6 +93,7 @@ pub fn validate_screenshot_args(args: &ScreenshotArgs) -> Result<()> {
     Ok(())
 }
 
+/// infer screenshot output format.
 pub fn infer_screenshot_output_format(
     output: &Path,
     explicit: Option<ScreenshotOutputFormat>,
@@ -115,7 +121,15 @@ pub fn infer_screenshot_output_format(
     }
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_dashboard_capture_url(args: &ScreenshotArgs) -> Result<String> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: dashboard_rust_tests.rs:build_dashboard_capture_url_includes_panel_time_theme_and_vars, dashboard_rust_tests.rs:build_dashboard_capture_url_merges_vars_query_between_url_and_explicit_vars, dashboard_rust_tests.rs:build_dashboard_capture_url_preserves_non_var_query_from_vars_query, dashboard_rust_tests.rs:build_dashboard_capture_url_reuses_full_dashboard_url_state, dashboard_rust_tests.rs:build_dashboard_capture_url_supports_datasource_style_template_variables, dashboard_screenshot.rs:capture_dashboard_screenshot
+// Downstream callees: common.rs:message, dashboard_screenshot.rs:parse_dashboard_url_state, dashboard_screenshot.rs:parse_query_fragment, dashboard_screenshot.rs:parse_var_assignment
+
     let mut url = match args.dashboard_url.as_deref().map(str::trim) {
         Some(value) if !value.is_empty() => Url::parse(value)
             .map_err(|error| message(format!("Invalid --dashboard-url: {error}")))?,
@@ -220,7 +234,12 @@ pub fn build_dashboard_capture_url(args: &ScreenshotArgs) -> Result<String> {
     Ok(url.to_string())
 }
 
+/// capture dashboard screenshot.
 pub fn capture_dashboard_screenshot(args: &ScreenshotArgs) -> Result<()> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: dashboard.rs:run_dashboard_cli, dashboard.rs:run_dashboard_cli_with_client
+// Downstream callees: common.rs:message, dashboard_screenshot.rs:apply_header_if_requested, dashboard_screenshot.rs:build_browser, dashboard_screenshot.rs:build_browser_headers, dashboard_screenshot.rs:build_dashboard_capture_url, dashboard_screenshot.rs:build_header_spec, dashboard_screenshot.rs:build_screenshot_clip, dashboard_screenshot.rs:capture_full_page_segments, dashboard_screenshot.rs:collapse_sidebar_if_present, dashboard_screenshot.rs:configure_capture_viewport, dashboard_screenshot.rs:infer_screenshot_output_format, dashboard_screenshot.rs:prepare_dashboard_capture_dom ...
+
     let mut resolved_args = args.clone();
     validate_screenshot_args(&resolved_args)?;
     let output_format =
@@ -815,6 +834,10 @@ struct DashboardUrlState {
 }
 
 fn parse_dashboard_url_state(url: &Url) -> DashboardUrlState {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: dashboard_screenshot.rs:build_dashboard_capture_url, dashboard_screenshot.rs:resolve_dashboard_uid
+// Downstream callees: 無
+
     let mut state = DashboardUrlState::default();
     let segments = match url.path_segments() {
         Some(values) => values.collect::<Vec<_>>(),
@@ -1509,6 +1532,7 @@ fn build_full_page_manifest(
     })
 }
 
+/// Purpose: implementation note.
 pub(crate) fn resolve_manifest_title(
     dashboard_uid: Option<&str>,
     dashboard_title: Option<&str>,
@@ -1541,6 +1565,10 @@ fn read_numeric_expression(
 }
 
 fn parse_var_assignment(assignment: &str) -> Result<(&str, &str)> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: dashboard_screenshot.rs:build_dashboard_capture_url, dashboard_screenshot.rs:validate_screenshot_args
+// Downstream callees: common.rs:message
+
     let (name, value) = assignment.split_once('=').ok_or_else(|| {
         message(format!(
             "Invalid --var value '{assignment}'. Use NAME=VALUE."
@@ -1556,11 +1584,16 @@ fn parse_var_assignment(assignment: &str) -> Result<(&str, &str)> {
     Ok((trimmed_name, trimmed_value))
 }
 
+/// parse vars query.
 pub(crate) fn parse_vars_query(query: &str) -> Result<Vec<(String, String)>> {
     Ok(parse_query_fragment(query)?.vars)
 }
 
 fn parse_query_fragment(query: &str) -> Result<DashboardUrlState> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: dashboard_screenshot.rs:build_dashboard_capture_url, dashboard_screenshot.rs:validate_screenshot_args
+// Downstream callees: common.rs:message
+
     let trimmed = query.trim().trim_start_matches('?');
     if trimmed.is_empty() {
         return Ok(DashboardUrlState::default());

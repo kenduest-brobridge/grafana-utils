@@ -229,6 +229,14 @@ class HelpFullAction(argparse.Action):
     """Print normal help plus a short extended examples section."""
 
     def __call__(self, parser, namespace, values, option_string=None):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         parser.print_help()
         examples = getattr(namespace, "_help_full_examples", "") or ""
         if examples:
@@ -238,6 +246,7 @@ class HelpFullAction(argparse.Action):
 
 
 def add_common_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Add common cli args implementation."""
     connection_group = parser.add_argument_group("Connection Options")
     auth_group = parser.add_argument_group("Auth Options")
     connection_group.add_argument(
@@ -303,6 +312,7 @@ def add_common_cli_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_export_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Add export cli args implementation."""
     parser.add_argument(
         "--export-dir",
         default=DEFAULT_EXPORT_DIR,
@@ -370,6 +380,7 @@ def add_export_cli_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_list_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Add list cli args implementation."""
     input_group = parser.add_argument_group("Input Options")
     target_group = parser.add_argument_group("Target Options")
     output_group = parser.add_argument_group("Output Options")
@@ -435,6 +446,7 @@ def add_list_cli_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_list_data_sources_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Add list data sources cli args implementation."""
     output_group = parser.add_argument_group("Output Options")
     render_group = output_group.add_mutually_exclusive_group()
     render_group.add_argument(
@@ -470,6 +482,7 @@ def add_list_data_sources_cli_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Add import cli args implementation."""
     input_group = parser.add_argument_group("Input Options")
     target_group = parser.add_argument_group("Target Options")
     mutation_group = parser.add_argument_group("Mutation Options")
@@ -620,6 +633,7 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_diff_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Add diff cli args implementation."""
     input_group = parser.add_argument_group("Input Options")
     target_group = parser.add_argument_group("Target Options")
     output_group = parser.add_argument_group("Output Options")
@@ -645,6 +659,7 @@ def add_diff_cli_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Add inspect export cli args implementation."""
     parser.set_defaults(_help_full_examples=INSPECT_EXPORT_HELP_FULL_EXAMPLES)
     parser.add_argument(
         "--import-dir",
@@ -735,6 +750,7 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Add inspect live cli args implementation."""
     parser.set_defaults(_help_full_examples=INSPECT_LIVE_HELP_FULL_EXAMPLES)
     add_common_cli_args(parser)
     parser.add_argument(
@@ -824,6 +840,7 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_inspect_vars_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Add inspect vars cli args implementation."""
     add_common_cli_args(parser)
     target_group = parser.add_argument_group("Target Options")
     output_group = parser.add_argument_group("Output Options")
@@ -861,6 +878,7 @@ def add_inspect_vars_cli_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_screenshot_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Add screenshot cli args implementation."""
     add_common_cli_args(parser)
     target_group = parser.add_argument_group("Target Options")
     state_group = parser.add_argument_group("State Options")
@@ -1008,6 +1026,10 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
       flags.
     - Normalize table column selections for import dry-run output.
     """
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1474
+    #   Downstream callees: 1216, 1245, 1265, 244, 310, 378, 444, 480, 631, 657, 748, 838, 876
+
     parser = argparse.ArgumentParser(
         description="Export or import Grafana dashboards.",
         epilog=(
@@ -1252,6 +1274,7 @@ def _validate_import_routing_args(
     args: argparse.Namespace,
     parser: argparse.ArgumentParser,
 ) -> None:
+    """Internal helper for validate import routing args."""
     if getattr(args, "command", None) != "import-dashboard":
         return
     use_export_org = bool(getattr(args, "use_export_org", False))
@@ -1268,6 +1291,7 @@ def _validate_import_routing_args(
         )
 
 def resolve_auth(args: argparse.Namespace) -> dict[str, str]:
+    """Resolve auth implementation."""
     try:
         headers, _auth_mode = resolve_cli_auth_from_namespace(
             args,
@@ -1279,6 +1303,7 @@ def resolve_auth(args: argparse.Namespace) -> dict[str, str]:
     except AuthConfigError as exc:
         raise GrafanaError(str(exc))
 def _build_export_workflow_deps() -> dict[str, Any]:
+    """Internal helper for build export workflow deps."""
     return build_export_workflow_deps_from_runtime(
         {
             "GrafanaError": GrafanaError,
@@ -1322,6 +1347,7 @@ def list_data_sources(args: argparse.Namespace) -> int:
 
 
 def _build_inspection_workflow_deps() -> dict[str, Any]:
+    """Internal helper for build inspection workflow deps."""
     return build_inspection_workflow_deps_from_runtime(
         {
             "DATASOURCE_INVENTORY_FILENAME": DATASOURCE_INVENTORY_FILENAME,
@@ -1382,6 +1408,7 @@ def screenshot_dashboard(args: argparse.Namespace) -> int:
 
 
 def _build_import_workflow_deps() -> dict[str, Any]:
+    """Internal helper for build import workflow deps."""
     return build_import_workflow_deps_from_runtime(
         {
             "DEFAULT_UNKNOWN_UID": DEFAULT_UNKNOWN_UID,
@@ -1404,6 +1431,7 @@ def import_dashboards(args: argparse.Namespace) -> int:
 
 
 def _build_diff_workflow_deps() -> dict[str, Any]:
+    """Internal helper for build diff workflow deps."""
     return {
         "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
         "build_client": build_client,
@@ -1460,6 +1488,10 @@ def main(argv: Optional[list[str]] = None) -> int:
       `inspect`) based on command name.
     - Convert caught CLI errors into user-facing exit codes.
     """
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 1016, 1321, 1326, 1336, 1363, 1367, 1372, 1393, 1420, 1458
+
     args = parse_args(argv)
     try:
         if args.command == "list-dashboard":

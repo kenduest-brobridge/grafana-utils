@@ -23,6 +23,14 @@ class GrafanaAlertClient:
         verify_ssl: bool,
         transport: Optional[JsonHttpTransport] = None,
     ) -> None:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         self.transport = transport or build_json_http_transport(
             base_url=base_url,
             headers={"Accept": "application/json", **headers},
@@ -51,12 +59,28 @@ class GrafanaAlertClient:
             raise GrafanaError(str(exc)) from exc
 
     def list_alert_rules(self) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json("/api/v1/provisioning/alert-rules")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected alert-rule list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
     def search_dashboards(self, query: str) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json(
             "/api/search",
             params={"type": "dash-db", "query": query, "limit": 500},
@@ -66,12 +90,28 @@ class GrafanaAlertClient:
         return [item for item in data if isinstance(item, dict)]
 
     def get_dashboard(self, uid: str) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json("/api/dashboards/uid/%s" % parse.quote(uid, safe=""))
         if not isinstance(data, dict):
             raise GrafanaError("Unexpected dashboard payload for UID %s." % uid)
         return data
 
     def get_alert_rule(self, uid: str) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json(
             "/api/v1/provisioning/alert-rules/%s" % parse.quote(uid, safe="")
         )
@@ -80,6 +120,14 @@ class GrafanaAlertClient:
         return data
 
     def create_alert_rule(self, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json(
             "/api/v1/provisioning/alert-rules",
             method="POST",
@@ -90,6 +138,14 @@ class GrafanaAlertClient:
         return data
 
     def update_alert_rule(self, uid: str, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json(
             "/api/v1/provisioning/alert-rules/%s" % parse.quote(uid, safe=""),
             method="PUT",
@@ -100,12 +156,28 @@ class GrafanaAlertClient:
         return data
 
     def list_contact_points(self) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json("/api/v1/provisioning/contact-points")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected contact-point list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
     def create_contact_point(self, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json(
             "/api/v1/provisioning/contact-points",
             method="POST",
@@ -116,6 +188,14 @@ class GrafanaAlertClient:
         return data
 
     def update_contact_point(self, uid: str, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json(
             "/api/v1/provisioning/contact-points/%s" % parse.quote(uid, safe=""),
             method="PUT",
@@ -126,12 +206,28 @@ class GrafanaAlertClient:
         return data
 
     def list_mute_timings(self) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json("/api/v1/provisioning/mute-timings")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected mute-timing list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
     def create_mute_timing(self, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json(
             "/api/v1/provisioning/mute-timings",
             method="POST",
@@ -142,6 +238,14 @@ class GrafanaAlertClient:
         return data
 
     def update_mute_timing(self, name: str, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json(
             "/api/v1/provisioning/mute-timings/%s" % parse.quote(name, safe=""),
             method="PUT",
@@ -152,12 +256,28 @@ class GrafanaAlertClient:
         return data
 
     def get_notification_policies(self) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json("/api/v1/provisioning/policies")
         if not isinstance(data, dict):
             raise GrafanaError("Unexpected notification policy response from Grafana.")
         return data
 
     def update_notification_policies(self, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json(
             "/api/v1/provisioning/policies",
             method="PUT",
@@ -170,6 +290,14 @@ class GrafanaAlertClient:
         return data
 
     def list_templates(self) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json("/api/v1/provisioning/templates")
         if data is None:
             return []
@@ -178,6 +306,14 @@ class GrafanaAlertClient:
         return [item for item in data if isinstance(item, dict)]
 
     def get_template(self, name: str) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         data = self.request_json(
             "/api/v1/provisioning/templates/%s" % parse.quote(name, safe="")
         )
@@ -186,6 +322,14 @@ class GrafanaAlertClient:
         return data
 
     def update_template(self, name: str, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 37
+
         body = dict(payload)
         body.pop("name", None)
         data = self.request_json(

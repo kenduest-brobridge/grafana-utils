@@ -73,7 +73,7 @@ class FakeDashboardIntegrationClient:
 
 
 class DashboardIntegrationFlowTests(unittest.TestCase):
-    def test_main_inspect_export_json_summarizes_raw_inventory_and_mixed_dashboards(self):
+    def test_dashboard_integration_main_inspect_export_json_summarizes_raw_inventory_and_mixed_dashboards(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             exporter.write_json_document(
@@ -207,7 +207,7 @@ class DashboardIntegrationFlowTests(unittest.TestCase):
                 ["loki-main", "prom-main"],
             )
 
-    def test_main_import_dry_run_json_reports_folder_checks_and_update_skip_actions(self):
+    def test_dashboard_integration_main_import_dry_run_json_reports_folder_checks_and_update_skip_actions(self):
         client = FakeDashboardIntegrationClient(
             dashboards={
                 "cpu-main": {

@@ -58,6 +58,10 @@ def build_export_inspection_document(
     deps: dict[str, Any],
 ) -> dict[str, Any]:
     """Analyze one raw export directory and summarize dashboard structure."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 18, 42
+
     metadata = deps["load_export_metadata"](
         import_dir, expected_variant=deps["RAW_EXPORT_SUBDIR"]
     )
@@ -231,6 +235,10 @@ def render_export_inspection_summary(
     import_dir: Path,
 ) -> list[str]:
     """Render a compact human-readable export inspection summary."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     summary = document.get("summary") or {}
     folder_records = list(document.get("folders") or [])
     datasource_records = list(document.get("datasources") or [])
@@ -329,6 +337,10 @@ def render_export_inspection_tables(
     include_header: bool = True,
 ) -> list[str]:
     """Render export inspection as multiple compact table sections."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     summary = document.get("summary") or {}
     folder_records = list(document.get("folders") or [])
     datasource_records = list(document.get("datasources") or [])

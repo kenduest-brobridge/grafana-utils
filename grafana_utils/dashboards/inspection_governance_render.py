@@ -4,6 +4,7 @@ from typing import Any, Iterable
 
 
 def _stringify_cell(value: Any) -> str:
+    """Internal helper for stringify cell."""
     if isinstance(value, list):
         return ",".join(str(item or "") for item in value if str(item or "").strip())
     if isinstance(value, bool):
@@ -12,6 +13,7 @@ def _stringify_cell(value: Any) -> str:
 
 
 def _render_table(headers: list[str], rows: list[list[str]]) -> list[str]:
+    """Internal helper for render table."""
     widths = [len(header) for header in headers]
     for row in rows:
         for index, value in enumerate(row):
@@ -33,6 +35,7 @@ def _render_named_section(
     records: Iterable[dict[str, Any]],
     columns: list[str],
 ) -> list[str]:
+    """Internal helper for render named section."""
     rows = []
     for record in records:
         rows.append([_stringify_cell(record.get(column)) for column in columns])
@@ -48,6 +51,10 @@ def render_export_inspection_governance_tables(
     document: dict[str, Any], import_dir: str
 ) -> list[str]:
     """Render one governance document as compact table sections."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 32
+
     summary = document.get("summary") or {}
     lines = ["Export inspection governance: %s" % import_dir, ""]
     lines.extend(

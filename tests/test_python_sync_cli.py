@@ -127,14 +127,14 @@ class SyncCliTests(unittest.TestCase):
         source = MODULE_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_root_help_includes_examples(self):
+    def test_sync_root_help_includes_examples(self):
         help_text = sync_cli.build_parser().format_help()
 
         self.assertIn("Examples:", help_text)
         self.assertIn("grafana-util sync plan", help_text)
         self.assertIn("grafana-util sync apply", help_text)
 
-    def test_apply_help_groups_controls_and_examples(self):
+    def test_sync_apply_help_groups_controls_and_examples(self):
         help_text = sync_cli.build_parser()._subparsers._group_actions[0].choices["apply"].format_help()
 
         self.assertIn("Apply Control Options", help_text)
@@ -143,7 +143,7 @@ class SyncCliTests(unittest.TestCase):
         self.assertIn("--approve", help_text)
         self.assertIn("--execute-live", help_text)
 
-    def test_summary_renders_text_counts(self):
+    def test_sync_summary_renders_text_counts(self):
         desired = [
             {
                 "kind": "folder",
@@ -187,7 +187,7 @@ class SyncCliTests(unittest.TestCase):
             self.assertIn("Sync summary", output)
             self.assertIn("4 total, 1 dashboards, 1 datasources, 1 folders, 1 alerts", output)
 
-    def test_summary_renders_json_document(self):
+    def test_sync_summary_renders_json_document(self):
         desired = [
             {
                 "kind": "folder",
@@ -213,7 +213,7 @@ class SyncCliTests(unittest.TestCase):
             self.assertEqual(document["summary"]["folderCount"], 1)
             self.assertEqual(document["resources"][0]["identity"], "ops")
 
-    def test_plan_builds_review_required_document_and_writes_plan_file(self):
+    def test_sync_plan_builds_review_required_document_and_writes_plan_file(self):
         desired = [
             {
                 "kind": "folder",
@@ -256,7 +256,7 @@ class SyncCliTests(unittest.TestCase):
             self.assertEqual(document["alertAssessment"]["alerts"], [])
             self.assertEqual(json.loads(plan_path.read_text(encoding="utf-8")), document)
 
-    def test_plan_can_fetch_live_state_from_grafana(self):
+    def test_sync_plan_can_fetch_live_state_from_grafana(self):
         desired = [
             {
                 "kind": "folder",
@@ -313,7 +313,7 @@ class SyncCliTests(unittest.TestCase):
             document = json.loads(stdout.getvalue())
             self.assertEqual(document["summary"]["noop"], 2)
 
-    def test_plan_fetch_live_includes_alert_rules(self):
+    def test_sync_plan_fetch_live_includes_alert_rules(self):
         desired = [
             {
                 "kind": "alert",
@@ -358,7 +358,7 @@ class SyncCliTests(unittest.TestCase):
             self.assertEqual(document["summary"]["noop"], 1)
             self.assertEqual(document["summary"]["alert_candidate"], 1)
 
-    def test_plan_includes_alert_assessment_summary(self):
+    def test_sync_plan_includes_alert_assessment_summary(self):
         desired = [
             {
                 "kind": "alert",
@@ -399,7 +399,7 @@ class SyncCliTests(unittest.TestCase):
                 ["condition", "contactPoints"],
             )
 
-    def test_preflight_renders_text_summary(self):
+    def test_sync_preflight_renders_text_summary(self):
         desired = [
             {
                 "kind": "datasource",
@@ -431,7 +431,7 @@ class SyncCliTests(unittest.TestCase):
             self.assertIn("Sync preflight summary", output)
             self.assertIn("plugin identity=prometheus status=missing", output)
 
-    def test_preflight_can_fetch_live_availability(self):
+    def test_sync_preflight_can_fetch_live_availability(self):
         desired = [
             {
                 "kind": "datasource",
@@ -488,7 +488,7 @@ class SyncCliTests(unittest.TestCase):
                 output,
             )
 
-    def test_assess_alerts_renders_json(self):
+    def test_sync_assess_alerts_renders_json(self):
         alerts = [
             {
                 "kind": "alert",
@@ -517,7 +517,7 @@ class SyncCliTests(unittest.TestCase):
             self.assertEqual(document["summary"]["planOnlyCount"], 1)
             self.assertEqual(document["alerts"][0]["status"], "plan-only")
 
-    def test_bundle_preflight_renders_json(self):
+    def test_sync_bundle_preflight_renders_json(self):
         source_bundle = {
             "environment": "staging",
             "dashboards": [{"uid": "cpu-main", "title": "CPU Main", "datasourceUids": ["prom-main"]}],
@@ -608,7 +608,7 @@ class SyncCliTests(unittest.TestCase):
                 "vault",
             )
 
-    def test_bundle_preflight_can_fetch_live_availability(self):
+    def test_sync_bundle_preflight_can_fetch_live_availability(self):
         source_bundle = {
             "environment": "staging",
             "dashboards": [{"uid": "cpu-main", "title": "CPU Main", "datasourceUids": ["prom-main"]}],
@@ -681,7 +681,7 @@ class SyncCliTests(unittest.TestCase):
                 "blocked",
             )
 
-    def test_bundle_preflight_flags_missing_provider_and_secret_availability(self):
+    def test_sync_bundle_preflight_flags_missing_provider_and_secret_availability(self):
         source_bundle = {
             "environment": "staging",
             "datasources": [
@@ -741,7 +741,7 @@ class SyncCliTests(unittest.TestCase):
                 "missing",
             )
 
-    def test_bundle_packages_dashboard_and_alert_exports(self):
+    def test_sync_bundle_packages_dashboard_and_alert_exports(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             dashboard_dir = root / "dashboards" / "raw"
@@ -858,7 +858,7 @@ class SyncCliTests(unittest.TestCase):
                 "grafana-utils-sync-source-bundle",
             )
 
-    def test_bundle_requires_at_least_one_input(self):
+    def test_sync_bundle_requires_at_least_one_input(self):
         stderr = io.StringIO()
         with redirect_stderr(stderr):
             result = sync_cli.main(["bundle"])
@@ -866,7 +866,7 @@ class SyncCliTests(unittest.TestCase):
         self.assertEqual(result, 1)
         self.assertIn("requires at least one export input", stderr.getvalue())
 
-    def test_review_marks_plan_reviewed(self):
+    def test_sync_review_marks_plan_reviewed(self):
         desired = [
             {
                 "kind": "folder",
@@ -901,7 +901,7 @@ class SyncCliTests(unittest.TestCase):
             document = json.loads(stdout.getvalue())
             self.assertTrue(document["reviewed"])
 
-    def test_apply_rejects_unreviewed_plan_without_live_mutation(self):
+    def test_sync_apply_rejects_unreviewed_plan_without_live_mutation(self):
         desired = [
             {
                 "kind": "folder",
@@ -937,7 +937,7 @@ class SyncCliTests(unittest.TestCase):
             self.assertEqual(result, 1)
             self.assertIn("marked reviewed", stderr.getvalue())
 
-    def test_apply_emits_non_live_apply_intent_for_reviewed_plan(self):
+    def test_sync_apply_emits_non_live_apply_intent_for_reviewed_plan(self):
         desired = [
             {
                 "kind": "folder",
@@ -988,7 +988,7 @@ class SyncCliTests(unittest.TestCase):
             self.assertEqual(len(intent["operations"]), 1)
             self.assertEqual(intent["operations"][0]["action"], "would-create")
 
-    def test_apply_execute_live_runs_supported_operations(self):
+    def test_sync_apply_execute_live_runs_supported_operations(self):
         reviewed_document = {
             "dryRun": False,
             "reviewRequired": True,
@@ -1067,7 +1067,7 @@ class SyncCliTests(unittest.TestCase):
                 )
             )
 
-    def test_apply_execute_live_creates_alert_rule(self):
+    def test_sync_apply_execute_live_creates_alert_rule(self):
         reviewed_document = {
             "dryRun": False,
             "reviewRequired": True,
@@ -1142,7 +1142,7 @@ class SyncCliTests(unittest.TestCase):
                 )
             )
 
-    def test_apply_execute_live_rejects_partial_alert_spec(self):
+    def test_sync_apply_execute_live_rejects_partial_alert_spec(self):
         reviewed_document = {
             "dryRun": False,
             "reviewRequired": True,

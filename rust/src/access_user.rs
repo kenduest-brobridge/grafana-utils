@@ -72,6 +72,10 @@ type DiffPayload = (String, Map<String, Value>);
 type DiffPayloadMap = BTreeMap<String, DiffPayload>;
 
 fn parse_access_identity_list(value: &Value) -> Vec<String> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: access_user.rs:normalize_user_for_diff
+// Downstream callees: access_user.rs:normalize_access_identity
+
     value
         .as_array()
         .map(|values| {
@@ -329,6 +333,7 @@ where
     Ok(rows)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn export_users_with_request<F>(
     mut request_json: F,
     args: &UserExportArgs,
@@ -389,6 +394,7 @@ where
     Ok(records.len())
 }
 
+/// Purpose: implementation note.
 pub(crate) fn import_users_with_request<F>(
     mut request_json: F,
     args: &UserImportArgs,
@@ -911,6 +917,7 @@ fn build_record_diff_fields(left: &Map<String, Value>, right: &Map<String, Value
     changed
 }
 
+/// Purpose: implementation note.
 pub(crate) fn diff_users_with_request<F>(mut request_json: F, args: &UserDiffArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -979,6 +986,7 @@ where
     Ok(differences)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn list_org_users_with_request<F>(mut request_json: F) -> Result<Vec<Map<String, Value>>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -1203,6 +1211,7 @@ where
         .ok_or_else(|| message("Grafana user lookup did not find a matching global user."))
 }
 
+/// lookup org user by identity.
 pub(crate) fn lookup_org_user_by_identity<F>(
     mut request_json: F,
     identity: &str,
@@ -1329,6 +1338,7 @@ fn validate_user_delete_args(args: &UserDeleteArgs) -> Result<()> {
     Ok(())
 }
 
+/// Purpose: implementation note.
 pub(crate) fn list_users_with_request<F>(mut request_json: F, args: &UserListArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -1415,6 +1425,7 @@ where
     Ok(rows.len())
 }
 
+/// Purpose: implementation note.
 pub(crate) fn add_user_with_request<F>(mut request_json: F, args: &UserAddArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -1474,6 +1485,7 @@ where
     Ok(0)
 }
 
+/// modify user with request.
 pub(crate) fn modify_user_with_request<F>(
     mut request_json: F,
     args: &UserModifyArgs,
@@ -1570,6 +1582,7 @@ where
     Ok(0)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn delete_user_with_request<F>(
     mut request_json: F,
     args: &UserDeleteArgs,

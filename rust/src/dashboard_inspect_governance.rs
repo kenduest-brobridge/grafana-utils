@@ -7,6 +7,7 @@ use super::dashboard_inspect_render::render_simple_table;
 use super::dashboard_inspect_report::{ExportInspectionQueryReport, ExportInspectionQueryRow};
 use super::ExportInspectionSummary;
 
+/// Struct definition for GovernanceSummary.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct GovernanceSummary {
     #[serde(rename = "dashboardCount")]
@@ -27,6 +28,7 @@ pub(crate) struct GovernanceSummary {
     pub(crate) risk_record_count: usize,
 }
 
+/// Struct definition for DatasourceFamilyCoverageRow.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct DatasourceFamilyCoverageRow {
     pub(crate) family: String,
@@ -42,6 +44,7 @@ pub(crate) struct DatasourceFamilyCoverageRow {
     pub(crate) query_count: usize,
 }
 
+/// Struct definition for DatasourceCoverageRow.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct DatasourceCoverageRow {
     #[serde(rename = "datasourceUid")]
@@ -59,6 +62,7 @@ pub(crate) struct DatasourceCoverageRow {
     pub(crate) orphaned: bool,
 }
 
+/// Struct definition for DashboardDependencyRow.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct DashboardDependencyRow {
     #[serde(rename = "dashboardUid")]
@@ -78,6 +82,7 @@ pub(crate) struct DashboardDependencyRow {
     pub(crate) datasource_families: Vec<String>,
 }
 
+/// Struct definition for GovernanceRiskRow.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub(crate) struct GovernanceRiskRow {
     pub(crate) kind: String,
@@ -92,6 +97,7 @@ pub(crate) struct GovernanceRiskRow {
     pub(crate) recommendation: String,
 }
 
+/// Struct definition for ExportInspectionGovernanceDocument.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct ExportInspectionGovernanceDocument {
     pub(crate) summary: GovernanceSummary,
@@ -113,6 +119,7 @@ struct ResolvedDatasourceIdentity {
 
 // Collapse datasource type names into normalized family labels used in governance
 // summaries and risk grouping.
+/// Purpose: implementation note.
 pub(crate) fn normalize_family_name(datasource_type: &str) -> String {
     match datasource_type.trim().to_ascii_lowercase().as_str() {
         "" => "unknown".to_string(),
@@ -225,6 +232,7 @@ fn build_risk_metadata(kind: &str) -> (&'static str, &'static str, &'static str)
     }
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_datasource_family_coverage_rows(
     summary: &ExportInspectionSummary,
     report: &ExportInspectionQueryReport,
@@ -280,6 +288,7 @@ pub(crate) fn build_datasource_family_coverage_rows(
         .collect()
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_datasource_coverage_rows(
     summary: &ExportInspectionSummary,
     report: &ExportInspectionQueryReport,
@@ -362,6 +371,7 @@ pub(crate) fn build_datasource_coverage_rows(
         .collect()
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_dashboard_dependency_rows(
     report: &ExportInspectionQueryReport,
 ) -> Vec<DashboardDependencyRow> {
@@ -386,6 +396,7 @@ pub(crate) fn build_dashboard_dependency_rows(
         .collect()
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_governance_risk_rows(
     summary: &ExportInspectionSummary,
     report: &ExportInspectionQueryReport,
@@ -487,6 +498,7 @@ pub(crate) fn build_governance_risk_rows(
     risks
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_export_inspection_governance_document(
     summary: &ExportInspectionSummary,
     report: &ExportInspectionQueryReport,
@@ -517,6 +529,7 @@ pub(crate) fn build_export_inspection_governance_document(
     }
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_governance_table_report(
     import_dir: &str,
     document: &ExportInspectionGovernanceDocument,

@@ -10,6 +10,7 @@ use super::{
     DEFAULT_EXPORT_DIR, DEFAULT_IMPORT_MESSAGE, DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT, DEFAULT_URL,
 };
 
+/// Enum definition for SimpleOutputFormat.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum SimpleOutputFormat {
     Table,
@@ -17,6 +18,7 @@ pub enum SimpleOutputFormat {
     Json,
 }
 
+/// Enum definition for DryRunOutputFormat.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum DryRunOutputFormat {
     Text,
@@ -24,6 +26,7 @@ pub enum DryRunOutputFormat {
     Json,
 }
 
+/// Struct definition for CommonCliArgs.
 #[derive(Debug, Clone, Args)]
 pub struct CommonCliArgs {
     #[arg(long, default_value = DEFAULT_URL, help = "Grafana base URL.")]
@@ -66,6 +69,7 @@ pub struct CommonCliArgs {
     pub verify_ssl: bool,
 }
 
+/// Struct definition for ExportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct ExportArgs {
     #[command(flatten)]
@@ -136,6 +140,7 @@ pub struct ExportArgs {
     pub verbose: bool,
 }
 
+/// Struct definition for ListArgs.
 #[derive(Debug, Clone, Args)]
 pub struct ListArgs {
     #[command(flatten)]
@@ -189,6 +194,7 @@ pub struct ListArgs {
     pub no_header: bool,
 }
 
+/// Struct definition for ListDataSourcesArgs.
 #[derive(Debug, Clone, Args)]
 pub struct ListDataSourcesArgs {
     #[command(flatten)]
@@ -214,6 +220,7 @@ pub struct ListDataSourcesArgs {
     pub no_header: bool,
 }
 
+/// Struct definition for ImportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct ImportArgs {
     #[command(flatten)]
@@ -341,6 +348,7 @@ pub struct ImportArgs {
     pub verbose: bool,
 }
 
+/// Struct definition for DiffArgs.
 #[derive(Debug, Clone, Args)]
 pub struct DiffArgs {
     #[command(flatten)]
@@ -363,6 +371,7 @@ pub struct DiffArgs {
     pub context_lines: usize,
 }
 
+/// Enum definition for InspectExportReportFormat.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum InspectExportReportFormat {
     Table,
@@ -376,6 +385,7 @@ pub enum InspectExportReportFormat {
     GovernanceJson,
 }
 
+/// Enum definition for InspectOutputFormat.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum InspectOutputFormat {
     Text,
@@ -392,6 +402,7 @@ pub enum InspectOutputFormat {
     GovernanceJson,
 }
 
+/// Enum definition for ScreenshotOutputFormat.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum ScreenshotOutputFormat {
     Png,
@@ -399,12 +410,14 @@ pub enum ScreenshotOutputFormat {
     Pdf,
 }
 
+/// Enum definition for ScreenshotTheme.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum ScreenshotTheme {
     Light,
     Dark,
 }
 
+/// Enum definition for ScreenshotFullPageOutput.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum ScreenshotFullPageOutput {
     Single,
@@ -412,6 +425,7 @@ pub enum ScreenshotFullPageOutput {
     Manifest,
 }
 
+/// Struct definition for ScreenshotArgs.
 #[derive(Debug, Clone, Args)]
 pub struct ScreenshotArgs {
     #[command(flatten)]
@@ -584,6 +598,7 @@ pub struct ScreenshotArgs {
     pub browser_path: Option<PathBuf>,
 }
 
+/// Struct definition for InspectVarsArgs.
 #[derive(Debug, Clone, Args)]
 pub struct InspectVarsArgs {
     #[command(flatten)]
@@ -625,6 +640,7 @@ pub struct InspectVarsArgs {
     pub no_header: bool,
 }
 
+/// Struct definition for InspectExportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct InspectExportArgs {
     #[arg(
@@ -695,6 +711,7 @@ pub struct InspectExportArgs {
     pub no_header: bool,
 }
 
+/// Struct definition for InspectLiveArgs.
 #[derive(Debug, Clone, Args)]
 pub struct InspectLiveArgs {
     #[command(flatten)]
@@ -777,6 +794,7 @@ pub struct InspectLiveArgs {
     pub no_header: bool,
 }
 
+/// Enum definition for DashboardCommand.
 #[derive(Debug, Clone, Subcommand)]
 pub enum DashboardCommand {
     #[command(
@@ -829,11 +847,13 @@ pub enum DashboardCommand {
     after_help = "Examples:\n\n  Export dashboards from local Grafana with Basic auth:\n    grafana-util export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite\n\n  Export dashboards across all visible orgs with Basic auth:\n    grafana-util export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./dashboards --overwrite\n\n  List dashboards across all visible orgs with Basic auth:\n    grafana-util list --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --json\n\n  Export dashboards with an API token from the current org:\n    export GRAFANA_API_TOKEN='your-token'\n    grafana-util export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite\n\n  Compare raw dashboard exports against local Grafana:\n    grafana-util diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw\n\n  Capture a browser-rendered dashboard screenshot:\n    grafana-util screenshot --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --dashboard-uid cpu-main --output ./cpu-main.png --from now-6h --to now",
     styles = crate::help_styles::CLI_HELP_STYLES
 )]
+/// Struct definition for DashboardCliArgs.
 pub struct DashboardCliArgs {
     #[command(subcommand)]
     pub command: DashboardCommand,
 }
 
+/// Struct definition for DashboardAuthContext.
 #[derive(Debug, Clone)]
 pub struct DashboardAuthContext {
     pub url: String,
@@ -843,19 +863,27 @@ pub struct DashboardAuthContext {
     pub headers: Vec<(String, String)>,
 }
 
-// Parse dashboard CLI argv and normalize output-format aliases to keep
-// downstream handlers deterministic.
+/// Parse dashboard CLI argv and normalize output-format aliases to keep
+/// downstream handlers deterministic.
 pub fn parse_cli_from<I, T>(iter: I) -> DashboardCliArgs
 where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: dashboard_cli_defs.rs:normalize_dashboard_cli_args
+
     normalize_dashboard_cli_args(DashboardCliArgs::parse_from(iter))
 }
 
 // Accept both user-facing legacy aliases and canonical snake_case column names for
 // import dry-run table formatting.
 fn parse_dashboard_import_output_column(value: &str) -> std::result::Result<String, String> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: 無
+
     match value {
         "uid" => Ok("uid".to_string()),
         "destination" => Ok("destination".to_string()),
@@ -874,6 +902,10 @@ fn parse_dashboard_import_output_column(value: &str) -> std::result::Result<Stri
 }
 
 fn parse_dashboard_list_output_column(value: &str) -> std::result::Result<String, String> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: 無
+
     match value {
         "uid" => Ok("uid".to_string()),
         "name" => Ok("name".to_string()),
@@ -891,6 +923,10 @@ fn parse_dashboard_list_output_column(value: &str) -> std::result::Result<String
 }
 
 fn parse_inspect_report_column(value: &str) -> std::result::Result<String, String> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: 無
+
     match value {
         "org" => Ok("org".to_string()),
         "org_id" | "orgId" => Ok("org_id".to_string()),
@@ -947,8 +983,8 @@ fn normalize_dry_run_output_format(
     }
 }
 
-// Normalize dashboard subcommand variants so legacy and explicit flags end up with
-// the same boolean state contract for command handlers.
+/// Normalize dashboard subcommand variants so legacy and explicit flags end up with
+/// the same boolean state contract for command handlers.
 pub fn normalize_dashboard_cli_args(mut args: DashboardCliArgs) -> DashboardCliArgs {
     match &mut args.command {
         DashboardCommand::List(list_args) => normalize_simple_output_format(
@@ -973,6 +1009,10 @@ pub fn normalize_dashboard_cli_args(mut args: DashboardCliArgs) -> DashboardCliA
     args
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_auth_context(common: &CommonCliArgs) -> Result<DashboardAuthContext> {
     let headers = resolve_auth_headers(
         common.api_token.as_deref(),
@@ -1001,7 +1041,15 @@ pub fn build_auth_context(common: &CommonCliArgs) -> Result<DashboardAuthContext
     })
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_http_client(common: &CommonCliArgs) -> Result<JsonHttpClient> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: dashboard_cli_defs.rs:build_auth_context
+
     let context = build_auth_context(common)?;
     JsonHttpClient::new(JsonHttpClientConfig {
         base_url: context.url,
@@ -1011,6 +1059,10 @@ pub fn build_http_client(common: &CommonCliArgs) -> Result<JsonHttpClient> {
     })
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_http_client_for_org(common: &CommonCliArgs, org_id: i64) -> Result<JsonHttpClient> {
     let mut context = build_auth_context(common)?;
     context

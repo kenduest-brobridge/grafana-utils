@@ -92,6 +92,7 @@ def validate_user_add_auth(auth_mode):
 
 
 def validate_user_modify_args(args):
+    """Validate user modify args implementation."""
     password_inputs = [
         bool(args.set_password),
         bool(getattr(args, "set_password_file", None)),
@@ -173,6 +174,7 @@ def validate_service_account_token_delete_auth(_auth_mode):
 
 
 def service_account_role_to_api(value):
+    """Service account role to api implementation."""
     normalized = normalize_org_role(value)
     if normalized == "None":
         return "NoBasicRole"
@@ -180,6 +182,7 @@ def service_account_role_to_api(value):
 
 
 def _normalize_org_user_record(record):
+    """Internal helper for normalize org user record."""
     return {
         "userId": str(
             record.get("userId")
@@ -197,6 +200,7 @@ def _normalize_org_user_record(record):
 
 
 def _normalize_org_record(record):
+    """Internal helper for normalize org record."""
     users = []
     for item in record.get("users") or []:
         if not isinstance(item, dict):
@@ -218,6 +222,7 @@ def _normalize_org_record(record):
 
 
 def normalize_created_user(user_id, args):
+    """Normalize created user implementation."""
     return {
         "id": str(user_id or ""),
         "login": str(args.login or ""),
@@ -231,6 +236,7 @@ def normalize_created_user(user_id, args):
 
 
 def _build_access_export_metadata(source_url, kind, source_count, source_dir):
+    """Internal helper for build access export metadata."""
     return {
         "kind": kind,
         "version": ACCESS_EXPORT_VERSION,
@@ -241,6 +247,7 @@ def _build_access_export_metadata(source_url, kind, source_count, source_dir):
 
 
 def _build_user_export_records(client, args):
+    """Internal helper for build user export records."""
     users = []
     if args.scope == "global":
         raw_users = client.iter_global_users(DEFAULT_PAGE_SIZE)
@@ -263,6 +270,7 @@ def _build_user_export_records(client, args):
 
 
 def _build_team_export_records(client, args):
+    """Internal helper for build team export records."""
     raw_teams = client.iter_teams(query=None, page_size=DEFAULT_PAGE_SIZE)
     teams = []
     for raw_team in raw_teams:
@@ -294,6 +302,7 @@ def _build_team_export_records(client, args):
 
 
 def _build_org_export_records(client, args):
+    """Internal helper for build org export records."""
     records = []
     for item in client.list_organizations():
         org = _normalize_org_record(item)
@@ -317,6 +326,7 @@ def _build_org_export_records(client, args):
 
 
 def _normalize_user_record(record):
+    """Internal helper for normalize user record."""
     return {
         "id": str(record.get("id") or ""),
         "login": str(record.get("login") or ""),
@@ -329,6 +339,7 @@ def _normalize_user_record(record):
 
 
 def _normalize_team_record(record):
+    """Internal helper for normalize team record."""
     return {
         "id": str(record.get("id") or ""),
         "name": str(record.get("name") or ""),
@@ -340,6 +351,7 @@ def _normalize_team_record(record):
 
 
 def _normalize_user_for_diff(record):
+    """Internal helper for normalize user for diff."""
     return {
         "login": str(record.get("login") or ""),
         "email": str(record.get("email") or ""),
@@ -359,6 +371,7 @@ def _normalize_user_for_diff(record):
 
 
 def _normalize_team_for_diff(record, include_members=False):
+    """Internal helper for normalize team for diff."""
     payload = {
         "name": str(record.get("name") or ""),
         "email": str(record.get("email") or ""),
@@ -377,6 +390,11 @@ def _normalize_team_for_diff(record, include_members=False):
 
 
 def _build_user_diff_map(records, source):
+    """Internal helper for build user diff map."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 493
+    #   Downstream callees: 353, 818, 939
+
     indexed = {}
     for record in records:
         key = _normalize_access_import_identity(_resolve_access_user_key(record))
@@ -394,6 +412,7 @@ def _build_user_diff_map(records, source):
 
 
 def _build_team_diff_map(records, source, include_members=False):
+    """Internal helper for build team diff map."""
     indexed = {}
     for record in records:
         team_name = str(record.get("name") or "").strip()
@@ -412,6 +431,7 @@ def _build_team_diff_map(records, source, include_members=False):
 
 
 def _record_diff_fields(left, right):
+    """Internal helper for record diff fields."""
     keys = set(left.keys()) | set(right.keys())
     changed = []
     for key in sorted(keys):
@@ -421,6 +441,7 @@ def _record_diff_fields(left, right):
 
 
 def _build_user_export_for_diff_records(client, scope, include_teams):
+    """Internal helper for build user export for diff records."""
     raw = (
         client.iter_global_users(DEFAULT_PAGE_SIZE)
         if scope == "global"
@@ -447,6 +468,11 @@ def _build_user_export_for_diff_records(client, scope, include_teams):
 
 
 def _build_team_export_for_diff_records(client, include_members):
+    """Internal helper for build team export for diff records."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 555
+    #   Downstream callees: 2189, 2217, 373
+
     records = client.iter_teams(query=None, page_size=DEFAULT_PAGE_SIZE)
     if not include_members:
         return [_normalize_team_for_diff(raw_team, False) for raw_team in records]
@@ -473,6 +499,11 @@ def _build_team_export_for_diff_records(client, include_members):
 
 
 def diff_users_with_client(args, client):
+    """Diff users with client implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 3059
+    #   Downstream callees: 328, 392, 429, 439, 896
+
     local_records = [
         _normalize_user_record(item)
         for item in _load_access_import_bundle(
@@ -534,6 +565,11 @@ def diff_users_with_client(args, client):
 
 
 def diff_teams_with_client(args, client):
+    """Diff teams with client implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 3059
+    #   Downstream callees: 341, 373, 410, 429, 466, 818, 896
+
     local_records = [
         _normalize_team_record(item)
         for item in _load_access_import_bundle(
@@ -602,6 +638,7 @@ def diff_teams_with_client(args, client):
 
 
 def _iter_service_accounts(client, page_size=DEFAULT_PAGE_SIZE):
+    """Internal helper for iter service accounts."""
     page = 1
     records = []
     while True:
@@ -620,6 +657,7 @@ def _iter_service_accounts(client, page_size=DEFAULT_PAGE_SIZE):
 
 
 def _normalize_service_account_record(record):
+    """Internal helper for normalize service account record."""
     return {
         "id": str(record.get("id") or ""),
         "name": str(record.get("name") or ""),
@@ -636,6 +674,7 @@ def _normalize_service_account_record(record):
 
 
 def _normalize_service_account_for_diff(record):
+    """Internal helper for normalize service account for diff."""
     return {
         "name": str(record.get("name") or ""),
         "role": normalize_org_role(record.get("role") or ""),
@@ -648,6 +687,7 @@ def _normalize_service_account_for_diff(record):
 
 
 def _build_service_account_diff_map(records, source):
+    """Internal helper for build service account diff map."""
     indexed = {}
     for record in records:
         service_account_name = str(record.get("name") or "").strip()
@@ -669,6 +709,7 @@ def _build_service_account_diff_map(records, source):
 
 
 def _lookup_service_account_by_name(client, service_account_name):
+    """Internal helper for lookup service account by name."""
     candidates = client.list_service_accounts(
         query=service_account_name,
         page=1,
@@ -691,6 +732,11 @@ def _lookup_service_account_by_name(client, service_account_name):
 
 
 def diff_service_accounts_with_client(args, client):
+    """Diff service accounts with client implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 3059
+    #   Downstream callees: 429, 624, 643, 673, 896
+
     bundle = _load_access_import_bundle(
         args.diff_dir,
         ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME,
@@ -752,6 +798,7 @@ def diff_service_accounts_with_client(args, client):
 
 
 def _load_json_document(path):
+    """Internal helper for load json document."""
     if not path.exists():
         raise GrafanaError("Access export file not found: %s" % path)
     try:
@@ -765,6 +812,7 @@ def _load_json_document(path):
 
 
 def _write_json_document(path, payload):
+    """Internal helper for write json document."""
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
         path.write_text(
@@ -776,6 +824,7 @@ def _write_json_document(path, payload):
 
 
 def _assert_not_overwriting(export_dir, filenames, dry_run, overwrite):
+    """Internal helper for assert not overwriting."""
     if dry_run:
         return
     for filename in filenames:
@@ -787,10 +836,12 @@ def _assert_not_overwriting(export_dir, filenames, dry_run, overwrite):
 
 
 def _normalize_access_import_identity(value):
+    """Internal helper for normalize access import identity."""
     return str(value or "").strip().lower()
 
 
 def _normalize_access_identity_list(values):
+    """Internal helper for normalize access identity list."""
     normalized = []
     seen = set()
     for value in values:
@@ -806,6 +857,11 @@ def _normalize_access_identity_list(values):
 
 
 def _build_access_import_preview_row(index, identity, action, detail):
+    """Internal helper for build access import preview row."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return {
         "index": str(index),
         "identity": str(identity or ""),
@@ -815,6 +871,11 @@ def _build_access_import_preview_row(index, identity, action, detail):
 
 
 def _render_access_import_preview_table(rows):
+    """Internal helper for render access import preview table."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     columns = [
         ("INDEX", "index"),
         ("IDENTITY", "identity"),
@@ -845,6 +906,11 @@ def _render_access_import_preview_table(rows):
 
 
 def _validate_access_import_preview_output(args, resource_label):
+    """Internal helper for validate access import preview output."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if (bool(getattr(args, "table", False)) or bool(getattr(args, "json", False))) and not bool(
         getattr(args, "dry_run", False)
     ):
@@ -860,6 +926,7 @@ def _validate_access_import_preview_output(args, resource_label):
 
 
 def _load_access_import_bundle(import_dir, expected_filename, expected_kind):
+    """Internal helper for load access import bundle."""
     bundle_path = Path(import_dir) / expected_filename
     metadata_path = Path(import_dir) / ACCESS_EXPORT_METADATA_FILENAME
     raw = _load_json_document(bundle_path)
@@ -902,6 +969,7 @@ def _load_access_import_bundle(import_dir, expected_filename, expected_kind):
 
 
 def _resolve_access_user_key(record):
+    """Internal helper for resolve access user key."""
     login = str(record.get("login") or "").strip()
     email = str(record.get("email") or "").strip()
     if login:
@@ -912,6 +980,7 @@ def _resolve_access_user_key(record):
 
 
 def _build_access_user_payload(record):
+    """Internal helper for build access user payload."""
     login = str(record.get("login") or "")
     email = str(record.get("email") or "")
     if not login or not email:
@@ -927,6 +996,11 @@ def _build_access_user_payload(record):
 
 
 def _lookup_team_memberships_by_identity(client, team_id, include_empty=False):
+    """Internal helper for lookup team memberships by identity."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1915
+    #   Downstream callees: 2189, 2217, 818
+
     members = {}
     for item in client.list_team_members(team_id):
         identity = extract_member_identity(item)
@@ -946,6 +1020,7 @@ def _lookup_team_memberships_by_identity(client, team_id, include_empty=False):
 
 
 def _merge_team_membership_target(members, admins):
+    """Internal helper for merge team membership target."""
     desired_members = _normalize_access_identity_list(members)
     desired_admins = _normalize_access_identity_list(admins)
     desired_all_identities = []
@@ -969,6 +1044,11 @@ def _sync_team_members_for_import(
     include_missing=False,
     dry_run=False,
 ):
+    """Internal helper for sync team members for import."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1915
+    #   Downstream callees: 2057, 818, 823, 986
+
     target_members = _normalize_access_identity_list(desired_members)
     target_admins = _normalize_access_identity_list(desired_admins)
     target_all, target_members, target_admins = _merge_team_membership_target(
@@ -1089,6 +1169,7 @@ def _sync_team_members_for_import(
 
 
 def _build_user_import_records(import_dir):
+    """Internal helper for build user import records."""
     return _load_access_import_bundle(
         Path(import_dir),
         ACCESS_USER_EXPORT_FILENAME,
@@ -1097,6 +1178,7 @@ def _build_user_import_records(import_dir):
 
 
 def _build_team_import_records(import_dir):
+    """Internal helper for build team import records."""
     return _load_access_import_bundle(
         Path(import_dir),
         ACCESS_TEAM_EXPORT_FILENAME,
@@ -1105,6 +1187,7 @@ def _build_team_import_records(import_dir):
 
 
 def _build_org_import_records(import_dir):
+    """Internal helper for build org import records."""
     return _load_access_import_bundle(
         Path(import_dir),
         ACCESS_ORG_EXPORT_FILENAME,
@@ -1113,6 +1196,7 @@ def _build_org_import_records(import_dir):
 
 
 def _build_service_account_import_records(import_dir):
+    """Internal helper for build service account import records."""
     return _load_access_import_bundle(
         Path(import_dir),
         ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME,
@@ -1121,6 +1205,7 @@ def _build_service_account_import_records(import_dir):
 
 
 def _build_service_account_import_row(index, identity, action, detail):
+    """Internal helper for build service account import row."""
     return {
         "index": str(index),
         "identity": str(identity or ""),
@@ -1130,6 +1215,7 @@ def _build_service_account_import_row(index, identity, action, detail):
 
 
 def _render_service_account_import_table(rows):
+    """Internal helper for render service account import table."""
     headers = ["INDEX", "IDENTITY", "ACTION", "DETAIL"]
     widths = [len(header) for header in headers]
     values = []
@@ -1145,6 +1231,10 @@ def _render_service_account_import_table(rows):
             widths[idx] = max(widths[idx], len(value))
 
     def _format(items):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return "  ".join(item.ljust(widths[idx]) for idx, item in enumerate(items))
 
     lines = [_format(headers), _format(["-" * width for width in widths])]
@@ -1154,6 +1244,11 @@ def _render_service_account_import_table(rows):
 
 
 def _emit_service_account_import_dry_run_output(args, rows, summary):
+    """Internal helper for emit service account import dry run output."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1730
+    #   Downstream callees: 1177
+
     if args.json:
         print(
             json.dumps(
@@ -1183,6 +1278,11 @@ def _emit_service_account_import_dry_run_output(args, rows, summary):
 
 
 def validate_service_account_import_dry_run_output(args):
+    """Validate service account import dry run output implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1730
+    #   Downstream callees: 無
+
     if (args.table or args.json) and not args.dry_run:
         raise GrafanaError(
             "--table/--json for service-account import are only supported with --dry-run."
@@ -1194,6 +1294,11 @@ def validate_service_account_import_dry_run_output(args):
 
 
 def export_users_with_client(args, client):
+    """Export users with client implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 3059
+    #   Downstream callees: 238, 249, 794, 806
+
     export_dir = Path(args.export_dir)
     records = _build_user_export_records(client, args)
     users_path = export_dir / ACCESS_USER_EXPORT_FILENAME
@@ -1227,6 +1332,11 @@ def export_users_with_client(args, client):
 
 
 def export_orgs_with_client(args, client):
+    """Export orgs with client implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 3059
+    #   Downstream callees: 238, 304, 794, 806
+
     export_dir = Path(args.export_dir)
     records = _build_org_export_records(client, args)
     payload_path = export_dir / ACCESS_ORG_EXPORT_FILENAME
@@ -1260,6 +1370,7 @@ def export_orgs_with_client(args, client):
 
 
 def _lookup_org_user_record(users, identity):
+    """Internal helper for lookup org user record."""
     target = _normalize_access_import_identity(identity)
     if not target:
         return None
@@ -1272,6 +1383,7 @@ def _lookup_org_user_record(users, identity):
 
 
 def _apply_org_user_import(client, org_id, org_name, desired_users, dry_run):
+    """Internal helper for apply org user import."""
     existing_users = [
         _normalize_org_user_record(item)
         for item in client.list_organization_users(org_id)
@@ -1328,6 +1440,11 @@ def _apply_org_user_import(client, org_id, org_name, desired_users, dry_run):
 
 
 def import_orgs_with_client(args, client):
+    """Import orgs with client implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 3059
+    #   Downstream callees: 1149, 1329, 202, 818
+
     bundle = _build_org_import_records(args.import_dir)
     raw_records = bundle.get("records") or []
     records = []
@@ -1447,6 +1564,11 @@ def import_orgs_with_client(args, client):
 
 
 def import_users_with_client(args, client):
+    """Import users with client implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 3059
+    #   Downstream callees: 1131, 2040, 2057, 2079, 328, 818, 823, 939, 950
+
     bundle = _build_user_import_records(args.import_dir)
     raw_records = bundle.get("records") or []
     records = []
@@ -1633,6 +1755,11 @@ def import_users_with_client(args, client):
 
 
 def export_service_accounts_with_client(args, client):
+    """Export service accounts with client implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 3059
+    #   Downstream callees: 238, 624, 643, 794, 806
+
     export_dir = Path(args.export_dir)
     records = [
         _normalize_service_account_record(item)
@@ -1669,6 +1796,11 @@ def export_service_accounts_with_client(args, client):
 
 
 def import_service_accounts_with_client(args, client):
+    """Import service accounts with client implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 3059
+    #   Downstream callees: 1158, 1167, 1206, 1236, 176, 643, 695
+
     validate_service_account_import_dry_run_output(args)
     bundle = _build_service_account_import_records(args.import_dir)
     raw_records = bundle.get("records") or []
@@ -1819,6 +1951,11 @@ def import_service_accounts_with_client(args, client):
 
 
 def export_teams_with_client(args, client):
+    """Export teams with client implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 3059
+    #   Downstream callees: 238, 272, 794, 806
+
     export_dir = Path(args.export_dir)
     records = _build_team_export_records(client, args)
     teams_path = export_dir / ACCESS_TEAM_EXPORT_FILENAME
@@ -1852,6 +1989,11 @@ def export_teams_with_client(args, client):
 
 
 def import_teams_with_client(args, client):
+    """Import teams with client implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 3059
+    #   Downstream callees: 1001, 1140, 2040, 341, 818, 823, 966
+
     bundle = _build_team_import_records(args.import_dir)
     raw_records = bundle.get("records") or []
     records = []
@@ -1947,6 +2089,7 @@ def import_teams_with_client(args, client):
 
 
 def lookup_service_account_id_by_name(client, service_account_name):
+    """Lookup service account id by name implementation."""
     candidates = client.list_service_accounts(
         query=service_account_name,
         page=1,
@@ -1975,6 +2118,7 @@ def lookup_service_account_id_by_name(client, service_account_name):
 
 
 def lookup_team_by_name(client, team_name):
+    """Lookup team by name implementation."""
     candidates = client.iter_teams(
         query=team_name,
         page_size=DEFAULT_PAGE_SIZE,
@@ -1991,6 +2135,7 @@ def lookup_team_by_name(client, team_name):
 
 
 def lookup_org_user_by_identity(client, identity):
+    """Lookup org user by identity implementation."""
     target = str(identity or "").strip()
     if not target:
         raise GrafanaError("User target cannot be empty.")
@@ -2012,6 +2157,7 @@ def lookup_org_user_by_identity(client, identity):
 
 
 def lookup_global_user_by_identity(client, login=None, email=None):
+    """Lookup global user by identity implementation."""
     target_login = str(login or "").strip()
     target_email = str(email or "").strip()
     if not target_login and not target_email:
@@ -2038,6 +2184,7 @@ def lookup_global_user_by_identity(client, login=None, email=None):
 
 
 def lookup_org_user_by_user_id(client, user_id):
+    """Lookup org user by user id implementation."""
     target = str(user_id or "").strip()
     if not target:
         raise GrafanaError("User id cannot be empty.")
@@ -2056,6 +2203,7 @@ def lookup_org_user_by_user_id(client, user_id):
 
 
 def normalize_modified_user(base_user, args):
+    """Normalize modified user implementation."""
     return {
         "id": str(base_user.get("id") or ""),
         "login": str(args.set_login or base_user.get("login") or ""),
@@ -2075,6 +2223,7 @@ def normalize_modified_user(base_user, args):
 
 
 def normalize_deleted_user(base_user, scope):
+    """Normalize deleted user implementation."""
     if scope == "org":
         return normalize_org_user(base_user)
 
@@ -2095,6 +2244,7 @@ def normalize_deleted_user(base_user, scope):
 
 
 def normalize_identity_list(values):
+    """Normalize identity list implementation."""
     normalized = []
     seen = set()
     for value in values:
@@ -2107,6 +2257,7 @@ def normalize_identity_list(values):
 
 
 def validate_conflicting_identity_sets(add_values, remove_values, add_label, remove_label):
+    """Validate conflicting identity sets implementation."""
     overlap = set(add_values) & set(remove_values)
     if overlap:
         raise GrafanaError(
@@ -2116,6 +2267,7 @@ def validate_conflicting_identity_sets(add_values, remove_values, add_label, rem
 
 
 def team_member_admin_state(member):
+    """Team member admin state implementation."""
     explicit = normalize_bool(
         member.get("isAdmin", member.get("admin"))
     )
@@ -2143,12 +2295,14 @@ def team_member_admin_state(member):
 
 
 def extract_member_identity(member):
+    """Extract member identity implementation."""
     login = str(member.get("login") or "").strip()
     email = str(member.get("email") or "").strip()
     return email or login
 
 
 def format_user_summary_line(user):
+    """Format user summary line implementation."""
     parts = [
         "id=%s" % (user.get("id") or ""),
         "login=%s" % (user.get("login") or ""),
@@ -2172,6 +2326,7 @@ def format_user_summary_line(user):
 
 
 def format_deleted_team_summary_line(team):
+    """Format deleted team summary line implementation."""
     parts = [
         "teamId=%s" % (team.get("teamId") or ""),
         "name=%s" % (team.get("name") or ""),
@@ -2186,6 +2341,7 @@ def format_deleted_team_summary_line(team):
 
 
 def format_deleted_service_account_summary_line(service_account):
+    """Format deleted service account summary line implementation."""
     parts = [
         "serviceAccountId=%s" % (service_account.get("id") or ""),
         "name=%s" % (service_account.get("name") or ""),
@@ -2200,6 +2356,7 @@ def format_deleted_service_account_summary_line(service_account):
 
 
 def format_deleted_service_account_token_summary_line(token):
+    """Format deleted service account token summary line implementation."""
     parts = [
         "serviceAccountId=%s" % (token.get("serviceAccountId") or ""),
         "tokenId=%s" % (token.get("id") or ""),
@@ -2212,6 +2369,7 @@ def format_deleted_service_account_token_summary_line(token):
 
 
 def list_users_with_client(args, client):
+    """List users with client implementation."""
     users = build_user_rows(client, args)
     if args.csv:
         render_user_csv(users)
@@ -2234,6 +2392,7 @@ def list_users_with_client(args, client):
 
 
 def list_service_accounts_with_client(args, client):
+    """List service accounts with client implementation."""
     items = client.list_service_accounts(
         query=args.query,
         page=args.page,
@@ -2263,6 +2422,7 @@ def list_service_accounts_with_client(args, client):
 
 
 def list_teams_with_client(args, client):
+    """List teams with client implementation."""
     teams = build_team_rows(client, args)
     if args.csv:
         render_team_csv(teams)
@@ -2282,6 +2442,7 @@ def list_teams_with_client(args, client):
 
 
 def _build_org_rows(client, args):
+    """Internal helper for build org rows."""
     rows = []
     target_org_id = str(
         getattr(args, "org_id", getattr(args, "target_org_id", "")) or ""
@@ -2309,6 +2470,7 @@ def _build_org_rows(client, args):
 
 
 def _render_org_table(rows):
+    """Internal helper for render org table."""
     headers = ["ID", "NAME", "USER_COUNT"]
     widths = [len(header) for header in headers]
     values = []
@@ -2323,6 +2485,10 @@ def _render_org_table(rows):
             widths[index] = max(widths[index], len(value))
 
     def _format(items):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return "  ".join(
             item.ljust(widths[index]) for index, item in enumerate(items)
         )
@@ -2334,6 +2500,7 @@ def _render_org_table(rows):
 
 
 def _render_org_csv(rows):
+    """Internal helper for render org csv."""
     print("id,name,userCount")
     for row in rows:
         print(
@@ -2347,6 +2514,7 @@ def _render_org_csv(rows):
 
 
 def _csv_escape(value):
+    """Internal helper for csv escape."""
     text = str(value or "")
     if any(char in text for char in [",", "\"", "\n"]):
         return "\"%s\"" % text.replace("\"", "\"\"")
@@ -2354,10 +2522,12 @@ def _csv_escape(value):
 
 
 def _render_org_json(rows):
+    """Internal helper for render org json."""
     return json.dumps(rows, indent=2, ensure_ascii=False)
 
 
 def _format_org_summary_line(row):
+    """Internal helper for format org summary line."""
     parts = [
         "id=%s" % (row.get("id") or ""),
         "name=%s" % (row.get("name") or ""),
@@ -2367,6 +2537,11 @@ def _format_org_summary_line(row):
 
 
 def list_orgs_with_client(args, client):
+    """List orgs with client implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 3059
+    #   Downstream callees: 2364, 2392, 2422, 2444, 2449
+
     rows = _build_org_rows(client, args)
     if args.csv:
         _render_org_csv(rows)
@@ -2386,6 +2561,7 @@ def list_orgs_with_client(args, client):
 
 
 def add_service_account_with_client(args, client):
+    """Add service account with client implementation."""
     payload = {
         "name": args.name,
         "role": service_account_role_to_api(args.role),
@@ -2414,6 +2590,7 @@ def add_service_account_with_client(args, client):
 
 
 def lookup_organization(client, org_id=None, name=None):
+    """Lookup organization implementation."""
     target_org_id = str(org_id or "").strip()
     target_name = str(name or "").strip()
     if not target_org_id and not target_name:
@@ -2440,6 +2617,7 @@ def lookup_organization(client, org_id=None, name=None):
 
 
 def add_org_with_client(args, client):
+    """Add org with client implementation."""
     created_payload = client.create_organization({"name": args.name})
     org_id = str(created_payload.get("orgId") or created_payload.get("id") or "")
     created = {
@@ -2456,6 +2634,7 @@ def add_org_with_client(args, client):
 
 
 def modify_org_with_client(args, client):
+    """Modify org with client implementation."""
     org = lookup_organization(
         client,
         org_id=getattr(args, "org_id", getattr(args, "target_org_id", None)),
@@ -2487,6 +2666,7 @@ def modify_org_with_client(args, client):
 
 
 def delete_org_with_client(args, client):
+    """Delete org with client implementation."""
     validate_destructive_confirmed(args, "Org delete requires --yes.")
     org = lookup_organization(
         client,
@@ -2510,6 +2690,7 @@ def delete_org_with_client(args, client):
 
 
 def add_user_with_client(args, client):
+    """Add user with client implementation."""
     payload = {
         "name": args.name,
         "email": args.email,
@@ -2549,6 +2730,11 @@ def add_user_with_client(args, client):
 
 
 def modify_user_with_client(args, client):
+    """Modify user with client implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 3059
+    #   Downstream callees: 2079, 2125, 94
+
     validate_user_modify_args(args)
     if args.user_id:
         base_user = client.get_user(args.user_id)
@@ -2599,6 +2785,11 @@ def modify_user_with_client(args, client):
 
 
 def delete_user_with_client(args, client):
+    """Delete user with client implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 3059
+    #   Downstream callees: 132, 2057, 2079, 2106, 2145
+
     validate_user_delete_args(args)
     if args.scope == "org":
         if args.user_id:
@@ -2647,6 +2838,11 @@ def delete_user_with_client(args, client):
 
 
 def modify_team_with_client(args, client):
+    """Modify team with client implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 3059
+    #   Downstream callees: 147, 2040, 2775
+
     validate_team_modify_args(args)
     if args.team_id:
         team_payload = client.get_team(args.team_id)
@@ -2682,6 +2878,11 @@ def apply_team_membership_changes(
     remove_admin=None,
     fetch_existing_members=True,
 ):
+    """Apply team membership changes implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 2748, 2913
+    #   Downstream callees: 2057, 2166, 2179, 2189, 2217
+
     add_member_targets = normalize_identity_list(add_member or [])
     remove_member_targets = normalize_identity_list(remove_member or [])
     add_admin_targets = normalize_identity_list(add_admin or [])
@@ -2810,6 +3011,7 @@ def apply_team_membership_changes(
 
 
 def add_team_with_client(args, client):
+    """Add team with client implementation."""
     payload = {
         "name": args.name,
     }
@@ -2841,6 +3043,7 @@ def add_team_with_client(args, client):
 
 
 def add_service_account_token_with_client(args, client):
+    """Add service account token with client implementation."""
     if args.service_account_id:
         service_account_id = str(args.service_account_id)
     else:
@@ -2863,6 +3066,7 @@ def add_service_account_token_with_client(args, client):
 
 
 def delete_service_account_with_client(args, client):
+    """Delete service account with client implementation."""
     validate_destructive_confirmed(
         args,
         "Service-account delete",
@@ -2891,6 +3095,7 @@ def delete_service_account_with_client(args, client):
 
 
 def delete_service_account_token_with_client(args, client):
+    """Delete service account token with client implementation."""
     validate_destructive_confirmed(
         args,
         "Service-account token delete",
@@ -2931,6 +3136,7 @@ def delete_service_account_token_with_client(args, client):
 
 
 def delete_team_with_client(args, client):
+    """Delete team with client implementation."""
     validate_destructive_confirmed(args, "Team delete requires --yes.")
     team_id = resolve_team_id(client, args.team_id, args.name)
     team_payload = client.get_team(team_id)
@@ -2951,6 +3157,11 @@ def delete_team_with_client(args, client):
 
 
 def dispatch_access_command(args, client, auth_mode):
+    """Dispatch access command implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 123, 1248, 1282, 138, 1386, 1506, 161, 166, 1693, 171, 1730, 1881, 1915, 2291, 2314, 2344, 2459, 2479, 2535, 2552, 2584, 2608, 2648, 2699, 2748, 2913, 2945, 2968, 2997, 3038, 493, 555, 59, 718, 76, 85
+
     if args.resource == "org" and args.command == "list":
         validate_org_auth(auth_mode)
         return list_orgs_with_client(args, client)

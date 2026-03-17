@@ -104,7 +104,7 @@ class RoadmapWorkbenchTests(unittest.TestCase):
             ],
         }
 
-    def test_list_workbench_sections_returns_expected_order(self):
+    def test_roadmap_list_workbench_sections_returns_expected_order(self):
         self.assertEqual(
             roadmap_workbench.list_workbench_sections(),
             [
@@ -115,7 +115,7 @@ class RoadmapWorkbenchTests(unittest.TestCase):
             ],
         )
 
-    def test_build_workbench_index_groups_task_names_by_section(self):
+    def test_roadmap_build_workbench_index_groups_task_names_by_section(self):
         index = roadmap_workbench.build_workbench_index()
         self.assertIn(
             "dashboard-datasource-dependency-summary",
@@ -134,7 +134,7 @@ class RoadmapWorkbenchTests(unittest.TestCase):
             index[roadmap_workbench.SECRET_HANDLING_AND_REDACTION],
         )
 
-    def test_iter_candidate_modules_deduplicates_modules(self):
+    def test_roadmap_iter_candidate_modules_deduplicates_modules(self):
         modules = list(
             roadmap_workbench.iter_candidate_modules(
                 roadmap_workbench.INSPECTION_AND_GOVERNANCE
@@ -143,7 +143,7 @@ class RoadmapWorkbenchTests(unittest.TestCase):
         self.assertEqual(len(modules), len(set(modules)))
         self.assertIn("grafana_utils.dashboards.inspection_report", modules)
 
-    def test_iter_candidate_modules_exposes_new_gitops_and_secret_modules(self):
+    def test_roadmap_iter_candidate_modules_exposes_new_gitops_and_secret_modules(self):
         gitops_modules = list(
             roadmap_workbench.iter_candidate_modules(
                 roadmap_workbench.DECLARATIVE_SYNC_AND_GITOPS
@@ -160,7 +160,7 @@ class RoadmapWorkbenchTests(unittest.TestCase):
             secret_modules,
         )
 
-    def test_build_dependency_graph_document_builds_stable_graph_shape(self):
+    def test_roadmap_build_dependency_graph_document_builds_stable_graph_shape(self):
         document = roadmap_workbench.build_dependency_graph_document(
             self.build_summary_document(),
             self.build_report_document(),
@@ -199,7 +199,7 @@ class RoadmapWorkbenchTests(unittest.TestCase):
             2,
         )
 
-    def test_render_dependency_graph_dot_renders_nodes_and_aggregated_edges(self):
+    def test_roadmap_render_dependency_graph_dot_renders_nodes_and_aggregated_edges(self):
         document = roadmap_workbench.build_dependency_graph_document(
             self.build_summary_document(),
             self.build_report_document(),
@@ -223,7 +223,7 @@ class RoadmapWorkbenchTests(unittest.TestCase):
             dot,
         )
 
-    def test_build_dependency_graph_governance_summary_reports_blast_radius_and_orphans(self):
+    def test_roadmap_build_dependency_graph_governance_summary_reports_blast_radius_and_orphans(self):
         document = roadmap_workbench.build_dependency_graph_document(
             self.build_summary_document(),
             self.build_report_document(),
@@ -247,7 +247,7 @@ class RoadmapWorkbenchTests(unittest.TestCase):
         self.assertEqual(orphaned[0]["datasourceUid"], "unused-main")
         self.assertEqual(orphaned[0]["dashboardCount"], 0)
 
-    def test_build_promotion_plan_document_tracks_create_update_and_remap_inputs(self):
+    def test_roadmap_build_promotion_plan_document_tracks_create_update_and_remap_inputs(self):
         document = roadmap_workbench.build_promotion_plan_document(
             self.build_source_bundle(),
             self.build_target_inventory(),
@@ -275,7 +275,7 @@ class RoadmapWorkbenchTests(unittest.TestCase):
             "Prometheus Production",
         )
 
-    def test_build_preflight_check_document_reports_missing_dependencies(self):
+    def test_roadmap_build_preflight_check_document_reports_missing_dependencies(self):
         plan_document = roadmap_workbench.build_promotion_plan_document(
             self.build_source_bundle(),
             self.build_target_inventory(),
@@ -312,7 +312,7 @@ class RoadmapWorkbenchTests(unittest.TestCase):
         )
         self.assertEqual(checks[("library-panel", "libcpu")]["status"], "ok")
 
-    def test_render_promotion_plan_text_renders_summary_and_items(self):
+    def test_roadmap_render_promotion_plan_text_renders_summary_and_items(self):
         document = roadmap_workbench.build_promotion_plan_document(
             self.build_source_bundle(),
             self.build_target_inventory(),
@@ -327,7 +327,7 @@ class RoadmapWorkbenchTests(unittest.TestCase):
         self.assertIn("- dashboard uid=cpu-main target=prod-cpu-main action=update", output)
         self.assertIn("- datasource uid=prom-main target=prom-prod action=update", output)
 
-    def test_render_preflight_check_text_renders_summary_and_status_rows(self):
+    def test_roadmap_render_preflight_check_text_renders_summary_and_status_rows(self):
         plan_document = roadmap_workbench.build_promotion_plan_document(
             self.build_source_bundle(),
             self.build_target_inventory(),

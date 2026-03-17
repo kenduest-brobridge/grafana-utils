@@ -43,6 +43,10 @@ class DatasourceSecretPlan(object):
 
 def build_placeholder_token(name):
     """Return the canonical placeholder token for one secret name."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if not isinstance(name, str) or not name.strip():
         raise GrafanaError("Secret placeholder names must be non-empty strings.")
     return "%s%s%s" % (
@@ -127,6 +131,10 @@ def iter_secret_placeholder_names(placeholders):
 
 def build_datasource_secret_plan(datasource_spec, provided_secrets):
     """Build one resolved datasource secret plan from placeholder input."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 83, 97
+
     if not isinstance(datasource_spec, dict):
         raise GrafanaError("Datasource secret plan input must be a mapping.")
     datasource_name = datasource_spec.get("name")
@@ -156,6 +164,10 @@ def build_datasource_secret_plan(datasource_spec, provided_secrets):
 
 def summarize_secret_plan(plan):
     """Return a small review-friendly summary without exposing secret values."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 118
+
     return {
         "datasourceUid": plan.datasource_uid,
         "datasourceName": plan.datasource_name,

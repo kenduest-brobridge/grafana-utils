@@ -6,6 +6,7 @@ use crate::common::{message, Result};
 
 use super::InspectExportReportFormat;
 
+/// Struct definition for QueryReportSummary.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct QueryReportSummary {
     #[serde(rename = "dashboardCount")]
@@ -18,6 +19,7 @@ pub(crate) struct QueryReportSummary {
     pub(crate) report_row_count: usize,
 }
 
+/// Struct definition for ExportInspectionQueryRow.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct ExportInspectionQueryRow {
     pub(crate) org: String,
@@ -55,6 +57,7 @@ pub(crate) struct ExportInspectionQueryRow {
     pub(crate) file_path: String,
 }
 
+/// Struct definition for ExportInspectionQueryReport.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct ExportInspectionQueryReport {
     pub(crate) import_dir: String,
@@ -62,6 +65,7 @@ pub(crate) struct ExportInspectionQueryReport {
     pub(crate) queries: Vec<ExportInspectionQueryRow>,
 }
 
+/// Struct definition for ExportInspectionQueryReportJsonSummary.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct ExportInspectionQueryReportJsonSummary {
     #[serde(rename = "dashboardCount")]
@@ -70,12 +74,14 @@ pub(crate) struct ExportInspectionQueryReportJsonSummary {
     pub(crate) query_record_count: usize,
 }
 
+/// Struct definition for ExportInspectionQueryReportDocument.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct ExportInspectionQueryReportDocument {
     pub(crate) summary: ExportInspectionQueryReportJsonSummary,
     pub(crate) queries: Vec<ExportInspectionQueryRow>,
 }
 
+/// Struct definition for GroupedQueryPanel.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct GroupedQueryPanel {
     pub(crate) panel_id: String,
@@ -87,6 +93,7 @@ pub(crate) struct GroupedQueryPanel {
     pub(crate) queries: Vec<ExportInspectionQueryRow>,
 }
 
+/// Struct definition for GroupedQueryDashboard.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct GroupedQueryDashboard {
     pub(crate) org: String,
@@ -100,6 +107,7 @@ pub(crate) struct GroupedQueryDashboard {
     pub(crate) panels: Vec<GroupedQueryPanel>,
 }
 
+/// Struct definition for NormalizedQueryReport.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct NormalizedQueryReport {
     pub(crate) import_dir: String,
@@ -107,6 +115,7 @@ pub(crate) struct NormalizedQueryReport {
     pub(crate) dashboards: Vec<GroupedQueryDashboard>,
 }
 
+/// Constant for default report column ids.
 pub(crate) const DEFAULT_REPORT_COLUMN_IDS: &[&str] = &[
     "org",
     "org_id",
@@ -128,6 +137,7 @@ pub(crate) const DEFAULT_REPORT_COLUMN_IDS: &[&str] = &[
     "file",
 ];
 
+/// Constant for supported report column ids.
 pub(crate) const SUPPORTED_REPORT_COLUMN_IDS: &[&str] = &[
     "org",
     "org_id",
@@ -168,6 +178,7 @@ fn normalize_report_column_id(value: &str) -> &str {
     }
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_query_report(
     import_dir: String,
     dashboard_count: usize,
@@ -187,6 +198,7 @@ pub(crate) fn build_query_report(
     }
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_export_inspection_query_report_document(
     report: &ExportInspectionQueryReport,
 ) -> ExportInspectionQueryReportDocument {
@@ -199,6 +211,7 @@ pub(crate) fn build_export_inspection_query_report_document(
     }
 }
 
+/// refresh filtered query report summary.
 pub(crate) fn refresh_filtered_query_report_summary(report: &mut ExportInspectionQueryReport) {
     report.summary.dashboard_count = report
         .queries
@@ -222,6 +235,7 @@ pub(crate) fn refresh_filtered_query_report_summary(report: &mut ExportInspectio
     report.summary.report_row_count = report.queries.len();
 }
 
+/// Purpose: implementation note.
 pub(crate) fn resolve_report_column_ids(selected: &[String]) -> Result<Vec<String>> {
     if selected.is_empty() {
         return Ok(DEFAULT_REPORT_COLUMN_IDS
@@ -255,6 +269,7 @@ pub(crate) fn resolve_report_column_ids(selected: &[String]) -> Result<Vec<Strin
     Ok(result)
 }
 
+/// report column header.
 pub(crate) fn report_column_header(column_id: &str) -> &'static str {
     match column_id {
         "org" => "ORG",
@@ -280,6 +295,7 @@ pub(crate) fn report_column_header(column_id: &str) -> &'static str {
     }
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_query_report_column(
     row: &ExportInspectionQueryRow,
     column_id: &str,
@@ -308,6 +324,7 @@ pub(crate) fn render_query_report_column(
     }
 }
 
+/// report format supports columns.
 pub(crate) fn report_format_supports_columns(format: InspectExportReportFormat) -> bool {
     matches!(
         format,
@@ -318,6 +335,7 @@ pub(crate) fn report_format_supports_columns(format: InspectExportReportFormat) 
 }
 
 // Group query rows by dashboard/panel so report output is deterministic and renderable.
+/// Purpose: implementation note.
 pub(crate) fn normalize_query_report(
     report: &ExportInspectionQueryReport,
 ) -> NormalizedQueryReport {

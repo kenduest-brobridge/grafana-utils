@@ -35,6 +35,7 @@ PERMISSION_LEVEL_VALUES = {
 
 
 def _normalize_text(value: Any, default: str = "") -> str:
+    """Internal helper for normalize text."""
     text = str(value or "").strip()
     if text:
         return text
@@ -114,6 +115,10 @@ def normalize_permission_record(
     record: dict[str, Any],
 ) -> dict[str, Any]:
     """Normalize one raw Grafana ACL row into a stable export shape."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 136
+    #   Downstream callees: 37, 45, 61
+
     subject = normalize_permission_subject(record)
     level_value, level_name = normalize_permission_level(
         record.get("permission") or record.get("permissionName")
@@ -243,6 +248,10 @@ def build_permission_diff_document(
 
 def render_permission_export_text(document: dict[str, Any]) -> list[str]:
     """Render a staged ACL export document as text."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 37
+
     resource = document.get("resource") or {}
     summary = document.get("summary") or {}
     lines = [
@@ -283,6 +292,10 @@ def build_permission_preflight_document(
     availability: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build reviewable availability checks for permission subjects."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 37
+
     availability = dict(availability or {})
     available_users = set(str(item) for item in (availability.get("userIds") or []))
     available_teams = set(str(item) for item in (availability.get("teamIds") or []))
@@ -339,6 +352,10 @@ def build_permission_promotion_document(
     actual_document: dict[str, Any],
 ) -> dict[str, Any]:
     """Build one promotion/drift summary document from expected vs actual ACLs."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 178
+
     diff_document = build_permission_diff_document(expected_document, actual_document)
     rows = list(diff_document.get("rows") or [])
     return {
@@ -363,6 +380,10 @@ def build_permission_promotion_document(
 
 def render_permission_preflight_text(document: dict[str, Any]) -> list[str]:
     """Render permission preflight checks as text."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 37
+
     summary = document.get("summary") or {}
     lines = [
         "Permission preflight summary",
@@ -395,6 +416,10 @@ def build_permission_bundle_document(
     resources: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """Build a bundle document from multiple dashboard/folder permission exports."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 136, 37
+
     documents = []
     for item in resources:
         if not isinstance(item, dict):
@@ -438,6 +463,10 @@ def build_permission_bundle_diff_document(
     actual_bundle: dict[str, Any],
 ) -> dict[str, Any]:
     """Build one diff summary across multiple dashboard/folder permission exports."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 178, 37
+
     expected_map = {
         "%s:%s"
         % (
@@ -514,6 +543,10 @@ def build_permission_bundle_diff_document(
 
 def render_permission_bundle_text(document: dict[str, Any]) -> list[str]:
     """Render a staged permission bundle as text."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 37
+
     summary = document.get("summary") or {}
     lines = [
         "Permission bundle summary",
@@ -549,6 +582,10 @@ def build_permission_remap_document(
     remap_rules: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build one reviewable source-to-target remap plan for permission resources."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 37
+
     remap_rules = dict(remap_rules or {})
     uid_map = dict(remap_rules.get("uidMap") or {})
     title_map = dict(remap_rules.get("titleMap") or {})
@@ -598,6 +635,10 @@ def build_permission_remap_document(
 
 def render_permission_remap_text(document: dict[str, Any]) -> list[str]:
     """Render the staged permission remap plan as text."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 37
+
     summary = document.get("summary") or {}
     lines = [
         "Permission remap summary",

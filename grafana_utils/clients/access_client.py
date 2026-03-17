@@ -24,6 +24,14 @@ class GrafanaAccessClient:
         ca_cert: Optional[str] = None,
         transport: Optional[JsonHttpTransport] = None,
     ) -> None:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         self.transport = transport or build_json_http_transport(
             base_url=base_url,
             headers={"Accept": "application/json", **headers},
@@ -39,6 +47,10 @@ class GrafanaAccessClient:
         method: str = "GET",
         payload: Optional[dict[str, Any]] = None,
     ) -> Any:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         try:
             return self.transport.request_json(
                 path=path,
@@ -52,18 +64,42 @@ class GrafanaAccessClient:
             raise GrafanaError(str(exc)) from exc
 
     def list_org_users(self) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json("/api/org/users")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected org user list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
     def list_organizations(self) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json("/api/orgs")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected organization list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
     def get_organization(self, org_id: Any) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/orgs/%s" % parse.quote(str(org_id), safe="")
         )
@@ -75,6 +111,14 @@ class GrafanaAccessClient:
         return data
 
     def create_organization(self, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/orgs",
             method="POST",
@@ -85,6 +129,14 @@ class GrafanaAccessClient:
         return data
 
     def update_organization(self, org_id: Any, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/orgs/%s" % parse.quote(str(org_id), safe=""),
             method="PUT",
@@ -98,6 +150,14 @@ class GrafanaAccessClient:
         return data
 
     def delete_organization(self, org_id: Any) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/orgs/%s" % parse.quote(str(org_id), safe=""),
             method="DELETE",
@@ -110,6 +170,14 @@ class GrafanaAccessClient:
         return data
 
     def list_organization_users(self, org_id: Any) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/orgs/%s/users" % parse.quote(str(org_id), safe="")
         )
@@ -125,6 +193,14 @@ class GrafanaAccessClient:
         org_id: Any,
         payload: dict[str, Any],
     ) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/orgs/%s/users" % parse.quote(str(org_id), safe=""),
             method="POST",
@@ -142,6 +218,14 @@ class GrafanaAccessClient:
         user_id: Any,
         role: str,
     ) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/orgs/%s/users/%s"
             % (
@@ -159,6 +243,14 @@ class GrafanaAccessClient:
         return data
 
     def delete_organization_user(self, org_id: Any, user_id: Any) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/orgs/%s/users/%s"
             % (
@@ -175,6 +267,14 @@ class GrafanaAccessClient:
         return data
 
     def iter_global_users(self, page_size: int) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         users = []
         page = 1
         while True:
@@ -193,6 +293,14 @@ class GrafanaAccessClient:
         return users
 
     def list_user_teams(self, user_id: Any) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/users/%s/teams" % parse.quote(str(user_id), safe="")
         )
@@ -203,6 +311,14 @@ class GrafanaAccessClient:
         return [item for item in data if isinstance(item, dict)]
 
     def get_user(self, user_id: Any) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/users/%s" % parse.quote(str(user_id), safe="")
         )
@@ -213,6 +329,14 @@ class GrafanaAccessClient:
         return data
 
     def create_user(self, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/admin/users",
             method="POST",
@@ -223,6 +347,14 @@ class GrafanaAccessClient:
         return data
 
     def update_user(self, user_id: Any, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/users/%s" % parse.quote(str(user_id), safe=""),
             method="PUT",
@@ -235,6 +367,14 @@ class GrafanaAccessClient:
         return data
 
     def update_user_password(self, user_id: Any, password: str) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/admin/users/%s/password" % parse.quote(str(user_id), safe=""),
             method="PUT",
@@ -248,6 +388,14 @@ class GrafanaAccessClient:
         return data
 
     def update_user_org_role(self, user_id: Any, role: str) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/org/users/%s" % parse.quote(str(user_id), safe=""),
             method="PATCH",
@@ -264,6 +412,14 @@ class GrafanaAccessClient:
         user_id: Any,
         is_grafana_admin: bool,
     ) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/admin/users/%s/permissions" % parse.quote(str(user_id), safe=""),
             method="PUT",
@@ -277,6 +433,14 @@ class GrafanaAccessClient:
         return data
 
     def delete_global_user(self, user_id: Any) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/admin/users/%s" % parse.quote(str(user_id), safe=""),
             method="DELETE",
@@ -289,6 +453,14 @@ class GrafanaAccessClient:
         return data
 
     def delete_org_user(self, user_id: Any) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/org/users/%s" % parse.quote(str(user_id), safe=""),
             method="DELETE",
@@ -305,6 +477,14 @@ class GrafanaAccessClient:
         page: int,
         per_page: int,
     ) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/serviceaccounts/search",
             params={
@@ -330,6 +510,10 @@ class GrafanaAccessClient:
         page: int,
         per_page: int,
     ) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         data = self.request_json(
             "/api/teams/search",
             params={
@@ -350,6 +534,14 @@ class GrafanaAccessClient:
         query: Optional[str],
         page_size: int,
     ) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 419
+
         teams = []
         page = 1
         while True:
@@ -367,6 +559,14 @@ class GrafanaAccessClient:
         return teams
 
     def list_team_members(self, team_id: Any) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/teams/%s/members" % parse.quote(str(team_id), safe="")
         )
@@ -377,6 +577,14 @@ class GrafanaAccessClient:
         return [item for item in data if isinstance(item, dict)]
 
     def get_team(self, team_id: Any) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/teams/%s" % parse.quote(str(team_id), safe="")
         )
@@ -387,6 +595,14 @@ class GrafanaAccessClient:
         return data
 
     def delete_team(self, team_id: Any) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/teams/%s" % parse.quote(str(team_id), safe=""),
             method="DELETE",
@@ -398,6 +614,14 @@ class GrafanaAccessClient:
         return data
 
     def create_team(self, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/teams",
             method="POST",
@@ -408,6 +632,14 @@ class GrafanaAccessClient:
         return data
 
     def add_team_member(self, team_id: Any, user_id: Any) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/teams/%s/members" % parse.quote(str(team_id), safe=""),
             method="POST",
@@ -420,6 +652,14 @@ class GrafanaAccessClient:
         return data
 
     def remove_team_member(self, team_id: Any, user_id: Any) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/teams/%s/members/%s"
             % (
@@ -435,6 +675,14 @@ class GrafanaAccessClient:
         return data
 
     def update_team_members(self, team_id: Any, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/teams/%s/members" % parse.quote(str(team_id), safe=""),
             method="PUT",
@@ -448,6 +696,14 @@ class GrafanaAccessClient:
         return data
 
     def create_service_account(self, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/serviceaccounts",
             method="POST",
@@ -460,6 +716,14 @@ class GrafanaAccessClient:
         return data
 
     def get_service_account(self, service_account_id: Any) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/serviceaccounts/%s" % parse.quote(str(service_account_id), safe="")
         )
@@ -471,6 +735,14 @@ class GrafanaAccessClient:
         return data
 
     def delete_service_account(self, service_account_id: Any) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/serviceaccounts/%s" % parse.quote(str(service_account_id), safe=""),
             method="DELETE",
@@ -487,6 +759,14 @@ class GrafanaAccessClient:
         service_account_id: Any,
         payload: dict[str, Any],
     ) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/serviceaccounts/%s" % parse.quote(str(service_account_id), safe=""),
             method="PATCH",
@@ -503,6 +783,14 @@ class GrafanaAccessClient:
         self,
         service_account_id: Any,
     ) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/serviceaccounts/%s/tokens"
             % parse.quote(str(service_account_id), safe="")
@@ -519,6 +807,14 @@ class GrafanaAccessClient:
         service_account_id: Any,
         payload: dict[str, Any],
     ) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/serviceaccounts/%s/tokens"
             % parse.quote(str(service_account_id), safe=""),
@@ -536,6 +832,14 @@ class GrafanaAccessClient:
         service_account_id: Any,
         token_id: Any,
     ) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 39
+
         data = self.request_json(
             "/api/serviceaccounts/%s/tokens/%s"
             % (

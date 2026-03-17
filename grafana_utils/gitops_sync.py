@@ -68,12 +68,14 @@ class SyncPlan:
 
 
 def _normalize_string(value):
+    """Internal helper for normalize string."""
     if value is None:
         return ""
     return str(value).strip()
 
 
 def _copy_mapping(value, label):
+    """Internal helper for copy mapping."""
     if value is None:
         return {}
     if not isinstance(value, Mapping):
@@ -82,6 +84,7 @@ def _copy_mapping(value, label):
 
 
 def _normalize_string_list(values, label):
+    """Internal helper for normalize string list."""
     if values is None:
         return ()
     if not isinstance(values, (list, tuple)):
@@ -96,6 +99,7 @@ def _normalize_string_list(values, label):
 
 
 def _extract_identity(spec):
+    """Internal helper for extract identity."""
     for field in ("uid", "name", "title", "path"):
         value = _normalize_string(spec.get(field))
         if value:
@@ -104,6 +108,7 @@ def _extract_identity(spec):
 
 
 def _extract_title(spec, fallback_identity):
+    """Internal helper for extract title."""
     for field in ("title", "name", "uid", "path"):
         value = _normalize_string(spec.get(field))
         if value:
@@ -112,6 +117,7 @@ def _extract_title(spec, fallback_identity):
 
 
 def _normalize_body(spec):
+    """Internal helper for normalize body."""
     body = _copy_mapping(spec.get("body"), "body")
     if not body:
         body = _copy_mapping(spec.get("spec"), "spec")
@@ -120,6 +126,10 @@ def _normalize_body(spec):
 
 def normalize_resource_spec(spec):
     """Normalize one declarative resource specification."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 200, 336
+    #   Downstream callees: 101, 110, 119, 70, 86
+
     if not isinstance(spec, Mapping):
         raise GrafanaError("Sync resource spec must be a JSON object.")
 
@@ -168,6 +178,7 @@ def build_resource_index(specs):
 
 
 def _body_subset_for_comparison(spec, live_body):
+    """Internal helper for body subset for comparison."""
     live_copy = _copy_mapping(live_body, "live body")
     if not spec.managed_fields:
         return live_copy
@@ -179,6 +190,7 @@ def _body_subset_for_comparison(spec, live_body):
 
 
 def _compare_body(spec, live_body):
+    """Internal helper for compare body."""
     desired_body = deepcopy(spec.body)
     comparable_live_body = _body_subset_for_comparison(spec, live_body)
     field_names = sorted(set(desired_body.keys()) | set(comparable_live_body.keys()))
@@ -190,6 +202,7 @@ def _compare_body(spec, live_body):
 
 
 def _normalize_live_specs(live_specs):
+    """Internal helper for normalize live specs."""
     normalized = []
     for spec in live_specs:
         normalized.append(normalize_resource_spec(spec))
@@ -197,6 +210,7 @@ def _normalize_live_specs(live_specs):
 
 
 def _build_operation(spec, live_spec=None):
+    """Internal helper for build operation."""
     if live_spec is None:
         return SyncOperation(
             kind=spec.kind,
@@ -240,6 +254,7 @@ def _build_operation(spec, live_spec=None):
 
 
 def _build_prune_operation(spec, allow_prune):
+    """Internal helper for build prune operation."""
     if allow_prune:
         return SyncOperation(
             kind=spec.kind,
@@ -330,6 +345,10 @@ def build_sync_plan(
     review_required=True,
 ):
     """Build a dry-run-first declarative sync plan without mutating Grafana."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 127, 163, 200, 208, 252, 313
+
     desired_index = build_resource_index(
         [normalize_resource_spec(spec) for spec in desired_specs]
     )
@@ -358,6 +377,10 @@ def build_sync_plan(
 
 def mark_plan_reviewed(plan, review_token=DEFAULT_REVIEW_TOKEN):
     """Return a reviewed plan only when the caller presents the expected token."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 70
+
     normalized_token = _normalize_string(review_token)
     if normalized_token != DEFAULT_REVIEW_TOKEN:
         raise GrafanaError("Sync plan review token rejected.")
@@ -373,6 +396,10 @@ def mark_plan_reviewed(plan, review_token=DEFAULT_REVIEW_TOKEN):
 
 def build_apply_intent(plan, approve=False):
     """Gate non-dry-run execution behind explicit review and approval."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if plan.dry_run:
         return {
             "mode": "dry-run",
@@ -398,6 +425,10 @@ def build_apply_intent(plan, approve=False):
 
 def plan_to_document(plan):
     """Render one JSON-safe document for future CLI/table/json wiring."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 281
+
     alert_assessment = summarize_alert_operations(plan.operations)
     summary = deepcopy(plan.summary)
     summary["alert_candidate"] = int(
@@ -442,6 +473,10 @@ def build_sync_source_bundle_document(
     metadata=None,
 ):
     """Build one portable local source bundle document for later review/preflight."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 77
+
     dashboards = list(dashboards or ())
     datasources = list(datasources or ())
     folders = list(folders or ())
@@ -472,6 +507,10 @@ def build_sync_source_bundle_document(
 
 def render_sync_source_bundle_text(document):
     """Render one portable source bundle document as concise operator text."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 77
+
     if not isinstance(document, Mapping):
         raise GrafanaError("Sync source bundle document must be a JSON object.")
     if document.get("kind") != SYNC_SOURCE_BUNDLE_KIND:

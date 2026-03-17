@@ -30,11 +30,11 @@ class FakeAccessLookupClient:
 
 
 class PendingCliStagingTests(unittest.TestCase):
-    def test_module_parses_as_python39_syntax(self):
+    def test_access_pending_cli_staging_module_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_team_delete_parser_requires_identity(self):
+    def test_access_pending_cli_staging_team_delete_parser_requires_identity(self):
         parser = argparse.ArgumentParser(prog="team delete")
         pending_cli.add_team_delete_cli_args(parser)
 
@@ -44,7 +44,7 @@ class PendingCliStagingTests(unittest.TestCase):
         self.assertTrue(args.yes)
         self.assertTrue(args.json)
 
-    def test_service_account_token_delete_parser_supports_name_lookup(self):
+    def test_access_pending_cli_staging_service_account_token_delete_parser_supports_name_lookup(self):
         parser = argparse.ArgumentParser(prog="service-account token delete")
         pending_cli.add_service_account_token_delete_cli_args(parser)
 
@@ -56,7 +56,7 @@ class PendingCliStagingTests(unittest.TestCase):
         self.assertEqual(args.token_name, "nightly")
         self.assertTrue(args.yes)
 
-    def test_normalize_group_alias_argv_maps_leading_group_only(self):
+    def test_access_pending_cli_staging_normalize_group_alias_argv_maps_leading_group_only(self):
         self.assertEqual(
             pending_cli.normalize_group_alias_argv(["group", "list"]),
             ["team", "list"],
@@ -66,13 +66,13 @@ class PendingCliStagingTests(unittest.TestCase):
             ["team", "list"],
         )
 
-    def test_validate_destructive_confirmed_rejects_missing_yes(self):
+    def test_access_pending_cli_staging_validate_destructive_confirmed_rejects_missing_yes(self):
         args = argparse.Namespace(yes=False)
 
         with self.assertRaisesRegex(Exception, "requires --yes"):
             pending_cli.validate_destructive_confirmed(args, "Team delete")
 
-    def test_resolve_team_id_supports_explicit_id(self):
+    def test_access_pending_cli_staging_resolve_team_id_supports_explicit_id(self):
         client = FakeAccessLookupClient()
 
         resolved = pending_cli.resolve_team_id(client, team_id="44")
@@ -80,7 +80,7 @@ class PendingCliStagingTests(unittest.TestCase):
         self.assertEqual(resolved, "44")
         self.assertEqual(client.team_calls, [])
 
-    def test_resolve_team_id_resolves_exact_name(self):
+    def test_access_pending_cli_staging_resolve_team_id_resolves_exact_name(self):
         client = FakeAccessLookupClient(
             teams=[{"id": 5, "name": "ops"}, {"id": 6, "name": "ops-east"}]
         )
@@ -90,7 +90,7 @@ class PendingCliStagingTests(unittest.TestCase):
         self.assertEqual(resolved, "5")
         self.assertEqual(client.team_calls, [("ops", 100)])
 
-    def test_resolve_team_id_rejects_ambiguous_name(self):
+    def test_access_pending_cli_staging_resolve_team_id_rejects_ambiguous_name(self):
         client = FakeAccessLookupClient(
             teams=[{"id": 5, "name": "ops"}, {"id": 6, "name": "ops"}]
         )
@@ -98,7 +98,7 @@ class PendingCliStagingTests(unittest.TestCase):
         with self.assertRaisesRegex(Exception, "matched multiple items"):
             pending_cli.resolve_team_id(client, name="ops")
 
-    def test_resolve_service_account_id_resolves_exact_name(self):
+    def test_access_pending_cli_staging_resolve_service_account_id_resolves_exact_name(self):
         client = FakeAccessLookupClient(
             service_accounts=[
                 {"id": 8, "name": "robot"},
@@ -111,7 +111,7 @@ class PendingCliStagingTests(unittest.TestCase):
         self.assertEqual(resolved, "8")
         self.assertEqual(client.service_account_calls, [("robot", 1, 100)])
 
-    def test_resolve_service_account_token_record_supports_token_name(self):
+    def test_access_pending_cli_staging_resolve_service_account_token_record_supports_token_name(self):
         resolved = pending_cli.resolve_service_account_token_record(
             [
                 {"id": 2, "name": "nightly"},
@@ -122,7 +122,7 @@ class PendingCliStagingTests(unittest.TestCase):
 
         self.assertEqual(resolved["id"], 2)
 
-    def test_build_delete_request_paths_quote_ids(self):
+    def test_access_pending_cli_staging_build_delete_request_paths_quote_ids(self):
         team_request = pending_cli.build_team_delete_request("folder/ops")
         service_account_request = pending_cli.build_service_account_delete_request(
             "svc/acct"

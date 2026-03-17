@@ -9,23 +9,40 @@ use super::access_pending_delete::{
 use crate::common::{resolve_auth_headers, Result};
 use crate::http::{JsonHttpClient, JsonHttpClientConfig};
 
+/// Constant for default url.
 pub const DEFAULT_URL: &str = "http://127.0.0.1:3000";
+/// Constant for default timeout.
 pub const DEFAULT_TIMEOUT: u64 = 30;
+/// Constant for default page size.
 pub const DEFAULT_PAGE_SIZE: usize = 100;
+/// Constant for default access user export dir.
 pub const DEFAULT_ACCESS_USER_EXPORT_DIR: &str = "access-users";
+/// Constant for default access team export dir.
 pub const DEFAULT_ACCESS_TEAM_EXPORT_DIR: &str = "access-teams";
+/// Constant for default access org export dir.
 pub const DEFAULT_ACCESS_ORG_EXPORT_DIR: &str = "access-orgs";
+/// Constant for default access service account export dir.
 pub const DEFAULT_ACCESS_SERVICE_ACCOUNT_EXPORT_DIR: &str = "access-service-accounts";
+/// Constant for access export kind users.
 pub const ACCESS_EXPORT_KIND_USERS: &str = "grafana-utils-access-user-export-index";
+/// Constant for access export kind teams.
 pub const ACCESS_EXPORT_KIND_TEAMS: &str = "grafana-utils-access-team-export-index";
+/// Constant for access export kind orgs.
 pub const ACCESS_EXPORT_KIND_ORGS: &str = "grafana-utils-access-org-export-index";
+/// Constant for access export kind service accounts.
 pub const ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS: &str =
     "grafana-utils-access-service-account-export-index";
+/// Constant for access export version.
 pub const ACCESS_EXPORT_VERSION: i64 = 1;
+/// Constant for access user export filename.
 pub const ACCESS_USER_EXPORT_FILENAME: &str = "users.json";
+/// Constant for access team export filename.
 pub const ACCESS_TEAM_EXPORT_FILENAME: &str = "teams.json";
+/// Constant for access org export filename.
 pub const ACCESS_ORG_EXPORT_FILENAME: &str = "orgs.json";
+/// Constant for access service account export filename.
 pub const ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME: &str = "service-accounts.json";
+/// Constant for access export metadata filename.
 pub const ACCESS_EXPORT_METADATA_FILENAME: &str = "export-metadata.json";
 const ACCESS_ROOT_HELP_TEXT: &str = "Examples:\n\n  List org users as JSON:\n    grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n\n  Create a Grafana user with Basic auth:\n    grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --email alice@example.com --name Alice --password secret\n\n  Import teams with destructive sync acknowledgement:\n    grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --yes\n\n  Create a service-account token:\n    grafana-util access service-account token add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly";
 const ACCESS_USER_HELP_TEXT: &str = "Examples:\n\n  grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n  grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --email alice@example.com --name Alice --password secret";
@@ -37,6 +54,7 @@ const ACCESS_TEAM_IMPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util access t
 const ACCESS_ORG_DELETE_HELP_TEXT: &str = "Examples:\n\n  grafana-util access org delete --basic-user admin --basic-password admin --name platform --yes\n  grafana-util access org delete --basic-user admin --basic-password admin --org-id 7 --yes --json";
 const ACCESS_SERVICE_ACCOUNT_TOKEN_ADD_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account token add --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly\n  grafana-util access service-account token add --token \"$GRAFANA_API_TOKEN\" --service-account-id 7 --token-name nightly --seconds-to-live 3600";
 
+/// Struct definition for CommonCliArgs.
 #[derive(Debug, Clone, Args)]
 pub struct CommonCliArgs {
     #[arg(long, default_value = DEFAULT_URL, help = "Grafana base URL.", help_heading = "Authentication Options")]
@@ -106,6 +124,7 @@ pub struct CommonCliArgs {
     pub ca_cert: Option<PathBuf>,
 }
 
+/// Struct definition for CommonCliArgsNoOrgId.
 #[derive(Debug, Clone, Args)]
 pub struct CommonCliArgsNoOrgId {
     #[arg(long, default_value = DEFAULT_URL, help = "Grafana base URL.", help_heading = "Authentication Options")]
@@ -169,12 +188,14 @@ pub struct CommonCliArgsNoOrgId {
     pub ca_cert: Option<PathBuf>,
 }
 
+/// Enum definition for Scope.
 #[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
 pub enum Scope {
     Org,
     Global,
 }
 
+/// Enum definition for ListOutputFormat.
 #[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
 pub enum ListOutputFormat {
     Text,
@@ -183,6 +204,7 @@ pub enum ListOutputFormat {
     Json,
 }
 
+/// Enum definition for DryRunOutputFormat.
 #[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
 pub enum DryRunOutputFormat {
     Text,
@@ -190,6 +212,7 @@ pub enum DryRunOutputFormat {
     Json,
 }
 
+/// Struct definition for UserListArgs.
 #[derive(Debug, Clone, Args)]
 pub struct UserListArgs {
     #[command(flatten)]
@@ -241,6 +264,7 @@ pub struct UserListArgs {
     pub output_format: Option<ListOutputFormat>,
 }
 
+/// Struct definition for UserAddArgs.
 #[derive(Debug, Clone, Args)]
 pub struct UserAddArgs {
     #[command(flatten)]
@@ -285,6 +309,7 @@ pub struct UserAddArgs {
     pub json: bool,
 }
 
+/// Struct definition for UserModifyArgs.
 #[derive(Debug, Clone, Args)]
 pub struct UserModifyArgs {
     #[command(flatten)]
@@ -332,6 +357,7 @@ pub struct UserModifyArgs {
     pub json: bool,
 }
 
+/// Struct definition for UserDeleteArgs.
 #[derive(Debug, Clone, Args)]
 pub struct UserDeleteArgs {
     #[command(flatten)]
@@ -358,6 +384,7 @@ pub struct UserDeleteArgs {
     pub json: bool,
 }
 
+/// Struct definition for UserExportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct UserExportArgs {
     #[command(flatten)]
@@ -395,6 +422,7 @@ pub struct UserExportArgs {
     pub with_teams: bool,
 }
 
+/// Struct definition for UserImportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct UserImportArgs {
     #[command(flatten)]
@@ -453,6 +481,7 @@ pub struct UserImportArgs {
     pub yes: bool,
 }
 
+/// Struct definition for UserDiffArgs.
 #[derive(Debug, Clone, Args)]
 pub struct UserDiffArgs {
     #[command(flatten)]
@@ -472,6 +501,7 @@ pub struct UserDiffArgs {
     pub scope: Scope,
 }
 
+/// Struct definition for TeamListArgs.
 #[derive(Debug, Clone, Args)]
 pub struct TeamListArgs {
     #[command(flatten)]
@@ -509,6 +539,7 @@ pub struct TeamListArgs {
     pub output_format: Option<ListOutputFormat>,
 }
 
+/// Struct definition for TeamAddArgs.
 #[derive(Debug, Clone, Args)]
 pub struct TeamAddArgs {
     #[command(flatten)]
@@ -535,6 +566,7 @@ pub struct TeamAddArgs {
     pub json: bool,
 }
 
+/// Struct definition for TeamExportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct TeamExportArgs {
     #[command(flatten)]
@@ -565,6 +597,7 @@ pub struct TeamExportArgs {
     pub with_members: bool,
 }
 
+/// Struct definition for TeamImportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct TeamImportArgs {
     #[command(flatten)]
@@ -616,6 +649,7 @@ pub struct TeamImportArgs {
     pub yes: bool,
 }
 
+/// Struct definition for TeamDiffArgs.
 #[derive(Debug, Clone, Args)]
 pub struct TeamDiffArgs {
     #[command(flatten)]
@@ -628,6 +662,7 @@ pub struct TeamDiffArgs {
     pub diff_dir: PathBuf,
 }
 
+/// Struct definition for TeamModifyArgs.
 #[derive(Debug, Clone, Args)]
 pub struct TeamModifyArgs {
     #[command(flatten)]
@@ -672,6 +707,7 @@ pub struct TeamModifyArgs {
     pub json: bool,
 }
 
+/// Struct definition for OrgListArgs.
 #[derive(Debug, Clone, Args)]
 pub struct OrgListArgs {
     #[command(flatten)]
@@ -703,6 +739,7 @@ pub struct OrgListArgs {
     pub output_format: Option<ListOutputFormat>,
 }
 
+/// Struct definition for OrgAddArgs.
 #[derive(Debug, Clone, Args)]
 pub struct OrgAddArgs {
     #[command(flatten)]
@@ -717,6 +754,7 @@ pub struct OrgAddArgs {
     pub json: bool,
 }
 
+/// Struct definition for OrgModifyArgs.
 #[derive(Debug, Clone, Args)]
 pub struct OrgModifyArgs {
     #[command(flatten)]
@@ -743,6 +781,7 @@ pub struct OrgModifyArgs {
     pub json: bool,
 }
 
+/// Struct definition for OrgDeleteArgs.
 #[derive(Debug, Clone, Args)]
 pub struct OrgDeleteArgs {
     #[command(flatten)]
@@ -773,6 +812,7 @@ pub struct OrgDeleteArgs {
     pub json: bool,
 }
 
+/// Struct definition for OrgExportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct OrgExportArgs {
     #[command(flatten)]
@@ -807,6 +847,7 @@ pub struct OrgExportArgs {
     pub with_users: bool,
 }
 
+/// Struct definition for OrgImportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct OrgImportArgs {
     #[command(flatten)]
@@ -836,6 +877,7 @@ pub struct OrgImportArgs {
     pub yes: bool,
 }
 
+/// Struct definition for ServiceAccountListArgs.
 #[derive(Debug, Clone, Args)]
 pub struct ServiceAccountListArgs {
     #[command(flatten)]
@@ -865,6 +907,7 @@ pub struct ServiceAccountListArgs {
     pub output_format: Option<ListOutputFormat>,
 }
 
+/// Struct definition for ServiceAccountAddArgs.
 #[derive(Debug, Clone, Args)]
 pub struct ServiceAccountAddArgs {
     #[command(flatten)]
@@ -888,6 +931,7 @@ pub struct ServiceAccountAddArgs {
     pub json: bool,
 }
 
+/// Struct definition for ServiceAccountExportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct ServiceAccountExportArgs {
     #[command(flatten)]
@@ -912,6 +956,7 @@ pub struct ServiceAccountExportArgs {
     pub dry_run: bool,
 }
 
+/// Struct definition for ServiceAccountImportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct ServiceAccountImportArgs {
     #[command(flatten)]
@@ -963,6 +1008,7 @@ pub struct ServiceAccountImportArgs {
     pub yes: bool,
 }
 
+/// Struct definition for ServiceAccountDiffArgs.
 #[derive(Debug, Clone, Args)]
 pub struct ServiceAccountDiffArgs {
     #[command(flatten)]
@@ -975,6 +1021,7 @@ pub struct ServiceAccountDiffArgs {
     pub diff_dir: PathBuf,
 }
 
+/// Struct definition for ServiceAccountTokenAddArgs.
 #[derive(Debug, Clone, Args)]
 pub struct ServiceAccountTokenAddArgs {
     #[command(flatten)]
@@ -1007,6 +1054,7 @@ pub struct ServiceAccountTokenAddArgs {
     pub json: bool,
 }
 
+/// Enum definition for ServiceAccountTokenCommand.
 #[derive(Debug, Clone, Subcommand)]
 pub enum ServiceAccountTokenCommand {
     #[command(after_help = ACCESS_SERVICE_ACCOUNT_TOKEN_ADD_HELP_TEXT)]
@@ -1014,6 +1062,7 @@ pub enum ServiceAccountTokenCommand {
     Delete(ServiceAccountTokenDeleteArgs),
 }
 
+/// Enum definition for ServiceAccountCommand.
 #[derive(Debug, Clone, Subcommand)]
 pub enum ServiceAccountCommand {
     List(ServiceAccountListArgs),
@@ -1028,6 +1077,7 @@ pub enum ServiceAccountCommand {
     },
 }
 
+/// Enum definition for OrgCommand.
 #[derive(Debug, Clone, Subcommand)]
 pub enum OrgCommand {
     List(OrgListArgs),
@@ -1039,6 +1089,7 @@ pub enum OrgCommand {
     Delete(OrgDeleteArgs),
 }
 
+/// Enum definition for TeamCommand.
 #[derive(Debug, Clone, Subcommand)]
 pub enum TeamCommand {
     List(TeamListArgs),
@@ -1051,6 +1102,7 @@ pub enum TeamCommand {
     Delete(TeamDeleteArgs),
 }
 
+/// Enum definition for UserCommand.
 #[derive(Debug, Clone, Subcommand)]
 pub enum UserCommand {
     List(UserListArgs),
@@ -1063,6 +1115,7 @@ pub enum UserCommand {
     Delete(UserDeleteArgs),
 }
 
+/// Enum definition for AccessCommand.
 #[derive(Debug, Clone, Subcommand)]
 pub enum AccessCommand {
     #[command(after_help = ACCESS_USER_HELP_TEXT)]
@@ -1094,24 +1147,30 @@ pub enum AccessCommand {
     after_help = ACCESS_ROOT_HELP_TEXT,
     styles = crate::help_styles::CLI_HELP_STYLES
 )]
+/// Struct definition for AccessCliRoot.
 pub(crate) struct AccessCliRoot {
     #[command(flatten)]
     args: AccessCliArgs,
 }
 
+/// Struct definition for AccessCliArgs.
 #[derive(Debug, Clone, Args)]
 pub struct AccessCliArgs {
     #[command(subcommand)]
     pub command: AccessCommand,
 }
 
-// Parse raw argv into strongly-typed access args, then normalize output-style
-// aliases so callers can rely on one boolean matrix in handlers.
+/// Parse raw argv into strongly-typed access args, then normalize output-style
+/// aliases so callers can rely on one boolean matrix in handlers.
 pub fn parse_cli_from<I, T>(iter: I) -> AccessCliArgs
 where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: access_cli_defs.rs:normalize_access_cli_args
+
     normalize_access_cli_args(AccessCliRoot::parse_from(iter).args)
 }
 
@@ -1144,8 +1203,8 @@ fn apply_dry_run_output_format(
     }
 }
 
-// Convert list output-mode aliases (table/csv/json + output_format) into a single
-// canonical boolean state per command path.
+/// Convert list output-mode aliases (table/csv/json + output_format) into a single
+/// canonical boolean state per command path.
 pub fn normalize_access_cli_args(mut args: AccessCliArgs) -> AccessCliArgs {
     match &mut args.command {
         AccessCommand::User { command } => {
@@ -1213,10 +1272,16 @@ pub fn normalize_access_cli_args(mut args: AccessCliArgs) -> AccessCliArgs {
     args
 }
 
+/// root command.
 pub fn root_command() -> Command {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: 無
+
     AccessCliRoot::command()
 }
 
+/// Struct definition for AccessAuthContext.
 #[derive(Debug, Clone)]
 pub struct AccessAuthContext {
     pub url: String,
@@ -1230,6 +1295,10 @@ pub struct AccessAuthContext {
 // Parse bool-like CLI text using the explicit true/false contract used by
 // back-compat flags that bypass Clap's native bool parsing.
 fn parse_bool_text(value: &str) -> std::result::Result<bool, String> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: 無
+
     match value.trim().to_ascii_lowercase().as_str() {
         "true" => Ok(true),
         "false" => Ok(false),
@@ -1238,6 +1307,10 @@ fn parse_bool_text(value: &str) -> std::result::Result<bool, String> {
 }
 
 fn parse_positive_usize(value: &str) -> std::result::Result<usize, String> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: 無
+
     let parsed = value
         .parse::<usize>()
         .map_err(|_| format!("invalid integer value: {value}"))?;
@@ -1248,12 +1321,20 @@ fn parse_positive_usize(value: &str) -> std::result::Result<usize, String> {
 }
 
 fn parse_service_account_role(value: &str) -> std::result::Result<String, String> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: 無
+
     match value {
         "Viewer" | "Editor" | "Admin" | "None" => Ok(value.to_string()),
         _ => Err("valid values: Viewer, Editor, Admin, None".to_string()),
     }
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_auth_context(common: &CommonCliArgs) -> Result<AccessAuthContext> {
     let mut headers = resolve_auth_headers(
         common.api_token.as_deref(),
@@ -1286,6 +1367,10 @@ pub fn build_auth_context(common: &CommonCliArgs) -> Result<AccessAuthContext> {
     })
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_auth_context_no_org_id(common: &CommonCliArgsNoOrgId) -> Result<AccessAuthContext> {
     let headers = resolve_auth_headers(
         common.api_token.as_deref(),
@@ -1315,7 +1400,15 @@ pub fn build_auth_context_no_org_id(common: &CommonCliArgsNoOrgId) -> Result<Acc
     })
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_http_client(common: &CommonCliArgs) -> Result<JsonHttpClient> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: access_cli_defs.rs:build_auth_context, http.rs:new_with_ca_cert
+
     let context = build_auth_context(common)?;
     JsonHttpClient::new_with_ca_cert(
         JsonHttpClientConfig {
@@ -1328,6 +1421,10 @@ pub fn build_http_client(common: &CommonCliArgs) -> Result<JsonHttpClient> {
     )
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_http_client_no_org_id(common: &CommonCliArgsNoOrgId) -> Result<JsonHttpClient> {
     let context = build_auth_context_no_org_id(common)?;
     JsonHttpClient::new_with_ca_cert(

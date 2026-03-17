@@ -121,6 +121,10 @@ where
 /// Access execution path for callers that already own a configured `JsonHttpClient`.
 /// Delegates to the request-injection path to keep side effects explicit and testable.
 pub fn run_access_cli_with_client(client: &JsonHttpClient, args: AccessCliArgs) -> Result<()> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: access.rs:run_access_cli
+// Downstream callees: access.rs:run_access_cli_with_request
+
     run_access_cli_with_request(
         |method, path, params, payload| client.request_json(method, path, params, payload),
         args,
@@ -135,6 +139,10 @@ pub fn run_access_cli_with_request<F>(mut request_json: F, args: AccessCliArgs) 
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: access.rs:run_access_cli_with_client, access_rust_tests.rs:run_access_cli_with_request_routes_org_export, access_rust_tests.rs:run_access_cli_with_request_routes_org_import, access_rust_tests.rs:run_access_cli_with_request_routes_team_diff, access_rust_tests.rs:run_access_cli_with_request_routes_team_export, access_rust_tests.rs:run_access_cli_with_request_routes_team_import, access_rust_tests.rs:run_access_cli_with_request_routes_user_diff, access_rust_tests.rs:run_access_cli_with_request_routes_user_export, access_rust_tests.rs:run_access_cli_with_request_routes_user_list
+// Downstream callees: 無
+
     match args.command {
         AccessCommand::User { command } => match command {
             UserCommand::List(args) => {
@@ -263,6 +271,10 @@ where
 /// Normalizes arguments and builds one HTTP client per concrete subcommand branch before
 /// delegating to the request-injection runner.
 pub fn run_access_cli(args: AccessCliArgs) -> Result<()> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: access.rs:run_access_cli_with_client, access_cli_defs.rs:build_http_client_no_org_id, access_cli_defs.rs:normalize_access_cli_args
+
     let args = normalize_access_cli_args(args);
     match &args.command {
         AccessCommand::User { command } => match command {

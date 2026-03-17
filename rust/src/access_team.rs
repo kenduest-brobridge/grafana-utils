@@ -187,6 +187,7 @@ fn build_record_diff_fields(left: &Map<String, Value>, right: &Map<String, Value
     changed
 }
 
+/// Purpose: implementation note.
 pub(crate) fn diff_teams_with_request<F>(mut request_json: F, args: &TeamDiffArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -277,6 +278,10 @@ fn build_membership_payloads(members: &[String], admins: &[String]) -> (Vec<Stri
 }
 
 fn parse_access_identity_list(value: &Value) -> Vec<String> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: access_team.rs:normalize_team_for_diff
+// Downstream callees: access_team.rs:normalize_access_identity
+
     value
         .as_array()
         .map(|values| {
@@ -605,6 +610,7 @@ where
     )
 }
 
+/// lookup team by name.
 pub(crate) fn lookup_team_by_name<F>(mut request_json: F, name: &str) -> Result<Map<String, Value>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -698,6 +704,7 @@ where
     ))
 }
 
+/// Purpose: implementation note.
 pub(crate) fn list_teams_command_with_request<F>(
     mut request_json: F,
     args: &TeamListArgs,
@@ -809,6 +816,7 @@ fn team_modify_summary_line(result: &Map<String, Value>) -> String {
     text
 }
 
+/// modify team with request.
 pub(crate) fn modify_team_with_request<F>(
     mut request_json: F,
     args: &TeamModifyArgs,
@@ -902,6 +910,7 @@ where
     Ok(0)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn add_team_with_request<F>(mut request_json: F, args: &TeamAddArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -966,6 +975,7 @@ where
     Ok(0)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn export_teams_with_request<F>(
     mut request_json: F,
     args: &TeamExportArgs,
@@ -1064,6 +1074,7 @@ where
     Ok(records.len())
 }
 
+/// Purpose: implementation note.
 pub(crate) fn import_teams_with_request<F>(
     mut request_json: F,
     args: &TeamImportArgs,

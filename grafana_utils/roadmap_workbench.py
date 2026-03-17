@@ -166,6 +166,10 @@ WORKBENCH_TASKS = (
 
 def list_workbench_sections() -> List[str]:
     """Return the known roadmap workbench sections in stable order."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return [
         INSPECTION_AND_GOVERNANCE,
         PROMOTION_AND_PREFLIGHT,
@@ -183,6 +187,10 @@ def list_workbench_tasks(section: str | None = None) -> List[WorkbenchTask]:
 
 def build_workbench_index() -> Dict[str, List[str]]:
     """Return a simple section-to-task-name index for later CLI wiring."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     index: Dict[str, List[str]] = {}
     for task in WORKBENCH_TASKS:
         index.setdefault(task.section, []).append(task.name)
@@ -191,6 +199,10 @@ def build_workbench_index() -> Dict[str, List[str]]:
 
 def iter_candidate_modules(section: str | None = None) -> Iterable[str]:
     """Yield unique candidate module names in first-seen order."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 177
+
     seen = set()
     for task in list_workbench_tasks(section=section):
         for module_name in task.candidate_modules:
@@ -201,6 +213,7 @@ def iter_candidate_modules(section: str | None = None) -> Iterable[str]:
 
 
 def _normalize_text(value: Any, default: str = "") -> str:
+    """Internal helper for normalize text."""
     text = str(value or "").strip()
     if text:
         return text
@@ -208,20 +221,24 @@ def _normalize_text(value: Any, default: str = "") -> str:
 
 
 def _build_dashboard_node_id(dashboard_uid: str) -> str:
+    """Internal helper for build dashboard node id."""
     return "dashboard:%s" % dashboard_uid
 
 
 def _build_panel_node_id(dashboard_uid: str, panel_id: str) -> str:
+    """Internal helper for build panel node id."""
     return "panel:%s:%s" % (dashboard_uid, panel_id)
 
 
 def _build_datasource_node_id(datasource_uid: str) -> str:
+    """Internal helper for build datasource node id."""
     return "datasource:%s" % datasource_uid
 
 
 def _resolve_datasource_inventory(
     summary_document: dict[str, Any]
 ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    """Internal helper for resolve datasource inventory."""
     by_uid = {}
     by_name = {}
     for item in summary_document.get("datasourceInventory") or []:
@@ -242,6 +259,7 @@ def _resolve_query_datasource_record(
     datasource_by_uid: dict[str, dict[str, Any]],
     datasource_by_name: dict[str, dict[str, Any]],
 ) -> dict[str, str]:
+    """Internal helper for resolve query datasource record."""
     datasource_uid = _normalize_text(query_record.get("datasourceUid"))
     datasource_label = _normalize_text(query_record.get("datasource"))
     inventory = None
@@ -271,6 +289,10 @@ def build_dependency_graph_document(
     report_document: dict[str, Any],
 ) -> dict[str, Any]:
     """Build an unwired dependency graph JSON contract from inspection documents."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 203, 211, 216, 221, 226, 245, 286, 312
+
     datasource_by_uid, datasource_by_name = _resolve_datasource_inventory(
         summary_document
     )
@@ -278,6 +300,10 @@ def build_dependency_graph_document(
     edges_by_key: Dict[str, dict[str, Any]] = {}
 
     def ensure_node(node_id: str, node_type: str, label: str, **attrs: Any) -> None:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         record = nodes_by_id.get(node_id)
         if record is None:
             record = {"id": node_id, "type": node_type, "label": label}
@@ -302,6 +328,10 @@ def build_dependency_graph_document(
     def ensure_edge(
         source: str, target: str, relation: str, dashboard_uid: str, panel_id: str
     ) -> None:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         edge_id = "%s|%s|%s" % (source, relation, target)
         record = edges_by_key.get(edge_id)
         if record is None:
@@ -403,12 +433,17 @@ def build_dependency_graph_document(
 
 
 def _escape_dot_string(value: Any) -> str:
+    """Internal helper for escape dot string."""
     text = str(value or "")
     return text.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def render_dependency_graph_dot(document: dict[str, Any]) -> str:
     """Render the dependency graph contract as a deterministic DOT document."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 419
+
     if str(document.get("kind") or "").strip() != DEPENDENCY_GRAPH_KIND:
         raise ValueError("Dependency graph document kind is not supported for DOT rendering.")
     lines = [
@@ -547,6 +582,10 @@ def build_dependency_graph_governance_summary(
 
 def render_dependency_graph_governance_text(document: dict[str, Any]) -> List[str]:
     """Render graph-level governance summary as deterministic text."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 203, 471
+
     summary_document = build_dependency_graph_governance_summary(document)
     summary = summary_document.get("summary") or {}
     lines = [
@@ -592,6 +631,7 @@ def render_dependency_graph_governance_text(document: dict[str, Any]) -> List[st
 def _build_dashboard_bundle_lookup(
     bundle_document: dict[str, Any]
 ) -> Dict[str, dict[str, Any]]:
+    """Internal helper for build dashboard bundle lookup."""
     lookup: Dict[str, dict[str, Any]] = {}
     for item in bundle_document.get("dashboards") or []:
         if not isinstance(item, dict):
@@ -606,6 +646,7 @@ def _build_dashboard_bundle_lookup(
 def _build_datasource_bundle_lookup(
     bundle_document: dict[str, Any]
 ) -> Dict[str, dict[str, Any]]:
+    """Internal helper for build datasource bundle lookup."""
     lookup: Dict[str, dict[str, Any]] = {}
     for item in bundle_document.get("datasources") or []:
         if not isinstance(item, dict):
@@ -625,6 +666,10 @@ def build_promotion_plan_document(
     options: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a staged promotion/dry-run plan from source and target snapshots."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 203, 607, 622
+
     options = dict(options or {})
     source_env = _normalize_text(source_bundle.get("environment"), "source")
     target_env = _normalize_text(target_inventory.get("environment"), "target")
@@ -721,6 +766,10 @@ def build_preflight_check_document(
     availability: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build a staged preflight summary from a promotion plan and availability hints."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 203
+
     if str(plan_document.get("kind") or "").strip() != PROMOTION_PLAN_KIND:
         raise ValueError("Promotion plan document kind is not supported for preflight checks.")
     availability = dict(availability or {})
@@ -817,6 +866,10 @@ def build_preflight_check_document(
 
 def render_promotion_plan_text(document: dict[str, Any]) -> List[str]:
     """Render a staged promotion plan as a deterministic text summary."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 203
+
     if str(document.get("kind") or "").strip() != PROMOTION_PLAN_KIND:
         raise ValueError("Promotion plan document kind is not supported for text rendering.")
     summary = document.get("summary") or {}
@@ -853,6 +906,10 @@ def render_promotion_plan_text(document: dict[str, Any]) -> List[str]:
 
 def render_preflight_check_text(document: dict[str, Any]) -> List[str]:
     """Render staged preflight results as a deterministic text summary."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 203
+
     if str(document.get("kind") or "").strip() != PREFLIGHT_CHECK_KIND:
         raise ValueError("Preflight check document kind is not supported for text rendering.")
     summary = document.get("summary") or {}

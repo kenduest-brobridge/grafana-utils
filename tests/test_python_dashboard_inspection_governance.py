@@ -106,11 +106,11 @@ class DashboardInspectionGovernanceTests(unittest.TestCase):
         }
         return summary_document, report_document
 
-    def test_governance_modules_parse_as_python39_syntax(self):
+    def test_dashboard_inspection_governance_governance_modules_parse_as_python39_syntax(self):
         self._assert_parses_as_python39(GOVERNANCE_MODULE)
         self._assert_parses_as_python39(GOVERNANCE_RENDER_MODULE)
 
-    def test_build_export_inspection_governance_document_summarizes_families_and_risks(self):
+    def test_dashboard_inspection_governance_build_export_inspection_governance_document_summarizes_families_and_risks(self):
         summary_document, report_document = self._build_fixture_documents()
 
         document = inspection_governance.build_export_inspection_governance_document(
@@ -148,7 +148,7 @@ class DashboardInspectionGovernanceTests(unittest.TestCase):
         self.assertEqual(unknown["category"], "coverage")
         self.assertIn("Normalize the datasource type mapping", unknown["recommendation"])
 
-    def test_render_export_inspection_governance_tables_renders_sections(self):
+    def test_dashboard_inspection_governance_render_export_inspection_governance_tables_renders_sections(self):
         summary_document, report_document = self._build_fixture_documents()
         document = inspection_governance.build_export_inspection_governance_document(
             summary_document, report_document

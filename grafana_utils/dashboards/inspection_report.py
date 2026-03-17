@@ -135,6 +135,10 @@ INSPECT_LIVE_HELP_FULL_EXAMPLES = (
 
 def format_supported_report_column_values() -> str:
     """Render supported report column ids for CLI help and parser errors."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return ", ".join(SUPPORTED_REPORT_COLUMN_VALUES)
 
 
@@ -143,6 +147,10 @@ def build_export_inspection_report_document(
     deps: dict[str, Any],
 ) -> dict[str, Any]:
     """Analyze one raw export directory and emit one per-query inspection record."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 342
+
     metadata = deps["load_export_metadata"](
         import_dir, expected_variant=deps["RAW_EXPORT_SUBDIR"]
     )
@@ -299,6 +307,7 @@ def describe_panel_datasource_uid(
 
 
 def _normalize_datasource_family_name(datasource_type: str) -> str:
+    """Internal helper for normalize datasource family name."""
     lowered = str(datasource_type or "").strip().lower()
     if not lowered:
         return "unknown"
@@ -348,6 +357,10 @@ def build_query_report_record(
     datasources_by_name: dict[str, dict[str, str]],
 ) -> dict[str, Any]:
     """Build one canonical per-query inspection row."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 141
+    #   Downstream callees: 257, 280, 301, 313
+
     query_field, query_text = build_query_field_and_text(target)
     analysis = dispatch_query_analysis(
         panel,
@@ -404,6 +417,10 @@ def build_query_report_record(
 
 def parse_report_columns(value: Optional[str]) -> Optional[list[str]]:
     """Parse one report column list into canonical inspection field ids."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if value is None:
         return None
     columns = []
@@ -437,6 +454,10 @@ def filter_export_inspection_report_document(
     panel_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Filter one flat inspection report document to narrower query rows."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if not datasource_label and not panel_id:
         return document
     normalized_datasource_filter = str(datasource_label or "").strip()
@@ -476,6 +497,10 @@ def build_grouped_export_inspection_report_document(
     document: dict[str, Any]
 ) -> dict[str, Any]:
     """Normalize one flat inspection report into dashboard-first grouped form."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     query_records = list(document.get("queries") or [])
     dashboards = OrderedDict()
 

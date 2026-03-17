@@ -1,4 +1,4 @@
-//! Unwired bundle-level preflight helpers.
+//! Staged bundle-level preflight helpers.
 //!
 //! Purpose:
 //! - Stage one combined preflight view across dashboards, datasources, folders,
@@ -15,7 +15,9 @@ use crate::sync_workbench::build_sync_summary_document;
 use serde_json::{json, Map, Value};
 use std::collections::BTreeSet;
 
+/// Constant for bundle preflight kind.
 pub const BUNDLE_PREFLIGHT_KIND: &str = "grafana-utils-bundle-preflight";
+/// Constant for bundle preflight schema version.
 pub const BUNDLE_PREFLIGHT_SCHEMA_VERSION: i64 = 1;
 
 fn require_object<'a>(value: Option<&'a Value>, label: &str) -> Result<&'a Map<String, Value>> {
@@ -159,11 +161,19 @@ fn build_provider_assessment(
     }))
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_bundle_preflight_document(
     source_bundle: &Value,
     target_inventory: Option<&Value>,
     availability: Option<&Value>,
 ) -> Result<Value> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: bundle_preflight_rust_tests.rs:build_bundle_preflight_document_aggregates_sync_alert_and_provider_checks, bundle_preflight_rust_tests.rs:render_bundle_preflight_text_renders_summary
+// Downstream callees: alert_sync.rs:assess_alert_sync_specs, bundle_preflight.rs:build_provider_assessment, bundle_preflight.rs:build_sync_specs_from_bundle, bundle_preflight.rs:bundle_section_items, bundle_preflight.rs:require_object, sync_preflight.rs:build_sync_preflight_document, sync_workbench.rs:build_sync_summary_document
+
     let source_bundle = require_object(Some(source_bundle), "source bundle")?;
     let availability_map = match availability {
         Some(value) => require_object(Some(value), "availability")?.clone(),
@@ -204,7 +214,15 @@ pub fn build_bundle_preflight_document(
     }))
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn render_bundle_preflight_text(document: &Value) -> Result<Vec<String>> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: bundle_preflight_rust_tests.rs:render_bundle_preflight_text_renders_summary
+// Downstream callees: bundle_preflight.rs:normalize_text, bundle_preflight.rs:require_object, common.rs:message
+
     if normalize_text(document.get("kind"), "") != BUNDLE_PREFLIGHT_KIND {
         return Err(message("Bundle preflight document kind is not supported."));
     }

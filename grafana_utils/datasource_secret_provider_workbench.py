@@ -42,6 +42,7 @@ class DatasourceSecretProviderPlan(object):
 
 
 def _normalize_text(value):
+    """Internal helper for normalize text."""
     if value is None:
         return ""
     return str(value).strip()
@@ -99,6 +100,10 @@ def collect_provider_references(secure_json_data):
 
 def build_provider_plan(datasource_spec):
     """Build one staged provider-resolution plan without performing any lookup."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 44, 89
+
     if not isinstance(datasource_spec, dict):
         raise GrafanaError("Datasource provider plan input must be a mapping.")
     datasource_name = _normalize_text(datasource_spec.get("name"))
@@ -123,6 +128,10 @@ def build_provider_plan(datasource_spec):
 
 def summarize_provider_plan(plan):
     """Return a redacted provider plan summary suitable for review."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return {
         "datasourceUid": plan.datasource_uid,
         "datasourceName": plan.datasource_name,
@@ -143,6 +152,10 @@ def summarize_provider_plan(plan):
 
 def iter_provider_names(references):
     """Yield unique provider names in first-seen order."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     seen = set()
     for item in references:
         if item.provider_name in seen:

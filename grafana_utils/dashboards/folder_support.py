@@ -25,6 +25,7 @@ def build_folder_inventory_record(
     org: dict[str, Any],
     fallback_title: str,
 ) -> dict[str, str]:
+    """Build folder inventory record implementation."""
     uid = str(folder.get("uid") or "")
     title = str(folder.get("title") or fallback_title or uid or DEFAULT_FOLDER_TITLE)
     parents = folder.get("parents")
@@ -48,6 +49,11 @@ def collect_folder_inventory(
     org: dict[str, Any],
     summaries: list[dict[str, Any]],
 ) -> list[dict[str, str]]:
+    """Collect folder inventory implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 23
+
     folders_by_uid = {}
     pending = []
     for summary in summaries:
@@ -85,6 +91,7 @@ def load_folder_inventory(
     folder_inventory_filename: str,
     metadata: Optional[dict[str, Any]] = None,
 ) -> list[dict[str, str]]:
+    """Load folder inventory implementation."""
     return load_folder_inventory_from_export(
         import_dir,
         folder_inventory_filename,
@@ -97,6 +104,11 @@ def load_datasource_inventory(
     datasource_inventory_filename: str,
     metadata: Optional[dict[str, Any]] = None,
 ) -> list[dict[str, str]]:
+    """Load datasource inventory implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return load_datasource_inventory_from_export(
         import_dir,
         datasource_inventory_filename,
@@ -108,6 +120,11 @@ def ensure_folder_inventory(
     client: Any,
     folders: list[dict[str, str]],
 ) -> int:
+    """Ensure folder inventory implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     created_count = 0
     sorted_folders = sorted(
         folders,
@@ -134,6 +151,11 @@ def inspect_folder_inventory(
     client: Any,
     folders: list[dict[str, str]],
 ) -> list[dict[str, str]]:
+    """Inspect folder inventory implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 239, 287
+
     records = []
     sorted_folders = sorted(
         folders,
@@ -182,6 +204,10 @@ def resolve_folder_inventory_requirements(
     folder_inventory_filename: str,
 ) -> list[dict[str, str]]:
     """Load the optional folder inventory and enforce explicit operator intent."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 85
+
     folder_inventory = load_folder_inventory(
         import_dir,
         folder_inventory_filename,
@@ -204,10 +230,20 @@ def resolve_folder_inventory_requirements(
 def build_folder_inventory_lookup(
     folders: list[dict[str, str]],
 ) -> dict[str, dict[str, str]]:
+    """Build folder inventory lookup implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return build_folder_inventory_lookup_from_export(folders)
 
 
 def build_import_dashboard_folder_path(dashboard_file: Path, import_dir: Path) -> str:
+    """Build import dashboard folder path implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return build_import_dashboard_folder_path_from_export(dashboard_file, import_dir)
 
 
@@ -217,6 +253,7 @@ def resolve_folder_inventory_record_for_dashboard(
     import_dir: Path,
     folder_lookup: dict[str, dict[str, str]],
 ) -> Optional[dict[str, str]]:
+    """Resolve folder inventory record for dashboard implementation."""
     return resolve_folder_inventory_record_for_dashboard_from_export(
         document,
         dashboard_file,
@@ -231,6 +268,7 @@ def build_live_folder_inventory_record(
     client: Any,
     uid: str,
 ) -> Optional[dict[str, str]]:
+    """Build live folder inventory record implementation."""
     if not uid:
         return None
     folder = client.fetch_folder_if_exists(uid)
@@ -278,6 +316,7 @@ def determine_folder_inventory_status(
     client: Any,
     expected_folder: Optional[dict[str, str]],
 ) -> dict[str, str]:
+    """Determine folder inventory status implementation."""
     if expected_folder is None:
         return {"status": "unknown", "details": ""}
     if str(expected_folder.get("builtin") or "") == "true":
@@ -306,6 +345,10 @@ def resolve_dashboard_import_folder_path(
     folder_inventory_lookup: dict[str, dict[str, str]],
 ) -> str:
     """Resolve the effective destination folder path for one dashboard import."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 222
+
     folder_uid = str(payload.get("folderUid") or "").strip()
     if not folder_uid or folder_uid == DEFAULT_FOLDER_UID:
         return DEFAULT_FOLDER_TITLE

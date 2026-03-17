@@ -32,6 +32,10 @@ def render_export_inspection_report_csv(
     include_header: bool = True,
 ) -> str:
     """Render one full per-query inspection report as CSV."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 21
+
     selected_columns = list(selected_columns or REPORT_COLUMN_HEADERS.keys())
     rows = []
     if include_header:
@@ -69,6 +73,10 @@ def render_export_inspection_table_section(
             widths[index] = max(widths[index], len(value))
 
     def format_row(values: list[str]) -> str:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return "  ".join(
             value.ljust(widths[index]) for index, value in enumerate(values)
         )
@@ -88,6 +96,10 @@ def render_export_inspection_report_tables(
     selected_columns: Optional[list[str]] = None,
 ) -> list[str]:
     """Render one full per-query inspection report as a table."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 21, 60
+
     summary = document.get("summary") or {}
     query_records = list(document.get("queries") or [])
     selected_columns = list(selected_columns or REPORT_COLUMN_HEADERS.keys())
@@ -132,6 +144,10 @@ def render_export_inspection_grouped_report(
     import_dir: Path,
 ) -> list[str]:
     """Render one per-query inspection report grouped by dashboard and panel."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 21, 60
+
     summary = document.get("summary") or {}
     dashboard_records = list(document.get("dashboards") or [])
     lines = ["Export inspection tree report: %s" % import_dir, ""]
@@ -208,6 +224,10 @@ def render_export_inspection_tree_tables(
     selected_columns: Optional[list[str]] = None,
 ) -> list[str]:
     """Render one grouped report as dashboard-first sections with per-dashboard tables."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 21, 60
+
     summary = document.get("summary") or {}
     dashboard_records = list(document.get("dashboards") or [])
     selected_columns = list(selected_columns or REPORT_COLUMN_HEADERS.keys())

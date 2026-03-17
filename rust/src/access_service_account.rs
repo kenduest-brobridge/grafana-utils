@@ -388,6 +388,7 @@ fn build_service_account_diff_map(
     Ok(indexed)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn list_service_accounts_command_with_request<F>(
     mut request_json: F,
     args: &ServiceAccountListArgs,
@@ -453,6 +454,7 @@ where
     Ok(rows.len())
 }
 
+/// Purpose: implementation note.
 pub(crate) fn add_service_account_with_request<F>(
     mut request_json: F,
     args: &ServiceAccountAddArgs,
@@ -486,6 +488,7 @@ where
     Ok(0)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn export_service_accounts_with_request<F>(
     mut request_json: F,
     args: &ServiceAccountExportArgs,
@@ -543,6 +546,7 @@ where
     Ok(records.len())
 }
 
+/// Purpose: implementation note.
 pub(crate) fn import_service_accounts_with_request<F>(
     mut request_json: F,
     args: &ServiceAccountImportArgs,
@@ -797,6 +801,7 @@ where
     Ok(0)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn diff_service_accounts_with_request<F>(
     mut request_json: F,
     args: &ServiceAccountDiffArgs,
@@ -862,6 +867,7 @@ where
     Ok(differences)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn add_service_account_token_with_request<F>(
     mut request_json: F,
     args: &ServiceAccountTokenAddArgs,

@@ -69,7 +69,7 @@ class SetVersionScriptTests(unittest.TestCase):
             check=False,
         )
 
-    def test_release_version_updates_all_version_files(self):
+    def test_version_script_release_version_updates_all_version_files(self):
         temp_dir, root = self._make_fixture()
         self.addCleanup(temp_dir.cleanup)
 
@@ -81,7 +81,7 @@ class SetVersionScriptTests(unittest.TestCase):
         self.assertIn('version = "0.2.18"', (root / "rust" / "Cargo.lock").read_text(encoding="utf-8"))
         self.assertEqual((root / "VERSION").read_text(encoding="utf-8").strip(), "0.2.18")
 
-    def test_sync_from_file_accepts_python_dev_notation(self):
+    def test_version_script_sync_from_file_accepts_python_dev_notation(self):
         temp_dir, root = self._make_fixture()
         self.addCleanup(temp_dir.cleanup)
         (root / "VERSION").write_text("0.2.19.dev3\n", encoding="utf-8")
@@ -93,7 +93,7 @@ class SetVersionScriptTests(unittest.TestCase):
         self.assertIn('version = "0.2.19-dev.3"', (root / "rust" / "Cargo.toml").read_text(encoding="utf-8"))
         self.assertIn('version = "0.2.19-dev.3"', (root / "rust" / "Cargo.lock").read_text(encoding="utf-8"))
 
-    def test_dry_run_leaves_files_unchanged(self):
+    def test_version_script_dry_run_leaves_files_unchanged(self):
         temp_dir, root = self._make_fixture()
         self.addCleanup(temp_dir.cleanup)
         before = (root / "pyproject.toml").read_text(encoding="utf-8")

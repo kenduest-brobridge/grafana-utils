@@ -5,6 +5,10 @@ from pathlib import Path
 
 def run_export_dashboards(args, deps):
     """Export dashboards into raw JSON, prompt JSON, or both variants."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     grafana_error = deps["GrafanaError"]
     if args.without_dashboard_raw and args.without_dashboard_prompt:
         raise grafana_error(

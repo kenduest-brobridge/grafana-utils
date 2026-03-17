@@ -1,3 +1,5 @@
+//! Bundle preflight contract tests.
+//! Validates preflight generation behavior for staged alert and sync documents.
 use crate::alert_sync::{assess_alert_sync_specs, ALERT_SYNC_KIND};
 use crate::bundle_preflight::{
     build_bundle_preflight_document, render_bundle_preflight_text, BUNDLE_PREFLIGHT_KIND,

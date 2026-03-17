@@ -1,3 +1,5 @@
+//! Sync preflight planning test suite.
+//! Validates plan/summary contracts and resource normalization behavior.
 use crate::sync_preflight::{
     build_sync_preflight_document, render_sync_preflight_text, SYNC_PREFLIGHT_KIND,
 };

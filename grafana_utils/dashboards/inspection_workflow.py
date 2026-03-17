@@ -62,6 +62,10 @@ def materialize_live_inspection_export(client, page_size, raw_dir, deps):
 
 def run_inspect_live(args, deps):
     """Inspect live Grafana dashboards by reusing the raw-export inspection pipeline."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 13, 87
+
     client = deps["build_client"](args)
     with tempfile.TemporaryDirectory(prefix="grafana-utils-inspect-live-") as tmpdir:
         raw_dir = materialize_live_inspection_export(
@@ -86,6 +90,10 @@ def run_inspect_live(args, deps):
 
 def run_inspect_export(args, deps):
     """Inspect one raw export directory and summarize dashboards, folders, and datasources."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 63
+    #   Downstream callees: 無
+
     import_dir = Path(args.import_dir)
     settings = resolve_inspect_dispatch_args(
         args,

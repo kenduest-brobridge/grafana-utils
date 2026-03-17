@@ -35,6 +35,10 @@ def build_datasource_catalog(
     datasources: list[dict[str, Any]],
 ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     """Index datasources by both uid and name because dashboards use either form."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     by_uid: dict[str, dict[str, Any]] = {}
     by_name: dict[str, dict[str, Any]] = {}
     for datasource in datasources:
@@ -48,10 +52,12 @@ def build_datasource_catalog(
 
 
 def is_placeholder_string(value: str) -> bool:
+    """Is placeholder string implementation."""
     return value.startswith("$")
 
 
 def extract_placeholder_name(value: str) -> str:
+    """Extract placeholder name implementation."""
     if value.startswith("${") and value.endswith("}") and len(value) > 3:
         return value[2:-1]
     if value.startswith("$") and len(value) > 1:
@@ -60,10 +66,12 @@ def extract_placeholder_name(value: str) -> str:
 
 
 def is_generated_input_placeholder(value: str) -> bool:
+    """Is generated input placeholder implementation."""
     return extract_placeholder_name(value).startswith("DS_")
 
 
 def is_builtin_datasource_ref(value: Any) -> bool:
+    """Is builtin datasource ref implementation."""
     if isinstance(value, str):
         return value in BUILTIN_DATASOURCE_NAMES or is_generated_input_placeholder(value)
     if isinstance(value, dict):
@@ -95,22 +103,30 @@ def collect_datasource_refs(node: Any, refs: list[Any]) -> None:
 
 
 def make_input_name(label: str) -> str:
+    """Make input name implementation."""
     normalized = re.sub(r"[^A-Z0-9]+", "_", label.upper()).strip("_")
     normalized = re.sub(r"_+", "_", normalized)
     return "DS_%s" % (normalized or "DATASOURCE")
 
 
 def make_type_input_base(datasource_type: str) -> str:
+    """Make type input base implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 101
+
     alias = DATASOURCE_TYPE_ALIASES.get(datasource_type.lower(), datasource_type)
     return make_input_name(alias)
 
 
 def format_plugin_name(datasource_type: str) -> str:
+    """Format plugin name implementation."""
     alias = DATASOURCE_TYPE_ALIASES.get(datasource_type.lower(), datasource_type)
     return alias.replace("-", " ").replace("_", " ").title()
 
 
 def make_input_label(datasource_type: str, index: int) -> str:
+    """Make input label implementation."""
     title = format_plugin_name(datasource_type)
     if index == 1:
         return "%s datasource" % title
@@ -124,6 +140,10 @@ def build_resolved_datasource(
     input_label: Optional[str] = None,
 ) -> ResolvedDatasource:
     """Create the normalized datasource descriptor used by prompt export helpers."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return ResolvedDatasource(
         key=key,
         label=label,
@@ -133,6 +153,7 @@ def build_resolved_datasource(
 
 
 def datasource_plugin_version(datasource: Optional[dict[str, Any]]) -> str:
+    """Datasource plugin version implementation."""
     if not isinstance(datasource, dict):
         return ""
     plugin_version = datasource.get("pluginVersion")
@@ -190,6 +211,10 @@ def resolve_string_datasource_ref(
     datasources_by_name: dict[str, dict[str, Any]],
 ) -> ResolvedDatasource:
     """Resolve string datasource references stored as names, UIDs, or type aliases."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 313
+    #   Downstream callees: 114, 143, 163, 179
+
     datasource = lookup_datasource(
         datasources_by_uid,
         datasources_by_name,
@@ -229,6 +254,10 @@ def resolve_placeholder_object_ref(
     ds_type: Any,
 ) -> Optional[ResolvedDatasource]:
     """Resolve object refs that already point at a datasource placeholder token."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 261
+    #   Downstream callees: 114, 50, 55
+
     if not isinstance(ds_type, str) or not ds_type:
         return None
 
@@ -255,6 +284,10 @@ def resolve_object_datasource_ref(
     datasources_by_name: dict[str, dict[str, Any]],
 ) -> Optional[ResolvedDatasource]:
     """Resolve object datasource refs stored as {'type': ..., 'uid': ...}."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 313
+    #   Downstream callees: 143, 163, 235, 50
+
     uid = ref.get("uid")
     name = ref.get("name")
     ds_type = ref.get("type")
@@ -307,6 +340,10 @@ def resolve_datasource_ref(
     datasources_by_name: dict[str, dict[str, Any]],
 ) -> Optional[ResolvedDatasource]:
     """Normalize Grafana datasource references into stable keys for __inputs generation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 341, 531, 673
+    #   Downstream callees: 196, 261, 50, 69
+
     if ref is None or is_builtin_datasource_ref(ref):
         return None
 
@@ -437,6 +474,10 @@ def allocate_input_mapping(
     key: Optional[str] = None,
 ) -> InputMapping:
     """Create or reuse one __inputs mapping entry for a resolved datasource ref."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 531, 673
+    #   Downstream callees: 101, 114, 120
+
     mapping_key = key or resolved.key
     mapping = ref_mapping.get(mapping_key)
     if mapping is not None:
@@ -527,6 +568,10 @@ def prepare_templating_for_external_import(
     datasources_by_name: dict[str, dict[str, Any]],
 ) -> set[str]:
     """Rewrite datasource template variables so exported dashboards prompt on import."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 673
+    #   Downstream callees: 313, 442, 470, 492
+
     templating = dashboard.get("templating")
     if not isinstance(templating, dict):
         return set()
@@ -666,6 +711,10 @@ def build_external_export_document(
     datasource_catalog: tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]],
 ) -> dict[str, Any]:
     """Convert a fetched dashboard into Grafana's web-import prompt format."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 313, 341, 384, 417, 442, 531, 597, 611, 628, 663, 88
+
     dashboard = build_preserved_web_import_document(payload)
 
     datasources_by_uid, datasources_by_name = datasource_catalog

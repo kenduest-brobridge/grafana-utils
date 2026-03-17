@@ -1,5 +1,6 @@
-// Datasource diff unit tests.
-// Validates compare status/classification and mismatch reporting around import-vs-live contract data.
+//! Datasource diff unit tests.
+//! Validates compare status/classification and mismatch reporting around import-vs-live
+//! contract data.
 use crate::datasource::datasource_diff::{
     build_datasource_diff_report, normalize_export_records, normalize_live_records,
     DatasourceDiffStatus,

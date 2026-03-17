@@ -14,6 +14,7 @@ ADD_DELETE_DRY_RUN_COLUMN_HEADERS = {
 
 
 def _render_rows(records, columns):
+    """Internal helper for render rows."""
     headers = [ADD_DELETE_DRY_RUN_COLUMN_HEADERS[column] for column in columns]
     rows = [[str(item.get(column) or "") for column in columns] for item in records]
     widths = [len(value) for value in headers]
@@ -22,6 +23,10 @@ def _render_rows(records, columns):
             widths[index] = max(widths[index], len(value))
 
     def render_row(values):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return "  ".join(values[index].ljust(widths[index]) for index in range(len(values)))
 
     lines = [render_row(headers), render_row(["-" * width for width in widths])]
@@ -31,6 +36,11 @@ def _render_rows(records, columns):
 
 
 def build_live_mutation_dry_run_record(operation, plan, spec=None, uid=None, name=None):
+    """Build live mutation dry run record implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     spec = dict(spec or {})
     target = plan.get("target") or {}
     return {
@@ -45,6 +55,11 @@ def build_live_mutation_dry_run_record(operation, plan, spec=None, uid=None, nam
 
 
 def render_live_mutation_dry_run_table(records, include_header=True, columns=None):
+    """Render live mutation dry run table implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 16
+
     selected_columns = list(
         columns
         or ["operation", "uid", "name", "type", "match", "action", "targetId"]
@@ -56,6 +71,11 @@ def render_live_mutation_dry_run_table(records, include_header=True, columns=Non
 
 
 def render_live_mutation_dry_run_json(records):
+    """Render live mutation dry run json implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     summary = {
         "itemCount": len(records),
         "createCount": len([item for item in records if item.get("action") == "would-create"]),

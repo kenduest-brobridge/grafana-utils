@@ -8,12 +8,18 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
+/// Constant for alert rule kind.
 pub const ALERT_RULE_KIND: &str = "grafana-alert-rule";
+/// Constant for alert contact point kind.
 pub const ALERT_CONTACT_POINT_KIND: &str = "grafana-contact-point";
+/// Constant for alert mute timing kind.
 pub const ALERT_MUTE_TIMING_KIND: &str = "grafana-mute-timing";
+/// Constant for alert policy kind.
 pub const ALERT_POLICY_KIND: &str = "grafana-notification-policies";
+/// Constant for alert template kind.
 pub const ALERT_TEMPLATE_KIND: &str = "grafana-notification-template";
 
+/// Struct definition for AlertResourceContract.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AlertResourceContract {
     pub kind: String,
@@ -56,12 +62,14 @@ impl AlertResourceContract {
     }
 }
 
+/// Struct definition for AlertBundleContractReport.
 #[derive(Debug, Clone)]
 pub struct AlertBundleContractReport {
     pub resources: Vec<AlertResourceContract>,
 }
 
 impl AlertBundleContractReport {
+    /// as json.
     pub fn as_json(&self) -> Value {
         let mut summary = BTreeMap::<String, usize>::new();
         for resource in &self.resources {
@@ -219,6 +227,7 @@ fn collect_alert_section(items: &[Value], kind: &str, target: &mut Vec<AlertReso
     }
 }
 
+/// collect alert bundle contracts.
 pub fn collect_alert_bundle_contracts(source_bundle: &Value) -> Vec<AlertResourceContract> {
     let mut contracts = Vec::new();
     let alerting = source_bundle.get("alerting").and_then(Value::as_object);
@@ -273,6 +282,10 @@ pub fn collect_alert_bundle_contracts(source_bundle: &Value) -> Vec<AlertResourc
     contracts
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_alert_bundle_contract_document(source_bundle: &Value) -> Value {
     let contracts = collect_alert_bundle_contracts(source_bundle);
     AlertBundleContractReport {

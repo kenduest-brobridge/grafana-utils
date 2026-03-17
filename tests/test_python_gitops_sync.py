@@ -5,7 +5,7 @@ from grafana_utils.dashboard_cli import GrafanaError
 
 
 class GitopsSyncTests(unittest.TestCase):
-    def test_build_sync_source_bundle_document_tracks_portable_sections(self):
+    def test_gitops_sync_build_sync_source_bundle_document_tracks_portable_sections(self):
         document = gitops_sync.build_sync_source_bundle_document(
             dashboards=[
                 {
@@ -56,7 +56,7 @@ class GitopsSyncTests(unittest.TestCase):
         self.assertEqual(document["alerts"], [])
         self.assertEqual(document["metadata"]["dashboardExportDir"], "./dashboards/raw")
 
-    def test_build_sync_plan_tracks_create_update_noop_and_unmanaged(self):
+    def test_gitops_sync_build_sync_plan_tracks_create_update_noop_and_unmanaged(self):
         desired = [
             {
                 "kind": "dashboard",
@@ -158,7 +158,7 @@ class GitopsSyncTests(unittest.TestCase):
             ["condition", "labels"],
         )
 
-    def test_build_sync_plan_rejects_duplicate_desired_identity(self):
+    def test_gitops_sync_build_sync_plan_rejects_duplicate_desired_identity(self):
         desired = [
             {"kind": "folder", "uid": "ops", "title": "Operations"},
             {"kind": "folder", "uid": "ops", "title": "Operations Copy"},
@@ -169,7 +169,7 @@ class GitopsSyncTests(unittest.TestCase):
 
         self.assertIn("Duplicate sync identity", str(error.exception))
 
-    def test_alert_spec_requires_explicit_managed_fields(self):
+    def test_gitops_sync_alert_spec_requires_explicit_managed_fields(self):
         with self.assertRaises(GrafanaError) as error:
             gitops_sync.normalize_resource_spec(
                 {
@@ -182,7 +182,7 @@ class GitopsSyncTests(unittest.TestCase):
 
         self.assertIn("managedFields", str(error.exception))
 
-    def test_build_apply_intent_blocks_live_apply_until_reviewed_and_approved(self):
+    def test_gitops_sync_build_apply_intent_blocks_live_apply_until_reviewed_and_approved(self):
         plan = gitops_sync.build_sync_plan(
             desired_specs=[{"kind": "folder", "uid": "ops", "title": "Operations"}],
             live_specs=[],
@@ -205,7 +205,7 @@ class GitopsSyncTests(unittest.TestCase):
         self.assertEqual(len(intent["operations"]), 1)
         self.assertEqual(intent["operations"][0].action, "would-create")
 
-    def test_mark_plan_reviewed_rejects_unexpected_token(self):
+    def test_gitops_sync_mark_plan_reviewed_rejects_unexpected_token(self):
         plan = gitops_sync.build_sync_plan(
             desired_specs=[{"kind": "folder", "uid": "ops", "title": "Operations"}],
             live_specs=[],
@@ -218,7 +218,7 @@ class GitopsSyncTests(unittest.TestCase):
 
         self.assertIn("review token rejected", str(error.exception))
 
-    def test_plan_to_document_marks_plan_only_and_blocked_alerts_in_summary(self):
+    def test_gitops_sync_plan_to_document_marks_plan_only_and_blocked_alerts_in_summary(self):
         plan = gitops_sync.build_sync_plan(
             desired_specs=[
                 {
@@ -253,7 +253,7 @@ class GitopsSyncTests(unittest.TestCase):
         self.assertEqual(document["summary"]["alert_blocked"], 1)
         self.assertEqual(len(document["alertAssessment"]["alerts"]), 2)
 
-    def test_render_sync_source_bundle_text_renders_summary(self):
+    def test_gitops_sync_render_sync_source_bundle_text_renders_summary(self):
         lines = gitops_sync.render_sync_source_bundle_text(
             {
                 "kind": gitops_sync.SYNC_SOURCE_BUNDLE_KIND,

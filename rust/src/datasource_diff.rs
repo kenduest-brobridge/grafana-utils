@@ -3,6 +3,7 @@
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 
+/// Struct definition for DatasourceDiffRecord.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DatasourceDiffRecord {
     pub(crate) uid: String,
@@ -14,6 +15,7 @@ pub(crate) struct DatasourceDiffRecord {
     pub(crate) org_id: String,
 }
 
+/// Struct definition for DatasourceFieldDifference.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DatasourceFieldDifference {
     pub(crate) field: &'static str,
@@ -21,6 +23,7 @@ pub(crate) struct DatasourceFieldDifference {
     pub(crate) actual: String,
 }
 
+/// Enum definition for DatasourceDiffStatus.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum DatasourceDiffStatus {
     Matches,
@@ -30,6 +33,7 @@ pub(crate) enum DatasourceDiffStatus {
     AmbiguousLiveMatch,
 }
 
+/// Struct definition for DatasourceDiffEntry.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DatasourceDiffEntry {
     pub(crate) key: String,
@@ -39,6 +43,7 @@ pub(crate) struct DatasourceDiffEntry {
     pub(crate) differences: Vec<DatasourceFieldDifference>,
 }
 
+/// Struct definition for DatasourceDiffSummary.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DatasourceDiffSummary {
     pub(crate) compared_count: usize,
@@ -49,6 +54,7 @@ pub(crate) struct DatasourceDiffSummary {
     pub(crate) ambiguous_live_match_count: usize,
 }
 
+/// Struct definition for DatasourceDiffReport.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DatasourceDiffReport {
     pub(crate) entries: Vec<DatasourceDiffEntry>,
@@ -62,10 +68,12 @@ enum RecordOrigin {
 }
 
 impl DatasourceDiffRecord {
+    /// from export map.
     pub(crate) fn from_export_map(record: &Map<String, Value>) -> Self {
         Self::from_map(record, RecordOrigin::Export)
     }
 
+    /// from live map.
     pub(crate) fn from_live_map(record: &Map<String, Value>) -> Self {
         Self::from_map(record, RecordOrigin::Live)
     }
@@ -90,6 +98,7 @@ impl DatasourceDiffRecord {
     }
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_datasource_diff_report(
     export_records: &[DatasourceDiffRecord],
     live_records: &[DatasourceDiffRecord],
@@ -305,6 +314,7 @@ fn normalize_org_id(record: &Map<String, Value>, origin: &RecordOrigin) -> Strin
 }
 
 // Convert exported record map rows into a typed diff representation.
+/// Purpose: implementation note.
 pub(crate) fn normalize_export_records(values: &[Value]) -> Vec<DatasourceDiffRecord> {
     values
         .iter()
@@ -314,6 +324,7 @@ pub(crate) fn normalize_export_records(values: &[Value]) -> Vec<DatasourceDiffRe
 }
 
 // Convert live API rows into a typed diff representation.
+/// Purpose: implementation note.
 pub(crate) fn normalize_live_records(values: &[Value]) -> Vec<DatasourceDiffRecord> {
     values
         .iter()

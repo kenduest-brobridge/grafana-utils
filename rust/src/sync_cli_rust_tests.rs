@@ -1,3 +1,5 @@
+//! Sync CLI test suite.
+//! Verifies sync argument parsing, plan/review/apply routing, and rendering contracts.
 use super::{
     execute_live_apply_with_request, fetch_live_availability_with_request,
     fetch_live_resource_specs_with_request, render_alert_sync_assessment_text,
@@ -87,6 +89,7 @@ fn sync_root_help_includes_examples() {
 
 #[test]
 fn parse_sync_cli_supports_summary_command() {
+
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "summary",
@@ -107,6 +110,7 @@ fn parse_sync_cli_supports_summary_command() {
 
 #[test]
 fn parse_sync_cli_supports_assess_alerts_command() {
+
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "assess-alerts",
@@ -127,6 +131,7 @@ fn parse_sync_cli_supports_assess_alerts_command() {
 
 #[test]
 fn parse_sync_cli_supports_plan_command() {
+
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "plan",
@@ -158,6 +163,7 @@ fn parse_sync_cli_supports_plan_command() {
 
 #[test]
 fn parse_sync_cli_supports_plan_fetch_live_mode() {
+
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "plan",
@@ -186,6 +192,7 @@ fn parse_sync_cli_supports_plan_fetch_live_mode() {
 
 #[test]
 fn parse_sync_cli_supports_review_command() {
+
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "review",
@@ -210,6 +217,7 @@ fn parse_sync_cli_supports_review_command() {
 
 #[test]
 fn parse_sync_cli_supports_review_command_with_note() {
+
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "review",
@@ -232,6 +240,7 @@ fn parse_sync_cli_supports_review_command_with_note() {
 
 #[test]
 fn parse_sync_cli_supports_apply_command() {
+
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "apply",
@@ -272,6 +281,7 @@ fn parse_sync_cli_supports_apply_command() {
 
 #[test]
 fn parse_sync_cli_supports_apply_execute_live_flags() {
+
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "apply",
@@ -298,6 +308,7 @@ fn parse_sync_cli_supports_apply_execute_live_flags() {
 
 #[test]
 fn parse_sync_cli_supports_preflight_fetch_live_mode() {
+
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "preflight",
@@ -321,6 +332,7 @@ fn parse_sync_cli_supports_preflight_fetch_live_mode() {
 
 #[test]
 fn parse_sync_cli_supports_bundle_preflight_fetch_live_mode() {
+
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "bundle-preflight",
@@ -346,6 +358,7 @@ fn parse_sync_cli_supports_bundle_preflight_fetch_live_mode() {
 
 #[test]
 fn parse_sync_cli_supports_apply_command_with_reason_and_note() {
+
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "apply",
@@ -372,6 +385,7 @@ fn parse_sync_cli_supports_apply_command_with_reason_and_note() {
 
 #[test]
 fn parse_sync_cli_supports_bundle_command() {
+
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "bundle",
@@ -706,6 +720,7 @@ fn execute_live_apply_with_request_supports_alert_create() {
 
 #[test]
 fn run_sync_cli_summary_accepts_local_desired_file() {
+
     let temp = tempdir().unwrap();
     let desired_file = temp.path().join("desired.json");
     fs::write(
@@ -734,6 +749,7 @@ fn run_sync_cli_summary_accepts_local_desired_file() {
 
 #[test]
 fn run_sync_cli_plan_accepts_local_inputs() {
+
     let temp = tempdir().unwrap();
     let desired_file = temp.path().join("desired.json");
     let live_file = temp.path().join("live.json");
@@ -771,6 +787,7 @@ fn run_sync_cli_plan_accepts_local_inputs() {
 
 #[test]
 fn run_sync_cli_assess_alerts_accepts_local_inputs() {
+
     let temp = tempdir().unwrap();
     let alerts_file = temp.path().join("alerts.json");
     fs::write(
@@ -800,6 +817,7 @@ fn run_sync_cli_assess_alerts_accepts_local_inputs() {
 
 #[test]
 fn run_sync_cli_bundle_writes_source_bundle_artifact() {
+
     let temp = tempdir().unwrap();
     let dashboard_export_dir = temp.path().join("dashboards").join("raw");
     let alert_export_dir = temp.path().join("alerts").join("raw");
@@ -939,6 +957,7 @@ fn run_sync_cli_bundle_writes_source_bundle_artifact() {
 
 #[test]
 fn run_sync_cli_bundle_preserves_datasource_provider_metadata_from_inventory_file() {
+
     let temp = tempdir().unwrap();
     let datasource_export_file = temp.path().join("datasources.json");
     fs::write(
@@ -990,6 +1009,7 @@ fn run_sync_cli_bundle_preserves_datasource_provider_metadata_from_inventory_fil
 
 #[test]
 fn run_sync_cli_bundle_normalizes_tool_rule_export_into_top_level_alert_spec() {
+
     let temp = tempdir().unwrap();
     let alert_export_dir = temp.path().join("alerts").join("raw");
     fs::create_dir_all(alert_export_dir.join("rules")).unwrap();
@@ -1079,6 +1099,7 @@ fn run_sync_cli_bundle_normalizes_tool_rule_export_into_top_level_alert_spec() {
 
 #[test]
 fn run_sync_cli_review_marks_plan_reviewed() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     fs::write(
@@ -1117,6 +1138,7 @@ fn run_sync_cli_review_marks_plan_reviewed() {
 
 #[test]
 fn run_sync_cli_review_rejects_wrong_review_token() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     fs::write(
@@ -1157,6 +1179,7 @@ fn run_sync_cli_review_rejects_wrong_review_token() {
 
 #[test]
 fn run_sync_cli_review_rejects_missing_trace_id() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     fs::write(
@@ -1196,6 +1219,7 @@ fn run_sync_cli_review_rejects_missing_trace_id() {
 
 #[test]
 fn run_sync_cli_review_rejects_partial_lineage_metadata() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     fs::write(
@@ -1237,6 +1261,7 @@ fn run_sync_cli_review_rejects_partial_lineage_metadata() {
 
 #[test]
 fn run_sync_cli_review_rejects_non_plan_lineage_stage() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     fs::write(
@@ -1280,6 +1305,7 @@ fn run_sync_cli_review_rejects_non_plan_lineage_stage() {
 
 #[test]
 fn run_sync_cli_review_rejects_plan_with_wrong_lineage_stage() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     fs::write(
@@ -1323,6 +1349,7 @@ fn run_sync_cli_review_rejects_plan_with_wrong_lineage_stage() {
 
 #[test]
 fn run_sync_cli_apply_accepts_reviewed_plan_file() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     fs::write(
@@ -1372,6 +1399,7 @@ fn run_sync_cli_apply_accepts_reviewed_plan_file() {
 
 #[test]
 fn run_sync_cli_apply_rejects_reviewed_plan_with_wrong_lineage_parent() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     fs::write(
@@ -1426,6 +1454,7 @@ fn run_sync_cli_apply_rejects_reviewed_plan_with_wrong_lineage_parent() {
 
 #[test]
 fn run_sync_cli_apply_rejects_unreviewed_plan_file() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     fs::write(
@@ -1476,6 +1505,7 @@ fn run_sync_cli_apply_rejects_unreviewed_plan_file() {
 
 #[test]
 fn run_sync_cli_apply_requires_explicit_approval() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     fs::write(
@@ -1526,6 +1556,7 @@ fn run_sync_cli_apply_requires_explicit_approval() {
 
 #[test]
 fn run_sync_cli_apply_accepts_non_blocking_preflight_file() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     let preflight_file = temp.path().join("preflight.json");
@@ -1589,6 +1620,7 @@ fn run_sync_cli_apply_accepts_non_blocking_preflight_file() {
 
 #[test]
 fn run_sync_cli_apply_rejects_preflight_with_mismatched_trace_id() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     let preflight_file = temp.path().join("preflight.json");
@@ -1658,6 +1690,7 @@ fn run_sync_cli_apply_rejects_preflight_with_mismatched_trace_id() {
 
 #[test]
 fn run_sync_cli_plan_accepts_explicit_trace_id() {
+
     let temp = tempdir().unwrap();
     let desired_file = temp.path().join("desired.json");
     let live_file = temp.path().join("live.json");
@@ -1688,6 +1721,7 @@ fn run_sync_cli_plan_accepts_explicit_trace_id() {
 
 #[test]
 fn run_sync_cli_apply_rejects_blocking_preflight_file() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     let preflight_file = temp.path().join("preflight.json");
@@ -1753,6 +1787,7 @@ fn run_sync_cli_apply_rejects_blocking_preflight_file() {
 
 #[test]
 fn run_sync_cli_apply_rejects_blocking_bundle_preflight_file() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     let bundle_preflight_file = temp.path().join("bundle-preflight.json");
@@ -1817,6 +1852,7 @@ fn run_sync_cli_apply_rejects_blocking_bundle_preflight_file() {
 
 #[test]
 fn run_sync_cli_apply_rejects_missing_trace_id() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     fs::write(
@@ -1866,6 +1902,7 @@ fn run_sync_cli_apply_rejects_missing_trace_id() {
 
 #[test]
 fn run_sync_cli_apply_rejects_plan_with_non_review_lineage() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     fs::write(
@@ -1918,6 +1955,7 @@ fn run_sync_cli_apply_rejects_plan_with_non_review_lineage() {
 
 #[test]
 fn run_sync_cli_apply_accepts_non_blocking_bundle_preflight_file() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     let bundle_preflight_file = temp.path().join("bundle-preflight.json");
@@ -1980,6 +2018,7 @@ fn run_sync_cli_apply_accepts_non_blocking_bundle_preflight_file() {
 
 #[test]
 fn run_sync_cli_apply_rejects_lineage_aware_preflight_without_trace_id() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     let preflight_file = temp.path().join("preflight.json");
@@ -2050,6 +2089,7 @@ fn run_sync_cli_apply_rejects_lineage_aware_preflight_without_trace_id() {
 
 #[test]
 fn run_sync_cli_apply_rejects_lineage_aware_bundle_preflight_with_mismatched_parent() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     let bundle_preflight_file = temp.path().join("bundle-preflight.json");
@@ -2122,6 +2162,7 @@ fn run_sync_cli_apply_rejects_lineage_aware_bundle_preflight_with_mismatched_par
 
 #[test]
 fn run_sync_cli_apply_rejects_bundle_preflight_with_mismatched_trace_id() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     let bundle_preflight_file = temp.path().join("bundle-preflight.json");
@@ -2190,6 +2231,7 @@ fn run_sync_cli_apply_rejects_bundle_preflight_with_mismatched_trace_id() {
 
 #[test]
 fn run_sync_cli_review_accepts_explicit_audit_metadata() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     fs::write(
@@ -2228,6 +2270,7 @@ fn run_sync_cli_review_accepts_explicit_audit_metadata() {
 
 #[test]
 fn run_sync_cli_apply_accepts_explicit_audit_metadata() {
+
     let temp = tempdir().unwrap();
     let plan_file = temp.path().join("plan.json");
     fs::write(
@@ -2277,6 +2320,7 @@ fn run_sync_cli_apply_accepts_explicit_audit_metadata() {
 
 #[test]
 fn run_sync_cli_preflight_rejects_non_object_availability_file() {
+
     let temp = tempdir().unwrap();
     let desired_file = temp.path().join("desired.json");
     let availability_file = temp.path().join("availability.json");
@@ -2306,6 +2350,7 @@ fn run_sync_cli_preflight_rejects_non_object_availability_file() {
 
 #[test]
 fn run_sync_cli_bundle_preflight_accepts_local_bundle_inputs() {
+
     let temp = tempdir().unwrap();
     let source_bundle = temp.path().join("source.json");
     let target_inventory = temp.path().join("target.json");

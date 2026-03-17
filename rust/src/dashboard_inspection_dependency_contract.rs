@@ -12,6 +12,7 @@ use crate::dashboard_reference_models::{
 use serde_json::{json, Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
+/// Struct definition for DependencyUsageSummary.
 #[derive(Debug, Clone)]
 pub struct DependencyUsageSummary {
     pub datasource_identity: String,
@@ -23,7 +24,12 @@ pub struct DependencyUsageSummary {
 }
 
 impl DependencyUsageSummary {
+    /// as json.
     pub fn as_json(&self) -> Value {
+    // Call graph (hierarchy): this function is used in related modules.
+    // Upstream callers: 無
+    // Downstream callees: 無
+
         json!({
             "datasource": self.datasource_identity,
             "family": self.family,
@@ -35,6 +41,7 @@ impl DependencyUsageSummary {
     }
 }
 
+/// Struct definition for OfflineDependencyReportDocument.
 #[derive(Debug, Clone)]
 pub struct OfflineDependencyReportDocument {
     pub summary: BTreeMap<String, Value>,
@@ -45,7 +52,12 @@ pub struct OfflineDependencyReportDocument {
 }
 
 impl OfflineDependencyReportDocument {
+    /// as json.
     pub fn as_json(&self) -> Value {
+    // Call graph (hierarchy): this function is used in related modules.
+    // Upstream callers: 無
+    // Downstream callees: dashboard_inspection_dependency_contract.rs:query_signature_key
+
         let queries: Vec<Value> = self
             .queries
             .iter()
@@ -139,6 +151,10 @@ fn query_signature_key(row: &DashboardQueryReference) -> String {
 }
 
 fn parse_query_text_families(row: &DashboardQueryReference) -> QueryFeatureHints {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: dashboard_reference_models.rs:dedupe_strings, dashboard_reference_models.rs:normalize_family_name
+
     let family = normalize_family_name(&row.datasource_type);
     let query = row.query.to_lowercase();
     let mut metrics = Vec::new();
@@ -212,6 +228,7 @@ fn parse_query_text_families(row: &DashboardQueryReference) -> QueryFeatureHints
     }
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_offline_dependency_contract(
     query_report_rows: &[Value],
     datasource_inventory: &[DatasourceInventoryItem],

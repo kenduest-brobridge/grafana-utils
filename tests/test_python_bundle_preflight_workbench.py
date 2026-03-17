@@ -13,7 +13,7 @@ GrafanaError = importlib.import_module("grafana_utils.dashboard_cli").GrafanaErr
 
 
 class BundlePreflightWorkbenchTests(unittest.TestCase):
-    def test_module_parses_as_python39_syntax(self):
+    def test_bundle_preflight_module_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
@@ -75,7 +75,7 @@ class BundlePreflightWorkbenchTests(unittest.TestCase):
             "datasources": [],
         }
 
-    def test_build_bundle_preflight_document_aggregates_staged_checks(self):
+    def test_bundle_preflight_build_bundle_preflight_document_aggregates_staged_checks(self):
         document = bundle_preflight_workbench.build_bundle_preflight_document(
             self.build_source_bundle(),
             self.build_target_inventory(),
@@ -104,7 +104,7 @@ class BundlePreflightWorkbenchTests(unittest.TestCase):
         self.assertEqual(document["summary"]["providerBlockingCount"], 1)
         self.assertEqual(document["summary"]["secretBlockingCount"], 1)
 
-    def test_render_bundle_preflight_text_renders_summary(self):
+    def test_bundle_preflight_render_bundle_preflight_text_renders_summary(self):
         document = bundle_preflight_workbench.build_bundle_preflight_document(
             self.build_source_bundle(),
             self.build_target_inventory(),
@@ -127,7 +127,7 @@ class BundlePreflightWorkbenchTests(unittest.TestCase):
         self.assertIn("Provider blocking: 1", output)
         self.assertIn("Secret blocking: 1", output)
 
-    def test_render_bundle_preflight_rejects_wrong_kind(self):
+    def test_bundle_preflight_render_bundle_preflight_rejects_wrong_kind(self):
         with self.assertRaises(GrafanaError):
             bundle_preflight_workbench.render_bundle_preflight_text({"kind": "wrong"})
 

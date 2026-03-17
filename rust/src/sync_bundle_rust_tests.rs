@@ -1,3 +1,5 @@
+//! Sync bundle preflight contract tests.
+//! Validates sync bundle planning output and sync-source dependency assembly.
 use crate::sync_bundle_preflight::{
     build_sync_bundle_preflight_document, render_sync_bundle_preflight_text,
     SYNC_BUNDLE_PREFLIGHT_KIND,

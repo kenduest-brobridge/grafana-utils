@@ -27,18 +27,21 @@ SAFE_ALLOWED_ADD_FIELDS = (
 
 
 def _normalize_string(value):
+    """Internal helper for normalize string."""
     if value is None:
         return ""
     return str(value).strip()
 
 
 def _normalize_bool(value):
+    """Internal helper for normalize bool."""
     if isinstance(value, bool):
         return value
     return _normalize_string(value).lower() in ("true", "1", "yes", "on")
 
 
 def _copy_optional_json_object(value, label):
+    """Internal helper for copy optional json object."""
     if value is None:
         return None
     if not isinstance(value, dict):
@@ -47,6 +50,7 @@ def _copy_optional_json_object(value, label):
 
 
 def build_datasource_identity_lookups(datasources):
+    """Build datasource identity lookups implementation."""
     by_uid = {}
     by_name = {}
     for datasource in datasources:
@@ -60,6 +64,7 @@ def build_datasource_identity_lookups(datasources):
 
 
 def resolve_datasource_target(datasources, uid=None, name=None):
+    """Resolve datasource target implementation."""
     normalized_uid = _normalize_string(uid)
     normalized_name = _normalize_string(name)
     if not normalized_uid and not normalized_name:
@@ -96,6 +101,11 @@ def resolve_datasource_target(datasources, uid=None, name=None):
 
 
 def normalize_add_spec(spec):
+    """Normalize add spec implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 155
+    #   Downstream callees: 29, 36, 43
+
     if not isinstance(spec, dict):
         raise GrafanaError("Datasource add spec must be a JSON object.")
     extra_fields = sorted(key for key in spec.keys() if key not in SAFE_ALLOWED_ADD_FIELDS)
@@ -147,6 +157,7 @@ def normalize_add_spec(spec):
 
 
 def build_add_payload(spec):
+    """Build add payload implementation."""
     normalized = normalize_add_spec(spec)
     payload = {"name": normalized["name"], "type": normalized["type"]}
     for field in ("uid", "access", "url", "isDefault", "jsonData", "secureJsonData"):
@@ -156,6 +167,7 @@ def build_add_payload(spec):
 
 
 def determine_add_action(match_state):
+    """Determine add action implementation."""
     if match_state == "missing":
         return "would-create"
     if match_state == "exists-uid":
@@ -172,6 +184,7 @@ def determine_add_action(match_state):
 
 
 def determine_delete_action(match_state):
+    """Determine delete action implementation."""
     if match_state in ("exists-uid", "exists-name"):
         return "would-delete"
     if match_state == "missing":
@@ -186,6 +199,11 @@ def determine_delete_action(match_state):
 
 
 def plan_add_datasource(client, spec):
+    """Plan add datasource implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 213
+    #   Downstream callees: 155, 165, 66
+
     payload = build_add_payload(spec)
     match = resolve_datasource_target(
         client.list_datasources(),
@@ -201,6 +219,11 @@ def plan_add_datasource(client, spec):
 
 
 def add_datasource(client, spec, dry_run=False):
+    """Add datasource implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 197
+
     plan = plan_add_datasource(client, spec)
     if plan["action"] != "would-create":
         raise GrafanaError(
@@ -226,6 +249,7 @@ def add_datasource(client, spec, dry_run=False):
 
 
 def plan_delete_datasource(client, uid=None, name=None):
+    """Plan delete datasource implementation."""
     match = resolve_datasource_target(client.list_datasources(), uid=uid, name=name)
     return {
         "action": determine_delete_action(match["state"]),
@@ -235,6 +259,11 @@ def plan_delete_datasource(client, uid=None, name=None):
 
 
 def delete_datasource(client, uid=None, name=None, dry_run=False):
+    """Delete datasource implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 239, 29
+
     plan = plan_delete_datasource(client, uid=uid, name=name)
     if plan["action"] != "would-delete":
         raise GrafanaError(

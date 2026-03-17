@@ -16,6 +16,10 @@ def discover_dashboard_files(
     datasource_inventory_filename: str,
 ) -> list[Path]:
     """Find dashboard JSON files for import and reject ambiguous combined roots."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if not import_dir.exists():
         raise GrafanaError(f"Import directory does not exist: {import_dir}")
     if not import_dir.is_dir():
@@ -46,6 +50,10 @@ def discover_dashboard_files(
 
 def discover_org_raw_export_dirs(import_dir: Path, raw_export_subdir: str) -> list[Path]:
     """Find per-org raw export directories under one combined multi-org export root."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if not import_dir.exists():
         raise GrafanaError(f"Import directory does not exist: {import_dir}")
     if not import_dir.is_dir():
@@ -71,6 +79,11 @@ def load_folder_inventory(
     default_filename: str,
     metadata: Optional[dict[str, Any]] = None,
 ) -> list[dict[str, str]]:
+    """Load folder inventory implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     folders_file = default_filename
     if isinstance(metadata, dict):
         folders_file = str(metadata.get("foldersFile") or default_filename)
@@ -107,6 +120,11 @@ def load_datasource_inventory(
     default_filename: str,
     metadata: Optional[dict[str, Any]] = None,
 ) -> list[dict[str, str]]:
+    """Load datasource inventory implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     datasources_file = default_filename
     if isinstance(metadata, dict):
         datasources_file = str(metadata.get("datasourcesFile") or default_filename)
@@ -147,6 +165,11 @@ def load_datasource_inventory(
 def build_folder_inventory_lookup(
     folders: list[dict[str, str]],
 ) -> dict[str, dict[str, str]]:
+    """Build folder inventory lookup implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     lookup = {}
     for folder in folders:
         uid = str(folder.get("uid") or "")
@@ -156,6 +179,7 @@ def build_folder_inventory_lookup(
 
 
 def build_import_dashboard_folder_path(dashboard_file: Path, import_dir: Path) -> str:
+    """Build import dashboard folder path implementation."""
     relative_path = dashboard_file.relative_to(import_dir)
     parts = list(relative_path.parts[:-1])
     return " / ".join(parts)
@@ -169,7 +193,16 @@ def resolve_folder_inventory_record_for_dashboard(
     default_folder_uid: str = DEFAULT_FOLDER_UID,
     default_folder_title: str = DEFAULT_FOLDER_TITLE,
 ) -> Optional[dict[str, str]]:
+    """Resolve folder inventory record for dashboard implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 161, 177
+
     def build_general_record() -> dict[str, str]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return {
             "uid": default_folder_uid,
             "title": default_folder_title,
@@ -241,6 +274,10 @@ def load_export_metadata(
     expected_variant: Optional[str] = None,
 ) -> Optional[dict[str, Any]]:
     """Load the optional export manifest and validate its schema version when present."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 216
+
     metadata_path = import_dir / export_metadata_filename
     if not metadata_path.is_file():
         return None
@@ -271,6 +308,10 @@ def resolve_export_org_id(
     metadata: Optional[dict[str, Any]] = None,
 ) -> Optional[str]:
     """Resolve one stable source export orgId from the raw export directory."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 308
+
     return _resolve_export_identity_field(
         import_dir,
         folder_inventory_filename,
@@ -287,6 +328,10 @@ def resolve_export_org_name(
     metadata: Optional[dict[str, Any]] = None,
 ) -> Optional[str]:
     """Resolve one stable source export org name from the raw export directory."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 308
+
     return _resolve_export_identity_field(
         import_dir,
         folder_inventory_filename,

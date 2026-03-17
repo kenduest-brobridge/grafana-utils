@@ -1,4 +1,4 @@
-//! Unwired secret-provider contract helpers for datasource imports.
+//! Staged secret-provider contract helpers for datasource imports.
 //!
 //! Purpose:
 //! - Stage an external secret-provider contract without wiring provider I/O yet.
@@ -13,9 +13,12 @@ use serde::Serialize;
 use serde_json::{json, Map, Value};
 use std::collections::HashSet;
 
+/// Constant for provider reference prefix.
 pub const PROVIDER_REFERENCE_PREFIX: &str = "${provider:";
+/// Constant for provider reference suffix.
 pub const PROVIDER_REFERENCE_SUFFIX: &str = "}";
 
+/// Struct definition for SecretProviderReference.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SecretProviderReference {
     pub field_name: String,
@@ -24,6 +27,7 @@ pub struct SecretProviderReference {
     pub raw_token: String,
 }
 
+/// Struct definition for DatasourceSecretProviderPlan.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct DatasourceSecretProviderPlan {
     pub datasource_uid: Option<String>,
@@ -39,10 +43,15 @@ fn normalize_text(value: Option<&str>) -> String {
     value.unwrap_or("").trim().to_string()
 }
 
+/// parse provider reference.
 pub fn parse_provider_reference(
     value: &Value,
     field_name: &str,
 ) -> Result<SecretProviderReference> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: datasource_provider.rs:collect_provider_references
+// Downstream callees: common.rs:message
+
     let field_name = field_name.trim().to_string();
     if field_name.is_empty() {
         return Err(message(
@@ -82,6 +91,7 @@ pub fn parse_provider_reference(
     })
 }
 
+/// collect provider references.
 pub fn collect_provider_references(
     secure_json_data: Option<&Map<String, Value>>,
 ) -> Result<Vec<SecretProviderReference>> {
@@ -100,9 +110,17 @@ pub fn collect_provider_references(
     Ok(references)
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_provider_plan(
     datasource_spec: &Map<String, Value>,
 ) -> Result<DatasourceSecretProviderPlan> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: bundle_preflight.rs:build_provider_assessment, datasource_provider_rust_tests.rs:build_provider_plan_rejects_missing_datasource_name, datasource_provider_rust_tests.rs:build_provider_plan_shapes_review_summary, datasource_provider_rust_tests.rs:iter_provider_names_deduplicates_names, sync_bundle_preflight.rs:build_provider_assessment
+// Downstream callees: common.rs:message, datasource_provider.rs:collect_provider_references, datasource_provider.rs:normalize_text
+
     let datasource_name = normalize_text(datasource_spec.get("name").and_then(Value::as_str));
     let datasource_type = normalize_text(datasource_spec.get("type").and_then(Value::as_str));
     if datasource_name.is_empty() {
@@ -142,6 +160,7 @@ pub fn build_provider_plan(
     })
 }
 
+/// summarize provider plan.
 pub fn summarize_provider_plan(plan: &DatasourceSecretProviderPlan) -> Value {
     json!({
         "datasourceUid": plan.datasource_uid,
@@ -160,6 +179,7 @@ pub fn summarize_provider_plan(plan: &DatasourceSecretProviderPlan) -> Value {
     })
 }
 
+/// iter provider names.
 pub fn iter_provider_names(references: &[SecretProviderReference]) -> impl Iterator<Item = &str> {
     let mut seen = HashSet::new();
     references.iter().filter_map(move |item| {

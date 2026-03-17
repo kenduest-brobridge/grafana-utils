@@ -133,6 +133,7 @@ LIST_HELP_EPILOG_BY_COMMAND = {
 }
 
 def add_common_args(parser: argparse.ArgumentParser) -> None:
+    """Add common args implementation."""
     auth_group = parser.add_argument_group("Authentication Options")
     transport_group = parser.add_argument_group("Transport Options")
     auth_group.add_argument(
@@ -198,6 +199,7 @@ def add_common_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_export_args(parser: argparse.ArgumentParser) -> None:
+    """Add export args implementation."""
     export_group = parser.add_argument_group("Export Options")
     export_group.add_argument(
         "--output-dir",
@@ -223,6 +225,7 @@ def add_export_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_list_args(parser: argparse.ArgumentParser) -> None:
+    """Add list args implementation."""
     org_group = parser.add_argument_group("Organization Options")
     org_scope = org_group.add_mutually_exclusive_group()
     org_scope.add_argument(
@@ -275,6 +278,7 @@ def add_list_args(parser: argparse.ArgumentParser) -> None:
 
 
 def add_import_args(parser: argparse.ArgumentParser, diff_mode: bool = False) -> None:
+    """Add import args implementation."""
     dir_flag = "--diff-dir" if diff_mode else "--import-dir"
     verb = "Compare" if diff_mode else "Import"
     io_group = parser.add_argument_group("Input Options")
@@ -393,6 +397,10 @@ def build_legacy_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
 
 def build_parser(prog: Optional[str] = None) -> argparse.ArgumentParser:
     """Build the modern namespaced parser for `grafana-util alert ...`."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 465
+    #   Downstream callees: 135, 201, 227, 280
+
     parser = argparse.ArgumentParser(
         prog=prog,
         description="Export, import, or diff Grafana alerting resources.",
@@ -469,6 +477,10 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     - Normalize alias output format flags into the mutually-exclusive concrete
       rendering booleans used by workflows.
     """
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1427
+    #   Downstream callees: 336, 398, 508
+
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv in (["-h"], ["--help"]):
         parser = build_parser()
@@ -521,6 +533,7 @@ def _normalize_output_format_args(
 
 
 def resolve_auth(args: argparse.Namespace) -> dict[str, str]:
+    """Resolve auth implementation."""
     try:
         headers, _auth_mode = resolve_cli_auth_from_namespace(
             args,
@@ -534,6 +547,7 @@ def resolve_auth(args: argparse.Namespace) -> dict[str, str]:
 
 
 def sanitize_path_component(value: str) -> str:
+    """Sanitize path component implementation."""
     normalized = re.sub(r"[^\w.\- ]+", "_", value.strip(), flags=re.UNICODE)
     normalized = re.sub(r"\s+", "_", normalized)
     normalized = re.sub(r"_+", "_", normalized)
@@ -542,6 +556,7 @@ def sanitize_path_component(value: str) -> str:
 
 
 def write_json(payload: Any, output_path: Path, overwrite: bool) -> None:
+    """Write json implementation."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     if output_path.exists() and not overwrite:
         raise GrafanaError(
@@ -598,6 +613,7 @@ def print_unified_diff(
 
 
 def load_json_file(path: Path) -> Any:
+    """Load json file implementation."""
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
@@ -607,12 +623,14 @@ def load_json_file(path: Path) -> Any:
 
 
 def build_resource_dirs(raw_dir: Path) -> dict[str, Path]:
+    """Build resource dirs implementation."""
     return {
         kind: raw_dir / subdir for kind, subdir in RESOURCE_SUBDIR_BY_KIND.items()
     }
 
 
 def build_rule_output_path(output_dir: Path, rule: dict[str, Any], flat: bool) -> Path:
+    """Build rule output path implementation."""
     folder_uid = sanitize_path_component(rule.get("folderUID") or "unknown-folder")
     rule_group = sanitize_path_component(rule.get("ruleGroup") or "default-group")
     title = sanitize_path_component(rule.get("title") or "alert-rule")
@@ -628,6 +646,7 @@ def build_contact_point_output_path(
     contact_point: dict[str, Any],
     flat: bool,
 ) -> Path:
+    """Build contact point output path implementation."""
     name = sanitize_path_component(contact_point.get("name") or "contact-point")
     uid = sanitize_path_component(contact_point.get("uid") or name or "unknown")
     filename = f"{name}__{uid}.json"
@@ -639,12 +658,14 @@ def build_mute_timing_output_path(
     mute_timing: dict[str, Any],
     flat: bool,
 ) -> Path:
+    """Build mute timing output path implementation."""
     name = sanitize_path_component(mute_timing.get("name") or "mute-timing")
     filename = f"{name}.json"
     return output_dir / filename if flat else output_dir / name / filename
 
 
 def build_policies_output_path(output_dir: Path) -> Path:
+    """Build policies output path implementation."""
     return output_dir / "notification-policies.json"
 
 
@@ -653,6 +674,7 @@ def build_template_output_path(
     template: dict[str, Any],
     flat: bool,
 ) -> Path:
+    """Build template output path implementation."""
     name = sanitize_path_component(template.get("name") or "template")
     filename = f"{name}.json"
     return output_dir / filename if flat else output_dir / name / filename
@@ -692,6 +714,7 @@ def build_alert_list_table(
     headers: dict[str, str],
     include_header: bool = True,
 ) -> list[str]:
+    """Build alert list table implementation."""
     widths = {}
     for field in fields:
         widths[field] = len(headers[field])
@@ -699,6 +722,10 @@ def build_alert_list_table(
             widths[field] = max(widths[field], len(str(row.get(field) or "")))
 
     def build_row(values: dict[str, Any]) -> str:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return "  ".join(
             str(values.get(field) or "").ljust(widths[field]) for field in fields
         )
@@ -713,6 +740,7 @@ def build_alert_list_table(
 
 
 def render_alert_list_csv(rows: list[dict[str, Any]], fields: list[str]) -> None:
+    """Render alert list csv implementation."""
     writer = csv.DictWriter(sys.stdout, fieldnames=fields)
     writer.writeheader()
     for row in rows:
@@ -720,10 +748,16 @@ def render_alert_list_csv(rows: list[dict[str, Any]], fields: list[str]) -> None
 
 
 def render_alert_list_json(rows: list[dict[str, Any]]) -> str:
+    """Render alert list json implementation."""
     return json.dumps(rows, indent=2, ensure_ascii=False)
 
 
 def serialize_rule_list_rows(rules: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Serialize rule list rows implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     rows = []
     for rule in rules:
         rows.append(
@@ -740,6 +774,11 @@ def serialize_rule_list_rows(rules: list[dict[str, Any]]) -> list[dict[str, Any]
 def serialize_contact_point_list_rows(
     contact_points: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
+    """Serialize contact point list rows implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     rows = []
     for item in contact_points:
         rows.append(
@@ -755,6 +794,11 @@ def serialize_contact_point_list_rows(
 def serialize_mute_timing_list_rows(
     mute_timings: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
+    """Serialize mute timing list rows implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     rows = []
     for item in mute_timings:
         intervals = item.get("time_intervals") or []
@@ -770,6 +814,11 @@ def serialize_mute_timing_list_rows(
 def serialize_template_list_rows(
     templates: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
+    """Serialize template list rows implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return [{"name": str(item.get("name") or "")} for item in templates]
 
 
@@ -932,6 +981,10 @@ def format_export_summary(
 
 def export_alerting_resources(args: argparse.Namespace) -> int:
     """Export supported alerting resources into the tool-owned JSON layout."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1427
+    #   Downstream callees: 1260, 550, 617, 801, 831, 859, 883, 905, 929, 942
+
     client = build_client(args)
     output_dir = Path(args.output_dir)
     raw_dir = output_dir / RAW_EXPORT_SUBDIR
@@ -1116,6 +1169,10 @@ def import_resource_document(
     args: argparse.Namespace,
 ) -> tuple[str, str]:
     """Dispatch one import document to the correct per-kind import handler."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1155
+    #   Downstream callees: 1034, 1055, 1072, 1112, 1128
+
     if kind == RULE_KIND:
         return import_rule_document(client, payload, args.replace_existing)
     if kind == CONTACT_POINT_KIND:
@@ -1129,6 +1186,10 @@ def import_resource_document(
 
 def import_alerting_resources(args: argparse.Namespace) -> int:
     """Import alerting resource documents back into Grafana provisioning APIs."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1427
+    #   Downstream callees: 1020, 1137, 1260, 563, 568, 607, 675
+
     client = build_client(args)
     import_dir = Path(args.import_dir)
     resource_files = discover_alert_resource_files(import_dir)
@@ -1172,6 +1233,10 @@ def import_alerting_resources(args: argparse.Namespace) -> int:
 
 def diff_alerting_resources(args: argparse.Namespace) -> int:
     """Compare local alerting export files with the current Grafana state."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1427
+    #   Downstream callees: 1020, 1260, 563, 568, 583, 607, 675
+
     client = build_client(args)
     diff_dir = Path(args.diff_dir)
     resource_files = discover_alert_resource_files(diff_dir)
@@ -1242,6 +1307,7 @@ def _build_alert_client_for_headers(
     args: argparse.Namespace,
     headers: dict[str, str],
 ) -> GrafanaAlertClient:
+    """Internal helper for build alert client for headers."""
     return GrafanaAlertClient(
         base_url=args.url,
         headers=headers,
@@ -1254,12 +1320,14 @@ def build_client_for_org(
     args: argparse.Namespace,
     org_id: str,
 ) -> GrafanaAlertClient:
+    """Build client for org implementation."""
     headers = resolve_auth(args)
     headers["X-Grafana-Org-Id"] = str(org_id)
     return _build_alert_client_for_headers(args, headers)
 
 
 def list_visible_orgs(args: argparse.Namespace) -> list[dict[str, Any]]:
+    """List visible orgs implementation."""
     client = build_client(args)
     data = client.request_json("/api/orgs")
     if not isinstance(data, list):
@@ -1268,6 +1336,7 @@ def list_visible_orgs(args: argparse.Namespace) -> list[dict[str, Any]]:
 
 
 def fetch_current_org(client: GrafanaAlertClient) -> dict[str, Any]:
+    """Fetch current org implementation."""
     data = client.request_json("/api/org")
     if not isinstance(data, dict):
         raise GrafanaError("Unexpected current org response from Grafana.")
@@ -1275,6 +1344,7 @@ def fetch_current_org(client: GrafanaAlertClient) -> dict[str, Any]:
 
 
 def _normalize_alert_org_id(org: dict[str, Any]) -> str:
+    """Internal helper for normalize alert org id."""
     value = org.get("id")
     if value is None:
         return ""
@@ -1284,6 +1354,11 @@ def _normalize_alert_org_id(org: dict[str, Any]) -> str:
 def _build_alert_list_plan(
     args: argparse.Namespace,
 ) -> list[tuple[dict[str, Any], GrafanaAlertClient]]:
+    """Internal helper for build alert list plan."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1372
+    #   Downstream callees: 1266, 1279, 1289, 1298, 1306, 527
+
     headers = resolve_auth(args)
     all_orgs = bool(getattr(args, "all_orgs", False))
     org_id = str(getattr(args, "org_id", "") or "").strip()
@@ -1313,6 +1388,7 @@ def _attach_alert_org_scope(
     rows: list[dict[str, Any]],
     org: dict[str, Any],
 ) -> list[dict[str, Any]]:
+    """Internal helper for attach alert org scope."""
     scoped_rows = []
     org_name = str(org.get("name") or "")
     org_id = str(org.get("id") or "")
@@ -1329,6 +1405,7 @@ def _expand_alert_list_fields_with_org_scope(
     fields: list[str],
     headers: dict[str, str],
 ) -> tuple[list[str], dict[str, str]]:
+    """Internal helper for expand alert list fields with org scope."""
     if not any(str(row.get("orgId") or "").strip() for row in rows):
         return fields, headers
     expanded_fields = ["orgId", "org", *fields]
@@ -1337,6 +1414,11 @@ def _expand_alert_list_fields_with_org_scope(
 
 
 def list_alert_resources(args: argparse.Namespace) -> int:
+    """List alert resources implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1427
+    #   Downstream callees: 1314, 1343, 1359, 703, 734, 742
+
     command = getattr(args, "alert_command", "")
     if command == "list-rules":
         serializer = serialize_rule_list_rows
@@ -1392,6 +1474,10 @@ def list_alert_resources(args: argparse.Namespace) -> int:
 
 def main(argv: Optional[list[str]] = None) -> int:
     """Parse+normalize then dispatch to alert-specific command handlers."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 1155, 1198, 1372, 465, 958
+
     args = parse_args(argv)
     try:
         if getattr(args, "alert_command", "").startswith("list-"):

@@ -46,6 +46,10 @@ from .transformer import (
 
 def iter_dashboard_panels(panels):
     """Flatten Grafana panels, including nested row/library panel layouts."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     flattened = []
     if not isinstance(panels, list):
         return flattened
@@ -60,6 +64,11 @@ def iter_dashboard_panels(panels):
 
 
 def build_inspection_workflow_deps(config):
+    """Build inspection workflow deps implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     raw_document_deps = {
         "RAW_EXPORT_SUBDIR": config["RAW_EXPORT_SUBDIR"],
         "build_folder_inventory_lookup": build_folder_inventory_lookup,

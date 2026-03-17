@@ -14,6 +14,10 @@ def print_dashboard_export_progress(
     dry_run: bool,
 ) -> None:
     """Render one export progress update in concise or verbose form."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if getattr(args, "verbose", False):
         print(
             "%s %s    %s -> %s"
@@ -29,6 +33,10 @@ def print_dashboard_export_progress_summary(
     dry_run: bool,
 ) -> None:
     """Render one concise export progress update per dashboard."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if getattr(args, "verbose", False):
         return
     if getattr(args, "progress", False):
@@ -52,6 +60,10 @@ def print_dashboard_import_progress(
     dry_run: bool = False,
 ) -> None:
     """Render one import progress update in concise or verbose form."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     destination = None
     action_label = action or "unknown"
     if action:

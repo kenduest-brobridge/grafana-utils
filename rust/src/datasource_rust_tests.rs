@@ -1,5 +1,6 @@
-// Datasource domain test suite.
-// Exercises parsing + import/export/diff helpers, including mocked datasource matching and contract fixtures.
+//! Datasource domain test suite.
+//! Exercises parsing + import/export/diff helpers, including mocked datasource matching
+//! and contract fixtures.
 use super::{
     build_add_payload, build_import_payload, build_modify_payload, build_modify_updates,
     diff_datasources_with_live, discover_export_org_import_scopes, load_import_records,
@@ -40,7 +41,7 @@ fn load_contract_cases() -> Vec<Value> {
     .unwrap()
 }
 
-fn test_common_args() -> CommonCliArgs {
+fn test_datasource_common_args() -> CommonCliArgs {
     CommonCliArgs {
         url: "http://grafana.example".to_string(),
         api_token: None,
@@ -188,6 +189,7 @@ fn modify_help_explains_live_mutation_flags() {
 
 #[test]
 fn parse_datasource_list_supports_output_format_json() {
+
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "list",
@@ -207,6 +209,7 @@ fn parse_datasource_list_supports_output_format_json() {
 
 #[test]
 fn parse_datasource_list_supports_org_scope_flags() {
+
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "list",
@@ -228,6 +231,7 @@ fn parse_datasource_list_supports_org_scope_flags() {
 
 #[test]
 fn parse_datasource_list_supports_all_orgs_flag() {
+
     let args =
         DatasourceCliArgs::parse_normalized_from(["grafana-util", "list", "--all-orgs", "--json"]);
 
@@ -243,6 +247,7 @@ fn parse_datasource_list_supports_all_orgs_flag() {
 
 #[test]
 fn parse_datasource_list_rejects_conflicting_org_scope_flags() {
+
     let error =
         DatasourceCliArgs::try_parse_from(["grafana-util", "list", "--org-id", "7", "--all-orgs"])
             .unwrap_err();
@@ -300,6 +305,7 @@ fn render_data_source_csv_and_json_include_org_fields_when_present() {
 
 #[test]
 fn parse_datasource_add_supports_output_format_table() {
+
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "add",
@@ -324,6 +330,7 @@ fn parse_datasource_add_supports_output_format_table() {
 
 #[test]
 fn parse_datasource_delete_supports_output_format_json() {
+
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "delete",
@@ -347,6 +354,7 @@ fn parse_datasource_delete_supports_output_format_json() {
 
 #[test]
 fn parse_datasource_delete_accepts_yes_confirmation() {
+
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "delete",
@@ -367,6 +375,7 @@ fn parse_datasource_delete_accepts_yes_confirmation() {
 
 #[test]
 fn parse_datasource_modify_supports_output_format_table() {
+
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "modify",
@@ -551,6 +560,7 @@ fn render_import_table_honors_selected_columns() {
 
 #[test]
 fn parse_datasource_import_preserves_requested_path() {
+
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "import",
@@ -575,6 +585,7 @@ fn parse_datasource_import_preserves_requested_path() {
 
 #[test]
 fn parse_datasource_import_supports_output_format_table() {
+
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "import",
@@ -597,6 +608,7 @@ fn parse_datasource_import_supports_output_format_table() {
 
 #[test]
 fn parse_datasource_import_supports_output_columns() {
+
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "import",
@@ -623,6 +635,7 @@ fn parse_datasource_import_supports_output_columns() {
 
 #[test]
 fn parse_datasource_export_supports_org_scope_flags() {
+
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "export",
@@ -644,6 +657,7 @@ fn parse_datasource_export_supports_org_scope_flags() {
 
 #[test]
 fn parse_datasource_export_supports_all_orgs_flag() {
+
     let args = DatasourceCliArgs::parse_normalized_from(["grafana-util", "export", "--all-orgs"]);
 
     match args.command {
@@ -657,6 +671,7 @@ fn parse_datasource_export_supports_all_orgs_flag() {
 
 #[test]
 fn parse_datasource_import_supports_use_export_org_flags() {
+
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "import",
@@ -683,6 +698,7 @@ fn parse_datasource_import_supports_use_export_org_flags() {
 
 #[test]
 fn parse_datasource_import_rejects_org_id_with_use_export_org() {
+
     let error = DatasourceCliArgs::try_parse_from([
         "grafana-util",
         "import",
@@ -860,6 +876,7 @@ fn build_modify_payload_merges_existing_json_data() {
 
 #[test]
 fn parse_json_object_argument_rejects_non_object_values() {
+
     let error = parse_json_object_argument(Some("[]"), "--json-data").unwrap_err();
 
     assert!(error
@@ -1039,7 +1056,7 @@ fn discover_export_org_import_scopes_reads_selected_multi_org_root() {
         ],
     );
     let args = DatasourceImportArgs {
-        common: test_common_args(),
+        common: test_datasource_common_args(),
         import_dir: import_root,
         org_id: None,
         use_export_org: true,
@@ -1079,7 +1096,7 @@ fn discover_export_org_import_scopes_errors_when_selected_org_missing() {
         )],
     );
     let args = DatasourceImportArgs {
-        common: test_common_args(),
+        common: test_datasource_common_args(),
         import_dir: import_root,
         org_id: None,
         use_export_org: true,
@@ -1157,6 +1174,7 @@ fn diff_help_explains_diff_dir_flag() {
 
 #[test]
 fn parse_datasource_diff_preserves_requested_path() {
+
     let args =
         DatasourceCliArgs::parse_from(["grafana-util", "diff", "--diff-dir", "./datasources"]);
 

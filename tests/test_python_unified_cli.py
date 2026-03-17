@@ -25,7 +25,7 @@ class UnifiedCliTests(unittest.TestCase):
         source = MODULE_ENTRYPOINT_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(MODULE_ENTRYPOINT_PATH), feature_version=(3, 9))
 
-    def test_parse_args_without_command_prints_top_level_help(self):
+    def test_unified_parse_args_without_command_prints_top_level_help(self):
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             with self.assertRaises(SystemExit) as exc:
@@ -42,7 +42,7 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertNotIn("Compatibility direct form", help_text)
         self.assertNotIn("export-alert", help_text)
 
-    def test_parse_args_sync_without_subcommand_prints_sync_help(self):
+    def test_unified_parse_args_sync_without_subcommand_prints_sync_help(self):
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             with self.assertRaises(SystemExit) as exc:
@@ -56,7 +56,7 @@ class UnifiedCliTests(unittest.TestCase):
             help_text,
         )
 
-    def test_parse_args_dashboard_without_subcommand_prints_dashboard_help(self):
+    def test_unified_parse_args_dashboard_without_subcommand_prints_dashboard_help(self):
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             with self.assertRaises(SystemExit) as exc:
@@ -68,7 +68,7 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertIn("list-data-sources", help_text)
         self.assertIn("List datasource inventory under the dashboard command surface.", help_text)
 
-    def test_parse_args_alert_without_subcommand_prints_alert_help(self):
+    def test_unified_parse_args_alert_without_subcommand_prints_alert_help(self):
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             with self.assertRaises(SystemExit) as exc:
@@ -81,7 +81,7 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertIn("import", help_text)
         self.assertIn("diff", help_text)
 
-    def test_parse_args_access_without_subcommand_prints_access_help(self):
+    def test_unified_parse_args_access_without_subcommand_prints_access_help(self):
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             with self.assertRaises(SystemExit) as exc:
@@ -92,7 +92,7 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertIn("grafana-util access", help_text)
         self.assertIn("{user,team,org,service-account}", help_text)
 
-    def test_parse_args_datasource_without_subcommand_prints_datasource_help(self):
+    def test_unified_parse_args_datasource_without_subcommand_prints_datasource_help(self):
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             with self.assertRaises(SystemExit) as exc:
@@ -103,7 +103,7 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertIn("grafana-util datasource", help_text)
         self.assertIn("{list,export,import,diff,add,modify,delete}", help_text)
 
-    def test_build_parser_registers_datasource_modify_subcommand(self):
+    def test_unified_build_parser_registers_datasource_modify_subcommand(self):
         parser = unified_cli.build_parser()
         entrypoint_action = parser._subparsers._group_actions[0]
         datasource_parser = entrypoint_action.choices["datasource"]
@@ -111,7 +111,7 @@ class UnifiedCliTests(unittest.TestCase):
 
         self.assertIn("modify", datasource_action.choices)
 
-    def test_parse_args_supports_dashboard_namespace(self):
+    def test_unified_parse_args_supports_dashboard_namespace(self):
         args = unified_cli.parse_args(["dashboard", "export", "--export-dir", "dashboards"])
 
         self.assertEqual(args.entrypoint, "dashboard")
@@ -120,7 +120,7 @@ class UnifiedCliTests(unittest.TestCase):
             ["export-dashboard", "--export-dir", "dashboards"],
         )
 
-    def test_parse_args_supports_dashboard_inspect_live_namespace(self):
+    def test_unified_parse_args_supports_dashboard_inspect_live_namespace(self):
         args = unified_cli.parse_args(
             ["dashboard", "inspect-live", "--url", "http://127.0.0.1:3000", "--report"]
         )
@@ -131,13 +131,13 @@ class UnifiedCliTests(unittest.TestCase):
             ["inspect-live", "--url", "http://127.0.0.1:3000", "--report"],
         )
 
-    def test_parse_args_supports_alert_namespace(self):
+    def test_unified_parse_args_supports_alert_namespace(self):
         args = unified_cli.parse_args(["alert", "--url", "http://127.0.0.1:3000"])
 
         self.assertEqual(args.entrypoint, "alert")
         self.assertEqual(args.forwarded_argv, ["--url", "http://127.0.0.1:3000"])
 
-    def test_parse_args_supports_alert_export_namespace(self):
+    def test_unified_parse_args_supports_alert_export_namespace(self):
         args = unified_cli.parse_args(
             ["alert", "export", "--output-dir", "./alerts", "--overwrite"]
         )
@@ -148,7 +148,7 @@ class UnifiedCliTests(unittest.TestCase):
             ["export", "--output-dir", "./alerts", "--overwrite"],
         )
 
-    def test_parse_args_supports_access_namespace(self):
+    def test_unified_parse_args_supports_access_namespace(self):
         args = unified_cli.parse_args(
             ["access", "user", "list", "--url", "http://127.0.0.1:3000"]
         )
@@ -159,7 +159,7 @@ class UnifiedCliTests(unittest.TestCase):
             ["user", "list", "--url", "http://127.0.0.1:3000"],
         )
 
-    def test_parse_args_supports_datasource_namespace(self):
+    def test_unified_parse_args_supports_datasource_namespace(self):
         args = unified_cli.parse_args(
             ["datasource", "export", "--export-dir", "./datasources", "--overwrite"]
         )
@@ -170,13 +170,13 @@ class UnifiedCliTests(unittest.TestCase):
             ["export", "--export-dir", "./datasources", "--overwrite"],
         )
 
-    def test_parse_args_supports_datasource_alias(self):
+    def test_unified_parse_args_supports_datasource_alias(self):
         args = unified_cli.parse_args(["ds", "list", "--json"])
 
         self.assertEqual(args.entrypoint, "datasource")
         self.assertEqual(args.forwarded_argv, ["list", "--json"])
 
-    def test_parse_args_supports_datasource_add_namespace(self):
+    def test_unified_parse_args_supports_datasource_add_namespace(self):
         args = unified_cli.parse_args(
             ["datasource", "add", "--name", "Prometheus Main", "--type", "prometheus"]
         )
@@ -187,7 +187,7 @@ class UnifiedCliTests(unittest.TestCase):
             ["add", "--name", "Prometheus Main", "--type", "prometheus"],
         )
 
-    def test_parse_args_supports_datasource_modify_namespace(self):
+    def test_unified_parse_args_supports_datasource_modify_namespace(self):
         args = unified_cli.parse_args(
             ["datasource", "modify", "--uid", "prom-main", "--set-url", "http://prometheus-v2:9090"]
         )
@@ -198,11 +198,11 @@ class UnifiedCliTests(unittest.TestCase):
             ["modify", "--uid", "prom-main", "--set-url", "http://prometheus-v2:9090"],
         )
 
-    def test_parse_args_rejects_unknown_datasource_subcommand(self):
+    def test_unified_parse_args_rejects_unknown_datasource_subcommand(self):
         with self.assertRaises(SystemExit):
             unified_cli.parse_args(["datasource", "unknown-subcommand"])
 
-    def test_parse_args_supports_datasource_diff_namespace(self):
+    def test_unified_parse_args_supports_datasource_diff_namespace(self):
         args = unified_cli.parse_args(
             ["datasource", "diff", "--diff-dir", "./datasources"]
         )
@@ -210,7 +210,7 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(args.entrypoint, "datasource")
         self.assertEqual(args.forwarded_argv, ["diff", "--diff-dir", "./datasources"])
 
-    def test_parse_args_supports_sync_summary_namespace(self):
+    def test_unified_parse_args_supports_sync_summary_namespace(self):
         args = unified_cli.parse_args(
             ["sync", "summary", "--desired-file", "./desired.json", "--output", "json"]
         )
@@ -221,7 +221,7 @@ class UnifiedCliTests(unittest.TestCase):
             ["summary", "--desired-file", "./desired.json", "--output", "json"],
         )
 
-    def test_parse_args_supports_sync_namespace(self):
+    def test_unified_parse_args_supports_sync_namespace(self):
         args = unified_cli.parse_args(
             ["sync", "plan", "--desired-file", "./desired.json", "--live-file", "./live.json"]
         )
@@ -232,7 +232,7 @@ class UnifiedCliTests(unittest.TestCase):
             ["plan", "--desired-file", "./desired.json", "--live-file", "./live.json"],
         )
 
-    def test_parse_args_supports_sync_preflight_namespace(self):
+    def test_unified_parse_args_supports_sync_preflight_namespace(self):
         args = unified_cli.parse_args(
             ["sync", "preflight", "--desired-file", "./desired.json"]
         )
@@ -243,47 +243,47 @@ class UnifiedCliTests(unittest.TestCase):
             ["preflight", "--desired-file", "./desired.json"],
         )
 
-    def test_parse_args_rejects_unknown_top_level_command(self):
+    def test_unified_parse_args_rejects_unknown_top_level_command(self):
         with self.assertRaises(SystemExit):
             unified_cli.parse_args(["unknown-command"])
 
-    def test_parse_args_rejects_legacy_dashboard_direct_command(self):
+    def test_unified_parse_args_rejects_legacy_dashboard_direct_command(self):
         with self.assertRaises(SystemExit):
             unified_cli.parse_args(["list-dashboard", "--json"])
 
-    def test_parse_args_rejects_legacy_alert_direct_command(self):
+    def test_unified_parse_args_rejects_legacy_alert_direct_command(self):
         with self.assertRaises(SystemExit):
             unified_cli.parse_args(["export-alert", "--output-dir", "./alerts"])
 
-    def test_main_dispatches_dashboard_namespace(self):
+    def test_unified_main_dispatches_dashboard_namespace(self):
         with mock.patch.object(unified_cli.dashboard_cli, "main", return_value=7) as mocked:
             result = unified_cli.main(["dashboard", "list", "--json"])
 
         self.assertEqual(result, 7)
         mocked.assert_called_once_with(["list-dashboard", "--json"])
 
-    def test_main_dispatches_alert_passthrough(self):
+    def test_unified_main_dispatches_alert_passthrough(self):
         with mock.patch.object(unified_cli.alert_cli, "main", return_value=3) as mocked:
             result = unified_cli.main(["alert", "--diff-dir", "./alerts/raw"])
 
         self.assertEqual(result, 3)
         mocked.assert_called_once_with(["--diff-dir", "./alerts/raw"])
 
-    def test_main_dispatches_access_passthrough(self):
+    def test_unified_main_dispatches_access_passthrough(self):
         with mock.patch.object(unified_cli.access_cli, "main", return_value=5) as mocked:
             result = unified_cli.main(["access", "team", "list", "--json"])
 
         self.assertEqual(result, 5)
         mocked.assert_called_once_with(["team", "list", "--json"])
 
-    def test_main_dispatches_datasource_passthrough(self):
+    def test_unified_main_dispatches_datasource_passthrough(self):
         with mock.patch.object(unified_cli.datasource_cli, "main", return_value=9) as mocked:
             result = unified_cli.main(["datasource", "list", "--json"])
 
         self.assertEqual(result, 9)
         mocked.assert_called_once_with(["list", "--json"])
 
-    def test_main_dispatches_sync_passthrough(self):
+    def test_unified_main_dispatches_sync_passthrough(self):
         with mock.patch.object(unified_cli.sync_cli, "main", return_value=4) as mocked:
             result = unified_cli.main(
                 ["sync", "plan", "--desired-file", "./desired.json", "--live-file", "./live.json"]

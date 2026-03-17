@@ -1,3 +1,7 @@
+"""
+Dispatcher for dashboard query analyzers by datasource family.
+"""
+
 from typing import Any, Iterable, Optional
 
 from . import flux, generic, loki, prometheus, sql
@@ -20,6 +24,7 @@ FAMILY_ANALYZERS = {
 
 
 def iter_datasource_ref_parts(ref: Any) -> Iterable[str]:
+    """Yield normalized datasource reference parts from a target definition."""
     if isinstance(ref, str):
         text = ref.strip().lower()
         if text:
@@ -32,6 +37,7 @@ def iter_datasource_ref_parts(ref: Any) -> Iterable[str]:
         if text:
             yield text
 def iter_inventory_datasource_parts(ref: Any, datasources_by_uid: Optional[dict[str, dict[str, str]]], datasources_by_name: Optional[dict[str, dict[str, str]]]) -> Iterable[str]:
+    """Yield datasource attributes resolved from local inventory maps."""
     datasource = None
     if isinstance(ref, dict):
         uid = str(ref.get("uid") or "").strip()
@@ -47,6 +53,7 @@ def iter_inventory_datasource_parts(ref: Any, datasources_by_uid: Optional[dict[
         if datasource_type:
             yield datasource_type
 def resolve_query_analyzer_family(panel: dict[str, Any], target: dict[str, Any], query_field: str, query_text: str, datasources_by_uid: Optional[dict[str, dict[str, str]]] = None, datasources_by_name: Optional[dict[str, dict[str, str]]] = None) -> str:
+    """Determine query family (prometheus/loki/flux/sql/unknown)."""
     hints = []
     for ref in (target.get("datasource"), panel.get("datasource")):
         hints.extend(list(iter_datasource_ref_parts(ref)))
@@ -71,6 +78,11 @@ def dispatch_query_analysis(
     datasources_by_uid: Optional[dict[str, dict[str, str]]] = None,
     datasources_by_name: Optional[dict[str, dict[str, str]]] = None,
 ) -> dict[str, Any]:
+    """Select an analyzer by family and normalize its query-analysis output."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 55
+
     family = resolve_query_analyzer_family(
         panel,
         target,

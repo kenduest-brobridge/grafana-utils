@@ -21,11 +21,48 @@ from types import SimpleNamespace
 from urllib import request as urllib_request
 from urllib import parse
 
-import requests
 from PIL import Image, ImageDraw, ImageFont
 
 from .common import GrafanaError
 from .variable_inspection import resolve_dashboard_uid
+
+
+def _requests_module():
+    # Purpose: implementation note.
+    # Args: see function signature.
+    # Returns: see implementation.
+
+    try:
+        import requests
+
+        return requests
+    except ImportError as exc:
+        raise GrafanaError(
+            "The requests library is required for dashboard screenshot runtime. "
+            "Install with `python3 -m pip install requests`."
+        ) from exc
+
+
+_PIL_MODULES = None
+
+
+def _pil_modules():
+    # Purpose: implementation note.
+    # Args: see function signature.
+    # Returns: see implementation.
+
+    global _PIL_MODULES
+    if _PIL_MODULES is None:
+        try:
+            from PIL import Image, ImageDraw, ImageFont
+
+            _PIL_MODULES = (Image, ImageDraw, ImageFont)
+        except ImportError as exc:
+            raise GrafanaError(
+                "The pillow library is required for screenshot image composition. "
+                "Install with `python3 -m pip install pillow`."
+            ) from exc
+    return _PIL_MODULES
 
 
 SUPPORTED_OUTPUT_FORMATS = ("png", "jpeg", "pdf")
@@ -118,6 +155,10 @@ def infer_screenshot_output_format(output_path, explicit_format=None):
 
 def validate_screenshot_args(args):
     """Validate screenshot argument shape before backend execution."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 221, 317
+    #   Downstream callees: 46, 67, 95
+
     dashboard_uid = str(getattr(args, "dashboard_uid", "") or "").strip()
     dashboard_url = str(getattr(args, "dashboard_url", "") or "").strip()
     if not dashboard_uid and not dashboard_url:
@@ -161,6 +202,7 @@ def validate_screenshot_args(args):
 
 
 def _normalize_dashboard_target_state(args):
+    """Internal helper for normalize dashboard target state."""
     raw_dashboard_url = str(getattr(args, "dashboard_url", "") or "").strip()
     url = None
     if raw_dashboard_url:
@@ -219,6 +261,10 @@ def _normalize_dashboard_target_state(args):
 
 def build_dashboard_capture_url(args):
     """Build a browser-ready Grafana dashboard or panel URL."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 317, 558
+    #   Downstream callees: 119, 163, 46, 67
+
     validate_screenshot_args(args)
     path_state = _normalize_dashboard_target_state(args)
     fragment_state = parse_vars_query(getattr(args, "vars_query", None))
@@ -315,6 +361,10 @@ def build_dashboard_capture_url(args):
 
 def build_capture_request(args):
     """Normalize screenshot args into one backend-friendly capture request."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1644
+    #   Downstream callees: 119, 221, 558, 95
+
     validate_screenshot_args(args)
     output_path = Path(getattr(args, "output"))
     return {
@@ -341,6 +391,7 @@ def build_capture_request(args):
 
 
 def _resolve_capture_metadata(args, client):
+    """Internal helper for resolve capture metadata."""
     resolved_uid = resolve_dashboard_uid(
         dashboard_uid=getattr(args, "dashboard_uid", None),
         dashboard_url=getattr(args, "dashboard_url", None),
@@ -388,6 +439,7 @@ def _resolve_capture_metadata(args, client):
 
 
 def _find_panel_title(dashboard, panel_id):
+    """Internal helper for find panel title."""
     if not isinstance(dashboard, dict) or panel_id in (None, ""):
         return None
     panel_id_text = str(panel_id).strip()
@@ -395,6 +447,10 @@ def _find_panel_title(dashboard, panel_id):
         return None
 
     def visit(items):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         if not isinstance(items, list):
             return None
         for item in items:
@@ -414,6 +470,7 @@ def _find_panel_title(dashboard, panel_id):
 
 
 def _resolve_auto_header_title(request, metadata):
+    """Internal helper for resolve auto header title."""
     for candidate in (
         (metadata or {}).get("panel_title"),
         (metadata or {}).get("dashboard_title"),
@@ -427,6 +484,7 @@ def _resolve_auto_header_title(request, metadata):
 
 
 def _resolve_optional_header_field(raw_value, auto_value):
+    """Internal helper for resolve optional header field."""
     text = str(raw_value or "").strip()
     if not text:
         return None
@@ -436,6 +494,7 @@ def _resolve_optional_header_field(raw_value, auto_value):
 
 
 def _build_header_lines(request, metadata):
+    """Internal helper for build header lines."""
     lines = []
     title_value = _resolve_optional_header_field(
         request.get("header_title"),
@@ -458,6 +517,7 @@ def _build_header_lines(request, metadata):
 
 
 def _wrap_header_text(text, font, max_width, draw):
+    """Internal helper for wrap header text."""
     words = str(text or "").split()
     if not words:
         return [""]
@@ -475,6 +535,8 @@ def _wrap_header_text(text, font, max_width, draw):
 
 
 def _compose_header_image(image, request, metadata):
+    """Internal helper for compose header image."""
+    Image, ImageDraw, ImageFont = _pil_modules()
     header_lines = _build_header_lines(request, metadata)
     if not header_lines:
         return image
@@ -512,6 +574,7 @@ def _compose_header_image(image, request, metadata):
 
 
 def _write_raster_output(image, request, metadata):
+    """Internal helper for write raster output."""
     rendered = _compose_header_image(image, request, metadata)
     if request["output_format"] == "jpeg":
         rendered.convert("RGB").save(str(request["output"]), format="JPEG", quality=90)
@@ -569,6 +632,11 @@ def build_render_url(args):
 
 def _capture_with_grafana_render(request, client, http_get=None):
     """Capture PNG output through Grafana's /render endpoint."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
+    requests = _requests_module()
     if http_get is None:
         http_get = requests.get
     output_format = request["output_format"]
@@ -602,6 +670,7 @@ def _capture_with_grafana_render(request, client, http_get=None):
 
 
 def _strip_hop_by_hop_headers(headers):
+    """Internal helper for strip hop by hop headers."""
     blocked = {
         "connection",
         "keep-alive",
@@ -622,6 +691,7 @@ def _strip_hop_by_hop_headers(headers):
 
 
 def _rewrite_location(location, remote_base_url, proxy_base_url):
+    """Internal helper for rewrite location."""
     if not location:
         return location
     if location.startswith(remote_base_url):
@@ -632,6 +702,11 @@ def _rewrite_location(location, remote_base_url, proxy_base_url):
 @contextlib.contextmanager
 def run_auth_proxy(client):
     """Start one local proxy that forwards Grafana requests with auth headers."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
+    requests = _requests_module()
     remote_base_url = str(getattr(client, "base_url", "") or "").rstrip("/")
     remote_parts = parse.urlsplit(remote_base_url)
     if not remote_parts.scheme or not remote_parts.netloc:
@@ -641,15 +716,31 @@ def run_auth_proxy(client):
         protocol_version = "HTTP/1.1"
 
         def log_message(self, format, *args):
+            # Purpose: implementation note.
+            # Args: see function signature.
+            # Returns: see implementation.
+
             return None
 
         def do_GET(self):
+            # Purpose: implementation note.
+            # Args: see function signature.
+            # Returns: see implementation.
+
             self._forward()
 
         def do_POST(self):
+            # Purpose: implementation note.
+            # Args: see function signature.
+            # Returns: see implementation.
+
             self._forward()
 
         def _forward(self):
+            # Purpose: implementation note.
+            # Args: see function signature.
+            # Returns: see implementation.
+
             path = self.path or "/"
             target_url = remote_base_url + path
             content_length = int(self.headers.get("Content-Length", "0") or "0")
@@ -697,6 +788,11 @@ def run_auth_proxy(client):
 
 
 def _build_proxy_capture_url(proxy_base_url, capture_url):
+    """Internal helper for build proxy capture url."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     parsed = parse.urlsplit(capture_url)
     return parse.urlunsplit(
         (
@@ -713,6 +809,14 @@ class _DevtoolsClient(object):
     """Tiny synchronous websocket client for Chrome DevTools Protocol."""
 
     def __init__(self, websocket_url, timeout):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 773
+
         parsed = parse.urlsplit(websocket_url)
         if parsed.scheme != "ws":
             raise GrafanaError("Unsupported DevTools websocket URL %r." % websocket_url)
@@ -727,10 +831,18 @@ class _DevtoolsClient(object):
         self._connect(host, port, path)
 
     def close(self):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         with contextlib.suppress(OSError):
             self._socket.close()
 
     def _connect(self, host, port, path):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         key = base64.b64encode(os.urandom(16)).decode("ascii")
         request_lines = [
             "GET %s HTTP/1.1" % path,
@@ -753,6 +865,10 @@ class _DevtoolsClient(object):
             raise GrafanaError("DevTools websocket handshake returned an unexpected accept key.")
 
     def _recv_http_response(self):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         chunks = []
         while True:
             chunk = self._socket.recv(4096)
@@ -764,6 +880,10 @@ class _DevtoolsClient(object):
         return b"".join(chunks).decode("iso-8859-1")
 
     def _send_frame(self, payload):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         data = payload.encode("utf-8")
         mask_key = struct.pack("!I", random.getrandbits(32))
         masked = bytearray(data)
@@ -782,6 +902,10 @@ class _DevtoolsClient(object):
         self._socket.sendall(bytes(header) + mask_key + bytes(masked))
 
     def _recv_frame(self):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         header = self._read_exact(2)
         first = header[0]
         second = header[1]
@@ -809,6 +933,10 @@ class _DevtoolsClient(object):
         return payload.decode("utf-8")
 
     def _send_control_frame(self, opcode, payload):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         data = bytes(payload or b"")
         mask_key = struct.pack("!I", random.getrandbits(32))
         masked = bytearray(data)
@@ -818,6 +946,10 @@ class _DevtoolsClient(object):
         self._socket.sendall(bytes(header) + mask_key + bytes(masked))
 
     def _read_exact(self, size):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         chunks = []
         remaining = size
         while remaining > 0:
@@ -829,6 +961,10 @@ class _DevtoolsClient(object):
         return b"".join(chunks)
 
     def call(self, method, params=None, session_id=None):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         message_id = self._next_id
         self._next_id += 1
         payload = {"id": message_id, "method": method}
@@ -852,6 +988,7 @@ class _DevtoolsClient(object):
 
 
 def _read_json_url(url, timeout):
+    """Internal helper for read json url."""
     handle = urllib_request.urlopen(url, timeout=timeout)
     try:
         return json.loads(handle.read().decode("utf-8"))
@@ -860,6 +997,7 @@ def _read_json_url(url, timeout):
 
 
 def _pick_local_port():
+    """Internal helper for pick local port."""
     probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         probe.bind(("127.0.0.1", 0))
@@ -870,6 +1008,7 @@ def _pick_local_port():
 
 @contextlib.contextmanager
 def _launch_devtools_browser(browser_path, request):
+    """Internal helper for launch devtools browser."""
     user_data_dir = tempfile.mkdtemp(prefix="grafana-utils-chrome-")
     debug_port = _pick_local_port()
     cmd = [
@@ -917,6 +1056,7 @@ def _launch_devtools_browser(browser_path, request):
 
 
 def _wait_for_ready_state(devtools, session_id, wait_ms):
+    """Internal helper for wait for ready state."""
     ready_expression = r"""
 (() => {
   const body = document.body;
@@ -972,6 +1112,7 @@ def _wait_for_ready_state(devtools, session_id, wait_ms):
 
 
 def _evaluate_expression(devtools, session_id, expression):
+    """Internal helper for evaluate expression."""
     result = devtools.call(
         "Runtime.evaluate",
         {"expression": expression, "returnByValue": True},
@@ -981,6 +1122,7 @@ def _evaluate_expression(devtools, session_id, expression):
 
 
 def _collapse_sidebar_if_present(devtools, session_id):
+    """Internal helper for collapse sidebar if present."""
     expression = r"""
 (() => {
   const candidates = Array.from(document.querySelectorAll('button,[role="button"]')).filter((element) => {
@@ -1011,6 +1153,7 @@ def _collapse_sidebar_if_present(devtools, session_id):
 
 
 def _prepare_dashboard_capture_dom(devtools, session_id):
+    """Internal helper for prepare dashboard capture dom."""
     expression = r"""
 (() => {
   const isVisible = (element) => {
@@ -1153,6 +1296,7 @@ def _prepare_dashboard_capture_dom(devtools, session_id):
 
 
 def _read_numeric_expression(devtools, session_id, expression, minimum):
+    """Internal helper for read numeric expression."""
     value = _evaluate_expression(devtools, session_id, expression)
     try:
         numeric = float(value)
@@ -1162,6 +1306,7 @@ def _read_numeric_expression(devtools, session_id, expression, minimum):
 
 
 def _warm_full_page_render(devtools, session_id, request):
+    """Internal helper for warm full page render."""
     if not request["full_page"]:
         return
     previous_height = 0.0
@@ -1219,6 +1364,12 @@ Math.max(
 
 
 def _capture_stitched_screenshot(devtools, session_id, request, capture_offsets):
+    """Internal helper for capture stitched screenshot."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 1046, 1230, 895
+
+    Image, *_ = _pil_modules()
     total_height = _read_numeric_expression(
         devtools,
         session_id,
@@ -1282,6 +1433,12 @@ Math.max(
 
 
 def _capture_full_page_segments(devtools, session_id, request, capture_offsets):
+    """Internal helper for capture full page segments."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1534
+    #   Downstream callees: 1046, 1230, 895
+
+    Image, *_ = _pil_modules()
     total_height = _read_numeric_expression(
         devtools,
         session_id,
@@ -1356,6 +1513,7 @@ Math.max(
 
 
 def _build_segment_output_dir(output_path):
+    """Internal helper for build segment output dir."""
     output = Path(output_path)
     parent = output.parent
     file_stem = (output.stem or output.name or "").strip()
@@ -1367,6 +1525,7 @@ def _build_segment_output_dir(output_path):
 
 
 def _build_full_page_manifest(request, metadata, capture, manifest_segments):
+    """Internal helper for build full page manifest."""
     metadata = metadata or request.get("metadata") or {}
     auto_title = _resolve_auto_header_title(request, metadata)
     return {
@@ -1401,6 +1560,11 @@ def _build_full_page_manifest(request, metadata, capture, manifest_segments):
 
 
 def _write_full_page_output(request, metadata, capture):
+    """Internal helper for write full page output."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1534
+    #   Downstream callees: 1437, 1449, 447, 526
+
     output_format = request["output_format"]
     if request["full_page_output"] == "single":
         stitched = Image.new("RGBA", (capture["target_width"], max(capture["total_height"], 1)))
@@ -1450,7 +1614,13 @@ def _write_full_page_output(request, metadata, capture):
 
 
 def _capture_via_devtools(browser_path, request, extra_headers, timeout):
+    """Internal helper for capture via devtools."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1605
+    #   Downstream callees: 1056, 1087, 1240, 1362, 1484, 526, 765, 895, 942, 990
+
     with _launch_devtools_browser(browser_path, request) as (_, websocket_url):
+        Image, *_ = _pil_modules()
         devtools = _DevtoolsClient(websocket_url, timeout)
         try:
             created = devtools.call("Target.createTarget", {"url": "about:blank", "newWindow": False})
@@ -1520,12 +1690,18 @@ def _capture_via_devtools(browser_path, request, extra_headers, timeout):
 
 
 def _run_browser_capture(browser_path, request, headers, timeout):
+    """Internal helper for run browser capture."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1626
+    #   Downstream callees: 1534
+
     output_format = request["output_format"]
     if output_format in ("png", "pdf"):
         _capture_via_devtools(browser_path, request, headers, timeout)
         return
     temp_dir = tempfile.mkdtemp(prefix="grafana-utils-shot-")
     try:
+        Image, *_ = _pil_modules()
         png_request = dict(request)
         png_request["output"] = Path(temp_dir) / "capture.png"
         png_request["output_format"] = "png"
@@ -1559,6 +1735,10 @@ def _capture_with_browser_cli(request, client):
 
 def capture_dashboard_screenshot(args, backend=None, client=None):
     """Run a screenshot capture through an injected or live backend."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 1626, 317, 344
+
     metadata = None
     if client is not None:
         metadata = _resolve_capture_metadata(args, client)
@@ -1582,6 +1762,10 @@ def capture_dashboard_screenshot(args, backend=None, client=None):
 
 def make_screenshot_args(**kwargs):
     """Test helper for lightweight namespace construction."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     defaults = {
         "url": "http://localhost:3000",
         "dashboard_uid": None,

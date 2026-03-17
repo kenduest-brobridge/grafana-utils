@@ -1,7 +1,16 @@
+"""
+Dashboard diff workflow orchestration and contract normalization.
+"""
+
 from pathlib import Path
 
 
 def run_diff_dashboards(args, deps):
+    """Compare exported dashboards against live Grafana and report deltas."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     client = deps["build_client"](args)
     import_dir = Path(args.import_dir)
     deps["load_export_metadata"](import_dir, expected_variant=deps["RAW_EXPORT_SUBDIR"])

@@ -37,6 +37,7 @@ COMPLEXITY_TOKEN_PATTERN = re.compile(
 
 
 def _load_json_document(path: Path) -> dict[str, Any]:
+    """Internal helper for load json document."""
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as error:
@@ -49,6 +50,7 @@ def _load_json_document(path: Path) -> dict[str, Any]:
 
 
 def _normalize_string_set(values: Any) -> set[str]:
+    """Internal helper for normalize string set."""
     normalized = set()
     for value in list(values or []):
         text = str(value or "").strip()
@@ -58,6 +60,7 @@ def _normalize_string_set(values: Any) -> set[str]:
 
 
 def _normalize_bool(value: Any, default: bool = False) -> bool:
+    """Internal helper for normalize bool."""
     if value is None:
         return default
     if isinstance(value, bool):
@@ -71,12 +74,14 @@ def _normalize_bool(value: Any, default: bool = False) -> bool:
 
 
 def _normalize_optional_int(value: Any) -> int | None:
+    """Internal helper for normalize optional int."""
     if value is None or value == "":
         return None
     return int(value)
 
 
 def _dashboard_key(query: dict[str, Any]) -> tuple[str, str]:
+    """Internal helper for dashboard key."""
     return (
         str(query.get("dashboardUid") or "").strip(),
         str(query.get("dashboardTitle") or "").strip(),
@@ -84,6 +89,7 @@ def _dashboard_key(query: dict[str, Any]) -> tuple[str, str]:
 
 
 def _panel_key(query: dict[str, Any]) -> tuple[str, str, str, str]:
+    """Internal helper for panel key."""
     return (
         str(query.get("dashboardUid") or "").strip(),
         str(query.get("dashboardTitle") or "").strip(),
@@ -99,6 +105,7 @@ def _build_finding(
     query: dict[str, Any] | None = None,
     extra: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Internal helper for build finding."""
     record = {
         "severity": severity,
         "code": code,
@@ -131,23 +138,28 @@ def _build_finding(
 
 
 def _query_family(query: dict[str, Any]) -> str:
+    """Internal helper for query family."""
     return str(query.get("datasourceFamily") or query.get("datasourceType") or "").strip()
 
 
 def _query_text(query: dict[str, Any]) -> str:
+    """Internal helper for query text."""
     return str(query.get("query") or "").strip()
 
 
 def _is_sql_query(query: dict[str, Any]) -> bool:
+    """Internal helper for is sql query."""
     return _query_family(query).lower() in SQL_FAMILIES
 
 
 def _query_uses_time_filter(query: dict[str, Any]) -> bool:
+    """Internal helper for query uses time filter."""
     lowered = _query_text(query).lower()
     return any(pattern in lowered for pattern in SQL_TIME_FILTER_PATTERNS)
 
 
 def _is_loki_broad_query(query: dict[str, Any]) -> bool:
+    """Internal helper for is loki broad query."""
     if _query_family(query).lower() != "loki":
         return False
     lowered = _query_text(query).lower()
@@ -155,6 +167,7 @@ def _is_loki_broad_query(query: dict[str, Any]) -> bool:
 
 
 def _governance_risk_kinds(governance_document: dict[str, Any]) -> set[str]:
+    """Internal helper for governance risk kinds."""
     kinds = set()
     for record in governance_document.get("riskRecords") or []:
         if not isinstance(record, dict):
@@ -166,6 +179,7 @@ def _governance_risk_kinds(governance_document: dict[str, Any]) -> set[str]:
 
 
 def _extract_datasource_variable_name(value: Any) -> str:
+    """Internal helper for extract datasource variable name."""
     text = str(value or "").strip()
     if not text:
         return ""
@@ -176,6 +190,7 @@ def _extract_datasource_variable_name(value: Any) -> str:
 
 
 def _score_query_complexity(query: dict[str, Any]) -> int:
+    """Internal helper for score query complexity."""
     query_text = _query_text(query)
     if not query_text:
         return 0
@@ -198,6 +213,7 @@ def _score_query_complexity(query: dict[str, Any]) -> int:
 
 
 def _build_dashboard_context(import_dir: Path) -> list[dict[str, Any]]:
+    """Internal helper for build dashboard context."""
     dashboard_files = discover_dashboard_files(
         import_dir,
         "raw",
@@ -294,6 +310,7 @@ def _build_dashboard_context(import_dir: Path) -> list[dict[str, Any]]:
 def _build_dashboard_context_from_governance_document(
     governance_document: dict[str, Any],
 ) -> list[dict[str, Any]]:
+    """Internal helper for build dashboard context from governance document."""
     dashboards = []
     for record in list(governance_document.get("dashboardDependencies") or []):
         if not isinstance(record, dict):
@@ -323,6 +340,7 @@ def _merge_dashboard_context(
     governance_context: list[dict[str, Any]],
     fallback_context: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
+    """Internal helper for merge dashboard context."""
     merged = {}
     for record in list(governance_context or []) + list(fallback_context or []):
         dashboard_uid = str(record.get("dashboardUid") or "").strip()
@@ -371,6 +389,11 @@ def evaluate_dashboard_governance_policy(
     query_document: dict[str, Any],
     dashboard_context: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    """Evaluate dashboard governance policy implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 847
+    #   Downstream callees: 101, 140, 145, 150, 155, 161, 169, 192, 310, 339, 52, 62, 76, 83, 91
+
     version = int(policy_document.get("version") or 1)
     if version != 1:
         raise ValueError("Unsupported dashboard governance policy version: %s" % version)
@@ -742,6 +765,7 @@ def evaluate_dashboard_governance_policy(
 
 
 def render_dashboard_governance_check(result: dict[str, Any]) -> str:
+    """Render dashboard governance check implementation."""
     lines = [
         "Dashboard governance check: %s" % ("PASS" if result.get("ok") else "FAIL"),
         "Dashboards: %(dashboardCount)s  Queries: %(queryRecordCount)s  Violations: %(violationCount)s  Warnings: %(warningCount)s"
@@ -785,6 +809,7 @@ def render_dashboard_governance_check(result: dict[str, Any]) -> str:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Build parser implementation."""
     parser = argparse.ArgumentParser(
         description=(
             "Evaluate dashboard governance policy rules against inspect-export JSON artifacts."
@@ -824,6 +849,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def run_dashboard_governance_gate(args: argparse.Namespace) -> int:
+    """Run dashboard governance gate implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 874
+    #   Downstream callees: 215, 386, 39, 763
+
     policy_document = _load_json_document(Path(args.policy))
     governance_document = _load_json_document(Path(args.governance))
     query_document = _load_json_document(Path(args.queries))
@@ -850,6 +880,11 @@ def run_dashboard_governance_gate(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Main implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 807, 847
+
     parser = build_parser()
     args = parser.parse_args(argv)
     try:

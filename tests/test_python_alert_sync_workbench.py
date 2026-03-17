@@ -11,11 +11,11 @@ GrafanaError = importlib.import_module("grafana_utils.dashboard_cli").GrafanaErr
 
 
 class AlertSyncWorkbenchTests(unittest.TestCase):
-    def test_module_parses_as_python39_syntax(self):
+    def test_alert_sync_module_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_assess_alert_sync_specs_reports_candidate_plan_only_and_blocked(self):
+    def test_alert_sync_assess_alert_sync_specs_reports_candidate_plan_only_and_blocked(self):
         document = alert_sync_workbench.assess_alert_sync_specs(
             [
                 {
@@ -51,7 +51,7 @@ class AlertSyncWorkbenchTests(unittest.TestCase):
         self.assertEqual(rows["logs-high"]["status"], "plan-only")
         self.assertEqual(rows["bad-alert"]["status"], "blocked")
 
-    def test_assess_alert_sync_specs_rejects_unknown_managed_field(self):
+    def test_alert_sync_assess_alert_sync_specs_rejects_unknown_managed_field(self):
         with self.assertRaises(GrafanaError):
             alert_sync_workbench.assess_alert_sync_specs(
                 [
@@ -64,7 +64,7 @@ class AlertSyncWorkbenchTests(unittest.TestCase):
                 ]
             )
 
-    def test_render_alert_sync_assessment_text_renders_summary(self):
+    def test_alert_sync_render_alert_sync_assessment_text_renders_summary(self):
         document = alert_sync_workbench.assess_alert_sync_specs(
             [
                 {

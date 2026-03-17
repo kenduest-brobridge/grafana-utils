@@ -210,7 +210,7 @@ class DashboardGovernanceGateTests(unittest.TestCase):
             ],
         }
 
-    def test_evaluate_policy_reports_blocking_violations(self):
+    def test_dashboard_governance_evaluate_policy_reports_blocking_violations(self):
         result = dashboard_governance_gate.evaluate_dashboard_governance_policy(
             self.build_policy(),
             self.build_governance_document(),
@@ -230,7 +230,7 @@ class DashboardGovernanceGateTests(unittest.TestCase):
         self.assertIn("DASHBOARD_COMPLEXITY_TOO_HIGH", codes)
         self.assertEqual(result["summary"]["warningCount"], 2)
 
-    def test_evaluate_policy_honors_query_count_thresholds(self):
+    def test_dashboard_governance_evaluate_policy_honors_query_count_thresholds(self):
         policy = self.build_policy(
             datasources={},
             queries={"maxQueriesPerDashboard": 1, "maxQueriesPerPanel": 1},
@@ -245,7 +245,7 @@ class DashboardGovernanceGateTests(unittest.TestCase):
         self.assertIn("QUERY_COUNT_TOO_HIGH", codes)
         self.assertIn("PANEL_QUERY_COUNT_TOO_HIGH", codes)
 
-    def test_render_dashboard_governance_check_formats_text_output(self):
+    def test_dashboard_governance_render_dashboard_governance_check_formats_text_output(self):
         text = dashboard_governance_gate.render_dashboard_governance_check(
             {
                 "ok": False,
@@ -282,7 +282,7 @@ class DashboardGovernanceGateTests(unittest.TestCase):
         self.assertIn("ERROR [DATASOURCE_UNKNOWN]", text)
         self.assertIn("WARN [orphaned-datasource]", text)
 
-    def test_evaluate_policy_can_fail_on_governance_warnings(self):
+    def test_dashboard_governance_evaluate_policy_can_fail_on_governance_warnings(self):
         policy = self.build_policy(
             datasources={},
             plugins={},
@@ -306,7 +306,7 @@ class DashboardGovernanceGateTests(unittest.TestCase):
         self.assertEqual(result["summary"]["violationCount"], 0)
         self.assertEqual(result["summary"]["warningCount"], 2)
 
-    def test_build_dashboard_context_extracts_plugin_ids_and_datasource_variable_refs(self):
+    def test_dashboard_governance_build_dashboard_context_extracts_plugin_ids_and_datasource_variable_refs(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             self.write_raw_dashboard_fixture(import_dir)
@@ -319,7 +319,7 @@ class DashboardGovernanceGateTests(unittest.TestCase):
             self.assertEqual(context[0]["datasourceVariableRefs"], ["defined_ds", "missing_ds"])
             self.assertEqual(context[0]["datasourceVariables"], ["defined_ds"])
 
-    def test_evaluate_policy_reports_plugin_and_variable_violations_from_import_dir_context(self):
+    def test_dashboard_governance_evaluate_policy_reports_plugin_and_variable_violations_from_import_dir_context(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             self.write_raw_dashboard_fixture(import_dir)
@@ -336,7 +336,7 @@ class DashboardGovernanceGateTests(unittest.TestCase):
             self.assertIn("LIBRARY_PANEL_NOT_ALLOWED", codes)
             self.assertIn("UNDEFINED_DATASOURCE_VARIABLE", codes)
 
-    def test_evaluate_policy_prefers_governance_dashboard_dependencies(self):
+    def test_dashboard_governance_evaluate_policy_prefers_governance_dashboard_dependencies(self):
         result = dashboard_governance_gate.evaluate_dashboard_governance_policy(
             self.build_policy(),
             self.build_governance_document(),
@@ -348,7 +348,7 @@ class DashboardGovernanceGateTests(unittest.TestCase):
         self.assertIn("LIBRARY_PANEL_NOT_ALLOWED", codes)
         self.assertIn("UNDEFINED_DATASOURCE_VARIABLE", codes)
 
-    def test_evaluate_policy_reports_routing_folder_violation(self):
+    def test_dashboard_governance_evaluate_policy_reports_routing_folder_violation(self):
         result = dashboard_governance_gate.evaluate_dashboard_governance_policy(
             self.build_policy(
                 datasources={},
@@ -364,7 +364,7 @@ class DashboardGovernanceGateTests(unittest.TestCase):
         codes = [item["code"] for item in result["violations"]]
         self.assertIn("ROUTING_FOLDER_NOT_ALLOWED", codes)
 
-    def test_main_writes_json_and_returns_failure_for_violations(self):
+    def test_dashboard_governance_main_writes_json_and_returns_failure_for_violations(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             policy_path = root / "policy.json"

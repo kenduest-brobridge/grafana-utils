@@ -68,11 +68,11 @@ class DashboardVariableInspectionTests(unittest.TestCase):
             },
         }
 
-    def test_module_parses_as_python39_syntax(self):
+    def test_dashboard_variable_inspection_module_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_resolve_dashboard_uid_prefers_explicit_uid(self):
+    def test_dashboard_variable_inspection_resolve_dashboard_uid_prefers_explicit_uid(self):
         self.assertEqual(
             variable_inspection.resolve_dashboard_uid(
                 dashboard_uid="cpu-main",
@@ -81,7 +81,7 @@ class DashboardVariableInspectionTests(unittest.TestCase):
             "cpu-main",
         )
 
-    def test_resolve_dashboard_uid_supports_dashboard_url(self):
+    def test_dashboard_variable_inspection_resolve_dashboard_uid_supports_dashboard_url(self):
         self.assertEqual(
             variable_inspection.resolve_dashboard_uid(
                 dashboard_url="https://grafana.example.com/d/cpu-main/cpu-overview?orgId=1"
@@ -95,7 +95,7 @@ class DashboardVariableInspectionTests(unittest.TestCase):
             "cpu-main",
         )
 
-    def test_resolve_dashboard_uid_rejects_missing_or_invalid_input(self):
+    def test_dashboard_variable_inspection_resolve_dashboard_uid_rejects_missing_or_invalid_input(self):
         with self.assertRaises(GrafanaError):
             variable_inspection.resolve_dashboard_uid()
         with self.assertRaises(GrafanaError):
@@ -103,7 +103,7 @@ class DashboardVariableInspectionTests(unittest.TestCase):
                 dashboard_url="https://grafana.example.com/explore"
             )
 
-    def test_extract_dashboard_variables_normalizes_templating_rows(self):
+    def test_dashboard_variable_inspection_extract_dashboard_variables_normalizes_templating_rows(self):
         rows = variable_inspection.extract_dashboard_variables(self.sample_dashboard())
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[0]["name"], "env")
@@ -113,7 +113,7 @@ class DashboardVariableInspectionTests(unittest.TestCase):
         self.assertEqual(rows[1]["datasource"], "grafana")
         self.assertEqual(rows[1]["options"], ["Prometheus Main", "Prometheus DR"])
 
-    def test_apply_vars_query_overrides_updates_matching_current_values(self):
+    def test_dashboard_variable_inspection_apply_vars_query_overrides_updates_matching_current_values(self):
         rows = variable_inspection.extract_dashboard_variables(self.sample_dashboard())
         variable_inspection.apply_vars_query_overrides(
             rows,
@@ -122,7 +122,7 @@ class DashboardVariableInspectionTests(unittest.TestCase):
         self.assertEqual(rows[0]["current"], "stage")
         self.assertEqual(rows[1]["current"], "prom-dr")
 
-    def test_parse_vars_query_ignores_non_var_keys(self):
+    def test_dashboard_variable_inspection_parse_vars_query_ignores_non_var_keys(self):
         self.assertEqual(
             variable_inspection.parse_vars_query(
                 "?panelId=7&var-env=prod&from=now-6h&var-host=web01"
@@ -130,7 +130,7 @@ class DashboardVariableInspectionTests(unittest.TestCase):
             {"env": "prod", "host": "web01"},
         )
 
-    def test_build_document_and_render_json(self):
+    def test_dashboard_variable_inspection_build_document_and_render_json(self):
         document = variable_inspection.build_dashboard_variable_document(
             self.sample_dashboard(),
             dashboard_uid="cpu-main",
@@ -144,7 +144,7 @@ class DashboardVariableInspectionTests(unittest.TestCase):
         self.assertEqual(parsed["dashboardTitle"], "CPU Main")
         self.assertEqual(parsed["variableCount"], 2)
 
-    def test_render_table_and_csv_outputs(self):
+    def test_dashboard_variable_inspection_render_table_and_csv_outputs(self):
         document = variable_inspection.build_dashboard_variable_document(
             self.sample_dashboard()
         )
@@ -165,7 +165,7 @@ class DashboardVariableInspectionTests(unittest.TestCase):
         self.assertNotIn("name,type,label", csv_output)
         self.assertIn("env,query,Environment,prod", csv_output)
 
-    def test_render_rejects_unknown_output_format(self):
+    def test_dashboard_variable_inspection_render_rejects_unknown_output_format(self):
         document = variable_inspection.build_dashboard_variable_document(
             self.sample_dashboard()
         )
@@ -175,7 +175,7 @@ class DashboardVariableInspectionTests(unittest.TestCase):
                 output_format="yaml",
             )
 
-    def test_inspect_dashboard_variables_with_client_fetches_and_overlays_query(self):
+    def test_dashboard_variable_inspection_inspect_dashboard_variables_with_client_fetches_and_overlays_query(self):
         client = FakeDashboardClient(
             payloads={"cpu-main": {"dashboard": self.sample_dashboard()}}
         )

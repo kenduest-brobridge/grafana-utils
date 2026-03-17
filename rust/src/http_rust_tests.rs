@@ -1,5 +1,6 @@
-// HTTP transport unit tests.
-// Checks client construction behavior and can be extended for request/URL building contract coverage.
+//! HTTP transport unit tests.
+//! Checks client construction behavior and can be extended for request/URL building
+//! contract coverage.
 use super::{JsonHttpClient, JsonHttpClientConfig};
 
 #[test]

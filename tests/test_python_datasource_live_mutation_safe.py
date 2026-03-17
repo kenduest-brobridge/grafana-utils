@@ -28,11 +28,11 @@ class FakeDatasourceClient(object):
 
 
 class DatasourceLiveMutationSafeTests(unittest.TestCase):
-    def test_module_parses_as_python39_syntax(self):
+    def test_datasource_live_mutation_module_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_build_add_payload_omits_none_json_fields(self):
+    def test_datasource_live_mutation_build_add_payload_omits_none_json_fields(self):
         payload = safe_mutation.build_add_payload(
             {
                 "name": "Prometheus Main",
@@ -50,7 +50,7 @@ class DatasourceLiveMutationSafeTests(unittest.TestCase):
             },
         )
 
-    def test_plan_add_datasource_distinguishes_existing_name(self):
+    def test_datasource_live_mutation_plan_add_datasource_distinguishes_existing_name(self):
         client = FakeDatasourceClient(
             datasources=[{"id": 1, "uid": "prom-live", "name": "Prometheus Main"}]
         )
@@ -63,7 +63,7 @@ class DatasourceLiveMutationSafeTests(unittest.TestCase):
         self.assertEqual(plan["match"], "exists-name")
         self.assertEqual(plan["action"], "would-fail-existing-name")
 
-    def test_plan_add_datasource_distinguishes_uid_name_mismatch(self):
+    def test_datasource_live_mutation_plan_add_datasource_distinguishes_uid_name_mismatch(self):
         client = FakeDatasourceClient(
             datasources=[{"id": 1, "uid": "prom-live", "name": "Prometheus Main"}]
         )
@@ -76,7 +76,7 @@ class DatasourceLiveMutationSafeTests(unittest.TestCase):
         self.assertEqual(plan["match"], "uid-name-mismatch")
         self.assertEqual(plan["action"], "would-fail-uid-name-mismatch")
 
-    def test_add_datasource_uses_client_helper_when_available(self):
+    def test_datasource_live_mutation_add_datasource_uses_client_helper_when_available(self):
         client = FakeDatasourceClient(datasources=[])
 
         result = safe_mutation.add_datasource(
@@ -87,7 +87,7 @@ class DatasourceLiveMutationSafeTests(unittest.TestCase):
         self.assertEqual(result["action"], "created")
         self.assertEqual(client.calls, [("create", result["payload"])])
 
-    def test_delete_datasource_uses_client_helper_when_available(self):
+    def test_datasource_live_mutation_delete_datasource_uses_client_helper_when_available(self):
         client = FakeDatasourceClient(
             datasources=[{"id": 7, "uid": "prom-main", "name": "Prometheus Main"}]
         )
@@ -97,7 +97,7 @@ class DatasourceLiveMutationSafeTests(unittest.TestCase):
         self.assertEqual(result["action"], "deleted")
         self.assertEqual(client.calls, [("delete", 7)])
 
-    def test_delete_datasource_surfaces_specific_mismatch_action(self):
+    def test_datasource_live_mutation_delete_datasource_surfaces_specific_mismatch_action(self):
         client = FakeDatasourceClient(
             datasources=[{"id": 7, "uid": "prom-main", "name": "Prometheus Main"}]
         )

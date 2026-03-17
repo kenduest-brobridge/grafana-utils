@@ -6,7 +6,7 @@ from grafana_utils.dashboards.inspection_dependency_models import (
 
 
 class InspectionDependencyModelTests(unittest.TestCase):
-    def test_build_dependency_rows_from_query_report_enriches_family_specific_records(self):
+    def test_inspection_dependency_models_build_dependency_rows_from_query_report_enriches_family_specific_records(self):
         query_rows = [
             {
                 "dashboardUid": "cpu-main",
@@ -68,7 +68,7 @@ class InspectionDependencyModelTests(unittest.TestCase):
         self.assertEqual(records[1].datasource_family, "loki")
         self.assertGreaterEqual(len(records[1].features.labels), 1)
 
-    def test_usage_summary_stable_orphan_detection(self):
+    def test_inspection_dependency_models_usage_summary_stable_orphan_detection(self):
         report = build_dependency_rows_from_query_report(
             [],
             [

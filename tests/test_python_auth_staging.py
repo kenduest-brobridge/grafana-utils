@@ -15,17 +15,17 @@ auth_staging = importlib.import_module("grafana_utils.auth_staging")
 
 
 class AuthStagingTests(unittest.TestCase):
-    def test_module_parses_as_python39_syntax(self):
+    def test_auth_staging_module_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_resolve_auth_headers_supports_token_auth(self):
+    def test_auth_staging_resolve_auth_headers_supports_token_auth(self):
         headers, auth_mode = auth_staging.resolve_auth_headers(token="abc123")
 
         self.assertEqual(auth_mode, "token")
         self.assertEqual(headers["Authorization"], "Bearer abc123")
 
-    def test_resolve_auth_headers_supports_prompt_token(self):
+    def test_auth_staging_resolve_auth_headers_supports_prompt_token(self):
         prompts = []
 
         def fake_prompt(prompt):
@@ -41,7 +41,7 @@ class AuthStagingTests(unittest.TestCase):
         self.assertEqual(prompts, ["Grafana API token: "])
         self.assertEqual(headers["Authorization"], "Bearer prompted-token")
 
-    def test_resolve_auth_headers_supports_basic_auth(self):
+    def test_auth_staging_resolve_auth_headers_supports_basic_auth(self):
         headers, auth_mode = auth_staging.resolve_auth_headers(
             username="ops",
             password="secret",
@@ -51,7 +51,7 @@ class AuthStagingTests(unittest.TestCase):
         expected = base64.b64encode(b"ops:secret").decode("ascii")
         self.assertEqual(headers["Authorization"], "Basic %s" % expected)
 
-    def test_resolve_auth_headers_prefers_explicit_basic_auth_over_env_token(self):
+    def test_auth_staging_resolve_auth_headers_prefers_explicit_basic_auth_over_env_token(self):
         headers, auth_mode = auth_staging.resolve_auth_headers(
             username="ops",
             password="secret",
@@ -61,7 +61,7 @@ class AuthStagingTests(unittest.TestCase):
         self.assertEqual(auth_mode, "basic")
         self.assertIn("Basic ", headers["Authorization"])
 
-    def test_resolve_auth_headers_rejects_mixed_auth_modes(self):
+    def test_auth_staging_resolve_auth_headers_rejects_mixed_auth_modes(self):
         with self.assertRaises(auth_staging.AuthConfigError):
             auth_staging.resolve_auth_headers(
                 token="abc123",
@@ -69,14 +69,14 @@ class AuthStagingTests(unittest.TestCase):
                 password="secret",
             )
 
-    def test_resolve_auth_headers_rejects_explicit_and_prompt_token_together(self):
+    def test_auth_staging_resolve_auth_headers_rejects_explicit_and_prompt_token_together(self):
         with self.assertRaises(auth_staging.AuthConfigError):
             auth_staging.resolve_auth_headers(
                 token="abc123",
                 prompt_token=True,
             )
 
-    def test_resolve_auth_headers_supports_prompt_password(self):
+    def test_auth_staging_resolve_auth_headers_supports_prompt_password(self):
         prompts = []
 
         def fake_prompt(prompt):
@@ -94,13 +94,13 @@ class AuthStagingTests(unittest.TestCase):
         expected = base64.b64encode(b"ops:prompted").decode("ascii")
         self.assertEqual(headers["Authorization"], "Basic %s" % expected)
 
-    def test_resolve_auth_headers_rejects_partial_env_basic_auth(self):
+    def test_auth_staging_resolve_auth_headers_rejects_partial_env_basic_auth(self):
         with self.assertRaises(auth_staging.AuthConfigError):
             auth_staging.resolve_auth_headers(
                 env={"GRAFANA_USERNAME": "ops"},
             )
 
-    def test_format_cli_auth_error_message_rewrites_basic_auth_requirement(self):
+    def test_auth_staging_format_cli_auth_error_message_rewrites_basic_auth_requirement(self):
         message = auth_staging.format_cli_auth_error_message(
             "Basic auth requires both username and password or --prompt-password."
         )
@@ -111,7 +111,7 @@ class AuthStagingTests(unittest.TestCase):
             "--basic-password or --prompt-password.",
         )
 
-    def test_resolve_cli_auth_from_namespace_rewrites_auth_errors(self):
+    def test_auth_staging_resolve_cli_auth_from_namespace_rewrites_auth_errors(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=False,
@@ -126,7 +126,7 @@ class AuthStagingTests(unittest.TestCase):
         ):
             auth_staging.resolve_cli_auth_from_namespace(args)
 
-    def test_add_org_id_header_returns_copy(self):
+    def test_auth_staging_add_org_id_header_returns_copy(self):
         original = {"Authorization": "Bearer token"}
 
         resolved = auth_staging.add_org_id_header(original, 17)
@@ -134,7 +134,7 @@ class AuthStagingTests(unittest.TestCase):
         self.assertEqual(original, {"Authorization": "Bearer token"})
         self.assertEqual(resolved["X-Grafana-Org-Id"], "17")
 
-    def test_resolve_auth_from_namespace_supports_fallback_auth_attrs(self):
+    def test_auth_staging_resolve_auth_from_namespace_supports_fallback_auth_attrs(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=False,

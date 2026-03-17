@@ -9,16 +9,26 @@ use crate::sync_bundle_alert_contracts::build_alert_bundle_contract_document;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
+/// Constant for sync summary kind.
 pub const SYNC_SUMMARY_KIND: &str = "grafana-utils-sync-summary";
+/// Constant for sync summary schema version.
 pub const SYNC_SUMMARY_SCHEMA_VERSION: i64 = 1;
+/// Constant for sync source bundle kind.
 pub const SYNC_SOURCE_BUNDLE_KIND: &str = "grafana-utils-sync-source-bundle";
+/// Constant for sync source bundle schema version.
 pub const SYNC_SOURCE_BUNDLE_SCHEMA_VERSION: i64 = 1;
+/// Constant for sync plan kind.
 pub const SYNC_PLAN_KIND: &str = "grafana-utils-sync-plan";
+/// Constant for sync plan schema version.
 pub const SYNC_PLAN_SCHEMA_VERSION: i64 = 1;
+/// Constant for sync apply intent kind.
 pub const SYNC_APPLY_INTENT_KIND: &str = "grafana-utils-sync-apply-intent";
+/// Constant for sync apply intent schema version.
 pub const SYNC_APPLY_INTENT_SCHEMA_VERSION: i64 = 1;
+/// Constant for resource kinds.
 pub const RESOURCE_KINDS: &[&str] = &["dashboard", "datasource", "folder", "alert"];
 
+/// Struct definition for SyncResourceSpec.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SyncResourceSpec {
     pub kind: String,
@@ -29,6 +39,7 @@ pub struct SyncResourceSpec {
     pub source_path: String,
 }
 
+/// Struct definition for SyncSummary.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SyncSummary {
     pub resource_count: usize,
@@ -109,7 +120,15 @@ fn extract_body(spec: &Map<String, Value>) -> Result<Map<String, Value>> {
     Ok(Map::new())
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn normalize_resource_spec(raw_spec: &Value) -> Result<SyncResourceSpec> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: sync_rust_tests.rs:normalize_resource_spec_requires_alert_managed_fields, sync_rust_tests.rs:summarize_resource_specs_reports_counts
+// Downstream callees: common.rs:message, sync_workbench.rs:extract_body, sync_workbench.rs:extract_identity, sync_workbench.rs:extract_title, sync_workbench.rs:normalize_string_list, sync_workbench.rs:normalize_text, sync_workbench.rs:require_object
+
     let spec = require_object(Some(raw_spec), "Sync resource spec")?;
     let kind = normalize_text(spec.get("kind")).to_lowercase();
     if !RESOURCE_KINDS.contains(&kind.as_str()) {
@@ -141,6 +160,10 @@ pub fn normalize_resource_spec(raw_spec: &Value) -> Result<SyncResourceSpec> {
     })
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn normalize_resource_specs(raw_specs: &[Value]) -> Result<Vec<SyncResourceSpec>> {
     raw_specs
         .iter()
@@ -148,6 +171,7 @@ pub fn normalize_resource_specs(raw_specs: &[Value]) -> Result<Vec<SyncResourceS
         .collect::<Result<Vec<_>>>()
 }
 
+/// summarize resource specs.
 pub fn summarize_resource_specs(specs: &[SyncResourceSpec]) -> SyncSummary {
     SyncSummary {
         resource_count: specs.len(),
@@ -161,6 +185,10 @@ pub fn summarize_resource_specs(specs: &[SyncResourceSpec]) -> SyncSummary {
     }
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_sync_summary_document(raw_specs: &[Value]) -> Result<Value> {
     let specs = normalize_resource_specs(raw_specs)?;
     let summary = summarize_resource_specs(&specs);
@@ -187,6 +215,10 @@ pub fn build_sync_summary_document(raw_specs: &[Value]) -> Result<Value> {
     }))
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_sync_source_bundle_document(
     dashboards: &[Value],
     datasources: &[Value],
@@ -237,6 +269,10 @@ pub fn build_sync_source_bundle_document(
     }))
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn render_sync_source_bundle_text(document: &Value) -> Result<Vec<String>> {
     if document.get("kind").and_then(Value::as_str) != Some(SYNC_SOURCE_BUNDLE_KIND) {
         return Err(message(
@@ -432,11 +468,19 @@ fn build_alert_assessment_document(operations: &[Value]) -> Value {
     })
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_sync_plan_document(
     desired_specs: &[Value],
     live_specs: &[Value],
     allow_prune: bool,
 ) -> Result<Value> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: sync.rs:run_sync_cli, sync_rust_tests.rs:build_sync_apply_intent_document_requires_review_and_approval
+// Downstream callees: sync_workbench.rs:build_alert_assessment_document, sync_workbench.rs:build_index, sync_workbench.rs:compare_body, sync_workbench.rs:normalize_resource_specs
+
     let desired = normalize_resource_specs(desired_specs)?;
     let live = normalize_resource_specs(live_specs)?;
     let desired_index = build_index(&desired)?;
@@ -535,6 +579,10 @@ pub fn build_sync_plan_document(
     }))
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_sync_apply_intent_document(plan_document: &Value, approve: bool) -> Result<Value> {
     let plan = plan_document
         .as_object()

@@ -27,6 +27,7 @@ use crate::sync_workbench::{
     build_sync_summary_document, render_sync_source_bundle_text,
 };
 
+/// Constant for default review token.
 pub const DEFAULT_REVIEW_TOKEN: &str = "reviewed-sync-plan";
 const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Summarize desired resources:\n    grafana-util sync summary --desired-file ./desired.json\n\n  Build a live-backed sync plan:\n    grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n\n  Apply a reviewed plan back to Grafana:\n    grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
 const SYNC_SUMMARY_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync summary --desired-file ./desired.json\n  grafana-util sync summary --desired-file ./desired.json --output json";
@@ -38,6 +39,7 @@ const SYNC_ASSESS_ALERTS_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync ass
 const SYNC_BUNDLE_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output json";
 const SYNC_BUNDLE_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n  grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --datasource-export-file ./datasources/datasources.json --output json";
 
+/// Enum definition for SyncOutputFormat.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum SyncOutputFormat {
     Text,
@@ -51,11 +53,13 @@ pub enum SyncOutputFormat {
     after_help = SYNC_ROOT_HELP_TEXT,
     styles = crate::help_styles::CLI_HELP_STYLES
 )]
+/// Struct definition for SyncCliArgs.
 pub struct SyncCliArgs {
     #[command(subcommand)]
     pub command: SyncGroupCommand,
 }
 
+/// Struct definition for SyncSummaryArgs.
 #[derive(Debug, Clone, Args)]
 pub struct SyncSummaryArgs {
     #[arg(
@@ -74,6 +78,7 @@ pub struct SyncSummaryArgs {
     pub output: SyncOutputFormat,
 }
 
+/// Struct definition for SyncPlanArgs.
 #[derive(Debug, Clone, Args)]
 pub struct SyncPlanArgs {
     #[arg(
@@ -132,6 +137,7 @@ pub struct SyncPlanArgs {
     pub trace_id: Option<String>,
 }
 
+/// Struct definition for SyncReviewArgs.
 #[derive(Debug, Clone, Args)]
 pub struct SyncReviewArgs {
     #[arg(
@@ -169,6 +175,7 @@ pub struct SyncReviewArgs {
     pub review_note: Option<String>,
 }
 
+/// Struct definition for SyncApplyArgs.
 #[derive(Debug, Clone, Args)]
 pub struct SyncApplyArgs {
     #[arg(
@@ -240,6 +247,7 @@ pub struct SyncApplyArgs {
     pub apply_note: Option<String>,
 }
 
+/// Struct definition for SyncPreflightArgs.
 #[derive(Debug, Clone, Args)]
 pub struct SyncPreflightArgs {
     #[arg(
@@ -277,6 +285,7 @@ pub struct SyncPreflightArgs {
     pub output: SyncOutputFormat,
 }
 
+/// Struct definition for SyncAssessAlertsArgs.
 #[derive(Debug, Clone, Args)]
 pub struct SyncAssessAlertsArgs {
     #[arg(
@@ -294,6 +303,7 @@ pub struct SyncAssessAlertsArgs {
     pub output: SyncOutputFormat,
 }
 
+/// Struct definition for SyncBundlePreflightArgs.
 #[derive(Debug, Clone, Args)]
 pub struct SyncBundlePreflightArgs {
     #[arg(
@@ -336,6 +346,7 @@ pub struct SyncBundlePreflightArgs {
     pub output: SyncOutputFormat,
 }
 
+/// Struct definition for SyncBundleArgs.
 #[derive(Debug, Clone, Args)]
 pub struct SyncBundleArgs {
     #[arg(
@@ -372,6 +383,7 @@ pub struct SyncBundleArgs {
     pub output: SyncOutputFormat,
 }
 
+/// Enum definition for SyncGroupCommand.
 #[derive(Debug, Clone, Subcommand)]
 pub enum SyncGroupCommand {
     #[command(about = "Build a staged sync plan from local desired and live JSON files.", after_help = SYNC_PLAN_HELP_TEXT)]
@@ -1547,6 +1559,10 @@ fn require_matching_optional_trace_id(
     Ok(())
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn render_sync_summary_text(document: &Value) -> Result<Vec<String>> {
     if document.get("kind").and_then(Value::as_str) != Some("grafana-utils-sync-summary") {
         return Err(message("Sync summary document kind is not supported."));
@@ -1584,6 +1600,10 @@ pub fn render_sync_summary_text(document: &Value) -> Result<Vec<String>> {
     ])
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn render_alert_sync_assessment_text(document: &Value) -> Result<Vec<String>> {
     if document.get("kind").and_then(Value::as_str) != Some(ALERT_SYNC_KIND) {
         return Err(message(
@@ -1649,6 +1669,10 @@ pub fn render_alert_sync_assessment_text(document: &Value) -> Result<Vec<String>
     Ok(lines)
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn render_sync_plan_text(document: &Value) -> Result<Vec<String>> {
     if document.get("kind").and_then(Value::as_str) != Some("grafana-utils-sync-plan") {
         return Err(message("Sync plan document kind is not supported."));
@@ -1741,6 +1765,10 @@ pub fn render_sync_plan_text(document: &Value) -> Result<Vec<String>> {
     Ok(lines)
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn render_sync_apply_intent_text(document: &Value) -> Result<Vec<String>> {
     if document.get("kind").and_then(Value::as_str) != Some("grafana-utils-sync-apply-intent") {
         return Err(message("Sync apply intent document kind is not supported."));
@@ -2466,6 +2494,10 @@ fn emit_text_or_json(document: &Value, lines: Vec<String>, output: SyncOutputFor
 }
 
 fn run_sync_bundle(args: SyncBundleArgs) -> Result<()> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: sync.rs:run_sync_cli
+// Downstream callees: common.rs:message, sync.rs:build_alert_sync_specs, sync.rs:emit_text_or_json, sync.rs:load_alerting_bundle_section, sync.rs:load_dashboard_bundle_sections, sync.rs:load_json_array_file, sync.rs:load_optional_json_object_file, sync.rs:normalize_datasource_bundle_item, sync_workbench.rs:build_sync_source_bundle_document, sync_workbench.rs:render_sync_source_bundle_text
+
     if args.dashboard_export_dir.is_none()
         && args.alert_export_dir.is_none()
         && args.datasource_export_file.is_none()
@@ -2536,7 +2568,12 @@ fn run_sync_bundle(args: SyncBundleArgs) -> Result<()> {
     )
 }
 
+/// run sync cli.
 pub fn run_sync_cli(command: SyncGroupCommand) -> Result<()> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: sync_cli_rust_tests.rs:run_sync_cli_apply_accepts_explicit_audit_metadata, sync_cli_rust_tests.rs:run_sync_cli_apply_accepts_non_blocking_bundle_preflight_file, sync_cli_rust_tests.rs:run_sync_cli_apply_accepts_non_blocking_preflight_file, sync_cli_rust_tests.rs:run_sync_cli_apply_accepts_reviewed_plan_file, sync_cli_rust_tests.rs:run_sync_cli_apply_rejects_blocking_bundle_preflight_file, sync_cli_rust_tests.rs:run_sync_cli_apply_rejects_blocking_preflight_file, sync_cli_rust_tests.rs:run_sync_cli_apply_rejects_bundle_preflight_with_mismatched_trace_id, sync_cli_rust_tests.rs:run_sync_cli_apply_rejects_lineage_aware_bundle_preflight_with_mismatched_parent, sync_cli_rust_tests.rs:run_sync_cli_apply_rejects_lineage_aware_preflight_without_trace_id, sync_cli_rust_tests.rs:run_sync_cli_apply_rejects_missing_trace_id, sync_cli_rust_tests.rs:run_sync_cli_apply_rejects_plan_with_non_review_lineage, sync_cli_rust_tests.rs:run_sync_cli_apply_rejects_preflight_with_mismatched_trace_id ...
+// Downstream callees: alert_sync.rs:assess_alert_sync_specs, common.rs:message, sync.rs:attach_apply_audit, sync.rs:attach_bundle_preflight_summary, sync.rs:attach_lineage, sync.rs:attach_preflight_summary, sync.rs:attach_review_audit, sync.rs:attach_trace_id, sync.rs:emit_text_or_json, sync.rs:execute_live_apply, sync.rs:fetch_live_availability, sync.rs:fetch_live_resource_specs ...
+
     match command {
         SyncGroupCommand::Plan(args) => {
             let desired = load_json_array_file(&args.desired_file, "Sync desired input")?;

@@ -394,6 +394,7 @@ where
         .ok_or_else(|| message("Grafana org lookup did not find a matching organization."))
 }
 
+/// Purpose: implementation note.
 pub(crate) fn list_orgs_with_request<F>(mut request_json: F, args: &OrgListArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -441,6 +442,7 @@ where
     Ok(rows.len())
 }
 
+/// Purpose: implementation note.
 pub(crate) fn add_org_with_request<F>(mut request_json: F, args: &OrgAddArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -479,6 +481,7 @@ where
     Ok(0)
 }
 
+/// modify org with request.
 pub(crate) fn modify_org_with_request<F>(mut request_json: F, args: &OrgModifyArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -512,6 +515,7 @@ where
     Ok(0)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn delete_org_with_request<F>(mut request_json: F, args: &OrgDeleteArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -546,6 +550,7 @@ where
     Ok(0)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn export_orgs_with_request<F>(
     mut request_json: F,
     args: &OrgExportArgs,
@@ -632,6 +637,7 @@ where
     Ok(records.len())
 }
 
+/// Purpose: implementation note.
 pub(crate) fn import_orgs_with_request<F>(
     mut request_json: F,
     args: &OrgImportArgs,

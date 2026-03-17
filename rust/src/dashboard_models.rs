@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Struct definition for ExportMetadata.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct ExportMetadata {
     #[serde(rename = "schemaVersion")]
@@ -27,6 +28,7 @@ pub(crate) struct ExportMetadata {
     pub org_id: Option<String>,
 }
 
+/// Struct definition for DashboardIndexItem.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct DashboardIndexItem {
     pub uid: String,
@@ -42,6 +44,7 @@ pub(crate) struct DashboardIndexItem {
     pub prompt_path: Option<String>,
 }
 
+/// Struct definition for VariantIndexEntry.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct VariantIndexEntry {
     pub uid: String,
@@ -53,12 +56,14 @@ pub(crate) struct VariantIndexEntry {
     pub org_id: String,
 }
 
+/// Struct definition for RootExportVariants.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct RootExportVariants {
     pub raw: Option<String>,
     pub prompt: Option<String>,
 }
 
+/// Struct definition for FolderInventoryItem.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct FolderInventoryItem {
     pub uid: String,
@@ -71,6 +76,7 @@ pub(crate) struct FolderInventoryItem {
     pub org_id: String,
 }
 
+/// Struct definition for DatasourceInventoryItem.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct DatasourceInventoryItem {
     pub uid: String,
@@ -86,6 +92,7 @@ pub(crate) struct DatasourceInventoryItem {
     pub org_id: String,
 }
 
+/// Struct definition for RootExportIndex.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct RootExportIndex {
     #[serde(rename = "schemaVersion")]

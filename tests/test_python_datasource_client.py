@@ -32,7 +32,7 @@ class StubTransport(object):
 
 
 class DatasourceClientTests(unittest.TestCase):
-    def test_module_parses_as_python39_syntax(self):
+    def test_datasource_client_module_parses_as_python39_syntax(self):
         source = open(
             "grafana_utils/clients/datasource_client.py",
             "r",
@@ -43,7 +43,7 @@ class DatasourceClientTests(unittest.TestCase):
         finally:
             pass
 
-    def test_list_datasources_returns_dict_items_only(self):
+    def test_datasource_client_list_datasources_returns_dict_items_only(self):
         client = datasource_client.GrafanaDatasourceClient(
             base_url="http://grafana.example.com",
             headers={},
@@ -63,7 +63,7 @@ class DatasourceClientTests(unittest.TestCase):
 
         self.assertEqual(rows, [{"id": 1, "uid": "prom-main"}])
 
-    def test_fetch_datasource_by_uid_if_exists_returns_none_on_404(self):
+    def test_datasource_client_fetch_datasource_by_uid_if_exists_returns_none_on_404(self):
         class MissingTransport(StubTransport):
             def request_json(self, path, params=None, method="GET", payload=None):
                 raise datasource_client.GrafanaApiError(404, path, "not found")
@@ -78,7 +78,7 @@ class DatasourceClientTests(unittest.TestCase):
 
         self.assertIsNone(client.fetch_datasource_by_uid_if_exists("missing"))
 
-    def test_create_datasource_posts_payload(self):
+    def test_datasource_client_create_datasource_posts_payload(self):
         transport = StubTransport(
             responses={("POST", "/api/datasources"): {"id": 7, "message": "created"}}
         )
@@ -95,7 +95,7 @@ class DatasourceClientTests(unittest.TestCase):
         self.assertEqual(response["id"], 7)
         self.assertEqual(transport.calls[0]["method"], "POST")
 
-    def test_delete_datasource_issues_delete(self):
+    def test_datasource_client_delete_datasource_issues_delete(self):
         transport = StubTransport(
             responses={("DELETE", "/api/datasources/7"): {"message": "deleted"}}
         )
@@ -112,7 +112,7 @@ class DatasourceClientTests(unittest.TestCase):
         self.assertEqual(response["message"], "deleted")
         self.assertEqual(transport.calls[0]["path"], "/api/datasources/7")
 
-    def test_with_org_id_clones_client_headers(self):
+    def test_datasource_client_with_org_id_clones_client_headers(self):
         client = datasource_client.GrafanaDatasourceClient(
             base_url="http://grafana.example.com",
             headers={"Authorization": "Bearer token"},

@@ -1,3 +1,7 @@
+"""
+Prometheus analyzer for dashboard query inspection.
+"""
+
 import re
 from typing import Any
 
@@ -12,6 +16,7 @@ from .contract import (
 
 
 def extract_prometheus_metric_names(query: str) -> list[str]:
+    """Collect metric-like identifiers from a Prometheus query."""
     if not query:
         return []
     values = extract_string_values(
@@ -50,6 +55,11 @@ def extract_prometheus_metric_names(query: str) -> list[str]:
 
 
 def analyze_query(panel: dict[str, Any], target: dict[str, Any], query_field: str, query_text: str) -> dict[str, Any]:
+    """Build normalized analysis output for a Prometheus query."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 18
+
     del panel, target, query_field
     return normalize_query_analysis(
         {

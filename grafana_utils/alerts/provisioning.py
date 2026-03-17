@@ -30,6 +30,7 @@ from .common import (
 
 
 def strip_server_managed_fields(kind: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Strip server managed fields implementation."""
     normalized = copy.deepcopy(payload)
     for field in SERVER_MANAGED_FIELDS_BY_KIND.get(kind, set()):
         normalized.pop(field, None)
@@ -37,6 +38,7 @@ def strip_server_managed_fields(kind: str, payload: dict[str, Any]) -> dict[str,
 
 
 def get_rule_linkage(rule: dict[str, Any]) -> Optional[dict[str, str]]:
+    """Get rule linkage implementation."""
     annotations = rule.get("annotations")
     if not isinstance(annotations, dict):
         return None
@@ -55,6 +57,7 @@ def get_rule_linkage(rule: dict[str, Any]) -> Optional[dict[str, str]]:
 
 
 def find_panel_by_id(panels: Any, panel_id: str) -> Optional[dict[str, Any]]:
+    """Find panel by id implementation."""
     if not isinstance(panels, list):
         return None
     for panel in panels:
@@ -70,6 +73,7 @@ def find_panel_by_id(panels: Any, panel_id: str) -> Optional[dict[str, Any]]:
 
 
 def derive_dashboard_slug(value: str) -> str:
+    """Derive dashboard slug implementation."""
     slug = str(value or "").strip().strip("/")
     if not slug:
         return ""
@@ -81,6 +85,11 @@ def build_linked_dashboard_metadata(
     client: GrafanaAlertClient,
     rule: dict[str, Any],
 ) -> Optional[dict[str, str]]:
+    """Build linked dashboard metadata implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 40, 59, 75
+
     linkage = get_rule_linkage(rule)
     if not linkage:
         return None
@@ -117,6 +126,7 @@ def filter_dashboard_search_matches(
     candidates: list[dict[str, Any]],
     linked_dashboard: dict[str, Any],
 ) -> list[dict[str, Any]]:
+    """Filter dashboard search matches implementation."""
     dashboard_title = str(linked_dashboard.get("dashboardTitle") or "")
     filtered = [
         item for item in candidates if str(item.get("title") or "") == dashboard_title
@@ -147,6 +157,7 @@ def resolve_dashboard_uid_fallback(
     client: GrafanaAlertClient,
     linked_dashboard: dict[str, Any],
 ) -> str:
+    """Resolve dashboard uid fallback implementation."""
     dashboard_title = str(linked_dashboard.get("dashboardTitle") or "").strip()
     if not dashboard_title:
         raise GrafanaError(
@@ -182,6 +193,11 @@ def load_string_map(
     label: str,
     load_json_file,
 ) -> dict[str, str]:
+    """Load string map implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if not path_value:
         return {}
     payload = load_json_file(Path(path_value))
@@ -197,6 +213,11 @@ def load_panel_id_map(
     path_value: Optional[str],
     load_json_file,
 ) -> dict[str, dict[str, str]]:
+    """Load panel id map implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if not path_value:
         return {}
     payload = load_json_file(Path(path_value))
@@ -220,6 +241,7 @@ def apply_rule_linkage_maps(
     dashboard_uid_map: dict[str, str],
     panel_id_map: dict[str, dict[str, str]],
 ) -> tuple[Optional[dict[str, Any]], str]:
+    """Apply rule linkage maps implementation."""
     linkage = get_rule_linkage(payload)
     if not linkage:
         return None, ""
@@ -244,6 +266,7 @@ def extract_linked_dashboard_metadata(
     document: dict[str, Any],
     dashboard_uid: str,
 ) -> dict[str, Any]:
+    """Extract linked dashboard metadata implementation."""
     metadata = document.get("metadata")
     linked_dashboard = metadata.get("linkedDashboard") if isinstance(metadata, dict) else None
     if not isinstance(linked_dashboard, dict):
@@ -262,6 +285,11 @@ def rewrite_rule_dashboard_linkage(
     dashboard_uid_map: dict[str, str],
     panel_id_map: dict[str, dict[str, str]],
 ) -> dict[str, Any]:
+    """Rewrite rule dashboard linkage implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 561
+    #   Downstream callees: 152, 227, 253
+
     normalized, dashboard_uid = apply_rule_linkage_maps(
         payload,
         dashboard_uid_map,
@@ -285,6 +313,11 @@ def rewrite_rule_dashboard_linkage(
 
 
 def build_rule_metadata(rule: dict[str, Any]) -> dict[str, Any]:
+    """Build rule metadata implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     metadata = {
         "uid": str(rule.get("uid") or ""),
         "title": str(rule.get("title") or ""),
@@ -300,6 +333,11 @@ def build_rule_metadata(rule: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_contact_point_metadata(contact_point: dict[str, Any]) -> dict[str, str]:
+    """Build contact point metadata implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return {
         "uid": str(contact_point.get("uid") or ""),
         "name": str(contact_point.get("name") or ""),
@@ -308,18 +346,34 @@ def build_contact_point_metadata(contact_point: dict[str, Any]) -> dict[str, str
 
 
 def build_mute_timing_metadata(mute_timing: dict[str, Any]) -> dict[str, str]:
+    """Build mute timing metadata implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return {"name": str(mute_timing.get("name") or "")}
 
 
 def build_policies_metadata(policies: dict[str, Any]) -> dict[str, str]:
+    """Build policies metadata implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return {"receiver": str(policies.get("receiver") or "")}
 
 
 def build_template_metadata(template: dict[str, Any]) -> dict[str, str]:
+    """Build template metadata implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return {"name": str(template.get("name") or "")}
 
 
 def build_tool_document(kind: str, spec: dict[str, Any]) -> dict[str, Any]:
+    """Build tool document implementation."""
     metadata_builders = {
         RULE_KIND: build_rule_metadata,
         CONTACT_POINT_KIND: build_contact_point_metadata,
@@ -338,6 +392,11 @@ def build_tool_document(kind: str, spec: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_rule_export_document(rule: dict[str, Any]) -> dict[str, Any]:
+    """Build rule export document implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 32, 339
+
     if not isinstance(rule, dict):
         raise GrafanaError("Unexpected alert-rule payload from Grafana.")
     normalized_rule = strip_server_managed_fields(RULE_KIND, rule)
@@ -351,6 +410,11 @@ def build_rule_export_document(rule: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_contact_point_export_document(contact_point: dict[str, Any]) -> dict[str, Any]:
+    """Build contact point export document implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 32, 339
+
     if not isinstance(contact_point, dict):
         raise GrafanaError("Unexpected contact-point payload from Grafana.")
     return build_tool_document(
@@ -360,6 +424,11 @@ def build_contact_point_export_document(contact_point: dict[str, Any]) -> dict[s
 
 
 def build_mute_timing_export_document(mute_timing: dict[str, Any]) -> dict[str, Any]:
+    """Build mute timing export document implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 32, 339
+
     if not isinstance(mute_timing, dict):
         raise GrafanaError("Unexpected mute-timing payload from Grafana.")
     return build_tool_document(
@@ -369,6 +438,11 @@ def build_mute_timing_export_document(mute_timing: dict[str, Any]) -> dict[str, 
 
 
 def build_policies_export_document(policies: dict[str, Any]) -> dict[str, Any]:
+    """Build policies export document implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 32, 339
+
     if not isinstance(policies, dict):
         raise GrafanaError("Unexpected notification policy payload from Grafana.")
     return build_tool_document(
@@ -378,6 +452,11 @@ def build_policies_export_document(policies: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_template_export_document(template: dict[str, Any]) -> dict[str, Any]:
+    """Build template export document implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 32, 339
+
     if not isinstance(template, dict):
         raise GrafanaError("Unexpected template payload from Grafana.")
     return build_tool_document(
@@ -387,6 +466,7 @@ def build_template_export_document(template: dict[str, Any]) -> dict[str, Any]:
 
 
 def reject_provisioning_export(document: dict[str, Any]) -> None:
+    """Reject provisioning export implementation."""
     if (
         "groups" in document
         or "contactPoints" in document
@@ -400,6 +480,7 @@ def reject_provisioning_export(document: dict[str, Any]) -> None:
 
 
 def detect_document_kind(document: dict[str, Any]) -> str:
+    """Detect document kind implementation."""
     kind = document.get("kind")
     if kind in RESOURCE_SUBDIR_BY_KIND:
         return str(kind)
@@ -417,6 +498,7 @@ def detect_document_kind(document: dict[str, Any]) -> str:
 
 
 def extract_tool_spec(document: dict[str, Any], expected_kind: str) -> dict[str, Any]:
+    """Extract tool spec implementation."""
     if document.get("kind") == expected_kind:
         api_version = document.get("apiVersion")
         if api_version not in (None, TOOL_API_VERSION):
@@ -437,6 +519,11 @@ def extract_tool_spec(document: dict[str, Any], expected_kind: str) -> dict[str,
 
 
 def build_rule_import_payload(document: dict[str, Any]) -> dict[str, Any]:
+    """Build rule import payload implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 32, 412, 444
+
     reject_provisioning_export(document)
     payload = strip_server_managed_fields(
         RULE_KIND, extract_tool_spec(document, RULE_KIND)
@@ -454,6 +541,11 @@ def build_rule_import_payload(document: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_contact_point_import_payload(document: dict[str, Any]) -> dict[str, Any]:
+    """Build contact point import payload implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 32, 412, 444
+
     reject_provisioning_export(document)
     payload = strip_server_managed_fields(
         CONTACT_POINT_KIND, extract_tool_spec(document, CONTACT_POINT_KIND)
@@ -471,6 +563,11 @@ def build_contact_point_import_payload(document: dict[str, Any]) -> dict[str, An
 
 
 def build_mute_timing_import_payload(document: dict[str, Any]) -> dict[str, Any]:
+    """Build mute timing import payload implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 32, 412, 444
+
     reject_provisioning_export(document)
     payload = strip_server_managed_fields(
         MUTE_TIMING_KIND, extract_tool_spec(document, MUTE_TIMING_KIND)
@@ -488,6 +585,11 @@ def build_mute_timing_import_payload(document: dict[str, Any]) -> dict[str, Any]
 
 
 def build_policies_import_payload(document: dict[str, Any]) -> dict[str, Any]:
+    """Build policies import payload implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 32, 412, 444
+
     reject_provisioning_export(document)
     payload = strip_server_managed_fields(
         POLICIES_KIND, extract_tool_spec(document, POLICIES_KIND)
@@ -498,6 +600,11 @@ def build_policies_import_payload(document: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_template_import_payload(document: dict[str, Any]) -> dict[str, Any]:
+    """Build template import payload implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 32, 412, 444
+
     reject_provisioning_export(document)
     payload = strip_server_managed_fields(
         TEMPLATE_KIND, extract_tool_spec(document, TEMPLATE_KIND)
@@ -513,6 +620,11 @@ def build_template_import_payload(document: dict[str, Any]) -> dict[str, Any]:
 
 
 def build_import_operation(document: dict[str, Any]) -> tuple[str, dict[str, Any]]:
+    """Build import operation implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 426
+
     if not isinstance(document, dict):
         raise GrafanaError("Unexpected alerting resource document. Expected a JSON object.")
     kind = detect_document_kind(document)
@@ -533,6 +645,7 @@ def prepare_rule_payload_for_target(
     dashboard_uid_map: dict[str, str],
     panel_id_map: dict[str, dict[str, str]],
 ) -> dict[str, Any]:
+    """Prepare rule payload for target implementation."""
     return rewrite_rule_dashboard_linkage(
         client,
         payload,
@@ -550,6 +663,11 @@ def prepare_import_payload_for_target(
     dashboard_uid_map: dict[str, str],
     panel_id_map: dict[str, dict[str, str]],
 ) -> dict[str, Any]:
+    """Prepare import payload for target implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 561
+
     if kind == RULE_KIND:
         return prepare_rule_payload_for_target(
             client,
@@ -562,14 +680,25 @@ def prepare_import_payload_for_target(
 
 
 def build_compare_document(kind: str, payload: dict[str, Any]) -> dict[str, Any]:
+    """Build compare document implementation."""
     return {"kind": kind, "spec": payload}
 
 
 def serialize_compare_document(document: dict[str, Any]) -> str:
+    """Serialize compare document implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
 def build_resource_identity(kind: str, payload: dict[str, Any]) -> str:
+    """Build resource identity implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if kind == RULE_KIND:
         return str(payload.get("uid") or "unknown")
     if kind == CONTACT_POINT_KIND:
@@ -582,6 +711,11 @@ def build_resource_identity(kind: str, payload: dict[str, Any]) -> str:
 
 
 def build_diff_label(prefix: str, resource_file: Path, kind: str, identity: str) -> str:
+    """Build diff label implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return "%s:%s:%s:%s" % (prefix, resource_file, kind, identity)
 
 
@@ -590,6 +724,7 @@ def determine_rule_import_action(
     payload: dict[str, Any],
     replace_existing: bool,
 ) -> str:
+    """Determine rule import action implementation."""
     uid = str(payload.get("uid") or "")
     if not uid:
         return "would-create"
@@ -609,6 +744,7 @@ def determine_contact_point_import_action(
     payload: dict[str, Any],
     replace_existing: bool,
 ) -> str:
+    """Determine contact point import action implementation."""
     uid = str(payload.get("uid") or "")
     existing = {str(item.get("uid") or "") for item in client.list_contact_points()}
     if uid and uid in existing:
@@ -623,6 +759,7 @@ def determine_mute_timing_import_action(
     payload: dict[str, Any],
     replace_existing: bool,
 ) -> str:
+    """Determine mute timing import action implementation."""
     name = str(payload.get("name") or "")
     existing = {str(item.get("name") or "") for item in client.list_mute_timings()}
     if name and name in existing:
@@ -637,6 +774,7 @@ def determine_template_import_action(
     payload: dict[str, Any],
     replace_existing: bool,
 ) -> str:
+    """Determine template import action implementation."""
     name = str(payload.get("name") or "")
     existing = {str(item.get("name") or "") for item in client.list_templates()}
     if name and name in existing:
@@ -652,6 +790,11 @@ def determine_import_action(
     payload: dict[str, Any],
     replace_existing: bool,
 ) -> str:
+    """Determine import action implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 626, 646, 661, 676
+
     if kind == RULE_KIND:
         return determine_rule_import_action(client, payload, replace_existing)
     if kind == CONTACT_POINT_KIND:
@@ -668,6 +811,11 @@ def fetch_live_compare_document(
     kind: str,
     payload: dict[str, Any],
 ) -> Optional[dict[str, Any]]:
+    """Fetch live compare document implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 32, 598
+
     if kind == RULE_KIND:
         uid = str(payload.get("uid") or "")
         if not uid:
@@ -729,6 +877,11 @@ def fetch_live_compare_document(
 
 
 def build_empty_root_index() -> dict[str, Any]:
+    """Build empty root index implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return {
         "schemaVersion": TOOL_SCHEMA_VERSION,
         "apiVersion": TOOL_API_VERSION,

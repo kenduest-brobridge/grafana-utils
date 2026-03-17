@@ -5,6 +5,7 @@ use super::dashboard_inspect_report::{
     ExportInspectionQueryReport,
 };
 
+/// Purpose: implementation note.
 pub(crate) fn render_csv(headers: &[&str], rows: &[Vec<String>]) -> Vec<String> {
     fn escape_csv(value: &str) -> String {
         if value.contains(',') || value.contains('"') || value.contains('\n') {
@@ -33,6 +34,7 @@ pub(crate) fn render_csv(headers: &[&str], rows: &[Vec<String>]) -> Vec<String> 
     lines
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_simple_table(
     headers: &[&str],
     rows: &[Vec<String>],
@@ -78,6 +80,7 @@ pub(crate) fn render_simple_table(
     lines
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_grouped_query_report(report: &ExportInspectionQueryReport) -> Vec<String> {
     let normalized = normalize_query_report(report);
     let mut lines = Vec::new();
@@ -199,6 +202,7 @@ pub(crate) fn render_grouped_query_report(report: &ExportInspectionQueryReport) 
     lines
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_grouped_query_table_report(
     report: &ExportInspectionQueryReport,
     column_ids: &[String],

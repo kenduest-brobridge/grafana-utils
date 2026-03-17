@@ -29,6 +29,7 @@ BUNDLE_PREFLIGHT_SCHEMA_VERSION = 1
 
 
 def _normalize_text(value, default=""):
+    """Internal helper for normalize text."""
     if value is None:
         return default
     text = str(value).strip()
@@ -38,6 +39,7 @@ def _normalize_text(value, default=""):
 
 
 def _require_mapping(value, label):
+    """Internal helper for require mapping."""
     if value is None:
         return {}
     if not isinstance(value, Mapping):
@@ -46,6 +48,7 @@ def _require_mapping(value, label):
 
 
 def _require_string_list(values, label):
+    """Internal helper for require string list."""
     if values is None:
         return []
     if not isinstance(values, (list, tuple, set)):
@@ -59,6 +62,7 @@ def _require_string_list(values, label):
 
 
 def _build_secret_assessment(datasources, availability):
+    """Internal helper for build secret assessment."""
     available_secret_names = set(
         _require_string_list(
             availability.get("secretPlaceholderNames") or availability.get("secretNames"),
@@ -117,6 +121,7 @@ def _build_secret_assessment(datasources, availability):
 
 
 def _build_provider_assessment(datasources, availability):
+    """Internal helper for build provider assessment."""
     available_provider_names = set(
         _require_string_list(
             availability.get("providerNames") or availability.get("secretProviderNames"),
@@ -175,6 +180,10 @@ def _build_provider_assessment(datasources, availability):
 
 def build_bundle_preflight_document(source_bundle, target_inventory, availability=None):
     """Build one staged preflight document from a multi-resource bundle shape."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 123, 41, 64
+
     source_bundle = _require_mapping(source_bundle, "source bundle")
     target_inventory = _require_mapping(target_inventory, "target inventory")
     availability = _require_mapping(availability, "availability")
@@ -268,6 +277,10 @@ def build_bundle_preflight_document(source_bundle, target_inventory, availabilit
 
 def render_bundle_preflight_text(document):
     """Render one deterministic bundle preflight summary."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 31, 41
+
     if _normalize_text(document.get("kind")) != BUNDLE_PREFLIGHT_KIND:
         raise GrafanaError("Bundle preflight document kind is not supported.")
     summary = _require_mapping(document.get("summary"), "summary")

@@ -15,6 +15,7 @@ use super::{
     ROOT_INDEX_KIND, TOOL_SCHEMA_VERSION,
 };
 
+/// discover dashboard files.
 pub(crate) fn discover_dashboard_files(import_dir: &Path) -> Result<Vec<PathBuf>> {
     if !import_dir.exists() {
         return Err(message(format!(
@@ -58,6 +59,7 @@ pub(crate) fn discover_dashboard_files(import_dir: &Path) -> Result<Vec<PathBuf>
     Ok(files)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_export_metadata(
     variant: &str,
     dashboard_count: usize,
@@ -113,6 +115,7 @@ fn validate_export_metadata(
     Ok(())
 }
 
+/// load export metadata.
 pub(crate) fn load_export_metadata(
     import_dir: &Path,
     expected_variant: Option<&str>,
@@ -148,6 +151,7 @@ fn collect_json_files(root: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
     Ok(())
 }
 
+/// load json file.
 pub(crate) fn load_json_file(path: &Path) -> Result<Value> {
     let raw = fs::read_to_string(path)?;
     let value: Value = serde_json::from_str(&raw)?;
@@ -160,6 +164,7 @@ pub(crate) fn load_json_file(path: &Path) -> Result<Value> {
     Ok(value)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_import_payload(
     document: &Value,
     folder_uid_override: Option<&str>,
@@ -197,6 +202,7 @@ pub(crate) fn build_import_payload(
     Ok(Value::Object(payload))
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_preserved_web_import_document(payload: &Value) -> Result<Value> {
     let object = value_as_object(payload, "Unexpected dashboard payload from Grafana.")?;
     let mut dashboard = extract_dashboard_object(object)?.clone();
@@ -204,6 +210,7 @@ pub(crate) fn build_preserved_web_import_document(payload: &Value) -> Result<Val
     Ok(Value::Object(dashboard))
 }
 
+/// extract dashboard object.
 pub(crate) fn extract_dashboard_object(
     document: &Map<String, Value>,
 ) -> Result<&Map<String, Value>> {
@@ -213,6 +220,7 @@ pub(crate) fn extract_dashboard_object(
     }
 }
 
+/// write dashboard.
 pub(crate) fn write_dashboard(payload: &Value, output_path: &Path, overwrite: bool) -> Result<()> {
     if output_path.exists() && !overwrite {
         return Err(message(format!(
@@ -227,6 +235,7 @@ pub(crate) fn write_dashboard(payload: &Value, output_path: &Path, overwrite: bo
     Ok(())
 }
 
+/// write json document.
 pub(crate) fn write_json_document<T: Serialize>(payload: &T, output_path: &Path) -> Result<()> {
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent)?;
@@ -235,6 +244,7 @@ pub(crate) fn write_json_document<T: Serialize>(payload: &T, output_path: &Path)
     Ok(())
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_dashboard_index_item(
     summary: &Map<String, Value>,
     uid: &str,
@@ -256,6 +266,7 @@ pub(crate) fn build_dashboard_index_item(
     }
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_variant_index(
     items: &[DashboardIndexItem],
     path_selector: impl Fn(&DashboardIndexItem) -> Option<&str>,
@@ -276,6 +287,7 @@ pub(crate) fn build_variant_index(
         .collect()
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_root_export_index(
     items: &[DashboardIndexItem],
     raw_index_path: Option<&Path>,
@@ -294,6 +306,7 @@ pub(crate) fn build_root_export_index(
     }
 }
 
+/// load folder inventory.
 pub(crate) fn load_folder_inventory(
     import_dir: &Path,
     metadata: Option<&ExportMetadata>,
@@ -309,6 +322,7 @@ pub(crate) fn load_folder_inventory(
     serde_json::from_str(&raw).map_err(Into::into)
 }
 
+/// load datasource inventory.
 pub(crate) fn load_datasource_inventory(
     import_dir: &Path,
     metadata: Option<&ExportMetadata>,

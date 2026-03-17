@@ -42,6 +42,10 @@ def inspect_dashboard_variables_with_client(
     vars_query: Optional[str] = None,
 ) -> dict[str, Any]:
     """Fetch one dashboard and return a normalized variable inspection document."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 106, 15, 58
+
     resolved_uid = resolve_dashboard_uid(dashboard_uid=dashboard_uid, dashboard_url=dashboard_url)
     payload = client.fetch_dashboard(resolved_uid)
     if not isinstance(payload, dict):
@@ -72,6 +76,10 @@ def build_dashboard_variable_document(
 
 def extract_dashboard_variables(dashboard: dict[str, Any]) -> list[dict[str, Any]]:
     """Extract normalized templating rows from one dashboard document."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 58
+    #   Downstream callees: 186, 208, 219
+
     templating = dashboard.get("templating")
     if not isinstance(templating, dict):
         return []
@@ -144,6 +152,10 @@ def render_dashboard_variable_document(
     include_header: bool = True,
 ) -> str:
     """Render one normalized variable inspection document."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 242, 255
+
     normalized_format = str(output_format or "table").strip().lower()
     if normalized_format not in VARIABLE_OUTPUT_FORMATS:
         raise GrafanaError(
@@ -184,6 +196,7 @@ def render_dashboard_variable_document(
 
 
 def _normalize_options(raw_options: Any) -> list[str]:
+    """Internal helper for normalize options."""
     if not isinstance(raw_options, list):
         return []
     values = []
@@ -195,6 +208,7 @@ def _normalize_options(raw_options: Any) -> list[str]:
 
 
 def _format_option_value(value: Any) -> str:
+    """Internal helper for format option value."""
     if isinstance(value, dict):
         if value.get("text") not in (None, ""):
             return str(value.get("text"))
@@ -204,6 +218,7 @@ def _format_option_value(value: Any) -> str:
 
 
 def _format_current_value(value: Any) -> str:
+    """Internal helper for format current value."""
     if isinstance(value, dict):
         if value.get("text") not in (None, ""):
             return _format_compact_value(value.get("text"))
@@ -214,6 +229,7 @@ def _format_current_value(value: Any) -> str:
 
 
 def _format_compact_value(value: Any) -> str:
+    """Internal helper for format compact value."""
     if value is None:
         return ""
     if isinstance(value, bool):
@@ -236,6 +252,7 @@ def _format_compact_value(value: Any) -> str:
 
 
 def _summarize_options(row: dict[str, Any]) -> str:
+    """Internal helper for summarize options."""
     options = list(row.get("options") or [])
     if not options:
         return ""
@@ -252,12 +269,17 @@ def _render_simple_table(
     rows: list[list[str]],
     include_header: bool = True,
 ) -> list[str]:
+    """Internal helper for render simple table."""
     widths = [len(header) for header in headers]
     for row in rows:
         for index, value in enumerate(row):
             widths[index] = max(widths[index], len(value))
 
     def format_row(values: list[str]) -> str:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return "  ".join(
             value.ljust(widths[index]) for index, value in enumerate(values)
         )

@@ -45,26 +45,45 @@ use alert_list::list_alert_resources;
 #[cfg(test)]
 pub(crate) use alert_list::serialize_rule_list_rows;
 
+/// Constant for default url.
 pub const DEFAULT_URL: &str = "http://127.0.0.1:3000";
+/// Constant for default timeout.
 pub const DEFAULT_TIMEOUT: u64 = 30;
+/// Constant for default output dir.
 pub const DEFAULT_OUTPUT_DIR: &str = "alerts";
+/// Constant for raw export subdir.
 pub const RAW_EXPORT_SUBDIR: &str = "raw";
+/// Constant for rules subdir.
 pub const RULES_SUBDIR: &str = "rules";
+/// Constant for contact points subdir.
 pub const CONTACT_POINTS_SUBDIR: &str = "contact-points";
+/// Constant for mute timings subdir.
 pub const MUTE_TIMINGS_SUBDIR: &str = "mute-timings";
+/// Constant for policies subdir.
 pub const POLICIES_SUBDIR: &str = "policies";
+/// Constant for templates subdir.
 pub const TEMPLATES_SUBDIR: &str = "templates";
+/// Constant for rule kind.
 pub const RULE_KIND: &str = "grafana-alert-rule";
+/// Constant for contact point kind.
 pub const CONTACT_POINT_KIND: &str = "grafana-contact-point";
+/// Constant for mute timing kind.
 pub const MUTE_TIMING_KIND: &str = "grafana-mute-timing";
+/// Constant for policies kind.
 pub const POLICIES_KIND: &str = "grafana-notification-policies";
+/// Constant for template kind.
 pub const TEMPLATE_KIND: &str = "grafana-notification-template";
+/// Constant for tool api version.
 pub const TOOL_API_VERSION: i64 = 1;
+/// Constant for tool schema version.
 pub const TOOL_SCHEMA_VERSION: i64 = 1;
+/// Constant for root index kind.
 pub const ROOT_INDEX_KIND: &str = "grafana-util-alert-export-index";
 
+/// Constant for alert help text.
 pub const ALERT_HELP_TEXT: &str = "Examples:\n\n  Export alerting resources with an API token:\n    export GRAFANA_API_TOKEN='your-token'\n    grafana-util alert export --url https://grafana.example.com --output-dir ./alerts --overwrite\n\n  Import back into Grafana and update existing resources:\n    grafana-util alert import --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing\n\n  Import linked alert rules with dashboard and panel remapping:\n    grafana-util alert import --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json";
 
+/// resource subdir by kind.
 pub fn resource_subdir_by_kind() -> BTreeMap<&'static str, &'static str> {
     BTreeMap::from([
         (RULE_KIND, RULES_SUBDIR),
@@ -75,6 +94,10 @@ pub fn resource_subdir_by_kind() -> BTreeMap<&'static str, &'static str> {
     ])
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_rule_output_path(output_dir: &Path, rule: &Map<String, Value>, flat: bool) -> PathBuf {
     let folder_uid = sanitize_path_component(&string_field(rule, "folderUID", "general"));
     let rule_group = sanitize_path_component(&string_field(rule, "ruleGroup", "default"));
@@ -89,6 +112,10 @@ pub fn build_rule_output_path(output_dir: &Path, rule: &Map<String, Value>, flat
     }
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_contact_point_output_path(
     output_dir: &Path,
     contact_point: &Map<String, Value>,
@@ -104,6 +131,10 @@ pub fn build_contact_point_output_path(
     }
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_mute_timing_output_path(
     output_dir: &Path,
     mute_timing: &Map<String, Value>,
@@ -118,10 +149,18 @@ pub fn build_mute_timing_output_path(
     }
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_policies_output_path(output_dir: &Path) -> PathBuf {
     output_dir.join("notification-policies.json")
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_template_output_path(
     output_dir: &Path,
     template: &Map<String, Value>,
@@ -136,6 +175,10 @@ pub fn build_template_output_path(
     }
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_resource_dirs(raw_dir: &Path) -> BTreeMap<&'static str, PathBuf> {
     resource_subdir_by_kind()
         .into_iter()
@@ -143,6 +186,7 @@ pub fn build_resource_dirs(raw_dir: &Path) -> BTreeMap<&'static str, PathBuf> {
         .collect()
 }
 
+/// discover alert resource files.
 pub fn discover_alert_resource_files(import_dir: &Path) -> Result<Vec<PathBuf>> {
     if !import_dir.exists() {
         return Err(message(format!(
@@ -192,6 +236,7 @@ fn collect_json_files(root: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
     Ok(())
 }
 
+/// derive dashboard slug.
 pub fn derive_dashboard_slug(value: &Value) -> String {
     let mut text = value.as_str().unwrap_or_default().trim().to_string();
     if text.is_empty() {
@@ -220,7 +265,12 @@ pub fn derive_dashboard_slug(value: &Value) -> String {
     text
 }
 
+/// load string map.
 pub fn load_string_map(path: Option<&Path>, label: &str) -> Result<BTreeMap<String, String>> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: alert.rs:load, alert_rust_tests.rs:load_string_map_returns_empty_map_without_input_file
+// Downstream callees: alert.rs:value_to_string, common.rs:load_json_object_file, common.rs:value_as_object
+
     let Some(path) = path else {
         return Ok(BTreeMap::new());
     };
@@ -232,9 +282,14 @@ pub fn load_string_map(path: Option<&Path>, label: &str) -> Result<BTreeMap<Stri
         .collect())
 }
 
+/// load panel id map.
 pub fn load_panel_id_map(
     path: Option<&Path>,
 ) -> Result<BTreeMap<String, BTreeMap<String, String>>> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: alert.rs:load, alert_rust_tests.rs:load_panel_id_map_parses_nested_dashboard_panel_mapping
+// Downstream callees: alert.rs:value_to_string, common.rs:load_json_object_file, common.rs:value_as_object
+
     let Some(path) = path else {
         return Ok(BTreeMap::new());
     };
@@ -303,6 +358,7 @@ fn value_to_string(value: &Value) -> String {
     }
 }
 
+/// strip server managed fields.
 pub fn strip_server_managed_fields(kind: &str, payload: &Map<String, Value>) -> Map<String, Value> {
     let managed_fields = match kind {
         RULE_KIND => ["id", "updated", "provenance"].as_slice(),
@@ -359,7 +415,15 @@ fn build_tool_document(kind: &str, spec: Map<String, Value>, metadata: Value) ->
     })
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_rule_export_document(rule: &Map<String, Value>) -> Value {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: alert.rs:export_alerting_resources, alert_rust_tests.rs:build_rule_export_document_strips_server_managed_fields
+// Downstream callees: alert.rs:build_rule_metadata, alert.rs:build_tool_document, alert.rs:strip_server_managed_fields
+
     let mut normalized = strip_server_managed_fields(RULE_KIND, rule);
     let linked_dashboard = normalized.remove("__linkedDashboardMetadata__");
     let mut document = build_tool_document(
@@ -378,7 +442,15 @@ pub fn build_rule_export_document(rule: &Map<String, Value>) -> Value {
     document
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_contact_point_export_document(contact_point: &Map<String, Value>) -> Value {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: alert.rs:export_alerting_resources, alert_rust_tests.rs:build_contact_point_export_document_wraps_tool_document
+// Downstream callees: alert.rs:build_contact_point_metadata, alert.rs:build_tool_document, alert.rs:strip_server_managed_fields
+
     let normalized = strip_server_managed_fields(CONTACT_POINT_KIND, contact_point);
     build_tool_document(
         CONTACT_POINT_KIND,
@@ -387,7 +459,15 @@ pub fn build_contact_point_export_document(contact_point: &Map<String, Value>) -
     )
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_mute_timing_export_document(mute_timing: &Map<String, Value>) -> Value {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: alert.rs:export_alerting_resources
+// Downstream callees: alert.rs:build_mute_timing_metadata, alert.rs:build_tool_document, alert.rs:strip_server_managed_fields
+
     let normalized = strip_server_managed_fields(MUTE_TIMING_KIND, mute_timing);
     build_tool_document(
         MUTE_TIMING_KIND,
@@ -396,7 +476,15 @@ pub fn build_mute_timing_export_document(mute_timing: &Map<String, Value>) -> Va
     )
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_policies_export_document(policies: &Map<String, Value>) -> Value {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: alert.rs:export_alerting_resources
+// Downstream callees: alert.rs:build_policies_metadata, alert.rs:build_tool_document, alert.rs:strip_server_managed_fields
+
     let normalized = strip_server_managed_fields(POLICIES_KIND, policies);
     build_tool_document(
         POLICIES_KIND,
@@ -405,7 +493,15 @@ pub fn build_policies_export_document(policies: &Map<String, Value>) -> Value {
     )
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_template_export_document(template: &Map<String, Value>) -> Value {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: alert.rs:export_alerting_resources
+// Downstream callees: alert.rs:build_template_metadata, alert.rs:build_tool_document, alert.rs:strip_server_managed_fields
+
     let normalized = strip_server_managed_fields(TEMPLATE_KIND, template);
     build_tool_document(
         TEMPLATE_KIND,
@@ -414,6 +510,7 @@ pub fn build_template_export_document(template: &Map<String, Value>) -> Value {
     )
 }
 
+/// reject provisioning export.
 pub fn reject_provisioning_export(document: &Map<String, Value>) -> Result<()> {
     if document.contains_key("groups")
         || document.contains_key("contactPoints")
@@ -427,6 +524,7 @@ pub fn reject_provisioning_export(document: &Map<String, Value>) -> Result<()> {
     Ok(())
 }
 
+/// detect document kind.
 pub fn detect_document_kind(document: &Map<String, Value>) -> Result<&'static str> {
     if let Some(kind) = document.get("kind").and_then(Value::as_str) {
         if resource_subdir_by_kind().contains_key(kind) {
@@ -512,7 +610,15 @@ fn extract_tool_spec(
     }
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_rule_import_payload(document: &Map<String, Value>) -> Result<Map<String, Value>> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: alert.rs:build_import_operation, sync.rs:apply_alert_operation_with_request, sync.rs:fetch_live_resource_specs_with_request, sync.rs:normalize_alert_rule_sync_spec
+// Downstream callees: alert.rs:extract_tool_spec, alert.rs:reject_provisioning_export, alert.rs:strip_server_managed_fields, common.rs:message
+
     reject_provisioning_export(document)?;
     let payload = strip_server_managed_fields(RULE_KIND, &extract_tool_spec(document, RULE_KIND)?);
     for field in ["title", "folderUID", "ruleGroup", "condition", "data"] {
@@ -528,9 +634,17 @@ pub fn build_rule_import_payload(document: &Map<String, Value>) -> Result<Map<St
     Ok(payload)
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_contact_point_import_payload(
     document: &Map<String, Value>,
 ) -> Result<Map<String, Value>> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: alert.rs:build_import_operation
+// Downstream callees: alert.rs:extract_tool_spec, alert.rs:reject_provisioning_export, alert.rs:strip_server_managed_fields, common.rs:message
+
     reject_provisioning_export(document)?;
     let payload = strip_server_managed_fields(
         CONTACT_POINT_KIND,
@@ -553,9 +667,17 @@ pub fn build_contact_point_import_payload(
     Ok(payload)
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_mute_timing_import_payload(
     document: &Map<String, Value>,
 ) -> Result<Map<String, Value>> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: alert.rs:build_import_operation
+// Downstream callees: alert.rs:extract_tool_spec, alert.rs:reject_provisioning_export, alert.rs:strip_server_managed_fields, common.rs:message
+
     reject_provisioning_export(document)?;
     let payload = strip_server_managed_fields(
         MUTE_TIMING_KIND,
@@ -580,12 +702,24 @@ pub fn build_mute_timing_import_payload(
     Ok(payload)
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_policies_import_payload(document: &Map<String, Value>) -> Result<Map<String, Value>> {
     reject_provisioning_export(document)?;
     extract_tool_spec(document, POLICIES_KIND)
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_template_import_payload(document: &Map<String, Value>) -> Result<Map<String, Value>> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: alert.rs:build_import_operation
+// Downstream callees: alert.rs:extract_tool_spec, alert.rs:reject_provisioning_export, alert.rs:strip_server_managed_fields, common.rs:message
+
     reject_provisioning_export(document)?;
     let payload =
         strip_server_managed_fields(TEMPLATE_KIND, &extract_tool_spec(document, TEMPLATE_KIND)?);
@@ -599,7 +733,15 @@ pub fn build_template_import_payload(document: &Map<String, Value>) -> Result<Ma
     Ok(payload)
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_import_operation(document: &Value) -> Result<(String, Map<String, Value>)> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: alert.rs:diff_alerting_resources, alert.rs:import_alerting_resources, alert_rust_tests.rs:build_import_operation_accepts_legacy_tool_document_without_schema_version, alert_rust_tests.rs:build_import_operation_accepts_plain_rule_document, alert_rust_tests.rs:build_import_operation_rejects_unsupported_schema_version
+// Downstream callees: alert.rs:build_contact_point_import_payload, alert.rs:build_mute_timing_import_payload, alert.rs:build_policies_import_payload, alert.rs:build_rule_import_payload, alert.rs:build_template_import_payload, alert.rs:detect_document_kind, common.rs:value_as_object
+
     let object = value_as_object(document, "Alerting import document must be a JSON object.")?;
     let kind = detect_document_kind(object)?;
     let payload = match kind {
@@ -613,6 +755,10 @@ pub fn build_import_operation(document: &Value) -> Result<(String, Map<String, V
     Ok((kind.to_string(), payload))
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_empty_root_index() -> Map<String, Value> {
     [
         (
@@ -1614,6 +1760,10 @@ fn diff_alerting_resources(args: &AlertCliArgs) -> Result<()> {
 /// Dispatches by checking argument exclusivity (`list`, `import`, `diff`, else export) and
 /// forwarding to the corresponding handler.
 pub fn run_alert_cli(args: AlertCliArgs) -> Result<()> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: alert.rs:diff_alerting_resources, alert.rs:export_alerting_resources, alert.rs:import_alerting_resources, alert_list.rs:list_alert_resources
+
     if args.list_kind.is_some() {
         return list_alert_resources(&args);
     }

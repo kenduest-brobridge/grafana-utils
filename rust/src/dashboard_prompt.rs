@@ -27,6 +27,7 @@ fn known_datasource_type(value: &str) -> Option<&'static str> {
     }
 }
 
+/// datasource type alias.
 pub(crate) fn datasource_type_alias(value: &str) -> &str {
     known_datasource_type(value).unwrap_or(value)
 }
@@ -49,6 +50,7 @@ struct InputMapping {
     plugin_version: String,
 }
 
+/// Struct definition for DatasourceCatalog.
 pub struct DatasourceCatalog {
     pub(crate) by_uid: BTreeMap<String, Map<String, Value>>,
     pub(crate) by_name: BTreeMap<String, Map<String, Value>>,
@@ -56,6 +58,7 @@ pub struct DatasourceCatalog {
 
 const DEFAULT_GENERATED_DATASOURCE_INPUT: &str = "DATASOURCE";
 
+/// Purpose: implementation note.
 pub(crate) fn build_datasource_catalog(datasources: &[Map<String, Value>]) -> DatasourceCatalog {
     let mut by_uid = BTreeMap::new();
     let mut by_name = BTreeMap::new();
@@ -72,6 +75,7 @@ pub(crate) fn build_datasource_catalog(datasources: &[Map<String, Value>]) -> Da
     DatasourceCatalog { by_uid, by_name }
 }
 
+/// Purpose: implementation note.
 pub(crate) fn is_placeholder_string(value: &str) -> bool {
     value.starts_with('$')
 }
@@ -90,6 +94,7 @@ fn is_generated_input_placeholder(value: &str) -> bool {
     extract_placeholder_name(value).starts_with("DS_")
 }
 
+/// Purpose: implementation note.
 pub(crate) fn is_builtin_datasource_ref(value: &Value) -> bool {
     match value {
         Value::String(text) => {
@@ -120,6 +125,7 @@ pub(crate) fn is_builtin_datasource_ref(value: &Value) -> bool {
     }
 }
 
+/// collect datasource refs.
 pub(crate) fn collect_datasource_refs(node: &Value, refs: &mut Vec<Value>) {
     match node {
         Value::Object(object) => {
@@ -236,6 +242,7 @@ fn datasource_plugin_version(datasource: &Map<String, Value>) -> String {
         .to_string()
 }
 
+/// lookup datasource.
 pub(crate) fn lookup_datasource(
     datasource_catalog: &DatasourceCatalog,
     uid: Option<&str>,
@@ -252,6 +259,7 @@ pub(crate) fn lookup_datasource(
     None
 }
 
+/// Purpose: implementation note.
 pub(crate) fn resolve_datasource_type_alias(
     reference: &str,
     datasource_catalog: &DatasourceCatalog,
@@ -768,10 +776,18 @@ fn build_requires_block(
     Value::Array(requires)
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_external_export_document(
     payload: &Value,
     datasource_catalog: &DatasourceCatalog,
 ) -> Result<Value> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: dashboard_rust_tests.rs:build_external_export_document_adds_datasource_inputs, dashboard_rust_tests.rs:build_external_export_document_creates_input_from_datasource_template_variable, dashboard_rust_tests.rs:build_external_export_document_deduplicates_same_type_datasource_requires, dashboard_rust_tests.rs:build_external_export_document_keeps_distinct_same_type_object_reference_names, dashboard_rust_tests.rs:build_external_export_document_uses_grafana_style_plugin_names_for_inputs_and_requires
+// Downstream callees: common.rs:message, dashboard_prompt.rs:allocate_input_mapping, dashboard_prompt.rs:build_input_definitions, dashboard_prompt.rs:build_requires_block, dashboard_prompt.rs:collect_panel_types, dashboard_prompt.rs:ensure_datasource_template_variable, dashboard_prompt.rs:prepare_templating_for_external_import, dashboard_prompt.rs:replace_datasource_refs_in_dashboard, dashboard_prompt.rs:resolve_datasource_ref, dashboard_prompt.rs:rewrite_panel_datasources_to_template_variable
+
     let mut dashboard = build_preserved_web_import_document(payload)?;
     let dashboard_object = dashboard
         .as_object_mut()

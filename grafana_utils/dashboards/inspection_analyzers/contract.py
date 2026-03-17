@@ -1,3 +1,7 @@
+"""
+Shared typed contract for dashboard query inspection analyzers.
+"""
+
 import re
 from typing import Any
 
@@ -11,6 +15,7 @@ QUERY_ANALYSIS_FIELDS = ("metrics", "measurements", "buckets")
 
 
 def extract_string_values(query: str, pattern: str) -> list[str]:
+    """Extract regex-captured values from a query string."""
     if not query:
         return []
     values = []
@@ -26,6 +31,7 @@ def extract_string_values(query: str, pattern: str) -> list[str]:
 
 
 def unique_strings(values: list[str]) -> list[str]:
+    """Deduplicate values while preserving original order."""
     seen: set[str] = set()
     ordered = []
     for value in values:
@@ -38,6 +44,7 @@ def unique_strings(values: list[str]) -> list[str]:
 
 
 def normalize_query_analysis(result: dict[str, Any]) -> dict[str, list[str]]:
+    """Normalize query analysis fields into ordered unique string lists."""
     normalized = {}
     for field in QUERY_ANALYSIS_FIELDS:
         value = (result or {}).get(field)
@@ -51,6 +58,11 @@ def normalize_query_analysis(result: dict[str, Any]) -> dict[str, list[str]]:
 
 
 def build_query_field_and_text(target: dict[str, Any]) -> list[str]:
+    """Find the first known query field and its raw text."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     for field in (
         "expr",
         "expression",
@@ -132,6 +144,7 @@ PROMETHEUS_RESERVED_WORDS = {
 
 
 def extract_metric_names(query: str) -> list[str]:
+    """Extract metric names from PromQL-style text."""
     if not query:
         return []
     sanitized_query = re.sub(r'"[^"]*"', '""', query)
@@ -156,6 +169,7 @@ def extract_metric_names(query: str) -> list[str]:
 
 
 def extract_measurements(query: str) -> list[str]:
+    """Extract measurement references used in a query."""
     return unique_strings(
         extract_string_values(
             query,
@@ -169,6 +183,7 @@ def extract_measurements(query: str) -> list[str]:
 
 
 def extract_buckets(query: str) -> list[str]:
+    """Extract bucket references used in a query."""
     return unique_strings(
         extract_string_values(
             query,
@@ -182,6 +197,11 @@ def extract_buckets(query: str) -> list[str]:
 
 
 def build_default_query_analysis(target: dict[str, Any], query_text: str) -> dict[str, list[str]]:
+    """Build normalized query-analysis fields for an unknown analyzer family."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 142, 167, 181, 46
+
     del target
     return normalize_query_analysis(
         {

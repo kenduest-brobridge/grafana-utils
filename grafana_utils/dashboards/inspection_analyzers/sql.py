@@ -1,3 +1,7 @@
+"""
+SQL analyzer for dashboard query inspection.
+"""
+
 import re
 from typing import Any
 
@@ -5,6 +9,7 @@ from .contract import extract_string_values, normalize_query_analysis, unique_st
 
 
 def strip_sql_comments(query: str) -> str:
+    """Remove SQL block and line comments for parsing."""
     if not query:
         return ""
     query = re.sub(r"/\*.*?\*/", " ", query, flags=re.DOTALL)
@@ -12,6 +17,7 @@ def strip_sql_comments(query: str) -> str:
 
 
 def normalize_sql_identifier(value: str) -> str:
+    """Normalize identifiers by stripping quotes and normalizing dot paths."""
     parts = []
     for part in re.split(r"\s*\.\s*", str(value or "").strip()):
         normalized = part.strip()
@@ -27,6 +33,7 @@ def normalize_sql_identifier(value: str) -> str:
 
 
 def extract_sql_source_references(query: str) -> list[str]:
+    """Extract referenced source objects from SQL text."""
     query = strip_sql_comments(query)
     if not query:
         return []
@@ -55,6 +62,7 @@ def extract_sql_source_references(query: str) -> list[str]:
 
 
 def extract_sql_query_shape_hints(query: str) -> list[str]:
+    """Extract high-level SQL shape keywords."""
     lowered = strip_sql_comments(query).lower()
     hints = []
     for hint, pattern in (
@@ -81,6 +89,11 @@ def extract_sql_query_shape_hints(query: str) -> list[str]:
 
 
 def analyze_query(panel: dict[str, Any], target: dict[str, Any], query_field: str, query_text: str) -> dict[str, Any]:
+    """Build normalized analysis output for an SQL query."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 35, 64
+
     del panel, target, query_field
     return normalize_query_analysis(
         {

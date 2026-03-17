@@ -12,9 +12,12 @@ use serde::Serialize;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 
+/// Constant for sync preflight kind.
 pub const SYNC_PREFLIGHT_KIND: &str = "grafana-utils-sync-preflight";
+/// Constant for sync preflight schema version.
 pub const SYNC_PREFLIGHT_SCHEMA_VERSION: i64 = 1;
 
+/// Struct definition for SyncPreflightCheck.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SyncPreflightCheck {
     pub kind: String,
@@ -353,10 +356,18 @@ fn build_alert_checks(
     Ok(checks)
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_sync_preflight_document(
     desired_specs: &[Value],
     availability: Option<&Value>,
 ) -> Result<Value> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: bundle_preflight.rs:build_bundle_preflight_document, sync.rs:run_sync_cli, sync_bundle_preflight.rs:build_sync_bundle_preflight_document, sync_rust_tests.rs:build_sync_preflight_document_reports_plugin_dependency_and_alert_blocks, sync_rust_tests.rs:render_sync_preflight_text_renders_deterministic_summary
+// Downstream callees: common.rs:message, sync_preflight.rs:build_alert_checks, sync_preflight.rs:build_dashboard_checks, sync_preflight.rs:build_datasource_checks, sync_preflight.rs:require_object, sync_workbench.rs:normalize_resource_specs
+
     let specs = normalize_resource_specs(desired_specs)?;
     let availability = require_object(availability, "availability")?;
     let mut checks = Vec::new();
@@ -395,7 +406,15 @@ pub fn build_sync_preflight_document(
     }))
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn render_sync_preflight_text(document: &Value) -> Result<Vec<String>> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: sync.rs:run_sync_cli, sync_rust_tests.rs:render_sync_preflight_text_rejects_wrong_kind, sync_rust_tests.rs:render_sync_preflight_text_renders_deterministic_summary
+// Downstream callees: common.rs:message, sync_preflight.rs:normalize_text, sync_preflight.rs:require_object
+
     let kind = normalize_text(document.get("kind"));
     if kind != SYNC_PREFLIGHT_KIND {
         return Err(message("Sync preflight document kind is not supported."));

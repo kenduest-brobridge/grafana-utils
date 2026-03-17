@@ -18,7 +18,7 @@ class FakeFolderPathClient:
 
 
 class FolderPathMatchTests(unittest.TestCase):
-    def test_resolve_source_dashboard_folder_path_uses_inventory_record(self):
+    def test_dashboard_folder_path_match_resolve_source_dashboard_folder_path_uses_inventory_record(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             dashboard_dir = import_dir / "ignored"
@@ -43,7 +43,7 @@ class FolderPathMatchTests(unittest.TestCase):
 
         self.assertEqual(result, "Platform / Infra")
 
-    def test_resolve_source_dashboard_folder_path_falls_back_to_file_layout(self):
+    def test_dashboard_folder_path_match_resolve_source_dashboard_folder_path_falls_back_to_file_layout(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             dashboard_dir = import_dir / "Platform" / "Infra"
@@ -60,7 +60,7 @@ class FolderPathMatchTests(unittest.TestCase):
 
         self.assertEqual(result, "Platform / Infra")
 
-    def test_resolve_source_dashboard_folder_path_defaults_root_to_general(self):
+    def test_dashboard_folder_path_match_resolve_source_dashboard_folder_path_defaults_root_to_general(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             dashboard_file = import_dir / "cpu.json"
@@ -75,7 +75,7 @@ class FolderPathMatchTests(unittest.TestCase):
 
         self.assertEqual(result, "General")
 
-    def test_resolve_existing_dashboard_folder_path_returns_general_for_builtin(self):
+    def test_dashboard_folder_path_match_resolve_existing_dashboard_folder_path_returns_general_for_builtin(self):
         client = FakeFolderPathClient(
             dashboards={
                 "cpu-main": {
@@ -92,7 +92,7 @@ class FolderPathMatchTests(unittest.TestCase):
 
         self.assertEqual(result, "General")
 
-    def test_resolve_existing_dashboard_folder_path_builds_nested_live_path(self):
+    def test_dashboard_folder_path_match_resolve_existing_dashboard_folder_path_builds_nested_live_path(self):
         client = FakeFolderPathClient(
             dashboards={
                 "cpu-main": {
@@ -121,7 +121,7 @@ class FolderPathMatchTests(unittest.TestCase):
 
         self.assertEqual(result, "Platform / Infra")
 
-    def test_build_folder_path_match_result_accepts_missing_destination(self):
+    def test_dashboard_folder_path_match_build_folder_path_match_result_accepts_missing_destination(self):
         result = folder_path_match.build_folder_path_match_result(
             source_folder_path="Platform / Infra",
             destination_folder_path=None,
@@ -133,7 +133,7 @@ class FolderPathMatchTests(unittest.TestCase):
         self.assertEqual(result["source_folder_path"], "Platform / Infra")
         self.assertIsNone(result["destination_folder_path"])
 
-    def test_build_folder_path_match_result_reports_exact_match(self):
+    def test_dashboard_folder_path_match_build_folder_path_match_result_reports_exact_match(self):
         result = folder_path_match.build_folder_path_match_result(
             source_folder_path="Platform / Infra",
             destination_folder_path="Platform / Infra",
@@ -144,7 +144,7 @@ class FolderPathMatchTests(unittest.TestCase):
         self.assertTrue(result["matches"])
         self.assertEqual(result["reason"], "")
 
-    def test_build_folder_path_match_result_reports_mismatch(self):
+    def test_dashboard_folder_path_match_build_folder_path_match_result_reports_mismatch(self):
         result = folder_path_match.build_folder_path_match_result(
             source_folder_path="Platform / Infra",
             destination_folder_path="Legacy / Infra",
@@ -155,7 +155,7 @@ class FolderPathMatchTests(unittest.TestCase):
         self.assertFalse(result["matches"])
         self.assertEqual(result["reason"], "folder-path-mismatch")
 
-    def test_build_folder_path_match_result_reports_unknown_destination_path(self):
+    def test_dashboard_folder_path_match_build_folder_path_match_result_reports_unknown_destination_path(self):
         result = folder_path_match.build_folder_path_match_result(
             source_folder_path="Platform / Infra",
             destination_folder_path=None,
@@ -166,7 +166,7 @@ class FolderPathMatchTests(unittest.TestCase):
         self.assertFalse(result["matches"])
         self.assertEqual(result["reason"], "folder-path-unknown")
 
-    def test_apply_folder_path_guard_to_action_rewrites_only_updates(self):
+    def test_dashboard_folder_path_match_apply_folder_path_guard_to_action_rewrites_only_updates(self):
         mismatch = {
             "matches": False,
             "reason": "folder-path-mismatch",

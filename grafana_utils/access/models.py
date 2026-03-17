@@ -16,6 +16,7 @@ from .common import (
 
 
 def normalize_org_role(value: Any) -> str:
+    """Normalize org role implementation."""
     normalized = str(value or "").strip()
     if not normalized:
         return ""
@@ -32,6 +33,7 @@ def normalize_org_role(value: Any) -> str:
 
 
 def normalize_bool(value: Any) -> Optional[bool]:
+    """Normalize bool implementation."""
     if value is None:
         return None
     if isinstance(value, bool):
@@ -45,6 +47,7 @@ def normalize_bool(value: Any) -> Optional[bool]:
 
 
 def bool_label(value: Optional[bool]) -> str:
+    """Bool label implementation."""
     if value is True:
         return "true"
     if value is False:
@@ -53,6 +56,7 @@ def bool_label(value: Optional[bool]) -> str:
 
 
 def normalize_team(item: dict[str, Any]) -> dict[str, Any]:
+    """Normalize team implementation."""
     return {
         "id": str(item.get("id") or ""),
         "name": str(item.get("name") or ""),
@@ -63,6 +67,7 @@ def normalize_team(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def normalize_org_user(item: dict[str, Any]) -> dict[str, Any]:
+    """Normalize org user implementation."""
     return {
         "id": item.get("userId") or item.get("id") or "",
         "login": str(item.get("login") or ""),
@@ -76,6 +81,7 @@ def normalize_org_user(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def normalize_global_user(item: dict[str, Any]) -> dict[str, Any]:
+    """Normalize global user implementation."""
     return {
         "id": item.get("id") or "",
         "login": str(item.get("login") or ""),
@@ -91,6 +97,11 @@ def normalize_global_user(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def normalize_service_account(item: dict[str, Any]) -> dict[str, Any]:
+    """Normalize service account implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 18, 35
+
     return {
         "id": str(item.get("id") or ""),
         "name": str(item.get("name") or ""),
@@ -103,6 +114,7 @@ def normalize_service_account(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def user_matches_filters(user: dict[str, Any], args: argparse.Namespace) -> bool:
+    """User matches filters implementation."""
     query = (args.query or "").strip().lower()
     if query:
         haystacks = [
@@ -131,6 +143,7 @@ def paginate_users(
     page: int,
     per_page: int,
 ) -> list[dict[str, Any]]:
+    """Paginate users implementation."""
     start = (page - 1) * per_page
     end = start + per_page
     return users[start:end]
@@ -140,6 +153,7 @@ def attach_team_memberships(
     users: list[dict[str, Any]],
     client: Any,
 ) -> None:
+    """Attach team memberships implementation."""
     for user in users:
         user_id = user.get("id")
         if not user_id:
@@ -157,6 +171,11 @@ def build_user_rows(
     client: Any,
     args: argparse.Namespace,
 ) -> list[dict[str, Any]]:
+    """Build user rows implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 112, 137, 148, 69, 83
+
     if args.scope == "global":
         raw_users = client.iter_global_users(max(args.per_page, DEFAULT_PAGE_SIZE))
         users = [normalize_global_user(item) for item in raw_users]
@@ -172,6 +191,7 @@ def build_user_rows(
 
 
 def serialize_user_row(user: dict[str, Any]) -> dict[str, Any]:
+    """Serialize user row implementation."""
     row = {}
     for field in OUTPUT_FIELDS:
         value = user.get(field)
@@ -185,11 +205,21 @@ def serialize_user_row(user: dict[str, Any]) -> dict[str, Any]:
 
 
 def render_user_json(users: list[dict[str, Any]]) -> str:
+    """Render user json implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 185
+
     payload = [serialize_user_row(user) for user in users]
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
 def render_user_csv(users: list[dict[str, Any]]) -> None:
+    """Render user csv implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 185
+
     writer = csv.DictWriter(sys.stdout, fieldnames=OUTPUT_FIELDS)
     writer.writeheader()
     for user in users:
@@ -199,6 +229,11 @@ def render_user_csv(users: list[dict[str, Any]]) -> None:
 
 
 def render_user_table(users: list[dict[str, Any]]) -> list[str]:
+    """Render user table implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 185, 239
+
     headers = {
         "id": "ID",
         "login": "Login",
@@ -222,6 +257,10 @@ def render_user_table(users: list[dict[str, Any]]) -> list[str]:
             widths[field] = max(widths[field], len(str(row.get(field) or "")))
 
     def build_row(values: dict[str, Any]) -> str:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return "  ".join(
             str(values.get(field) or "").ljust(widths[field]) for field in OUTPUT_FIELDS
         )
@@ -235,6 +274,11 @@ def service_account_matches_query(
     service_account: dict[str, Any],
     query: Optional[str],
 ) -> bool:
+    """Service account matches query implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     text = str(query or "").strip().lower()
     if not text:
         return True
@@ -246,6 +290,7 @@ def service_account_matches_query(
 
 
 def team_matches_filters(team: dict[str, Any], args: argparse.Namespace) -> bool:
+    """Team matches filters implementation."""
     query = str(args.query or "").strip().lower()
     if query:
         haystacks = [
@@ -264,6 +309,7 @@ def paginate_teams(
     page: int,
     per_page: int,
 ) -> list[dict[str, Any]]:
+    """Paginate teams implementation."""
     start = (page - 1) * per_page
     end = start + per_page
     return teams[start:end]
@@ -273,6 +319,7 @@ def attach_team_members(
     teams: list[dict[str, Any]],
     client: Any,
 ) -> None:
+    """Attach team members implementation."""
     for team in teams:
         team_id = team.get("id")
         if not team_id:
@@ -290,6 +337,11 @@ def build_team_rows(
     client: Any,
     args: argparse.Namespace,
 ) -> list[dict[str, Any]]:
+    """Build team rows implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 268, 283, 294, 58
+
     raw_teams = client.iter_teams(
         query=args.query,
         page_size=max(args.per_page, DEFAULT_PAGE_SIZE),
@@ -303,6 +355,7 @@ def build_team_rows(
 
 
 def serialize_team_row(team: dict[str, Any]) -> dict[str, Any]:
+    """Serialize team row implementation."""
     row = {}
     for field in TEAM_OUTPUT_FIELDS:
         value = team.get(field)
@@ -314,11 +367,21 @@ def serialize_team_row(team: dict[str, Any]) -> dict[str, Any]:
 
 
 def render_team_json(teams: list[dict[str, Any]]) -> str:
+    """Render team json implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 329
+
     payload = [serialize_team_row(team) for team in teams]
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 
 def render_team_csv(teams: list[dict[str, Any]]) -> None:
+    """Render team csv implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 329
+
     writer = csv.DictWriter(sys.stdout, fieldnames=TEAM_OUTPUT_FIELDS)
     writer.writeheader()
     for team in teams:
@@ -328,6 +391,11 @@ def render_team_csv(teams: list[dict[str, Any]]) -> None:
 
 
 def render_team_table(teams: list[dict[str, Any]]) -> list[str]:
+    """Render team table implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 329, 378
+
     headers = {
         "id": "ID",
         "name": "Name",
@@ -348,6 +416,10 @@ def render_team_table(teams: list[dict[str, Any]]) -> list[str]:
             widths[field] = max(widths[field], len(str(row.get(field) or "")))
 
     def build_row(values: dict[str, Any]) -> str:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return "  ".join(
             str(values.get(field) or "").ljust(widths[field])
             for field in TEAM_OUTPUT_FIELDS
@@ -359,6 +431,11 @@ def render_team_table(teams: list[dict[str, Any]]) -> list[str]:
 
 
 def format_team_summary_line(team: dict[str, Any]) -> str:
+    """Format team summary line implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     parts = [
         "id=%s" % (team.get("id") or ""),
         "name=%s" % (team.get("name") or ""),
@@ -374,6 +451,11 @@ def format_team_summary_line(team: dict[str, Any]) -> str:
 
 
 def format_team_modify_summary_line(payload: dict[str, Any]) -> str:
+    """Format team modify summary line implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     parts = [
         "teamId=%s" % (payload.get("teamId") or ""),
         "name=%s" % (payload.get("name") or ""),
@@ -391,6 +473,11 @@ def format_team_modify_summary_line(payload: dict[str, Any]) -> str:
 
 
 def format_team_add_summary_line(payload: dict[str, Any]) -> str:
+    """Format team add summary line implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     parts = [
         "teamId=%s" % (payload.get("teamId") or ""),
         "name=%s" % (payload.get("name") or ""),
@@ -408,6 +495,7 @@ def format_team_add_summary_line(payload: dict[str, Any]) -> str:
 def serialize_service_account_row(
     service_account: dict[str, Any],
 ) -> dict[str, Any]:
+    """Serialize service account row implementation."""
     row = {}
     for field in SERVICE_ACCOUNT_OUTPUT_FIELDS:
         value = service_account.get(field)
@@ -419,6 +507,11 @@ def serialize_service_account_row(
 
 
 def render_service_account_json(service_accounts: list[dict[str, Any]]) -> str:
+    """Render service account json implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 443
+
     payload = [
         serialize_service_account_row(service_account)
         for service_account in service_accounts
@@ -427,6 +520,11 @@ def render_service_account_json(service_accounts: list[dict[str, Any]]) -> str:
 
 
 def render_service_account_csv(service_accounts: list[dict[str, Any]]) -> None:
+    """Render service account csv implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 443
+
     writer = csv.DictWriter(sys.stdout, fieldnames=SERVICE_ACCOUNT_OUTPUT_FIELDS)
     writer.writeheader()
     for service_account in service_accounts:
@@ -436,6 +534,11 @@ def render_service_account_csv(service_accounts: list[dict[str, Any]]) -> None:
 def render_service_account_table(
     service_accounts: list[dict[str, Any]],
 ) -> list[str]:
+    """Render service account table implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 443, 497
+
     headers = {
         "id": "ID",
         "name": "Name",
@@ -456,6 +559,10 @@ def render_service_account_table(
             widths[field] = max(widths[field], len(str(row.get(field) or "")))
 
     def build_row(values: dict[str, Any]) -> str:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return "  ".join(
             str(values.get(field) or "").ljust(widths[field])
             for field in SERVICE_ACCOUNT_OUTPUT_FIELDS
@@ -469,6 +576,11 @@ def render_service_account_table(
 
 
 def format_service_account_summary_line(service_account: dict[str, Any]) -> str:
+    """Format service account summary line implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 35, 49
+
     return " ".join(
         [
             "id=%s" % (service_account.get("id") or ""),
@@ -484,6 +596,7 @@ def format_service_account_summary_line(service_account: dict[str, Any]) -> str:
 
 
 def serialize_service_account_token_row(payload: dict[str, Any]) -> dict[str, Any]:
+    """Serialize service account token row implementation."""
     return {
         "serviceAccountId": str(payload.get("serviceAccountId") or ""),
         "name": str(payload.get("name") or ""),
@@ -493,6 +606,11 @@ def serialize_service_account_token_row(payload: dict[str, Any]) -> dict[str, An
 
 
 def render_service_account_token_json(payload: dict[str, Any]) -> str:
+    """Render service account token json implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 530
+
     return json.dumps(
         serialize_service_account_token_row(payload),
         indent=2,

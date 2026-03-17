@@ -33,6 +33,14 @@ class GrafanaDatasourceClient:
         verify_ssl: bool,
         transport: Optional[JsonHttpTransport] = None,
     ) -> None:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         self.base_url = base_url
         self.headers = dict(headers)
         self.timeout = timeout
@@ -51,6 +59,10 @@ class GrafanaDatasourceClient:
         method: str = "GET",
         payload: Optional[dict[str, Any]] = None,
     ) -> Any:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         try:
             return self.transport.request_json(
                 path=path,
@@ -64,12 +76,28 @@ class GrafanaDatasourceClient:
             raise GrafanaError(str(exc)) from exc
 
     def list_datasources(self) -> list[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 51
+
         data = self.request_json("/api/datasources")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected datasource list response from Grafana.")
         return [item for item in data if isinstance(item, dict)]
 
     def fetch_datasource_by_uid_if_exists(self, uid: str) -> Optional[dict[str, Any]]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 51
+
         try:
             data = self.request_json(
                 "/api/datasources/uid/%s" % parse.quote(str(uid), safe="")
@@ -83,6 +111,14 @@ class GrafanaDatasourceClient:
         return data
 
     def create_datasource(self, payload: dict[str, Any]) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 51
+
         data = self.request_json(
             "/api/datasources",
             method="POST",
@@ -93,6 +129,14 @@ class GrafanaDatasourceClient:
         return data
 
     def delete_datasource(self, datasource_id: Any) -> dict[str, Any]:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 51
+
         data = self.request_json(
             "/api/datasources/%s" % parse.quote(str(datasource_id), safe=""),
             method="DELETE",
@@ -105,6 +149,14 @@ class GrafanaDatasourceClient:
         return data
 
     def with_org_id(self, org_id: str) -> "GrafanaDatasourceClient":
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         headers = dict(self.headers)
         headers["X-Grafana-Org-Id"] = str(org_id)
         return GrafanaDatasourceClient(

@@ -147,6 +147,10 @@ def _extract_sql_features(query: str) -> dict[str, list[str]]:
 
 def _extract_features(datasource_family: str, query: str) -> dict[str, list[str]]:
     """Choose a parser strategy by datasource family."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 184
+    #   Downstream callees: 109, 130, 51, 67, 86
+
     family = _normalize_family("", datasource_family)
     if family in ("prometheus", "graphite", "victoriametrics"):
         return _extract_prometheus_features(query)
@@ -187,6 +191,10 @@ class QueryFeatureSet:
 
     def as_dict(self) -> dict[str, list[str]]:
         """Render feature fields in report-style mapping form."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         return {
             "metrics": list(self.metrics),
             "measurements": list(self.measurements),
@@ -218,6 +226,10 @@ class DependencyQueryRecord:
 
     def as_dict(self) -> dict[str, Any]:
         """Serialize one dependency row in a stable dict shape."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         return {
             "dashboardUid": self.dashboard_uid,
             "dashboardTitle": self.dashboard_title,
@@ -250,6 +262,10 @@ class DatasourceUsageSummary:
 
     def as_dict(self) -> dict[str, Any]:
         """Serialize one usage summary row."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         return {
             "datasource": self.datasource_identity,
             "family": self.family,
@@ -271,6 +287,10 @@ class OfflineDependencyReport:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the report as plain JSON-compatible mappings."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         return {
             "summary": dict(self.summary),
             "queries": [item.as_dict() for item in self.queries],
@@ -284,6 +304,10 @@ def build_dependency_rows_from_query_report(
     datasource_inventory: Iterable[Mapping[str, Any]] = (),
 ) -> OfflineDependencyReport:
     """Build a richer dependency report from raw query rows and inventory rows."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 168, 184, 51
+
     datasource_map = collect_datasource_reference_index(list(datasource_inventory))
     query_records = []
     usage = OrderedDict()

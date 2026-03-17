@@ -1,4 +1,4 @@
-//! Unwired staged alert sync helpers.
+//! Staged alert sync helpers.
 //!
 //! Purpose:
 //! - Stage alert-specific sync ownership and mutation policy before live wiring.
@@ -8,8 +8,11 @@ use crate::common::{message, Result};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 
+/// Constant for alert sync kind.
 pub const ALERT_SYNC_KIND: &str = "grafana-utils-alert-sync-plan";
+/// Constant for alert sync schema version.
 pub const ALERT_SYNC_SCHEMA_VERSION: i64 = 1;
+/// Constant for alert allowed managed fields.
 pub const ALERT_ALLOWED_MANAGED_FIELDS: &[&str] = &[
     "condition",
     "labels",
@@ -20,6 +23,7 @@ pub const ALERT_ALLOWED_MANAGED_FIELDS: &[&str] = &[
     "execErrState",
 ];
 
+/// Struct definition for AlertSyncAssessment.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AlertSyncAssessment {
     pub identity: String,
@@ -74,7 +78,12 @@ fn normalize_managed_fields(value: Option<&Value>) -> Result<Vec<String>> {
     Ok(managed_fields)
 }
 
+/// assess alert sync specs.
 pub fn assess_alert_sync_specs(alert_specs: &[Value]) -> Result<Value> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: bundle_preflight.rs:build_bundle_preflight_document, bundle_preflight_rust_tests.rs:assess_alert_sync_specs_reports_plan_only_and_blocked_states, sync.rs:run_sync_cli
+// Downstream callees: alert_sync.rs:normalize_managed_fields, alert_sync.rs:normalize_text, alert_sync.rs:require_object, common.rs:message
+
     let mut assessments = Vec::new();
     for raw_spec in alert_specs {
         let spec = require_object(Some(raw_spec), "Alert sync spec")?;

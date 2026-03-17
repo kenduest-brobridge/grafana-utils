@@ -171,23 +171,41 @@ pub(crate) use dashboard_screenshot::{
 #[cfg(test)]
 pub(crate) use dashboard_vars::extract_dashboard_variables;
 
+/// Constant for default url.
 pub const DEFAULT_URL: &str = "http://localhost:3000";
+/// Constant for default timeout.
 pub const DEFAULT_TIMEOUT: u64 = 30;
+/// Constant for default page size.
 pub const DEFAULT_PAGE_SIZE: usize = 500;
+/// Constant for default export dir.
 pub const DEFAULT_EXPORT_DIR: &str = "dashboards";
+/// Constant for raw export subdir.
 pub const RAW_EXPORT_SUBDIR: &str = "raw";
+/// Constant for prompt export subdir.
 pub const PROMPT_EXPORT_SUBDIR: &str = "prompt";
+/// Constant for default import message.
 pub const DEFAULT_IMPORT_MESSAGE: &str = "Imported by grafana-utils";
+/// Constant for default dashboard title.
 pub const DEFAULT_DASHBOARD_TITLE: &str = "dashboard";
+/// Constant for default folder title.
 pub const DEFAULT_FOLDER_TITLE: &str = "General";
+/// Constant for default folder uid.
 pub const DEFAULT_FOLDER_UID: &str = "general";
+/// Constant for default org id.
 pub const DEFAULT_ORG_ID: &str = "1";
+/// Constant for default org name.
 pub const DEFAULT_ORG_NAME: &str = "Main Org.";
+/// Constant for default unknown uid.
 pub const DEFAULT_UNKNOWN_UID: &str = "unknown";
+/// Constant for export metadata filename.
 pub const EXPORT_METADATA_FILENAME: &str = "export-metadata.json";
+/// Constant for tool schema version.
 pub const TOOL_SCHEMA_VERSION: i64 = 1;
+/// Constant for root index kind.
 pub const ROOT_INDEX_KIND: &str = "grafana-utils-dashboard-export-index";
+/// Constant for folder inventory filename.
 pub const FOLDER_INVENTORY_FILENAME: &str = "folders.json";
+/// Constant for datasource inventory filename.
 pub const DATASOURCE_INVENTORY_FILENAME: &str = "datasources.json";
 const BUILTIN_DATASOURCE_TYPES: &[&str] = &["__expr__", "grafana"];
 const BUILTIN_DATASOURCE_NAMES: &[&str] = &[
@@ -199,6 +217,7 @@ const BUILTIN_DATASOURCE_NAMES: &[&str] = &[
     "__expr__",
 ];
 
+/// Enum definition for FolderInventoryStatusKind.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum FolderInventoryStatusKind {
     Missing,
@@ -206,6 +225,7 @@ pub(crate) enum FolderInventoryStatusKind {
     Mismatch,
 }
 
+/// Struct definition for FolderInventoryStatus.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct FolderInventoryStatus {
     pub uid: String,
@@ -224,6 +244,10 @@ pub fn run_dashboard_cli_with_client(
     client: &JsonHttpClient,
     args: DashboardCliArgs,
 ) -> Result<()> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: common.rs:message, dashboard_export.rs:export_dashboards_with_client, dashboard_help.rs:render_inspect_export_help_full, dashboard_help.rs:render_inspect_live_help_full, dashboard_import.rs:diff_dashboards_with_client, dashboard_import.rs:import_dashboards_with_client, dashboard_list.rs:list_dashboards_with_client, dashboard_list.rs:list_data_sources_with_client, dashboard_screenshot.rs:capture_dashboard_screenshot
+
     match args.command {
         DashboardCommand::List(list_args) => {
             let _ = list_dashboards_with_client(client, &list_args)?;
@@ -286,6 +310,10 @@ pub fn run_dashboard_cli_with_client(
 ///
 /// Errors are surfaced directly to the CLI caller for consistent exit behavior.
 pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: common.rs:message, dashboard_cli_defs.rs:normalize_dashboard_cli_args, dashboard_help.rs:render_inspect_export_help_full, dashboard_help.rs:render_inspect_live_help_full, dashboard_import.rs:diff_dashboards_with_client, dashboard_list.rs:list_data_sources_with_client, dashboard_screenshot.rs:capture_dashboard_screenshot
+
     let args = normalize_dashboard_cli_args(args);
     match args.command {
         DashboardCommand::List(list_args) => {

@@ -50,10 +50,12 @@ from .parser import (
 
 
 def build_client(args):
+    """Build client implementation."""
     return build_dashboard_client(args)
 
 
 def build_export_index(datasource_records, datasources_file):
+    """Build export index implementation."""
     return {
         "kind": ROOT_INDEX_KIND,
         "schemaVersion": TOOL_SCHEMA_VERSION,
@@ -73,6 +75,7 @@ def build_export_index(datasource_records, datasources_file):
 
 
 def build_export_metadata(datasource_count, datasources_file):
+    """Build export metadata implementation."""
     return {
         "schemaVersion": TOOL_SCHEMA_VERSION,
         "kind": ROOT_INDEX_KIND,
@@ -86,6 +89,7 @@ def build_export_metadata(datasource_count, datasources_file):
 
 
 def build_all_orgs_export_index(items):
+    """Build all orgs export index implementation."""
     return {
         "kind": ROOT_INDEX_KIND,
         "schemaVersion": TOOL_SCHEMA_VERSION,
@@ -96,6 +100,7 @@ def build_all_orgs_export_index(items):
 
 
 def build_all_orgs_export_metadata(org_count, datasource_count):
+    """Build all orgs export metadata implementation."""
     return {
         "schemaVersion": TOOL_SCHEMA_VERSION,
         "kind": ROOT_INDEX_KIND,
@@ -109,6 +114,7 @@ def build_all_orgs_export_metadata(org_count, datasource_count):
 
 
 def build_export_records(client):
+    """Build export records implementation."""
     org = client.fetch_current_org()
     return [
         build_datasource_inventory_record(item, org)
@@ -117,12 +123,14 @@ def build_export_records(client):
 
 
 def build_all_orgs_output_dir(output_dir, org):
+    """Build all orgs output dir implementation."""
     org_id = sanitize_path_component(str(org.get("id") or "unknown"))
     org_name = sanitize_path_component(str(org.get("name") or "org"))
     return output_dir / ("org_%s_%s" % (org_id, org_name))
 
 
 def fetch_datasource_by_uid_if_exists(client, uid):
+    """Fetch datasource by uid if exists implementation."""
     if not uid:
         return None
     try:
@@ -140,12 +148,14 @@ def fetch_datasource_by_uid_if_exists(client, uid):
 
 
 def exporter_api_error_type():
+    """Exporter api error type implementation."""
     from ..dashboards.common import GrafanaApiError
 
     return GrafanaApiError
 
 
 def load_json_document(path):
+    """Load json document implementation."""
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
@@ -155,6 +165,7 @@ def load_json_document(path):
 
 
 def load_json_object_argument(value, label):
+    """Load json object argument implementation."""
     if value is None:
         return None
     try:
@@ -167,6 +178,7 @@ def load_json_object_argument(value, label):
 
 
 def merge_json_object_fields(base, extra, label):
+    """Merge json object fields implementation."""
     if extra is None:
         return dict(base or {})
     merged = dict(base or {})
@@ -181,6 +193,7 @@ def merge_json_object_fields(base, extra, label):
 
 
 def parse_http_header_arguments(values):
+    """Parse http header arguments implementation."""
     json_data = {}
     secure_json_data = {}
     for index, item in enumerate(values or [], 1):
@@ -202,6 +215,7 @@ def parse_http_header_arguments(values):
 
 
 def load_import_bundle(import_dir):
+    """Load import bundle implementation."""
     if not import_dir.exists():
         raise GrafanaError("Import directory does not exist: %s" % import_dir)
     if not import_dir.is_dir():
@@ -268,6 +282,7 @@ def load_import_bundle(import_dir):
 
 
 def resolve_export_org_id(bundle):
+    """Resolve export org id implementation."""
     org_ids = set()
     index_document = bundle.get("index")
     if isinstance(index_document, dict):
@@ -292,6 +307,7 @@ def resolve_export_org_id(bundle):
 
 
 def resolve_export_org_name(bundle):
+    """Resolve export org name implementation."""
     org_names = set()
     index_document = bundle.get("index")
     if isinstance(index_document, dict):
@@ -316,6 +332,7 @@ def resolve_export_org_name(bundle):
 
 
 def _normalize_org_id(org):
+    """Internal helper for normalize org id."""
     if not isinstance(org, dict):
         return None
     value = org.get("id")
@@ -326,12 +343,14 @@ def _normalize_org_id(org):
 
 
 def _clone_import_args(args, **overrides):
+    """Internal helper for clone import args."""
     values = dict(vars(args))
     values.update(overrides)
     return argparse.Namespace(**values)
 
 
 def _resolve_existing_orgs_by_id(client):
+    """Internal helper for resolve existing orgs by id."""
     orgs_by_id = {}
     for item in client.list_orgs():
         org_id = _normalize_org_id(item)
@@ -341,6 +360,7 @@ def _resolve_existing_orgs_by_id(client):
 
 
 def _resolve_created_org_id(created_payload):
+    """Internal helper for resolve created org id."""
     if not isinstance(created_payload, dict):
         return None
     org_id = created_payload.get("orgId")
@@ -353,10 +373,12 @@ def _resolve_created_org_id(created_payload):
 
 
 def create_organization(client, name):
+    """Create organization implementation."""
     return client.create_organization({"name": name})
 
 
 def _discover_org_export_dirs(import_dir):
+    """Internal helper for discover org export dirs."""
     if not import_dir.exists():
         raise GrafanaError("Import directory does not exist: %s" % import_dir)
     if not import_dir.is_dir():
@@ -387,6 +409,7 @@ def _discover_org_export_dirs(import_dir):
 
 
 def build_effective_import_client(args, client):
+    """Build effective import client implementation."""
     org_id = getattr(args, "org_id", None)
     auth_header = client.headers.get("Authorization", "")
     if org_id and not auth_header.startswith("Basic "):
@@ -400,6 +423,7 @@ def build_effective_import_client(args, client):
 
 
 def validate_export_org_match(args, client, bundle):
+    """Validate export org match implementation."""
     target_org = client.fetch_current_org()
     target_org_id = str(target_org.get("id") or "").strip()
     if not target_org_id:
@@ -422,6 +446,7 @@ def validate_export_org_match(args, client, bundle):
 
 
 def build_existing_datasource_lookups(client):
+    """Build existing datasource lookups implementation."""
     by_uid = {}
     by_name = {}
     for datasource in client.list_datasources():
@@ -435,6 +460,7 @@ def build_existing_datasource_lookups(client):
 
 
 def resolve_datasource_match(record, lookups):
+    """Resolve datasource match implementation."""
     uid = str(record.get("uid") or "")
     name = str(record.get("name") or "")
     if uid:
@@ -453,6 +479,7 @@ def resolve_datasource_match(record, lookups):
 
 
 def determine_import_mode(args):
+    """Determine import mode implementation."""
     if bool(getattr(args, "update_existing_only", False)):
         return "update-or-skip-missing"
     if bool(getattr(args, "replace_existing", False)):
@@ -461,6 +488,7 @@ def determine_import_mode(args):
 
 
 def determine_datasource_action(args, record, match):
+    """Determine datasource action implementation."""
     state = match["state"]
     existing = match.get("target")
     if state == "ambiguous":
@@ -491,6 +519,7 @@ def determine_datasource_action(args, record, match):
 
 
 def build_import_payload(record, existing=None):
+    """Build import payload implementation."""
     payload = {
         "name": record.get("name") or "",
         "type": record.get("type") or "",
@@ -509,6 +538,11 @@ def build_import_payload(record, existing=None):
 
 
 def parse_import_dry_run_columns(value):
+    """Parse import dry run columns implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if value is None:
         return None
     columns = []
@@ -532,6 +566,11 @@ def parse_import_dry_run_columns(value):
 
 
 def render_import_dry_run_table(records, include_header, selected_columns=None):
+    """Render import dry run table implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1561
+    #   Downstream callees: 580
+
     columns = list(
         selected_columns
         or ["uid", "name", "type", "destination", "action", "orgId", "file"]
@@ -547,6 +586,10 @@ def render_import_dry_run_table(records, include_header, selected_columns=None):
             widths[index] = max(widths[index], len(value))
 
     def render_row(values):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return "  ".join(values[index].ljust(widths[index]) for index in range(len(values)))
 
     lines = []
@@ -559,6 +602,11 @@ def render_import_dry_run_table(records, include_header, selected_columns=None):
 
 
 def render_import_dry_run_json(mode, records, target_org_id):
+    """Render import dry run json implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1561
+    #   Downstream callees: 無
+
     summary = {
         "datasourceCount": len(records),
         "createCount": len([item for item in records if item["action"] == "would-create"]),
@@ -597,6 +645,7 @@ def render_import_dry_run_json(mode, records, target_org_id):
 
 
 def render_data_source_csv(datasources):
+    """Render data source csv implementation."""
     writer = csv.DictWriter(
         sys.stdout,
         fieldnames=["uid", "name", "type", "url", "isDefault"],
@@ -608,6 +657,7 @@ def render_data_source_csv(datasources):
 
 
 def render_data_source_json(datasources):
+    """Render data source json implementation."""
     return json.dumps(
         [build_data_source_record(item) for item in datasources],
         indent=2,
@@ -616,6 +666,11 @@ def render_data_source_json(datasources):
 
 
 def build_add_datasource_spec(args):
+    """Build add datasource spec implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 880
+    #   Downstream callees: 167, 180, 195
+
     spec = {
         "name": args.name,
         "type": args.type,
@@ -679,6 +734,11 @@ def build_add_datasource_spec(args):
 
 
 def build_modify_datasource_updates(args):
+    """Build modify datasource updates implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 934
+    #   Downstream callees: 167, 180, 195
+
     spec = {}
     if getattr(args, "set_url", None) is not None:
         spec["url"] = args.set_url
@@ -736,6 +796,7 @@ def build_modify_datasource_updates(args):
 
 
 def split_live_add_supported_spec(spec):
+    """Split live add supported spec implementation."""
     safe_spec = {}
     extra_top_level = {}
     for key, value in spec.items():
@@ -747,6 +808,7 @@ def split_live_add_supported_spec(spec):
 
 
 def build_modify_datasource_payload(existing, updates):
+    """Build modify datasource payload implementation."""
     payload = {
         "id": existing.get("id"),
         "uid": existing.get("uid") or "",
@@ -786,6 +848,7 @@ def build_modify_datasource_payload(existing, updates):
 
 
 def plan_modify_datasource(client, uid, updates):
+    """Plan modify datasource implementation."""
     existing = fetch_datasource_by_uid_if_exists(client, uid)
     if existing is None:
         return {
@@ -804,6 +867,11 @@ def plan_modify_datasource(client, uid, updates):
 
 
 def render_modify_dry_run_json(record):
+    """Render modify dry run json implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 934
+    #   Downstream callees: 無
+
     return json.dumps(
         {
             "items": [record],
@@ -819,6 +887,11 @@ def render_modify_dry_run_json(record):
 
 
 def _validate_live_mutation_dry_run_args(args, verb):
+    """Internal helper for validate live mutation dry run args."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 880, 934, 994
+    #   Downstream callees: 無
+
     if getattr(args, "table", False) and not args.dry_run:
         raise GrafanaError("--table is only supported with --dry-run for datasource %s." % verb)
     if getattr(args, "json", False) and not args.dry_run:
@@ -833,6 +906,11 @@ def _validate_live_mutation_dry_run_args(args, verb):
 
 
 def add_datasource(args):
+    """Add datasource implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1697
+    #   Downstream callees: 52, 656, 778, 865
+
     _validate_live_mutation_dry_run_args(args, "add")
     spec = build_add_datasource_spec(args)
     safe_spec, extra_top_level = split_live_add_supported_spec(spec)
@@ -886,6 +964,11 @@ def add_datasource(args):
 
 
 def modify_datasource(args):
+    """Modify datasource implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1697
+    #   Downstream callees: 52, 720, 830, 849, 865
+
     _validate_live_mutation_dry_run_args(args, "modify")
     updates = build_modify_datasource_updates(args)
     client = build_client(args)
@@ -945,6 +1028,7 @@ def modify_datasource(args):
 
 
 def delete_datasource(args):
+    """Delete datasource implementation."""
     _validate_live_mutation_dry_run_args(args, "delete")
     client = build_client(args)
     result = delete_live_datasource(
@@ -994,6 +1078,11 @@ def delete_datasource(args):
 
 
 def list_datasources(args):
+    """List datasources implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 116, 1697, 448
+    #   Downstream callees: 334, 52, 635, 647
+
     client = build_client(args)
     all_orgs = bool(getattr(args, "all_orgs", False))
     org_id = getattr(args, "org_id", None)
@@ -1051,6 +1140,11 @@ def list_datasources(args):
 
 
 def export_datasources(args):
+    """Export datasources implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1697
+    #   Downstream callees: 102, 116, 125, 334, 52, 57, 77, 91
+
     client = build_client(args)
     auth_header = client.headers.get("Authorization", "")
     all_orgs = bool(getattr(args, "all_orgs", False))
@@ -1176,12 +1270,14 @@ def export_datasources(args):
 
 
 def _serialize_datasource_diff_record(record):
+    """Internal helper for serialize datasource diff record."""
     if record is None:
         return "{}"
     return json.dumps(record, sort_keys=True, indent=2)
 
 
 def _print_datasource_unified_diff(remote_record, local_record, remote_label, local_label):
+    """Internal helper for print datasource unified diff."""
     remote_lines = _serialize_datasource_diff_record(remote_record).splitlines(True)
     local_lines = _serialize_datasource_diff_record(local_record).splitlines(True)
     for line in difflib.unified_diff(
@@ -1196,6 +1292,7 @@ def _print_datasource_unified_diff(remote_record, local_record, remote_label, lo
 
 
 def diff_datasources(args):
+    """Diff datasources implementation."""
     client = build_client(args)
     bundle = load_datasource_diff_bundle(Path(args.diff_dir))
     live_records = build_live_datasource_diff_records(client)
@@ -1248,6 +1345,11 @@ def diff_datasources(args):
 
 
 def _resolve_multi_org_import_targets(args, client):
+    """Internal helper for resolve multi org import targets."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1446
+    #   Downstream callees: 217, 284, 309, 352, 362, 375, 380
+
     import_dir = Path(args.import_dir)
     selected_org_ids = set(
         str(item).strip()
@@ -1345,6 +1447,7 @@ def _resolve_multi_org_import_targets(args, client):
 
 
 def _render_routed_datasource_import_table(args, targets):
+    """Internal helper for render routed datasource import table."""
     headers = [
         "SOURCE_ORG_ID",
         "SOURCE_ORG_NAME",
@@ -1368,6 +1471,10 @@ def _render_routed_datasource_import_table(args, targets):
             widths[index] = max(widths[index], len(value))
 
     def render_row(values):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return "  ".join(
             [
                 "%-*s" % (widths[index], value)
@@ -1385,6 +1492,11 @@ def _render_routed_datasource_import_table(args, targets):
 
 
 def _run_import_datasources_by_export_org(args, client):
+    """Internal helper for run import datasources by export org."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1690
+    #   Downstream callees: 1303, 1401, 1561, 345
+
     auth_header = client.headers.get("Authorization", "")
     if not auth_header.startswith("Basic "):
         raise GrafanaError(
@@ -1499,6 +1611,11 @@ def _run_import_datasources_by_export_org(args, client):
 
 
 def _run_import_datasources_for_single_org(args):
+    """Internal helper for run import datasources for single org."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1446, 1690
+    #   Downstream callees: 217, 411, 425, 448, 462, 481, 490, 52, 521, 564, 596
+
     if getattr(args, "table", False) and not args.dry_run:
         raise GrafanaError("--table is only supported with --dry-run for datasource import.")
     if getattr(args, "json", False) and not args.dry_run:
@@ -1627,12 +1744,22 @@ def _run_import_datasources_for_single_org(args):
 
 
 def import_datasources(args):
+    """Import datasources implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1697
+    #   Downstream callees: 1446, 1561, 52
+
     if bool(getattr(args, "use_export_org", False)):
         return _run_import_datasources_by_export_org(args, build_client(args))
     return _run_import_datasources_for_single_org(args)
 
 
 def dispatch_datasource_command(args):
+    """Dispatch datasource command implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 1044, 1102, 1250, 1690, 880, 934, 994
+
     if args.command == "list":
         return list_datasources(args)
     if args.command == "export":

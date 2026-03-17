@@ -17,6 +17,7 @@ use super::{
     DEFAULT_UNKNOWN_UID,
 };
 
+/// attach dashboard folder paths with request.
 pub(crate) fn attach_dashboard_folder_paths_with_request<F>(
     mut request_json: F,
     summaries: &[Map<String, Value>],
@@ -59,6 +60,7 @@ where
         .collect())
 }
 
+/// fetch current org with request.
 pub(crate) fn fetch_current_org_with_request<F>(mut request_json: F) -> Result<Map<String, Value>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -72,6 +74,7 @@ where
     }
 }
 
+/// Purpose: implementation note.
 pub(crate) fn list_orgs_with_request<F>(mut request_json: F) -> Result<Vec<Map<String, Value>>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -89,6 +92,7 @@ where
     }
 }
 
+/// attach dashboard org metadata.
 pub(crate) fn attach_dashboard_org_metadata(
     summaries: &[Map<String, Value>],
     org: &Map<String, Value>,
@@ -114,12 +118,14 @@ fn dashboard_org_id_cell(summary: &Map<String, Value>) -> Option<String> {
     })
 }
 
+/// org id value.
 pub(crate) fn org_id_value(org: &Map<String, Value>) -> Result<i64> {
     org.get("id")
         .and_then(Value::as_i64)
         .ok_or_else(|| message("Grafana org payload did not include a usable id."))
 }
 
+/// format dashboard summary line.
 #[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn format_dashboard_summary_line(summary: &Map<String, Value>) -> String {
     let uid = string_field(summary, "uid", DEFAULT_UNKNOWN_UID);
@@ -185,6 +191,10 @@ impl DashboardListColumn {
 }
 
 fn parse_dashboard_list_column(column: &str) -> Option<DashboardListColumn> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: dashboard_list.rs:resolve_dashboard_list_columns
+// Downstream callees: 無
+
     match column {
         "uid" => Some(DashboardListColumn::Uid),
         "name" => Some(DashboardListColumn::Name),
@@ -318,6 +328,7 @@ fn summaries_include_source_uids(summaries: &[Map<String, Value>]) -> bool {
         .any(|summary| summary.contains_key("sourceUids"))
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_dashboard_summary_table(
     summaries: &[Map<String, Value>],
     output_columns: &[String],
@@ -357,6 +368,7 @@ pub(crate) fn render_dashboard_summary_table(
     lines
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_dashboard_summary_csv(
     summaries: &[Map<String, Value>],
     output_columns: &[String],
@@ -383,6 +395,7 @@ pub(crate) fn render_dashboard_summary_csv(
     lines
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_dashboard_summary_json(
     summaries: &[Map<String, Value>],
     output_columns: &[String],
@@ -451,6 +464,7 @@ fn build_data_source_record(datasource: &Map<String, Value>) -> Vec<String> {
     ]
 }
 
+/// format data source line.
 #[cfg_attr(not(test), allow(dead_code))]
 pub(crate) fn format_data_source_line(datasource: &Map<String, Value>) -> String {
     let row = build_data_source_record(datasource);
@@ -460,6 +474,7 @@ pub(crate) fn format_data_source_line(datasource: &Map<String, Value>) -> String
     )
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_data_source_table(
     datasources: &[Map<String, Value>],
     include_header: bool,
@@ -495,6 +510,7 @@ pub(crate) fn render_data_source_table(
     lines
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_data_source_csv(datasources: &[Map<String, Value>]) -> Vec<String> {
     let mut lines = vec!["uid,name,type,url,isDefault".to_string()];
     lines.extend(datasources.iter().map(|datasource| {
@@ -513,6 +529,7 @@ pub(crate) fn render_data_source_csv(datasources: &[Map<String, Value>]) -> Vec<
     lines
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_data_source_json(datasources: &[Map<String, Value>]) -> Value {
     Value::Array(
         datasources
@@ -652,6 +669,7 @@ fn resolve_datasource_source_uid(
     }
 }
 
+/// collect dashboard source metadata.
 pub(crate) fn collect_dashboard_source_metadata(
     payload: &Value,
     datasource_catalog: &super::dashboard_prompt::DatasourceCatalog,
@@ -778,6 +796,7 @@ fn render_dashboard_list_output(
     Ok(summaries.len())
 }
 
+/// Purpose: implementation note.
 pub(crate) fn list_dashboards_with_request<F>(mut request_json: F, args: &ListArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -801,6 +820,10 @@ where
     render_dashboard_list_output(&summaries, args)
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn list_dashboards_with_client(client: &JsonHttpClient, args: &ListArgs) -> Result<usize> {
     list_dashboards_with_request(
         |method, path, params, payload| client.request_json(method, path, params, payload),
@@ -808,6 +831,7 @@ pub fn list_dashboards_with_client(client: &JsonHttpClient, args: &ListArgs) -> 
     )
 }
 
+/// Purpose: implementation note.
 pub(crate) fn list_dashboards_with_org_clients(args: &ListArgs) -> Result<usize> {
     let admin_client = build_http_client(&args.common)?;
     let orgs = if args.all_orgs {
@@ -854,6 +878,7 @@ pub(crate) fn list_dashboards_with_org_clients(args: &ListArgs) -> Result<usize>
     render_dashboard_list_output(&summaries, args)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn list_data_sources_with_request<F>(
     mut request_json: F,
     args: &ListDataSourcesArgs,
@@ -883,6 +908,10 @@ where
     Ok(datasources.len())
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn list_data_sources_with_client(
     client: &JsonHttpClient,
     args: &ListDataSourcesArgs,

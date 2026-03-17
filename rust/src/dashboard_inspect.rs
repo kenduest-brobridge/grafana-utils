@@ -25,12 +25,18 @@ use super::dashboard_inspect_render::{
 };
 use super::*;
 
+/// Constant for datasource family prometheus.
 pub(crate) const DATASOURCE_FAMILY_PROMETHEUS: &str = "prometheus";
+/// Constant for datasource family loki.
 pub(crate) const DATASOURCE_FAMILY_LOKI: &str = "loki";
+/// Constant for datasource family flux.
 pub(crate) const DATASOURCE_FAMILY_FLUX: &str = "flux";
+/// Constant for datasource family sql.
 pub(crate) const DATASOURCE_FAMILY_SQL: &str = "sql";
+/// Constant for datasource family unknown.
 pub(crate) const DATASOURCE_FAMILY_UNKNOWN: &str = "unknown";
 
+/// Struct definition for QueryAnalysis.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct QueryAnalysis {
     pub(crate) metrics: Vec<String>,
@@ -38,6 +44,7 @@ pub(crate) struct QueryAnalysis {
     pub(crate) buckets: Vec<String>,
 }
 
+/// Struct definition for QueryExtractionContext.
 pub(crate) struct QueryExtractionContext<'a> {
     pub(crate) panel: &'a Map<String, Value>,
     pub(crate) target: &'a Map<String, Value>,
@@ -241,6 +248,7 @@ fn summarize_datasource_inventory_usage(
     (reference_count, dashboards.len())
 }
 
+/// Purpose: implementation note.
 pub(crate) fn resolve_query_analyzer_family(context: &QueryExtractionContext<'_>) -> &'static str {
     for reference in [
         context.target.get("datasource"),
@@ -284,6 +292,7 @@ pub(crate) fn resolve_query_analyzer_family(context: &QueryExtractionContext<'_>
     DATASOURCE_FAMILY_UNKNOWN
 }
 
+/// Purpose: implementation note.
 pub(crate) fn dispatch_query_analysis(context: &QueryExtractionContext<'_>) -> QueryAnalysis {
     match resolve_query_analyzer_family(context) {
         DATASOURCE_FAMILY_PROMETHEUS => dashboard_inspect_analyzer_prometheus::analyze_query(
@@ -369,6 +378,7 @@ fn datasource_type_from_reference(reference: &Value) -> Option<String> {
         .map(|value| datasource_type_alias(value).to_string())
 }
 
+/// extract query field and text.
 pub(crate) fn extract_query_field_and_text(target: &Map<String, Value>) -> (String, String) {
     for key in [
         "expr",
@@ -441,6 +451,7 @@ fn extract_metric_names(query_text: &str) -> Vec<String> {
     values.into_iter().collect()
 }
 
+/// extract prometheus metric names.
 pub(crate) fn extract_prometheus_metric_names(query_text: &str) -> Vec<String> {
     if query_text.trim().is_empty() {
         return Vec::new();
@@ -554,6 +565,7 @@ pub(crate) fn extract_prometheus_metric_names(query_text: &str) -> Vec<String> {
     values.into_iter().collect()
 }
 
+/// extract query measurements.
 pub(crate) fn extract_query_measurements(
     target: &Map<String, Value>,
     query_text: &str,
@@ -577,6 +589,7 @@ pub(crate) fn extract_query_measurements(
     values.into_iter().collect()
 }
 
+/// extract query buckets.
 pub(crate) fn extract_query_buckets(target: &Map<String, Value>, query_text: &str) -> Vec<String> {
     let mut values = std::collections::BTreeSet::new();
     if let Some(bucket) = target.get("bucket").and_then(Value::as_str) {
@@ -594,6 +607,7 @@ pub(crate) fn extract_query_buckets(target: &Map<String, Value>, query_text: &st
     values.into_iter().collect()
 }
 
+/// extract flux pipeline functions.
 pub(crate) fn extract_flux_pipeline_functions(query_text: &str) -> Vec<String> {
     let mut values = Vec::new();
     if let Some(value) = quoted_captures(query_text, r#"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*\("#)
@@ -645,6 +659,7 @@ fn normalize_sql_identifier(value: &str) -> String {
         .join(".")
 }
 
+/// extract sql source references.
 pub(crate) fn extract_sql_source_references(query_text: &str) -> Vec<String> {
     let query_text = strip_sql_comments(query_text);
     if query_text.trim().is_empty() {
@@ -670,6 +685,7 @@ pub(crate) fn extract_sql_source_references(query_text: &str) -> Vec<String> {
     values
 }
 
+/// extract sql query shape hints.
 pub(crate) fn extract_sql_query_shape_hints(query_text: &str) -> Vec<String> {
     let lowered = strip_sql_comments(query_text).to_ascii_lowercase();
     let patterns = [
@@ -796,6 +812,7 @@ fn collect_query_report_rows(
     }
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_export_inspection_query_report(
     import_dir: &Path,
 ) -> Result<ExportInspectionQueryReport> {
@@ -849,6 +866,7 @@ pub(crate) fn build_export_inspection_query_report(
     ))
 }
 
+/// apply query report filters.
 pub(crate) fn apply_query_report_filters(
     mut report: ExportInspectionQueryReport,
     datasource_filter: Option<&str>,
@@ -881,6 +899,7 @@ pub(crate) fn apply_query_report_filters(
     report
 }
 
+/// validate inspect export report args.
 pub(crate) fn validate_inspect_export_report_args(args: &InspectExportArgs) -> Result<()> {
     let report_format = effective_inspect_report_format(args);
     if report_format.is_none() {
@@ -960,6 +979,7 @@ fn effective_inspect_table(args: &InspectExportArgs) -> bool {
     args.table || matches!(args.output_format, Some(InspectOutputFormat::Table))
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_export_inspection_summary(
     import_dir: &Path,
 ) -> Result<ExportInspectionSummary> {
@@ -1122,6 +1142,7 @@ pub(crate) fn build_export_inspection_summary(
     })
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_export_inspection_summary_rows(
     summary: &ExportInspectionSummary,
 ) -> Vec<Vec<String>> {
@@ -1156,6 +1177,7 @@ pub(crate) fn build_export_inspection_summary_rows(
     rows
 }
 
+/// analyze export dir.
 pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
     validate_inspect_export_report_args(args)?;
     if let Some(report_format) = effective_inspect_report_format(args) {
@@ -1598,6 +1620,7 @@ fn prepare_inspect_live_import_dir(temp_root: &Path, args: &InspectLiveArgs) -> 
     Ok(inspect_raw_dir)
 }
 
+/// inspect live dashboards with request.
 pub(crate) fn inspect_live_dashboards_with_request<F>(
     mut request_json: F,
     args: &InspectLiveArgs,

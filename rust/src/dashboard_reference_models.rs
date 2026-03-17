@@ -1,7 +1,7 @@
 //! Typed reference shapes for dashboard inspection and dependency workflows.
 //!
 //! These structs are intentionally conservative and independent from command
-//! execution. Workers can wire them into Rust Rust dashboard analyzers later.
+//! execution. Workers can wire them into dashboard analyzers later.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -15,6 +15,7 @@ fn normalize_text(value: Option<&Value>) -> String {
     }
 }
 
+/// Struct definition for DatasourceReference.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DatasourceReference {
     pub uid: String,
@@ -36,7 +37,12 @@ pub struct DatasourceReference {
 }
 
 impl DatasourceReference {
+    /// from value.
     pub fn from_value(value: &Value) -> Option<Self> {
+    // Call graph (hierarchy): this function is used in related modules.
+    // Upstream callers: 無
+    // Downstream callees: dashboard_reference_models.rs:normalize_text
+
         let object = value.as_object()?;
         let uid = normalize_text(object.get("uid").or_else(|| object.get("identity")));
         let name = normalize_text(object.get("name"));
@@ -58,6 +64,7 @@ impl DatasourceReference {
         })
     }
 
+    /// identity.
     pub fn identity(&self) -> &str {
         if !self.uid.is_empty() {
             &self.uid
@@ -67,6 +74,7 @@ impl DatasourceReference {
     }
 }
 
+/// Struct definition for DashboardReference.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DashboardReference {
     pub uid: String,
@@ -82,7 +90,12 @@ pub struct DashboardReference {
 }
 
 impl DashboardReference {
+    /// from value.
     pub fn from_value(value: &Value) -> Option<Self> {
+    // Call graph (hierarchy): this function is used in related modules.
+    // Upstream callers: 無
+    // Downstream callees: dashboard_reference_models.rs:normalize_text
+
         let object = value.as_object()?;
         let uid = normalize_text(object.get("uid"));
         let title = normalize_text(object.get("title"));
@@ -114,6 +127,7 @@ impl DashboardReference {
     }
 }
 
+/// Struct definition for PanelReference.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PanelReference {
     pub dashboard_uid: String,
@@ -128,6 +142,7 @@ pub struct PanelReference {
     pub file: String,
 }
 
+/// Struct definition for DashboardQueryReference.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DashboardQueryReference {
     pub dashboard_uid: String,
@@ -155,6 +170,7 @@ pub struct DashboardQueryReference {
     pub query: String,
 }
 
+/// Struct definition for QueryFeatureSet.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryFeatureSet {
     #[serde(default)]
@@ -168,7 +184,12 @@ pub struct QueryFeatureSet {
 }
 
 impl QueryFeatureSet {
+    /// blank.
     pub fn blank() -> Self {
+    // Call graph (hierarchy): this function is used in related modules.
+    // Upstream callers: 無
+    // Downstream callees: 無
+
         Self {
             metrics: Vec::new(),
             measurements: Vec::new(),
@@ -178,12 +199,14 @@ impl QueryFeatureSet {
     }
 }
 
+/// Struct definition for QueryAnalysisRow.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryAnalysisRow {
     pub query: DashboardQueryReference,
     pub feature: QueryFeatureSet,
 }
 
+/// Struct definition for DashboardDependencySummary.
 #[derive(Debug, Clone)]
 pub struct DashboardDependencySummary {
     pub datasource_identity: String,
@@ -194,6 +217,10 @@ pub struct DashboardDependencySummary {
     pub query_fields: Vec<String>,
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn normalize_family_name(raw_type: &str) -> String {
     let normalized = raw_type.trim().to_lowercase();
     let aliases = vec![
@@ -216,7 +243,15 @@ pub fn normalize_family_name(raw_type: &str) -> String {
     }
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_query_reference_payload(row: &Value) -> Option<DashboardQueryReference> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: dashboard_reference_models.rs:normalize_family_name, dashboard_reference_models.rs:normalize_text
+
     let object = row.as_object()?;
     let dashboard_uid = normalize_text(object.get("dashboardUid"));
     if dashboard_uid.is_empty() {
@@ -260,6 +295,7 @@ pub fn build_query_reference_payload(row: &Value) -> Option<DashboardQueryRefere
     })
 }
 
+/// dedupe strings.
 pub fn dedupe_strings(values: &[String]) -> Vec<String> {
     let mut result = Vec::new();
     let mut seen = BTreeMap::new();
@@ -273,9 +309,17 @@ pub fn dedupe_strings(values: &[String]) -> Vec<String> {
     result
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_dependency_lookup(
     datasource_inventory: &[Value],
 ) -> BTreeMap<String, DatasourceReference> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: dashboard_reference_models.rs:identity
+
     let mut lookup = BTreeMap::new();
     for value in datasource_inventory {
         let Some(reference) = DatasourceReference::from_value(value) else {

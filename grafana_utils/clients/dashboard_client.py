@@ -23,6 +23,14 @@ class GrafanaClient:
         verify_ssl: bool,
         transport: Optional[JsonHttpTransport] = None,
     ) -> None:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         self.base_url = base_url
         self.headers = dict(headers)
         self.timeout = timeout
@@ -56,6 +64,10 @@ class GrafanaClient:
 
     def iter_dashboard_summaries(self, page_size: int) -> list[dict[str, Any]]:
         """List dashboards through Grafana search pagination and deduplicate by UID."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 41
+
         dashboards: list[dict[str, Any]] = []
         seen_uids: set[str] = set()
         page = 1
@@ -85,6 +97,10 @@ class GrafanaClient:
 
     def fetch_folder_if_exists(self, uid: str) -> Optional[dict[str, Any]]:
         """Fetch one folder payload or return None when the folder UID is missing."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 41
+
         try:
             data = self.request_json(f"/api/folders/{parse.quote(uid, safe='')}")
         except GrafanaApiError as exc:
@@ -102,6 +118,10 @@ class GrafanaClient:
         parent_uid: Optional[str] = None,
     ) -> dict[str, Any]:
         """Create one folder through POST /api/folders."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 41
+
         payload: dict[str, Any] = {"uid": uid, "title": title}
         if parent_uid:
             payload["parentUid"] = parent_uid
@@ -116,6 +136,10 @@ class GrafanaClient:
 
     def fetch_dashboard(self, uid: str) -> dict[str, Any]:
         """Fetch the full dashboard wrapper for a single Grafana UID."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 134
+
         data = self.fetch_dashboard_if_exists(uid)
         if data is None:
             raise GrafanaApiError(
@@ -142,6 +166,10 @@ class GrafanaClient:
 
     def import_dashboard(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Create or update a dashboard through POST /api/dashboards/db."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 41
+
         data = self.request_json(
             "/api/dashboards/db",
             method="POST",
@@ -153,6 +181,10 @@ class GrafanaClient:
 
     def list_datasources(self) -> list[dict[str, Any]]:
         """List datasource objects used when building prompt-style exports."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 41
+
         data = self.request_json("/api/datasources")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected datasource list response from Grafana.")
@@ -160,6 +192,10 @@ class GrafanaClient:
 
     def fetch_current_org(self) -> dict[str, Any]:
         """Fetch the current Grafana organization for the authenticated caller."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 41
+
         data = self.request_json("/api/org")
         if not isinstance(data, dict):
             raise GrafanaError("Unexpected current org response from Grafana.")
@@ -167,6 +203,10 @@ class GrafanaClient:
 
     def list_orgs(self) -> list[dict[str, Any]]:
         """List Grafana organizations visible to the current authenticated caller."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 41
+
         data = self.request_json("/api/orgs")
         if not isinstance(data, list):
             raise GrafanaError("Unexpected org list response from Grafana.")
@@ -174,6 +214,10 @@ class GrafanaClient:
 
     def create_organization(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Create one Grafana organization through POST /api/orgs."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 41
+
         data = self.request_json(
             "/api/orgs",
             method="POST",
@@ -185,6 +229,10 @@ class GrafanaClient:
 
     def with_org_id(self, org_id: str) -> "GrafanaClient":
         """Return a new client scoped to one explicit Grafana organization."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         headers = dict(self.headers)
         headers["X-Grafana-Org-Id"] = str(org_id)
         return GrafanaClient(

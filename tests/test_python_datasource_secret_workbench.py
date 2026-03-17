@@ -11,11 +11,11 @@ GrafanaError = importlib.import_module("grafana_utils.dashboard_cli").GrafanaErr
 
 
 class DatasourceSecretWorkbenchTests(unittest.TestCase):
-    def test_module_parses_as_python39_syntax(self):
+    def test_datasource_secret_module_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_build_datasource_secret_plan_fails_for_missing_placeholder_value(self):
+    def test_datasource_secret_build_datasource_secret_plan_fails_for_missing_placeholder_value(self):
         with self.assertRaisesRegex(
             GrafanaError,
             "Missing datasource secret placeholder 'metrics-token'",
@@ -32,7 +32,7 @@ class DatasourceSecretWorkbenchTests(unittest.TestCase):
                 {},
             )
 
-    def test_collect_secret_placeholders_rejects_opaque_secret_replay(self):
+    def test_datasource_secret_collect_secret_placeholders_rejects_opaque_secret_replay(self):
         with self.assertRaisesRegex(
             GrafanaError,
             "opaque replay is not allowed",
@@ -41,7 +41,7 @@ class DatasourceSecretWorkbenchTests(unittest.TestCase):
                 {"basicAuthPassword": "already-a-secret"}
             )
 
-    def test_build_datasource_secret_plan_shapes_resolved_plan_for_review(self):
+    def test_datasource_secret_build_datasource_secret_plan_shapes_resolved_plan_for_review(self):
         plan = secret_workbench.build_datasource_secret_plan(
             {
                 "uid": "loki-main",

@@ -51,11 +51,19 @@ class DatasourceReference:
     @property
     def stable_identity(self) -> str:
         """Prefer uid, then name for deterministic reference joins."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         return self.uid or self.name or "unknown"
 
     @staticmethod
     def from_mapping(value: Mapping[str, Any]) -> "DatasourceReference":
         """Build one typed datasource reference from a raw JSON-like dict."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 14
+
         uid = _coerce_text(value.get("uid"))
         name = _coerce_text(value.get("name"))
         return DatasourceReference(
@@ -72,6 +80,10 @@ class DatasourceReference:
 
     def as_dict(self) -> dict[str, str]:
         """Render a stable JSON-friendly mapping for report consumers."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         return {
             "uid": self.uid,
             "name": self.name,
@@ -99,6 +111,10 @@ class DashboardReference:
     @staticmethod
     def from_mapping(value: Mapping[str, Any]) -> "DashboardReference":
         """Build one typed dashboard reference from a raw JSON-like dict."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 14
+
         uid = _coerce_text(value.get("uid"))
         title = _coerce_text(value.get("title"))
         return DashboardReference(
@@ -125,6 +141,10 @@ class PanelReference:
     @staticmethod
     def from_mapping(value: Mapping[str, Any], dashboard_uid: str) -> "PanelReference":
         """Build one typed panel reference from panel content."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 14
+
         panel_id = _coerce_text(value.get("id") or value.get("panelId"))
         return PanelReference(
             dashboard_uid=dashboard_uid,
@@ -149,6 +169,10 @@ class DashboardQueryReference:
     @property
     def dashboard_uid(self) -> str:
         """Shortcut for joining summaries grouped by dashboard uid."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         return self.dashboard.uid
 
     @staticmethod
@@ -159,6 +183,10 @@ class DashboardQueryReference:
         query_record: Mapping[str, Any],
     ) -> "DashboardQueryReference":
         """Build one query reference row using only explicit string fields."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 14
+
         dashboard_ref = DashboardReference.from_mapping(dashboard)
         panel_ref = PanelReference.from_mapping(
             {
@@ -180,6 +208,10 @@ class DashboardQueryReference:
 
     def as_dict(self) -> dict[str, str]:
         """Expose a merged dictionary that maps to current inspection consumers."""
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 14
+
         return {
             "dashboardUid": self.dashboard.uid,
             "dashboardTitle": self.dashboard.title,
@@ -202,6 +234,10 @@ def collect_datasource_reference_index(
     records: Sequence[Mapping[str, Any]],
 ) -> dict[str, DatasourceReference]:
     """Build an index by stable datasource identity for quick joins."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     index: dict[str, DatasourceReference] = {}
     for record in records:
         reference = DatasourceReference.from_mapping(record)
@@ -215,9 +251,17 @@ def extract_dashboard_reference_sequence(
     records: Sequence[Mapping[str, Any]],
 ) -> list[DashboardReference]:
     """Normalize dashboard artifact rows to stable dashboard references."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return [DashboardReference.from_mapping(record) for record in records]
 
 
 def dedupe_text_sequence(values: Sequence[Any]) -> list[str]:
     """Public dedupe helper for downstream report builders."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 22
+
     return _collect_unique(values)

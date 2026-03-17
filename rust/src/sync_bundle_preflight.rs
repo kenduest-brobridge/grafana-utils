@@ -13,7 +13,9 @@ use crate::sync_preflight::build_sync_preflight_document;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 
+/// Constant for sync bundle preflight kind.
 pub const SYNC_BUNDLE_PREFLIGHT_KIND: &str = "grafana-utils-sync-bundle-preflight";
+/// Constant for sync bundle preflight schema version.
 pub const SYNC_BUNDLE_PREFLIGHT_SCHEMA_VERSION: i64 = 1;
 
 fn normalize_text(value: Option<&Value>) -> String {
@@ -244,11 +246,19 @@ fn collect_alert_specs(source_bundle: &Map<String, Value>) -> Result<Vec<Value>>
     Ok(alerts)
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn build_sync_bundle_preflight_document(
     source_bundle: &Value,
     target_inventory: &Value,
     availability: Option<&Value>,
 ) -> Result<Value> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: sync.rs:run_sync_cli, sync_bundle_rust_tests.rs:build_sync_bundle_preflight_document_aggregates_sync_and_provider_checks, sync_bundle_rust_tests.rs:build_sync_bundle_preflight_document_counts_top_level_alert_specs_from_source_bundle, sync_bundle_rust_tests.rs:build_sync_bundle_preflight_document_falls_back_to_alerting_rule_documents, sync_bundle_rust_tests.rs:build_sync_bundle_preflight_document_reads_provider_metadata_from_source_bundle_document, sync_bundle_rust_tests.rs:render_sync_bundle_preflight_text_renders_summary
+// Downstream callees: sync_bundle_preflight.rs:build_provider_assessment, sync_bundle_preflight.rs:collect_alert_specs, sync_bundle_preflight.rs:require_array, sync_bundle_preflight.rs:require_object, sync_preflight.rs:build_sync_preflight_document
+
     let source_bundle = require_object(Some(source_bundle), "source bundle")?;
     let _target_inventory = require_object(Some(target_inventory), "target inventory")?;
     let availability = require_object(availability, "availability")?;
@@ -315,7 +325,15 @@ pub fn build_sync_bundle_preflight_document(
     ])))
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn render_sync_bundle_preflight_text(document: &Value) -> Result<Vec<String>> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: sync.rs:run_sync_cli, sync_bundle_rust_tests.rs:render_sync_bundle_preflight_rejects_wrong_kind, sync_bundle_rust_tests.rs:render_sync_bundle_preflight_text_renders_summary
+// Downstream callees: common.rs:message, sync_bundle_preflight.rs:normalize_text, sync_bundle_preflight.rs:require_object
+
     let kind = normalize_text(document.get("kind"));
     if kind != SYNC_BUNDLE_PREFLIGHT_KIND {
         return Err(message(

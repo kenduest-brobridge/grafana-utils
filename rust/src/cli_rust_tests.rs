@@ -1,5 +1,6 @@
-// Unified CLI test suite.
-// Focuses on canonical command routing and ensures handlers receive the expected domain payload shapes.
+//! Unified CLI test suite.
+//! Focuses on canonical command routing and ensures handlers receive the expected
+//! domain payload shapes.
 use super::{
     dispatch_with_handlers, maybe_render_unified_help_from_os_args, parse_cli_from,
     render_unified_help_full_text, render_unified_help_text, CliArgs, UnifiedCommand,
@@ -35,6 +36,7 @@ fn unified_help_mentions_screenshot_and_inspect_vars_examples() {
 
 #[test]
 fn parse_cli_supports_dashboard_group_command() {
+
     let args: CliArgs = parse_cli_from([
         "grafana-util",
         "dashboard",
@@ -56,6 +58,7 @@ fn parse_cli_supports_dashboard_group_command() {
 
 #[test]
 fn parse_cli_supports_datasource_group_command() {
+
     let args: CliArgs = parse_cli_from([
         "grafana-util",
         "datasource",
@@ -79,6 +82,7 @@ fn parse_cli_supports_datasource_group_command() {
 
 #[test]
 fn parse_cli_supports_datasource_diff_group_command() {
+
     let args: CliArgs = parse_cli_from([
         "grafana-util",
         "datasource",
@@ -100,6 +104,7 @@ fn parse_cli_supports_datasource_diff_group_command() {
 
 #[test]
 fn parse_cli_supports_datasource_group_alias() {
+
     let args: CliArgs = parse_cli_from(["grafana-util", "ds", "list", "--json"]);
 
     match args.command {
@@ -115,6 +120,7 @@ fn parse_cli_supports_datasource_group_alias() {
 
 #[test]
 fn parse_cli_supports_dashboard_group_inspect_export_command() {
+
     let args: CliArgs = parse_cli_from([
         "grafana-util",
         "dashboard",
@@ -138,6 +144,7 @@ fn parse_cli_supports_dashboard_group_inspect_export_command() {
 
 #[test]
 fn parse_cli_supports_dashboard_group_inspect_live_command() {
+
     let args: CliArgs = parse_cli_from([
         "grafana-util",
         "dashboard",
@@ -165,6 +172,7 @@ fn parse_cli_supports_dashboard_group_inspect_live_command() {
 
 #[test]
 fn parse_cli_supports_dashboard_group_alias() {
+
     let args: CliArgs = parse_cli_from(["grafana-util", "db", "list", "--json"]);
 
     match args.command {
@@ -178,6 +186,7 @@ fn parse_cli_supports_dashboard_group_alias() {
 
 #[test]
 fn parse_cli_supports_alert_group() {
+
     let args: CliArgs = parse_cli_from([
         "grafana-util",
         "alert",
@@ -201,6 +210,7 @@ fn parse_cli_supports_alert_group() {
 
 #[test]
 fn parse_cli_supports_access_group() {
+
     let args: CliArgs = parse_cli_from([
         "grafana-util",
         "access",
@@ -362,6 +372,7 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
 
 #[test]
 fn parse_cli_rejects_legacy_dashboard_direct_command() {
+
     let error = CliArgs::try_parse_from(["grafana-util", "list-dashboard", "--json"]).unwrap_err();
 
     assert!(error.to_string().contains("unrecognized subcommand"));
@@ -370,6 +381,7 @@ fn parse_cli_rejects_legacy_dashboard_direct_command() {
 
 #[test]
 fn parse_cli_rejects_legacy_alert_direct_command() {
+
     let error =
         CliArgs::try_parse_from(["grafana-util", "export-alert", "--output-dir", "./alerts"])
             .unwrap_err();
@@ -380,6 +392,7 @@ fn parse_cli_rejects_legacy_alert_direct_command() {
 
 #[test]
 fn parse_cli_supports_sync_group_alias() {
+
     let args: CliArgs = parse_cli_from([
         "grafana-util",
         "sy",
@@ -404,6 +417,7 @@ fn parse_cli_supports_sync_group_alias() {
 
 #[test]
 fn parse_cli_supports_sync_assess_alerts_group_command() {
+
     let args: CliArgs = parse_cli_from([
         "grafana-util",
         "sync",
@@ -428,6 +442,7 @@ fn parse_cli_supports_sync_assess_alerts_group_command() {
 
 #[test]
 fn parse_cli_supports_sync_plan_group_command() {
+
     let args: CliArgs = parse_cli_from([
         "grafana-util",
         "sync",
@@ -461,6 +476,7 @@ fn parse_cli_supports_sync_plan_group_command() {
 
 #[test]
 fn parse_cli_supports_sync_plan_fetch_live_group_command() {
+
     let args: CliArgs = parse_cli_from([
         "grafana-util",
         "sync",
@@ -496,6 +512,7 @@ fn parse_cli_supports_sync_plan_fetch_live_group_command() {
 
 #[test]
 fn parse_cli_supports_sync_apply_group_command_with_reason_and_note() {
+
     let args: CliArgs = parse_cli_from([
         "grafana-util",
         "sync",
@@ -526,6 +543,7 @@ fn parse_cli_supports_sync_apply_group_command_with_reason_and_note() {
 
 #[test]
 fn parse_cli_supports_sync_apply_execute_live_group_command() {
+
     let args: CliArgs = parse_cli_from([
         "grafana-util",
         "sync",
@@ -562,6 +580,7 @@ fn parse_cli_supports_sync_apply_execute_live_group_command() {
 
 #[test]
 fn parse_cli_supports_sync_review_group_command() {
+
     let args: CliArgs = parse_cli_from([
         "grafana-util",
         "sync",

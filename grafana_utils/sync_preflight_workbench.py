@@ -32,6 +32,7 @@ class SyncPreflightCheck:
 
 
 def _normalize_text(value, default=""):
+    """Internal helper for normalize text."""
     if value is None:
         return default
     text = str(value).strip()
@@ -41,6 +42,7 @@ def _normalize_text(value, default=""):
 
 
 def _require_mapping(value, label):
+    """Internal helper for require mapping."""
     if value is None:
         return {}
     if not isinstance(value, Mapping):
@@ -49,6 +51,7 @@ def _require_mapping(value, label):
 
 
 def _require_string_list(values, label):
+    """Internal helper for require string list."""
     if values is None:
         return []
     if not isinstance(values, (list, tuple, set)):
@@ -62,6 +65,7 @@ def _require_string_list(values, label):
 
 
 def _build_datasource_checks(spec, availability):
+    """Internal helper for build datasource checks."""
     checks = []
     available_uids = set(_require_string_list(availability.get("datasourceUids"), "datasourceUids"))
     required_plugins = set(_require_string_list(availability.get("pluginIds"), "pluginIds"))
@@ -112,6 +116,7 @@ def _build_datasource_checks(spec, availability):
 
 
 def _build_dashboard_checks(spec, availability):
+    """Internal helper for build dashboard checks."""
     checks = []
     body = _require_mapping(spec.body, "dashboard body")
     datasource_uids = _require_string_list(body.get("datasourceUids"), "dashboard datasourceUids")
@@ -156,10 +161,16 @@ def _build_dashboard_checks(spec, availability):
 
 
 def _is_builtin_alert_datasource_ref(value):
+    """Internal helper for is builtin alert datasource ref."""
     return value in ("__expr__", "__dashboard__")
 
 
 def _collect_alert_datasource_uids(body):
+    """Internal helper for collect alert datasource uids."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 223
+    #   Downstream callees: 163, 34, 53
+
     datasource_uids = set()
     direct_uid = _normalize_text(body.get("datasourceUid"))
     if direct_uid and not _is_builtin_alert_datasource_ref(direct_uid):
@@ -179,6 +190,7 @@ def _collect_alert_datasource_uids(body):
 
 
 def _collect_alert_datasource_names(body):
+    """Internal helper for collect alert datasource names."""
     datasource_names = set()
     direct_name = _normalize_text(body.get("datasourceName"))
     if direct_name:
@@ -197,6 +209,7 @@ def _collect_alert_datasource_names(body):
 
 
 def _collect_alert_contact_points(body):
+    """Internal helper for collect alert contact points."""
     contact_points = set(
         _require_string_list(body.get("contactPoints"), "alert contactPoints")
     )
@@ -212,6 +225,11 @@ def _collect_alert_contact_points(body):
 
 
 def _build_alert_checks(spec, availability):
+    """Internal helper for build alert checks."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 293
+    #   Downstream callees: 168, 188, 207, 44, 53
+
     checks = [
         SyncPreflightCheck(
             kind="alert-live-apply",
@@ -282,6 +300,10 @@ def _build_alert_checks(spec, availability):
 
 def build_sync_preflight_document(desired_specs, availability=None):
     """Build a staged sync preflight document from desired state and hints."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 118, 223, 44, 67
+
     availability = _require_mapping(availability, "availability")
     checks = []
     for raw_spec in desired_specs:
@@ -327,6 +349,10 @@ def build_sync_preflight_document(desired_specs, availability=None):
 
 def render_sync_preflight_text(document):
     """Render one deterministic text summary for later CLI wiring."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 34, 44
+
     if _normalize_text(document.get("kind")) != SYNC_PREFLIGHT_KIND:
         raise GrafanaError("Sync preflight document kind is not supported.")
     summary = _require_mapping(document.get("summary"), "summary")

@@ -1,3 +1,7 @@
+"""
+Loki analyzer for dashboard query inspection.
+"""
+
 import re
 from typing import Any
 
@@ -5,6 +9,7 @@ from .contract import normalize_query_analysis, unique_strings
 
 
 def extract_stream_matchers(query: str) -> list[str]:
+    """Collect stream-matchers from Loki selectors."""
     if not query:
         return []
     values = []
@@ -18,6 +23,7 @@ def extract_stream_matchers(query: str) -> list[str]:
 
 
 def extract_pipeline_stage_names(query: str) -> list[str]:
+    """Collect pipeline stage names used in a Loki query."""
     if not query:
         return []
     values = []
@@ -37,6 +43,7 @@ def extract_pipeline_stage_names(query: str) -> list[str]:
 
 
 def extract_range_and_aggregation_functions(query: str) -> list[str]:
+    """Collect Loki aggregation and range function usage."""
     if not query:
         return []
     allowed = {
@@ -82,6 +89,11 @@ def analyze_query(
     query_field: str,
     query_text: str,
 ) -> dict[str, Any]:
+    """Build normalized analysis output for a Loki query."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 11, 25, 45
+
     del panel, target, query_field
     return normalize_query_analysis(
         {

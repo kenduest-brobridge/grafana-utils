@@ -11,32 +11,76 @@ class _CachedDashboardImportClient:
     """Per-import cache for repeated dashboard/folder GET lookups."""
 
     def __init__(self, client):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         self._client = client
         self._dashboard_cache = {}
         self._folder_cache = {}
 
     def __getattr__(self, name):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         return getattr(self._client, name)
 
     def fetch_dashboard_if_exists(self, uid):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         cache_key = str(uid or "")
         if cache_key not in self._dashboard_cache:
             self._dashboard_cache[cache_key] = self._client.fetch_dashboard_if_exists(uid)
         return self._dashboard_cache[cache_key]
 
     def fetch_dashboard(self, uid):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 29
+
         payload = self.fetch_dashboard_if_exists(uid)
         if payload is None:
             return self._client.fetch_dashboard(uid)
         return payload
 
     def fetch_folder_if_exists(self, uid):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         cache_key = str(uid or "")
         if cache_key not in self._folder_cache:
             self._folder_cache[cache_key] = self._client.fetch_folder_if_exists(uid)
         return self._folder_cache[cache_key]
 
     def create_folder(self, uid, title, parent_uid=None):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        # Call graph: see callers/callees.
+        #   Upstream callers: 無
+        #   Downstream callees: 無
+
         result = self._client.create_folder(uid, title, parent_uid=parent_uid)
         record = {"uid": uid, "title": title}
         if parent_uid:
@@ -46,6 +90,7 @@ class _CachedDashboardImportClient:
 
 
 def _normalize_org_id(org):
+    """Internal helper for normalize org id."""
     if not isinstance(org, dict):
         return None
     value = org.get("id")
@@ -56,6 +101,7 @@ def _normalize_org_id(org):
 
 
 def _validate_export_org_match(args, deps, client, import_dir, metadata):
+    """Internal helper for validate export org match."""
     if not bool(getattr(args, "require_matching_export_org", False)):
         return
     source_org_id = deps["resolve_export_org_id"](import_dir, metadata)
@@ -81,12 +127,14 @@ def _validate_export_org_match(args, deps, client, import_dir, metadata):
 
 
 def _clone_import_args(args, **overrides):
+    """Internal helper for clone import args."""
     values = dict(vars(args))
     values.update(overrides)
     return argparse.Namespace(**values)
 
 
 def _resolve_existing_orgs_by_id(client):
+    """Internal helper for resolve existing orgs by id."""
     orgs_by_id = {}
     for item in client.list_orgs():
         org_id = _normalize_org_id(item)
@@ -96,6 +144,7 @@ def _resolve_existing_orgs_by_id(client):
 
 
 def _resolve_created_org_id(created_payload):
+    """Internal helper for resolve created org id."""
     if not isinstance(created_payload, dict):
         return None
     org_id = created_payload.get("orgId")
@@ -108,6 +157,7 @@ def _resolve_created_org_id(created_payload):
 
 
 def _resolve_multi_org_targets(args, deps, client):
+    """Internal helper for resolve multi org targets."""
     import_dir = Path(args.import_dir)
     selected_org_ids = set(
         str(item).strip()
@@ -207,6 +257,11 @@ def _resolve_multi_org_targets(args, deps, client):
 
 
 def _run_import_dashboards_by_export_org(args, deps, client):
+    """Internal helper for run import dashboards by export org."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 771
+    #   Downstream callees: 109, 139, 338, 407
+
     auth_header = client.headers.get("Authorization", "")
     if not auth_header.startswith("Basic "):
         raise deps["GrafanaError"](
@@ -305,6 +360,10 @@ def _run_import_dashboards_by_export_org(args, deps, client):
             for index, value in enumerate(row):
                 widths[index] = max(widths[index], len(value))
         def format_row(values):
+            # Purpose: implementation note.
+            # Args: see function signature.
+            # Returns: see implementation.
+
             return "  ".join(
                 [
                     "%-*s" % (widths[index], value)
@@ -371,6 +430,10 @@ def _run_import_dashboards_by_export_org(args, deps, client):
 
 def _run_import_dashboards_for_single_org(args, deps):
     """Import previously exported raw dashboard JSON files through Grafana's API."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 239, 771
+    #   Downstream callees: 83
+
     grafana_error = deps["GrafanaError"]
     if getattr(args, "table", False) and not args.dry_run:
         raise grafana_error("--table is only supported with --dry-run for import-dashboard.")
@@ -735,6 +798,10 @@ def _run_import_dashboards_for_single_org(args, deps):
 
 def run_import_dashboards(args, deps):
     """Import previously exported raw dashboard JSON files through Grafana's API."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 239, 407
+
     client = deps["build_client"](args)
     if bool(getattr(args, "use_export_org", False)):
         return _run_import_dashboards_by_export_org(args, deps, client)

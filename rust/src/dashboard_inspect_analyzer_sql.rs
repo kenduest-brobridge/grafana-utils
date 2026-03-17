@@ -6,6 +6,7 @@ use super::dashboard_inspect::{
     extract_sql_query_shape_hints, extract_sql_source_references, QueryAnalysis,
 };
 
+/// analyze query.
 pub(crate) fn analyze_query(
     _panel: &Map<String, Value>,
     _target: &Map<String, Value>,

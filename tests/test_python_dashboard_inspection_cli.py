@@ -201,7 +201,7 @@ class DashboardInspectionTests(unittest.TestCase):
             ],
         )
 
-    def test_inspect_export_renders_human_summary(self):
+    def test_dashboard_inspection_inspect_export_renders_human_summary(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             self.write_summary_fixture(
@@ -325,7 +325,7 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertIn("Unused Main uid=unused-main", output)
             self.assertIn("Mixed Main (mixed-main) path=Platform / Infra", output)
 
-    def test_inspect_export_renders_json(self):
+    def test_dashboard_inspection_inspect_export_renders_json(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             self.write_summary_fixture(
@@ -396,7 +396,7 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertEqual(payload["dashboards"][0]["folderPath"], "General")
             self.assertFalse(payload["dashboards"][0]["mixedDatasource"])
 
-    def test_inspect_export_renders_table_sections(self):
+    def test_dashboard_inspection_inspect_export_renders_table_sections(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             self.write_summary_fixture(
@@ -520,7 +520,7 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertIn("Unused Main", output)
             self.assertIn("mixed-main", output)
 
-    def test_inspect_export_renders_query_report_json(self):
+    def test_dashboard_inspection_inspect_export_renders_query_report_json(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             self.write_report_fixture(
@@ -578,7 +578,7 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertEqual(payload["queries"][1]["buckets"], ["prod"])
             self.assertEqual(payload["queries"][1]["measurements"], ["cpu"])
 
-    def test_parse_args_supports_governance_report_formats(self):
+    def test_dashboard_inspection_parse_args_supports_governance_report_formats(self):
         args = exporter.parse_args(
             ["inspect-export", "--import-dir", "dashboards/raw", "--report", "governance"]
         )
@@ -599,7 +599,7 @@ class DashboardInspectionTests(unittest.TestCase):
         )
         self.assertEqual(governance_json_args.report, "governance-json")
 
-    def test_inspect_export_prometheus_metrics_ignore_grouping_labels_and_values(self):
+    def test_dashboard_inspection_inspect_export_prometheus_metrics_ignore_grouping_labels_and_values(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             self.write_report_fixture(
@@ -651,7 +651,7 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertEqual(payload["queries"][1]["metrics"], ["up", "kube_pod_info"])
             self.assertEqual(payload["queries"][2]["metrics"], ["prometheus_build_info"])
 
-    def test_inspect_export_renders_query_report_table(self):
+    def test_dashboard_inspection_inspect_export_renders_query_report_table(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             self.write_report_fixture(
@@ -683,7 +683,7 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertIn("DASHBOARD_UID", output)
             self.assertIn("CPU Usage", output)
 
-    def test_inspect_export_renders_governance_json(self):
+    def test_dashboard_inspection_inspect_export_renders_governance_json(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             self.write_governance_fixture(import_dir)
@@ -746,7 +746,7 @@ class DashboardInspectionTests(unittest.TestCase):
                 payload["riskRecords"][1]["recommendation"],
             )
 
-    def test_inspect_export_renders_governance_tables(self):
+    def test_dashboard_inspection_inspect_export_renders_governance_tables(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             self.write_governance_fixture(import_dir)
@@ -778,7 +778,7 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertIn("RECOMMENDATION", output)
             self.assertIn("Normalize the datasource type mapping", output)
 
-    def test_inspect_export_renders_tree_and_tree_table_reports(self):
+    def test_dashboard_inspection_inspect_export_renders_tree_and_tree_table_reports(self):
         dashboard = {
             "id": None,
             "uid": "infra-main",
@@ -828,7 +828,7 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertIn("DASHBOARD_UID", table_output)
             self.assertIn('{job="grafana"}', table_output)
 
-    def test_inspect_export_tree_and_tree_table_filters_and_columns(self):
+    def test_dashboard_inspection_inspect_export_tree_and_tree_table_filters_and_columns(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             self.write_report_fixture(
@@ -888,7 +888,7 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertIn("7         up", table_output)
             self.assertNotIn("PANEL_ID", table_output)
 
-    def test_inspect_export_renders_csv_and_selected_columns(self):
+    def test_dashboard_inspection_inspect_export_renders_csv_and_selected_columns(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             self.write_report_fixture(
@@ -951,7 +951,7 @@ class DashboardInspectionTests(unittest.TestCase):
                 csv_columns_output,
             )
 
-    def test_inspect_export_filters_query_report(self):
+    def test_dashboard_inspection_inspect_export_filters_query_report(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             self.write_report_fixture(
@@ -999,7 +999,7 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertEqual(payload["summary"]["queryRecordCount"], 1)
             self.assertEqual(payload["queries"][0]["datasource"], "prom-main")
 
-    def test_filter_export_inspection_report_document_matches_datasource_uid_type_and_family(self):
+    def test_dashboard_inspection_filter_export_inspection_report_document_matches_datasource_uid_type_and_family(self):
         document = {
             "summary": {"dashboardCount": 2, "queryRecordCount": 2},
             "queries": [
@@ -1031,7 +1031,7 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertEqual(filtered["summary"]["queryRecordCount"], 1)
             self.assertEqual(filtered["queries"][0]["datasource"], "prom-main")
 
-    def test_inspect_export_help_describes_shared_report_columns_and_datasource_filter(self):
+    def test_dashboard_inspection_inspect_export_help_describes_shared_report_columns_and_datasource_filter(self):
         parser = argparse.ArgumentParser()
         exporter.add_inspect_export_cli_args(parser)
 
@@ -1048,7 +1048,7 @@ class DashboardInspectionTests(unittest.TestCase):
             exporter.INSPECT_EXPORT_HELP_FULL_EXAMPLES,
         )
 
-    def test_inspect_export_filters_query_report_by_datasource_uid_type_or_family(self):
+    def test_dashboard_inspection_inspect_export_filters_query_report_by_datasource_uid_type_or_family(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             self.write_summary_fixture(
@@ -1124,7 +1124,7 @@ class DashboardInspectionTests(unittest.TestCase):
                 self.assertEqual(payload["queries"][0]["datasourceType"], expected_type)
                 self.assertEqual(payload["queries"][0]["datasourceFamily"], expected_family)
 
-    def test_inspect_export_filters_query_report_by_datasource_uid_type_and_family(self):
+    def test_dashboard_inspection_inspect_export_filters_query_report_by_datasource_uid_type_and_family(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             self.write_report_fixture(
@@ -1180,7 +1180,7 @@ class DashboardInspectionTests(unittest.TestCase):
                     datasource_filter,
                 )
 
-    def test_inspect_export_help_lists_supported_report_columns_and_filter_matching(self):
+    def test_dashboard_inspection_inspect_export_help_lists_supported_report_columns_and_filter_matching(self):
         parser = argparse.ArgumentParser()
         exporter.add_inspect_export_cli_args(parser)
 
@@ -1195,7 +1195,7 @@ class DashboardInspectionTests(unittest.TestCase):
         self.assertIn("uid, type,", help_text)
         self.assertIn("or family exactly matches this value", help_text)
 
-    def test_inspect_live_help_lists_supported_report_columns_and_filter_matching(self):
+    def test_dashboard_inspection_inspect_live_help_lists_supported_report_columns_and_filter_matching(self):
         parser = argparse.ArgumentParser()
         exporter.add_inspect_live_cli_args(parser)
 
@@ -1210,7 +1210,7 @@ class DashboardInspectionTests(unittest.TestCase):
         self.assertIn("uid, type,", help_text)
         self.assertIn("or family exactly matches this value", help_text)
 
-    def test_inspect_live_renders_report_json_from_mocked_client(self):
+    def test_dashboard_inspection_inspect_live_renders_report_json_from_mocked_client(self):
         fake_client = FakeDashboardWorkflowClient(
             summaries=[
                 {
@@ -1279,7 +1279,7 @@ class DashboardInspectionTests(unittest.TestCase):
         self.assertEqual(payload["queries"][0]["folderPath"], "Platform / Infra")
         self.assertEqual(payload["queries"][0]["metrics"], ["up"])
 
-    def test_inspect_export_validation_errors(self):
+    def test_dashboard_inspection_inspect_export_validation_errors(self):
         cases = [
             (
                 ["inspect-export", "--import-dir", "dashboards/raw", "--no-header"],
@@ -1370,7 +1370,7 @@ class DashboardInspectionTests(unittest.TestCase):
             with self.assertRaisesRegex(exporter.GrafanaError, message):
                 exporter.inspect_export(args)
 
-    def test_inspect_export_accepts_report_like_output_format(self):
+    def test_dashboard_inspection_inspect_export_accepts_report_like_output_format(self):
         args = exporter.parse_args(
             [
                 "inspect-export",
@@ -1411,7 +1411,7 @@ class DashboardInspectionTests(unittest.TestCase):
         payload = json.loads(stdout.getvalue())
         self.assertEqual(payload["summary"]["dashboardCount"], 1)
 
-    def test_inspect_export_outputs_dependency_contract_json(self):
+    def test_dashboard_inspection_inspect_export_outputs_dependency_contract_json(self):
         args = exporter.parse_args(
             [
                 "inspect-export",

@@ -146,6 +146,7 @@ DELETE_HELP_EXAMPLES = (
 
 
 def add_list_cli_args(parser):
+    """Add list cli args implementation."""
     parser.add_argument(
         "--org-id",
         default=None,
@@ -198,6 +199,7 @@ def add_list_cli_args(parser):
 
 
 def add_export_cli_args(parser):
+    """Add export cli args implementation."""
     parser.add_argument(
         "--export-dir",
         default=DEFAULT_EXPORT_DIR,
@@ -237,6 +239,7 @@ def add_export_cli_args(parser):
 
 
 def add_import_cli_args(parser):
+    """Add import cli args implementation."""
     parser.add_argument(
         "--import-dir",
         required=True,
@@ -353,6 +356,7 @@ def add_import_cli_args(parser):
 
 
 def add_diff_cli_args(parser):
+    """Add diff cli args implementation."""
     parser.add_argument(
         "--diff-dir",
         required=True,
@@ -365,6 +369,11 @@ def add_diff_cli_args(parser):
 
 
 def parse_bool_choice(value):
+    """Parse bool choice implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     normalized = str(value).strip().lower()
     if normalized in ("true", "1", "yes", "on"):
         return True
@@ -374,6 +383,7 @@ def parse_bool_choice(value):
 
 
 def add_add_cli_args(parser):
+    """Add add cli args implementation."""
     parser.add_argument(
         "--uid",
         default=None,
@@ -499,6 +509,7 @@ def add_add_cli_args(parser):
 
 
 def add_modify_cli_args(parser):
+    """Add modify cli args implementation."""
     parser.add_argument(
         "--uid",
         required=True,
@@ -617,6 +628,7 @@ def add_modify_cli_args(parser):
 
 
 def add_delete_cli_args(parser):
+    """Add delete cli args implementation."""
     target_group = parser.add_mutually_exclusive_group(required=True)
     target_group.add_argument(
         "--uid",
@@ -659,6 +671,11 @@ def add_delete_cli_args(parser):
         ),
     )
 def build_parser(prog=None):
+    """Build parser implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 148, 201, 241, 358, 381, 507, 626
+
     parser = argparse.ArgumentParser(
         prog=prog or "grafana-util datasource",
         description="List, export, import, or diff Grafana datasource inventory.",

@@ -29,6 +29,7 @@ COMPARE_FIELDS = (
 
 
 def load_json_document(path: Path) -> Any:
+    """Load json document implementation."""
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
@@ -38,6 +39,11 @@ def load_json_document(path: Path) -> Any:
 
 
 def load_datasource_diff_bundle(import_dir: Path) -> dict[str, Any]:
+    """Load datasource diff bundle implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 31
+
     if not import_dir.exists():
         raise GrafanaError("Diff directory does not exist: %s" % import_dir)
     if not import_dir.is_dir():
@@ -111,6 +117,11 @@ def load_datasource_diff_bundle(import_dir: Path) -> dict[str, Any]:
 def build_live_datasource_diff_records(
     client: GrafanaClient,
 ) -> list[dict[str, str]]:
+    """Build live datasource diff records implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     org = client.fetch_current_org()
     return [
         normalize_datasource_record(build_datasource_inventory_record(item, org))
@@ -119,6 +130,7 @@ def build_live_datasource_diff_records(
 
 
 def resolve_datasource_identity(record: dict[str, str]) -> str:
+    """Resolve datasource identity implementation."""
     uid = str(record.get("uid") or "").strip()
     if uid:
         return uid
@@ -131,6 +143,7 @@ def resolve_datasource_identity(record: dict[str, str]) -> str:
 def _index_records(
     records: list[dict[str, str]],
 ) -> dict[str, dict[str, list[tuple[int, dict[str, str]]]]]:
+    """Internal helper for index records."""
     by_uid = {}
     by_name = {}
     for index, record in enumerate(records):
@@ -147,6 +160,7 @@ def _resolve_live_match(
     local_record: dict[str, str],
     live_index: dict[str, dict[str, list[tuple[int, dict[str, str]]]]],
 ) -> dict[str, Any]:
+    """Internal helper for resolve live match."""
     uid = str(local_record.get("uid") or "")
     name = str(local_record.get("name") or "")
     if uid:
@@ -180,6 +194,7 @@ def _resolve_compare_fields(
     local_record: Optional[dict[str, str]],
     match_key: Optional[str],
 ) -> tuple[str, ...]:
+    """Internal helper for resolve compare fields."""
     fields = list(COMPARE_FIELDS)
     if (
         match_key == "name"
@@ -197,6 +212,7 @@ def build_datasource_diff_item(
     status: str,
     match_key: Optional[str],
 ) -> dict[str, Any]:
+    """Build datasource diff item implementation."""
     changed_fields = []
     local_values = {}
     live_values = {}
@@ -226,6 +242,11 @@ def compare_datasource_inventory(
     bundle_records: list[dict[str, str]],
     live_records: list[dict[str, str]],
 ) -> dict[str, Any]:
+    """Compare datasource inventory implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 299
+    #   Downstream callees: 135, 151, 201
+
     normalized_bundle = [normalize_datasource_record(item) for item in bundle_records]
     normalized_live = [normalize_datasource_record(item) for item in live_records]
     live_index = _index_records(normalized_live)
@@ -291,4 +312,9 @@ def compare_datasource_bundle_to_live(
     bundle: dict[str, Any],
     live_records: list[dict[str, str]],
 ) -> dict[str, Any]:
+    """Compare datasource bundle to live implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 233
+
     return compare_datasource_inventory(bundle.get("records") or [], live_records)

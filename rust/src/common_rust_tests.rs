@@ -1,5 +1,6 @@
-// Common utility unit tests.
-// Verifies path sanitization and authentication-header resolution logic for all Rust domains.
+//! Common utility unit tests.
+//! Verifies path sanitization and authentication-header resolution logic for all Rust
+//! domains.
 use super::{resolve_auth_headers, resolve_auth_headers_with_prompt, sanitize_path_component};
 
 #[test]

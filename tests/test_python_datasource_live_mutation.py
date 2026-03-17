@@ -34,11 +34,11 @@ class FakeDatasourceClient(object):
 
 
 class DatasourceLiveMutationTests(unittest.TestCase):
-    def test_live_mutation_module_parses_as_python39_syntax(self):
+    def test_datasource_live_mutation_live_mutation_module_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_build_add_payload_keeps_optional_json_fields(self):
+    def test_datasource_live_mutation_build_add_payload_keeps_optional_json_fields(self):
         payload = live_mutation.build_add_payload(
             {
                 "uid": "prom-main",
@@ -66,7 +66,7 @@ class DatasourceLiveMutationTests(unittest.TestCase):
             },
         )
 
-    def test_plan_add_datasource_returns_would_create_when_missing(self):
+    def test_datasource_live_mutation_plan_add_datasource_returns_would_create_when_missing(self):
         client = FakeDatasourceClient(datasources=[])
 
         plan = live_mutation.plan_add_datasource(
@@ -81,7 +81,7 @@ class DatasourceLiveMutationTests(unittest.TestCase):
         self.assertEqual(plan["action"], "would-create")
         self.assertEqual(plan["match"], "missing")
 
-    def test_add_datasource_posts_payload_when_not_dry_run(self):
+    def test_datasource_live_mutation_add_datasource_posts_payload_when_not_dry_run(self):
         client = FakeDatasourceClient(datasources=[])
 
         result = live_mutation.add_datasource(
@@ -112,7 +112,7 @@ class DatasourceLiveMutationTests(unittest.TestCase):
             ],
         )
 
-    def test_add_datasource_rejects_existing_uid_or_name(self):
+    def test_datasource_live_mutation_add_datasource_rejects_existing_uid_or_name(self):
         client = FakeDatasourceClient(
             datasources=[
                 {"id": 7, "uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"}
@@ -129,7 +129,7 @@ class DatasourceLiveMutationTests(unittest.TestCase):
                 },
             )
 
-    def test_plan_delete_datasource_returns_would_delete_for_uid_match(self):
+    def test_datasource_live_mutation_plan_delete_datasource_returns_would_delete_for_uid_match(self):
         client = FakeDatasourceClient(
             datasources=[
                 {"id": 7, "uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"}
@@ -142,7 +142,7 @@ class DatasourceLiveMutationTests(unittest.TestCase):
         self.assertEqual(plan["match"], "exists-uid")
         self.assertEqual(plan["target"]["id"], 7)
 
-    def test_delete_datasource_issues_delete_for_live_id(self):
+    def test_datasource_live_mutation_delete_datasource_issues_delete_for_live_id(self):
         client = FakeDatasourceClient(
             datasources=[
                 {"id": 7, "uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"}
@@ -164,7 +164,7 @@ class DatasourceLiveMutationTests(unittest.TestCase):
             ],
         )
 
-    def test_delete_datasource_dry_run_does_not_call_api(self):
+    def test_datasource_live_mutation_delete_datasource_dry_run_does_not_call_api(self):
         client = FakeDatasourceClient(
             datasources=[
                 {"id": 9, "uid": "logs-main", "name": "Loki Logs", "type": "loki"}
@@ -176,13 +176,13 @@ class DatasourceLiveMutationTests(unittest.TestCase):
         self.assertEqual(plan["action"], "would-delete")
         self.assertEqual(client.calls, [])
 
-    def test_delete_datasource_rejects_missing_target(self):
+    def test_datasource_live_mutation_delete_datasource_rejects_missing_target(self):
         client = FakeDatasourceClient(datasources=[])
 
         with self.assertRaisesRegex(GrafanaError, "would-fail-missing"):
             live_mutation.delete_datasource(client, uid="missing-main")
 
-    def test_delete_datasource_rejects_uid_name_mismatch(self):
+    def test_datasource_live_mutation_delete_datasource_rejects_uid_name_mismatch(self):
         client = FakeDatasourceClient(
             datasources=[
                 {"id": 9, "uid": "logs-main", "name": "Loki Logs", "type": "loki"}
@@ -196,7 +196,7 @@ class DatasourceLiveMutationTests(unittest.TestCase):
                 name="Prometheus Main",
             )
 
-    def test_normalize_add_spec_rejects_unknown_fields(self):
+    def test_datasource_live_mutation_normalize_add_spec_rejects_unknown_fields(self):
         with self.assertRaisesRegex(GrafanaError, "unsupported field"):
             live_mutation.normalize_add_spec(
                 {

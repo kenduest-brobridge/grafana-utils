@@ -41,6 +41,10 @@ IMPORT_DRY_RUN_COLUMN_ALIASES = {
 
 def load_json_file(path: Path) -> dict[str, Any]:
     """Read one dashboard document from disk and require a top-level JSON object."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
@@ -102,6 +106,10 @@ def load_export_metadata(
     expected_variant: Optional[str] = None,
 ) -> Optional[dict[str, Any]]:
     """Load the optional export manifest and validate its schema version when present."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return load_export_metadata_from_export(
         import_dir,
         export_metadata_filename,
@@ -119,6 +127,10 @@ def validate_export_metadata(
     expected_variant: Optional[str] = None,
 ) -> None:
     """Reject dashboard export manifests this implementation does not understand."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     validate_export_metadata_from_export(
         metadata,
         metadata_path,
@@ -144,6 +156,10 @@ def build_local_compare_document(
     folder_uid_override: Optional[str],
 ) -> dict[str, Any]:
     """Normalize one local raw export into the shape compared against Grafana."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 131, 64
+
     payload = build_import_payload(
         document=document,
         folder_uid_override=folder_uid_override,
@@ -158,12 +174,20 @@ def build_remote_compare_document(
     folder_uid_override: Optional[str],
 ) -> dict[str, Any]:
     """Normalize one live dashboard wrapper into the same diff shape as local files."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 131
+
     dashboard = build_preserved_web_import_document(payload)
     return build_compare_document(dashboard, folder_uid_override)
 
 
 def serialize_compare_document(document: dict[str, Any]) -> str:
     """Serialize normalized compare data so nested JSON can be compared stably."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
@@ -175,6 +199,10 @@ def build_compare_diff_lines(
     context_lines: int,
 ) -> list[str]:
     """Render a unified diff for one dashboard comparison."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     remote_lines = json.dumps(
         remote_compare,
         indent=2,
@@ -201,6 +229,10 @@ def build_compare_diff_lines(
 
 def resolve_dashboard_uid_for_import(document: dict[str, Any]) -> str:
     """Return the stable dashboard UID used by dry-run and diff workflows."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 64
+
     payload = build_import_payload(
         document=document,
         folder_uid_override=None,
@@ -220,6 +252,10 @@ def determine_dashboard_import_action(
     update_existing_only: bool = False,
 ) -> str:
     """Predict whether one dashboard import would create, update, or fail."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     uid = str(payload["dashboard"].get("uid") or "")
     if not uid:
         return "would-create"
@@ -247,6 +283,10 @@ def determine_import_folder_uid_override(
     preserve_existing_folder: bool,
 ) -> Optional[str]:
     """Prefer an explicit override, otherwise keep the destination folder for updates."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if folder_uid_override is not None:
         return folder_uid_override
     if not preserve_existing_folder or not uid:
@@ -265,6 +305,10 @@ def describe_dashboard_import_mode(
     update_existing_only: bool,
 ) -> str:
     """Return the operator-facing import mode label."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if update_existing_only:
         return "update-or-skip-missing"
     if replace_existing:
@@ -281,6 +325,11 @@ def build_dashboard_import_dry_run_record(
     destination_folder_path: Optional[str] = None,
     reason: Optional[str] = None,
 ) -> dict[str, str]:
+    """Build dashboard import dry run record implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     destination = "unknown"
     action_label = action or "unknown"
     if action == "would-create":
@@ -314,6 +363,10 @@ def parse_dashboard_import_dry_run_columns(
     value: Optional[str],
 ) -> Optional[list[str]]:
     """Parse one import dry-run column list into canonical dashboard import field ids."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if value is None:
         return None
     columns = []
@@ -340,12 +393,17 @@ def parse_dashboard_import_dry_run_columns(
 
 
 def _render_table(headers: list[str], rows: list[list[str]], include_header: bool) -> list[str]:
+    """Internal helper for render table."""
     widths = [len(header) for header in headers]
     for row in rows:
         for index, value in enumerate(row):
             widths[index] = max(widths[index], len(value))
 
     def format_row(values: list[str]) -> str:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return "  ".join(
             value.ljust(widths[index]) for index, value in enumerate(values)
         )
@@ -362,6 +420,11 @@ def render_dashboard_import_dry_run_table(
     include_header: bool = True,
     selected_columns: Optional[list[str]] = None,
 ) -> list[str]:
+    """Render dashboard import dry run table implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 343
+
     columns = list(selected_columns or ["uid", "destination", "action"])
     if selected_columns is None:
         if any(record.get("folderPath") for record in records):
@@ -390,6 +453,10 @@ def render_dashboard_import_dry_run_json(
     skipped_folder_mismatch_count: int,
 ) -> str:
     """Render one JSON document for dry-run import output."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     payload = {
         "mode": mode,
         "folders": [
@@ -444,6 +511,11 @@ def render_folder_inventory_dry_run_table(
     records: list[dict[str, str]],
     include_header: bool = True,
 ) -> list[str]:
+    """Render folder inventory dry run table implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 343
+
     headers = ["UID", "DESTINATION", "STATUS", "REASON", "EXPECTED_PATH", "ACTUAL_PATH"]
     rows = []
     for record in records:

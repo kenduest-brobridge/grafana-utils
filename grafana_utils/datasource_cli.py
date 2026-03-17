@@ -180,6 +180,10 @@ def parse_args(argv=None):
     - Normalize `--output-format` into exclusive `--table`/`--csv`/`--json`.
     - Parse and validate dry-run output-column aliases.
     """
+    # Call graph: see callers/callees.
+    #   Upstream callers: 244
+    #   Downstream callees: 132, 149, 97
+
     parser = build_parser()
     args = parser.parse_args(argv)
     _normalize_output_format_args(args, parser)
@@ -194,41 +198,81 @@ def _sync_facade_overrides():
 
 
 def list_datasources(args):
+    """List datasources implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 191
+
     _sync_facade_overrides()
     return datasource_workflows.list_datasources(args)
 
 
 def export_datasources(args):
+    """Export datasources implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 191
+
     _sync_facade_overrides()
     return datasource_workflows.export_datasources(args)
 
 
 def import_datasources(args):
+    """Import datasources implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 191
+
     _sync_facade_overrides()
     return datasource_workflows.import_datasources(args)
 
 
 def diff_datasources(args):
+    """Diff datasources implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 191
+
     _sync_facade_overrides()
     return datasource_workflows.diff_datasources(args)
 
 
 def add_datasource(args):
+    """Add datasource implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 191
+
     _sync_facade_overrides()
     return datasource_workflows.add_datasource(args)
 
 
 def delete_datasource(args):
+    """Delete datasource implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 191
+
     _sync_facade_overrides()
     return datasource_workflows.delete_datasource(args)
 
 
 def modify_datasource(args):
+    """Modify datasource implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 191
+
     _sync_facade_overrides()
     return workflow_modify_datasource(args)
 
 
 def dispatch_datasource_command(args):
+    """Dispatch datasource command implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 244
+    #   Downstream callees: 191
+
     _sync_facade_overrides()
     return datasource_workflows.dispatch_datasource_command(args)
 
@@ -241,6 +285,10 @@ def main(argv=None):
     - Rebind workflow client helpers to facade shims used by tests.
     - Delegate to workflow dispatch for the selected command.
     """
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 175, 238
+
     args = parse_args(argv)
     try:
         return dispatch_datasource_command(args)

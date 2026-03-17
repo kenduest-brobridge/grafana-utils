@@ -2,12 +2,14 @@
 //! Provides compact DTOs for folder/datasource/dashboard-level coverage metrics.
 use serde::Serialize;
 
+/// Struct definition for ExportFolderUsage.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct ExportFolderUsage {
     pub(crate) path: String,
     pub(crate) dashboards: usize,
 }
 
+/// Struct definition for ExportDatasourceUsage.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct ExportDatasourceUsage {
     pub(crate) datasource: String,
@@ -15,6 +17,7 @@ pub(crate) struct ExportDatasourceUsage {
     pub(crate) dashboard_count: usize,
 }
 
+/// Struct definition for DatasourceInventorySummary.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct DatasourceInventorySummary {
     pub(crate) uid: String,
@@ -34,6 +37,7 @@ pub(crate) struct DatasourceInventorySummary {
     pub(crate) dashboard_count: usize,
 }
 
+/// Struct definition for MixedDashboardSummary.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct MixedDashboardSummary {
     pub(crate) uid: String,
@@ -43,6 +47,7 @@ pub(crate) struct MixedDashboardSummary {
     pub(crate) datasources: Vec<String>,
 }
 
+/// Struct definition for ExportInspectionSummary.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct ExportInspectionSummary {
     pub(crate) import_dir: String,
@@ -62,6 +67,7 @@ pub(crate) struct ExportInspectionSummary {
     pub(crate) mixed_dashboards: Vec<MixedDashboardSummary>,
 }
 
+/// Struct definition for ExportInspectionSummaryJsonSummary.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct ExportInspectionSummaryJsonSummary {
     #[serde(rename = "exportOrg", skip_serializing_if = "Option::is_none")]
@@ -84,6 +90,7 @@ pub(crate) struct ExportInspectionSummaryJsonSummary {
     pub(crate) orphaned_datasource_count: usize,
 }
 
+/// Struct definition for ExportFolderUsageJsonRow.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct ExportFolderUsageJsonRow {
     pub(crate) path: String,
@@ -91,6 +98,7 @@ pub(crate) struct ExportFolderUsageJsonRow {
     pub(crate) dashboard_count: usize,
 }
 
+/// Struct definition for ExportDatasourceUsageJsonRow.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct ExportDatasourceUsageJsonRow {
     pub(crate) name: String,
@@ -100,6 +108,7 @@ pub(crate) struct ExportDatasourceUsageJsonRow {
     pub(crate) dashboard_count: usize,
 }
 
+/// Struct definition for MixedDashboardJsonRow.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct MixedDashboardJsonRow {
     pub(crate) uid: String,
@@ -109,6 +118,7 @@ pub(crate) struct MixedDashboardJsonRow {
     pub(crate) datasources: Vec<String>,
 }
 
+/// Struct definition for ExportInspectionSummaryDocument.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct ExportInspectionSummaryDocument {
     pub(crate) summary: ExportInspectionSummaryJsonSummary,
@@ -125,6 +135,7 @@ pub(crate) struct ExportInspectionSummaryDocument {
 // Keep the machine-readable summary JSON contract aligned with the Python
 // inspection document while allowing the internal Rust summary struct to retain
 // snake_case field names that read naturally in table/text code paths.
+/// Purpose: implementation note.
 pub(crate) fn build_export_inspection_summary_document(
     summary: &ExportInspectionSummary,
 ) -> ExportInspectionSummaryDocument {

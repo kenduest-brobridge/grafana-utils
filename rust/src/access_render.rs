@@ -6,6 +6,7 @@ use crate::common::string_field;
 
 use super::Scope;
 
+/// bool label.
 pub(crate) fn bool_label(value: Option<bool>) -> String {
     match value {
         Some(true) => "true".to_string(),
@@ -14,6 +15,7 @@ pub(crate) fn bool_label(value: Option<bool>) -> String {
     }
 }
 
+/// scalar text.
 pub(crate) fn scalar_text(value: Option<&Value>) -> String {
     match value {
         Some(Value::String(text)) => text.clone(),
@@ -23,6 +25,7 @@ pub(crate) fn scalar_text(value: Option<&Value>) -> String {
     }
 }
 
+/// value bool.
 pub(crate) fn value_bool(value: Option<&Value>) -> Option<bool> {
     match value {
         Some(Value::Bool(v)) => Some(*v),
@@ -42,6 +45,7 @@ pub(crate) fn value_bool(value: Option<&Value>) -> Option<bool> {
 
 // Normalize user/team role payloads into a canonical display/case convention used by
 // list output and diffing.
+/// Purpose: implementation note.
 pub(crate) fn normalize_org_role(value: Option<&Value>) -> String {
     let text = match value {
         Some(Value::String(text)) => text.trim(),
@@ -60,6 +64,7 @@ pub(crate) fn normalize_org_role(value: Option<&Value>) -> String {
     }
 }
 
+/// service account role to api.
 pub(crate) fn service_account_role_to_api(role: &str) -> String {
     match role.trim().to_ascii_lowercase().as_str() {
         "none" => "NoBasicRole".to_string(),
@@ -70,6 +75,7 @@ pub(crate) fn service_account_role_to_api(role: &str) -> String {
     }
 }
 
+/// user scope text.
 pub(crate) fn user_scope_text(scope: &Scope) -> &'static str {
     match scope {
         Scope::Org => "org",
@@ -77,6 +83,7 @@ pub(crate) fn user_scope_text(scope: &Scope) -> &'static str {
     }
 }
 
+/// format table.
 pub(crate) fn format_table(headers: &[&str], rows: &[Vec<String>]) -> Vec<String> {
     let mut widths: Vec<usize> = headers.iter().map(|header| header.len()).collect();
     for row in rows {
@@ -113,6 +120,7 @@ fn csv_escape(value: String) -> String {
     }
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_csv(headers: &[&str], rows: &[Vec<String>]) -> Vec<String> {
     let mut lines = vec![headers.join(",")];
     lines.extend(rows.iter().map(|row| {
@@ -126,6 +134,7 @@ pub(crate) fn render_csv(headers: &[&str], rows: &[Vec<String>]) -> Vec<String> 
 }
 
 // Build a normalized user row shape expected by access list renderers.
+/// Purpose: implementation note.
 pub(crate) fn normalize_user_row(user: &Map<String, Value>, scope: &Scope) -> Map<String, Value> {
     Map::from_iter(vec![
         (
@@ -170,6 +179,7 @@ pub(crate) fn normalize_user_row(user: &Map<String, Value>, scope: &Scope) -> Ma
 }
 
 // Build a normalized team row shape expected by team list renderers.
+/// Purpose: implementation note.
 pub(crate) fn normalize_team_row(team: &Map<String, Value>) -> Map<String, Value> {
     Map::from_iter(vec![
         ("id".to_string(), Value::String(scalar_text(team.get("id")))),
@@ -197,6 +207,7 @@ pub(crate) fn normalize_team_row(team: &Map<String, Value>) -> Map<String, Value
 }
 
 // Build a normalized service-account row shape expected by service-account list renderers.
+/// Purpose: implementation note.
 pub(crate) fn normalize_service_account_row(team: &Map<String, Value>) -> Map<String, Value> {
     Map::from_iter(vec![
         ("id".to_string(), Value::String(scalar_text(team.get("id")))),
@@ -234,6 +245,7 @@ pub(crate) fn normalize_service_account_row(team: &Map<String, Value>) -> Map<St
     ])
 }
 
+/// map get text.
 pub(crate) fn map_get_text(map: &Map<String, Value>, key: &str) -> String {
     match map.get(key) {
         Some(Value::String(text)) => text.clone(),
@@ -246,12 +258,14 @@ pub(crate) fn map_get_text(map: &Map<String, Value>, key: &str) -> String {
     }
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_objects_json(rows: &[Map<String, Value>]) -> super::Result<String> {
     Ok(serde_json::to_string_pretty(&Value::Array(
         rows.iter().cloned().map(Value::Object).collect(),
     ))?)
 }
 
+/// user table rows.
 pub(crate) fn user_table_rows(rows: &[Map<String, Value>]) -> Vec<Vec<String>> {
     rows.iter()
         .map(|row| {
@@ -269,6 +283,7 @@ pub(crate) fn user_table_rows(rows: &[Map<String, Value>]) -> Vec<Vec<String>> {
         .collect()
 }
 
+/// team table rows.
 pub(crate) fn team_table_rows(rows: &[Map<String, Value>]) -> Vec<Vec<String>> {
     rows.iter()
         .map(|row| {
@@ -283,6 +298,7 @@ pub(crate) fn team_table_rows(rows: &[Map<String, Value>]) -> Vec<Vec<String>> {
         .collect()
 }
 
+/// service account table rows.
 pub(crate) fn service_account_table_rows(rows: &[Map<String, Value>]) -> Vec<Vec<String>> {
     rows.iter()
         .map(|row| {
@@ -299,6 +315,7 @@ pub(crate) fn service_account_table_rows(rows: &[Map<String, Value>]) -> Vec<Vec
         .collect()
 }
 
+/// user summary line.
 pub(crate) fn user_summary_line(row: &Map<String, Value>) -> String {
     let mut parts = vec![
         format!("id={}", map_get_text(row, "id")),
@@ -328,6 +345,7 @@ pub(crate) fn user_summary_line(row: &Map<String, Value>) -> String {
     parts.join(" ")
 }
 
+/// team summary line.
 pub(crate) fn team_summary_line(row: &Map<String, Value>) -> String {
     let mut parts = vec![
         format!("id={}", map_get_text(row, "id")),
@@ -345,6 +363,7 @@ pub(crate) fn team_summary_line(row: &Map<String, Value>) -> String {
     parts.join(" ")
 }
 
+/// service account summary line.
 pub(crate) fn service_account_summary_line(row: &Map<String, Value>) -> String {
     let mut parts = vec![
         format!("id={}", map_get_text(row, "id")),
@@ -371,6 +390,7 @@ fn exact_text_matches(text: &str, filter: &Option<String>) -> bool {
     }
 }
 
+/// user matches.
 pub(crate) fn user_matches(row: &Map<String, Value>, args: &super::UserListArgs) -> bool {
     let login = map_get_text(row, "login");
     let email = map_get_text(row, "email");
@@ -403,6 +423,7 @@ pub(crate) fn user_matches(row: &Map<String, Value>, args: &super::UserListArgs)
     true
 }
 
+/// paginate rows.
 pub(crate) fn paginate_rows(
     rows: &[Map<String, Value>],
     page: usize,

@@ -27,7 +27,7 @@ class FakeClient(object):
 
 
 class DashboardScreenshotHelperTests(unittest.TestCase):
-    def test_capture_via_devtools_uses_stitch_for_full_page_png(self):
+    def test_dashboard_screenshot_capture_via_devtools_uses_stitch_for_full_page_png(self):
         class FakeDevtools(object):
             def __init__(self, websocket_url, timeout):
                 self.calls = []
@@ -113,7 +113,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
                 mocked_capture.assert_called_once()
                 mocked_write.assert_called_once()
 
-    def test_infer_output_format_uses_extension(self):
+    def test_dashboard_screenshot_infer_output_format_uses_extension(self):
         self.assertEqual(
             screenshot.infer_screenshot_output_format("capture.jpg"),
             "jpeg",
@@ -123,11 +123,11 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
             "pdf",
         )
 
-    def test_infer_output_format_rejects_unknown_extension(self):
+    def test_dashboard_screenshot_infer_output_format_rejects_unknown_extension(self):
         with self.assertRaisesRegex(GrafanaError, "Unable to infer screenshot output format"):
             screenshot.infer_screenshot_output_format("capture.txt")
 
-    def test_parse_var_assignment_requires_name_and_value(self):
+    def test_dashboard_screenshot_parse_var_assignment_requires_name_and_value(self):
         self.assertEqual(
             screenshot.parse_var_assignment("env=prod"),
             ("env", "prod"),
@@ -137,7 +137,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         with self.assertRaisesRegex(GrafanaError, "VALUE cannot be empty"):
             screenshot.parse_var_assignment("env=")
 
-    def test_parse_vars_query_splits_vars_and_passthrough_pairs(self):
+    def test_dashboard_screenshot_parse_vars_query_splits_vars_and_passthrough_pairs(self):
         parsed = screenshot.parse_vars_query(
             "var-env=prod&panelId=7&from=now-6h&kiosk=1"
         )
@@ -147,7 +147,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
             [("panelId", "7"), ("from", "now-6h"), ("kiosk", "1")],
         )
 
-    def test_validate_screenshot_args_requires_target(self):
+    def test_dashboard_screenshot_validate_screenshot_args_requires_target(self):
         args = screenshot.make_screenshot_args(
             dashboard_uid=None,
             dashboard_url=None,
@@ -155,7 +155,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         with self.assertRaisesRegex(GrafanaError, "Set --dashboard-uid or pass --dashboard-url"):
             screenshot.validate_screenshot_args(args)
 
-    def test_validate_screenshot_args_rejects_invalid_dimensions(self):
+    def test_dashboard_screenshot_validate_screenshot_args_rejects_invalid_dimensions(self):
         args = screenshot.make_screenshot_args(
             dashboard_uid="cpu-main",
             width=0,
@@ -163,7 +163,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         with self.assertRaisesRegex(GrafanaError, "--width must be greater than 0"):
             screenshot.validate_screenshot_args(args)
 
-    def test_validate_screenshot_args_rejects_tiles_without_full_page(self):
+    def test_dashboard_screenshot_validate_screenshot_args_rejects_tiles_without_full_page(self):
         args = screenshot.make_screenshot_args(
             dashboard_uid="cpu-main",
             full_page=False,
@@ -172,7 +172,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         with self.assertRaisesRegex(GrafanaError, "--full-page-output tiles or manifest requires --full-page"):
             screenshot.validate_screenshot_args(args)
 
-    def test_validate_screenshot_args_rejects_pdf_tiles_mode(self):
+    def test_dashboard_screenshot_validate_screenshot_args_rejects_pdf_tiles_mode(self):
         args = screenshot.make_screenshot_args(
             dashboard_uid="cpu-main",
             output="capture.pdf",
@@ -182,7 +182,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         with self.assertRaisesRegex(GrafanaError, "PDF output does not support --full-page-output tiles or manifest"):
             screenshot.validate_screenshot_args(args)
 
-    def test_build_dashboard_capture_url_from_base_url(self):
+    def test_dashboard_screenshot_build_dashboard_capture_url_from_base_url(self):
         args = screenshot.make_screenshot_args(
             dashboard_uid="cpu-main",
             slug="cpu-overview",
@@ -205,7 +205,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         self.assertIn("var-cluster=prod-a", url)
         self.assertIn("var-node=web-01", url)
 
-    def test_build_dashboard_capture_url_merges_dashboard_url_and_overrides(self):
+    def test_dashboard_screenshot_build_dashboard_capture_url_merges_dashboard_url_and_overrides(self):
         args = screenshot.make_screenshot_args(
             dashboard_url=(
                 "https://grafana.example.com/d/cpu-main/cpu-overview"
@@ -225,12 +225,12 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         self.assertIn("var-env=stage", url)
         self.assertIn("var-node=web-03", url)
 
-    def test_capture_dashboard_screenshot_requires_backend(self):
+    def test_dashboard_screenshot_capture_dashboard_screenshot_requires_backend(self):
         args = screenshot.make_screenshot_args(dashboard_uid="cpu-main")
         with self.assertRaisesRegex(GrafanaError, "requires a browser backend or a configured Grafana client"):
             screenshot.capture_dashboard_screenshot(args)
 
-    def test_capture_dashboard_screenshot_passes_normalized_request_to_backend(self):
+    def test_dashboard_screenshot_capture_dashboard_screenshot_passes_normalized_request_to_backend(self):
         captured = {}
 
         def backend(request):
@@ -252,7 +252,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         self.assertTrue(captured["full_page"])
         self.assertIn("/d/cpu-main/cpu-main", captured["url"])
 
-    def test_build_capture_request_includes_render_url(self):
+    def test_dashboard_screenshot_build_capture_request_includes_render_url(self):
         args = screenshot.make_screenshot_args(dashboard_uid="cpu-main")
         request = screenshot.build_capture_request(args)
         self.assertIn("/render/d/cpu-main/cpu-main", request["render_url"])
@@ -260,7 +260,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         self.assertIn("height=1024", request["render_url"])
         self.assertEqual(request["device_scale_factor"], 1.0)
 
-    def test_build_capture_request_keeps_device_scale_factor(self):
+    def test_dashboard_screenshot_build_capture_request_keeps_device_scale_factor(self):
         args = screenshot.make_screenshot_args(
             dashboard_uid="cpu-main",
             device_scale_factor=2.0,
@@ -269,7 +269,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         self.assertEqual(request["device_scale_factor"], 2.0)
         self.assertEqual(request["full_page_output"], "single")
 
-    def test_build_capture_request_keeps_full_page_output(self):
+    def test_dashboard_screenshot_build_capture_request_keeps_full_page_output(self):
         args = screenshot.make_screenshot_args(
             dashboard_uid="cpu-main",
             full_page=True,
@@ -278,7 +278,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         request = screenshot.build_capture_request(args)
         self.assertEqual(request["full_page_output"], "manifest")
 
-    def test_build_capture_request_keeps_header_fields(self):
+    def test_dashboard_screenshot_build_capture_request_keeps_header_fields(self):
         args = screenshot.make_screenshot_args(
             dashboard_uid="cpu-main",
             print_capture_url=True,
@@ -294,7 +294,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         self.assertTrue(request["header_captured_at"])
         self.assertEqual(request["header_text"], "Operator note")
 
-    def test_compose_header_image_adds_top_block(self):
+    def test_dashboard_screenshot_compose_header_image_adds_top_block(self):
         image = Image.new("RGBA", (300, 120), (10, 20, 30, 255))
         request = {
             "output": Path("capture.png"),
@@ -314,7 +314,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         self.assertGreater(rendered.height, image.height)
         self.assertEqual(rendered.width, image.width)
 
-    def test_capture_dashboard_screenshot_resolves_slug_from_live_dashboard(self):
+    def test_dashboard_screenshot_capture_dashboard_screenshot_resolves_slug_from_live_dashboard(self):
         captured = {}
 
         def backend(request):
@@ -325,7 +325,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         screenshot.capture_dashboard_screenshot(args, backend=backend, client=FakeClient())
         self.assertIn("/d/cpu-main/cpu-overview", captured["url"])
 
-    def test_capture_dashboard_screenshot_uses_browser_backend_by_default(self):
+    def test_dashboard_screenshot_capture_dashboard_screenshot_uses_browser_backend_by_default(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "cpu-main.png"
             args = screenshot.make_screenshot_args(
@@ -345,7 +345,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         self.assertEqual(result["output"], output_path)
         mocked.assert_called_once()
 
-    def test_capture_dashboard_screenshot_allows_pdf_with_browser_backend(self):
+    def test_dashboard_screenshot_capture_dashboard_screenshot_allows_pdf_with_browser_backend(self):
         args = screenshot.make_screenshot_args(
             dashboard_uid="cpu-main",
             output="capture.pdf",
@@ -359,7 +359,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
         self.assertEqual(result["output_format"], "pdf")
         mocked.assert_called_once()
 
-    def test_capture_dashboard_screenshot_prints_capture_url(self):
+    def test_dashboard_screenshot_capture_dashboard_screenshot_prints_capture_url(self):
         stderr = io.StringIO()
 
         def backend(request):
@@ -373,7 +373,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
             screenshot.capture_dashboard_screenshot(args, backend=backend, client=FakeClient())
         self.assertIn("Capture URL:", stderr.getvalue())
 
-    def test_write_full_page_output_tiles_writes_parts_without_manifest(self):
+    def test_dashboard_screenshot_write_full_page_output_tiles_writes_parts_without_manifest(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             request = {
                 "output": Path(tmpdir) / "capture.png",
@@ -407,7 +407,7 @@ class DashboardScreenshotHelperTests(unittest.TestCase):
             self.assertTrue((output_dir / "part-0002.png").exists())
             self.assertFalse((output_dir / "manifest.json").exists())
 
-    def test_write_full_page_output_manifest_writes_manifest(self):
+    def test_dashboard_screenshot_write_full_page_output_manifest_writes_manifest(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             request = {
                 "output": Path(tmpdir) / "capture.png",

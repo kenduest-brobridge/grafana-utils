@@ -45,6 +45,10 @@ def resolve_inspect_output_mode(args, grafana_error):
 
 def resolve_inspect_dispatch_args(args, deps, grafana_error):
     """Validate inspect output arguments and normalize dispatch settings."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 30
+
     report_format, json_output, table_output = resolve_inspect_output_mode(
         args, grafana_error
     )
@@ -110,6 +114,7 @@ def build_filtered_report_document(import_dir, deps, settings):
 
 
 def _render_report_output(import_dir, deps, settings):
+    """Internal helper for render report output."""
     report_format = settings["report_format"]
     report_columns = settings["report_columns"]
     include_header = not settings["no_header"]
@@ -212,6 +217,7 @@ def _render_report_output(import_dir, deps, settings):
 
 
 def _render_summary_output(import_dir, deps, settings):
+    """Internal helper for render summary output."""
     document = deps["build_export_inspection_document"](import_dir)
     if settings["json_output"]:
         print(json.dumps(document, indent=2, sort_keys=False, ensure_ascii=False))
@@ -231,6 +237,10 @@ def _render_summary_output(import_dir, deps, settings):
 
 def run_inspection_dispatch(import_dir, deps, settings):
     """Render inspect output using the normalized dispatch settings."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 112, 215
+
     if settings["report_format"] is not None:
         return _render_report_output(import_dir, deps, settings)
     return _render_summary_output(import_dir, deps, settings)

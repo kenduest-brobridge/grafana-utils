@@ -40,6 +40,7 @@ class AlertSyncAssessment(object):
 
 
 def _normalize_text(value, default=""):
+    """Internal helper for normalize text."""
     if value is None:
         return default
     text = str(value).strip()
@@ -49,12 +50,14 @@ def _normalize_text(value, default=""):
 
 
 def _require_mapping(value, label):
+    """Internal helper for require mapping."""
     if not isinstance(value, Mapping):
         raise GrafanaError("%s must be a JSON object." % label)
     return dict(value)
 
 
 def _normalize_managed_fields(values):
+    """Internal helper for normalize managed fields."""
     if not isinstance(values, (list, tuple)):
         raise GrafanaError("Alert managedFields must be a list.")
     fields = []
@@ -73,6 +76,10 @@ def _normalize_managed_fields(values):
 
 def assess_alert_sync_specs(alert_specs):
     """Assess alert sync specs for staged plan-only vs future live apply support."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 42, 52, 59
+
     assessments = []
     for raw_spec in alert_specs:
         spec = _require_mapping(raw_spec, "Alert sync spec")
@@ -159,6 +166,10 @@ def assess_alert_sync_specs(alert_specs):
 
 def render_alert_sync_assessment_text(document):
     """Render one deterministic text summary for later wiring."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 42, 52
+
     if _normalize_text(document.get("kind")) != ALERT_SYNC_KIND:
         raise GrafanaError("Alert sync assessment document kind is not supported.")
     summary = _require_mapping(document.get("summary"), "summary")

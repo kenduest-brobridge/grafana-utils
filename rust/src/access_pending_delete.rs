@@ -24,6 +24,7 @@ use super::{
 // - dispatch the new handlers from `run_access_cli_with_request` and `run_access_cli`
 // - optionally materialize `GroupCommandStage` as a compatibility alias for `team`
 
+/// Struct definition for TeamDeleteArgs.
 #[derive(Debug, Clone, Args)]
 pub struct TeamDeleteArgs {
     #[command(flatten)]
@@ -38,6 +39,7 @@ pub struct TeamDeleteArgs {
     pub json: bool,
 }
 
+/// Struct definition for ServiceAccountDeleteArgs.
 #[derive(Debug, Clone, Args)]
 pub struct ServiceAccountDeleteArgs {
     #[command(flatten)]
@@ -52,6 +54,7 @@ pub struct ServiceAccountDeleteArgs {
     pub json: bool,
 }
 
+/// Struct definition for ServiceAccountTokenDeleteArgs.
 #[derive(Debug, Clone, Args)]
 pub struct ServiceAccountTokenDeleteArgs {
     #[command(flatten)]
@@ -70,6 +73,7 @@ pub struct ServiceAccountTokenDeleteArgs {
     pub json: bool,
 }
 
+/// Enum definition for GroupCommandStage.
 #[derive(Debug, Clone, Subcommand)]
 pub enum GroupCommandStage {
     List(TeamListArgs),
@@ -87,7 +91,7 @@ fn validate_confirmation(yes: bool, noun: &str) -> Result<()> {
     }
 }
 
-/// Render one deletion result as stable pretty JSON.
+/// Purpose: implementation note.
 fn render_single_object_json(object: &Map<String, Value>) -> Result<String> {
     serde_json::to_string_pretty(&Value::Object(object.clone())).map_err(Into::into)
 }
@@ -163,7 +167,7 @@ where
     }
 }
 
-/// Resolve a team by exact name match from the staged list endpoint.
+/// Purpose: implementation note.
 fn lookup_team_by_name<F>(mut request_json: F, name: &str) -> Result<Map<String, Value>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -237,7 +241,7 @@ fn team_delete_result(
     ])
 }
 
-/// Build a compact human summary for team delete output.
+/// Purpose: implementation note.
 fn team_delete_summary_line(result: &Map<String, Value>) -> String {
     let mut parts = vec![
         format!("teamId={}", map_get_text(result, "teamId")),
@@ -325,7 +329,7 @@ where
     }
 }
 
-/// Resolve a service account by exact name before delete operations.
+/// Purpose: implementation note.
 fn lookup_service_account_by_name<F>(mut request_json: F, name: &str) -> Result<Map<String, Value>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -410,7 +414,7 @@ fn service_account_delete_result(
     row
 }
 
-/// Build a compact one-line summary for service-account delete output.
+/// Purpose: implementation note.
 fn service_account_delete_summary_line(result: &Map<String, Value>) -> String {
     let mut parts = vec![
         format!(
@@ -544,7 +548,7 @@ where
     )
 }
 
-/// Build a stable row with resolved ids and deletion message.
+/// Purpose: implementation note.
 fn service_account_token_delete_result(
     service_account: &Map<String, Value>,
     token: &Map<String, Value>,
@@ -592,7 +596,7 @@ fn service_account_token_delete_result(
     ])
 }
 
-/// Build a compact one-line summary for token delete output.
+/// Purpose: implementation note.
 fn service_account_token_delete_summary_line(result: &Map<String, Value>) -> String {
     [
         format!(

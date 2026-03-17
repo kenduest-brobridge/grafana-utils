@@ -112,6 +112,7 @@ fn render_alert_csv(rows: &[BTreeMap<&str, String>], fields: &[&str]) -> String 
     output
 }
 
+/// serialize rule list rows.
 pub(crate) fn serialize_rule_list_rows(
     items: &[Map<String, Value>],
 ) -> Vec<BTreeMap<&'static str, String>> {
@@ -248,7 +249,15 @@ fn list_items_for_kind(
     }
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn list_alert_resources(args: &AlertCliArgs) -> Result<()> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: alert.rs:run_alert_cli
+// Downstream callees: alert_list.rs:append_org_scope, alert_list.rs:auth_header_is_basic, alert_list.rs:build_alert_client_for_org, alert_list.rs:fields_with_org_scope, alert_list.rs:headers_with_org_scope, alert_list.rs:list_items_for_kind, alert_list.rs:org_id_value, alert_list.rs:render_alert_csv, alert_list.rs:render_alert_table, alert_list.rs:rows_include_org_scope, alert_list.rs:serialize_contact_point_list_rows, alert_list.rs:serialize_mute_timing_list_rows ...
+
     let kind = args
         .list_kind
         .ok_or_else(|| message("Alert list command is required."))?;

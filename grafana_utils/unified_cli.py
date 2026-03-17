@@ -241,6 +241,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     - Hand off to the matching module `main(...)`.
     - Preserve exit-code contract of the downstream module.
     """
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 153
+
     args = parse_args(argv)
     if args.entrypoint == "dashboard":
         return dashboard_cli.main(args.forwarded_argv)

@@ -7,6 +7,7 @@ use super::dashboard_inspect::{
     QueryAnalysis,
 };
 
+/// analyze query.
 pub(crate) fn analyze_query(
     _panel: &Map<String, Value>,
     target: &Map<String, Value>,

@@ -11,11 +11,11 @@ render_utils = importlib.import_module("grafana_utils.datasource.live_mutation_r
 
 
 class DatasourceLiveMutationRenderTests(unittest.TestCase):
-    def test_module_parses_as_python39_syntax(self):
+    def test_datasource_live_mutation_render_module_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_build_live_mutation_dry_run_record_for_add(self):
+    def test_datasource_live_mutation_render_build_live_mutation_dry_run_record_for_add(self):
         record = render_utils.build_live_mutation_dry_run_record(
             "add",
             {"action": "would-create", "match": "missing", "target": None},
@@ -35,7 +35,7 @@ class DatasourceLiveMutationRenderTests(unittest.TestCase):
             },
         )
 
-    def test_render_live_mutation_dry_run_table_renders_headers_and_rows(self):
+    def test_datasource_live_mutation_render_render_live_mutation_dry_run_table_renders_headers_and_rows(self):
         lines = render_utils.render_live_mutation_dry_run_table(
             [
                 {
@@ -54,7 +54,7 @@ class DatasourceLiveMutationRenderTests(unittest.TestCase):
         self.assertIn("delete", lines[2])
         self.assertIn("would-delete", lines[2])
 
-    def test_render_live_mutation_dry_run_table_can_omit_header(self):
+    def test_datasource_live_mutation_render_render_live_mutation_dry_run_table_can_omit_header(self):
         lines = render_utils.render_live_mutation_dry_run_table(
             [
                 {
@@ -73,7 +73,7 @@ class DatasourceLiveMutationRenderTests(unittest.TestCase):
         self.assertEqual(len(lines), 1)
         self.assertIn("would-create", lines[0])
 
-    def test_render_live_mutation_dry_run_json_summarizes_actions(self):
+    def test_datasource_live_mutation_render_render_live_mutation_dry_run_json_summarizes_actions(self):
         document = render_utils.render_live_mutation_dry_run_json(
             [
                 {"action": "would-create"},

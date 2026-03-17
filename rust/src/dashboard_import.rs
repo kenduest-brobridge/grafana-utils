@@ -147,6 +147,7 @@ fn validate_import_org_auth(context: &DashboardAuthContext, args: &ImportArgs) -
     Ok(())
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_import_auth_context(args: &ImportArgs) -> Result<DashboardAuthContext> {
     let mut context = build_auth_context(&args.common)?;
     validate_import_org_auth(&context, args)?;
@@ -254,6 +255,7 @@ struct ExportOrgTargetPlan {
     import_dir: PathBuf,
 }
 
+/// Struct definition for ImportDryRunReport.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ImportDryRunReport {
     pub mode: String,
@@ -273,6 +275,10 @@ fn org_id_string_from_value(value: Option<&Value>) -> String {
 }
 
 fn parse_export_org_scope(import_root: &Path, raw_dir: &Path) -> Result<ExportOrgImportScope> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: dashboard_import.rs:discover_export_org_import_scopes
+// Downstream callees: common.rs:message, dashboard_import.rs:load_export_org_ids, dashboard_import.rs:load_export_org_names
+
     let metadata = load_export_metadata(raw_dir, Some(RAW_EXPORT_SUBDIR))?;
     let export_org_ids = load_export_org_ids(raw_dir, metadata.as_ref())?;
     if export_org_ids.is_empty() {
@@ -693,6 +699,7 @@ where
     Ok(Some(folder_uid))
 }
 
+/// describe dashboard import mode.
 pub(crate) fn describe_dashboard_import_mode(
     replace_existing: bool,
     update_existing_only: bool,
@@ -1033,6 +1040,7 @@ fn build_folder_inventory_dry_run_record(status: &FolderInventoryStatus) -> [Str
     ]
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_folder_inventory_dry_run_table(
     records: &[[String; 6]],
     include_header: bool,
@@ -1086,6 +1094,7 @@ pub(crate) fn render_folder_inventory_dry_run_table(
     lines
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_import_dry_run_table(
     records: &[[String; 8]],
     include_header: bool,
@@ -1156,6 +1165,7 @@ fn build_routed_import_org_row(plan: &ExportOrgTargetPlan, dashboard_count: usiz
     ]
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_routed_import_org_table(
     rows: &[[String; 5]],
     include_header: bool,
@@ -1248,6 +1258,7 @@ fn resolve_dashboard_import_table_columns(
     columns
 }
 
+/// Purpose: implementation note.
 pub(crate) fn render_import_dry_run_json(
     mode: &str,
     folder_statuses: &[FolderInventoryStatus],
@@ -1386,6 +1397,7 @@ fn build_import_dry_run_json_value(report: &ImportDryRunReport) -> Value {
     })
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_routed_import_dry_run_json_document(
     orgs: &[Value],
     imports: &[Value],
@@ -1405,6 +1417,7 @@ pub(crate) fn build_routed_import_dry_run_json_document(
     Ok(serde_json::to_string_pretty(&payload)?)
 }
 
+/// collect import dry run report with request.
 pub(crate) fn collect_import_dry_run_report_with_request<F>(
     mut request_json: F,
     args: &ImportArgs,
@@ -1554,6 +1567,7 @@ where
     })
 }
 
+/// format import progress line.
 pub(crate) fn format_import_progress_line(
     current: usize,
     total: usize,
@@ -1577,6 +1591,7 @@ pub(crate) fn format_import_progress_line(
     }
 }
 
+/// format import verbose line.
 pub(crate) fn format_import_verbose_line(
     dashboard_file: &Path,
     dry_run: bool,
@@ -1610,6 +1625,7 @@ pub(crate) fn format_import_verbose_line(
     }
 }
 
+/// Purpose: implementation note.
 pub(crate) fn import_dashboards_with_request<F>(
     mut request_json: F,
     args: &ImportArgs,
@@ -2049,6 +2065,10 @@ where
     Ok(imported_count)
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn import_dashboards_with_client(client: &JsonHttpClient, args: &ImportArgs) -> Result<usize> {
     import_dashboards_with_request(
         |method, path, params, payload| client.request_json(method, path, params, payload),
@@ -2056,6 +2076,7 @@ pub fn import_dashboards_with_client(client: &JsonHttpClient, args: &ImportArgs)
     )
 }
 
+/// Purpose: implementation note.
 pub(crate) fn build_routed_import_dry_run_json_with_request<F, G>(
     mut request_json: F,
     mut collect_preview_for_org: G,
@@ -2142,6 +2163,7 @@ where
     build_routed_import_dry_run_json_document(&orgs, &imports)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn import_dashboards_by_export_org_with_request<F, G, H>(
     mut request_json: F,
     mut import_for_org: G,
@@ -2224,6 +2246,7 @@ where
     Ok(imported_count)
 }
 
+/// Purpose: implementation note.
 pub(crate) fn import_dashboards_with_org_clients(args: &ImportArgs) -> Result<usize> {
     let context = build_import_auth_context(args)?;
     let client = JsonHttpClient::new(JsonHttpClientConfig {
@@ -2257,6 +2280,7 @@ pub(crate) fn import_dashboards_with_org_clients(args: &ImportArgs) -> Result<us
     )
 }
 
+/// Purpose: implementation note.
 pub(crate) fn diff_dashboards_with_request<F>(mut request_json: F, args: &DiffArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -2312,6 +2336,10 @@ where
     Ok(differences)
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn diff_dashboards_with_client(client: &JsonHttpClient, args: &DiffArgs) -> Result<usize> {
     diff_dashboards_with_request(
         |method, path, params, payload| client.request_json(method, path, params, payload),

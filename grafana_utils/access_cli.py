@@ -164,6 +164,7 @@ def _read_secret_file(path, label):
 
 
 def resolve_user_secret_inputs(args):
+    """Resolve user secret inputs implementation."""
     if getattr(args, "command", None) == "add" and getattr(args, "resource", None) == "user":
         if getattr(args, "new_user_password_file", None):
             args.new_user_password = _read_secret_file(
@@ -195,6 +196,10 @@ def run(args):
     - Create a domain client with parsed URL/timeouts.
     - Delegate to `dispatch_access_command` with the parsed auth mode.
     """
+    # Call graph: see callers/callees.
+    #   Upstream callers: 210
+    #   Downstream callees: 144
+
     headers, auth_mode = build_request_headers(args)
     client = GrafanaAccessClient(
         base_url=args.url,
@@ -208,6 +213,10 @@ def run(args):
 
 def main(argv=None):
     """Run access CLI through parser -> auth -> workflow dispatch and normalize exits."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 166, 191
+
     try:
         args = parse_args(argv)
         args = resolve_user_secret_inputs(args)

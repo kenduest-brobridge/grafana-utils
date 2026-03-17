@@ -30,7 +30,7 @@ class DatasourceDiffScaffoldTests(unittest.TestCase):
     def _load_contract_cases(self):
         return json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
 
-    def test_load_datasource_diff_bundle_normalizes_records(self):
+    def test_datasource_diff_load_datasource_diff_bundle_normalizes_records(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             (import_dir / "export-metadata.json").write_text(
@@ -67,7 +67,7 @@ class DatasourceDiffScaffoldTests(unittest.TestCase):
         self.assertEqual(bundle["records"][0]["isDefault"], "true")
         self.assertEqual(bundle["records"][0]["orgId"], "7")
 
-    def test_normalize_datasource_record_matches_shared_contract_fixtures(self):
+    def test_datasource_diff_normalize_datasource_record_matches_shared_contract_fixtures(self):
         for case in self._load_contract_cases():
             with self.subTest(case=case["name"]):
                 self.assertEqual(
@@ -75,7 +75,7 @@ class DatasourceDiffScaffoldTests(unittest.TestCase):
                     case["expectedNormalizedRecord"],
                 )
 
-    def test_load_datasource_diff_bundle_rejects_extra_contract_fields(self):
+    def test_datasource_diff_load_datasource_diff_bundle_rejects_extra_contract_fields(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             (import_dir / "export-metadata.json").write_text(
@@ -114,7 +114,7 @@ class DatasourceDiffScaffoldTests(unittest.TestCase):
             ):
                 datasource_diff.load_datasource_diff_bundle(import_dir)
 
-    def test_load_datasource_diff_bundle_rejects_wrong_metadata_kind(self):
+    def test_datasource_diff_load_datasource_diff_bundle_rejects_wrong_metadata_kind(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             (import_dir / "export-metadata.json").write_text(
@@ -133,7 +133,7 @@ class DatasourceDiffScaffoldTests(unittest.TestCase):
             with self.assertRaises(dashboard_cli.GrafanaError):
                 datasource_diff.load_datasource_diff_bundle(import_dir)
 
-    def test_build_live_datasource_diff_records_uses_export_shape(self):
+    def test_datasource_diff_build_live_datasource_diff_records_uses_export_shape(self):
         client = FakeDatasourceClient(
             org={"id": 3, "name": "Main Org."},
             datasources=[
@@ -154,7 +154,7 @@ class DatasourceDiffScaffoldTests(unittest.TestCase):
         self.assertEqual(records[0]["org"], "Main Org.")
         self.assertEqual(records[0]["orgId"], "3")
 
-    def test_compare_datasource_inventory_reports_match_difference_missing_and_extra(self):
+    def test_datasource_diff_compare_datasource_inventory_reports_match_difference_missing_and_extra(self):
         bundle_records = [
             {
                 "uid": "prom-main",
@@ -218,7 +218,7 @@ class DatasourceDiffScaffoldTests(unittest.TestCase):
         self.assertEqual(by_identity["tempo-main"]["status"], "missing-live")
         self.assertEqual(by_identity["pyroscope-main"]["status"], "extra-live")
 
-    def test_compare_datasource_inventory_uses_name_fallback_and_flags_ambiguous_live_name(self):
+    def test_datasource_diff_compare_datasource_inventory_uses_name_fallback_and_flags_ambiguous_live_name(self):
         bundle_records = [
             {
                 "uid": "",

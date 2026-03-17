@@ -14,6 +14,10 @@ from .common import DEFAULT_PAGE_SIZE, GrafanaError
 
 def add_team_delete_cli_args(parser: argparse.ArgumentParser) -> None:
     """Register CLI flags for staged team delete commands."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     identity_group = parser.add_mutually_exclusive_group(required=True)
     identity_group.add_argument(
         "--team-id",
@@ -39,6 +43,10 @@ def add_team_delete_cli_args(parser: argparse.ArgumentParser) -> None:
 
 def add_service_account_delete_cli_args(parser: argparse.ArgumentParser) -> None:
     """Register CLI flags for staged service-account delete commands."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     identity_group = parser.add_mutually_exclusive_group(required=True)
     identity_group.add_argument(
         "--service-account-id",
@@ -66,6 +74,10 @@ def add_service_account_token_delete_cli_args(
     parser: argparse.ArgumentParser,
 ) -> None:
     """Register CLI flags for staged service-account token delete commands."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     owner_group = parser.add_mutually_exclusive_group(required=True)
     owner_group.add_argument(
         "--service-account-id",
@@ -103,6 +115,10 @@ def add_service_account_token_delete_cli_args(
 def normalize_group_alias_argv(argv: Iterable[str]) -> list[str]:
     """Map a leading `group` resource alias onto the future `team` surface."""
 
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     tokens = list(argv)
     if tokens and tokens[0] == "group":
         tokens[0] = "team"
@@ -111,6 +127,10 @@ def normalize_group_alias_argv(argv: Iterable[str]) -> list[str]:
 
 def validate_destructive_confirmed(args: Any, action_label: str) -> None:
     """Enforce explicit --yes for destructive actions."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if not bool(getattr(args, "yes", False)):
         raise GrafanaError("%s requires --yes." % action_label)
 
@@ -145,6 +165,10 @@ def resolve_team_id(
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> str:
     """Resolve a team identifier by explicit id or exact name lookup."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 118
+
     if team_id is not None and team_id != "":
         return str(team_id)
     if not name:
@@ -165,6 +189,10 @@ def resolve_service_account_id(
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> str:
     """Resolve a service-account identifier by explicit id or exact name lookup."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 118
+
     if service_account_id is not None and service_account_id != "":
         return str(service_account_id)
     if not name:
@@ -186,6 +214,10 @@ def resolve_service_account_token_record(
     token_name: Optional[str] = None,
 ) -> dict[str, Any]:
     """Resolve one token record by id or exact name, with clear validation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 118
+
     if token_id is not None and token_id != "":
         return _select_exact_match(
             token_items,
@@ -207,6 +239,10 @@ def resolve_service_account_token_record(
 
 def build_team_delete_request(team_id: Any) -> dict[str, str]:
     """Build a URL-safe DELETE request payload for one team."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     quoted_team_id = parse.quote(str(team_id), safe="")
     return {
         "method": "DELETE",
@@ -218,6 +254,10 @@ def build_service_account_delete_request(
     service_account_id: Any,
 ) -> dict[str, str]:
     """Build a URL-safe DELETE request payload for one service account."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     quoted_service_account_id = parse.quote(str(service_account_id), safe="")
     return {
         "method": "DELETE",
@@ -230,6 +270,10 @@ def build_service_account_token_delete_request(
     token_id: Any,
 ) -> dict[str, str]:
     """Build a URL-safe DELETE request payload for one service-account token."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     quoted_service_account_id = parse.quote(str(service_account_id), safe="")
     quoted_token_id = parse.quote(str(token_id), safe="")
     return {

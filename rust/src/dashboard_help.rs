@@ -14,18 +14,27 @@ fn render_dashboard_subcommand_help_text(subcommand_name: &str) -> String {
     String::from_utf8(output).expect("dashboard help should be valid UTF-8")
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn render_inspect_export_help_full() -> String {
     let mut text = render_dashboard_subcommand_help_text("inspect-export");
     text.push_str(INSPECT_EXPORT_HELP_FULL_EXAMPLES);
     text
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn render_inspect_live_help_full() -> String {
     let mut text = render_dashboard_subcommand_help_text("inspect-live");
     text.push_str(INSPECT_LIVE_HELP_FULL_EXAMPLES);
     text
 }
 
+/// maybe render dashboard help full from os args.
 pub fn maybe_render_dashboard_help_full_from_os_args<I, T>(iter: I) -> Option<String>
 where
     I: IntoIterator<Item = T>,

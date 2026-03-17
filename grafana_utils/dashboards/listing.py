@@ -28,6 +28,10 @@ from .transformer import (
 
 def format_dashboard_summary_line(summary: dict[str, Any]) -> str:
     """Render one live dashboard summary in a compact operator-readable form."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 41
+
     record = build_dashboard_summary_record(summary)
     line = (
         "uid={uid} name={name} folder={folder} folderUid={folderUid} "
@@ -332,6 +336,10 @@ def render_dashboard_summary_table(
             widths[index] = max(widths[index], len(value))
 
     def format_row(values: list[str]) -> str:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return "  ".join(
             value.ljust(widths[index]) for index, value in enumerate(values)
         )
@@ -376,6 +384,10 @@ def list_dashboards(
     datasource_error: type,
 ) -> int:
     """List live dashboard summaries without exporting dashboard JSON."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 258, 290, 307, 350, 363, 78
+
     all_orgs = bool(getattr(args, "all_orgs", False))
     org_id = getattr(args, "org_id", None)
     if all_orgs and org_id:
@@ -435,6 +447,10 @@ def list_dashboards(
 
 def format_data_source_line(datasource: dict[str, Any]) -> str:
     """Render one datasource in a compact operator-readable form."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 448
+
     record = build_data_source_record(datasource)
     return (
         "uid={uid} name={name} type={type} url={url} isDefault={isDefault}"
@@ -472,6 +488,10 @@ def build_datasource_inventory_record(
     org: dict[str, Any],
 ) -> dict[str, str]:
     """Normalize one datasource inventory record for raw export metadata."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 448
+
     record = build_data_source_record(datasource)
     record["access"] = str(datasource.get("access") or "")
     record["org"] = str(org.get("name") or DEFAULT_ORG_NAME)
@@ -484,6 +504,10 @@ def render_data_source_table(
     include_header: bool = True,
 ) -> list[str]:
     """Render datasource summaries as a fixed-width table."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 553
+    #   Downstream callees: 448, 465, 512
+
     include_org_scope = data_source_rows_include_org_scope(datasources)
     headers = ["UID", "NAME", "TYPE", "URL", "IS_DEFAULT"]
     if include_org_scope:
@@ -506,6 +530,10 @@ def render_data_source_table(
             widths[index] = max(widths[index], len(value))
 
     def format_row(values: list[str]) -> str:
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return "  ".join(
             value.ljust(widths[index]) for index, value in enumerate(values)
         )
@@ -547,6 +575,10 @@ def list_data_sources(
     build_client: Callable[[Any], GrafanaClient],
 ) -> int:
     """List live Grafana datasource summaries."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 486, 528, 544
+
     client = build_client(args)
     datasources = client.list_datasources()
     if args.csv:

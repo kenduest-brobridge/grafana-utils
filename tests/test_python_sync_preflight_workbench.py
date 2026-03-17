@@ -13,11 +13,11 @@ GrafanaError = importlib.import_module("grafana_utils.dashboard_cli").GrafanaErr
 
 
 class SyncPreflightWorkbenchTests(unittest.TestCase):
-    def test_module_parses_as_python39_syntax(self):
+    def test_sync_preflight_module_parses_as_python39_syntax(self):
         source = MODULE_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_build_sync_preflight_document_reports_missing_plugin_and_alert_blocks(self):
+    def test_sync_preflight_build_sync_preflight_document_reports_missing_plugin_and_alert_blocks(self):
         document = sync_preflight_workbench.build_sync_preflight_document(
             [
                 {
@@ -84,7 +84,7 @@ class SyncPreflightWorkbenchTests(unittest.TestCase):
             "missing",
         )
 
-    def test_render_sync_preflight_text_renders_summary_and_rows(self):
+    def test_sync_preflight_render_sync_preflight_text_renders_summary_and_rows(self):
         document = sync_preflight_workbench.build_sync_preflight_document(
             [
                 {
@@ -104,7 +104,7 @@ class SyncPreflightWorkbenchTests(unittest.TestCase):
             output,
         )
 
-    def test_render_sync_preflight_rejects_wrong_kind(self):
+    def test_sync_preflight_render_sync_preflight_rejects_wrong_kind(self):
         with self.assertRaises(GrafanaError):
             sync_preflight_workbench.render_sync_preflight_text({"kind": "wrong"})
 

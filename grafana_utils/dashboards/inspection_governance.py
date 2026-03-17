@@ -15,6 +15,7 @@ DATASOURCE_VARIABLE_PATTERN = re.compile(
 
 
 def _iter_dashboard_panels(panels: Any) -> list[dict[str, Any]]:
+    """Internal helper for iter dashboard panels."""
     flattened = []
     if not isinstance(panels, list):
         return flattened
@@ -29,6 +30,7 @@ def _iter_dashboard_panels(panels: Any) -> list[dict[str, Any]]:
 
 
 def _unique_strings(values: Iterable[Any]) -> list[str]:
+    """Internal helper for unique strings."""
     seen = set()
     normalized = []
     for value in values:
@@ -43,6 +45,7 @@ def _unique_strings(values: Iterable[Any]) -> list[str]:
 def _resolve_datasource_inventory(
     summary_document: dict[str, Any]
 ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
+    """Internal helper for resolve datasource inventory."""
     by_uid = {}
     by_name = {}
     for item in summary_document.get("datasourceInventory") or []:
@@ -63,6 +66,7 @@ def _resolve_datasource_identity(
     datasource_by_uid: dict[str, dict[str, Any]],
     datasource_by_name: dict[str, dict[str, Any]],
 ) -> tuple[str, str, str]:
+    """Internal helper for resolve datasource identity."""
     datasource_uid = str(query_record.get("datasourceUid") or "").strip()
     datasource_label = str(query_record.get("datasource") or "").strip()
     inventory = None
@@ -86,6 +90,7 @@ def _resolve_datasource_identity(
 
 
 def _normalize_family_name(datasource_type: str) -> str:
+    """Internal helper for normalize family name."""
     name = str(datasource_type or "").strip().lower()
     if not name:
         return "unknown"
@@ -101,6 +106,7 @@ def _normalize_family_name(datasource_type: str) -> str:
 
 
 def _build_query_analysis_state(record: dict[str, Any]) -> str:
+    """Internal helper for build query analysis state."""
     for field in ("metrics", "measurements", "buckets"):
         values = record.get(field)
         if isinstance(values, list) and values:
@@ -109,6 +115,7 @@ def _build_query_analysis_state(record: dict[str, Any]) -> str:
 
 
 def _extract_datasource_variable_name(value: Any) -> str:
+    """Internal helper for extract datasource variable name."""
     text = str(value or "").strip()
     if not text:
         return ""
@@ -126,6 +133,7 @@ def _build_governance_risk_record(
     datasource: str,
     detail: str,
 ) -> dict[str, str]:
+    """Internal helper for build governance risk record."""
     category = "coverage"
     recommendation = "Review this governance finding."
     if kind == "mixed-datasource-dashboard":
@@ -167,6 +175,11 @@ def build_datasource_family_coverage_records(
     summary_document: dict[str, Any],
     report_document: dict[str, Any],
 ) -> list[dict[str, Any]]:
+    """Build datasource family coverage records implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 516
+    #   Downstream callees: 32, 45, 64, 92
+
     datasource_by_uid, datasource_by_name = _resolve_datasource_inventory(
         summary_document
     )
@@ -221,6 +234,11 @@ def build_datasource_coverage_records(
     summary_document: dict[str, Any],
     report_document: dict[str, Any],
 ) -> list[dict[str, Any]]:
+    """Build datasource coverage records implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 516
+    #   Downstream callees: 32, 45, 64, 92
+
     datasource_by_uid, datasource_by_name = _resolve_datasource_inventory(
         summary_document
     )
@@ -292,6 +310,7 @@ def build_datasource_coverage_records(
 
 
 def _load_dashboard_object_from_record(record: dict[str, Any]) -> dict[str, Any]:
+    """Internal helper for load dashboard object from record."""
     dashboard_file = Path(str(record.get("file") or "").strip())
     if not dashboard_file.is_file():
         return {}
@@ -314,6 +333,11 @@ def build_dashboard_dependency_records(
     summary_document: dict[str, Any],
     report_document: dict[str, Any],
 ) -> list[dict[str, Any]]:
+    """Build dashboard dependency records implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 516
+    #   Downstream callees: 117, 17, 304, 32
+
     dashboard_report_index = {}
     for query in report_document.get("queries") or []:
         if not isinstance(query, dict):
@@ -415,6 +439,11 @@ def build_governance_risk_records(
     summary_document: dict[str, Any],
     report_document: dict[str, Any],
 ) -> list[dict[str, str]]:
+    """Build governance risk records implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 516
+    #   Downstream callees: 108, 128, 32, 45, 64, 92
+
     datasource_by_uid, datasource_by_name = _resolve_datasource_inventory(
         summary_document
     )
@@ -504,6 +533,11 @@ def build_export_inspection_governance_document(
     summary_document: dict[str, Any],
     report_document: dict[str, Any],
 ) -> dict[str, Any]:
+    """Build export inspection governance document implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 174, 229, 324, 426
+
     family_records = build_datasource_family_coverage_records(
         summary_document, report_document
     )

@@ -46,6 +46,10 @@ def normalize_datasource_bool(value: Any) -> bool:
 
 def normalize_datasource_record(record: dict[str, Any]) -> dict[str, str]:
     """Normalize a datasource record into the strict contract field set."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 32, 41
+
     return {
         "uid": normalize_datasource_string(record.get("uid")),
         "name": normalize_datasource_string(record.get("name")),
@@ -65,6 +69,10 @@ def validate_datasource_contract_record(
     context_label: str,
 ) -> None:
     """Reject unsupported datasource fields before import/diff workflows."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     extra_fields = sorted(
         key for key in record.keys() if key not in DATASOURCE_CONTRACT_FIELDS
     )

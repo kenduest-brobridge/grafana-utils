@@ -103,7 +103,15 @@ fn inject_help_full_hint(help: String) -> String {
     )
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn render_unified_help_text(colorize: bool) -> String {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: cli.rs:maybe_render_unified_help_from_os_args, cli.rs:render_unified_help_full_text, cli_rust_tests.rs:render_unified_help, cli_rust_tests.rs:render_unified_help_text_colorizes_bracketed_usage_tokens_when_requested, cli_rust_tests.rs:render_unified_help_text_colorizes_example_labels_when_requested
+// Downstream callees: cli.rs:colorize_unified_help_examples, cli.rs:inject_help_full_hint, cli.rs:render_long_help_with_color_choice
+
     let mut command = CliArgs::command();
     let help = inject_help_full_hint(render_long_help_with_color_choice(&mut command, colorize));
     if colorize {
@@ -134,6 +142,10 @@ fn render_domain_help_full_text(
     help
 }
 
+/// Purpose: implementation note.
+///
+/// Args: see function signature.
+/// Returns: see implementation.
 pub fn render_unified_help_full_text(colorize: bool) -> String {
     let mut help = render_unified_help_text(colorize);
     if colorize {
@@ -144,11 +156,16 @@ pub fn render_unified_help_full_text(colorize: bool) -> String {
     help
 }
 
+/// maybe render unified help from os args.
 pub fn maybe_render_unified_help_from_os_args<I, T>(iter: I, colorize: bool) -> Option<String>
 where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: cli_rust_tests.rs:maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags
+// Downstream callees: cli.rs:render_domain_help_full_text, cli.rs:render_domain_help_text, cli.rs:render_unified_help_full_text, cli.rs:render_unified_help_text
+
     let args = iter
         .into_iter()
         .map(|value| value.into().to_string_lossy().into_owned())
@@ -192,6 +209,7 @@ where
     }
 }
 
+/// Enum definition for DashboardGroupCommand.
 #[derive(Debug, Clone, Subcommand)]
 pub enum DashboardGroupCommand {
     #[command(about = "List dashboard summaries without writing export files.")]
@@ -217,6 +235,7 @@ pub enum DashboardGroupCommand {
     Screenshot(ScreenshotArgs),
 }
 
+/// Enum definition for UnifiedCommand.
 #[derive(Debug, Clone, Subcommand)]
 pub enum UnifiedCommand {
     #[command(
@@ -256,6 +275,7 @@ pub enum UnifiedCommand {
     after_help = UNIFIED_HELP_TEXT,
     styles = crate::help_styles::CLI_HELP_STYLES
 )]
+/// Struct definition for CliArgs.
 pub struct CliArgs {
     #[command(subcommand)]
     pub command: UnifiedCommand,
@@ -269,6 +289,10 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: 無
+
     CliArgs::parse_from(iter)
 }
 
@@ -331,6 +355,10 @@ where
 /// Keeping handler execution injectable via `dispatch_with_handlers` allows tests to
 /// validate dispatch logic without touching network transport.
 pub fn run_cli(args: CliArgs) -> Result<()> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: cli.rs:dispatch_with_handlers
+
     dispatch_with_handlers(
         args,
         run_dashboard_cli,

@@ -38,6 +38,10 @@ def resolve_source_dashboard_folder_path(
     default_folder_title: str = DEFAULT_FOLDER_TITLE,
 ) -> str:
     """Resolve the raw dashboard's source folder path from inventory or file layout."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 22
+
     inventory_record = resolve_folder_inventory_record_for_dashboard(
         document,
         dashboard_file,
@@ -63,6 +67,10 @@ def resolve_existing_dashboard_folder_path(
     default_folder_title: str = DEFAULT_FOLDER_TITLE,
 ) -> Optional[str]:
     """Resolve the live destination folder path for one existing dashboard UID."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     uid = str(dashboard_uid or "").strip()
     if not uid:
         return None
@@ -100,6 +108,10 @@ def build_folder_path_match_result(
     default_folder_title: str = DEFAULT_FOLDER_TITLE,
 ) -> dict[str, Any]:
     """Compare source and destination folder paths for an optional update guard."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 22
+
     normalized_source = normalize_folder_path(source_folder_path, default_folder_title)
     normalized_destination = None
     if destination_folder_path is not None:
@@ -158,6 +170,10 @@ def apply_folder_path_guard_to_action(
     match_result: dict[str, Any],
 ) -> str:
     """Rewrite update actions when a required folder-path comparison does not match."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     if action != "would-update":
         return action
     if bool(match_result.get("matches")):

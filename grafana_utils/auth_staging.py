@@ -65,6 +65,7 @@ def format_cli_auth_error_message(message: str) -> str:
 
 
 def _first_present(args: Any, names: Iterable[str]) -> Optional[str]:
+    """Internal helper for first present."""
     for name in names:
         value = getattr(args, name, None)
         if value:
@@ -73,6 +74,7 @@ def _first_present(args: Any, names: Iterable[str]) -> Optional[str]:
 
 
 def _env_value(env: Optional[dict[str, str]], name: str) -> Optional[str]:
+    """Internal helper for env value."""
     if env is None:
         import os
 
@@ -83,6 +85,7 @@ def _env_value(env: Optional[dict[str, str]], name: str) -> Optional[str]:
 
 
 def _encode_basic_auth(username: str, password: str) -> str:
+    """Internal helper for encode basic auth."""
     encoded = base64.b64encode(
         ("%s:%s" % (username, password)).encode("utf-8")
     ).decode("ascii")
@@ -189,6 +192,10 @@ def resolve_auth_from_namespace(
 ) -> tuple[dict[str, str], str]:
     """Resolve auth headers from an argparse namespace-like object."""
 
+    # Call graph: see callers/callees.
+    #   Upstream callers: 215
+    #   Downstream callees: 107, 67, 95
+
     if username_attrs is None:
         username_attrs = ("username", "auth_username")
     if password_attrs is None:
@@ -223,6 +230,10 @@ def resolve_cli_auth_from_namespace(
     password_prompt_reader=None,
 ) -> tuple[dict[str, str], str]:
     """Resolve auth or raise AuthConfigError with CLI-facing wording."""
+
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 17, 180
 
     try:
         return resolve_auth_from_namespace(

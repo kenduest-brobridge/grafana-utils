@@ -1,5 +1,6 @@
-// Access domain test suite.
-// Validates CLI parsing/help text surfaces and handler contract behavior with stubbed request closures.
+//! Access domain test suite.
+//! Validates CLI parsing/help text surfaces and handler contract behavior with stubbed
+//! request closures.
 use super::{
     add_service_account_token_with_request, add_service_account_with_request,
     add_team_with_request, add_user_with_request, delete_org_with_request,
@@ -95,6 +96,7 @@ fn make_basic_common_no_org_id() -> CommonCliArgsNoOrgId {
 
 #[test]
 fn parse_cli_supports_user_list() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "user",
@@ -173,6 +175,7 @@ fn access_root_help_includes_examples_and_grouped_options() {
 
 #[test]
 fn parse_cli_supports_safer_user_password_inputs() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "user",
@@ -286,6 +289,7 @@ fn team_and_service_account_help_mentions_membership_and_token_flags() {
 
 #[test]
 fn parse_cli_supports_org_commands() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "org",
@@ -385,6 +389,7 @@ fn parse_cli_supports_org_commands() {
 
 #[test]
 fn parse_cli_supports_user_list_output_format_json() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "user",
@@ -407,6 +412,7 @@ fn parse_cli_supports_user_list_output_format_json() {
 
 #[test]
 fn parse_cli_supports_user_list_output_format_text() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "user",
@@ -429,6 +435,7 @@ fn parse_cli_supports_user_list_output_format_text() {
 
 #[test]
 fn parse_cli_supports_service_account_token_add() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "service-account",
@@ -456,6 +463,7 @@ fn parse_cli_supports_service_account_token_add() {
 
 #[test]
 fn parse_cli_supports_service_account_export_import_and_diff() {
+
     let export_args = parse_cli_from([
         "grafana-util access",
         "service-account",
@@ -527,6 +535,7 @@ fn parse_cli_supports_service_account_export_import_and_diff() {
 
 #[test]
 fn parse_cli_supports_group_delete_alias() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "group",
@@ -549,6 +558,7 @@ fn parse_cli_supports_group_delete_alias() {
 
 #[test]
 fn parse_cli_supports_service_account_token_delete() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "service-account",
@@ -578,6 +588,7 @@ fn parse_cli_supports_service_account_token_delete() {
 
 #[test]
 fn parse_cli_rejects_invalid_service_account_role() {
+
     let error = AccessCliRoot::try_parse_from([
         "grafana-util access",
         "service-account",
@@ -596,6 +607,7 @@ fn parse_cli_rejects_invalid_service_account_role() {
 
 #[test]
 fn parse_cli_rejects_non_positive_service_account_token_ttl() {
+
     let error = AccessCliRoot::try_parse_from([
         "grafana-util access",
         "service-account",
@@ -615,6 +627,7 @@ fn parse_cli_rejects_non_positive_service_account_token_ttl() {
 
 #[test]
 fn parse_cli_supports_prompt_token() {
+
     let args = parse_cli_from(["grafana-util access", "user", "list", "--prompt-token"]);
 
     match args.command {
@@ -631,6 +644,7 @@ fn parse_cli_supports_prompt_token() {
 
 #[test]
 fn parse_cli_supports_insecure_and_ca_cert_flags() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "user",
@@ -667,6 +681,7 @@ fn parse_cli_supports_insecure_and_ca_cert_flags() {
 
 #[test]
 fn parse_cli_supports_insecure_on_destructive_commands() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "team",
@@ -813,6 +828,7 @@ fn user_list_with_request_reads_org_users() {
 
 #[test]
 fn parse_cli_supports_user_export_and_import() {
+
     let export_args = parse_cli_from([
         "grafana-util access",
         "user",
@@ -864,6 +880,7 @@ fn parse_cli_supports_user_export_and_import() {
 
 #[test]
 fn parse_cli_supports_user_diff() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "user",
@@ -890,6 +907,7 @@ fn parse_cli_supports_user_diff() {
 
 #[test]
 fn parse_cli_supports_team_diff() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "team",
@@ -913,6 +931,7 @@ fn parse_cli_supports_team_diff() {
 
 #[test]
 fn parse_cli_supports_team_export_and_import() {
+
     let export_args = parse_cli_from([
         "grafana-util access",
         "team",
@@ -956,6 +975,7 @@ fn parse_cli_supports_team_export_and_import() {
 
 #[test]
 fn parse_cli_supports_user_import_dry_run_output_format_table() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "user",
@@ -982,6 +1002,7 @@ fn parse_cli_supports_user_import_dry_run_output_format_table() {
 
 #[test]
 fn parse_cli_supports_user_import_dry_run_output_format_json() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "user",
@@ -1008,6 +1029,7 @@ fn parse_cli_supports_user_import_dry_run_output_format_json() {
 
 #[test]
 fn parse_cli_supports_team_import_dry_run_output_format_table() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "team",
@@ -1034,6 +1056,7 @@ fn parse_cli_supports_team_import_dry_run_output_format_table() {
 
 #[test]
 fn parse_cli_supports_team_import_dry_run_output_format_json() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "team",
@@ -1060,6 +1083,7 @@ fn parse_cli_supports_team_import_dry_run_output_format_json() {
 
 #[test]
 fn run_access_cli_with_request_routes_user_export() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "user",
@@ -1088,6 +1112,7 @@ fn run_access_cli_with_request_routes_user_export() {
 
 #[test]
 fn run_access_cli_with_request_routes_team_export() {
+
     let args = parse_cli_from(["grafana-util access", "team", "export", "--dry-run"]);
     let result = run_access_cli_with_request(
         |method, path, _params, _payload| {
@@ -1105,6 +1130,7 @@ fn run_access_cli_with_request_routes_team_export() {
 
 #[test]
 fn run_access_cli_with_request_routes_team_import() {
+
     let temp = tempdir().unwrap();
     let import_dir = temp.path().join("access-teams");
     fs::create_dir_all(&import_dir).unwrap();
@@ -1145,6 +1171,7 @@ fn run_access_cli_with_request_routes_team_import() {
 
 #[test]
 fn run_access_cli_with_request_routes_org_export() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "org",
@@ -1171,6 +1198,7 @@ fn run_access_cli_with_request_routes_org_export() {
 
 #[test]
 fn run_access_cli_with_request_routes_org_import() {
+
     let temp = tempdir().unwrap();
     let import_dir = temp.path().join("access-orgs");
     fs::create_dir_all(&import_dir).unwrap();
@@ -1236,6 +1264,7 @@ fn run_access_cli_with_request_routes_org_import() {
 
 #[test]
 fn run_access_cli_with_request_routes_user_diff() {
+
     let temp = tempdir().unwrap();
     let diff_dir = temp.path().join("access-users");
     fs::create_dir_all(&diff_dir).unwrap();
@@ -1273,6 +1302,7 @@ fn run_access_cli_with_request_routes_user_diff() {
 
 #[test]
 fn run_access_cli_with_request_routes_team_diff() {
+
     let temp = tempdir().unwrap();
     let diff_dir = temp.path().join("access-teams");
     fs::create_dir_all(&diff_dir).unwrap();
@@ -2340,6 +2370,7 @@ fn delete_org_with_request_deletes_resolved_org() {
 
 #[test]
 fn run_access_cli_with_request_routes_user_list() {
+
     let args = parse_cli_from([
         "grafana-util access",
         "user",

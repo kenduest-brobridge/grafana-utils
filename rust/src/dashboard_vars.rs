@@ -16,6 +16,7 @@ use super::{
     SimpleOutputFormat,
 };
 
+/// Struct definition for DashboardVariableRow.
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub(crate) struct DashboardVariableRow {
     pub name: String,
@@ -39,6 +40,7 @@ struct DashboardVariableDocument {
     pub variables: Vec<DashboardVariableRow>,
 }
 
+/// inspect dashboard variables.
 pub(crate) fn inspect_dashboard_variables(args: &InspectVarsArgs) -> Result<()> {
     let dashboard_uid = resolve_dashboard_uid(args)?;
     let client = build_inspect_vars_client(args)?;
@@ -180,6 +182,7 @@ fn apply_vars_query_overrides(rows: &mut [DashboardVariableRow], vars_query: &st
     Ok(())
 }
 
+/// extract dashboard variables.
 pub(crate) fn extract_dashboard_variables(
     dashboard: &Map<String, Value>,
 ) -> Result<Vec<DashboardVariableRow>> {

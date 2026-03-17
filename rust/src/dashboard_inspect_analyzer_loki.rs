@@ -94,6 +94,7 @@ fn extract_loki_range_windows(query_text: &str) -> Vec<String> {
     values
 }
 
+/// analyze query.
 pub(crate) fn analyze_query(
     _panel: &Map<String, Value>,
     _target: &Map<String, Value>,

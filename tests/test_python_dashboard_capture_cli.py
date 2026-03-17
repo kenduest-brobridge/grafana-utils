@@ -15,7 +15,7 @@ dashboard_cli = importlib.import_module("grafana_utils.dashboard_cli")
 
 
 class DashboardCaptureCliTests(unittest.TestCase):
-    def test_parse_args_supports_inspect_vars(self):
+    def test_dashboard_capture_parse_args_supports_inspect_vars(self):
         args = dashboard_cli.parse_args(
             [
                 "inspect-vars",
@@ -33,7 +33,7 @@ class DashboardCaptureCliTests(unittest.TestCase):
         self.assertEqual(args.vars_query, "var-env=prod")
         self.assertEqual(args.output_format, "json")
 
-    def test_parse_args_supports_screenshot(self):
+    def test_dashboard_capture_parse_args_supports_screenshot(self):
         args = dashboard_cli.parse_args(
             [
                 "screenshot",
@@ -72,7 +72,7 @@ class DashboardCaptureCliTests(unittest.TestCase):
         self.assertTrue(args.header_captured_at)
         self.assertEqual(args.header_text, "nightly review")
 
-    def test_inspect_vars_help_mentions_dashboard_inputs(self):
+    def test_dashboard_capture_inspect_vars_help_mentions_dashboard_inputs(self):
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             with self.assertRaises(SystemExit):
@@ -84,7 +84,7 @@ class DashboardCaptureCliTests(unittest.TestCase):
         self.assertIn("--vars-query", help_text)
         self.assertIn("--output-format", help_text)
 
-    def test_screenshot_help_mentions_capture_flags(self):
+    def test_dashboard_capture_screenshot_help_mentions_capture_flags(self):
         stdout = io.StringIO()
         with redirect_stdout(stdout):
             with self.assertRaises(SystemExit):
@@ -106,14 +106,14 @@ class DashboardCaptureCliTests(unittest.TestCase):
         self.assertIn("--header-captured-at", help_text)
         self.assertIn("--header-text", help_text)
 
-    def test_main_dispatches_inspect_vars(self):
+    def test_dashboard_capture_main_dispatches_inspect_vars(self):
         with mock.patch.object(dashboard_cli, "inspect_vars", return_value=13) as mocked:
             result = dashboard_cli.main(["inspect-vars", "--dashboard-uid", "cpu-main"])
 
         self.assertEqual(result, 13)
         mocked.assert_called_once()
 
-    def test_main_dispatches_screenshot(self):
+    def test_dashboard_capture_main_dispatches_screenshot(self):
         with mock.patch.object(dashboard_cli, "screenshot_dashboard", return_value=17) as mocked:
             result = dashboard_cli.main(
                 [

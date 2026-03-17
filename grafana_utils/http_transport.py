@@ -21,6 +21,10 @@ class HttpTransportApiError(HttpTransportError):
     """Raised when the remote server returns an HTTP error response."""
 
     def __init__(self, status_code: int, url: str, body: str) -> None:
+        # Purpose: initialize transport error state.
+        # Args: status_code, url, body
+        # Returns: None.
+
         self.status_code = status_code
         self.url = url
         self.body = body
@@ -37,6 +41,10 @@ class JsonHttpTransport:
         method: str = "GET",
         payload: Optional[dict[str, Any]] = None,
     ) -> Any:
+        # Purpose: send one JSON request and decode response.
+        # Args: path, params, method, payload
+        # Returns: Any decoded JSON payload.
+
         raise NotImplementedError
 
 
@@ -51,6 +59,10 @@ class BaseJsonHttpTransport(JsonHttpTransport):
         verify_ssl: bool,
         ca_cert: Optional[str] = None,
     ) -> None:
+        # Purpose: initialize transport base configuration.
+        # Args: base_url, headers, timeout, verify_ssl, ca_cert
+        # Returns: None.
+
         self.base_url = base_url.rstrip("/")
         self.headers = dict(headers)
         self.timeout = timeout
@@ -58,6 +70,9 @@ class BaseJsonHttpTransport(JsonHttpTransport):
         self.ca_cert = ca_cert
 
     def verify_config(self) -> Any:
+        # Purpose: resolve SSL verification argument.
+        # Returns: certificate path, ssl.SSLContext, or boolean.
+
         if self.ca_cert:
             return self.ca_cert
         return self.verify_ssl
@@ -67,12 +82,20 @@ class BaseJsonHttpTransport(JsonHttpTransport):
         path: str,
         params: Optional[dict[str, Any]] = None,
     ) -> str:
+        # Purpose: build an endpoint URL with optional query string.
+        # Args: path, params
+        # Returns: full URL string.
+
         query = ""
         if params:
             query = "?" + parse.urlencode(params)
         return f"{self.base_url}{path}{query}"
 
     def decode_json_response(self, body: str, url: str) -> Any:
+        # Purpose: parse JSON response body.
+        # Args: body, url
+        # Returns: parsed JSON value or None for empty body.
+
         if not body.strip():
             return None
         try:
@@ -110,16 +133,29 @@ class RequestsJsonHttpTransport(BaseJsonHttpTransport):
         verify_ssl: bool,
         ca_cert: Optional[str] = None,
     ) -> None:
+        # Purpose: store transport state for lazy requests import.
+        # Args: base_url, headers, timeout, verify_ssl, ca_cert
+        # Returns: None.
+
         super().__init__(base_url, headers, timeout, verify_ssl, ca_cert=ca_cert)
-        try:
-            import requests
-        except ImportError as exc:
-            raise HttpTransportError(
-                "The requests transport is unavailable because requests is not installed."
-            ) from exc
-        self._requests = requests
-        self._session = requests.Session()
-        self._session.headers.update(self.headers)
+        self._requests = None
+        self._session = None
+
+    def _get_requests_module(self) -> Any:
+        # Purpose: lazy-import requests on first request.
+        # Returns: loaded requests module.
+
+        if self._requests is None:
+            try:
+                import requests
+            except ImportError as exc:
+                raise HttpTransportError(
+                    "The requests transport is unavailable because requests is not installed."
+                ) from exc
+            self._requests = requests
+            self._session = requests.Session()
+            self._session.headers.update(self.headers)
+        return self._requests
 
     def request_json(
         self,
@@ -128,7 +164,12 @@ class RequestsJsonHttpTransport(BaseJsonHttpTransport):
         method: str = "GET",
         payload: Optional[dict[str, Any]] = None,
     ) -> Any:
+        # Purpose: request JSON using requests and decode the result.
+        # Args: path, params, method, payload
+        # Returns: decoded JSON value.
+
         url = self.build_url(path, params)
+        requests_module = self._get_requests_module()
         try:
             response = self._session.request(
                 method=method,
@@ -137,7 +178,7 @@ class RequestsJsonHttpTransport(BaseJsonHttpTransport):
                 timeout=self.timeout,
                 verify=self.verify_config(),
             )
-        except self._requests.RequestException as exc:
+        except requests_module.RequestException as exc:
             raise HttpTransportError(f"Request failed for {url}: {exc}") from exc
 
         if response.status_code >= 400:
@@ -160,6 +201,10 @@ class HttpxJsonHttpTransport(BaseJsonHttpTransport):
         verify_ssl: bool,
         ca_cert: Optional[str] = None,
     ) -> None:
+        # Purpose: initialize and configure the httpx client.
+        # Args: base_url, headers, timeout, verify_ssl, ca_cert
+        # Returns: None.
+
         super().__init__(base_url, headers, timeout, verify_ssl, ca_cert=ca_cert)
         try:
             import httpx
@@ -186,6 +231,10 @@ class HttpxJsonHttpTransport(BaseJsonHttpTransport):
         method: str = "GET",
         payload: Optional[dict[str, Any]] = None,
     ) -> Any:
+        # Purpose: request JSON using httpx and decode the result.
+        # Args: path, params, method, payload
+        # Returns: decoded JSON value.
+
         url = self.build_url(path, params)
         try:
             response = self._client.request(
@@ -214,6 +263,8 @@ def build_json_http_transport(
     transport_name: str = DEFAULT_HTTP_TRANSPORT,
 ) -> JsonHttpTransport:
     """Build the requested JSON HTTP transport implementation."""
+    # Purpose: choose implementation based on transport_name and installed deps.
+
     normalized_name = str(transport_name or DEFAULT_HTTP_TRANSPORT).strip().lower()
     if normalized_name == AUTO_HTTP_TRANSPORT:
         if httpx_is_available() and http2_is_available():

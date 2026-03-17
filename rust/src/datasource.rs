@@ -60,6 +60,7 @@ const DATASOURCE_CONTRACT_FIELDS: &[&str] = &[
 #[path = "datasource_diff.rs"]
 mod datasource_diff;
 
+/// Enum definition for ListOutputFormat.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum ListOutputFormat {
     Table,
@@ -67,6 +68,7 @@ pub enum ListOutputFormat {
     Json,
 }
 
+/// Enum definition for DryRunOutputFormat.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum DryRunOutputFormat {
     Text,
@@ -74,6 +76,7 @@ pub enum DryRunOutputFormat {
     Json,
 }
 
+/// Struct definition for DatasourceListArgs.
 #[derive(Debug, Clone, Args)]
 pub struct DatasourceListArgs {
     #[command(flatten)]
@@ -114,6 +117,7 @@ pub struct DatasourceListArgs {
     pub no_header: bool,
 }
 
+/// Struct definition for DatasourceExportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct DatasourceExportArgs {
     #[command(flatten)]
@@ -151,6 +155,7 @@ pub struct DatasourceExportArgs {
     pub dry_run: bool,
 }
 
+/// Struct definition for DatasourceImportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct DatasourceImportArgs {
     #[command(flatten)]
@@ -260,6 +265,7 @@ pub struct DatasourceImportArgs {
     pub verbose: bool,
 }
 
+/// Struct definition for DatasourceDiffArgs.
 #[derive(Debug, Clone, Args)]
 pub struct DatasourceDiffArgs {
     #[command(flatten)]
@@ -271,6 +277,7 @@ pub struct DatasourceDiffArgs {
     pub diff_dir: PathBuf,
 }
 
+/// Struct definition for DatasourceAddArgs.
 #[derive(Debug, Clone, Args)]
 pub struct DatasourceAddArgs {
     #[command(flatten)]
@@ -329,6 +336,7 @@ pub struct DatasourceAddArgs {
     pub no_header: bool,
 }
 
+/// Struct definition for DatasourceDeleteArgs.
 #[derive(Debug, Clone, Args)]
 pub struct DatasourceDeleteArgs {
     #[command(flatten)]
@@ -388,6 +396,7 @@ pub struct DatasourceDeleteArgs {
     pub no_header: bool,
 }
 
+/// Struct definition for DatasourceModifyArgs.
 #[derive(Debug, Clone, Args)]
 pub struct DatasourceModifyArgs {
     #[command(flatten)]
@@ -445,6 +454,7 @@ pub struct DatasourceModifyArgs {
     pub no_header: bool,
 }
 
+/// Enum definition for DatasourceGroupCommand.
 #[derive(Debug, Clone, Subcommand)]
 pub enum DatasourceGroupCommand {
     #[command(about = "List live Grafana datasource inventory.", after_help = DATASOURCE_LIST_HELP_TEXT)]
@@ -470,6 +480,7 @@ pub enum DatasourceGroupCommand {
     after_help = DATASOURCE_ROOT_HELP_TEXT,
     styles = crate::help_styles::CLI_HELP_STYLES
 )]
+/// Struct definition for DatasourceCliArgs.
 pub struct DatasourceCliArgs {
     #[command(subcommand)]
     pub command: DatasourceGroupCommand,
@@ -550,6 +561,10 @@ fn normalize_datasource_group_command(
 // Parse output-column aliases for datasource import dry-run rendering, accepting both
 // preferred snake_case and legacy camelCase spellings where applicable.
 fn parse_datasource_import_output_column(value: &str) -> std::result::Result<String, String> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: 無
+
     match value {
         "uid" => Ok("uid".to_string()),
         "name" => Ok("name".to_string()),
@@ -565,6 +580,10 @@ fn parse_datasource_import_output_column(value: &str) -> std::result::Result<Str
 }
 
 fn parse_bool_choice(value: &str) -> std::result::Result<bool, String> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: 無
+// Downstream callees: 無
+
     match value.trim().to_ascii_lowercase().as_str() {
         "true" => Ok(true),
         "false" => Ok(false),
@@ -1106,6 +1125,10 @@ fn export_datasource_scope(
 
 // Parse and validate datasource export metadata before importing any inventory data.
 fn parse_export_metadata(path: &Path) -> Result<DatasourceExportMetadata> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: datasource.rs:load_diff_record_values, datasource.rs:load_import_records, datasource.rs:parse_export_org_scope
+// Downstream callees: common.rs:load_json_object_file, common.rs:message
+
     let value = load_json_object_file(path, "Datasource export metadata")?;
     let object = value
         .as_object()
@@ -1350,6 +1373,10 @@ fn parse_export_org_scope(
     import_root: &Path,
     scope_dir: &Path,
 ) -> Result<DatasourceExportOrgScope> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: datasource.rs:discover_export_org_import_scopes
+// Downstream callees: common.rs:message, datasource.rs:collect_source_org_ids, datasource.rs:collect_source_org_names, datasource.rs:parse_export_metadata
+
     let metadata = parse_export_metadata(&scope_dir.join(EXPORT_METADATA_FILENAME))?;
     let export_org_ids = collect_source_org_ids(scope_dir, &metadata)?;
     let (source_org_id, source_org_name_from_dir) = if export_org_ids.is_empty() {
@@ -2135,6 +2162,10 @@ fn parse_json_object_argument(
     value: Option<&str>,
     label: &str,
 ) -> Result<Option<Map<String, Value>>> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: datasource.rs:build_add_payload, datasource.rs:build_modify_updates, datasource_rust_tests.rs:parse_json_object_argument_rejects_non_object_values
+// Downstream callees: common.rs:message
+
     let Some(raw) = value else {
         return Ok(None);
     };
@@ -2661,6 +2692,7 @@ fn print_datasource_diff_report(report: &DatasourceDiffReport) {
     }
 }
 
+/// Purpose: implementation note.
 pub(crate) fn diff_datasources_with_live(
     diff_dir: &Path,
     live: &[Map<String, Value>],
@@ -2689,6 +2721,10 @@ pub(crate) fn diff_datasources_with_live(
 /// After command normalization, this function builds required clients, validates constraints
 /// for output mode flags, and delegates execution to list/export/import/diff handlers.
 pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
+// Call graph (hierarchy): this function is used in related modules.
+// Upstream callers: datasource_rust_tests.rs:datasource_import_rejects_output_columns_without_table_output, datasource_rust_tests.rs:datasource_import_with_use_export_org_requires_basic_auth
+// Downstream callees: common.rs:message, common.rs:write_json_file, dashboard_cli_defs.rs:build_http_client_for_org, dashboard_live.rs:list_datasources, datasource.rs:build_add_payload, datasource.rs:build_all_orgs_export_index, datasource.rs:build_all_orgs_export_metadata, datasource.rs:build_all_orgs_output_dir, datasource.rs:build_datasource_export_metadata, datasource.rs:build_export_index, datasource.rs:build_export_records, datasource.rs:build_list_records ...
+
     let command = normalize_datasource_group_command(command);
     match command {
         DatasourceGroupCommand::List(args) => {
@@ -3153,6 +3189,10 @@ impl DatasourceCliArgs {
         I: IntoIterator<Item = T>,
         T: Into<std::ffi::OsString> + Clone,
     {
+    // Call graph (hierarchy): this function is used in related modules.
+    // Upstream callers: datasource_rust_tests.rs:build_add_payload_keeps_optional_json_fields, datasource_rust_tests.rs:build_modify_updates_keeps_optional_json_fields, datasource_rust_tests.rs:datasource_import_rejects_output_columns_without_table_output, datasource_rust_tests.rs:datasource_import_with_use_export_org_requires_basic_auth, datasource_rust_tests.rs:parse_datasource_add_supports_output_format_table, datasource_rust_tests.rs:parse_datasource_delete_accepts_yes_confirmation, datasource_rust_tests.rs:parse_datasource_delete_supports_output_format_json, datasource_rust_tests.rs:parse_datasource_export_supports_all_orgs_flag, datasource_rust_tests.rs:parse_datasource_export_supports_org_scope_flags, datasource_rust_tests.rs:parse_datasource_import_preserves_requested_path, datasource_rust_tests.rs:parse_datasource_import_supports_output_columns, datasource_rust_tests.rs:parse_datasource_import_supports_output_format_table ...
+    // Downstream callees: datasource.rs:normalize_output_formats
+
         let mut args = Self::parse_from(iter);
         normalize_output_formats(&mut args);
         args

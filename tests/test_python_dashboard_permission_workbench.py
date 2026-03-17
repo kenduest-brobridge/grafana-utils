@@ -49,7 +49,7 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
             },
         ]
 
-    def test_build_permission_export_document_normalizes_subjects_and_levels(self):
+    def test_dashboard_permission_build_permission_export_document_normalizes_subjects_and_levels(self):
         document = permission_workbench.build_permission_export_document(
             "dashboard",
             "cpu-main",
@@ -68,7 +68,7 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
         self.assertEqual(rows["service-account:11"]["permissionName"], "admin")
         self.assertEqual(rows["role:Viewer"]["permission"], 1)
 
-    def test_build_permission_diff_document_reports_missing_changed_and_extra(self):
+    def test_dashboard_permission_build_permission_diff_document_reports_missing_changed_and_extra(self):
         expected = permission_workbench.build_permission_export_document(
             "folder",
             "infra",
@@ -97,7 +97,7 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
         self.assertEqual(rows["team:9"]["status"], "missing-live")
         self.assertEqual(rows["service-account:11"]["status"], "extra-live")
 
-    def test_render_permission_export_text_renders_summary_and_rows(self):
+    def test_dashboard_permission_render_permission_export_text_renders_summary_and_rows(self):
         document = permission_workbench.build_permission_export_document(
             "dashboard",
             "cpu-main",
@@ -113,7 +113,7 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
         self.assertIn("- user alice permission=view inherited=false", output)
         self.assertIn("- team SRE permission=edit inherited=true", output)
 
-    def test_build_permission_preflight_document_reports_missing_subjects(self):
+    def test_dashboard_permission_build_permission_preflight_document_reports_missing_subjects(self):
         export_document = permission_workbench.build_permission_export_document(
             "folder",
             "infra",
@@ -138,7 +138,7 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
         self.assertEqual(checks["service-account:11"]["status"], "missing")
         self.assertEqual(checks["role:Viewer"]["status"], "ok")
 
-    def test_build_permission_promotion_document_summarizes_drift(self):
+    def test_dashboard_permission_build_permission_promotion_document_summarizes_drift(self):
         expected = permission_workbench.build_permission_export_document(
             "dashboard",
             "cpu-main",
@@ -165,7 +165,7 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
         self.assertEqual(document["summary"]["wouldChangeCount"], 1)
         self.assertEqual(document["summary"]["wouldLeaveExtraCount"], 1)
 
-    def test_render_permission_preflight_text_renders_summary_and_rows(self):
+    def test_dashboard_permission_render_permission_preflight_text_renders_summary_and_rows(self):
         export_document = permission_workbench.build_permission_export_document(
             "folder",
             "infra",
@@ -187,7 +187,7 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
         self.assertIn("- user alice permission=view status=ok", output)
         self.assertIn("- team SRE permission=edit status=missing", output)
 
-    def test_build_permission_bundle_document_summarizes_resources(self):
+    def test_dashboard_permission_build_permission_bundle_document_summarizes_resources(self):
         document = permission_workbench.build_permission_bundle_document(
             self.build_bundle_resources()
         )
@@ -199,7 +199,7 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
         self.assertEqual(document["resources"][0]["resource"]["kind"], "dashboard")
         self.assertEqual(document["resources"][1]["resource"]["kind"], "folder")
 
-    def test_build_permission_bundle_diff_document_summarizes_resource_drift(self):
+    def test_dashboard_permission_build_permission_bundle_diff_document_summarizes_resource_drift(self):
         expected = permission_workbench.build_permission_bundle_document(
             self.build_bundle_resources()
         )
@@ -232,7 +232,7 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
         self.assertEqual(document["summary"]["missingLiveCount"], 1)
         self.assertEqual(document["summary"]["extraLiveCount"], 1)
 
-    def test_render_permission_bundle_text_renders_summary_and_resources(self):
+    def test_dashboard_permission_render_permission_bundle_text_renders_summary_and_resources(self):
         document = permission_workbench.build_permission_bundle_document(
             self.build_bundle_resources()
         )
@@ -242,7 +242,7 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
         self.assertIn("- dashboard uid=cpu-main title=CPU Main permissions=1", output)
         self.assertIn("- folder uid=infra title=Infra permissions=2", output)
 
-    def test_build_permission_remap_document_summarizes_uid_title_and_path_rewrites(self):
+    def test_dashboard_permission_build_permission_remap_document_summarizes_uid_title_and_path_rewrites(self):
         bundle = permission_workbench.build_permission_bundle_document(
             self.build_bundle_resources()
         )
@@ -262,7 +262,7 @@ class DashboardPermissionWorkbenchTests(unittest.TestCase):
         self.assertEqual(rows["infra"]["targetTitle"], "Platform / Infra")
         self.assertEqual(rows["infra"]["targetPath"], "Platform / Infra")
 
-    def test_render_permission_remap_text_renders_summary_and_rows(self):
+    def test_dashboard_permission_render_permission_remap_text_renders_summary_and_rows(self):
         bundle = permission_workbench.build_permission_bundle_document(
             self.build_bundle_resources()
         )

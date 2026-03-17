@@ -16,6 +16,7 @@ SAFE_DRY_RUN_COLUMN_HEADERS = {
 
 
 def validate_columns(columns):
+    """Validate columns implementation."""
     selected = list(columns or [])
     unsupported = [column for column in selected if column not in SAFE_DRY_RUN_COLUMN_HEADERS]
     if unsupported:
@@ -27,6 +28,11 @@ def validate_columns(columns):
 
 
 def build_live_mutation_dry_run_record(operation, plan, spec=None, uid=None, name=None):
+    """Build live mutation dry run record implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     spec = dict(spec or {})
     target = plan.get("target") or {}
     return {
@@ -41,6 +47,11 @@ def build_live_mutation_dry_run_record(operation, plan, spec=None, uid=None, nam
 
 
 def render_live_mutation_dry_run_table(records, include_header=True, columns=None):
+    """Render live mutation dry run table implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 18, 57
+
     selected_columns = validate_columns(
         columns or ["operation", "uid", "name", "type", "match", "action", "targetId"]
     )
@@ -52,6 +63,10 @@ def render_live_mutation_dry_run_table(records, include_header=True, columns=Non
             widths[index] = max(widths[index], len(value))
 
     def render_row(values):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
         return "  ".join(values[index].ljust(widths[index]) for index in range(len(values)))
 
     lines = []
@@ -64,6 +79,11 @@ def render_live_mutation_dry_run_table(records, include_header=True, columns=Non
 
 
 def render_live_mutation_dry_run_json(records):
+    """Render live mutation dry run json implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     summary = {
         "itemCount": len(records),
         "createCount": len([item for item in records if item.get("action") == "would-create"]),

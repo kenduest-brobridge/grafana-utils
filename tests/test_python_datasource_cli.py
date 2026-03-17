@@ -139,7 +139,7 @@ class DatasourceCliTests(unittest.TestCase):
         source = WORKFLOWS_MODULE_PATH.read_text(encoding="utf-8")
         ast.parse(source, filename=str(WORKFLOWS_MODULE_PATH), feature_version=(3, 9))
 
-    def test_parse_args_supports_list_mode(self):
+    def test_datasource_parse_args_supports_list_mode(self):
         args = datasource_cli.parse_args(["list", "--json"])
 
         self.assertEqual(args.command, "list")
@@ -148,7 +148,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertFalse(args.table)
         self.assertFalse(args.no_header)
 
-    def test_parse_args_supports_list_output_format(self):
+    def test_datasource_parse_args_supports_list_output_format(self):
         args = datasource_cli.parse_args(["list", "--output-format", "csv"])
 
         self.assertEqual(args.output_format, "csv")
@@ -156,7 +156,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertFalse(args.table)
         self.assertFalse(args.json)
 
-    def test_parse_args_supports_list_org_scoping(self):
+    def test_datasource_parse_args_supports_list_org_scoping(self):
         org_args = datasource_cli.parse_args(["list", "--org-id", "7"])
         all_args = datasource_cli.parse_args(["list", "--all-orgs"])
 
@@ -165,7 +165,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIsNone(all_args.org_id)
         self.assertTrue(all_args.all_orgs)
 
-    def test_parse_args_supports_export_mode(self):
+    def test_datasource_parse_args_supports_export_mode(self):
         args = datasource_cli.parse_args(["export", "--export-dir", "./datasources", "--overwrite"])
 
         self.assertEqual(args.command, "export")
@@ -173,7 +173,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertTrue(args.overwrite)
         self.assertFalse(args.dry_run)
 
-    def test_parse_args_supports_export_org_scoping(self):
+    def test_datasource_parse_args_supports_export_org_scoping(self):
         org_args = datasource_cli.parse_args(["export", "--org-id", "7"])
         all_args = datasource_cli.parse_args(["export", "--all-orgs"])
 
@@ -182,7 +182,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIsNone(all_args.org_id)
         self.assertTrue(all_args.all_orgs)
 
-    def test_parse_args_supports_import_mode(self):
+    def test_datasource_parse_args_supports_import_mode(self):
         args = datasource_cli.parse_args(
             [
                 "import",
@@ -200,7 +200,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertTrue(args.dry_run)
         self.assertTrue(args.table)
 
-    def test_parse_args_supports_add_mode(self):
+    def test_datasource_parse_args_supports_add_mode(self):
         args = datasource_cli.parse_args(
             [
                 "add",
@@ -222,7 +222,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertTrue(args.dry_run)
         self.assertTrue(args.table)
 
-    def test_parse_args_supports_add_auth_and_header_flags(self):
+    def test_datasource_parse_args_supports_add_auth_and_header_flags(self):
         args = datasource_cli.parse_args(
             [
                 "add",
@@ -263,7 +263,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertTrue(args.tls_skip_verify)
         self.assertEqual(args.server_name, "prometheus.internal")
 
-    def test_parse_args_supports_delete_mode(self):
+    def test_datasource_parse_args_supports_delete_mode(self):
         args = datasource_cli.parse_args(
             ["delete", "--uid", "prom-main", "--dry-run", "--output-format", "json"]
         )
@@ -273,7 +273,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertTrue(args.dry_run)
         self.assertTrue(args.json)
 
-    def test_parse_args_supports_modify_mode(self):
+    def test_datasource_parse_args_supports_modify_mode(self):
         args = datasource_cli.parse_args(
             [
                 "modify",
@@ -298,7 +298,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertTrue(args.dry_run)
         self.assertTrue(args.table)
 
-    def test_parse_args_supports_import_output_format(self):
+    def test_datasource_parse_args_supports_import_output_format(self):
         args = datasource_cli.parse_args(
             ["import", "--import-dir", "./datasources", "--dry-run", "--output-format", "json"]
         )
@@ -307,7 +307,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertTrue(args.json)
         self.assertFalse(args.table)
 
-    def test_parse_args_supports_import_output_columns(self):
+    def test_datasource_parse_args_supports_import_output_columns(self):
         args = datasource_cli.parse_args(
             [
                 "import",
@@ -322,7 +322,7 @@ class DatasourceCliTests(unittest.TestCase):
 
         self.assertEqual(args.output_columns, ["uid", "action", "orgId", "file"])
 
-    def test_parse_args_supports_import_org_and_export_org_guard(self):
+    def test_datasource_parse_args_supports_import_org_and_export_org_guard(self):
         args = datasource_cli.parse_args(
             [
                 "import",
@@ -337,7 +337,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertEqual(args.org_id, "7")
         self.assertTrue(args.require_matching_export_org)
 
-    def test_parse_args_supports_import_org_routing_flags(self):
+    def test_datasource_parse_args_supports_import_org_routing_flags(self):
         args = datasource_cli.parse_args(
             [
                 "import",
@@ -356,7 +356,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertEqual(args.only_org_id, ["2", "5"])
         self.assertTrue(args.create_missing_orgs)
 
-    def test_parse_args_supports_diff_mode(self):
+    def test_datasource_parse_args_supports_diff_mode(self):
         args = datasource_cli.parse_args(
             ["diff", "--diff-dir", "./datasources", "--url", "http://127.0.0.1:3000"]
         )
@@ -364,11 +364,11 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertEqual(args.command, "diff")
         self.assertEqual(args.diff_dir, "./datasources")
 
-    def test_parse_args_rejects_multiple_list_output_modes(self):
+    def test_datasource_parse_args_rejects_multiple_list_output_modes(self):
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(["list", "--table", "--csv"])
 
-    def test_parse_args_rejects_list_all_orgs_with_org_id(self):
+    def test_datasource_parse_args_rejects_list_all_orgs_with_org_id(self):
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(["list", "--org-id", "7", "--all-orgs"])
 
@@ -378,17 +378,17 @@ class DatasourceCliTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(["list", "--csv", "--json"])
 
-    def test_parse_args_rejects_output_format_with_legacy_list_flags(self):
+    def test_datasource_parse_args_rejects_output_format_with_legacy_list_flags(self):
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(["list", "--output-format", "table", "--json"])
 
-    def test_parse_args_rejects_output_format_with_legacy_import_flags(self):
+    def test_datasource_parse_args_rejects_output_format_with_legacy_import_flags(self):
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(
                 ["import", "--import-dir", "./datasources", "--output-format", "table", "--json"]
             )
 
-    def test_parse_args_rejects_import_output_columns_without_table_output(self):
+    def test_datasource_parse_args_rejects_import_output_columns_without_table_output(self):
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(
                 [
@@ -401,23 +401,23 @@ class DatasourceCliTests(unittest.TestCase):
                 ]
             )
 
-    def test_parse_args_rejects_export_all_orgs_with_org_id(self):
+    def test_datasource_parse_args_rejects_export_all_orgs_with_org_id(self):
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(["export", "--org-id", "7", "--all-orgs"])
 
-    def test_parse_args_rejects_only_org_id_without_use_export_org(self):
+    def test_datasource_parse_args_rejects_only_org_id_without_use_export_org(self):
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(
                 ["import", "--import-dir", "./datasources", "--only-org-id", "7"]
             )
 
-    def test_parse_args_rejects_create_missing_orgs_without_use_export_org(self):
+    def test_datasource_parse_args_rejects_create_missing_orgs_without_use_export_org(self):
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(
                 ["import", "--import-dir", "./datasources", "--create-missing-orgs"]
             )
 
-    def test_parse_args_rejects_use_export_org_with_org_id(self):
+    def test_datasource_parse_args_rejects_use_export_org_with_org_id(self):
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(
                 [
@@ -430,7 +430,7 @@ class DatasourceCliTests(unittest.TestCase):
                 ]
             )
 
-    def test_parse_args_rejects_use_export_org_with_require_matching_export_org(self):
+    def test_datasource_parse_args_rejects_use_export_org_with_require_matching_export_org(self):
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(
                 [
@@ -442,7 +442,7 @@ class DatasourceCliTests(unittest.TestCase):
                 ]
             )
 
-    def test_parse_args_rejects_live_mutation_output_format_with_legacy_flags(self):
+    def test_datasource_parse_args_rejects_live_mutation_output_format_with_legacy_flags(self):
         with self.assertRaises(SystemExit):
             datasource_cli.parse_args(
                 [
@@ -470,7 +470,7 @@ class DatasourceCliTests(unittest.TestCase):
                 ]
             )
 
-    def test_import_help_mentions_dry_run_and_org_guard_flags(self):
+    def test_datasource_import_help_mentions_dry_run_and_org_guard_flags(self):
         stream = io.StringIO()
 
         with redirect_stdout(stream):
@@ -494,7 +494,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("--progress", help_text)
         self.assertIn("--verbose", help_text)
 
-    def test_root_help_includes_datasource_examples(self):
+    def test_datasource_root_help_includes_datasource_examples(self):
         stream = io.StringIO()
 
         with redirect_stdout(stream):
@@ -509,7 +509,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("grafana-util datasource delete", help_text)
         self.assertIn("grafana-util datasource export", help_text)
 
-    def test_add_help_mentions_live_mutation_flags(self):
+    def test_datasource_add_help_mentions_live_mutation_flags(self):
         stream = io.StringIO()
 
         with redirect_stdout(stream):
@@ -536,7 +536,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("grafana-util datasource add", help_text)
         self.assertIn("--datasource-url http://prometheus:9090", help_text)
 
-    def test_delete_help_mentions_live_mutation_flags(self):
+    def test_datasource_delete_help_mentions_live_mutation_flags(self):
         stream = io.StringIO()
 
         with redirect_stdout(stream):
@@ -548,7 +548,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("--name", help_text)
         self.assertIn("--dry-run", help_text)
 
-    def test_modify_help_mentions_live_mutation_flags(self):
+    def test_datasource_modify_help_mentions_live_mutation_flags(self):
         stream = io.StringIO()
 
         with redirect_stdout(stream):
@@ -568,7 +568,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("--secure-json-data", help_text)
         self.assertIn("--dry-run", help_text)
 
-    def test_diff_help_mentions_diff_dir(self):
+    def test_datasource_diff_help_mentions_diff_dir(self):
         stream = io.StringIO()
 
         with redirect_stdout(stream):
@@ -578,7 +578,7 @@ class DatasourceCliTests(unittest.TestCase):
         help_text = stream.getvalue()
         self.assertIn("--diff-dir", help_text)
 
-    def test_list_datasources_prints_table_by_default(self):
+    def test_datasource_list_datasources_prints_table_by_default(self):
         args = datasource_cli.parse_args(["list", "--url", "http://127.0.0.1:3000"])
         client = FakeDatasourceClient(
             datasources=[
@@ -609,7 +609,7 @@ class DatasourceCliTests(unittest.TestCase):
             ],
         )
 
-    def test_list_datasources_with_all_orgs_renders_org_columns(self):
+    def test_datasource_list_datasources_with_all_orgs_renders_org_columns(self):
         org_one_client = FakeDatasourceClient(
             datasources=[
                 {
@@ -659,7 +659,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("Org Two", lines[3])
         self.assertEqual(lines[-1], "Listed 2 data source(s) from http://127.0.0.1:3000")
 
-    def test_add_datasource_dry_run_renders_table(self):
+    def test_datasource_add_datasource_dry_run_renders_table(self):
         args = datasource_cli.parse_args(
             [
                 "add",
@@ -688,7 +688,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("would-create", output)
         self.assertEqual(client.imported_payloads, [])
 
-    def test_add_datasource_live_posts_payload(self):
+    def test_datasource_add_datasource_live_posts_payload(self):
         args = datasource_cli.parse_args(
             [
                 "add",
@@ -716,7 +716,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertEqual(client.imported_payloads[0]["method"], "POST")
         self.assertEqual(client.imported_payloads[0]["payload"]["jsonData"], {"httpMethod": "POST"})
 
-    def test_add_datasource_live_posts_common_auth_and_header_fields(self):
+    def test_datasource_add_datasource_live_posts_common_auth_and_header_fields(self):
         args = datasource_cli.parse_args(
             [
                 "add",
@@ -778,7 +778,7 @@ class DatasourceCliTests(unittest.TestCase):
             },
         )
 
-    def test_add_datasource_merges_inline_json_with_common_auth_and_header_fields(self):
+    def test_datasource_add_datasource_merges_inline_json_with_common_auth_and_header_fields(self):
         args = datasource_cli.parse_args(
             [
                 "add",
@@ -815,7 +815,7 @@ class DatasourceCliTests(unittest.TestCase):
             },
         )
 
-    def test_delete_datasource_dry_run_renders_json(self):
+    def test_datasource_delete_datasource_dry_run_renders_json(self):
         args = datasource_cli.parse_args(
             ["delete", "--uid", "prom-main", "--dry-run", "--json"]
         )
@@ -833,7 +833,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertEqual(payload["summary"]["deleteCount"], 1)
         self.assertEqual(client.deleted_paths, [])
 
-    def test_delete_datasource_live_calls_delete_endpoint(self):
+    def test_datasource_delete_datasource_live_calls_delete_endpoint(self):
         args = datasource_cli.parse_args(["delete", "--uid", "prom-main"])
         client = FakeDatasourceClient(
             datasources=[{"id": 7, "uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"}]
@@ -848,7 +848,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("Deleted datasource uid=prom-main name=Prometheus Main id=7", stdout.getvalue())
         self.assertEqual(client.deleted_paths, ["/api/datasources/7"])
 
-    def test_modify_datasource_dry_run_renders_table(self):
+    def test_datasource_modify_datasource_dry_run_renders_table(self):
         args = datasource_cli.parse_args(
             [
                 "modify",
@@ -883,7 +883,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("would-update", output)
         self.assertEqual(client.imported_payloads, [])
 
-    def test_modify_datasource_live_puts_merged_payload(self):
+    def test_datasource_modify_datasource_live_puts_merged_payload(self):
         args = datasource_cli.parse_args(
             [
                 "modify",
@@ -965,7 +965,7 @@ class DatasourceCliTests(unittest.TestCase):
             },
         )
 
-    def test_modify_datasource_can_reuse_existing_basic_auth_user_for_password_only(self):
+    def test_datasource_modify_datasource_can_reuse_existing_basic_auth_user_for_password_only(self):
         args = datasource_cli.parse_args(
             [
                 "modify",
@@ -995,13 +995,13 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertEqual(payload["basicAuthUser"], "metrics-user")
         self.assertEqual(payload["secureJsonData"], {"basicAuthPassword": "metrics-pass"})
 
-    def test_modify_datasource_rejects_when_no_changes_are_requested(self):
+    def test_datasource_modify_datasource_rejects_when_no_changes_are_requested(self):
         args = datasource_cli.parse_args(["modify", "--uid", "prom-main"])
 
         with self.assertRaisesRegex(datasource_cli.GrafanaError, "requires at least one change flag"):
             datasource_cli.modify_datasource(args)
 
-    def test_modify_datasource_rejects_invalid_json_data(self):
+    def test_datasource_modify_datasource_rejects_invalid_json_data(self):
         args = datasource_cli.parse_args(
             [
                 "modify",
@@ -1015,7 +1015,7 @@ class DatasourceCliTests(unittest.TestCase):
         with self.assertRaisesRegex(datasource_cli.GrafanaError, "must decode to a JSON object"):
             datasource_cli.modify_datasource(args)
 
-    def test_modify_datasource_rejects_json_data_key_conflicts_with_header_flags(self):
+    def test_datasource_modify_datasource_rejects_json_data_key_conflicts_with_header_flags(self):
         args = datasource_cli.parse_args(
             [
                 "modify",
@@ -1031,7 +1031,7 @@ class DatasourceCliTests(unittest.TestCase):
         with self.assertRaisesRegex(datasource_cli.GrafanaError, "would overwrite existing key"):
             datasource_cli.modify_datasource(args)
 
-    def test_modify_datasource_rejects_missing_target_without_live_write(self):
+    def test_datasource_modify_datasource_rejects_missing_target_without_live_write(self):
         args = datasource_cli.parse_args(
             [
                 "modify",
@@ -1055,7 +1055,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertEqual(payload["summary"]["blockedCount"], 1)
         self.assertEqual(payload["items"][0]["action"], "would-fail-missing")
 
-    def test_add_datasource_rejects_invalid_json_data(self):
+    def test_datasource_add_datasource_rejects_invalid_json_data(self):
         args = datasource_cli.parse_args(
             [
                 "add",
@@ -1071,7 +1071,7 @@ class DatasourceCliTests(unittest.TestCase):
         with self.assertRaisesRegex(datasource_cli.GrafanaError, "must decode to a JSON object"):
             datasource_cli.add_datasource(args)
 
-    def test_add_datasource_rejects_basic_auth_password_without_user(self):
+    def test_datasource_add_datasource_rejects_basic_auth_password_without_user(self):
         args = datasource_cli.parse_args(
             [
                 "add",
@@ -1087,7 +1087,7 @@ class DatasourceCliTests(unittest.TestCase):
         with self.assertRaisesRegex(datasource_cli.GrafanaError, "requires --basic-auth-user"):
             datasource_cli.add_datasource(args)
 
-    def test_add_datasource_rejects_invalid_http_header_format(self):
+    def test_datasource_add_datasource_rejects_invalid_http_header_format(self):
         args = datasource_cli.parse_args(
             [
                 "add",
@@ -1103,7 +1103,7 @@ class DatasourceCliTests(unittest.TestCase):
         with self.assertRaisesRegex(datasource_cli.GrafanaError, "requires NAME=VALUE"):
             datasource_cli.add_datasource(args)
 
-    def test_add_datasource_rejects_json_data_key_conflicts_with_header_flags(self):
+    def test_datasource_add_datasource_rejects_json_data_key_conflicts_with_header_flags(self):
         args = datasource_cli.parse_args(
             [
                 "add",
@@ -1121,7 +1121,7 @@ class DatasourceCliTests(unittest.TestCase):
         with self.assertRaisesRegex(datasource_cli.GrafanaError, "would overwrite existing key"):
             datasource_cli.add_datasource(args)
 
-    def test_export_datasources_writes_normalized_files(self):
+    def test_datasource_export_datasources_writes_normalized_files(self):
         args = datasource_cli.parse_args(
             ["export", "--export-dir", "ignored", "--url", "http://127.0.0.1:3000"]
         )
@@ -1208,7 +1208,7 @@ class DatasourceCliTests(unittest.TestCase):
                 datasource_cli.DATASOURCE_EXPORT_FILENAME,
             )
 
-    def test_export_datasources_uses_org_scoped_client(self):
+    def test_datasource_export_datasources_uses_org_scoped_client(self):
         scoped_client = FakeDatasourceClient(
             datasources=[
                 {
@@ -1249,7 +1249,7 @@ class DatasourceCliTests(unittest.TestCase):
             self.assertEqual(datasources_document[0]["orgId"], "7")
             self.assertEqual(datasources_document[0]["org"], "Observability")
 
-    def test_export_datasources_with_all_orgs_writes_org_prefixed_dirs(self):
+    def test_datasource_export_datasources_with_all_orgs_writes_org_prefixed_dirs(self):
         org_one_client = FakeDatasourceClient(
             datasources=[
                 {
@@ -1305,7 +1305,7 @@ class DatasourceCliTests(unittest.TestCase):
             self.assertEqual(root_index["variant"], "all-orgs-root")
             self.assertEqual(root_index["count"], 2)
 
-    def test_normalize_datasource_record_matches_shared_contract_fixtures(self):
+    def test_datasource_normalize_datasource_record_matches_shared_contract_fixtures(self):
         for case in self._load_contract_cases():
             with self.subTest(case=case["name"]):
                 self.assertEqual(
@@ -1313,7 +1313,7 @@ class DatasourceCliTests(unittest.TestCase):
                     case["expectedNormalizedRecord"],
                 )
 
-    def test_build_import_payload_matches_shared_contract_fixtures(self):
+    def test_datasource_build_import_payload_matches_shared_contract_fixtures(self):
         for case in self._load_contract_cases():
             with self.subTest(case=case["name"]):
                 self.assertEqual(
@@ -1321,7 +1321,7 @@ class DatasourceCliTests(unittest.TestCase):
                     case["expectedImportPayload"],
                 )
 
-    def test_load_import_bundle_rejects_extra_secret_or_server_managed_fields(self):
+    def test_datasource_load_import_bundle_rejects_extra_secret_or_server_managed_fields(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
             (import_dir / datasource_cli.EXPORT_METADATA_FILENAME).write_text(
@@ -1367,7 +1367,7 @@ class DatasourceCliTests(unittest.TestCase):
             ):
                 datasource_cli.load_import_bundle(import_dir)
 
-    def test_export_datasources_dry_run_does_not_write_files(self):
+    def test_datasource_export_datasources_dry_run_does_not_write_files(self):
         args = datasource_cli.parse_args(
             ["export", "--export-dir", "ignored", "--dry-run", "--url", "http://127.0.0.1:3000"]
         )
@@ -1397,7 +1397,7 @@ class DatasourceCliTests(unittest.TestCase):
             self.assertFalse((Path(tmpdir) / "index.json").exists())
             self.assertFalse((Path(tmpdir) / datasource_cli.EXPORT_METADATA_FILENAME).exists())
 
-    def test_import_datasources_rejects_export_org_mismatch_for_token_scope(self):
+    def test_datasource_import_datasources_rejects_export_org_mismatch_for_token_scope(self):
         args = datasource_cli.parse_args(
             [
                 "import",
@@ -1481,7 +1481,7 @@ class DatasourceCliTests(unittest.TestCase):
                 ):
                     datasource_cli.import_datasources(args)
 
-    def test_import_datasources_dry_run_uses_org_scoped_client(self):
+    def test_datasource_import_datasources_dry_run_uses_org_scoped_client(self):
         scoped_client = FakeDatasourceClient(
             datasources=[
                 {
@@ -1584,7 +1584,7 @@ class DatasourceCliTests(unittest.TestCase):
             self.assertEqual(scoped_client.imported_payloads, [])
             self.assertIn("Import mode: create-only", stdout.getvalue())
 
-    def test_import_datasources_with_use_export_org_filters_selected_orgs(self):
+    def test_datasource_import_datasources_with_use_export_org_filters_selected_orgs(self):
         org_two_client = FakeDatasourceClient(
             datasources=[],
             org={"id": 2, "name": "Org Two"},
@@ -1659,7 +1659,7 @@ class DatasourceCliTests(unittest.TestCase):
             self.assertEqual(payload["orgs"][0]["orgAction"], "exists")
             self.assertEqual(payload["imports"][0]["summary"]["datasourceCount"], 1)
 
-    def test_import_datasources_with_use_export_org_dry_run_previews_missing_org(self):
+    def test_datasource_import_datasources_with_use_export_org_dry_run_previews_missing_org(self):
         client = FakeDatasourceClient(
             datasources=[],
             headers={"Authorization": "Basic root"},
@@ -1711,7 +1711,7 @@ class DatasourceCliTests(unittest.TestCase):
             self.assertIn("would-create-org", output)
             self.assertIn("<new>", output)
 
-    def test_import_datasources_with_use_export_org_creates_missing_orgs(self):
+    def test_datasource_import_datasources_with_use_export_org_creates_missing_orgs(self):
         org_two_client = FakeDatasourceClient(
             datasources=[],
             org={"id": 2, "name": "Org Two"},
@@ -1769,7 +1769,7 @@ class DatasourceCliTests(unittest.TestCase):
                 stdout.getvalue(),
             )
 
-    def test_import_datasources_rejects_name_match_with_different_uid(self):
+    def test_datasource_import_datasources_rejects_name_match_with_different_uid(self):
         args = datasource_cli.parse_args(
             [
                 "import",
@@ -1835,7 +1835,7 @@ class DatasourceCliTests(unittest.TestCase):
                 ):
                     datasource_cli.import_datasources(args)
 
-    def test_diff_datasources_returns_zero_when_inventory_matches(self):
+    def test_datasource_diff_datasources_returns_zero_when_inventory_matches(self):
         client = FakeDatasourceClient(
             datasources=[
                 {
@@ -1897,7 +1897,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("Diff same", stdout.getvalue())
         self.assertIn("No datasource differences across 1 exported datasource(s).", stdout.getvalue())
 
-    def test_diff_datasources_returns_one_when_inventory_differs(self):
+    def test_datasource_diff_datasources_returns_one_when_inventory_differs(self):
         client = FakeDatasourceClient(
             datasources=[
                 {
@@ -1961,7 +1961,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("+++ local/prom_uid", stdout.getvalue())
         self.assertIn("Found 1 datasource difference(s) across 1 exported datasource(s).", stdout.getvalue())
 
-    def test_import_datasources_dry_run_table_output_columns_limits_rendered_fields(self):
+    def test_datasource_import_datasources_dry_run_table_output_columns_limits_rendered_fields(self):
         args = datasource_cli.parse_args(
             [
                 "import",

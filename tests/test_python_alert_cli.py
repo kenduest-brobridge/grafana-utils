@@ -256,7 +256,7 @@ class AlertUtilsTests(unittest.TestCase):
 
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
-    def test_transport_module_parses_as_python39_syntax(self):
+    def test_alert_transport_module_parses_as_python39_syntax(self):
         source = TRANSPORT_MODULE_PATH.read_text(encoding="utf-8")
 
         ast.parse(source, filename=str(TRANSPORT_MODULE_PATH), feature_version=(3, 9))
@@ -271,24 +271,24 @@ class AlertUtilsTests(unittest.TestCase):
 
         ast.parse(source, filename=str(PROVISIONING_MODULE_PATH), feature_version=(3, 9))
 
-    def test_parse_args_supports_import_mode(self):
+    def test_alert_parse_args_supports_import_mode(self):
         args = alert_utils.parse_args(["--import-dir", "alerts/raw"])
 
         self.assertEqual(args.alert_command, "import")
         self.assertEqual(args.import_dir, "alerts/raw")
 
-    def test_parse_args_supports_diff_mode(self):
+    def test_alert_parse_args_supports_diff_mode(self):
         args = alert_utils.parse_args(["--diff-dir", "alerts/raw"])
 
         self.assertEqual(args.alert_command, "diff")
         self.assertEqual(args.diff_dir, "alerts/raw")
 
-    def test_parse_args_supports_dry_run(self):
+    def test_alert_parse_args_supports_dry_run(self):
         args = alert_utils.parse_args(["--import-dir", "alerts/raw", "--dry-run"])
 
         self.assertTrue(args.dry_run)
 
-    def test_parse_args_supports_export_subcommand(self):
+    def test_alert_parse_args_supports_export_subcommand(self):
         args = alert_utils.parse_args(
             ["export", "--output-dir", "alerts", "--overwrite"]
         )
@@ -299,7 +299,7 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertIsNone(args.import_dir)
         self.assertIsNone(args.diff_dir)
 
-    def test_parse_args_supports_import_subcommand(self):
+    def test_alert_parse_args_supports_import_subcommand(self):
         args = alert_utils.parse_args(
             ["import", "--import-dir", "alerts/raw", "--replace-existing", "--dry-run"]
         )
@@ -309,14 +309,14 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertTrue(args.replace_existing)
         self.assertTrue(args.dry_run)
 
-    def test_parse_args_supports_diff_subcommand(self):
+    def test_alert_parse_args_supports_diff_subcommand(self):
         args = alert_utils.parse_args(["diff", "--diff-dir", "alerts/raw"])
 
         self.assertEqual(args.alert_command, "diff")
         self.assertEqual(args.diff_dir, "alerts/raw")
         self.assertFalse(args.dry_run)
 
-    def test_parse_args_supports_list_rules_subcommand(self):
+    def test_alert_parse_args_supports_list_rules_subcommand(self):
         args = alert_utils.parse_args(["list-rules", "--json"])
 
         self.assertEqual(args.alert_command, "list-rules")
@@ -324,18 +324,18 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertFalse(args.csv)
         self.assertFalse(args.no_header)
 
-    def test_parse_args_supports_alert_list_output_format(self):
+    def test_alert_parse_args_supports_alert_list_output_format(self):
         args = alert_utils.parse_args(["list-rules", "--output-format", "csv"])
 
         self.assertEqual(args.output_format, "csv")
         self.assertTrue(args.csv)
         self.assertFalse(args.json)
 
-    def test_parse_args_rejects_alert_output_format_with_legacy_flags(self):
+    def test_alert_parse_args_rejects_alert_output_format_with_legacy_flags(self):
         with self.assertRaises(SystemExit):
             alert_utils.parse_args(["list-rules", "--output-format", "table", "--json"])
 
-    def test_parse_args_accepts_mapping_files(self):
+    def test_alert_parse_args_accepts_mapping_files(self):
         args = alert_utils.parse_args(
             [
                 "--import-dir",
@@ -350,7 +350,7 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(args.dashboard_uid_map, "dash-map.json")
         self.assertEqual(args.panel_id_map, "panel-map.json")
 
-    def test_help_includes_usage_examples(self):
+    def test_alert_help_includes_usage_examples(self):
         help_text = alert_utils.build_parser().format_help()
 
         self.assertIn("Examples:", help_text)
@@ -362,7 +362,7 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertIn("list-rules", help_text)
         self.assertIn("--dashboard-uid-map ./dashboard-map.json", help_text)
 
-    def test_import_help_includes_subcommand_examples(self):
+    def test_alert_import_help_includes_subcommand_examples(self):
         help_text = alert_utils.build_parser()._subparsers._group_actions[0].choices["import"].format_help()
 
         self.assertIn("Examples:", help_text)
@@ -376,14 +376,14 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertIn("Mutation Options", help_text)
         self.assertIn("Mapping Options", help_text)
 
-    def test_list_rules_help_includes_examples(self):
+    def test_alert_list_rules_help_includes_examples(self):
         help_text = alert_utils.build_parser()._subparsers._group_actions[0].choices["list-rules"].format_help()
 
         self.assertIn("Examples:", help_text)
         self.assertIn("grafana-util alert list-rules", help_text)
         self.assertIn("Output Options", help_text)
 
-    def test_export_help_includes_examples_and_grouped_sections(self):
+    def test_alert_export_help_includes_examples_and_grouped_sections(self):
         help_text = alert_utils.build_parser()._subparsers._group_actions[0].choices["export"].format_help()
 
         self.assertIn("Examples:", help_text)
@@ -392,18 +392,18 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertIn("Transport Options", help_text)
         self.assertIn("Export Options", help_text)
 
-    def test_parse_args_defaults_output_dir_to_alerts(self):
+    def test_alert_parse_args_defaults_output_dir_to_alerts(self):
         args = alert_utils.parse_args([])
 
         self.assertEqual(args.alert_command, "export")
         self.assertEqual(args.output_dir, "alerts")
 
-    def test_parse_args_defaults_url_to_local_grafana(self):
+    def test_alert_parse_args_defaults_url_to_local_grafana(self):
         args = alert_utils.parse_args([])
 
         self.assertEqual(args.url, "http://127.0.0.1:3000")
 
-    def test_main_requires_approve_for_live_import(self):
+    def test_alert_main_requires_approve_for_live_import(self):
         stream = io.StringIO()
 
         with redirect_stderr(stream):
@@ -412,17 +412,17 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(result, 1)
         self.assertIn("requires --approve", stream.getvalue())
 
-    def test_parse_args_disables_ssl_verification_by_default(self):
+    def test_alert_parse_args_disables_ssl_verification_by_default(self):
         args = alert_utils.parse_args([])
 
         self.assertFalse(args.verify_ssl)
 
-    def test_parse_args_can_enable_ssl_verification(self):
+    def test_alert_parse_args_can_enable_ssl_verification(self):
         args = alert_utils.parse_args(["--verify-ssl"])
 
         self.assertTrue(args.verify_ssl)
 
-    def test_parse_args_supports_preferred_auth_aliases(self):
+    def test_alert_parse_args_supports_preferred_auth_aliases(self):
         args = alert_utils.parse_args(
             [
                 "--token",
@@ -439,26 +439,26 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(args.password, "pass")
         self.assertFalse(args.prompt_password)
 
-    def test_parse_args_rejects_legacy_basic_auth_aliases(self):
+    def test_alert_parse_args_rejects_legacy_basic_auth_aliases(self):
         with self.assertRaises(SystemExit):
             alert_utils.parse_args(["--username", "user", "--basic-password", "pass"])
         with self.assertRaises(SystemExit):
             alert_utils.parse_args(["--basic-user", "user", "--password", "pass"])
 
-    def test_parse_args_supports_prompt_password(self):
+    def test_alert_parse_args_supports_prompt_password(self):
         args = alert_utils.parse_args(["--basic-user", "user", "--prompt-password"])
 
         self.assertEqual(args.username, "user")
         self.assertIsNone(args.password)
         self.assertTrue(args.prompt_password)
 
-    def test_parse_args_supports_prompt_token(self):
+    def test_alert_parse_args_supports_prompt_token(self):
         args = alert_utils.parse_args(["--prompt-token"])
 
         self.assertTrue(args.prompt_token)
         self.assertIsNone(args.api_token)
 
-    def test_build_json_http_transport_defaults_to_requests(self):
+    def test_alert_build_json_http_transport_defaults_to_requests(self):
         transport = alert_utils.build_json_http_transport(
             base_url="http://127.0.0.1:3000",
             headers={},
@@ -473,7 +473,7 @@ class AlertUtilsTests(unittest.TestCase):
         )
         self.assertEqual(type(transport).__name__, expected)
 
-    def test_build_json_http_transport_supports_httpx(self):
+    def test_alert_build_json_http_transport_supports_httpx(self):
         if not transport_module.httpx_is_available():
             self.skipTest("httpx is not installed")
         transport = alert_utils.build_json_http_transport(
@@ -486,10 +486,10 @@ class AlertUtilsTests(unittest.TestCase):
 
         self.assertEqual(type(transport).__name__, "HttpxJsonHttpTransport")
 
-    def test_http2_capability_helper_returns_boolean(self):
+    def test_alert_http2_capability_helper_returns_boolean(self):
         self.assertIsInstance(transport_module.http2_is_available(), bool)
 
-    def test_resolve_auth_supports_token_auth(self):
+    def test_alert_resolve_auth_supports_token_auth(self):
         args = argparse.Namespace(
             api_token="abc123",
             prompt_token=False,
@@ -501,7 +501,7 @@ class AlertUtilsTests(unittest.TestCase):
 
         self.assertEqual(headers["Authorization"], "Bearer abc123")
 
-    def test_resolve_auth_supports_basic_auth(self):
+    def test_alert_resolve_auth_supports_basic_auth(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=False,
@@ -515,7 +515,7 @@ class AlertUtilsTests(unittest.TestCase):
         expected = base64.b64encode(b"user:pass").decode("ascii")
         self.assertEqual(headers["Authorization"], f"Basic {expected}")
 
-    def test_resolve_auth_rejects_mixed_token_and_basic_auth(self):
+    def test_alert_resolve_auth_rejects_mixed_token_and_basic_auth(self):
         args = argparse.Namespace(
             api_token="abc123",
             prompt_token=False,
@@ -527,7 +527,7 @@ class AlertUtilsTests(unittest.TestCase):
         with self.assertRaisesRegex(alert_utils.GrafanaError, "Choose either token auth"):
             alert_utils.resolve_auth(args)
 
-    def test_resolve_auth_rejects_user_without_password(self):
+    def test_alert_resolve_auth_rejects_user_without_password(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=False,
@@ -542,7 +542,7 @@ class AlertUtilsTests(unittest.TestCase):
         ):
             alert_utils.resolve_auth(args)
 
-    def test_resolve_auth_rejects_password_without_user(self):
+    def test_alert_resolve_auth_rejects_password_without_user(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=False,
@@ -557,7 +557,7 @@ class AlertUtilsTests(unittest.TestCase):
         ):
             alert_utils.resolve_auth(args)
 
-    def test_resolve_auth_supports_prompt_password(self):
+    def test_alert_resolve_auth_supports_prompt_password(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=False,
@@ -573,7 +573,7 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(headers["Authorization"], f"Basic {expected}")
         prompt.assert_called_once_with("Grafana Basic auth password: ")
 
-    def test_resolve_auth_supports_prompt_token(self):
+    def test_alert_resolve_auth_supports_prompt_token(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=True,
@@ -588,7 +588,7 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(headers["Authorization"], "Bearer token-secret")
         prompt.assert_called_once_with("Grafana API token: ")
 
-    def test_resolve_auth_supports_env_token_auth(self):
+    def test_alert_resolve_auth_supports_env_token_auth(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=False,
@@ -602,7 +602,7 @@ class AlertUtilsTests(unittest.TestCase):
 
         self.assertEqual(headers["Authorization"], "Bearer env-token")
 
-    def test_resolve_auth_rejects_partial_basic_auth_env(self):
+    def test_alert_resolve_auth_rejects_partial_basic_auth_env(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=False,
@@ -618,7 +618,7 @@ class AlertUtilsTests(unittest.TestCase):
             ):
                 alert_utils.resolve_auth(args)
 
-    def test_resolve_auth_rejects_prompt_without_username(self):
+    def test_alert_resolve_auth_rejects_prompt_without_username(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=False,
@@ -633,7 +633,7 @@ class AlertUtilsTests(unittest.TestCase):
         ):
             alert_utils.resolve_auth(args)
 
-    def test_resolve_auth_rejects_prompt_with_explicit_password(self):
+    def test_alert_resolve_auth_rejects_prompt_with_explicit_password(self):
         args = argparse.Namespace(
             api_token=None,
             prompt_token=False,
@@ -648,7 +648,7 @@ class AlertUtilsTests(unittest.TestCase):
         ):
             alert_utils.resolve_auth(args)
 
-    def test_resolve_auth_rejects_explicit_and_prompt_token(self):
+    def test_alert_resolve_auth_rejects_explicit_and_prompt_token(self):
         args = argparse.Namespace(
             api_token="abc123",
             prompt_token=True,
@@ -663,7 +663,7 @@ class AlertUtilsTests(unittest.TestCase):
         ):
             alert_utils.resolve_auth(args)
 
-    def test_build_rule_output_path_keeps_folder_and_rule_group_structure(self):
+    def test_alert_build_rule_output_path_keeps_folder_and_rule_group_structure(self):
         path = alert_utils.build_rule_output_path(
             Path("alerts/raw/rules"),
             {
@@ -680,7 +680,7 @@ class AlertUtilsTests(unittest.TestCase):
             Path("alerts/raw/rules/infra_folder/CPU_Alerts/DB_CPU_90__rule-1.json"),
         )
 
-    def test_build_contact_point_output_path_uses_name_and_uid(self):
+    def test_alert_build_contact_point_output_path_uses_name_and_uid(self):
         path = alert_utils.build_contact_point_output_path(
             Path("alerts/raw/contact-points"),
             {"name": "Webhook Main", "uid": "cp-uid"},
@@ -692,7 +692,7 @@ class AlertUtilsTests(unittest.TestCase):
             Path("alerts/raw/contact-points/Webhook_Main/Webhook_Main__cp-uid.json"),
         )
 
-    def test_list_templates_treats_null_as_empty(self):
+    def test_alert_list_templates_treats_null_as_empty(self):
         class FakeTransport:
             def request_json(self, path, params=None, method="GET", payload=None):
                 return None
@@ -709,7 +709,7 @@ class AlertUtilsTests(unittest.TestCase):
 
         self.assertEqual(templates, [])
 
-    def test_list_rules_renders_table_by_default(self):
+    def test_alert_list_rules_renders_table_by_default(self):
         args = alert_utils.parse_args(["list-rules"])
         fake_client = FakeAlertClient(rules=[sample_rule()])
 
@@ -728,7 +728,7 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertIn("rule-uid", output)
         self.assertIn("CPU High", output)
 
-    def test_list_contact_points_renders_json(self):
+    def test_alert_list_contact_points_renders_json(self):
         args = alert_utils.parse_args(["list-contact-points", "--json"])
         fake_client = FakeAlertClient(contact_points=[sample_contact_point()])
 
@@ -746,7 +746,7 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(payload[0]["uid"], "cp-uid")
         self.assertEqual(payload[0]["type"], "webhook")
 
-    def test_parse_list_rules_supports_org_id_and_all_orgs(self):
+    def test_alert_parse_list_rules_supports_org_id_and_all_orgs(self):
         org_args = alert_utils.parse_args(["list-rules", "--org-id", "7", "--json"])
         all_args = alert_utils.parse_args(["list-rules", "--all-orgs", "--json"])
 
@@ -755,11 +755,11 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertIsNone(all_args.org_id)
         self.assertTrue(all_args.all_orgs)
 
-    def test_parse_list_rules_rejects_org_id_with_all_orgs(self):
+    def test_alert_parse_list_rules_rejects_org_id_with_all_orgs(self):
         with self.assertRaises(SystemExit):
             alert_utils.parse_args(["list-rules", "--org-id", "7", "--all-orgs"])
 
-    def test_list_rules_with_all_orgs_renders_org_columns(self):
+    def test_alert_list_rules_with_all_orgs_renders_org_columns(self):
         args = alert_utils.parse_args(["list-rules", "--all-orgs", "--table"])
         args.username = "admin"
         args.password = "secret"
@@ -789,7 +789,7 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertIn("Platform", output)
         self.assertEqual(fake_client.org_scope_requests, ["1", "2"])
 
-    def test_list_contact_points_with_org_id_renders_org_fields_in_json(self):
+    def test_alert_list_contact_points_with_org_id_renders_org_fields_in_json(self):
         args = alert_utils.parse_args(["list-contact-points", "--org-id", "7", "--json"])
         args.username = "admin"
         args.password = "secret"
@@ -813,7 +813,7 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(payload[0]["orgId"], "7")
         self.assertEqual(payload[0]["org"], "Platform")
 
-    def test_list_rules_rejects_all_orgs_with_api_token_auth(self):
+    def test_alert_list_rules_rejects_all_orgs_with_api_token_auth(self):
         args = alert_utils.parse_args(["list-rules", "--all-orgs", "--json"])
         args.api_token = "abc123"
 
@@ -823,7 +823,7 @@ class AlertUtilsTests(unittest.TestCase):
         ):
             alert_utils.list_alert_resources(args)
 
-    def test_build_mute_timing_output_path_uses_name(self):
+    def test_alert_build_mute_timing_output_path_uses_name(self):
         path = alert_utils.build_mute_timing_output_path(
             Path("alerts/raw/mute-timings"),
             {"name": "weekday maintenance"},
@@ -835,7 +835,7 @@ class AlertUtilsTests(unittest.TestCase):
             Path("alerts/raw/mute-timings/weekday_maintenance/weekday_maintenance.json"),
         )
 
-    def test_build_resource_dirs(self):
+    def test_alert_build_resource_dirs(self):
         dirs = alert_utils.build_resource_dirs(Path("alerts/raw"))
 
         self.assertEqual(dirs[alert_utils.RULE_KIND], Path("alerts/raw/rules"))
@@ -852,7 +852,7 @@ class AlertUtilsTests(unittest.TestCase):
             Path("alerts/raw/policies"),
         )
 
-    def test_discover_alert_resource_files_ignores_index_json(self):
+    def test_alert_discover_alert_resource_files_ignores_index_json(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             (root / "index.json").write_text("[]", encoding="utf-8")
@@ -867,7 +867,7 @@ class AlertUtilsTests(unittest.TestCase):
 
             self.assertEqual(files, [resource_path])
 
-    def test_discover_alert_resource_files_rejects_export_root(self):
+    def test_alert_discover_alert_resource_files_rejects_export_root(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             (root / "raw").mkdir()
@@ -875,7 +875,7 @@ class AlertUtilsTests(unittest.TestCase):
             with self.assertRaises(alert_utils.GrafanaError):
                 alert_utils.discover_alert_resource_files(root)
 
-    def test_build_rule_export_document_strips_server_managed_fields(self):
+    def test_alert_build_rule_export_document_strips_server_managed_fields(self):
         document = alert_utils.build_rule_export_document(sample_rule())
 
         self.assertEqual(document["kind"], alert_utils.RULE_KIND)
@@ -886,7 +886,7 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertNotIn("updated", document["spec"])
         self.assertNotIn("provenance", document["spec"])
 
-    def test_build_rule_export_document_keeps_linked_dashboard_metadata(self):
+    def test_alert_build_rule_export_document_keeps_linked_dashboard_metadata(self):
         rule = sample_linked_rule(
             __linkedDashboardMetadata__={
                 "dashboardUid": "source-dashboard-uid",
@@ -905,7 +905,7 @@ class AlertUtilsTests(unittest.TestCase):
         )
         self.assertEqual(document["metadata"]["linkedDashboard"]["panelId"], "7")
 
-    def test_build_contact_point_export_document_strips_server_managed_fields(self):
+    def test_alert_build_contact_point_export_document_strips_server_managed_fields(self):
         document = alert_utils.build_contact_point_export_document(
             sample_contact_point()
         )
@@ -914,7 +914,7 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(document["metadata"]["uid"], "cp-uid")
         self.assertNotIn("provenance", document["spec"])
 
-    def test_build_mute_timing_export_document_strips_server_managed_fields(self):
+    def test_alert_build_mute_timing_export_document_strips_server_managed_fields(self):
         document = alert_utils.build_mute_timing_export_document(sample_mute_timing())
 
         self.assertEqual(document["kind"], alert_utils.MUTE_TIMING_KIND)
@@ -922,21 +922,21 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertNotIn("version", document["spec"])
         self.assertNotIn("provenance", document["spec"])
 
-    def test_build_policies_export_document_strips_server_managed_fields(self):
+    def test_alert_build_policies_export_document_strips_server_managed_fields(self):
         document = alert_utils.build_policies_export_document(sample_policies())
 
         self.assertEqual(document["kind"], alert_utils.POLICIES_KIND)
         self.assertEqual(document["metadata"]["receiver"], "Webhook Main")
         self.assertNotIn("provenance", document["spec"])
 
-    def test_build_template_export_document_strips_server_managed_fields(self):
+    def test_alert_build_template_export_document_strips_server_managed_fields(self):
         document = alert_utils.build_template_export_document(sample_template())
 
         self.assertEqual(document["kind"], alert_utils.TEMPLATE_KIND)
         self.assertEqual(document["metadata"]["name"], "codex.message")
         self.assertNotIn("provenance", document["spec"])
 
-    def test_build_import_operation_accepts_rule_tool_document(self):
+    def test_alert_build_import_operation_accepts_rule_tool_document(self):
         document = alert_utils.build_rule_export_document(sample_rule())
 
         kind, payload = alert_utils.build_import_operation(document)
@@ -946,7 +946,7 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(payload["folderUID"], "infra-folder")
         self.assertNotIn("id", payload)
 
-    def test_build_import_operation_accepts_legacy_tool_document_without_schema_version(self):
+    def test_alert_build_import_operation_accepts_legacy_tool_document_without_schema_version(self):
         document = alert_utils.build_rule_export_document(sample_rule())
         document.pop("schemaVersion")
 
@@ -955,14 +955,14 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(kind, alert_utils.RULE_KIND)
         self.assertEqual(payload["uid"], "rule-uid")
 
-    def test_build_import_operation_rejects_unsupported_schema_version(self):
+    def test_alert_build_import_operation_rejects_unsupported_schema_version(self):
         document = alert_utils.build_rule_export_document(sample_rule())
         document["schemaVersion"] = alert_utils.TOOL_SCHEMA_VERSION + 1
 
         with self.assertRaises(alert_utils.GrafanaError):
             alert_utils.build_import_operation(document)
 
-    def test_build_import_operation_accepts_contact_point_tool_document(self):
+    def test_alert_build_import_operation_accepts_contact_point_tool_document(self):
         document = alert_utils.build_contact_point_export_document(
             sample_contact_point()
         )
@@ -973,7 +973,7 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(payload["uid"], "cp-uid")
         self.assertEqual(payload["type"], "webhook")
 
-    def test_build_import_operation_accepts_mute_timing_tool_document(self):
+    def test_alert_build_import_operation_accepts_mute_timing_tool_document(self):
         document = alert_utils.build_mute_timing_export_document(sample_mute_timing())
 
         kind, payload = alert_utils.build_import_operation(document)
@@ -982,7 +982,7 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(payload["name"], "weekday-maintenance")
         self.assertEqual(len(payload["time_intervals"]), 1)
 
-    def test_build_import_operation_accepts_policies_tool_document(self):
+    def test_alert_build_import_operation_accepts_policies_tool_document(self):
         document = alert_utils.build_policies_export_document(sample_policies())
 
         kind, payload = alert_utils.build_import_operation(document)
@@ -990,7 +990,7 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(kind, alert_utils.POLICIES_KIND)
         self.assertEqual(payload["receiver"], "Webhook Main")
 
-    def test_build_import_operation_accepts_template_tool_document(self):
+    def test_alert_build_import_operation_accepts_template_tool_document(self):
         document = alert_utils.build_template_export_document(sample_template())
 
         kind, payload = alert_utils.build_import_operation(document)
@@ -998,13 +998,13 @@ class AlertUtilsTests(unittest.TestCase):
         self.assertEqual(kind, alert_utils.TEMPLATE_KIND)
         self.assertEqual(payload["name"], "codex.message")
 
-    def test_build_import_operation_accepts_plain_rule_document(self):
+    def test_alert_build_import_operation_accepts_plain_rule_document(self):
         kind, payload = alert_utils.build_import_operation(sample_rule())
 
         self.assertEqual(kind, alert_utils.RULE_KIND)
         self.assertEqual(payload["uid"], "rule-uid")
 
-    def test_rewrite_rule_dashboard_linkage_uses_fallback_match(self):
+    def test_alert_rewrite_rule_dashboard_linkage_uses_fallback_match(self):
         fake_client = FakeAlertClient()
         fake_client.dashboard_search_results = [
             {
@@ -1036,7 +1036,7 @@ class AlertUtilsTests(unittest.TestCase):
         )
         self.assertEqual(rewritten["annotations"]["__panelId__"], "7")
 
-    def test_rewrite_rule_dashboard_linkage_fails_without_unique_match(self):
+    def test_alert_rewrite_rule_dashboard_linkage_fails_without_unique_match(self):
         fake_client = FakeAlertClient()
         fake_client.dashboard_search_results = [
             {
@@ -1069,29 +1069,29 @@ class AlertUtilsTests(unittest.TestCase):
                 fake_client, payload, document, {}, {}
             )
 
-    def test_build_import_operation_rejects_provisioning_export_format(self):
+    def test_alert_build_import_operation_rejects_provisioning_export_format(self):
         with self.assertRaises(alert_utils.GrafanaError):
             alert_utils.build_import_operation(
                 {"apiVersion": 1, "contactPoints": [{"name": "Webhook Main"}]}
             )
 
-    def test_build_rule_import_payload_requires_expected_fields(self):
+    def test_alert_build_rule_import_payload_requires_expected_fields(self):
         with self.assertRaises(alert_utils.GrafanaError):
             alert_utils.build_rule_import_payload({"title": "CPU High"})
 
-    def test_build_contact_point_import_payload_requires_expected_fields(self):
+    def test_alert_build_contact_point_import_payload_requires_expected_fields(self):
         with self.assertRaises(alert_utils.GrafanaError):
             alert_utils.build_contact_point_import_payload({"name": "Webhook Main"})
 
-    def test_build_mute_timing_import_payload_requires_expected_fields(self):
+    def test_alert_build_mute_timing_import_payload_requires_expected_fields(self):
         with self.assertRaises(alert_utils.GrafanaError):
             alert_utils.build_mute_timing_import_payload({"name": "weekday-maintenance"})
 
-    def test_build_template_import_payload_requires_expected_fields(self):
+    def test_alert_build_template_import_payload_requires_expected_fields(self):
         with self.assertRaises(alert_utils.GrafanaError):
             alert_utils.build_template_import_payload({"name": "codex.message"})
 
-    def test_load_string_map_accepts_simple_json_object(self):
+    def test_alert_load_string_map_accepts_simple_json_object(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "map.json"
             path.write_text('{"old":"new"}', encoding="utf-8")
@@ -1100,7 +1100,7 @@ class AlertUtilsTests(unittest.TestCase):
 
             self.assertEqual(payload, {"old": "new"})
 
-    def test_load_panel_id_map_accepts_nested_json_object(self):
+    def test_alert_load_panel_id_map_accepts_nested_json_object(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "panel-map.json"
             path.write_text('{"dash-a":{"7":"13"}}', encoding="utf-8")
@@ -1109,7 +1109,7 @@ class AlertUtilsTests(unittest.TestCase):
 
             self.assertEqual(payload, {"dash-a": {"7": "13"}})
 
-    def test_export_alerting_resources_writes_all_resource_types(self):
+    def test_alert_export_alerting_resources_writes_all_resource_types(self):
         args = alert_utils.parse_args(["--output-dir", "unused", "--overwrite"])
         fake_client = FakeAlertClient(
             rules=[sample_rule()],
@@ -1166,7 +1166,7 @@ class AlertUtilsTests(unittest.TestCase):
             self.assertEqual(len(root_index["policies"]), 1)
             self.assertEqual(len(root_index["templates"]), 1)
 
-    def test_import_alerting_resources_dry_run_skips_api_write(self):
+    def test_alert_import_alerting_resources_dry_run_skips_api_write(self):
         args = alert_utils.parse_args(
             ["--import-dir", "unused", "--replace-existing", "--dry-run"]
         )
@@ -1190,7 +1190,7 @@ class AlertUtilsTests(unittest.TestCase):
             self.assertEqual(fake_client.updated_rules, [])
             self.assertIn("would-update", stdout.getvalue())
 
-    def test_diff_alerting_resources_returns_zero_when_rule_matches(self):
+    def test_alert_diff_alerting_resources_returns_zero_when_rule_matches(self):
         args = alert_utils.parse_args(["--diff-dir", "unused"])
         fake_client = FakeAlertClient(existing_rules={"rule-uid": sample_rule()})
 
@@ -1210,7 +1210,7 @@ class AlertUtilsTests(unittest.TestCase):
             self.assertEqual(result, 0)
             self.assertIn("Diff same", stdout.getvalue())
 
-    def test_diff_alerting_resources_returns_one_when_rule_differs(self):
+    def test_alert_diff_alerting_resources_returns_one_when_rule_differs(self):
         args = alert_utils.parse_args(["--diff-dir", "unused"])
         fake_client = FakeAlertClient(
             existing_rules={"rule-uid": sample_rule(title="CPU Critical")}
@@ -1237,7 +1237,7 @@ class AlertUtilsTests(unittest.TestCase):
             self.assertIn('"title": "CPU Critical"', output)
             self.assertIn('"title": "CPU High"', output)
 
-    def test_import_alerting_resources_updates_existing_rule_when_requested(self):
+    def test_alert_import_alerting_resources_updates_existing_rule_when_requested(self):
         args = alert_utils.parse_args(["--import-dir", "unused", "--replace-existing"])
         fake_client = FakeAlertClient(existing_rules={"rule-uid": sample_rule()})
 
@@ -1258,7 +1258,7 @@ class AlertUtilsTests(unittest.TestCase):
             self.assertEqual(len(fake_client.updated_rules), 1)
             self.assertEqual(fake_client.updated_rules[0][0], "rule-uid")
 
-    def test_import_alerting_resources_updates_existing_contact_point_when_requested(self):
+    def test_alert_import_alerting_resources_updates_existing_contact_point_when_requested(self):
         args = alert_utils.parse_args(["--import-dir", "unused", "--replace-existing"])
         fake_client = FakeAlertClient(contact_points=[sample_contact_point()])
 
@@ -1278,7 +1278,7 @@ class AlertUtilsTests(unittest.TestCase):
             self.assertEqual(len(fake_client.updated_contact_points), 1)
             self.assertEqual(fake_client.updated_contact_points[0][0], "cp-uid")
 
-    def test_import_alerting_resources_updates_existing_mute_timing_when_requested(self):
+    def test_alert_import_alerting_resources_updates_existing_mute_timing_when_requested(self):
         args = alert_utils.parse_args(["--import-dir", "unused", "--replace-existing"])
         fake_client = FakeAlertClient(mute_timings=[sample_mute_timing()])
 
@@ -1300,7 +1300,7 @@ class AlertUtilsTests(unittest.TestCase):
                 fake_client.updated_mute_timings[0][0], "weekday-maintenance"
             )
 
-    def test_import_alerting_resources_updates_policies(self):
+    def test_alert_import_alerting_resources_updates_policies(self):
         args = alert_utils.parse_args(["--import-dir", "unused"])
         fake_client = FakeAlertClient()
 
@@ -1319,7 +1319,7 @@ class AlertUtilsTests(unittest.TestCase):
             self.assertEqual(len(fake_client.updated_policies), 1)
             self.assertEqual(fake_client.updated_policies[0]["receiver"], "Webhook Main")
 
-    def test_import_alerting_resources_updates_existing_template_when_requested(self):
+    def test_alert_import_alerting_resources_updates_existing_template_when_requested(self):
         args = alert_utils.parse_args(["--import-dir", "unused", "--replace-existing"])
         fake_client = FakeAlertClient(templates=[sample_template()])
 
@@ -1341,7 +1341,7 @@ class AlertUtilsTests(unittest.TestCase):
                 fake_client.updated_templates[0][1]["version"], "template-version-1"
             )
 
-    def test_import_alerting_resources_rejects_existing_template_without_replace(self):
+    def test_alert_import_alerting_resources_rejects_existing_template_without_replace(self):
         args = alert_utils.parse_args(["--import-dir", "unused"])
         fake_client = FakeAlertClient(templates=[sample_template()])
 
@@ -1357,7 +1357,7 @@ class AlertUtilsTests(unittest.TestCase):
                 with self.assertRaises(alert_utils.GrafanaError):
                     alert_utils.import_alerting_resources(args)
 
-    def test_rewrite_rule_dashboard_linkage_applies_uid_and_panel_maps(self):
+    def test_alert_rewrite_rule_dashboard_linkage_applies_uid_and_panel_maps(self):
         fake_client = FakeAlertClient()
         fake_client.dashboard_by_uid = {
             "mapped-dashboard-uid": {
@@ -1380,7 +1380,7 @@ class AlertUtilsTests(unittest.TestCase):
         )
         self.assertEqual(rewritten["annotations"]["__panelId__"], "19")
 
-    def test_import_alerting_resources_rejects_multiple_policy_documents(self):
+    def test_alert_import_alerting_resources_rejects_multiple_policy_documents(self):
         args = alert_utils.parse_args(["--import-dir", "unused"])
         fake_client = FakeAlertClient()
 

@@ -104,6 +104,7 @@ SYNC_ROOT_HELP_EXAMPLES = (
 
 
 def add_document_input_group(parser, *definitions):
+    """Add document input group implementation."""
     group = parser.add_argument_group("Input Options")
     for definition in definitions:
         flags = definition[0]
@@ -112,19 +113,26 @@ def add_document_input_group(parser, *definitions):
 
 
 def add_runtime_group(parser):
+    """Add runtime group implementation."""
     return parser.add_argument_group("Runtime Options")
 
 
 def add_output_group(parser):
+    """Add output group implementation."""
     return parser.add_argument_group("Output Options")
 
 
 def add_apply_control_group(parser):
+    """Add apply control group implementation."""
     return parser.add_argument_group("Apply Control Options")
 
 
 def build_parser(prog=None):
     """Build the sync CLI parser."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1317
+    #   Downstream callees: 106, 115, 120, 125
+
     parser = argparse.ArgumentParser(
         prog=prog or "grafana-util sync",
         description=(
@@ -390,18 +398,21 @@ def build_client(args):
 
 
 def _require_object(document, label):
+    """Internal helper for require object."""
     if not isinstance(document, dict):
         raise GrafanaError("%s must be a JSON object." % label)
     return document
 
 
 def _require_resource_list(document, label):
+    """Internal helper for require resource list."""
     if not isinstance(document, list):
         raise GrafanaError("%s must be a JSON array." % label)
     return document
 
 
 def build_sync_summary_document(raw_specs):
+    """Build sync summary document implementation."""
     specs = [normalize_resource_spec(item) for item in raw_specs]
     return {
         "kind": "grafana-utils-sync-summary",
@@ -428,6 +439,7 @@ def build_sync_summary_document(raw_specs):
 
 
 def render_sync_summary_text(document):
+    """Render sync summary text implementation."""
     if document.get("kind") != "grafana-utils-sync-summary":
         raise GrafanaError("Sync summary document kind is not supported.")
     summary = _require_object(document.get("summary"), "Sync summary document summary")
@@ -447,6 +459,7 @@ def render_sync_summary_text(document):
 
 
 def _coerce_operation(item, index):
+    """Internal helper for coerce operation."""
     if not isinstance(item, dict):
         raise GrafanaError("Sync plan operation #%s must be a JSON object." % index)
     return SyncOperation(
@@ -465,6 +478,10 @@ def _coerce_operation(item, index):
 
 def load_plan_document(path):
     """Load one persisted sync plan document back into a SyncPlan."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1286, 677
+    #   Downstream callees: 366, 396, 457
+
     document = _require_object(load_json_document(path), "Sync plan document")
     operations = []
     for index, item in enumerate(document.get("operations") or (), 1):
@@ -490,6 +507,7 @@ def emit_document(document, output_file=None):
 
 
 def _normalize_string(value, default=""):
+    """Internal helper for normalize string."""
     if value is None:
         return default
     text = str(value).strip()
@@ -499,6 +517,7 @@ def _normalize_string(value, default=""):
 
 
 def _copy_mapping(value, label):
+    """Internal helper for copy mapping."""
     if value is None:
         return {}
     if not isinstance(value, dict):
@@ -620,6 +639,11 @@ def fetch_live_resource_specs(client, page_size=500):
 
 
 def run_plan(args):
+    """Run plan implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1322
+    #   Downstream callees: 366, 387, 403, 494, 520
+
     desired_specs = _require_resource_list(
         load_json_document(args.desired_file),
         "Desired sync input",
@@ -649,6 +673,11 @@ def run_plan(args):
 
 
 def run_summary(args):
+    """Run summary implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1322
+    #   Downstream callees: 366, 403, 410, 437, 494
+
     desired_specs = _require_resource_list(
         load_json_document(args.desired_file),
         "Desired sync input",
@@ -662,6 +691,11 @@ def run_summary(args):
 
 
 def run_review(args):
+    """Run review implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1322
+    #   Downstream callees: 475, 494
+
     plan = load_plan_document(args.plan_file)
     reviewed_plan = mark_plan_reviewed(
         plan,
@@ -675,12 +709,14 @@ def run_review(args):
 
 
 def _load_optional_object_file(path, label):
+    """Internal helper for load optional object file."""
     if not path:
         return {}
     return _require_object(load_json_document(path), label)
 
 
 def _merge_availability(base, extra):
+    """Internal helper for merge availability."""
     merged = dict(base or {})
     for key, value in (extra or {}).items():
         if key in ("datasourceUids", "datasourceNames", "pluginIds", "contactPoints"):
@@ -741,6 +777,7 @@ def fetch_live_availability(client):
 
 
 def _emit_text_or_json(document, lines, output):
+    """Internal helper for emit text or json."""
     if output == "json":
         print(json.dumps(document, indent=2, sort_keys=False))
         return
@@ -749,6 +786,7 @@ def _emit_text_or_json(document, lines, output):
 
 
 def _load_optional_array_file(path, label):
+    """Internal helper for load optional array file."""
     if not path:
         return []
     document = load_json_document(path)
@@ -756,6 +794,7 @@ def _load_optional_array_file(path, label):
 
 
 def _discover_json_files(root, ignored_names):
+    """Internal helper for discover json files."""
     files = []
     for path in sorted(Path(root).rglob("*.json")):
         if path.name in ignored_names:
@@ -765,6 +804,7 @@ def _discover_json_files(root, ignored_names):
 
 
 def _dashboard_body_from_export(document):
+    """Internal helper for dashboard body from export."""
     if isinstance(document, dict) and isinstance(document.get("dashboard"), dict):
         body = dict(document.get("dashboard") or {})
     else:
@@ -774,6 +814,7 @@ def _dashboard_body_from_export(document):
 
 
 def _normalize_dashboard_bundle_item(document, source_path):
+    """Internal helper for normalize dashboard bundle item."""
     body = _dashboard_body_from_export(document)
     uid = _normalize_string(body.get("uid"))
     title = _normalize_string(body.get("title"), uid)
@@ -789,6 +830,7 @@ def _normalize_dashboard_bundle_item(document, source_path):
 
 
 def _normalize_folder_bundle_item(record):
+    """Internal helper for normalize folder bundle item."""
     record = _copy_mapping(record, "Folder inventory record")
     uid = _normalize_string(record.get("uid"))
     title = _normalize_string(record.get("title"), uid)
@@ -809,6 +851,7 @@ def _normalize_folder_bundle_item(record):
 
 
 def _normalize_datasource_bundle_item(record):
+    """Internal helper for normalize datasource bundle item."""
     record = _copy_mapping(record, "Datasource inventory record")
     uid = _normalize_string(record.get("uid"))
     name = _normalize_string(record.get("name"), uid)
@@ -833,6 +876,7 @@ def _normalize_datasource_bundle_item(record):
 
 
 def _classify_alert_export_path(relative_path):
+    """Internal helper for classify alert export path."""
     parts = list(Path(relative_path).parts)
     if not parts:
         return None
@@ -848,6 +892,11 @@ def _classify_alert_export_path(relative_path):
 
 
 def _load_dashboard_bundle_sections(export_dir):
+    """Internal helper for load dashboard bundle sections."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 954
+    #   Downstream callees: 366, 396, 768, 776, 796, 812, 833
+
     root = Path(export_dir)
     dashboards = [
         _normalize_dashboard_bundle_item(
@@ -882,6 +931,11 @@ def _load_dashboard_bundle_sections(export_dir):
 
 
 def _load_alerting_bundle_section(export_dir):
+    """Internal helper for load alerting bundle section."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 954
+    #   Downstream callees: 366, 396, 776, 858
+
     root = Path(export_dir)
     alerting = {
         "summary": {
@@ -926,6 +980,11 @@ def _load_alerting_bundle_section(export_dir):
 
 
 def run_bundle(args):
+    """Run bundle implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1322
+    #   Downstream callees: 377, 691, 759, 768, 833, 874, 909
+
     if not any(
         (
             getattr(args, "dashboard_export_dir", None),
@@ -986,6 +1045,11 @@ def run_bundle(args):
 
 
 def run_preflight(args):
+    """Run preflight implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1322
+    #   Downstream callees: 366, 387, 403, 691, 698, 716, 759
+
     desired_specs = _require_resource_list(
         load_json_document(args.desired_file),
         "Desired sync input",
@@ -1009,6 +1073,11 @@ def run_preflight(args):
 
 
 def run_assess_alerts(args):
+    """Run assess alerts implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1322
+    #   Downstream callees: 366, 403, 759
+
     alert_specs = _require_resource_list(
         load_json_document(args.alerts_file),
         "Alert sync input",
@@ -1023,6 +1092,11 @@ def run_assess_alerts(args):
 
 
 def run_bundle_preflight(args):
+    """Run bundle preflight implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1322
+    #   Downstream callees: 366, 387, 396, 691, 698, 716, 759
+
     source_bundle = _require_object(
         load_json_document(args.source_bundle),
         "Source bundle input",
@@ -1054,6 +1128,7 @@ def run_bundle_preflight(args):
 
 
 def _serialize_apply_intent(intent):
+    """Internal helper for serialize apply intent."""
     return {
         "mode": intent.get("mode"),
         "reviewed": bool(intent.get("reviewed")),
@@ -1076,6 +1151,7 @@ def _serialize_apply_intent(intent):
 
 
 def _resolve_datasource_target(client, operation):
+    """Internal helper for resolve datasource target."""
     identity = _normalize_string(operation.identity)
     for datasource in client.list_datasources():
         if not isinstance(datasource, dict):
@@ -1091,6 +1167,7 @@ def _resolve_datasource_target(client, operation):
 
 
 def _apply_folder_operation(client, operation, allow_folder_delete):
+    """Internal helper for apply folder operation."""
     body = _copy_mapping(operation.desired, "Folder desired body")
     if operation.action == "would-create":
         return client.create_folder(
@@ -1126,6 +1203,7 @@ def _apply_folder_operation(client, operation, allow_folder_delete):
 
 
 def _apply_dashboard_operation(client, operation):
+    """Internal helper for apply dashboard operation."""
     if operation.action == "would-delete":
         return client.request_json(
             "/api/dashboards/uid/%s" % parse.quote(operation.identity, safe=""),
@@ -1146,6 +1224,11 @@ def _apply_dashboard_operation(client, operation):
 
 
 def _apply_datasource_operation(client, operation):
+    """Internal helper for apply datasource operation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1253
+    #   Downstream callees: 1109, 501, 511
+
     body = _copy_mapping(operation.desired, "Datasource desired body")
     body["uid"] = _normalize_string(body.get("uid"), operation.identity) or operation.identity
     body["name"] = _normalize_string(body.get("name"), operation.title or operation.identity)
@@ -1180,6 +1263,7 @@ def _apply_datasource_operation(client, operation):
 
 
 def _apply_alert_operation(client, operation):
+    """Internal helper for apply alert operation."""
     uid = _normalize_string(operation.identity)
     if not uid:
         raise GrafanaError("Alert sync operations require a stable uid identity.")
@@ -1216,6 +1300,10 @@ def _apply_alert_operation(client, operation):
 
 def execute_live_apply(client, operations, allow_folder_delete=False):
     """Apply one gated sync intent to Grafana for supported resource kinds."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1286
+    #   Downstream callees: 1125, 1161, 1182, 1217
+
     results = []
     for operation in operations:
         if operation.kind == "folder":
@@ -1248,6 +1336,11 @@ def execute_live_apply(client, operations, allow_folder_delete=False):
 
 
 def run_apply(args):
+    """Run apply implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1322
+    #   Downstream callees: 1086, 1253, 387, 475, 494
+
     plan = load_plan_document(args.plan_file)
     if plan.dry_run:
         plan = SyncPlan(
@@ -1278,10 +1371,16 @@ def run_apply(args):
 
 
 def parse_args(argv=None):
+    """Parse args implementation."""
     return build_parser().parse_args(argv)
 
 
 def main(argv=None):
+    """Main implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 1015, 1039, 1054, 1286, 1317, 633, 663, 677, 954
+
     args = parse_args(argv)
     try:
         if args.command == "summary":

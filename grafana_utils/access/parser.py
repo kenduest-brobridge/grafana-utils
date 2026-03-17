@@ -238,6 +238,7 @@ SERVICE_ACCOUNT_TOKEN_DELETE_HELP_EXAMPLES = """Examples:
 
 
 def subparser_kwargs(epilog=None):
+    """Subparser kwargs implementation."""
     kwargs = {"formatter_class": argparse.RawDescriptionHelpFormatter}
     if epilog:
         kwargs["epilog"] = epilog
@@ -245,6 +246,11 @@ def subparser_kwargs(epilog=None):
 
 
 def positive_int(value):
+    """Positive int implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     parsed = int(value)
     if parsed < 1:
         raise argparse.ArgumentTypeError("value must be >= 1")
@@ -252,6 +258,11 @@ def positive_int(value):
 
 
 def bool_choice(value):
+    """Bool choice implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     normalized = str(value).strip().lower()
     if normalized not in {"true", "false"}:
         raise argparse.ArgumentTypeError("value must be true or false")
@@ -259,6 +270,11 @@ def bool_choice(value):
 
 
 def parser_help_kwargs(epilog):
+    """Parser help kwargs implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 無
+
     return {
         "epilog": epilog,
         "formatter_class": argparse.RawDescriptionHelpFormatter,
@@ -266,6 +282,7 @@ def parser_help_kwargs(epilog):
 
 
 def add_list_output_format_arg(parser):
+    """Add list output format arg implementation."""
     parser.add_argument(
         "--output-format",
         choices=LIST_OUTPUT_FORMAT_CHOICES,
@@ -279,6 +296,7 @@ def add_list_output_format_arg(parser):
 
 
 def add_access_export_cli_args(parser, default_export_dir, resource="user"):
+    """Add access export cli args implementation."""
     payload_name = access_export_filename(resource)
     parser.add_argument(
         "--export-dir",
@@ -304,6 +322,7 @@ def add_access_export_cli_args(parser, default_export_dir, resource="user"):
 
 
 def add_access_import_cli_args(parser, resource, default_scope=DEFAULT_SCOPE):
+    """Add access import cli args implementation."""
     parser.add_argument(
         "--import-dir",
         required=True,
@@ -344,6 +363,7 @@ def add_access_import_cli_args(parser, resource, default_scope=DEFAULT_SCOPE):
 
 
 def add_access_diff_cli_args(parser, resource, default_scope=DEFAULT_SCOPE):
+    """Add access diff cli args implementation."""
     parser.add_argument(
         "--diff-dir",
         required=True,
@@ -366,6 +386,11 @@ def add_access_diff_cli_args(parser, resource, default_scope=DEFAULT_SCOPE):
 
 
 def build_parser(prog=None):
+    """Build parser implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 1342
+    #   Downstream callees: 1015, 1056, 1070, 1096, 1122, 1141, 1189, 1237, 1270, 1298, 240, 286, 312, 353, 652, 745, 819, 873, 941, 977
+
     parser = argparse.ArgumentParser(
         prog=prog,
         description="List and manage Grafana users, teams, organizations, and service accounts.",
@@ -647,6 +672,7 @@ def add_common_cli_args(
     password_dest="password",
     include_org_id=True,
 ):
+    """Add common cli args implementation."""
     auth_group = parser.add_argument_group("Authentication Options")
     transport_group = parser.add_argument_group("Transport Options")
     auth_group.add_argument(
@@ -733,6 +759,7 @@ def add_common_cli_args(
 
 
 def add_user_list_cli_args(parser):
+    """Add user list cli args implementation."""
     parser.add_argument(
         "--scope",
         choices=SCOPE_CHOICES,
@@ -806,6 +833,7 @@ def add_user_list_cli_args(parser):
 
 
 def add_user_add_cli_args(parser):
+    """Add user add cli args implementation."""
     parser.add_argument(
         "--login",
         required=True,
@@ -859,6 +887,7 @@ def add_user_add_cli_args(parser):
 
 
 def add_user_modify_cli_args(parser):
+    """Add user modify cli args implementation."""
     identity_group = parser.add_mutually_exclusive_group(required=True)
     identity_group.add_argument(
         "--user-id",
@@ -926,6 +955,7 @@ def add_user_modify_cli_args(parser):
 
 
 def add_user_delete_cli_args(parser):
+    """Add user delete cli args implementation."""
     identity_group = parser.add_mutually_exclusive_group(required=True)
     identity_group.add_argument(
         "--user-id",
@@ -961,6 +991,7 @@ def add_user_delete_cli_args(parser):
 
 
 def add_service_account_list_cli_args(parser):
+    """Add service account list cli args implementation."""
     parser.add_argument(
         "--query",
         default=None,
@@ -998,6 +1029,7 @@ def add_service_account_list_cli_args(parser):
 
 
 def add_org_list_cli_args(parser):
+    """Add org list cli args implementation."""
     parser.add_argument(
         "--org-id",
         default=None,
@@ -1038,6 +1070,7 @@ def add_org_list_cli_args(parser):
 
 
 def add_org_add_cli_args(parser):
+    """Add org add cli args implementation."""
     parser.add_argument(
         "--name",
         required=True,
@@ -1051,6 +1084,7 @@ def add_org_add_cli_args(parser):
 
 
 def add_org_modify_cli_args(parser):
+    """Add org modify cli args implementation."""
     identity_group = parser.add_mutually_exclusive_group(required=True)
     identity_group.add_argument(
         "--org-id",
@@ -1076,6 +1110,7 @@ def add_org_modify_cli_args(parser):
 
 
 def add_org_delete_cli_args(parser):
+    """Add org delete cli args implementation."""
     identity_group = parser.add_mutually_exclusive_group(required=True)
     identity_group.add_argument(
         "--org-id",
@@ -1101,6 +1136,7 @@ def add_org_delete_cli_args(parser):
 
 
 def add_org_export_cli_args(parser):
+    """Add org export cli args implementation."""
     parser.add_argument(
         "--org-id",
         default=None,
@@ -1119,6 +1155,7 @@ def add_org_export_cli_args(parser):
 
 
 def add_team_list_cli_args(parser):
+    """Add team list cli args implementation."""
     parser.add_argument(
         "--query",
         default=None,
@@ -1166,6 +1203,7 @@ def add_team_list_cli_args(parser):
 
 
 def add_team_modify_cli_args(parser):
+    """Add team modify cli args implementation."""
     identity_group = parser.add_mutually_exclusive_group(required=True)
     identity_group.add_argument(
         "--team-id",
@@ -1213,6 +1251,7 @@ def add_team_modify_cli_args(parser):
 
 
 def add_team_add_cli_args(parser):
+    """Add team add cli args implementation."""
     parser.add_argument(
         "--name",
         required=True,
@@ -1245,6 +1284,7 @@ def add_team_add_cli_args(parser):
 
 
 def add_service_account_add_cli_args(parser):
+    """Add service account add cli args implementation."""
     parser.add_argument(
         "--name",
         required=True,
@@ -1272,6 +1312,7 @@ def add_service_account_add_cli_args(parser):
 
 
 def add_service_account_token_add_cli_args(parser):
+    """Add service account token add cli args implementation."""
     identity_group = parser.add_mutually_exclusive_group(required=True)
     identity_group.add_argument(
         "--service-account-id",
@@ -1302,6 +1343,7 @@ def add_service_account_token_add_cli_args(parser):
 
 
 def access_export_filename(resource):
+    """Access export filename implementation."""
     if resource == "user":
         return ACCESS_USER_EXPORT_FILENAME
     if resource == "team":
@@ -1314,6 +1356,11 @@ def access_export_filename(resource):
 
 
 def parse_args(argv=None):
+    """Parse args implementation."""
+    # Call graph: see callers/callees.
+    #   Upstream callers: 無
+    #   Downstream callees: 1383, 1399, 376
+
     parser = build_parser()
     argv = normalize_group_alias_argv(
         list(sys.argv[1:] if argv is None else argv)
@@ -1354,6 +1401,7 @@ def parse_args(argv=None):
 
 
 def _normalize_output_format_args(args, parser):
+    """Internal helper for normalize output format args."""
     output_format = getattr(args, "output_format", None)
     if output_format is None:
         return
@@ -1369,6 +1417,7 @@ def _normalize_output_format_args(args, parser):
 
 
 def _validate_tls_args(args, parser):
+    """Internal helper for validate tls args."""
     if bool(getattr(args, "verify_ssl", False)) and bool(
         getattr(args, "insecure", False)
     ):
