@@ -44,6 +44,7 @@ Rust crate 提供四個 CLI domain 的核心執行能力：
   - 導出 dashboard 的 parser 型別、client helper、runner、以及 submodule 共用型別。
   - `run_dashboard_cli` 是核心 runtime 執行入口：normalize、建 client、分派到 export/import/diff/inspect/list 的子流程。
   - `run_dashboard_cli_with_client` 提供已有 client 的測試/整合替代路徑。
+  - `dashboard export` 的 raw metadata contract 會備份 `permissions.json`，但 `dashboard import` 目前仍忽略權限 bundle，只還原 dashboard/folder 與既有 raw inventory。
 
 - `rust/src/alert.rs`
   - 處理 alert 命令入口、legacy/namespaced normalization、`GrafanaAlertClient` 組裝與 routing。

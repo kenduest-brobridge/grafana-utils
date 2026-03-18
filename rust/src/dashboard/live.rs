@@ -366,6 +366,60 @@ pub fn fetch_dashboard(client: &JsonHttpClient, uid: &str) -> Result<Value> {
     )
 }
 
+/// fetch dashboard permissions with request.
+pub(crate) fn fetch_dashboard_permissions_with_request<F>(
+    mut request_json: F,
+    uid: &str,
+) -> Result<Vec<Map<String, Value>>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let path = format!("/api/dashboards/uid/{uid}/permissions");
+    match request_json(Method::GET, &path, &[], None)? {
+        Some(Value::Array(items)) => items
+            .into_iter()
+            .map(|item| {
+                value_as_object(
+                    &item,
+                    &format!("Unexpected dashboard permissions payload for UID {uid}."),
+                )
+                .cloned()
+            })
+            .collect(),
+        Some(_) => Err(message(format!(
+            "Unexpected dashboard permissions payload for UID {uid}."
+        ))),
+        None => Ok(Vec::new()),
+    }
+}
+
+/// fetch folder permissions with request.
+pub(crate) fn fetch_folder_permissions_with_request<F>(
+    mut request_json: F,
+    uid: &str,
+) -> Result<Vec<Map<String, Value>>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let path = format!("/api/folders/{uid}/permissions");
+    match request_json(Method::GET, &path, &[], None)? {
+        Some(Value::Array(items)) => items
+            .into_iter()
+            .map(|item| {
+                value_as_object(
+                    &item,
+                    &format!("Unexpected folder permissions payload for UID {uid}."),
+                )
+                .cloned()
+            })
+            .collect(),
+        Some(_) => Err(message(format!(
+            "Unexpected folder permissions payload for UID {uid}."
+        ))),
+        None => Ok(Vec::new()),
+    }
+}
+
 /// fetch dashboard if exists with request.
 pub(crate) fn fetch_dashboard_if_exists_with_request<F>(
     mut request_json: F,

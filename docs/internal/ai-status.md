@@ -5,6 +5,13 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-18 - Task: Align Rust Dashboard Permission Export Docs And Tests
+- State: Done
+- Scope: `README.md`, `docs/user-guide.md`, `docs/overview-rust.md`, `rust/src/dashboard/export.rs`, `rust/src/dashboard/files.rs`, `rust/src/dashboard/live.rs`, `rust/src/dashboard/inspect.rs`, `rust/src/dashboard/mod.rs`, `rust/src/dashboard/models.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Operator docs already described `raw/permissions.json` backup behavior at a shared CLI level, but Rust architecture docs and Rust export tests still focused on `folders.json` and `datasources.json` only, so the Rust-side contract drifted from the intended permission-backup shape.
+- Current Update: Wired Rust dashboard export to fetch dashboard/folder ACLs, write `raw/permissions.json`, record `permissionsFile` in raw export metadata, and keep import/discovery treating the permission bundle as metadata only. Added the extra permission API mocks needed by inspect-live tests and aligned operator/Rust-overview docs with the now-real Rust behavior.
+- Result: Rust `dashboard export` now matches the documented backup contract by writing `raw/permissions.json` alongside `folders.json` and `datasources.json`, while Rust `dashboard import` still ignores the bundle and restores content only.
+
 ## 2026-03-17 - Task: Avoid Hard Pillow Dependency During Python CLI Import
 - State: Done
 - Scope: `python/grafana_utils/dashboards/screenshot.py`, `python/tests/test_python_dashboard_screenshot_import.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

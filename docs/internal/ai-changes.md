@@ -1,5 +1,13 @@
 # ai-changes.md
 
+## 2026-03-18 - Align Rust Dashboard Permission Export Docs And Tests
+- Summary: Completed the Rust side of dashboard permission backup export. Rust `dashboard export` now fetches dashboard/folder ACLs, writes `raw/permissions.json`, records `permissionsFile` in raw export metadata, and keeps import/discovery treating the permission bundle as metadata so restore semantics do not change. Operator docs and the Rust maintainer overview were updated so they no longer overstate a Python-only behavior as if it were already true everywhere.
+- Tests: Extended Rust dashboard metadata/export tests for `permissionsFile` and `permissions.json`, and updated inspect-live fixtures to answer the new folder/dashboard permission requests emitted during temporary raw-export generation.
+- Test Run: `cd rust && cargo test --quiet build_export_metadata_serializes_expected_shape`; `cd rust && cargo test --quiet export_dashboards_with_client_writes_raw_variant_and_indexes`; `cd rust && cargo test --quiet import_dashboards_with_client_imports_discovered_files`; `cd rust && cargo test --quiet`
+- Validation: Confirmed the focused export/import contract tests pass and confirmed the full Rust suite passes with 476 tests after the new permission endpoints and metadata file are wired in.
+- Impact: `README.md`, `docs/user-guide.md`, `docs/overview-rust.md`, `rust/src/dashboard/export.rs`, `rust/src/dashboard/files.rs`, `rust/src/dashboard/live.rs`, `rust/src/dashboard/inspect.rs`, `rust/src/dashboard/mod.rs`, `rust/src/dashboard/models.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Moderate. This adds extra Grafana API reads during Rust dashboard export and expands the raw export contract, but the import path remains metadata-only for permissions so restore behavior should stay stable.
+
 ## 2026-03-17 - Install Pillow For Python Quality Screenshot Tests
 - Summary: Updated the GitHub Actions `python-quality` job to install Pillow alongside the base package so the screenshot helper tests can import `PIL` during the full unittest discovery run. Extended the packaging test to assert that the CI workflow now includes the explicit Pillow install.
 - Tests: Updated the Python packaging test that locks the CI workflow install contract.
