@@ -125,8 +125,21 @@ pub(crate) fn render_grouped_query_report(report: &ExportInspectionQueryReport) 
         } else {
             format!(", org={}, orgId={}", dashboard.org, dashboard.org_id)
         };
+        let folder_identity_segment =
+            if dashboard.folder_uid.is_empty() && dashboard.parent_folder_uid.is_empty() {
+                String::new()
+            } else if dashboard.parent_folder_uid.is_empty() {
+                format!(", folderUid={}", dashboard.folder_uid)
+            } else if dashboard.folder_uid.is_empty() {
+                format!(", parentFolderUid={}", dashboard.parent_folder_uid)
+            } else {
+                format!(
+                    ", folderUid={}, parentFolderUid={}",
+                    dashboard.folder_uid, dashboard.parent_folder_uid
+                )
+            };
         lines.push(format!(
-            "[{}] Dashboard: {} (uid={}, folder={}, panels={}, queries={}, datasources={}, families={}{})",
+            "[{}] Dashboard: {} (uid={}, folder={}, panels={}, queries={}, datasources={}, families={}{}{})",
             index + 1,
             dashboard.dashboard_title,
             dashboard.dashboard_uid,
@@ -135,6 +148,7 @@ pub(crate) fn render_grouped_query_report(report: &ExportInspectionQueryReport) 
             query_count,
             dashboard_datasources,
             dashboard_families,
+            folder_identity_segment,
             org_segment
         ));
         if !dashboard.file_path.is_empty() {
@@ -171,6 +185,9 @@ pub(crate) fn render_grouped_query_report(report: &ExportInspectionQueryReport) 
                 if !query.datasource.is_empty() {
                     details.push(format!("datasource={}", query.datasource));
                 }
+                if !query.datasource_name.is_empty() {
+                    details.push(format!("datasourceName={}", query.datasource_name));
+                }
                 if !query.datasource_uid.is_empty() {
                     details.push(format!("datasourceUid={}", query.datasource_uid));
                 }
@@ -185,6 +202,9 @@ pub(crate) fn render_grouped_query_report(report: &ExportInspectionQueryReport) 
                 }
                 if !query.metrics.is_empty() {
                     details.push(format!("metrics={}", query.metrics.join(",")));
+                }
+                if !query.functions.is_empty() {
+                    details.push(format!("functions={}", query.functions.join(",")));
                 }
                 if !query.measurements.is_empty() {
                     details.push(format!("measurements={}", query.measurements.join(",")));
@@ -255,8 +275,21 @@ pub(crate) fn render_grouped_query_table_report(
         } else {
             format!(", org={}, orgId={}", dashboard.org, dashboard.org_id)
         };
+        let folder_identity_segment =
+            if dashboard.folder_uid.is_empty() && dashboard.parent_folder_uid.is_empty() {
+                String::new()
+            } else if dashboard.parent_folder_uid.is_empty() {
+                format!(", folderUid={}", dashboard.folder_uid)
+            } else if dashboard.folder_uid.is_empty() {
+                format!(", parentFolderUid={}", dashboard.parent_folder_uid)
+            } else {
+                format!(
+                    ", folderUid={}, parentFolderUid={}",
+                    dashboard.folder_uid, dashboard.parent_folder_uid
+                )
+            };
         lines.push(format!(
-            "[{}] Dashboard: {} (uid={}, folder={}, panels={}, queries={}, datasources={}, families={}{})",
+            "[{}] Dashboard: {} (uid={}, folder={}, panels={}, queries={}, datasources={}, families={}{}{})",
             index + 1,
             dashboard.dashboard_title,
             dashboard.dashboard_uid,
@@ -265,26 +298,53 @@ pub(crate) fn render_grouped_query_table_report(
             query_count,
             dashboard_datasources,
             dashboard_families,
+            folder_identity_segment,
             org_segment
         ));
         if !dashboard.file_path.is_empty() {
             lines.push(format!("File: {}", dashboard.file_path));
         }
-        let rows = dashboard
-            .panels
-            .iter()
-            .flat_map(|panel| panel.queries.iter())
-            .map(|query| {
-                column_ids
-                    .iter()
-                    .map(|column_id| render_query_report_column(query, column_id))
-                    .collect::<Vec<String>>()
-            })
-            .collect::<Vec<Vec<String>>>();
-        for line in render_simple_table(&headers, &rows, include_header) {
-            lines.push(line);
+        for panel in dashboard.panels {
+            let panel_datasources = if panel.datasources.is_empty() {
+                "none".to_string()
+            } else {
+                panel.datasources.join(",")
+            };
+            let panel_families = if panel.datasource_families.is_empty() {
+                "none".to_string()
+            } else {
+                panel.datasource_families.join(",")
+            };
+            let panel_query_fields = if panel.query_fields.is_empty() {
+                "none".to_string()
+            } else {
+                panel.query_fields.join(",")
+            };
+            lines.push(format!(
+                "Panel: {} (id={}, type={}, queries={}, datasources={}, families={}, fields={})",
+                panel.panel_title,
+                panel.panel_id,
+                panel.panel_type,
+                panel.queries.len(),
+                panel_datasources,
+                panel_families,
+                panel_query_fields
+            ));
+            let rows = panel
+                .queries
+                .iter()
+                .map(|query| {
+                    column_ids
+                        .iter()
+                        .map(|column_id| render_query_report_column(query, column_id))
+                        .collect::<Vec<String>>()
+                })
+                .collect::<Vec<Vec<String>>>();
+            for line in render_simple_table(&headers, &rows, include_header) {
+                lines.push(line);
+            }
+            lines.push(String::new());
         }
-        lines.push(String::new());
     }
     while matches!(lines.last(), Some(last) if last.is_empty()) {
         lines.pop();

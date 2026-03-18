@@ -122,6 +122,14 @@ pub(crate) struct DatasourceInventoryItem {
     pub datasource_type: String,
     pub access: String,
     pub url: String,
+    #[serde(default)]
+    pub database: String,
+    #[serde(rename = "defaultBucket", default)]
+    pub default_bucket: String,
+    #[serde(default)]
+    pub organization: String,
+    #[serde(rename = "indexPattern", default)]
+    pub index_pattern: String,
     #[serde(rename = "isDefault")]
     pub is_default: String,
     pub org: String,

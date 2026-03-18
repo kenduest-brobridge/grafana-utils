@@ -300,7 +300,7 @@ Purpose: analyze exported dashboards offline without calling Grafana.
 
 | Option | Purpose | Difference / scenario |
 | --- | --- | --- |
-| `--import-dir` | `raw/` directory | Offline analysis only |
+| `--import-dir` | One org `raw/` directory or a combined multi-org export root | Offline analysis only |
 | `--json` | JSON output | Script-friendly |
 | `--table` | Table output | Operator-friendly |
 | `--report` | Shortcut report mode | Empty `--report` means flat table; explicit values include `csv`, `json`, `tree`, `tree-table`, `dependency`, `dependency-json`, `governance`, and `governance-json` |
@@ -314,6 +314,29 @@ Purpose: analyze exported dashboards offline without calling Grafana.
 Example command:
 ```bash
 grafana-util dashboard inspect-export --import-dir ./dashboards/raw --output-format report-table
+```
+
+Combined multi-org export root:
+```bash
+grafana-util dashboard inspect-export --import-dir ./dashboards --output-format report-tree-table
+```
+
+Inspect datasource-level org, database, bucket, and index-pattern fields:
+```bash
+grafana-util dashboard inspect-export --import-dir ./dashboards/raw --report csv \
+  --report-columns datasource_name,datasource_org,datasource_org_id,datasource_database,datasource_bucket,datasource_index_pattern,query
+```
+
+Inspect metrics, functions, and bucket extraction:
+```bash
+grafana-util dashboard inspect-export --import-dir ./dashboards/raw --report csv \
+  --report-columns panel_id,ref_id,datasource_name,metrics,functions,buckets,query
+```
+
+Inspect folder identity and source path details:
+```bash
+grafana-util dashboard inspect-export --import-dir ./dashboards/raw --report csv \
+  --report-columns dashboard_uid,folder_path,folder_uid,parent_folder_uid,file
 ```
 
 Example output:

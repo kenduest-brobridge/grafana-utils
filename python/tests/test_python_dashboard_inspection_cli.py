@@ -51,18 +51,22 @@ class DashboardInspectionTests(unittest.TestCase):
                 import_dir / item["path"],
             )
 
-    def write_report_fixture(self, import_dir, dashboard):
+    def write_report_fixture(self, import_dir, dashboard, datasources=None):
         exporter.write_json_document(
             build_export_metadata(
                 variant=exporter.RAW_EXPORT_SUBDIR,
                 dashboard_count=1,
                 format_name="grafana-web-import-preserve-uid",
                 folders_file=exporter.FOLDER_INVENTORY_FILENAME,
+                datasources_file=exporter.DATASOURCE_INVENTORY_FILENAME,
             ),
             import_dir / exporter.EXPORT_METADATA_FILENAME,
         )
         exporter.write_json_document(
             [], import_dir / exporter.FOLDER_INVENTORY_FILENAME
+        )
+        exporter.write_json_document(
+            list(datasources or []), import_dir / exporter.DATASOURCE_INVENTORY_FILENAME
         )
         exporter.write_json_document(
             {"dashboard": dashboard, "meta": {}},
@@ -206,6 +210,87 @@ class DashboardInspectionTests(unittest.TestCase):
                 },
             ],
         )
+
+    def write_multi_org_root_fixture(self, export_root):
+        exporter.write_json_document(
+            exporter.build_export_metadata(
+                variant="root",
+                dashboard_count=2,
+                tool_schema_version=exporter.TOOL_SCHEMA_VERSION,
+                root_index_kind=exporter.ROOT_INDEX_KIND,
+                format_name=None,
+                folders_file=None,
+                datasources_file=None,
+                orgs=[
+                    {"org": "Main Org.", "orgId": "1", "dashboardCount": 1},
+                    {"org": "Ops Org", "orgId": "2", "dashboardCount": 1},
+                ],
+            ),
+            export_root / exporter.EXPORT_METADATA_FILENAME,
+        )
+        exporter.write_json_document([], export_root / "index.json")
+        for org_id, org_name, uid, expr in [
+            ("1", "Main Org.", "cpu-main", "up"),
+            ("2", "Ops Org", "logs-main", '{job="grafana"}'),
+        ]:
+            raw_dir = export_root / ("org_%s_%s" % (org_id, org_name.replace(" ", "_"))) / "raw"
+            self.write_summary_fixture(
+                raw_dir,
+                dashboards=[
+                    {
+                        "path": Path("General") / ("%s.json" % uid),
+                        "dashboard": {
+                            "id": None,
+                            "uid": uid,
+                            "title": uid,
+                            "panels": [
+                                {
+                                    "id": 7,
+                                    "title": "Panel",
+                                    "type": "timeseries",
+                                    "targets": [{"refId": "A", "expr": expr}],
+                                    "datasource": {
+                                        "uid": "prom-%s" % org_id,
+                                        "type": "prometheus",
+                                    },
+                                }
+                            ],
+                        },
+                    }
+                ],
+                folders=[
+                    {
+                        "uid": "general",
+                        "title": "General",
+                        "parentUid": "",
+                        "path": "General",
+                        "org": org_name,
+                        "orgId": org_id,
+                    }
+                ],
+                datasources=[
+                    {
+                        "uid": "prom-%s" % org_id,
+                        "name": "Prometheus %s" % org_id,
+                        "type": "prometheus",
+                        "access": "proxy",
+                        "url": "http://prometheus:9090",
+                        "isDefault": "true",
+                        "org": org_name,
+                        "orgId": org_id,
+                    }
+                ],
+                index=[
+                    {
+                        "uid": uid,
+                        "title": uid,
+                        "path": "General/%s.json" % uid,
+                        "format": "grafana-web-import-preserve-uid",
+                        "org": org_name,
+                        "orgId": org_id,
+                    }
+                ],
+            )
 
     def test_dashboard_inspection_inspect_export_renders_human_summary(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -566,8 +651,82 @@ class DashboardInspectionTests(unittest.TestCase):
                                 }
                             ],
                         },
+                        {
+                            "id": 9,
+                            "title": "InfluxQL Query",
+                            "type": "timeseries",
+                            "datasource": {"type": "influxdb", "uid": "influx-main"},
+                            "targets": [
+                                {
+                                    "refId": "C",
+                                    "query": 'SELECT mean("value") AS "avg_value" FROM "cpu" WHERE $timeFilter GROUP BY time($__interval)',
+                                }
+                            ],
+                        },
+                        {
+                            "id": 10,
+                            "title": "Loki Query",
+                            "type": "logs",
+                            "datasource": {"type": "loki", "uid": "loki-main"},
+                            "targets": [
+                                {
+                                    "refId": "D",
+                                    "expr": 'sum by (level) (count_over_time({job="grafana"} |= "timeout" [30m]))',
+                                }
+                            ],
+                        },
+                        {
+                            "id": 11,
+                            "title": "Elastic Query",
+                            "type": "table",
+                            "datasource": {"type": "elasticsearch", "uid": "elastic-main"},
+                            "targets": [
+                                {
+                                    "refId": "E",
+                                    "query": "status:500",
+                                }
+                            ],
+                        },
                     ],
                 },
+                datasources=[
+                    {
+                        "uid": "prom-main",
+                        "name": "Prometheus Main",
+                        "type": "prometheus",
+                        "url": "http://prometheus:9090",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                    {
+                        "uid": "influx-main",
+                        "name": "Influx Main",
+                        "type": "influxdb",
+                        "url": "http://influxdb:8086",
+                        "database": "metrics_v1",
+                        "defaultBucket": "prod-default",
+                        "organization": "acme-observability",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                    {
+                        "uid": "loki-main",
+                        "name": "Loki Main",
+                        "type": "loki",
+                        "url": "http://loki:3100",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                    {
+                        "uid": "elastic-main",
+                        "name": "Elastic Main",
+                        "type": "elasticsearch",
+                        "url": "http://elasticsearch:9200",
+                        "indexPattern": "[logs-]YYYY.MM.DD",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    },
+                ],
             )
 
             args = exporter.parse_args(
@@ -575,22 +734,47 @@ class DashboardInspectionTests(unittest.TestCase):
             )
             result, output = self.run_inspect(args)
             payload = json.loads(output)
+            query_by_panel = {item["panelId"]: item for item in payload["queries"]}
 
             self.assertEqual(result, 0)
             self.assertEqual(payload["summary"]["dashboardCount"], 1)
-            self.assertEqual(payload["summary"]["queryRecordCount"], 2)
-            self.assertEqual(payload["queries"][0]["dashboardUid"], "infra-main")
-            self.assertEqual(payload["queries"][0]["panelId"], "7")
-            self.assertEqual(payload["queries"][0]["datasourceUid"], "prom-main")
-            self.assertEqual(payload["queries"][0]["datasourceType"], "prometheus")
-            self.assertEqual(payload["queries"][0]["datasourceFamily"], "prometheus")
+            self.assertEqual(payload["summary"]["queryRecordCount"], 5)
+            self.assertEqual(query_by_panel["7"]["dashboardUid"], "infra-main")
+            self.assertEqual(query_by_panel["7"]["panelId"], "7")
+            self.assertEqual(query_by_panel["7"]["datasourceUid"], "prom-main")
+            self.assertEqual(query_by_panel["7"]["datasourceType"], "prometheus")
+            self.assertEqual(query_by_panel["7"]["datasourceFamily"], "prometheus")
+            self.assertEqual(query_by_panel["7"]["datasourceName"], "Prometheus Main")
             self.assertEqual(
-                payload["queries"][0]["metrics"], ["node_cpu_seconds_total"]
+                query_by_panel["7"]["metrics"], ["node_cpu_seconds_total"]
             )
-            self.assertEqual(payload["queries"][1]["datasourceType"], "influxdb")
-            self.assertEqual(payload["queries"][1]["datasourceFamily"], "influxdb")
-            self.assertEqual(payload["queries"][1]["buckets"], ["prod"])
-            self.assertEqual(payload["queries"][1]["measurements"], ["cpu"])
+            self.assertEqual(query_by_panel["7"]["buckets"], ["5m"])
+            self.assertEqual(query_by_panel["8"]["datasourceType"], "influxdb")
+            self.assertEqual(query_by_panel["8"]["datasourceFamily"], "influxdb")
+            self.assertEqual(query_by_panel["8"]["datasourceOrg"], "Main Org.")
+            self.assertEqual(query_by_panel["8"]["datasourceOrgId"], "1")
+            self.assertEqual(query_by_panel["8"]["datasourceDatabase"], "metrics_v1")
+            self.assertEqual(query_by_panel["8"]["datasourceBucket"], "prod-default")
+            self.assertEqual(
+                query_by_panel["8"]["datasourceOrganization"], "acme-observability"
+            )
+            self.assertEqual(query_by_panel["8"]["metrics"], [])
+            self.assertEqual(query_by_panel["8"]["functions"], ["from", "filter"])
+            self.assertEqual(query_by_panel["8"]["buckets"], ["prod"])
+            self.assertEqual(query_by_panel["8"]["measurements"], ["cpu"])
+            self.assertEqual(query_by_panel["9"]["metrics"], ["value"])
+            self.assertEqual(query_by_panel["9"]["functions"], ["mean"])
+            self.assertEqual(query_by_panel["9"]["buckets"], ["$__interval"])
+            self.assertEqual(query_by_panel["9"]["datasourceDatabase"], "metrics_v1")
+            self.assertEqual(query_by_panel["10"]["datasourceFamily"], "loki")
+            self.assertEqual(
+                query_by_panel["10"]["functions"], ["sum", "count_over_time", "filter_eq"]
+            )
+            self.assertEqual(query_by_panel["10"]["buckets"], ["30m"])
+            self.assertEqual(
+                query_by_panel["11"]["datasourceIndexPattern"], "[logs-]YYYY.MM.DD"
+            )
+            self.assertEqual(query_by_panel["11"]["datasourceType"], "elasticsearch")
 
     def test_dashboard_inspection_parse_args_supports_governance_report_formats(self):
         args = exporter.parse_args(
@@ -863,6 +1047,10 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertEqual(table_result, 0)
             self.assertIn("Export inspection tree-table report:", table_output)
             self.assertIn("# Dashboard sections", table_output)
+            self.assertIn(
+                "Panel 7 title=CPU Usage type=timeseries datasources=prom-main",
+                table_output,
+            )
             self.assertIn("DASHBOARD_UID", table_output)
             self.assertIn('{job="grafana"}', table_output)
 
@@ -1575,3 +1763,46 @@ class DashboardInspectionTests(unittest.TestCase):
         self.assertEqual(payload["queries"][0]["datasourceFamily"], "prometheus")
         self.assertEqual(len(payload["datasourceUsage"]), 1)
         self.assertEqual(payload["datasourceUsage"][0]["datasource"], "prom-main")
+
+    def test_dashboard_inspection_inspect_export_accepts_multi_org_export_root(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            export_root = Path(tmpdir)
+            self.write_multi_org_root_fixture(export_root)
+
+            args = exporter.parse_args(
+                ["inspect-export", "--import-dir", str(export_root), "--report", "json"]
+            )
+            result, output = self.run_inspect(args)
+            payload = json.loads(output)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(payload["summary"]["dashboardCount"], 2)
+            self.assertEqual(payload["summary"]["queryRecordCount"], 2)
+            self.assertEqual(
+                sorted(item["dashboardUid"] for item in payload["queries"]),
+                ["cpu-main", "logs-main"],
+            )
+            self.assertEqual(payload["queries"][0]["folderPath"], "General")
+            self.assertEqual(
+                payload["queries"][0]["file"],
+                str(
+                    export_root
+                    / "org_1_Main_Org."
+                    / "raw"
+                    / "General"
+                    / "cpu-main.json"
+                ),
+            )
+
+            summary_args = exporter.parse_args(
+                ["inspect-export", "--import-dir", str(export_root), "--json"]
+            )
+            summary_result, summary_output = self.run_inspect(summary_args)
+            summary_payload = json.loads(summary_output)
+
+            self.assertEqual(summary_result, 0)
+            self.assertEqual(summary_payload["summary"]["dashboardCount"], 2)
+            self.assertEqual(
+                summary_payload["dashboards"][0]["folderPath"],
+                "General",
+            )

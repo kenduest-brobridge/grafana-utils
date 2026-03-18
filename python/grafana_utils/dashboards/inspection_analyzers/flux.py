@@ -6,6 +6,9 @@ from typing import Any
 
 from .contract import (
     extract_buckets,
+    extract_influxql_select_functions,
+    extract_influxql_select_metrics,
+    extract_influxql_time_buckets,
     extract_measurements,
     extract_string_values,
     normalize_query_analysis,
@@ -30,10 +33,23 @@ def analyze_query(panel: dict[str, Any], target: dict[str, Any], query_field: st
     #   Downstream callees: 16
 
     del panel, target, query_field
+    stripped = str(query_text or "").lstrip()
     return normalize_query_analysis(
         {
-            "metrics": extract_flux_pipeline_functions(query_text),
+            "metrics": (
+                extract_influxql_select_metrics(query_text)
+            ),
+            "functions": (
+                extract_flux_pipeline_functions(query_text)
+                if (
+                    stripped.startswith("from(")
+                    or stripped.startswith("from (")
+                    or "|>" in str(query_text or "")
+                )
+                else []
+            )
+            + extract_influxql_select_functions(query_text),
             "measurements": extract_measurements(query_text),
-            "buckets": extract_buckets(query_text),
+            "buckets": extract_buckets(query_text) + extract_influxql_time_buckets(query_text),
         }
     )

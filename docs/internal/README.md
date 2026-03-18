@@ -24,6 +24,7 @@ top of the file.
 - `datasource-import-plan.md`
 - `datasource-import-plan-python.md`
 - `datasource-import-plan-rust.md`
+- `dashboard-permission-import-plan.md`
 - `datasource-live-mutation-unwired.md`
 - `folder-path-match-feature-plan.md`
 - `gitops-sync-unwired.md`

@@ -12,7 +12,8 @@ pub(crate) fn analyze_query(
     query_text: &str,
 ) -> QueryAnalysis {
     QueryAnalysis {
-        metrics: extract_sql_query_shape_hints(query_text),
+        metrics: Vec::new(),
+        functions: extract_sql_query_shape_hints(query_text),
         measurements: extract_sql_source_references(query_text),
         buckets: Vec::new(),
     }

@@ -1289,3 +1289,9 @@ Historical note:
 - Baseline: The Rust access domain had already been split by responsibility, but access files still lived flat under `rust/src/` as `access*.rs`, which increased crate-root crowding.
 - Current Update: Moved Rust access facade, helpers, and tests into `rust/src/access/`, switched the facade to `rust/src/access/mod.rs`, and rewired access internal references to local child module names (`cli_defs`, `org`, `user`, `team`, `service_account`, `pending_delete`, `render`).
 - Result: `crate::access` stays stable for callers while access internals now have a dedicated directory boundary and cleaner module-local naming.
+## 2026-03-19 - Task: Accept Multi-Org Dashboard Export Roots In inspect-export
+- State: Done
+- Scope: `rust/src/dashboard/inspect.rs`, `rust/src/dashboard/mod.rs`, `rust/src/dashboard/rust_tests.rs`, `python/grafana_utils/dashboards/inspection_runtime.py`, `python/grafana_utils/dashboards/inspection_workflow.py`, `python/tests/test_python_dashboard_inspection_cli.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `dashboard inspect-export` only accepted one org-scoped `raw/` directory. Pointing it at a multi-org dashboard export root failed on the root manifest, and Rust report rows on merged multi-org data could surface empty `ORG` / `ORG_ID` cells when raw index paths were absolute.
+- Current Update: Added multi-org export-root detection to both Python and Rust inspect workflows, materialized a temporary merged raw inspect directory from `org_*/raw` children, carried merged folder/datasource/index inventories forward, and normalized Rust raw-index paths so per-query report rows recover `org` / `orgId` from real export metadata.
+- Result: Operators can now point `grafana-util dashboard inspect-export` at a combined `--all-orgs` dashboard export root directly, while Rust report/table output preserves populated org scope columns on the merged multi-org path.

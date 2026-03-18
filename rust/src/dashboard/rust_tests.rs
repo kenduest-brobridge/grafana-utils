@@ -891,6 +891,53 @@ fn collect_folder_inventory_with_request_records_parent_chain() {
 }
 
 #[test]
+fn build_datasource_inventory_record_keeps_datasource_config_fields() {
+    let datasource = json!({
+        "uid": "influx-main",
+        "name": "Influx Main",
+        "type": "influxdb",
+        "access": "proxy",
+        "url": "http://influxdb:8086",
+        "jsonData": {
+            "dbName": "metrics_v1",
+            "defaultBucket": "prod-default",
+            "organization": "acme-observability"
+        }
+    })
+    .as_object()
+    .unwrap()
+    .clone();
+    let org = json!({
+        "id": 1,
+        "name": "Main Org."
+    })
+    .as_object()
+    .unwrap()
+    .clone();
+
+    let record = super::build_datasource_inventory_record(&datasource, &org);
+    assert_eq!(record.database, "metrics_v1");
+    assert_eq!(record.default_bucket, "prod-default");
+    assert_eq!(record.organization, "acme-observability");
+
+    let elastic = json!({
+        "uid": "elastic-main",
+        "name": "Elastic Main",
+        "type": "elasticsearch",
+        "access": "proxy",
+        "url": "http://elasticsearch:9200",
+        "jsonData": {
+            "indexPattern": "[logs-]YYYY.MM.DD"
+        }
+    })
+    .as_object()
+    .unwrap()
+    .clone();
+    let elastic_record = super::build_datasource_inventory_record(&elastic, &org);
+    assert_eq!(elastic_record.index_pattern, "[logs-]YYYY.MM.DD");
+}
+
+#[test]
 fn parse_cli_supports_list_mode() {
     let args = parse_cli_from([
         "grafana-util",
@@ -1972,8 +2019,16 @@ fn inspect_export_help_full_includes_extended_examples() {
     assert!(help.contains("--report-filter-datasource"));
     assert!(help.contains("--report-filter-panel-id 7"));
     assert!(help.contains("--report-columns"));
+    assert!(help.contains(
+        "--report-columns panel_id,ref_id,datasource_name,metrics,functions,buckets,query"
+    ));
+    assert!(help.contains(
+        "--report-columns dashboard_uid,folder_path,folder_uid,parent_folder_uid,file"
+    ));
     assert!(
-        help.contains("--report-columns dashboard_uid,datasource_uid,datasource_family,query,file")
+        help.contains(
+            "--report-columns datasource_name,datasource_org,datasource_org_id,datasource_database,datasource_bucket,datasource_index_pattern,query"
+        )
     );
 }
 
@@ -1987,8 +2042,16 @@ fn inspect_live_help_full_includes_extended_examples() {
     assert!(help.contains("--report tree-table"));
     assert!(help.contains("--report-filter-panel-id"));
     assert!(help.contains("--report-columns"));
+    assert!(help.contains(
+        "--report-columns panel_id,ref_id,datasource_name,metrics,functions,buckets,query"
+    ));
+    assert!(help.contains(
+        "--report-columns dashboard_uid,folder_path,folder_uid,parent_folder_uid,file"
+    ));
     assert!(
-        help.contains("--report-columns dashboard_uid,datasource_uid,datasource_family,query,file")
+        help.contains(
+            "--report-columns datasource_name,datasource_org,datasource_org_id,datasource_database,datasource_bucket,datasource_index_pattern,query"
+        )
     );
 }
 
@@ -4722,13 +4785,15 @@ fn build_export_inspection_query_report_extracts_metrics_measurements_and_bucket
     let raw_dir = temp.path().join("raw");
     fs::create_dir_all(raw_dir.join("General")).unwrap();
     fs::create_dir_all(raw_dir.join("Infra")).unwrap();
+    fs::create_dir_all(raw_dir.join("Logs")).unwrap();
+    fs::create_dir_all(raw_dir.join("Metrics")).unwrap();
     fs::write(
         raw_dir.join(EXPORT_METADATA_FILENAME),
         serde_json::to_string_pretty(&json!({
             "kind": "grafana-utils-dashboard-export-index",
             "schemaVersion": TOOL_SCHEMA_VERSION,
             "variant": "raw",
-            "dashboardCount": 2,
+            "dashboardCount": 5,
             "indexFile": "index.json",
             "format": "grafana-web-import-preserve-uid",
             "foldersFile": FOLDER_INVENTORY_FILENAME
@@ -4777,6 +4842,31 @@ fn build_export_inspection_query_report_extracts_metrics_measurements_and_bucket
     )
     .unwrap();
     fs::write(
+        raw_dir.join("Logs").join("logs.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "logs-main",
+                "title": "Logs Main",
+                "panels": [
+                    {
+                        "id": 11,
+                        "title": "Errors",
+                        "type": "logs",
+                        "datasource": {"uid": "loki-main", "type": "loki"},
+                        "targets": [
+                            {
+                                "refId": "C",
+                                "expr": "{job=\"varlogs\",app=~\"api|web\"} |= \"error\" | json [30m]"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
         raw_dir.join("Infra").join("flux.json"),
         serde_json::to_string_pretty(&json!({
             "dashboard": {
@@ -4802,52 +4892,456 @@ fn build_export_inspection_query_report_extracts_metrics_measurements_and_bucket
         .unwrap(),
     )
     .unwrap();
+    fs::write(
+        raw_dir.join("Metrics").join("influx-interval.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "influx-interval",
+                "title": "Influx Interval",
+                "panels": [
+                    {
+                        "id": 13,
+                        "title": "Interval Buckets",
+                        "type": "timeseries",
+                        "datasource": {"uid": "influx-interval", "type": "influxdb"},
+                        "targets": [
+                            {
+                                "refId": "D",
+                                "query": "SELECT mean(\"value\") FROM \"cpu\" WHERE $timeFilter GROUP BY time($__interval)"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("Metrics").join("influx-literal.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "influx-literal",
+                "title": "Influx Literal",
+                "panels": [
+                    {
+                        "id": 14,
+                        "title": "Literal Buckets",
+                        "type": "timeseries",
+                        "datasource": {"uid": "influx-literal", "type": "influxdb"},
+                        "targets": [
+                            {
+                                "refId": "E",
+                                "query": "SELECT mean(\"value\") AS \"avg_value\" FROM \"cpu\" WHERE $timeFilter GROUP BY time(2m)"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
 
     let report = super::build_export_inspection_query_report(&raw_dir).unwrap();
+    let row = |dashboard_uid: &str| {
+        report
+            .queries
+            .iter()
+            .find(|query| query.dashboard_uid == dashboard_uid)
+            .unwrap()
+    };
 
-    assert_eq!(report.summary.dashboard_count, 2);
-    assert_eq!(report.summary.panel_count, 2);
-    assert_eq!(report.summary.query_count, 2);
-    assert_eq!(report.summary.report_row_count, 2);
-    assert_eq!(report.queries.len(), 2);
-    assert_eq!(report.queries[0].dashboard_uid, "main");
-    assert_eq!(report.queries[0].panel_id, "7");
-    assert_eq!(report.queries[0].datasource, "prom-main");
-    assert_eq!(report.queries[0].datasource_uid, "prom-main");
-    assert_eq!(report.queries[0].query_field, "expr");
-    assert!(report.queries[0]
+    assert_eq!(report.summary.dashboard_count, 5);
+    assert_eq!(report.summary.panel_count, 5);
+    assert_eq!(report.summary.query_count, 5);
+    assert_eq!(report.summary.report_row_count, 5);
+    assert_eq!(report.queries.len(), 5);
+    assert_eq!(row("main").org, "Main Org.");
+    assert_eq!(row("main").org_id, "1");
+    assert_eq!(row("main").dashboard_uid, "main");
+    assert_eq!(row("main").panel_id, "7");
+    assert_eq!(row("main").datasource, "prom-main");
+    assert_eq!(row("main").datasource_uid, "prom-main");
+    assert_eq!(row("main").query_field, "expr");
+    assert!(row("main")
         .metrics
         .contains(&"node_cpu_seconds_total".to_string()));
-    assert_eq!(report.queries[1].dashboard_uid, "flux-main");
-    assert_eq!(report.queries[1].folder_path, "Platform / Infra");
-    assert_eq!(report.queries[1].datasource, "influx-main");
-    assert_eq!(report.queries[1].datasource_uid, "influx-main");
-    assert_eq!(report.queries[1].query_field, "query");
-    assert_eq!(report.queries[1].buckets, vec!["prod".to_string()]);
     assert_eq!(
-        report.queries[1].measurements,
+        row("main").functions,
+        vec!["sum".to_string(), "rate".to_string()]
+    );
+    assert_eq!(row("main").buckets, vec!["5m".to_string()]);
+    assert_eq!(row("logs-main").buckets, vec!["30m".to_string()]);
+    assert_eq!(row("flux-main").dashboard_uid, "flux-main");
+    assert_eq!(row("flux-main").folder_path, "Platform / Infra");
+    assert_eq!(row("flux-main").datasource, "influx-main");
+    assert_eq!(row("flux-main").datasource_uid, "influx-main");
+    assert_eq!(row("flux-main").query_field, "query");
+    assert_eq!(row("flux-main").buckets, vec!["prod".to_string()]);
+    assert_eq!(
+        row("flux-main").measurements,
         vec!["http_requests".to_string()]
     );
+    assert_eq!(
+        row("influx-interval").metrics,
+        vec!["value".to_string()]
+    );
+    assert_eq!(
+        row("influx-literal").metrics,
+        vec!["value".to_string()]
+    );
+    assert_eq!(
+        row("influx-interval").functions,
+        vec!["mean".to_string()]
+    );
+    assert_eq!(
+        row("influx-literal").functions,
+        vec!["mean".to_string()]
+    );
+    assert_eq!(
+        row("influx-interval").buckets,
+        vec!["$__interval".to_string()]
+    );
+    assert_eq!(row("influx-literal").buckets, vec!["2m".to_string()]);
 
     let report_json = serde_json::to_value(super::build_export_inspection_query_report_document(
         &report,
     ))
     .unwrap();
-    assert_eq!(report_json["summary"]["dashboardCount"], Value::from(2));
-    assert_eq!(report_json["summary"]["queryRecordCount"], Value::from(2));
+    let json_queries = report_json["queries"].as_array().unwrap();
+    let json_row = |dashboard_uid: &str| {
+        json_queries
+            .iter()
+            .find(|query| query["dashboardUid"] == Value::String(dashboard_uid.to_string()))
+            .unwrap()
+    };
+    assert_eq!(report_json["summary"]["dashboardCount"], Value::from(5));
+    assert_eq!(report_json["summary"]["queryRecordCount"], Value::from(5));
     assert_eq!(
-        report_json["queries"][0]["datasourceUid"],
+        json_row("main")["datasourceUid"],
         Value::String("prom-main".to_string())
     );
     assert_eq!(
-        report_json["queries"][0]["query"],
+        json_row("main")["org"],
+        Value::String("Main Org.".to_string())
+    );
+    assert_eq!(
+        json_row("main")["orgId"],
+        Value::String("1".to_string())
+    );
+    assert_eq!(
+        json_row("main")["query"],
         Value::String("sum(rate(node_cpu_seconds_total{job=\"node\"}[5m]))".to_string())
     );
     assert_eq!(
-        report_json["queries"][1]["datasourceUid"],
+        json_row("main")["functions"],
+        serde_json::Value::Array(vec![
+            Value::String("sum".to_string()),
+            Value::String("rate".to_string()),
+        ])
+    );
+    assert_eq!(
+        json_row("flux-main")["datasourceUid"],
         Value::String("influx-main".to_string())
     );
+    assert_eq!(
+        json_row("main")["buckets"],
+        serde_json::Value::Array(vec![Value::String("5m".to_string())])
+    );
+    assert_eq!(
+        json_row("logs-main")["buckets"],
+        serde_json::Value::Array(vec![Value::String("30m".to_string())])
+    );
+    assert_eq!(
+        json_row("influx-interval")["buckets"],
+        serde_json::Value::Array(vec![Value::String("$__interval".to_string())])
+    );
+    assert_eq!(
+        json_row("influx-interval")["metrics"],
+        serde_json::Value::Array(vec![Value::String("value".to_string())])
+    );
+    assert_eq!(
+        json_row("influx-interval")["functions"],
+        serde_json::Value::Array(vec![
+            Value::String("mean".to_string()),
+        ])
+    );
+    assert_eq!(
+        json_row("influx-literal")["buckets"],
+        serde_json::Value::Array(vec![Value::String("2m".to_string())])
+    );
     assert_eq!(report_json.get("import_dir"), None);
+}
+
+#[test]
+fn build_export_inspection_query_report_includes_datasource_config_fields() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(raw_dir.join("General")).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid",
+            "datasourcesFile": DATASOURCE_INVENTORY_FILENAME
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join(DATASOURCE_INVENTORY_FILENAME),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "influx-main",
+                "name": "Influx Main",
+                "type": "influxdb",
+                "access": "proxy",
+                "url": "http://influxdb:8086",
+                "database": "metrics_v1",
+                "defaultBucket": "prod-default",
+                "organization": "acme-observability",
+                "isDefault": "false",
+                "org": "Main Org.",
+                "orgId": "1"
+            },
+            {
+                "uid": "elastic-main",
+                "name": "Elastic Main",
+                "type": "elasticsearch",
+                "access": "proxy",
+                "url": "http://elasticsearch:9200",
+                "indexPattern": "[logs-]YYYY.MM.DD",
+                "isDefault": "false",
+                "org": "Main Org.",
+                "orgId": "1"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("General").join("main.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "main",
+                "title": "Main",
+                "panels": [
+                    {
+                        "id": 8,
+                        "title": "Flux Query",
+                        "type": "table",
+                        "datasource": {"uid": "influx-main", "type": "influxdb"},
+                        "targets": [
+                            {"refId": "B", "query": "from(bucket: \"prod\") |> range(start: -1h)"}
+                        ]
+                    },
+                    {
+                        "id": 11,
+                        "title": "Elastic Query",
+                        "type": "table",
+                        "datasource": {"uid": "elastic-main", "type": "elasticsearch"},
+                        "targets": [
+                            {"refId": "E", "query": "status:500"}
+                        ]
+                    }
+                ]
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let report = super::build_export_inspection_query_report(&raw_dir).unwrap();
+    assert_eq!(report.queries.len(), 2);
+    let row = |panel_id: &str| {
+        report
+            .queries
+            .iter()
+            .find(|query| query.panel_id == panel_id)
+            .unwrap()
+    };
+
+    assert_eq!(row("8").datasource_database, "metrics_v1");
+    assert_eq!(row("8").datasource_org, "Main Org.");
+    assert_eq!(row("8").datasource_org_id, "1");
+    assert_eq!(row("8").datasource_bucket, "prod-default");
+    assert_eq!(row("8").datasource_organization, "acme-observability");
+    assert_eq!(row("11").datasource_index_pattern, "[logs-]YYYY.MM.DD");
+
+    let report_json = serde_json::to_value(super::build_export_inspection_query_report_document(
+        &report,
+    ))
+    .unwrap();
+    let json_queries = report_json["queries"].as_array().unwrap();
+    let json_row = |panel_id: &str| {
+        json_queries
+            .iter()
+            .find(|query| query["panelId"] == Value::String(panel_id.to_string()))
+            .unwrap()
+    };
+    assert_eq!(
+        json_row("8")["datasourceOrg"],
+        Value::String("Main Org.".to_string())
+    );
+    assert_eq!(
+        json_row("8")["datasourceOrgId"],
+        Value::String("1".to_string())
+    );
+    assert_eq!(
+        json_row("8")["datasourceDatabase"],
+        Value::String("metrics_v1".to_string())
+    );
+    assert_eq!(
+        json_row("8")["datasourceBucket"],
+        Value::String("prod-default".to_string())
+    );
+    assert_eq!(
+        json_row("8")["datasourceOrganization"],
+        Value::String("acme-observability".to_string())
+    );
+    assert_eq!(
+        json_row("11")["datasourceIndexPattern"],
+        Value::String("[logs-]YYYY.MM.DD".to_string())
+    );
+}
+
+#[test]
+fn prepare_inspect_export_import_dir_merges_multi_org_root_for_inspection() {
+    let export_root_temp = tempdir().unwrap();
+    let export_root = export_root_temp.path().join("dashboard");
+    let org_one_raw = export_root.join("org_1_Main_Org").join("raw");
+    let org_two_raw = export_root.join("org_2_Ops_Org").join("raw");
+    fs::create_dir_all(&org_one_raw).unwrap();
+    fs::create_dir_all(&org_two_raw).unwrap();
+    fs::write(
+        export_root.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "root",
+            "dashboardCount": 2,
+            "indexFile": "index.json",
+            "orgCount": 2,
+            "orgs": [
+                {"org": "Main Org.", "orgId": "1", "dashboardCount": 1},
+                {"org": "Ops Org", "orgId": "2", "dashboardCount": 1}
+            ]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    for (raw_dir, org_id, org_name, uid) in [
+        (&org_one_raw, "1", "Main Org.", "cpu-main"),
+        (&org_two_raw, "2", "Ops Org", "logs-main"),
+    ] {
+        fs::write(
+            raw_dir.join(EXPORT_METADATA_FILENAME),
+            serde_json::to_string_pretty(&json!({
+                "kind": "grafana-utils-dashboard-export-index",
+                "schemaVersion": TOOL_SCHEMA_VERSION,
+                "variant": "raw",
+                "dashboardCount": 1,
+                "indexFile": "index.json",
+                "format": "grafana-web-import-preserve-uid",
+                "foldersFile": FOLDER_INVENTORY_FILENAME,
+                "datasourcesFile": DATASOURCE_INVENTORY_FILENAME
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            raw_dir.join("index.json"),
+            serde_json::to_string_pretty(&json!([
+                {
+                    "uid": uid,
+                    "title": uid,
+                    "path": format!("General/{uid}.json"),
+                    "format": "grafana-web-import-preserve-uid",
+                    "org": org_name,
+                    "orgId": org_id
+                }
+            ]))
+            .unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            raw_dir.join(FOLDER_INVENTORY_FILENAME),
+            serde_json::to_string_pretty(&json!([
+                {"uid": "general", "title": "General", "path": "General", "org": org_name, "orgId": org_id}
+            ]))
+            .unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            raw_dir.join(DATASOURCE_INVENTORY_FILENAME),
+            serde_json::to_string_pretty(&json!([
+                {
+                    "uid": format!("ds-{org_id}"),
+                    "name": format!("ds-{org_id}"),
+                    "type": "prometheus",
+                    "access": "proxy",
+                    "url": "http://prometheus:9090",
+                    "isDefault": "true",
+                    "org": org_name,
+                    "orgId": org_id
+                }
+            ]))
+            .unwrap(),
+        )
+        .unwrap();
+        let dashboard_dir = raw_dir.join("General");
+        fs::create_dir_all(&dashboard_dir).unwrap();
+        fs::write(
+            dashboard_dir.join(format!("{uid}.json")),
+            serde_json::to_string_pretty(&json!({
+                "dashboard": {
+                    "uid": uid,
+                    "title": uid,
+                    "panels": [
+                        {
+                            "id": 7,
+                            "title": "CPU",
+                            "type": "timeseries",
+                            "datasource": {"uid": format!("ds-{org_id}"), "type": "prometheus"},
+                            "targets": [{"refId": "A", "expr": "up"}]
+                        }
+                    ]
+                }
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    }
+
+    let inspect_temp = tempdir().unwrap();
+    let merged_raw_dir =
+        super::prepare_inspect_export_import_dir(inspect_temp.path(), &export_root).unwrap();
+    let report = super::build_export_inspection_query_report(&merged_raw_dir).unwrap();
+
+    assert_eq!(report.summary.dashboard_count, 2);
+    assert_eq!(report.queries.len(), 2);
+    assert_eq!(report.queries[0].org, "Main Org.");
+    assert_eq!(report.queries[0].org_id, "1");
+    assert_eq!(report.queries[0].folder_path, "General");
+    assert_eq!(
+        report.queries[0].file_path,
+        export_root
+            .join("org_1_Main_Org")
+            .join("raw")
+            .join("General")
+            .join("cpu-main.json")
+            .display()
+            .to_string()
+    );
+    assert_eq!(report.queries[1].org, "Ops Org");
+    assert_eq!(report.queries[1].org_id, "2");
+    assert_eq!(report.queries[1].folder_path, "General");
 }
 
 #[test]
@@ -4899,6 +5393,10 @@ fn build_export_inspection_query_report_extracts_loki_query_details() {
     assert_eq!(report.queries.len(), 1);
     assert_eq!(
         report.queries[0].metrics,
+        Vec::<String>::new()
+    );
+    assert_eq!(
+        report.queries[0].functions,
         vec![
             "sum".to_string(),
             "count_over_time".to_string(),
@@ -4971,6 +5469,10 @@ fn build_export_inspection_query_report_keeps_prometheus_metrics_and_skips_label
             "kube_pod_info".to_string(),
         ]
     );
+    assert_eq!(
+        report.queries[0].functions,
+        vec!["rate".to_string()]
+    );
 }
 
 #[test]
@@ -5041,17 +5543,27 @@ fn export_inspection_query_row_json_keeps_datasource_uid_and_file_fields() {
         dashboard_uid: "main".to_string(),
         dashboard_title: "Main".to_string(),
         folder_path: "General".to_string(),
+        folder_uid: "general".to_string(),
+        parent_folder_uid: String::new(),
         panel_id: "1".to_string(),
         panel_title: "CPU".to_string(),
         panel_type: "timeseries".to_string(),
         ref_id: "A".to_string(),
         datasource: "prom-main".to_string(),
+        datasource_name: "prom-main".to_string(),
         datasource_uid: String::new(),
+        datasource_org: String::new(),
+        datasource_org_id: String::new(),
+        datasource_database: String::new(),
+        datasource_bucket: String::new(),
+        datasource_organization: String::new(),
+        datasource_index_pattern: String::new(),
         datasource_type: "prometheus".to_string(),
         datasource_family: "prometheus".to_string(),
         query_field: "expr".to_string(),
         query_text: "up".to_string(),
         metrics: vec!["up".to_string()],
+        functions: Vec::new(),
         measurements: Vec::new(),
         buckets: Vec::new(),
         file_path: "/tmp/raw/main.json".to_string(),
@@ -5120,17 +5632,27 @@ fn apply_query_report_filters_keep_matching_rows_only() {
                 dashboard_uid: "main".to_string(),
                 dashboard_title: "Main".to_string(),
                 folder_path: "General".to_string(),
+                folder_uid: "general".to_string(),
+                parent_folder_uid: String::new(),
                 panel_id: "1".to_string(),
                 panel_title: "CPU".to_string(),
                 panel_type: "timeseries".to_string(),
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
+                datasource_name: "prom-main".to_string(),
                 datasource_uid: "prom-uid".to_string(),
+                datasource_org: String::new(),
+                datasource_org_id: String::new(),
+                datasource_database: String::new(),
+                datasource_bucket: String::new(),
+                datasource_organization: String::new(),
+                datasource_index_pattern: String::new(),
                 datasource_type: "prometheus".to_string(),
                 datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
+                functions: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
                 file_path: "/tmp/raw/main.json".to_string(),
@@ -5141,17 +5663,27 @@ fn apply_query_report_filters_keep_matching_rows_only() {
                 dashboard_uid: "logs".to_string(),
                 dashboard_title: "Logs".to_string(),
                 folder_path: "General".to_string(),
+                folder_uid: "general".to_string(),
+                parent_folder_uid: String::new(),
                 panel_id: "2".to_string(),
                 panel_title: "Logs".to_string(),
                 panel_type: "logs".to_string(),
                 ref_id: "A".to_string(),
                 datasource: "logs-main".to_string(),
+                datasource_name: "logs-main".to_string(),
                 datasource_uid: "logs-uid".to_string(),
+                datasource_org: String::new(),
+                datasource_org_id: String::new(),
+                datasource_database: String::new(),
+                datasource_bucket: String::new(),
+                datasource_organization: String::new(),
+                datasource_index_pattern: String::new(),
                 datasource_type: "loki".to_string(),
                 datasource_family: "loki".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "{job=\"grafana\"}".to_string(),
                 metrics: Vec::new(),
+                functions: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
                 file_path: "/tmp/raw/logs.json".to_string(),
@@ -5187,17 +5719,27 @@ fn apply_query_report_filters_match_datasource_uid_type_and_family() {
                 dashboard_uid: "main".to_string(),
                 dashboard_title: "Main".to_string(),
                 folder_path: "General".to_string(),
+                folder_uid: "general".to_string(),
+                parent_folder_uid: String::new(),
                 panel_id: "1".to_string(),
                 panel_title: "CPU".to_string(),
                 panel_type: "timeseries".to_string(),
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
+                datasource_name: "prom-main".to_string(),
                 datasource_uid: "prom-uid".to_string(),
+                datasource_org: String::new(),
+                datasource_org_id: String::new(),
+                datasource_database: String::new(),
+                datasource_bucket: String::new(),
+                datasource_organization: String::new(),
+                datasource_index_pattern: String::new(),
                 datasource_type: "prometheus".to_string(),
                 datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
+                functions: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
                 file_path: "/tmp/raw/main.json".to_string(),
@@ -5208,17 +5750,27 @@ fn apply_query_report_filters_match_datasource_uid_type_and_family() {
                 dashboard_uid: "logs".to_string(),
                 dashboard_title: "Logs".to_string(),
                 folder_path: "General".to_string(),
+                folder_uid: "general".to_string(),
+                parent_folder_uid: String::new(),
                 panel_id: "2".to_string(),
                 panel_title: "Logs".to_string(),
                 panel_type: "logs".to_string(),
                 ref_id: "A".to_string(),
                 datasource: "logs-main".to_string(),
+                datasource_name: "logs-main".to_string(),
                 datasource_uid: "logs-uid".to_string(),
+                datasource_org: String::new(),
+                datasource_org_id: String::new(),
+                datasource_database: String::new(),
+                datasource_bucket: String::new(),
+                datasource_organization: String::new(),
+                datasource_index_pattern: String::new(),
                 datasource_type: "loki".to_string(),
                 datasource_family: "loki".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "{job=\"grafana\"}".to_string(),
                 metrics: Vec::new(),
+                functions: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
                 file_path: "/tmp/raw/logs.json".to_string(),
@@ -5256,17 +5808,27 @@ fn normalize_query_report_groups_rows_by_dashboard_then_panel() {
                 dashboard_uid: "main".to_string(),
                 dashboard_title: "Main".to_string(),
                 folder_path: "General".to_string(),
+                folder_uid: "general".to_string(),
+                parent_folder_uid: String::new(),
                 panel_id: "1".to_string(),
                 panel_title: "CPU".to_string(),
                 panel_type: "timeseries".to_string(),
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
+                datasource_name: "prom-main".to_string(),
                 datasource_uid: "prom-main".to_string(),
+                datasource_org: String::new(),
+                datasource_org_id: String::new(),
+                datasource_database: String::new(),
+                datasource_bucket: String::new(),
+                datasource_organization: String::new(),
+                datasource_index_pattern: String::new(),
                 datasource_type: "prometheus".to_string(),
                 datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
+                functions: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
                 file_path: "/tmp/raw/main.json".to_string(),
@@ -5277,17 +5839,27 @@ fn normalize_query_report_groups_rows_by_dashboard_then_panel() {
                 dashboard_uid: "main".to_string(),
                 dashboard_title: "Main".to_string(),
                 folder_path: "General".to_string(),
+                folder_uid: "general".to_string(),
+                parent_folder_uid: String::new(),
                 panel_id: "2".to_string(),
                 panel_title: "Memory".to_string(),
                 panel_type: "timeseries".to_string(),
                 ref_id: "B".to_string(),
                 datasource: "prom-main".to_string(),
+                datasource_name: "prom-main".to_string(),
                 datasource_uid: "prom-main".to_string(),
+                datasource_org: String::new(),
+                datasource_org_id: String::new(),
+                datasource_database: String::new(),
+                datasource_bucket: String::new(),
+                datasource_organization: String::new(),
+                datasource_index_pattern: String::new(),
                 datasource_type: "prometheus".to_string(),
                 datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "process_resident_memory_bytes".to_string(),
                 metrics: vec!["process_resident_memory_bytes".to_string()],
+                functions: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
                 file_path: "/tmp/raw/main.json".to_string(),
@@ -5298,17 +5870,27 @@ fn normalize_query_report_groups_rows_by_dashboard_then_panel() {
                 dashboard_uid: "logs".to_string(),
                 dashboard_title: "Logs".to_string(),
                 folder_path: "Platform / Logs".to_string(),
+                folder_uid: "logs".to_string(),
+                parent_folder_uid: "platform".to_string(),
                 panel_id: "7".to_string(),
                 panel_title: "Errors".to_string(),
                 panel_type: "logs".to_string(),
                 ref_id: "A".to_string(),
                 datasource: "loki-main".to_string(),
+                datasource_name: "loki-main".to_string(),
                 datasource_uid: "loki-main".to_string(),
+                datasource_org: String::new(),
+                datasource_org_id: String::new(),
+                datasource_database: String::new(),
+                datasource_bucket: String::new(),
+                datasource_organization: String::new(),
+                datasource_index_pattern: String::new(),
                 datasource_type: "loki".to_string(),
                 datasource_family: "loki".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "{job=\"grafana\"}".to_string(),
                 metrics: Vec::new(),
+                functions: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
                 file_path: "/tmp/raw/logs.json".to_string(),
@@ -5506,17 +6088,27 @@ fn render_grouped_query_report_displays_dashboard_panel_and_query_tree() {
                 dashboard_uid: "main".to_string(),
                 dashboard_title: "Main".to_string(),
                 folder_path: "General".to_string(),
+                folder_uid: "general".to_string(),
+                parent_folder_uid: String::new(),
                 panel_id: "7".to_string(),
                 panel_title: "CPU".to_string(),
                 panel_type: "timeseries".to_string(),
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
+                datasource_name: "prom-main".to_string(),
                 datasource_uid: "prom-main".to_string(),
+                datasource_org: String::new(),
+                datasource_org_id: String::new(),
+                datasource_database: String::new(),
+                datasource_bucket: String::new(),
+                datasource_organization: String::new(),
+                datasource_index_pattern: String::new(),
                 datasource_type: "prometheus".to_string(),
                 datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
+                functions: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
                 file_path: "/tmp/raw/main.json".to_string(),
@@ -5527,17 +6119,27 @@ fn render_grouped_query_report_displays_dashboard_panel_and_query_tree() {
                 dashboard_uid: "main".to_string(),
                 dashboard_title: "Main".to_string(),
                 folder_path: "General".to_string(),
+                folder_uid: "general".to_string(),
+                parent_folder_uid: String::new(),
                 panel_id: "8".to_string(),
                 panel_title: "Logs".to_string(),
                 panel_type: "logs".to_string(),
                 ref_id: "B".to_string(),
                 datasource: "loki-main".to_string(),
+                datasource_name: "loki-main".to_string(),
                 datasource_uid: "loki-main".to_string(),
+                datasource_org: String::new(),
+                datasource_org_id: String::new(),
+                datasource_database: String::new(),
+                datasource_bucket: String::new(),
+                datasource_organization: String::new(),
+                datasource_index_pattern: String::new(),
                 datasource_type: "loki".to_string(),
                 datasource_family: "loki".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "{job=\"grafana\"}".to_string(),
                 metrics: Vec::new(),
+                functions: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
                 file_path: "/tmp/raw/main.json".to_string(),
@@ -5550,16 +6152,20 @@ fn render_grouped_query_report_displays_dashboard_panel_and_query_tree() {
 
     assert!(output.contains("Export inspection report: /tmp/raw"));
     assert!(output.contains("# Dashboard tree"));
-    assert!(output.contains("[1] Dashboard: Main (uid=main, folder=General, panels=2, queries=2, datasources=prom-main,loki-main, families=prometheus,loki, org=Main Org., orgId=1)"));
+    assert!(output.contains("[1] Dashboard: Main (uid=main, folder=General"));
+    assert!(output.contains("datasources=prom-main,loki-main"));
+    assert!(output.contains("families=prometheus,loki"));
+    assert!(output.contains("folderUid=general"));
+    assert!(output.contains("org=Main Org., orgId=1"));
     assert!(output.contains("  File: /tmp/raw/main.json"));
     assert!(output.contains("  Panel: CPU (id=7, type=timeseries, queries=1, datasources=prom-main, families=prometheus, fields=expr)"));
     assert!(output.contains("  Panel: Logs (id=8, type=logs, queries=1, datasources=loki-main, families=loki, fields=expr)"));
     assert!(output.contains(
-        "    Query: refId=A datasource=prom-main datasourceUid=prom-main datasourceType=prometheus datasourceFamily=prometheus field=expr metrics=up"
+        "    Query: refId=A datasource=prom-main datasourceName=prom-main datasourceUid=prom-main datasourceType=prometheus datasourceFamily=prometheus field=expr metrics=up"
     ));
     assert!(output.contains("      up"));
     assert!(output.contains(
-        "    Query: refId=B datasource=loki-main datasourceUid=loki-main datasourceType=loki datasourceFamily=loki field=expr"
+        "    Query: refId=B datasource=loki-main datasourceName=loki-main datasourceUid=loki-main datasourceType=loki datasourceFamily=loki field=expr"
     ));
     assert!(output.contains("      {job=\"grafana\"}"));
 }
@@ -5581,17 +6187,27 @@ fn render_grouped_query_table_report_displays_dashboard_sections_with_tables() {
                 dashboard_uid: "main".to_string(),
                 dashboard_title: "Main".to_string(),
                 folder_path: "General".to_string(),
+                folder_uid: "general".to_string(),
+                parent_folder_uid: String::new(),
                 panel_id: "7".to_string(),
                 panel_title: "CPU".to_string(),
                 panel_type: "timeseries".to_string(),
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
+                datasource_name: "prom-main".to_string(),
                 datasource_uid: "prom-main".to_string(),
+                datasource_org: String::new(),
+                datasource_org_id: String::new(),
+                datasource_database: String::new(),
+                datasource_bucket: String::new(),
+                datasource_organization: String::new(),
+                datasource_index_pattern: String::new(),
                 datasource_type: "prometheus".to_string(),
                 datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
+                functions: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
                 file_path: "/tmp/raw/main.json".to_string(),
@@ -5602,17 +6218,27 @@ fn render_grouped_query_table_report_displays_dashboard_sections_with_tables() {
                 dashboard_uid: "main".to_string(),
                 dashboard_title: "Main".to_string(),
                 folder_path: "General".to_string(),
+                folder_uid: "general".to_string(),
+                parent_folder_uid: String::new(),
                 panel_id: "8".to_string(),
                 panel_title: "Logs".to_string(),
                 panel_type: "logs".to_string(),
                 ref_id: "B".to_string(),
                 datasource: "loki-main".to_string(),
+                datasource_name: "loki-main".to_string(),
                 datasource_uid: "loki-main".to_string(),
+                datasource_org: String::new(),
+                datasource_org_id: String::new(),
+                datasource_database: String::new(),
+                datasource_bucket: String::new(),
+                datasource_organization: String::new(),
+                datasource_index_pattern: String::new(),
                 datasource_type: "loki".to_string(),
                 datasource_family: "loki".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "{job=\"grafana\"}".to_string(),
                 metrics: Vec::new(),
+                functions: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
                 file_path: "/tmp/raw/main.json".to_string(),
@@ -5633,8 +6259,14 @@ fn render_grouped_query_table_report_displays_dashboard_sections_with_tables() {
     let output = lines.join("\n");
 
     assert!(output.contains("# Dashboard sections"));
-    assert!(output.contains("[1] Dashboard: Main (uid=main, folder=General, panels=2, queries=2, datasources=prom-main,loki-main, families=prometheus,loki, org=Main Org., orgId=1)"));
+    assert!(output.contains("[1] Dashboard: Main (uid=main, folder=General"));
+    assert!(output.contains("datasources=prom-main,loki-main"));
+    assert!(output.contains("families=prometheus,loki"));
+    assert!(output.contains("folderUid=general"));
+    assert!(output.contains("org=Main Org., orgId=1"));
     assert!(output.contains("File: /tmp/raw/main.json"));
+    assert!(output.contains("Panel: CPU (id=7, type=timeseries, queries=1, datasources=prom-main, families=prometheus, fields=expr)"));
+    assert!(output.contains("Panel: Logs (id=8, type=logs, queries=1, datasources=loki-main, families=loki, fields=expr)"));
     assert!(output.contains("PANEL_ID  PANEL_TITLE  DATASOURCE  QUERY"));
     assert!(output.contains("7         CPU          prom-main   up"));
     assert!(output.contains("8         Logs         loki-main   {job=\"grafana\"}"));
@@ -5648,17 +6280,27 @@ fn render_query_report_column_supports_org_columns() {
         dashboard_uid: "main".to_string(),
         dashboard_title: "Main".to_string(),
         folder_path: "General".to_string(),
+        folder_uid: "general".to_string(),
+        parent_folder_uid: String::new(),
         panel_id: "1".to_string(),
         panel_title: "CPU".to_string(),
         panel_type: "timeseries".to_string(),
         ref_id: "A".to_string(),
         datasource: "prom-main".to_string(),
+        datasource_name: "prom-main".to_string(),
         datasource_uid: "prom-main".to_string(),
+        datasource_org: String::new(),
+        datasource_org_id: String::new(),
+        datasource_database: String::new(),
+        datasource_bucket: String::new(),
+        datasource_organization: String::new(),
+        datasource_index_pattern: String::new(),
         datasource_type: "prometheus".to_string(),
         datasource_family: "prometheus".to_string(),
         query_field: "expr".to_string(),
         query_text: "up".to_string(),
         metrics: vec!["up".to_string()],
+        functions: Vec::new(),
         measurements: Vec::new(),
         buckets: Vec::new(),
         file_path: "/tmp/raw/main.json".to_string(),
@@ -5686,17 +6328,27 @@ fn render_grouped_query_table_report_includes_loki_analysis_columns() {
             dashboard_uid: "logs-main".to_string(),
             dashboard_title: "Logs Main".to_string(),
             folder_path: "Logs".to_string(),
+            folder_uid: "logs".to_string(),
+            parent_folder_uid: String::new(),
             panel_id: "11".to_string(),
             panel_title: "Errors".to_string(),
             panel_type: "logs".to_string(),
             ref_id: "A".to_string(),
             datasource: "loki-main".to_string(),
+            datasource_name: "loki-main".to_string(),
             datasource_uid: "loki-main".to_string(),
+            datasource_org: String::new(),
+            datasource_org_id: String::new(),
+            datasource_database: String::new(),
+            datasource_bucket: String::new(),
+            datasource_organization: String::new(),
+            datasource_index_pattern: String::new(),
             datasource_type: "loki".to_string(),
             datasource_family: "loki".to_string(),
             query_field: "expr".to_string(),
             query_text: "{job=\"varlogs\",app=~\"api|web\"} |= \"error\" | json [5m]".to_string(),
-            metrics: vec![
+            metrics: Vec::new(),
+            functions: vec![
                 "sum".to_string(),
                 "count_over_time".to_string(),
                 "filter_eq".to_string(),
@@ -5716,7 +6368,7 @@ fn render_grouped_query_table_report_includes_loki_analysis_columns() {
         &[
             "panel_id".to_string(),
             "datasource".to_string(),
-            "metrics".to_string(),
+            "functions".to_string(),
             "measurements".to_string(),
             "buckets".to_string(),
             "query".to_string(),
@@ -5725,7 +6377,7 @@ fn render_grouped_query_table_report_includes_loki_analysis_columns() {
     );
     let output = lines.join("\n");
 
-    assert!(output.contains("PANEL_ID  DATASOURCE  METRICS"));
+    assert!(output.contains("PANEL_ID  DATASOURCE  FUNCTIONS"));
     assert!(output.contains("11"));
     assert!(output.contains("loki-main"));
     assert!(output.contains("sum,count_over_time,filter_eq,json"));
@@ -5834,17 +6486,27 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
                 dashboard_uid: "cpu-main".to_string(),
                 dashboard_title: "CPU Main".to_string(),
                 folder_path: "General".to_string(),
+                folder_uid: "general".to_string(),
+                parent_folder_uid: String::new(),
                 panel_id: "7".to_string(),
                 panel_title: "CPU".to_string(),
                 panel_type: "timeseries".to_string(),
                 ref_id: "A".to_string(),
                 datasource: "prom-main".to_string(),
+                datasource_name: "prom-main".to_string(),
                 datasource_uid: "prom-main".to_string(),
+                datasource_org: String::new(),
+                datasource_org_id: String::new(),
+                datasource_database: String::new(),
+                datasource_bucket: String::new(),
+                datasource_organization: String::new(),
+                datasource_index_pattern: String::new(),
                 datasource_type: "prometheus".to_string(),
                 datasource_family: "prometheus".to_string(),
                 query_field: "expr".to_string(),
                 query_text: "up".to_string(),
                 metrics: vec!["up".to_string()],
+                functions: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
                 file_path: "/tmp/raw/cpu-main.json".to_string(),
@@ -5855,17 +6517,27 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
                 dashboard_uid: "mixed-main".to_string(),
                 dashboard_title: "Mixed Main".to_string(),
                 folder_path: "Platform / Infra".to_string(),
+                folder_uid: "infra".to_string(),
+                parent_folder_uid: "platform".to_string(),
                 panel_id: "8".to_string(),
                 panel_title: "Logs".to_string(),
                 panel_type: "logs".to_string(),
                 ref_id: "B".to_string(),
                 datasource: "custom-main".to_string(),
+                datasource_name: "custom-main".to_string(),
                 datasource_uid: String::new(),
+                datasource_org: String::new(),
+                datasource_org_id: String::new(),
+                datasource_database: String::new(),
+                datasource_bucket: String::new(),
+                datasource_organization: String::new(),
+                datasource_index_pattern: String::new(),
                 datasource_type: "custom-plugin".to_string(),
                 datasource_family: "unknown".to_string(),
                 query_field: "query".to_string(),
                 query_text: "custom_query".to_string(),
                 metrics: Vec::new(),
+                functions: Vec::new(),
                 measurements: Vec::new(),
                 buckets: Vec::new(),
                 file_path: "/tmp/raw/mixed-main.json".to_string(),
@@ -5989,17 +6661,27 @@ fn render_governance_table_report_displays_sections() {
             dashboard_uid: "logs-main".to_string(),
             dashboard_title: "Logs Main".to_string(),
             folder_path: "Logs".to_string(),
+            folder_uid: "logs".to_string(),
+            parent_folder_uid: String::new(),
             panel_id: "11".to_string(),
             panel_title: "Errors".to_string(),
             panel_type: "logs".to_string(),
             ref_id: "A".to_string(),
             datasource: "logs-main".to_string(),
+            datasource_name: "logs-main".to_string(),
             datasource_uid: "logs-main".to_string(),
+            datasource_org: String::new(),
+            datasource_org_id: String::new(),
+            datasource_database: String::new(),
+            datasource_bucket: String::new(),
+            datasource_organization: String::new(),
+            datasource_index_pattern: String::new(),
             datasource_type: "loki".to_string(),
             datasource_family: "loki".to_string(),
             query_field: "expr".to_string(),
             query_text: "{job=\"grafana\"}".to_string(),
-            metrics: vec!["count_over_time".to_string()],
+            metrics: Vec::new(),
+            functions: vec!["count_over_time".to_string()],
             measurements: vec!["job=\"grafana\"".to_string()],
             buckets: vec!["5m".to_string()],
             file_path: "/tmp/raw/logs-main.json".to_string(),

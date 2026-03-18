@@ -89,7 +89,7 @@ pub(crate) use inspect::inspect_live_dashboards_with_request;
 pub(crate) use inspect::{
     apply_query_report_filters, build_export_inspection_query_report,
     build_export_inspection_summary, build_export_inspection_summary_rows,
-    validate_inspect_export_report_args,
+    prepare_inspect_export_import_dir, validate_inspect_export_report_args,
 };
 #[cfg(test)]
 pub(crate) use inspect_governance::{

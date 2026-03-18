@@ -97,7 +97,8 @@ def analyze_query(panel: dict[str, Any], target: dict[str, Any], query_field: st
     del panel, target, query_field
     return normalize_query_analysis(
         {
-            "metrics": extract_sql_query_shape_hints(query_text),
+            "metrics": [],
+            "functions": extract_sql_query_shape_hints(query_text),
             "measurements": extract_sql_source_references(query_text),
             "buckets": [],
         }

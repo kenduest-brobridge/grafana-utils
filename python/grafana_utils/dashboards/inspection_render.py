@@ -169,13 +169,26 @@ def render_export_inspection_grouped_report(
         lines.append("")
         lines.append("# Dashboard tree")
         for index, dashboard in enumerate(dashboard_records, 1):
+            folder_uid = str(dashboard.get("folderUid") or "")
+            parent_folder_uid = str(dashboard.get("parentFolderUid") or "")
+            folder_identity = ""
+            if folder_uid and parent_folder_uid:
+                folder_identity = " folderUid=%s parentFolderUid=%s" % (
+                    folder_uid,
+                    parent_folder_uid,
+                )
+            elif folder_uid:
+                folder_identity = " folderUid=%s" % folder_uid
+            elif parent_folder_uid:
+                folder_identity = " parentFolderUid=%s" % parent_folder_uid
             lines.append(
-                "[%s] Dashboard %s title=%s path=%s panels=%s queries=%s"
+                "[%s] Dashboard %s title=%s path=%s%s panels=%s queries=%s"
                 % (
                     index,
                     str(dashboard.get("dashboardUid") or DEFAULT_UNKNOWN_UID),
                     str(dashboard.get("dashboardTitle") or DEFAULT_DASHBOARD_TITLE),
                     str(dashboard.get("folderPath") or DEFAULT_FOLDER_TITLE),
+                    folder_identity,
                     int(dashboard.get("panelCount") or 0),
                     int(dashboard.get("queryCount") or 0),
                 )
@@ -195,13 +208,17 @@ def render_export_inspection_grouped_report(
                 for query in list(panel.get("queries") or []):
                     detail_parts = [
                         "datasource=%s" % str(query.get("datasource") or "-"),
+                        "datasourceName=%s" % str(query.get("datasourceName") or "-"),
                         "field=%s" % str(query.get("queryField") or "-"),
                     ]
                     metrics = format_report_column_value(query, "metrics")
+                    functions = format_report_column_value(query, "functions")
                     measurements = format_report_column_value(query, "measurements")
                     buckets = format_report_column_value(query, "buckets")
                     if metrics:
                         detail_parts.append("metrics=%s" % metrics)
+                    if functions:
+                        detail_parts.append("functions=%s" % functions)
                     if measurements:
                         detail_parts.append("measurements=%s" % measurements)
                     if buckets:
@@ -250,41 +267,67 @@ def render_export_inspection_tree_tables(
         lines.append("")
         lines.append("# Dashboard sections")
         for index, dashboard in enumerate(dashboard_records, 1):
+            folder_uid = str(dashboard.get("folderUid") or "")
+            parent_folder_uid = str(dashboard.get("parentFolderUid") or "")
+            folder_identity = ""
+            if folder_uid and parent_folder_uid:
+                folder_identity = " folderUid=%s parentFolderUid=%s" % (
+                    folder_uid,
+                    parent_folder_uid,
+                )
+            elif folder_uid:
+                folder_identity = " folderUid=%s" % folder_uid
+            elif parent_folder_uid:
+                folder_identity = " parentFolderUid=%s" % parent_folder_uid
             lines.append(
-                "[%s] Dashboard %s title=%s path=%s panels=%s queries=%s"
+                "[%s] Dashboard %s title=%s path=%s%s panels=%s queries=%s"
                 % (
                     index,
                     str(dashboard.get("dashboardUid") or DEFAULT_UNKNOWN_UID),
                     str(dashboard.get("dashboardTitle") or DEFAULT_DASHBOARD_TITLE),
                     str(dashboard.get("folderPath") or DEFAULT_FOLDER_TITLE),
+                    folder_identity,
                     int(dashboard.get("panelCount") or 0),
                     int(dashboard.get("queryCount") or 0),
                 )
             )
-            query_records = []
             for panel in list(dashboard.get("panels") or []):
-                for query in list(panel.get("queries") or []):
-                    query_records.append(query)
-            if query_records:
-                lines.extend(
-                    render_export_inspection_table_section(
-                        [
-                            SUPPORTED_REPORT_COLUMN_HEADERS[column_id]
-                            for column_id in selected_columns
-                        ],
-                        [
-                            [
-                                format_report_column_value(record, column_id)
-                                for column_id in selected_columns
-                            ]
-                            for record in query_records
-                        ],
-                        include_header=include_header,
+                datasource_text = ",".join(panel.get("datasources") or []) or "-"
+                family_text = ",".join(panel.get("datasourceFamilies") or []) or "-"
+                field_text = ",".join(panel.get("queryFields") or []) or "-"
+                lines.append(
+                    "Panel %s title=%s type=%s datasources=%s families=%s fields=%s queries=%s"
+                    % (
+                        str(panel.get("panelId") or ""),
+                        str(panel.get("panelTitle") or ""),
+                        str(panel.get("panelType") or ""),
+                        datasource_text,
+                        family_text,
+                        field_text,
+                        int(panel.get("queryCount") or 0),
                     )
                 )
-            else:
-                lines.append("(no query rows)")
-            lines.append("")
+                query_records = list(panel.get("queries") or [])
+                if query_records:
+                    lines.extend(
+                        render_export_inspection_table_section(
+                            [
+                                SUPPORTED_REPORT_COLUMN_HEADERS[column_id]
+                                for column_id in selected_columns
+                            ],
+                            [
+                                [
+                                    format_report_column_value(record, column_id)
+                                    for column_id in selected_columns
+                                ]
+                                for record in query_records
+                            ],
+                            include_header=include_header,
+                        )
+                    )
+                else:
+                    lines.append("(no query rows)")
+                lines.append("")
         if lines[-1] == "":
             lines.pop()
     return lines

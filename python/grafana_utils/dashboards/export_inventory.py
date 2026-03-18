@@ -156,6 +156,27 @@ def load_datasource_inventory(
                 "type": str(item.get("type") or ""),
                 "access": str(item.get("access") or ""),
                 "url": str(item.get("url") or ""),
+                "database": str(
+                    item.get("database")
+                    or ((item.get("jsonData") or {}).get("dbName") if isinstance(item.get("jsonData"), dict) else "")
+                    or ""
+                ),
+                "defaultBucket": str(
+                    item.get("defaultBucket")
+                    or ((item.get("jsonData") or {}).get("defaultBucket") if isinstance(item.get("jsonData"), dict) else "")
+                    or ""
+                ),
+                "organization": str(
+                    item.get("organization")
+                    or ((item.get("jsonData") or {}).get("organization") if isinstance(item.get("jsonData"), dict) else "")
+                    or ""
+                ),
+                "indexPattern": str(
+                    item.get("indexPattern")
+                    or ((item.get("jsonData") or {}).get("indexPattern") if isinstance(item.get("jsonData"), dict) else "")
+                    or ((item.get("jsonData") or {}).get("index") if isinstance(item.get("jsonData"), dict) else "")
+                    or ""
+                ),
                 "isDefault": str(item.get("isDefault") or "false"),
                 "org": str(item.get("org") or ""),
                 "orgId": str(item.get("orgId") or ""),
@@ -184,6 +205,12 @@ def build_import_dashboard_folder_path(dashboard_file: Path, import_dir: Path) -
     """Build import dashboard folder path implementation."""
     relative_path = dashboard_file.relative_to(import_dir)
     parts = list(relative_path.parts[:-1])
+    if (
+        (import_dir / ".inspect-source-root").is_file()
+        and len(parts) >= 2
+        and str(parts[0]).startswith("org_")
+    ):
+        parts = parts[1:]
     return " / ".join(parts)
 
 

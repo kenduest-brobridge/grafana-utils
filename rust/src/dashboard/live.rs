@@ -182,12 +182,42 @@ pub(crate) fn build_datasource_inventory_record(
     datasource: &Map<String, Value>,
     org: &Map<String, Value>,
 ) -> DatasourceInventoryItem {
+    let json_data = datasource
+        .get("jsonData")
+        .and_then(Value::as_object);
+    let database = {
+        let value = string_field(datasource, "database", "");
+        if !value.is_empty() {
+            value
+        } else {
+            json_data
+                .map(|item| string_field(item, "dbName", ""))
+                .unwrap_or_default()
+        }
+    };
     DatasourceInventoryItem {
         uid: string_field(datasource, "uid", ""),
         name: string_field(datasource, "name", ""),
         datasource_type: string_field(datasource, "type", ""),
         access: string_field(datasource, "access", ""),
         url: string_field(datasource, "url", ""),
+        database,
+        default_bucket: json_data
+            .map(|item| string_field(item, "defaultBucket", ""))
+            .unwrap_or_default(),
+        organization: json_data
+            .map(|item| string_field(item, "organization", ""))
+            .unwrap_or_default(),
+        index_pattern: json_data
+            .map(|item| {
+                let value = string_field(item, "indexPattern", "");
+                if value.is_empty() {
+                    string_field(item, "index", "")
+                } else {
+                    value
+                }
+            })
+            .unwrap_or_default(),
         is_default: if datasource
             .get("isDefault")
             .and_then(Value::as_bool)

@@ -496,7 +496,16 @@ def build_datasource_inventory_record(
     #   Downstream callees: 448
 
     record = build_data_source_record(datasource)
+    json_data = datasource.get("jsonData")
+    if not isinstance(json_data, dict):
+        json_data = {}
     record["access"] = str(datasource.get("access") or "")
+    record["database"] = str(datasource.get("database") or json_data.get("dbName") or "")
+    record["defaultBucket"] = str(json_data.get("defaultBucket") or "")
+    record["organization"] = str(json_data.get("organization") or "")
+    record["indexPattern"] = str(
+        json_data.get("indexPattern") or json_data.get("index") or ""
+    )
     record["org"] = str(org.get("name") or DEFAULT_ORG_NAME)
     record["orgId"] = str(org.get("id") or DEFAULT_ORG_ID)
     return record

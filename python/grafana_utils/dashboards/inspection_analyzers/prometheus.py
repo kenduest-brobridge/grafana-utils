@@ -7,8 +7,8 @@ from typing import Any
 
 from .contract import (
     PROMETHEUS_RESERVED_WORDS,
-    extract_buckets,
     extract_measurements,
+    extract_range_windows,
     extract_string_values,
     normalize_query_analysis,
     unique_strings,
@@ -54,6 +54,18 @@ def extract_prometheus_metric_names(query: str) -> list[str]:
     return unique_strings(values)
 
 
+def extract_prometheus_functions(query: str) -> list[str]:
+    """Collect function-like identifiers from a Prometheus query."""
+    if not query:
+        return []
+    values = []
+    for name in re.findall(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", query):
+        if name in ("by", "without", "on", "ignoring", "group_left", "group_right"):
+            continue
+        values.append(name)
+    return unique_strings(values)
+
+
 def analyze_query(panel: dict[str, Any], target: dict[str, Any], query_field: str, query_text: str) -> dict[str, Any]:
     """Build normalized analysis output for a Prometheus query."""
     # Call graph: see callers/callees.
@@ -64,7 +76,8 @@ def analyze_query(panel: dict[str, Any], target: dict[str, Any], query_field: st
     return normalize_query_analysis(
         {
             "metrics": extract_prometheus_metric_names(query_text),
+            "functions": extract_prometheus_functions(query_text),
             "measurements": extract_measurements(query_text),
-            "buckets": extract_buckets(query_text),
+            "buckets": extract_range_windows(query_text),
         }
     )

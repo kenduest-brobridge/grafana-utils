@@ -11,7 +11,7 @@ DATASOURCE_FAMILY_LOKI = "loki"
 DATASOURCE_FAMILY_FLUX = "flux"
 DATASOURCE_FAMILY_SQL = "sql"
 DATASOURCE_FAMILY_UNKNOWN = "unknown"
-QUERY_ANALYSIS_FIELDS = ("metrics", "measurements", "buckets")
+QUERY_ANALYSIS_FIELDS = ("metrics", "functions", "measurements", "buckets")
 
 
 def extract_string_values(query: str, pattern: str) -> list[str]:
@@ -196,6 +196,61 @@ def extract_buckets(query: str) -> list[str]:
     )
 
 
+def extract_range_windows(query: str) -> list[str]:
+    """Extract Prometheus or Loki range-window selectors from a query."""
+    return unique_strings(
+        extract_string_values(
+            query,
+            r"\[([^\]]+)\]",
+        )
+    )
+
+
+def extract_influxql_time_buckets(query: str) -> list[str]:
+    """Extract InfluxQL time-bucket window sizes from grouped queries."""
+    return unique_strings(
+        extract_string_values(
+            query,
+            r"(?is)\bgroup\s+by\b[\s\S]*?\btime\s*\(\s*([^)]+?)\s*\)",
+        )
+    )
+
+
+def extract_influxql_select_metrics(query: str) -> list[str]:
+    """Extract InfluxQL field references from the SELECT clause."""
+    if not query:
+        return []
+    query = re.sub(r"/\*.*?\*/", " ", query, flags=re.DOTALL)
+    query = re.sub(r"--[^\n]*", " ", query)
+    match = re.search(r"(?is)^\s*select\s+(.*?)\s+\bfrom\b", query)
+    if not match:
+        return []
+    select_clause = str(match.group(1) or "").strip()
+    if not select_clause:
+        return []
+    select_clause = re.sub(r'(?i)\bas\s+"[^"]+"', " ", select_clause)
+    return unique_strings(
+        extract_string_values(select_clause, r'"([^"]+)"')
+    )
+
+
+def extract_influxql_select_functions(query: str) -> list[str]:
+    """Extract InfluxQL function names from the SELECT clause."""
+    if not query:
+        return []
+    query = re.sub(r"/\*.*?\*/", " ", query, flags=re.DOTALL)
+    query = re.sub(r"--[^\n]*", " ", query)
+    match = re.search(r"(?is)^\s*select\s+(.*?)\s+\bfrom\b", query)
+    if not match:
+        return []
+    select_clause = str(match.group(1) or "").strip()
+    if not select_clause:
+        return []
+    return unique_strings(
+        extract_string_values(select_clause, r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+    )
+
+
 def build_default_query_analysis(target: dict[str, Any], query_text: str) -> dict[str, list[str]]:
     """Build normalized query-analysis fields for an unknown analyzer family."""
     # Call graph: see callers/callees.
@@ -206,7 +261,10 @@ def build_default_query_analysis(target: dict[str, Any], query_text: str) -> dic
     return normalize_query_analysis(
         {
             "metrics": extract_metric_names(query_text),
+            "functions": [],
             "measurements": extract_measurements(query_text),
-            "buckets": extract_buckets(query_text),
+            "buckets": extract_buckets(query_text)
+            + extract_range_windows(query_text)
+            + extract_influxql_time_buckets(query_text),
         }
     )

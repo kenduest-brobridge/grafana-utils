@@ -13,21 +13,32 @@ from .common import (
 from .inspection_analyzers import build_query_field_and_text, dispatch_query_analysis
 from .transformer import is_builtin_datasource_ref, is_placeholder_string
 
+INSPECT_SOURCE_ROOT_FILENAME = ".inspect-source-root"
 
 REPORT_COLUMN_HEADERS = OrderedDict(
     [
         ("dashboardUid", "DASHBOARD_UID"),
         ("dashboardTitle", "DASHBOARD_TITLE"),
         ("folderPath", "FOLDER_PATH"),
+        ("folderUid", "FOLDER_UID"),
+        ("parentFolderUid", "PARENT_FOLDER_UID"),
         ("panelId", "PANEL_ID"),
         ("panelTitle", "PANEL_TITLE"),
         ("panelType", "PANEL_TYPE"),
         ("refId", "REF_ID"),
         ("datasource", "DATASOURCE"),
+        ("datasourceName", "DATASOURCE_NAME"),
+        ("datasourceOrg", "DATASOURCE_ORG"),
+        ("datasourceOrgId", "DATASOURCE_ORG_ID"),
+        ("datasourceDatabase", "DATASOURCE_DATABASE"),
+        ("datasourceBucket", "DATASOURCE_BUCKET"),
+        ("datasourceOrganization", "DATASOURCE_ORGANIZATION"),
+        ("datasourceIndexPattern", "DATASOURCE_INDEX_PATTERN"),
         ("datasourceType", "DATASOURCE_TYPE"),
         ("datasourceFamily", "DATASOURCE_FAMILY"),
         ("queryField", "QUERY_FIELD"),
         ("metrics", "METRICS"),
+        ("functions", "FUNCTIONS"),
         ("measurements", "MEASUREMENTS"),
         ("buckets", "BUCKETS"),
         ("query", "QUERY"),
@@ -39,10 +50,19 @@ REPORT_COLUMN_ALIASES = {
     "dashboard_uid": "dashboardUid",
     "dashboard_title": "dashboardTitle",
     "folder_path": "folderPath",
+    "folder_uid": "folderUid",
+    "parent_folder_uid": "parentFolderUid",
     "panel_id": "panelId",
     "panel_title": "panelTitle",
     "panel_type": "panelType",
     "ref_id": "refId",
+    "datasource_name": "datasourceName",
+    "datasource_org": "datasourceOrg",
+    "datasource_org_id": "datasourceOrgId",
+    "datasource_database": "datasourceDatabase",
+    "datasource_bucket": "datasourceBucket",
+    "datasource_organization": "datasourceOrganization",
+    "datasource_index_pattern": "datasourceIndexPattern",
     "query_field": "queryField",
     "datasource_uid": "datasourceUid",
     "datasource_type": "datasourceType",
@@ -70,17 +90,27 @@ NORMALIZED_QUERY_REPORT_FIELDS = (
     "dashboardUid",
     "dashboardTitle",
     "folderPath",
+    "folderUid",
+    "parentFolderUid",
     "panelId",
     "panelTitle",
     "panelType",
     "refId",
     "datasource",
+    "datasourceName",
     "datasourceUid",
+    "datasourceOrg",
+    "datasourceOrgId",
+    "datasourceDatabase",
+    "datasourceBucket",
+    "datasourceOrganization",
+    "datasourceIndexPattern",
     "datasourceType",
     "datasourceFamily",
     "queryField",
     "query",
     "metrics",
+    "functions",
     "measurements",
     "buckets",
     "file",
@@ -90,6 +120,9 @@ INSPECT_EXPORT_HELP_FULL_EXAMPLES = (
     "  Flat per-query table report:\n"
     "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
     "--report\n\n"
+    "  Inspect a combined multi-org export root directly:\n"
+    "    grafana-util dashboard inspect-export --import-dir ./dashboards "
+    "--report tree-table\n\n"
     "  Datasource governance tables:\n"
     "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
     "--report governance\n\n"
@@ -103,6 +136,19 @@ INSPECT_EXPORT_HELP_FULL_EXAMPLES = (
     "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
     "--report tree-table "
     "--report-filter-datasource prom-main --report-filter-panel-id 7\n\n"
+    "  Inspect query analysis fields such as metrics, functions, and buckets:\n"
+    "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
+    "--report csv --report-columns "
+    "panel_id,ref_id,datasource_name,metrics,functions,buckets,query\n\n"
+    "  Compare Grafana folder identity with source file paths:\n"
+    "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
+    "--report csv --report-columns "
+    "dashboard_uid,folder_path,folder_uid,parent_folder_uid,file\n\n"
+    "  Inspect datasource-level org, database, bucket, or index-pattern fields:\n"
+    "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
+    "--report csv --report-columns "
+    "datasource_name,datasource_org,datasource_org_id,datasource_database,"
+    "datasource_bucket,datasource_index_pattern,query\n\n"
     "  Trim the per-query columns for flat or tree-table output:\n"
     "    grafana-util dashboard inspect-export --import-dir ./dashboards/raw "
     "--report tree-table "
@@ -126,6 +172,19 @@ INSPECT_LIVE_HELP_FULL_EXAMPLES = (
     "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
     "--report tree-table --report-filter-datasource prom-main "
     "--report-filter-panel-id 7\n\n"
+    "  Inspect query analysis fields such as metrics, functions, and buckets:\n"
+    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
+    "--report csv --report-columns "
+    "panel_id,ref_id,datasource_name,metrics,functions,buckets,query\n\n"
+    "  Compare Grafana folder identity with source file paths:\n"
+    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
+    "--report csv --report-columns "
+    "dashboard_uid,folder_path,folder_uid,parent_folder_uid,file\n\n"
+    "  Inspect datasource-level org, database, bucket, or index-pattern fields:\n"
+    "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
+    "--report csv --report-columns "
+    "datasource_name,datasource_org,datasource_org_id,datasource_database,"
+    "datasource_bucket,datasource_index_pattern,query\n\n"
     "  Trim the per-query columns for flat or tree-table output:\n"
     "    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" "
     "--report tree-table "
@@ -140,6 +199,57 @@ def format_supported_report_column_values() -> str:
     #   Downstream callees: 無
 
     return ", ".join(SUPPORTED_REPORT_COLUMN_VALUES)
+
+
+def resolve_inspection_source_file_path(import_dir: Path, dashboard_file: Path) -> str:
+    """Render the original source file path when inspect uses a merged temp root."""
+    source_root_path = import_dir / INSPECT_SOURCE_ROOT_FILENAME
+    if not source_root_path.is_file():
+        return str(dashboard_file)
+    try:
+        source_root_text = source_root_path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return str(dashboard_file)
+    if not source_root_text:
+        return str(dashboard_file)
+    try:
+        relative_path = dashboard_file.relative_to(import_dir)
+    except ValueError:
+        return str(dashboard_file)
+    parts = relative_path.parts
+    source_root = Path(source_root_text)
+    if parts and str(parts[0]).startswith("org_"):
+        return str(source_root / parts[0] / "raw" / Path(*parts[1:]))
+    return str(source_root / relative_path)
+
+
+def resolve_inspection_folder_path(
+    import_dir: Path,
+    dashboard_file: Path,
+    folder_record: Optional[dict[str, Any]] = None,
+) -> str:
+    """Render an operator-friendly folder path for merged inspection roots."""
+    if folder_record:
+        folder_path = str(
+            folder_record.get("path")
+            or folder_record.get("title")
+            or DEFAULT_FOLDER_TITLE
+        ).strip()
+        if folder_path:
+            return folder_path
+
+    try:
+        relative_path = dashboard_file.relative_to(import_dir)
+    except ValueError:
+        return str(DEFAULT_FOLDER_TITLE)
+
+    parts = list(relative_path.parts[:-1])
+    if parts and parts[0].startswith("org_") and len(parts) >= 3 and parts[1] == "raw":
+        parts = parts[2:]
+    elif parts and parts[0].startswith("org_") and len(parts) >= 2:
+        parts = parts[1:]
+    folder_path = " / ".join(parts).strip()
+    return folder_path or DEFAULT_FOLDER_TITLE
 
 
 def build_export_inspection_report_document(
@@ -180,11 +290,11 @@ def build_export_inspection_report_document(
             import_dir,
             folder_lookup,
         )
-        folder_path = str(
-            (folder_record or {}).get("path")
-            or (folder_record or {}).get("title")
-            or DEFAULT_FOLDER_TITLE
-        ).strip() or DEFAULT_FOLDER_TITLE
+        folder_path = resolve_inspection_folder_path(
+            import_dir,
+            dashboard_file,
+            folder_record,
+        )
         for panel in deps["iter_dashboard_panels"](dashboard.get("panels")):
             targets = panel.get("targets")
             if not isinstance(targets, list):
@@ -194,8 +304,10 @@ def build_export_inspection_report_document(
                     continue
                 records.append(
                     build_query_report_record(
+                        import_dir,
                         dashboard,
                         folder_path,
+                        folder_record,
                         panel,
                         target,
                         dashboard_file,
@@ -306,6 +418,58 @@ def describe_panel_datasource_uid(
     return ""
 
 
+def describe_panel_datasource_name(
+    panel: dict[str, Any],
+    target: dict[str, Any],
+    datasources_by_uid: dict[str, dict[str, str]],
+    datasources_by_name: dict[str, dict[str, str]],
+) -> str:
+    """Resolve one best-effort datasource display name for a panel/query target."""
+    for ref in (target.get("datasource"), panel.get("datasource")):
+        if isinstance(ref, dict):
+            uid = str(ref.get("uid") or "").strip()
+            name = str(ref.get("name") or "").strip()
+            if uid and datasources_by_uid.get(uid):
+                return str(datasources_by_uid[uid].get("name") or name or uid)
+            if uid:
+                return uid
+            if name and datasources_by_name.get(name):
+                return str(datasources_by_name[name].get("name") or name)
+            if name:
+                return name
+        elif isinstance(ref, str):
+            name = ref.strip()
+            if name and datasources_by_name.get(name):
+                return str(datasources_by_name[name].get("name") or name)
+            if name and not is_builtin_datasource_ref(name):
+                return name
+    return ""
+
+
+def resolve_panel_datasource_inventory_record(
+    panel: dict[str, Any],
+    target: dict[str, Any],
+    datasources_by_uid: dict[str, dict[str, str]],
+    datasources_by_name: dict[str, dict[str, str]],
+) -> Optional[dict[str, str]]:
+    """Resolve the backing datasource inventory record for one panel/query."""
+    for ref in (target.get("datasource"), panel.get("datasource")):
+        if isinstance(ref, dict):
+            uid = str(ref.get("uid") or "").strip()
+            name = str(ref.get("name") or "").strip()
+            if uid and datasources_by_uid.get(uid):
+                return datasources_by_uid[uid]
+            if name and datasources_by_name.get(name):
+                return datasources_by_name[name]
+        elif isinstance(ref, str):
+            name = ref.strip()
+            if name and datasources_by_uid.get(name):
+                return datasources_by_uid[name]
+            if name and datasources_by_name.get(name):
+                return datasources_by_name[name]
+    return None
+
+
 def _normalize_datasource_family_name(datasource_type: str) -> str:
     """Internal helper for normalize datasource family name."""
     lowered = str(datasource_type or "").strip().lower()
@@ -348,8 +512,10 @@ def describe_panel_datasource_type(
 
 
 def build_query_report_record(
+    import_dir: Path,
     dashboard: dict[str, Any],
     folder_path: str,
+    folder_record: Optional[dict[str, str]],
     panel: dict[str, Any],
     target: dict[str, Any],
     dashboard_file: Path,
@@ -370,10 +536,18 @@ def build_query_report_record(
         datasources_by_uid,
         datasources_by_name,
     )
+    datasource_record = resolve_panel_datasource_inventory_record(
+        panel,
+        target,
+        datasources_by_uid,
+        datasources_by_name,
+    ) or {}
     record = {
         "dashboardUid": str(dashboard.get("uid") or DEFAULT_UNKNOWN_UID),
         "dashboardTitle": str(dashboard.get("title") or DEFAULT_DASHBOARD_TITLE),
         "folderPath": str(folder_path or DEFAULT_FOLDER_TITLE),
+        "folderUid": str((folder_record or {}).get("uid") or ""),
+        "parentFolderUid": str((folder_record or {}).get("parentUid") or ""),
         "panelId": str(panel.get("id") or ""),
         "panelTitle": str(panel.get("title") or ""),
         "panelType": str(panel.get("type") or ""),
@@ -384,11 +558,23 @@ def build_query_report_record(
             datasources_by_uid,
             datasources_by_name,
         ),
+        "datasourceName": describe_panel_datasource_name(
+            panel,
+            target,
+            datasources_by_uid,
+            datasources_by_name,
+        ),
         "datasourceUid": describe_panel_datasource_uid(
             panel,
             target,
             datasources_by_name,
         ),
+        "datasourceOrg": str(datasource_record.get("org") or ""),
+        "datasourceOrgId": str(datasource_record.get("orgId") or ""),
+        "datasourceDatabase": str(datasource_record.get("database") or ""),
+        "datasourceBucket": str(datasource_record.get("defaultBucket") or ""),
+        "datasourceOrganization": str(datasource_record.get("organization") or ""),
+        "datasourceIndexPattern": str(datasource_record.get("indexPattern") or ""),
         "datasourceType": describe_panel_datasource_type(
             panel,
             target,
@@ -398,9 +584,10 @@ def build_query_report_record(
         "queryField": query_field,
         "query": query_text,
         "metrics": analysis["metrics"],
+        "functions": analysis["functions"],
         "measurements": analysis["measurements"],
         "buckets": analysis["buckets"],
-        "file": str(dashboard_file),
+        "file": resolve_inspection_source_file_path(import_dir, dashboard_file),
     }
     record["datasourceFamily"] = _normalize_datasource_family_name(
         record["datasourceType"]
@@ -516,6 +703,8 @@ def build_grouped_export_inspection_report_document(
                 "dashboardUid": dashboard_key[2],
                 "dashboardTitle": dashboard_key[1],
                 "folderPath": dashboard_key[0],
+                "folderUid": str(record.get("folderUid") or ""),
+                "parentFolderUid": str(record.get("parentFolderUid") or ""),
                 "file": str(record.get("file") or ""),
                 "queryCount": 0,
                 "panels": OrderedDict(),
@@ -558,6 +747,8 @@ def build_grouped_export_inspection_report_document(
                 "dashboardUid": dashboard_entry["dashboardUid"],
                 "dashboardTitle": dashboard_entry["dashboardTitle"],
                 "folderPath": dashboard_entry["folderPath"],
+                "folderUid": dashboard_entry["folderUid"],
+                "parentFolderUid": dashboard_entry["parentFolderUid"],
                 "file": dashboard_entry["file"],
                 "panelCount": len(panels),
                 "queryCount": int(dashboard_entry.get("queryCount") or 0),

@@ -40,6 +40,7 @@ pub(crate) const DATASOURCE_FAMILY_UNKNOWN: &str = "unknown";
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct QueryAnalysis {
     pub(crate) metrics: Vec<String>,
+    pub(crate) functions: Vec<String>,
     pub(crate) measurements: Vec<String>,
     pub(crate) buckets: Vec<String>,
 }
@@ -58,16 +59,202 @@ struct QueryReportContext<'a> {
     dashboard_uid: &'a str,
     dashboard_title: &'a str,
     folder_path: &'a str,
-    dashboard_file: &'a Path,
+    folder_uid: &'a str,
+    parent_folder_uid: &'a str,
+    dashboard_file_display: &'a str,
     datasource_inventory: &'a [DatasourceInventoryItem],
 }
 
-fn resolve_export_folder_path(
+fn normalize_relative_dashboard_path(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+const INSPECT_SOURCE_ROOT_FILENAME: &str = ".inspect-source-root";
+
+fn normalize_index_entry_path(path: &str) -> String {
+    let normalized = path.replace('\\', "/");
+    if let Some((prefix, remainder)) = normalized.split_once('/') {
+        if prefix.starts_with("org_") {
+            if let Some((_raw_prefix, raw_remainder)) = remainder.rsplit_once("/raw/") {
+                return format!("{prefix}/{raw_remainder}");
+            }
+            return format!("{prefix}/{}", remainder.trim_start_matches('/'));
+        }
+    }
+    normalized
+        .rsplit_once("/raw/")
+        .map(|(_, remainder)| remainder.to_string())
+        .unwrap_or(normalized)
+}
+
+fn load_export_identity_values(
+    import_dir: &Path,
+    metadata: Option<&ExportMetadata>,
+    field_name: &str,
+) -> Result<std::collections::BTreeSet<String>> {
+    let mut values = std::collections::BTreeSet::new();
+    if let Some(metadata) = metadata {
+        let metadata_value = match field_name {
+            "org" => metadata.org.clone().unwrap_or_default(),
+            "orgId" => metadata.org_id.clone().unwrap_or_default(),
+            _ => String::new(),
+        };
+        if !metadata_value.trim().is_empty() {
+            values.insert(metadata_value.trim().to_string());
+        }
+    }
+    let index_file = metadata
+        .map(|item| item.index_file.clone())
+        .unwrap_or_else(|| "index.json".to_string());
+    let index_path = import_dir.join(&index_file);
+    if index_path.is_file() {
+        let raw = fs::read_to_string(&index_path)?;
+        let entries: Vec<VariantIndexEntry> = serde_json::from_str(&raw).map_err(|error| {
+            message(format!(
+                "Invalid dashboard export index in {}: {error}",
+                index_path.display()
+            ))
+        })?;
+        for entry in entries {
+            let value = match field_name {
+                "org" => entry.org.trim(),
+                "orgId" => entry.org_id.trim(),
+                _ => "",
+            };
+            if !value.is_empty() {
+                values.insert(value.to_string());
+            }
+        }
+    }
+    for folder in load_folder_inventory(import_dir, metadata)? {
+        let value = match field_name {
+            "org" => folder.org.trim(),
+            "orgId" => folder.org_id.trim(),
+            _ => "",
+        };
+        if !value.is_empty() {
+            values.insert(value.to_string());
+        }
+    }
+    for datasource in load_datasource_inventory(import_dir, metadata)? {
+        let value = match field_name {
+            "org" => datasource.org.trim(),
+            "orgId" => datasource.org_id.trim(),
+            _ => "",
+        };
+        if !value.is_empty() {
+            values.insert(value.to_string());
+        }
+    }
+    Ok(values)
+}
+
+fn resolve_export_identity_field(
+    import_dir: &Path,
+    metadata: Option<&ExportMetadata>,
+    field_name: &str,
+) -> Result<Option<String>> {
+    let values = load_export_identity_values(import_dir, metadata, field_name)?;
+    if values.is_empty() {
+        return Ok(None);
+    }
+    if values.len() > 1 {
+        return Ok(None);
+    }
+    Ok(values.into_iter().next())
+}
+
+fn load_variant_index_entries(
+    import_dir: &Path,
+    metadata: Option<&ExportMetadata>,
+) -> Result<Vec<VariantIndexEntry>> {
+    let index_file = metadata
+        .map(|item| item.index_file.clone())
+        .unwrap_or_else(|| "index.json".to_string());
+    let index_path = import_dir.join(&index_file);
+    if !index_path.is_file() {
+        return Ok(Vec::new());
+    }
+    let raw = fs::read_to_string(&index_path)?;
+    serde_json::from_str(&raw).map_err(|error| {
+        message(format!(
+            "Invalid dashboard export index in {}: {error}",
+            index_path.display()
+        ))
+    })
+}
+
+fn load_dashboard_org_scope_by_file(
+    import_dir: &Path,
+    metadata: Option<&ExportMetadata>,
+) -> Result<std::collections::BTreeMap<String, (String, String)>> {
+    let mut scope_by_file = std::collections::BTreeMap::new();
+    for entry in load_variant_index_entries(import_dir, metadata)? {
+        scope_by_file.insert(
+            normalize_index_entry_path(&entry.path),
+            (entry.org, entry.org_id),
+        );
+    }
+    Ok(scope_by_file)
+}
+
+fn load_inspect_source_root(import_dir: &Path) -> Option<PathBuf> {
+    let source_root_path = import_dir.join(INSPECT_SOURCE_ROOT_FILENAME);
+    let raw = fs::read_to_string(source_root_path).ok()?;
+    let text = raw.trim();
+    if text.is_empty() {
+        None
+    } else {
+        Some(PathBuf::from(text))
+    }
+}
+
+fn resolve_dashboard_source_file_path(
+    import_dir: &Path,
+    dashboard_file: &Path,
+    source_root: Option<&Path>,
+) -> String {
+    let Some(source_root) = source_root else {
+        return dashboard_file.display().to_string();
+    };
+    let Ok(relative_path) = dashboard_file.strip_prefix(import_dir) else {
+        return dashboard_file.display().to_string();
+    };
+    let mut parts = relative_path.components();
+    let Some(first) = parts.next() else {
+        return dashboard_file.display().to_string();
+    };
+    let first = first.as_os_str();
+    if first.to_string_lossy().starts_with("org_") {
+        return source_root
+            .join(first)
+            .join(RAW_EXPORT_SUBDIR)
+            .join(parts.as_path())
+            .display()
+            .to_string();
+    }
+    source_root.join(relative_path).display().to_string()
+}
+
+fn normalize_merged_dashboard_folder_path(path: &Path) -> String {
+    let normalized = path.to_string_lossy().replace('\\', "/");
+    let mut parts = normalized.split('/').collect::<Vec<&str>>();
+    if parts.len() >= 2 && parts[0].starts_with("org_") {
+        parts.drain(0..1);
+        return parts.join("/");
+    }
+    normalized
+        .rsplit_once("/raw/")
+        .map(|(_, remainder)| remainder.to_string())
+        .unwrap_or(normalized)
+}
+
+fn resolve_export_folder_inventory_item(
     document: &Map<String, Value>,
     dashboard_file: &Path,
     import_dir: &Path,
     folders_by_uid: &std::collections::BTreeMap<String, FolderInventoryItem>,
-) -> String {
+) -> Option<FolderInventoryItem> {
     let folder_uid = object_field(document, "meta")
         .and_then(|meta| meta.get("folderUid"))
         .and_then(Value::as_str)
@@ -76,7 +263,17 @@ fn resolve_export_folder_path(
         .to_string();
     if !folder_uid.is_empty() {
         if let Some(folder) = folders_by_uid.get(&folder_uid) {
-            return folder.path.clone();
+            return Some(folder.clone());
+        }
+        if folder_uid == DEFAULT_FOLDER_UID {
+            return Some(FolderInventoryItem {
+                uid: DEFAULT_FOLDER_UID.to_string(),
+                title: DEFAULT_FOLDER_TITLE.to_string(),
+                path: DEFAULT_FOLDER_TITLE.to_string(),
+                parent_uid: None,
+                org: String::new(),
+                org_id: String::new(),
+            });
         }
     }
     let relative_parent = dashboard_file
@@ -84,16 +281,48 @@ fn resolve_export_folder_path(
         .ok()
         .and_then(|path| path.parent())
         .unwrap_or_else(|| Path::new(""));
-    let folder_name = relative_parent.display().to_string();
+    let folder_name = normalize_merged_dashboard_folder_path(relative_parent);
     if !folder_name.is_empty() && folder_name != "." && folder_name != DEFAULT_FOLDER_TITLE {
         let matches = folders_by_uid
             .values()
             .filter(|item| item.title == folder_name)
             .collect::<Vec<&FolderInventoryItem>>();
         if matches.len() == 1 {
-            return matches[0].path.clone();
+            return Some((*matches[0]).clone());
         }
     }
+    if folder_name.is_empty() || folder_name == "." || folder_name == DEFAULT_FOLDER_TITLE {
+        return Some(FolderInventoryItem {
+            uid: DEFAULT_FOLDER_UID.to_string(),
+            title: DEFAULT_FOLDER_TITLE.to_string(),
+            path: DEFAULT_FOLDER_TITLE.to_string(),
+            parent_uid: None,
+            org: String::new(),
+            org_id: String::new(),
+        });
+    }
+    None
+}
+
+fn resolve_export_folder_path(
+    document: &Map<String, Value>,
+    dashboard_file: &Path,
+    import_dir: &Path,
+    folders_by_uid: &std::collections::BTreeMap<String, FolderInventoryItem>,
+) -> String {
+    if let Some(folder) =
+        resolve_export_folder_inventory_item(document, dashboard_file, import_dir, folders_by_uid)
+    {
+        if !folder.path.trim().is_empty() {
+            return folder.path;
+        }
+    }
+    let relative_parent = dashboard_file
+        .strip_prefix(import_dir)
+        .ok()
+        .and_then(|path| path.parent())
+        .unwrap_or_else(|| Path::new(""));
+    let folder_name = normalize_merged_dashboard_folder_path(relative_parent);
     if folder_name.is_empty() || folder_name == "." || folder_name == DEFAULT_FOLDER_TITLE {
         DEFAULT_FOLDER_TITLE.to_string()
     } else {
@@ -183,6 +412,57 @@ fn summarize_datasource_uid(reference: &Value) -> Option<String> {
     }
 }
 
+fn summarize_datasource_name(
+    reference: &Value,
+    datasource_inventory: &[DatasourceInventoryItem],
+) -> Option<String> {
+    if reference.is_null() || is_builtin_datasource_ref(reference) {
+        return None;
+    }
+    match reference {
+        Value::String(text) => {
+            if is_placeholder_string(text) {
+                None
+            } else {
+                let normalized = text.trim();
+                datasource_inventory
+                    .iter()
+                    .find(|datasource| datasource.uid == normalized || datasource.name == normalized)
+                    .map(|datasource| datasource.name.clone())
+                    .or_else(|| Some(text.to_string()))
+            }
+        }
+        Value::Object(object) => {
+            let uid = object
+                .get("uid")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty() && !is_placeholder_string(value));
+            let name = object
+                .get("name")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty() && !is_placeholder_string(value));
+            if let Some(datasource) = datasource_inventory.iter().find(|datasource| {
+                uid.map(|value| datasource.uid == value).unwrap_or(false)
+                    || name.map(|value| datasource.name == value).unwrap_or(false)
+            }) {
+                if !datasource.name.is_empty() {
+                    return Some(datasource.name.clone());
+                }
+            }
+            if let Some(uid) = uid {
+                return Some(uid.to_string());
+            }
+            if let Some(name) = name {
+                return Some(name.to_string());
+            }
+            None
+        }
+        _ => None,
+    }
+}
+
 fn summarize_datasource_type(
     reference: &Value,
     datasource_inventory: &[DatasourceInventoryItem],
@@ -228,6 +508,43 @@ fn summarize_datasource_type(
                 .map(str::trim)
                 .filter(|value| !value.is_empty() && !is_placeholder_string(value))
                 .map(|value| datasource_type_alias(value).to_string())
+        }
+        _ => None,
+    }
+}
+
+fn resolve_datasource_inventory_item<'a>(
+    reference: &Value,
+    datasource_inventory: &'a [DatasourceInventoryItem],
+) -> Option<&'a DatasourceInventoryItem> {
+    if reference.is_null() || is_builtin_datasource_ref(reference) {
+        return None;
+    }
+    match reference {
+        Value::String(text) => {
+            let normalized = text.trim();
+            if normalized.is_empty() || is_placeholder_string(normalized) {
+                return None;
+            }
+            datasource_inventory
+                .iter()
+                .find(|datasource| datasource.uid == normalized || datasource.name == normalized)
+        }
+        Value::Object(object) => {
+            let uid = object
+                .get("uid")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty() && !is_placeholder_string(value));
+            let name = object
+                .get("name")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty() && !is_placeholder_string(value));
+            datasource_inventory.iter().find(|datasource| {
+                uid.map(|value| datasource.uid == value).unwrap_or(false)
+                    || name.map(|value| datasource.name == value).unwrap_or(false)
+            })
         }
         _ => None,
     }
@@ -331,6 +648,7 @@ pub(crate) fn dispatch_query_analysis(context: &QueryExtractionContext<'_>) -> Q
         ),
         _ => QueryAnalysis {
             metrics: extract_metric_names(context.query_text),
+            functions: Vec::new(),
             measurements: extract_query_measurements(context.target, context.query_text),
             buckets: extract_query_buckets(context.target, context.query_text),
         },
@@ -366,7 +684,7 @@ fn quoted_captures(text: &str, pattern: &str) -> Vec<String> {
     values.into_iter().collect()
 }
 
-fn ordered_unique_push(values: &mut Vec<String>, candidate: &str) {
+pub(crate) fn ordered_unique_push(values: &mut Vec<String>, candidate: &str) {
     let trimmed = candidate.trim();
     if trimmed.is_empty() {
         return;
@@ -601,20 +919,103 @@ pub(crate) fn extract_query_measurements(
 
 /// extract query buckets.
 pub(crate) fn extract_query_buckets(target: &Map<String, Value>, query_text: &str) -> Vec<String> {
-    let mut values = std::collections::BTreeSet::new();
+    let mut values = Vec::new();
     if let Some(bucket) = target.get("bucket").and_then(Value::as_str) {
         let trimmed = bucket.trim();
         if !trimmed.is_empty() {
-            values.insert(trimmed.to_string());
+            ordered_unique_push(&mut values, trimmed);
         }
     }
     for value in string_list_field(target, "buckets") {
-        values.insert(value);
+        ordered_unique_push(&mut values, &value);
     }
     for value in quoted_captures(query_text, r#"from\s*\(\s*bucket\s*:\s*"([^"]+)""#) {
-        values.insert(value);
+        ordered_unique_push(&mut values, &value);
     }
-    values.into_iter().collect()
+    for value in extract_influxql_time_windows(query_text) {
+        ordered_unique_push(&mut values, &value);
+    }
+    values
+}
+
+/// extract Prometheus-style range windows used in query functions.
+pub(crate) fn extract_prometheus_range_windows(query_text: &str) -> Vec<String> {
+    let mut values = Vec::new();
+    for value in quoted_captures(query_text, r#"\[([^\[\]]+)\]"#) {
+        ordered_unique_push(&mut values, &value);
+    }
+    values
+}
+
+/// extract InfluxQL GROUP BY time windows used for dashboard aggregation.
+pub(crate) fn extract_influxql_time_windows(query_text: &str) -> Vec<String> {
+    let mut values = Vec::new();
+    if !query_text.to_ascii_lowercase().contains("group by") {
+        return values;
+    }
+    for value in quoted_captures(query_text, r#"(?i)\btime\s*\(\s*([^)]+?)\s*\)"#) {
+        ordered_unique_push(&mut values, &value);
+    }
+    values
+}
+
+fn extract_influxql_select_clause(query_text: &str) -> Option<String> {
+    let query_text = strip_sql_comments(query_text);
+    let regex = Regex::new(r#"(?is)^\s*select\s+(.*?)\s+\bfrom\b"#)
+        .expect("invalid hard-coded influxql select regex");
+    regex
+        .captures(&query_text)
+        .and_then(|captures| captures.get(1))
+        .map(|value| value.as_str().trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
+/// extract InfluxQL field references from the SELECT clause.
+pub(crate) fn extract_influxql_select_metrics(query_text: &str) -> Vec<String> {
+    let Some(select_clause) = extract_influxql_select_clause(query_text) else {
+        return Vec::new();
+    };
+    let select_clause = Regex::new(r#"(?i)\bas\s+"[^"]+""#)
+        .expect("invalid hard-coded influxql alias regex")
+        .replace_all(&select_clause, "")
+        .into_owned();
+    let mut values = Vec::new();
+    for value in quoted_captures(&select_clause, r#""([^"]+)""#) {
+        ordered_unique_push(&mut values, &value);
+    }
+    values
+}
+
+/// extract InfluxQL functions from the SELECT clause.
+pub(crate) fn extract_influxql_select_functions(query_text: &str) -> Vec<String> {
+    let Some(select_clause) = extract_influxql_select_clause(query_text) else {
+        return Vec::new();
+    };
+    let mut values = Vec::new();
+    for value in quoted_captures(&select_clause, r#"\b([A-Za-z_][A-Za-z0-9_]*)\s*\("#) {
+        ordered_unique_push(&mut values, &value);
+    }
+    values
+}
+
+/// extract Prometheus function and aggregation names.
+pub(crate) fn extract_prometheus_functions(query_text: &str) -> Vec<String> {
+    let regex = Regex::new(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+        .expect("invalid hard-coded promql function regex");
+    let mut values = Vec::new();
+    for captures in regex.captures_iter(query_text) {
+        if let Some(value) = captures.get(1) {
+            let name = value.as_str();
+            if matches!(
+                name,
+                "by" | "without" | "on" | "ignoring" | "group_left" | "group_right"
+            ) {
+                continue;
+            }
+            ordered_unique_push(&mut values, name);
+        }
+    }
+    values
 }
 
 /// extract flux pipeline functions.
@@ -756,6 +1157,17 @@ fn collect_query_report_rows(
                     .and_then(summarize_datasource_ref)
                     .or_else(|| panel_datasource.and_then(summarize_datasource_ref))
                     .unwrap_or_default();
+                let datasource_name = target_object
+                    .get("datasource")
+                    .and_then(|value| {
+                        summarize_datasource_name(value, context.datasource_inventory)
+                    })
+                    .or_else(|| {
+                        panel_datasource.and_then(|value| {
+                            summarize_datasource_name(value, context.datasource_inventory)
+                        })
+                    })
+                    .unwrap_or_default();
                 let datasource_uid = target_object
                     .get("datasource")
                     .and_then(summarize_datasource_uid)
@@ -772,6 +1184,16 @@ fn collect_query_report_rows(
                         })
                     })
                     .unwrap_or_default();
+                let datasource_inventory_item = target_object
+                    .get("datasource")
+                    .and_then(|value| {
+                        resolve_datasource_inventory_item(value, context.datasource_inventory)
+                    })
+                    .or_else(|| {
+                        panel_datasource.and_then(|value| {
+                            resolve_datasource_inventory_item(value, context.datasource_inventory)
+                        })
+                    });
                 let (query_field, query_text) = extract_query_field_and_text(target_object);
                 let analysis = dispatch_query_analysis(&QueryExtractionContext {
                     panel: panel_object,
@@ -785,20 +1207,42 @@ fn collect_query_report_rows(
                     dashboard_uid: context.dashboard_uid.to_string(),
                     dashboard_title: context.dashboard_title.to_string(),
                     folder_path: context.folder_path.to_string(),
+                    folder_uid: context.folder_uid.to_string(),
+                    parent_folder_uid: context.parent_folder_uid.to_string(),
                     panel_id: panel_id.clone(),
                     panel_title: panel_title.clone(),
                     panel_type: panel_type.clone(),
                     ref_id: string_field(target_object, "refId", ""),
                     datasource,
+                    datasource_name,
                     datasource_uid,
+                    datasource_org: datasource_inventory_item
+                        .map(|item| item.org.clone())
+                        .unwrap_or_default(),
+                    datasource_org_id: datasource_inventory_item
+                        .map(|item| item.org_id.clone())
+                        .unwrap_or_default(),
+                    datasource_database: datasource_inventory_item
+                        .map(|item| item.database.clone())
+                        .unwrap_or_default(),
+                    datasource_bucket: datasource_inventory_item
+                        .map(|item| item.default_bucket.clone())
+                        .unwrap_or_default(),
+                    datasource_organization: datasource_inventory_item
+                        .map(|item| item.organization.clone())
+                        .unwrap_or_default(),
+                    datasource_index_pattern: datasource_inventory_item
+                        .map(|item| item.index_pattern.clone())
+                        .unwrap_or_default(),
                     datasource_family: normalize_family_name(&datasource_type),
                     datasource_type,
                     query_field,
                     query_text,
                     metrics: analysis.metrics,
+                    functions: analysis.functions,
                     measurements: analysis.measurements,
                     buckets: analysis.buckets,
-                    file_path: context.dashboard_file.display().to_string(),
+                    file_path: context.dashboard_file_display.to_string(),
                 });
             }
         }
@@ -814,6 +1258,8 @@ pub(crate) fn build_export_inspection_query_report(
 ) -> Result<ExportInspectionQueryReport> {
     let summary = build_export_inspection_summary(import_dir)?;
     let metadata = load_export_metadata(import_dir, Some(RAW_EXPORT_SUBDIR))?;
+    let dashboard_org_scope = load_dashboard_org_scope_by_file(import_dir, metadata.as_ref())?;
+    let source_root = load_inspect_source_root(import_dir);
     let dashboard_files = discover_dashboard_files(import_dir)?;
     let datasource_inventory = load_datasource_inventory(import_dir, metadata.as_ref())?;
     let folder_inventory = load_folder_inventory(import_dir, metadata.as_ref())?;
@@ -838,13 +1284,52 @@ pub(crate) fn build_export_inspection_query_report(
         );
         let dashboard_uid = string_field(dashboard, "uid", DEFAULT_UNKNOWN_UID);
         let dashboard_title = string_field(dashboard, "title", DEFAULT_DASHBOARD_TITLE);
+        let relative_dashboard_path = dashboard_file
+            .strip_prefix(import_dir)
+            .map(normalize_relative_dashboard_path)
+            .unwrap_or_else(|_| normalize_relative_dashboard_path(dashboard_file));
+        let (dashboard_org, dashboard_org_id) = dashboard_org_scope
+            .get(&relative_dashboard_path)
+            .cloned()
+            .unwrap_or_else(|| (export_org.clone(), export_org_id.clone()));
+        let mut folder_record = resolve_export_folder_inventory_item(
+            document_object,
+            dashboard_file,
+            import_dir,
+            &folders_by_uid,
+        );
+        if folder_record.as_ref().map(|item| item.uid.is_empty()).unwrap_or(true) {
+            let scoped_matches = folders_by_uid
+                .values()
+                .filter(|item| {
+                    item.path == folder_path
+                        && ((!dashboard_org_id.is_empty() && item.org_id == dashboard_org_id)
+                            || (!dashboard_org.is_empty() && item.org == dashboard_org))
+                })
+                .collect::<Vec<&FolderInventoryItem>>();
+            if scoped_matches.len() == 1 {
+                folder_record = Some((*scoped_matches[0]).clone());
+            }
+        }
+        let folder_uid = folder_record
+            .as_ref()
+            .map(|item| item.uid.trim().to_string())
+            .unwrap_or_default();
+        let parent_folder_uid = folder_record
+            .as_ref()
+            .and_then(|item| item.parent_uid.clone())
+            .unwrap_or_default();
+        let dashboard_file_display =
+            resolve_dashboard_source_file_path(import_dir, dashboard_file, source_root.as_deref());
         let context = QueryReportContext {
-            export_org: &export_org,
-            export_org_id: &export_org_id,
+            export_org: &dashboard_org,
+            export_org_id: &dashboard_org_id,
             dashboard_uid: &dashboard_uid,
             dashboard_title: &dashboard_title,
             folder_path: &folder_path,
-            dashboard_file,
+            folder_uid: &folder_uid,
+            parent_folder_uid: &parent_folder_uid,
+            dashboard_file_display: &dashboard_file_display,
             datasource_inventory: &datasource_inventory,
         };
         if let Some(panels) = dashboard.get("panels").and_then(Value::as_array) {
@@ -853,7 +1338,11 @@ pub(crate) fn build_export_inspection_query_report(
     }
 
     Ok(build_query_report(
-        summary.import_dir.clone(),
+        source_root
+            .as_ref()
+            .map_or(import_dir, |value| value.as_path())
+            .display()
+            .to_string(),
         summary.dashboard_count,
         summary.panel_count,
         summary.query_count,
@@ -979,8 +1468,10 @@ pub(crate) fn build_export_inspection_summary(
     import_dir: &Path,
 ) -> Result<ExportInspectionSummary> {
     let metadata = load_export_metadata(import_dir, Some(RAW_EXPORT_SUBDIR))?;
-    let export_org = metadata.as_ref().and_then(|item| item.org.clone());
-    let export_org_id = metadata.as_ref().and_then(|item| item.org_id.clone());
+    let source_root = load_inspect_source_root(import_dir);
+    let export_org = resolve_export_identity_field(import_dir, metadata.as_ref(), "org")?;
+    let export_org_id =
+        resolve_export_identity_field(import_dir, metadata.as_ref(), "orgId")?;
     let dashboard_files = discover_dashboard_files(import_dir)?;
     let folder_inventory = load_folder_inventory(import_dir, metadata.as_ref())?;
     let datasource_inventory = load_datasource_inventory(import_dir, metadata.as_ref())?;
@@ -1119,7 +1610,11 @@ pub(crate) fn build_export_inspection_summary(
     });
 
     Ok(ExportInspectionSummary {
-        import_dir: import_dir.display().to_string(),
+        import_dir: source_root
+            .as_ref()
+            .map_or(import_dir, |value| value.as_path())
+            .display()
+            .to_string(),
         export_org,
         export_org_id,
         dashboard_count: dashboard_files.len(),
@@ -1172,19 +1667,17 @@ pub(crate) fn build_export_inspection_summary_rows(
     rows
 }
 
-/// analyze export dir.
-pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
-    validate_inspect_export_report_args(args)?;
+fn analyze_export_dir_at_path(args: &InspectExportArgs, import_dir: &Path) -> Result<usize> {
     if let Some(report_format) = effective_inspect_report_format(args) {
         let report = apply_query_report_filters(
-            build_export_inspection_query_report(&args.import_dir)?,
+            build_export_inspection_query_report(import_dir)?,
             args.report_filter_datasource.as_deref(),
             args.report_filter_panel_id.as_deref(),
         );
         if report_format == InspectExportReportFormat::Governance
             || report_format == InspectExportReportFormat::GovernanceJson
         {
-            let summary = build_export_inspection_summary(&args.import_dir)?;
+            let summary = build_export_inspection_summary(import_dir)?;
             let governance = build_export_inspection_governance_document(&summary, &report);
             if report_format == InspectExportReportFormat::GovernanceJson {
                 println!("{}", serde_json::to_string_pretty(&governance)?);
@@ -1203,9 +1696,8 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
         if report_format == InspectExportReportFormat::Dependency
             || report_format == InspectExportReportFormat::DependencyJson
         {
-            let metadata = load_export_metadata(&args.import_dir, Some(RAW_EXPORT_SUBDIR))?;
-            let datasource_inventory =
-                load_datasource_inventory(&args.import_dir, metadata.as_ref())?;
+            let metadata = load_export_metadata(import_dir, Some(RAW_EXPORT_SUBDIR))?;
+            let datasource_inventory = load_datasource_inventory(import_dir, metadata.as_ref())?;
             let report_document = build_export_inspection_query_report_document(&report);
             let query_rows = report_document
                 .queries
@@ -1265,7 +1757,7 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
         return Ok(report.summary.dashboard_count);
     }
 
-    let summary = build_export_inspection_summary(&args.import_dir)?;
+    let summary = build_export_inspection_summary(import_dir)?;
     if effective_inspect_json(args) {
         let document = build_export_inspection_summary_document(&summary);
         println!("{}", serde_json::to_string_pretty(&document)?);
@@ -1441,26 +1933,31 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
     Ok(summary.dashboard_count)
 }
 
-struct TempInspectLiveDir {
+/// analyze export dir.
+pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
+    validate_inspect_export_report_args(args)?;
+    let temp_dir = TempInspectDir::new("inspect-export")?;
+    let import_dir = prepare_inspect_export_import_dir(&temp_dir.path, &args.import_dir)?;
+    analyze_export_dir_at_path(args, &import_dir)
+}
+
+struct TempInspectDir {
     path: PathBuf,
 }
 
-impl TempInspectLiveDir {
-    fn new() -> Result<Self> {
+impl TempInspectDir {
+    fn new(prefix: &str) -> Result<Self> {
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map_err(|error| message(format!("Failed to build inspect-live temp path: {error}")))?
+            .map_err(|error| message(format!("Failed to build {prefix} temp path: {error}")))?
             .as_nanos();
-        let path = env::temp_dir().join(format!(
-            "grafana-utils-inspect-live-{}-{timestamp}",
-            process::id()
-        ));
+        let path = env::temp_dir().join(format!("grafana-utils-{prefix}-{}-{timestamp}", process::id()));
         fs::create_dir_all(&path)?;
         Ok(Self { path })
     }
 }
 
-impl Drop for TempInspectLiveDir {
+impl Drop for TempInspectDir {
     fn drop(&mut self) {
         let _ = fs::remove_dir_all(&self.path);
     }
@@ -1523,6 +2020,122 @@ fn load_json_array_file(path: &Path, error_context: &str) -> Result<Vec<Value>> 
     }
 }
 
+fn discover_org_raw_export_dirs(import_dir: &Path) -> Result<Vec<(String, PathBuf)>> {
+    if !import_dir.exists() {
+        return Err(message(format!(
+            "Import directory does not exist: {}",
+            import_dir.display()
+        )));
+    }
+    if !import_dir.is_dir() {
+        return Err(message(format!(
+            "Import path is not a directory: {}",
+            import_dir.display()
+        )));
+    }
+    let mut org_raw_dirs = Vec::new();
+    for entry in fs::read_dir(import_dir)? {
+        let entry = entry?;
+        let org_root = entry.path();
+        if !org_root.is_dir() {
+            continue;
+        }
+        let org_name = entry.file_name().to_string_lossy().to_string();
+        if !org_name.starts_with("org_") {
+            continue;
+        }
+        let org_raw_dir = org_root.join(RAW_EXPORT_SUBDIR);
+        if org_raw_dir.is_dir() {
+            org_raw_dirs.push((org_name, org_raw_dir));
+        }
+    }
+    org_raw_dirs.sort_by(|left, right| left.0.cmp(&right.0));
+    if org_raw_dirs.is_empty() {
+        return Err(message(format!(
+            "Import path {} does not contain any org-scoped {}/ exports. Point --import-dir at a combined multi-org export root created with --all-orgs.",
+            import_dir.display(),
+            RAW_EXPORT_SUBDIR
+        )));
+    }
+    Ok(org_raw_dirs)
+}
+
+fn merge_org_raw_exports_into_dir(
+    org_raw_dirs: &[(String, PathBuf)],
+    inspect_raw_dir: &Path,
+    source_root: Option<&Path>,
+) -> Result<()> {
+    fs::create_dir_all(inspect_raw_dir)?;
+
+    let mut folder_inventory = Vec::new();
+    let mut datasource_inventory = Vec::new();
+    let mut index_entries = Vec::new();
+    let mut dashboard_count = 0usize;
+
+    for (org_name, org_raw_dir) in org_raw_dirs {
+        let relative_target = inspect_raw_dir.join(org_name);
+        copy_dir_recursive(org_raw_dir, &relative_target)?;
+
+        let metadata = load_export_metadata(org_raw_dir, Some(RAW_EXPORT_SUBDIR))?;
+        let org_index_entries = load_variant_index_entries(org_raw_dir, metadata.as_ref())?;
+        for mut entry in org_index_entries.clone() {
+            entry.path = format!("{org_name}/{}", entry.path);
+            index_entries.push(entry);
+        }
+
+        let folder_path = org_raw_dir.join(FOLDER_INVENTORY_FILENAME);
+        if folder_path.is_file() {
+            folder_inventory.extend(load_json_array_file(
+                &folder_path,
+                "Dashboard folder inventory",
+            )?);
+        }
+        let datasource_path = org_raw_dir.join(DATASOURCE_INVENTORY_FILENAME);
+        if datasource_path.is_file() {
+            datasource_inventory.extend(load_json_array_file(
+                &datasource_path,
+                "Dashboard datasource inventory",
+            )?);
+        }
+
+        dashboard_count += metadata
+            .as_ref()
+            .map(|item| item.dashboard_count as usize)
+            .unwrap_or(org_index_entries.len());
+    }
+
+    write_json_document(
+        &build_export_metadata(
+            RAW_EXPORT_SUBDIR,
+            dashboard_count,
+            Some("grafana-web-import-preserve-uid"),
+            Some(FOLDER_INVENTORY_FILENAME),
+            Some(DATASOURCE_INVENTORY_FILENAME),
+            None,
+            None,
+            None,
+            None,
+        ),
+        &inspect_raw_dir.join(EXPORT_METADATA_FILENAME),
+    )?;
+    write_json_document(&index_entries, &inspect_raw_dir.join("index.json"))?;
+    write_json_document(
+        &folder_inventory,
+        &inspect_raw_dir.join(FOLDER_INVENTORY_FILENAME),
+    )?;
+    write_json_document(
+        &datasource_inventory,
+        &inspect_raw_dir.join(DATASOURCE_INVENTORY_FILENAME),
+    )?;
+    if let Some(source_root) = source_root {
+        fs::write(
+            inspect_raw_dir.join(INSPECT_SOURCE_ROOT_FILENAME),
+            source_root.display().to_string(),
+        )?;
+    }
+    Ok(())
+}
+
 fn copy_dir_recursive(source: &Path, destination: &Path) -> Result<()> {
     fs::create_dir_all(destination)?;
     for entry in fs::read_dir(source)? {
@@ -1555,70 +2168,29 @@ fn prepare_inspect_live_import_dir(temp_root: &Path, args: &InspectLiveArgs) -> 
     let inspect_raw_dir = temp_root
         .join("inspect-live-all-orgs")
         .join(RAW_EXPORT_SUBDIR);
-    fs::create_dir_all(&inspect_raw_dir)?;
-
-    let mut folder_inventory = Vec::new();
-    let mut datasource_inventory = Vec::new();
-    let mut dashboard_count = 0usize;
-
-    for entry in fs::read_dir(temp_root)? {
-        let entry = entry?;
-        let org_root = entry.path();
-        if !org_root.is_dir() {
-            continue;
-        }
-        let org_name = entry.file_name();
-        let org_name = org_name.to_string_lossy();
-        if !org_name.starts_with("org_") {
-            continue;
-        }
-
-        let org_raw_dir = org_root.join(RAW_EXPORT_SUBDIR);
-        if !org_raw_dir.is_dir() {
-            continue;
-        }
-
-        let relative_target = inspect_raw_dir.join(org_name.as_ref());
-        copy_dir_recursive(&org_raw_dir, &relative_target)?;
-
-        folder_inventory.extend(load_json_array_file(
-            &org_raw_dir.join(FOLDER_INVENTORY_FILENAME),
-            "Dashboard folder inventory",
-        )?);
-        datasource_inventory.extend(load_json_array_file(
-            &org_raw_dir.join(DATASOURCE_INVENTORY_FILENAME),
-            "Dashboard datasource inventory",
-        )?);
-
-        if let Some(metadata) = load_export_metadata(&org_raw_dir, Some(RAW_EXPORT_SUBDIR))? {
-            dashboard_count += metadata.dashboard_count as usize;
-        }
-    }
-
-    write_json_document(
-        &build_export_metadata(
-            RAW_EXPORT_SUBDIR,
-            dashboard_count,
-            Some("grafana-web-import-preserve-uid"),
-            Some(FOLDER_INVENTORY_FILENAME),
-            Some(DATASOURCE_INVENTORY_FILENAME),
-            None,
-            None,
-            None,
-            None,
-        ),
-        &inspect_raw_dir.join(EXPORT_METADATA_FILENAME),
-    )?;
-    write_json_document(
-        &folder_inventory,
-        &inspect_raw_dir.join(FOLDER_INVENTORY_FILENAME),
-    )?;
-    write_json_document(
-        &datasource_inventory,
-        &inspect_raw_dir.join(DATASOURCE_INVENTORY_FILENAME),
-    )?;
-
+    let org_raw_dirs = discover_org_raw_export_dirs(temp_root)?;
+    merge_org_raw_exports_into_dir(&org_raw_dirs, &inspect_raw_dir, None)?;
     Ok(inspect_raw_dir)
+}
+
+pub(crate) fn prepare_inspect_export_import_dir(
+    temp_root: &Path,
+    import_dir: &Path,
+) -> Result<PathBuf> {
+    let metadata = load_export_metadata(import_dir, None)?;
+    if metadata
+        .as_ref()
+        .map(|item| item.variant.as_str() == "root")
+        .unwrap_or(false)
+    {
+        let inspect_raw_dir = temp_root
+            .join("inspect-export-all-orgs")
+            .join(RAW_EXPORT_SUBDIR);
+        let org_raw_dirs = discover_org_raw_export_dirs(import_dir)?;
+        merge_org_raw_exports_into_dir(&org_raw_dirs, &inspect_raw_dir, Some(import_dir))?;
+        return Ok(inspect_raw_dir);
+    }
+    Ok(import_dir.to_path_buf())
 }
 
 /// inspect live dashboards with request.
@@ -1629,7 +2201,7 @@ pub(crate) fn inspect_live_dashboards_with_request<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    let temp_dir = TempInspectLiveDir::new()?;
+    let temp_dir = TempInspectDir::new("inspect-live")?;
     let export_args = build_live_export_args(args, temp_dir.path.clone());
     let _ = export::export_dashboards_with_request(&mut request_json, &export_args)?;
     let inspect_import_dir = prepare_inspect_live_import_dir(&temp_dir.path, args)?;

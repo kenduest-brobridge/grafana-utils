@@ -31,6 +31,10 @@ pub(crate) struct ExportInspectionQueryRow {
     pub(crate) dashboard_title: String,
     #[serde(rename = "folderPath")]
     pub(crate) folder_path: String,
+    #[serde(rename = "folderUid")]
+    pub(crate) folder_uid: String,
+    #[serde(rename = "parentFolderUid")]
+    pub(crate) parent_folder_uid: String,
     #[serde(rename = "panelId")]
     pub(crate) panel_id: String,
     #[serde(rename = "panelTitle")]
@@ -40,8 +44,22 @@ pub(crate) struct ExportInspectionQueryRow {
     #[serde(rename = "refId")]
     pub(crate) ref_id: String,
     pub(crate) datasource: String,
+    #[serde(rename = "datasourceName")]
+    pub(crate) datasource_name: String,
     #[serde(rename = "datasourceUid")]
     pub(crate) datasource_uid: String,
+    #[serde(rename = "datasourceOrg")]
+    pub(crate) datasource_org: String,
+    #[serde(rename = "datasourceOrgId")]
+    pub(crate) datasource_org_id: String,
+    #[serde(rename = "datasourceDatabase")]
+    pub(crate) datasource_database: String,
+    #[serde(rename = "datasourceBucket")]
+    pub(crate) datasource_bucket: String,
+    #[serde(rename = "datasourceOrganization")]
+    pub(crate) datasource_organization: String,
+    #[serde(rename = "datasourceIndexPattern")]
+    pub(crate) datasource_index_pattern: String,
     #[serde(rename = "datasourceType")]
     pub(crate) datasource_type: String,
     #[serde(rename = "datasourceFamily")]
@@ -51,6 +69,7 @@ pub(crate) struct ExportInspectionQueryRow {
     #[serde(rename = "query")]
     pub(crate) query_text: String,
     pub(crate) metrics: Vec<String>,
+    pub(crate) functions: Vec<String>,
     pub(crate) measurements: Vec<String>,
     pub(crate) buckets: Vec<String>,
     #[serde(rename = "file")]
@@ -101,6 +120,8 @@ pub(crate) struct GroupedQueryDashboard {
     pub(crate) dashboard_uid: String,
     pub(crate) dashboard_title: String,
     pub(crate) folder_path: String,
+    pub(crate) folder_uid: String,
+    pub(crate) parent_folder_uid: String,
     pub(crate) file_path: String,
     pub(crate) datasources: Vec<String>,
     pub(crate) datasource_families: Vec<String>,
@@ -122,15 +143,25 @@ pub(crate) const DEFAULT_REPORT_COLUMN_IDS: &[&str] = &[
     "dashboard_uid",
     "dashboard_title",
     "folder_path",
+    "folder_uid",
+    "parent_folder_uid",
     "panel_id",
     "panel_title",
     "panel_type",
     "ref_id",
     "datasource",
+    "datasource_name",
+    "datasource_org",
+    "datasource_org_id",
+    "datasource_database",
+    "datasource_bucket",
+    "datasource_organization",
+    "datasource_index_pattern",
     "datasource_type",
     "datasource_family",
     "query_field",
     "metrics",
+    "functions",
     "measurements",
     "buckets",
     "query",
@@ -144,16 +175,26 @@ pub(crate) const SUPPORTED_REPORT_COLUMN_IDS: &[&str] = &[
     "dashboard_uid",
     "dashboard_title",
     "folder_path",
+    "folder_uid",
+    "parent_folder_uid",
     "panel_id",
     "panel_title",
     "panel_type",
     "ref_id",
     "datasource",
+    "datasource_name",
     "datasource_uid",
+    "datasource_org",
+    "datasource_org_id",
+    "datasource_database",
+    "datasource_bucket",
+    "datasource_organization",
+    "datasource_index_pattern",
     "datasource_type",
     "datasource_family",
     "query_field",
     "metrics",
+    "functions",
     "measurements",
     "buckets",
     "query",
@@ -166,14 +207,24 @@ fn normalize_report_column_id(value: &str) -> &str {
         "dashboardUid" => "dashboard_uid",
         "dashboardTitle" => "dashboard_title",
         "folderPath" => "folder_path",
+        "folderUid" => "folder_uid",
+        "parentFolderUid" => "parent_folder_uid",
         "panelId" => "panel_id",
         "panelTitle" => "panel_title",
         "panelType" => "panel_type",
         "refId" => "ref_id",
+        "datasourceName" => "datasource_name",
         "datasourceUid" => "datasource_uid",
+        "datasourceOrg" => "datasource_org",
+        "datasourceOrgId" => "datasource_org_id",
+        "datasourceDatabase" => "datasource_database",
+        "datasourceBucket" => "datasource_bucket",
+        "datasourceOrganization" => "datasource_organization",
+        "datasourceIndexPattern" => "datasource_index_pattern",
         "datasourceType" => "datasource_type",
         "datasourceFamily" => "datasource_family",
         "queryField" => "query_field",
+        "functions" => "functions",
         _ => value,
     }
 }
@@ -277,16 +328,26 @@ pub(crate) fn report_column_header(column_id: &str) -> &'static str {
         "dashboard_uid" => "DASHBOARD_UID",
         "dashboard_title" => "DASHBOARD_TITLE",
         "folder_path" => "FOLDER_PATH",
+        "folder_uid" => "FOLDER_UID",
+        "parent_folder_uid" => "PARENT_FOLDER_UID",
         "panel_id" => "PANEL_ID",
         "panel_title" => "PANEL_TITLE",
         "panel_type" => "PANEL_TYPE",
         "ref_id" => "REF_ID",
         "datasource" => "DATASOURCE",
+        "datasource_name" => "DATASOURCE_NAME",
         "datasource_uid" => "DATASOURCE_UID",
+        "datasource_org" => "DATASOURCE_ORG",
+        "datasource_org_id" => "DATASOURCE_ORG_ID",
+        "datasource_database" => "DATASOURCE_DATABASE",
+        "datasource_bucket" => "DATASOURCE_BUCKET",
+        "datasource_organization" => "DATASOURCE_ORGANIZATION",
+        "datasource_index_pattern" => "DATASOURCE_INDEX_PATTERN",
         "datasource_type" => "DATASOURCE_TYPE",
         "datasource_family" => "DATASOURCE_FAMILY",
         "query_field" => "QUERY_FIELD",
         "metrics" => "METRICS",
+        "functions" => "FUNCTIONS",
         "measurements" => "MEASUREMENTS",
         "buckets" => "BUCKETS",
         "query" => "QUERY",
@@ -306,16 +367,26 @@ pub(crate) fn render_query_report_column(
         "dashboard_uid" => row.dashboard_uid.clone(),
         "dashboard_title" => row.dashboard_title.clone(),
         "folder_path" => row.folder_path.clone(),
+        "folder_uid" => row.folder_uid.clone(),
+        "parent_folder_uid" => row.parent_folder_uid.clone(),
         "panel_id" => row.panel_id.clone(),
         "panel_title" => row.panel_title.clone(),
         "panel_type" => row.panel_type.clone(),
         "ref_id" => row.ref_id.clone(),
         "datasource" => row.datasource.clone(),
+        "datasource_name" => row.datasource_name.clone(),
         "datasource_uid" => row.datasource_uid.clone(),
+        "datasource_org" => row.datasource_org.clone(),
+        "datasource_org_id" => row.datasource_org_id.clone(),
+        "datasource_database" => row.datasource_database.clone(),
+        "datasource_bucket" => row.datasource_bucket.clone(),
+        "datasource_organization" => row.datasource_organization.clone(),
+        "datasource_index_pattern" => row.datasource_index_pattern.clone(),
         "datasource_type" => row.datasource_type.clone(),
         "datasource_family" => row.datasource_family.clone(),
         "query_field" => row.query_field.clone(),
         "metrics" => row.metrics.join(","),
+        "functions" => row.functions.join(","),
         "measurements" => row.measurements.join(","),
         "buckets" => row.buckets.join(","),
         "query" => row.query_text.clone(),
@@ -351,6 +422,8 @@ pub(crate) fn normalize_query_report(
                     dashboard_uid: row.dashboard_uid.clone(),
                     dashboard_title: row.dashboard_title.clone(),
                     folder_path: row.folder_path.clone(),
+                    folder_uid: row.folder_uid.clone(),
+                    parent_folder_uid: row.parent_folder_uid.clone(),
                     file_path: row.file_path.clone(),
                     datasources: Vec::new(),
                     datasource_families: Vec::new(),
@@ -366,6 +439,12 @@ pub(crate) fn normalize_query_report(
         }
         if dashboards[dashboard_index].org_id.is_empty() {
             dashboards[dashboard_index].org_id = row.org_id.clone();
+        }
+        if dashboards[dashboard_index].folder_uid.is_empty() {
+            dashboards[dashboard_index].folder_uid = row.folder_uid.clone();
+        }
+        if dashboards[dashboard_index].parent_folder_uid.is_empty() {
+            dashboards[dashboard_index].parent_folder_uid = row.parent_folder_uid.clone();
         }
         if !row.datasource.is_empty()
             && !dashboards[dashboard_index]

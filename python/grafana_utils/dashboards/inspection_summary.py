@@ -12,6 +12,8 @@ from .common import (
 from .inspection_render import render_export_inspection_table_section
 from .inspection_report import (
     describe_export_datasource_ref,
+    resolve_inspection_folder_path,
+    resolve_inspection_source_file_path,
 )
 
 
@@ -95,11 +97,11 @@ def build_export_inspection_document(
             import_dir,
             folder_lookup,
         )
-        folder_path = str(
-            folder_record.get("path")
-            or folder_record.get("title")
-            or DEFAULT_FOLDER_TITLE
-        ).strip() or DEFAULT_FOLDER_TITLE
+        folder_path = resolve_inspection_folder_path(
+            import_dir,
+            dashboard_file,
+            folder_record,
+        )
         folder_paths[folder_path] = int(folder_paths.get(folder_path) or 0) + 1
 
         panels = deps["iter_dashboard_panels"](dashboard.get("panels"))
@@ -150,7 +152,7 @@ def build_export_inspection_document(
             "queryCount": query_count,
             "datasources": unique_datasources,
             "mixedDatasource": is_mixed,
-            "file": str(dashboard_file),
+            "file": resolve_inspection_source_file_path(import_dir, dashboard_file),
         }
         dashboards.append(dashboard_record)
         if is_mixed:

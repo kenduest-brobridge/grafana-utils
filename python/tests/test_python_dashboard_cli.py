@@ -792,7 +792,15 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("--report-filter-datasource prom-main", help_text)
         self.assertIn("--report-filter-panel-id 7", help_text)
         self.assertIn(
-            "--report-columns dashboard_uid,datasource_uid,datasource_family,query,file",
+            "--report-columns panel_id,ref_id,datasource_name,metrics,functions,buckets,query",
+            help_text,
+        )
+        self.assertIn(
+            "--report-columns dashboard_uid,folder_path,folder_uid,parent_folder_uid,file",
+            help_text,
+        )
+        self.assertIn(
+            "--report-columns datasource_name,datasource_org,datasource_org_id,datasource_database,datasource_bucket,datasource_index_pattern,query",
             help_text,
         )
         self.assertNotIn("grafana-utils inspect-export", help_text)
@@ -839,7 +847,15 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("--report tree-table", help_text)
         self.assertIn("--report-filter-panel-id 7", help_text)
         self.assertIn(
-            "--report-columns dashboard_uid,datasource_uid,datasource_family,query,file",
+            "--report-columns panel_id,ref_id,datasource_name,metrics,functions,buckets,query",
+            help_text,
+        )
+        self.assertIn(
+            "--report-columns dashboard_uid,folder_path,folder_uid,parent_folder_uid,file",
+            help_text,
+        )
+        self.assertIn(
+            "--report-columns datasource_name,datasource_org,datasource_org_id,datasource_database,datasource_bucket,datasource_index_pattern,query",
             help_text,
         )
         self.assertNotIn("grafana-utils inspect-live", help_text)
@@ -1566,7 +1582,7 @@ class ExporterTests(unittest.TestCase):
 
         self.assertEqual(analysis["metrics"], ["node_cpu_seconds_total"])
         self.assertEqual(analysis["measurements"], [])
-        self.assertEqual(analysis["buckets"], [])
+        self.assertEqual(analysis["buckets"], ["5m"])
 
     def test_dashboard_dispatch_query_analysis_uses_flux_analyzer(self):
         analysis = inspection_dispatcher.dispatch_query_analysis(
@@ -1579,6 +1595,18 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(analysis["metrics"], ["from", "range", "filter"])
         self.assertEqual(analysis["measurements"], ["cpu"])
         self.assertEqual(analysis["buckets"], ["ops"])
+
+    def test_dashboard_dispatch_query_analysis_extracts_influxql_time_buckets(self):
+        analysis = inspection_dispatcher.dispatch_query_analysis(
+            panel={"datasource": {"type": "influxdb", "uid": "influx-main"}},
+            target={"datasource": {"type": "influxdb", "uid": "influx-main"}},
+            query_field="query",
+            query_text='SELECT mean("usage") FROM "cpu" WHERE $timeFilter GROUP BY time(2m) fill(null)',
+        )
+
+        self.assertEqual(analysis["metrics"], [])
+        self.assertEqual(analysis["measurements"], [])
+        self.assertEqual(analysis["buckets"], ["2m"])
 
     def test_dashboard_dispatch_query_analysis_uses_sql_analyzer(self):
         analysis = inspection_dispatcher.dispatch_query_analysis(
@@ -1608,7 +1636,7 @@ class ExporterTests(unittest.TestCase):
             analysis["measurements"],
             ['job="varlogs"', 'app=~"api|web"'],
         )
-        self.assertEqual(analysis["buckets"], [])
+        self.assertEqual(analysis["buckets"], ["5m"])
 
     def test_dashboard_dispatch_query_analysis_uses_generic_fallback_analyzer(self):
         analysis = inspection_dispatcher.dispatch_query_analysis(
@@ -1656,6 +1684,10 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("Export inspection tree-table report: dashboards/raw", output)
         self.assertIn("# Dashboard sections", output)
         self.assertIn("[1] Dashboard cpu-main", output)
+        self.assertIn(
+            "Panel 7 title=CPU Usage type=timeseries datasources=prom-main",
+            output,
+        )
         self.assertIn(
             "DASHBOARD_UID  PANEL_TITLE  DATASOURCE  QUERY",
             output,
@@ -2196,6 +2228,41 @@ class ExporterTests(unittest.TestCase):
             ],
         )
 
+    def test_dashboard_build_datasource_inventory_record_keeps_config_fields(self):
+        record = exporter.build_datasource_inventory_record(
+            {
+                "uid": "influx-main",
+                "name": "Influx Main",
+                "type": "influxdb",
+                "access": "proxy",
+                "url": "http://influxdb:8086",
+                "jsonData": {
+                    "dbName": "metrics_v1",
+                    "defaultBucket": "prod-default",
+                    "organization": "acme-observability",
+                },
+            },
+            {"id": 1, "name": "Main Org."},
+        )
+
+        self.assertEqual(record["database"], "metrics_v1")
+        self.assertEqual(record["defaultBucket"], "prod-default")
+        self.assertEqual(record["organization"], "acme-observability")
+
+        elastic = exporter.build_datasource_inventory_record(
+            {
+                "uid": "elastic-main",
+                "name": "Elastic Main",
+                "type": "elasticsearch",
+                "access": "proxy",
+                "url": "http://elasticsearch:9200",
+                "jsonData": {"indexPattern": "[logs-]YYYY.MM.DD"},
+            },
+            {"id": 1, "name": "Main Org."},
+        )
+
+        self.assertEqual(elastic["indexPattern"], "[logs-]YYYY.MM.DD")
+
     def test_dashboard_inspect_export_table_can_omit_header(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)
@@ -2403,6 +2470,21 @@ class ExporterTests(unittest.TestCase):
                                 ],
                             },
                             {
+                                "id": 9_1,
+                                "title": "InfluxQL Query",
+                                "type": "table",
+                                "datasource": {
+                                    "type": "influxdb",
+                                    "uid": "influx-ql-main",
+                                },
+                                "targets": [
+                                    {
+                                        "refId": "B3",
+                                        "query": 'SELECT mean("usage") FROM "cpu" WHERE $timeFilter GROUP BY time($__interval) fill(null)',
+                                    }
+                                ],
+                            },
+                            {
                                 "id": 9,
                                 "title": "SQL Query",
                                 "type": "table",
@@ -2444,10 +2526,13 @@ class ExporterTests(unittest.TestCase):
                 payload["queries"][2]["measurements"],
                 ['job="varlogs"', 'app=~"api|web"'],
             )
-            self.assertEqual(payload["queries"][2]["buckets"], [])
+            self.assertEqual(payload["queries"][2]["buckets"], ["5m"])
             self.assertEqual(payload["queries"][3]["metrics"], ["select", "where"])
             self.assertEqual(payload["queries"][3]["measurements"], ["metrics.cpu"])
             self.assertEqual(payload["queries"][3]["buckets"], [])
+            self.assertEqual(payload["queries"][4]["metrics"], [])
+            self.assertEqual(payload["queries"][4]["measurements"], [])
+            self.assertEqual(payload["queries"][4]["buckets"], ["$__interval"])
 
     def test_dashboard_inspect_export_report_tree_table_renders_loki_analysis_columns(
         self,

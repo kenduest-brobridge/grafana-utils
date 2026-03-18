@@ -1,6 +1,10 @@
 """Dashboard inspection dependency assembly helpers."""
 
-from .export_inventory import discover_dashboard_files, load_export_metadata
+from .export_inventory import (
+    discover_dashboard_files,
+    discover_org_raw_export_dirs,
+    load_export_metadata,
+)
 from .folder_support import (
     build_folder_inventory_lookup,
     collect_folder_inventory,
@@ -81,6 +85,12 @@ def build_inspection_workflow_deps(config):
                 config["FOLDER_INVENTORY_FILENAME"],
                 config["DATASOURCE_INVENTORY_FILENAME"],
                 config["DASHBOARD_PERMISSION_BUNDLE_FILENAME"],
+            )
+        ),
+        "discover_org_raw_export_dirs": (
+            lambda import_dir: discover_org_raw_export_dirs(
+                import_dir,
+                config["RAW_EXPORT_SUBDIR"],
             )
         ),
         "extract_dashboard_object": extract_dashboard_object,
@@ -193,6 +203,12 @@ def build_inspection_workflow_deps(config):
         "build_preserved_web_import_document": build_preserved_web_import_document,
         "build_variant_index": build_variant_index,
         "collect_folder_inventory": collect_folder_inventory,
+        "discover_org_raw_export_dirs": (
+            lambda import_dir: discover_org_raw_export_dirs(
+                import_dir,
+                config["RAW_EXPORT_SUBDIR"],
+            )
+        ),
         "filter_export_inspection_report_document": (
             filter_export_inspection_report_document
         ),

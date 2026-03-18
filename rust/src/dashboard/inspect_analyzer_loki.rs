@@ -106,7 +106,8 @@ pub(crate) fn analyze_query(
         ordered_unique_push(&mut measurements, &matcher);
     }
     QueryAnalysis {
-        metrics: extract_loki_pipeline_metrics(query_text),
+        metrics: Vec::new(),
+        functions: extract_loki_pipeline_metrics(query_text),
         measurements,
         buckets: extract_loki_range_windows(query_text),
     }

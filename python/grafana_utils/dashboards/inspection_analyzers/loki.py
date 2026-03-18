@@ -5,7 +5,7 @@ Loki analyzer for dashboard query inspection.
 import re
 from typing import Any
 
-from .contract import normalize_query_analysis, unique_strings
+from .contract import extract_range_windows, normalize_query_analysis, unique_strings
 
 
 def extract_stream_matchers(query: str) -> list[str]:
@@ -97,9 +97,10 @@ def analyze_query(
     del panel, target, query_field
     return normalize_query_analysis(
         {
-            "metrics": extract_range_and_aggregation_functions(query_text)
+            "metrics": [],
+            "functions": extract_range_and_aggregation_functions(query_text)
             + extract_pipeline_stage_names(query_text),
             "measurements": extract_stream_matchers(query_text),
-            "buckets": [],
+            "buckets": extract_range_windows(query_text),
         }
     )

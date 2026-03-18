@@ -262,7 +262,7 @@ Dashboard diff found 1 differing item(s).
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
-| `--import-dir`（必須） | 指向 raw/ 目錄 | 不連線線上 API |
+| `--import-dir`（必須） | 指向單一 org 的 raw/ 目錄，或 `--all-orgs` 產生的整體匯出根目錄 | 不連線線上 API |
 | `--json` | JSON 輸出 | 與 `--table`/`--report*` 互斥 |
 | `--table` | 表格輸出 | 與 `--json` 互斥 |
 | `--report` | report mode 快捷；可為空值 | 空值預設是 flat table；也可指定 `csv`、`json`、`tree`、`tree-table`、`dependency`、`dependency-json`、`governance`、`governance-json` |
@@ -276,6 +276,29 @@ Dashboard diff found 1 differing item(s).
 範例指令：
 ```bash
 grafana-util dashboard inspect-export --import-dir ./dashboards/raw --output-format report-table
+```
+
+多 org 整體匯出根目錄：
+```bash
+grafana-util dashboard inspect-export --import-dir ./dashboards --output-format report-tree-table
+```
+
+檢查 datasource 自己的 org、database、bucket、index pattern 欄位：
+```bash
+grafana-util dashboard inspect-export --import-dir ./dashboards/raw --report csv \
+  --report-columns datasource_name,datasource_org,datasource_org_id,datasource_database,datasource_bucket,datasource_index_pattern,query
+```
+
+檢查 metrics、functions、bucket 抽取：
+```bash
+grafana-util dashboard inspect-export --import-dir ./dashboards/raw --report csv \
+  --report-columns panel_id,ref_id,datasource_name,metrics,functions,buckets,query
+```
+
+檢查 folder 身分和來源檔案路徑：
+```bash
+grafana-util dashboard inspect-export --import-dir ./dashboards/raw --report csv \
+  --report-columns dashboard_uid,folder_path,folder_uid,parent_folder_uid,file
 ```
 
 範例輸出：
