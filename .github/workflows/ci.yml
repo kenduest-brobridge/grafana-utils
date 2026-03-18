@@ -12,43 +12,6 @@ on:
   pull_request:
 
 jobs:
-  python-quality:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install Python dependencies
-        run: python3 -m pip install --upgrade pip . "Pillow>=10,<12"
-      - name: Run Python quality gate
-        run: make quality-python
-
-  python-package:
-    runs-on: ubuntu-latest
-    needs:
-      - python-quality
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install Poetry
-        run: python3 -m pip install --upgrade pip poetry
-      - name: Install Python build dependencies
-        run: |
-          poetry install --with dev --extras http2
-      - name: Build Python package artifacts
-        run: make build-python
-      - name: Upload Python package artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-package-${{ github.ref_name }}-${{ github.sha }}
-          path: |
-            dist/*.tar.gz
-            dist/*.whl
-          if-no-files-found: error
-
   rust-quality:
     runs-on: ubuntu-latest
     steps:
@@ -109,17 +72,11 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     needs:
-      - python-package
       - rust-release-linux-amd64
       - rust-release-macos-arm64
     permissions:
       contents: write
     steps:
-      - name: Download Python package artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: python-package-${{ github.ref_name }}-${{ github.sha }}
-          path: release-assets/python
       - name: Download Linux amd64 Rust release archive
         uses: actions/download-artifact@v4
         with:
@@ -136,13 +93,11 @@ jobs:
         run: |
           if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
             gh release upload "${GITHUB_REF_NAME}" \
-              release-assets/python/* \
               release-assets/rust/* \
               --repo "${GITHUB_REPOSITORY}" \
               --clobber
           else
             gh release create "${GITHUB_REF_NAME}" \
-              release-assets/python/* \
               release-assets/rust/* \
               --repo "${GITHUB_REPOSITORY}" \
               --title "${GITHUB_REF_NAME}" \
