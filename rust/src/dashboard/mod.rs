@@ -127,14 +127,16 @@ pub(crate) use live::build_folder_inventory_status;
 pub(crate) use live::collect_folder_inventory_statuses_with_request;
 pub(crate) use live::{
     build_datasource_inventory_record, build_folder_path, collect_folder_inventory_with_request,
-    fetch_dashboard_if_exists_with_request, fetch_dashboard_with_request,
-    fetch_folder_if_exists_with_request, format_folder_inventory_status_line,
+    fetch_dashboard_if_exists_with_request, fetch_dashboard_permissions_with_request,
+    fetch_dashboard_with_request, fetch_folder_if_exists_with_request,
+    fetch_folder_permissions_with_request, format_folder_inventory_status_line,
     import_dashboard_request_with_request, list_dashboard_summaries_with_request,
     list_datasources_with_request,
 };
 pub(crate) use models::{
-    DashboardIndexItem, DatasourceInventoryItem, ExportMetadata, FolderInventoryItem,
-    RootExportIndex, RootExportVariants, VariantIndexEntry,
+    DashboardIndexItem, DatasourceInventoryItem, ExportDatasourceUsageSummary,
+    ExportMetadata, ExportOrgSummary, FolderInventoryItem, RootExportIndex, RootExportVariants,
+    VariantIndexEntry,
 };
 pub(crate) use prompt::{
     build_datasource_catalog, collect_datasource_refs, datasource_type_alias,
@@ -185,6 +187,8 @@ pub const ROOT_INDEX_KIND: &str = "grafana-utils-dashboard-export-index";
 pub const FOLDER_INVENTORY_FILENAME: &str = "folders.json";
 /// Constant for datasource inventory filename.
 pub const DATASOURCE_INVENTORY_FILENAME: &str = "datasources.json";
+/// Constant for dashboard/folder permission bundle filename.
+pub const DASHBOARD_PERMISSION_BUNDLE_FILENAME: &str = "permissions.json";
 const BUILTIN_DATASOURCE_TYPES: &[&str] = &["__expr__", "grafana"];
 const BUILTIN_DATASOURCE_NAMES: &[&str] = &[
     "-- Dashboard --",

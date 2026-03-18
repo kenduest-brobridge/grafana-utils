@@ -18,8 +18,8 @@ use super::{
     DashboardCommand, DiffArgs, ExportArgs, FolderInventoryStatusKind, ImportArgs,
     InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs,
     ListDataSourcesArgs, ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme,
-    SimpleOutputFormat, DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME,
-    FOLDER_INVENTORY_FILENAME, TOOL_SCHEMA_VERSION,
+    SimpleOutputFormat, DASHBOARD_PERMISSION_BUNDLE_FILENAME, DATASOURCE_INVENTORY_FILENAME,
+    EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME, TOOL_SCHEMA_VERSION,
 };
 use crate::common::api_response;
 use clap::{CommandFactory, Parser};
@@ -760,8 +760,10 @@ fn build_export_metadata_serializes_expected_shape() {
         Some("grafana-web-import-preserve-uid"),
         Some(FOLDER_INVENTORY_FILENAME),
         Some(DATASOURCE_INVENTORY_FILENAME),
+        Some(DASHBOARD_PERMISSION_BUNDLE_FILENAME),
         Some("Main Org."),
         Some("1"),
+        None,
     ))
     .unwrap();
 
@@ -776,6 +778,7 @@ fn build_export_metadata_serializes_expected_shape() {
             "format": "grafana-web-import-preserve-uid",
             "foldersFile": "folders.json",
             "datasourcesFile": "datasources.json",
+            "permissionsFile": "permissions.json",
             "org": "Main Org.",
             "orgId": "1"
         })
@@ -2520,6 +2523,31 @@ fn discover_dashboard_files_ignores_folder_inventory() {
 }
 
 #[test]
+fn discover_dashboard_files_ignores_permission_bundle() {
+    let temp = tempdir().unwrap();
+    fs::create_dir_all(temp.path().join("raw/subdir")).unwrap();
+    fs::write(
+        temp.path().join("raw/subdir/dashboard.json"),
+        serde_json::to_string_pretty(&json!({"uid": "abc", "title": "CPU"})).unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        temp.path().join("raw").join(DASHBOARD_PERMISSION_BUNDLE_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-permission-bundle",
+            "schemaVersion": 1,
+            "summary": {"resourceCount": 0, "dashboardCount": 0, "folderCount": 0, "permissionCount": 0},
+            "resources": []
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let files = discover_dashboard_files(&temp.path().join("raw")).unwrap();
+    assert_eq!(files, vec![temp.path().join("raw/subdir/dashboard.json")]);
+}
+
+#[test]
 fn build_import_payload_accepts_wrapped_document() {
     let payload = build_import_payload(
         &json!({
@@ -3569,6 +3597,12 @@ fn export_dashboards_with_client_writes_raw_variant_and_indexes() {
                     json!({"dashboard": {"id": 7, "uid": "abc", "title": "CPU"}}),
                 ));
             }
+            if path == "/api/dashboards/uid/abc/permissions" {
+                return Ok(Some(json!([
+                    {"userId": 11, "userLogin": "ops", "permission": 4, "inherited": false},
+                    {"teamId": 21, "team": "SRE", "permission": 2, "inherited": false}
+                ])));
+            }
             Err(super::message(format!("unexpected path {path}")))
         },
         &args,
@@ -3579,6 +3613,7 @@ fn export_dashboards_with_client_writes_raw_variant_and_indexes() {
     assert!(args.export_dir.join("raw/Infra/CPU__abc.json").is_file());
     assert!(args.export_dir.join("raw/index.json").is_file());
     assert!(args.export_dir.join("raw/export-metadata.json").is_file());
+    assert!(args.export_dir.join("raw/permissions.json").is_file());
     assert!(args.export_dir.join("index.json").is_file());
     assert!(args.export_dir.join("export-metadata.json").is_file());
     let raw_metadata: Value = serde_json::from_str(
@@ -3589,11 +3624,33 @@ fn export_dashboards_with_client_writes_raw_variant_and_indexes() {
         &fs::read_to_string(args.export_dir.join("export-metadata.json")).unwrap(),
     )
     .unwrap();
+    let permission_bundle: Value = serde_json::from_str(
+        &fs::read_to_string(
+            args.export_dir
+                .join("raw")
+                .join(DASHBOARD_PERMISSION_BUNDLE_FILENAME),
+        )
+        .unwrap(),
+    )
+    .unwrap();
     assert_eq!(raw_metadata["org"], Value::String("Main Org.".to_string()));
     assert_eq!(raw_metadata["orgId"], Value::String("1".to_string()));
+    assert_eq!(
+        raw_metadata["permissionsFile"],
+        Value::String("permissions.json".to_string())
+    );
     assert_eq!(root_metadata["org"], Value::String("Main Org.".to_string()));
     assert_eq!(root_metadata["orgId"], Value::String("1".to_string()));
-    assert_eq!(calls.len(), 4);
+    assert_eq!(
+        permission_bundle["summary"],
+        json!({
+            "resourceCount": 1,
+            "dashboardCount": 1,
+            "folderCount": 0,
+            "permissionCount": 2
+        })
+    );
+    assert_eq!(calls.len(), 5);
 }
 
 #[test]
@@ -3638,6 +3695,9 @@ fn export_dashboards_with_request_with_org_id_scopes_requests() {
                 ("/api/dashboards/uid/abc", Some("7")) => Ok(Some(
                     json!({"dashboard": {"id": 7, "uid": "abc", "title": "CPU"}}),
                 )),
+                ("/api/dashboards/uid/abc/permissions", Some("7")) => Ok(Some(json!([
+                    {"userId": 11, "userLogin": "ops", "permission": 4}
+                ]))),
                 _ => Err(super::message(format!("unexpected path {path}"))),
             }
         },
@@ -4036,6 +4096,9 @@ fn export_dashboards_with_client_writes_prompt_variant_and_indexes() {
                     ]
                 }
             }))),
+            "/api/dashboards/uid/abc/permissions" => Ok(Some(json!([
+                {"userId": 11, "userLogin": "ops", "permission": 4}
+            ]))),
             _ => Err(super::message(format!("unexpected path {path}"))),
         },
         &args,
@@ -4102,11 +4165,21 @@ fn export_dashboards_with_request_all_orgs_aggregates_results() {
                     {"uid": "logs-main", "name": "Logs Main", "type": "loki", "url": "http://loki:3100", "access": "proxy", "isDefault": false}
                 ]))),
                 ("/api/dashboards/uid/abc", Some("1")) => Ok(Some(
-                    json!({"dashboard": {"id": 7, "uid": "abc", "title": "CPU"}}),
+                    json!({"dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": [
+                        {"datasource": {"uid": "prom-main", "type": "prometheus"}}
+                    ]}}),
                 )),
                 ("/api/dashboards/uid/xyz", Some("2")) => Ok(Some(
-                    json!({"dashboard": {"id": 8, "uid": "xyz", "title": "Logs"}}),
+                    json!({"dashboard": {"id": 8, "uid": "xyz", "title": "Logs", "panels": [
+                        {"datasource": {"uid": "logs-main", "type": "loki"}}
+                    ]}}),
                 )),
+                ("/api/dashboards/uid/abc/permissions", Some("1")) => Ok(Some(json!([
+                    {"userId": 11, "userLogin": "ops", "permission": 4}
+                ]))),
+                ("/api/dashboards/uid/xyz/permissions", Some("2")) => Ok(Some(json!([
+                    {"teamId": 21, "team": "SRE", "permission": 2}
+                ]))),
                 _ => Err(super::message(format!("unexpected path {path}"))),
             }
         },
@@ -4137,12 +4210,27 @@ fn export_dashboards_with_request_all_orgs_aggregates_results() {
         .is_file());
     assert!(args
         .export_dir
+        .join("org_1_Main_Org/raw/permissions.json")
+        .is_file());
+    assert!(args
+        .export_dir
         .join("org_2_Ops_Org/raw/Ops/Logs__xyz.json")
         .is_file());
     assert!(args
         .export_dir
         .join("org_2_Ops_Org/raw/index.json")
         .is_file());
+    assert!(args
+        .export_dir
+        .join("org_2_Ops_Org/raw/permissions.json")
+        .is_file());
+    let aggregate_root_index: Value =
+        serde_json::from_str(&fs::read_to_string(args.export_dir.join("index.json")).unwrap())
+            .unwrap();
+    let aggregate_root_metadata: Value = serde_json::from_str(
+        &fs::read_to_string(args.export_dir.join("export-metadata.json")).unwrap(),
+    )
+    .unwrap();
     let org_one_metadata: Value = serde_json::from_str(
         &fs::read_to_string(
             args.export_dir
@@ -4165,10 +4253,53 @@ fn export_dashboards_with_request_all_orgs_aggregates_results() {
     );
     assert_eq!(org_one_metadata["orgId"], Value::String("1".to_string()));
     assert_eq!(
+        org_one_metadata["permissionsFile"],
+        Value::String("permissions.json".to_string())
+    );
+    assert_eq!(
         org_two_metadata["org"],
         Value::String("Ops Org".to_string())
     );
     assert_eq!(org_two_metadata["orgId"], Value::String("2".to_string()));
+    assert_eq!(
+        org_two_metadata["permissionsFile"],
+        Value::String("permissions.json".to_string())
+    );
+    assert_eq!(aggregate_root_index["items"].as_array().unwrap().len(), 2);
+    assert!(aggregate_root_index["variants"]["raw"].is_null());
+    assert_eq!(
+        aggregate_root_metadata["orgCount"],
+        Value::Number(2.into())
+    );
+    assert_eq!(
+        aggregate_root_metadata["orgs"].as_array().unwrap().len(),
+        2
+    );
+    let org_entries = aggregate_root_metadata["orgs"].as_array().unwrap();
+    let org_one_entry = org_entries
+        .iter()
+        .find(|entry| entry["orgId"] == Value::String("1".to_string()))
+        .unwrap();
+    let org_two_entry = org_entries
+        .iter()
+        .find(|entry| entry["orgId"] == Value::String("2".to_string()))
+        .unwrap();
+    assert_eq!(
+        org_one_entry["usedDatasourceCount"],
+        Value::Number(1.into())
+    );
+    assert_eq!(
+        org_one_entry["usedDatasources"][0]["uid"],
+        Value::String("prom-main".to_string())
+    );
+    assert_eq!(
+        org_two_entry["usedDatasourceCount"],
+        Value::Number(1.into())
+    );
+    assert_eq!(
+        org_two_entry["usedDatasources"][0]["uid"],
+        Value::String("logs-main".to_string())
+    );
     assert_eq!(
         calls
             .iter()
@@ -5965,6 +6096,7 @@ fn inspect_live_dashboards_with_request_reports_live_json_via_temp_raw_export() 
                     "uid": "general",
                     "title": "General"
                 }))),
+                (reqwest::Method::GET, "/api/folders/general/permissions") => Ok(Some(json!([]))),
                 (reqwest::Method::GET, "/api/dashboards/uid/cpu-main") => Ok(Some(json!({
                     "dashboard": {
                         "id": 11,
@@ -5993,6 +6125,9 @@ fn inspect_live_dashboards_with_request_reports_live_json_via_temp_raw_export() 
                     },
                     "meta": {}
                 }))),
+                (reqwest::Method::GET, "/api/dashboards/uid/cpu-main/permissions") => {
+                    Ok(Some(json!([])))
+                }
                 _ => Err(super::message(format!(
                     "unexpected request {method_name} {path}"
                 ))),
@@ -6102,9 +6237,11 @@ fn inspect_live_dashboards_with_request_all_orgs_aggregates_multiple_org_exports
             (reqwest::Method::GET, "/api/folders/general") => {
                 Ok(Some(json!({"uid": "general", "title": "General"})))
             }
+            (reqwest::Method::GET, "/api/folders/general/permissions") => Ok(Some(json!([]))),
             (reqwest::Method::GET, "/api/folders/ops") => {
                 Ok(Some(json!({"uid": "ops", "title": "Ops"})))
             }
+            (reqwest::Method::GET, "/api/folders/ops/permissions") => Ok(Some(json!([]))),
             (reqwest::Method::GET, "/api/dashboards/uid/cpu-main") => Ok(Some(json!({
                 "dashboard": {
                     "id": 11,
@@ -6120,6 +6257,9 @@ fn inspect_live_dashboards_with_request_all_orgs_aggregates_multiple_org_exports
                 },
                 "meta": {"folderUid": "general", "folderTitle": "General"}
             }))),
+            (reqwest::Method::GET, "/api/dashboards/uid/cpu-main/permissions") => {
+                Ok(Some(json!([])))
+            }
             (reqwest::Method::GET, "/api/dashboards/uid/latency-main") => Ok(Some(json!({
                 "dashboard": {
                     "id": 12,
@@ -6135,6 +6275,9 @@ fn inspect_live_dashboards_with_request_all_orgs_aggregates_multiple_org_exports
                 },
                 "meta": {"folderUid": "ops", "folderTitle": "Ops"}
             }))),
+            (reqwest::Method::GET, "/api/dashboards/uid/latency-main/permissions") => {
+                Ok(Some(json!([])))
+            }
             (method, path) => panic!("unexpected request {method} {path}"),
         },
         &args,
@@ -6158,6 +6301,16 @@ fn import_dashboards_with_client_imports_discovered_files() {
             "dashboardCount": 1,
             "indexFile": "index.json",
             "format": "grafana-web-import-preserve-uid"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("permissions.json"),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-permission-export",
+            "schemaVersion": 1,
+            "items": []
         }))
         .unwrap(),
     )

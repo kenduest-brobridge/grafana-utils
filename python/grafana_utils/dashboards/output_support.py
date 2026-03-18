@@ -191,6 +191,9 @@ def build_export_metadata(
     folders_file: Optional[str] = None,
     datasources_file: Optional[str] = None,
     permissions_file: Optional[str] = None,
+    org_name: Optional[str] = None,
+    org_id: Optional[str] = None,
+    orgs: Optional[list[dict[str, str]]] = None,
 ) -> dict[str, Any]:
     """Describe one export directory in a small, versioned manifest."""
     # Call graph: see callers/callees.
@@ -212,4 +215,11 @@ def build_export_metadata(
         metadata["datasourcesFile"] = datasources_file
     if permissions_file:
         metadata["permissionsFile"] = permissions_file
+    if org_name:
+        metadata["org"] = org_name
+    if org_id:
+        metadata["orgId"] = org_id
+    if orgs is not None:
+        metadata["orgCount"] = len(orgs)
+        metadata["orgs"] = orgs
     return metadata

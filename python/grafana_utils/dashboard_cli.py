@@ -1355,6 +1355,7 @@ def _build_export_workflow_deps() -> dict[str, Any]:
             "TOOL_SCHEMA_VERSION": TOOL_SCHEMA_VERSION,
             "build_client": build_client,
             "build_variant_index": build_variant_index,
+            "extract_dashboard_object": extract_dashboard_object,
             "sys": sys,
         }
     )

@@ -85,17 +85,34 @@ def run_export_dashboards(args, deps):
     folder_inventory = []
     datasource_inventory = []
     permission_documents = []
+    org_usage = {}
     for (
-        _,
+        org,
         scoped_client,
         _,
         raw_dir,
         prompt_dir,
-        datasource_catalog,
+        _,
         scoped_datasource_inventory,
         summaries,
         scoped_folder_inventory,
     ) in org_exports:
+        datasources_by_uid, datasources_by_name = deps["build_datasource_catalog"](
+            scoped_datasource_inventory
+        )
+        scoped_org_id = str(org.get("id") or "").strip()
+        scoped_org_name = str(org.get("name") or "").strip()
+        usage_entry = org_usage.setdefault(
+            scoped_org_id,
+            {
+                "org": scoped_org_name,
+                "orgId": scoped_org_id,
+                "dashboardCount": len(summaries),
+                "datasourceInventory": list(scoped_datasource_inventory),
+                "usedSourceNames": set(),
+                "usedSourceUids": set(),
+            },
+        )
         folder_inventory.extend(scoped_folder_inventory)
         datasource_inventory.extend(scoped_datasource_inventory)
         if export_raw:
@@ -117,6 +134,13 @@ def run_export_dashboards(args, deps):
                 dry_run=bool(args.dry_run),
             )
             payload = scoped_client.fetch_dashboard(uid)
+            source_names, source_uids = deps["resolve_dashboard_source_metadata"](
+                payload,
+                datasources_by_uid,
+                datasources_by_name,
+            )
+            usage_entry["usedSourceNames"].update(source_names)
+            usage_entry["usedSourceUids"].update(source_uids)
             item = deps["build_dashboard_index_item"](summary, uid)
             if export_raw:
                 raw_document = deps["build_preserved_web_import_document"](payload)
@@ -149,9 +173,8 @@ def run_export_dashboards(args, deps):
                     )
                 item["raw_path"] = str(raw_path)
             if export_prompt:
-                assert datasource_catalog is not None
                 prompt_document = deps["build_external_export_document"](
-                    payload, datasource_catalog
+                    payload, (datasources_by_uid, datasources_by_name)
                 )
                 prompt_path = deps["build_output_path"](prompt_dir, summary, args.flat)
                 if args.dry_run:
@@ -191,6 +214,50 @@ def run_export_dashboards(args, deps):
     raw_metadata_path = None
     raw_datasources_path = None
     raw_permissions_path = None
+    exported_orgs = []
+    for org_id, usage_entry in org_usage.items():
+        org_name = str(usage_entry["org"] or "").strip()
+        if not org_name and not org_id:
+            continue
+        used_datasources = []
+        matched_names = set()
+        matched_uids = set()
+        for datasource in usage_entry["datasourceInventory"]:
+            datasource_uid = str(datasource.get("uid") or "").strip()
+            datasource_name = str(datasource.get("name") or "").strip()
+            if (
+                datasource_uid in usage_entry["usedSourceUids"]
+                or datasource_name in usage_entry["usedSourceNames"]
+            ):
+                used_datasources.append(
+                    {
+                        "name": datasource_name,
+                        "uid": datasource_uid,
+                        "type": str(datasource.get("type") or ""),
+                    }
+                )
+                if datasource_uid:
+                    matched_uids.add(datasource_uid)
+                if datasource_name:
+                    matched_names.add(datasource_name)
+        for name in sorted(usage_entry["usedSourceNames"] - matched_names):
+            used_datasources.append({"name": name, "uid": "", "type": ""})
+        for uid in sorted(usage_entry["usedSourceUids"] - matched_uids):
+            used_datasources.append({"name": "", "uid": uid, "type": ""})
+        org_entry = {
+            "org": org_name,
+            "orgId": org_id,
+            "dashboardCount": usage_entry["dashboardCount"],
+            "datasourceCount": len(usage_entry["datasourceInventory"]),
+            "usedDatasourceCount": len(used_datasources),
+            "usedDatasources": used_datasources,
+        }
+        if all_orgs:
+            for export_org, _, scoped_output_dir, _, _, _, _, _, _ in org_exports:
+                if str(export_org.get("id") or "").strip() == org_id:
+                    org_entry["exportDir"] = str(scoped_output_dir)
+                    break
+        exported_orgs.append(org_entry)
     if export_raw:
         raw_variant_dir = (
             output_dir / deps["RAW_EXPORT_SUBDIR"] if all_orgs else raw_dir
@@ -240,6 +307,7 @@ def run_export_dashboards(args, deps):
             folders_file=deps["FOLDER_INVENTORY_FILENAME"],
             datasources_file=deps["DATASOURCE_INVENTORY_FILENAME"],
             permissions_file=deps["DASHBOARD_PERMISSION_BUNDLE_FILENAME"],
+            orgs=exported_orgs if all_orgs else None,
         )
         if not args.dry_run:
             deps["write_json_document"](raw_index, raw_index_path)
@@ -264,6 +332,7 @@ def run_export_dashboards(args, deps):
             variant=deps["PROMPT_EXPORT_SUBDIR"],
             dashboard_count=len(prompt_index),
             format_name="grafana-web-import-with-datasource-inputs",
+            orgs=exported_orgs if all_orgs else None,
         )
         if not args.dry_run:
             deps["write_json_document"](prompt_index, prompt_index_path)
@@ -276,6 +345,9 @@ def run_export_dashboards(args, deps):
     root_metadata = deps["build_export_metadata"](
         variant="root",
         dashboard_count=len(index_items),
+        org_name=exported_orgs[0]["org"] if len(exported_orgs) == 1 else None,
+        org_id=exported_orgs[0]["orgId"] if len(exported_orgs) == 1 else None,
+        orgs=exported_orgs if all_orgs else None,
     )
     if not args.dry_run:
         deps["write_json_document"](root_index, index_path)

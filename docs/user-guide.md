@@ -130,6 +130,7 @@ How to read it:
 - `raw` is the API-friendly reversible export.
 - `prompt` is the UI-import-friendly variant.
 - `raw/permissions.json` captures dashboard and folder permission metadata for backup and review.
+- With `--all-orgs`, the export root `export-metadata.json` includes `orgCount` plus an `orgs[]` summary for every exported org.
 - The final summary is the fastest check for missing dashboards.
 
 ### 3.2 `dashboard list`
@@ -246,7 +247,7 @@ grafana-util dashboard import --url http://localhost:3000 --basic-user admin --b
 ```
 
 Current note:
-- `dashboard import` ignores the exported `raw/permissions.json` bundle today. The permission bundle is backed up by default for later review or future restore flows, but the current import path still restores dashboard content, folder placement, and related raw inventory only.
+- Both Python and Rust `dashboard import` currently ignore the exported `raw/permissions.json` bundle. The permission bundle is backed up by default for later review or future restore flows, but the current import path still restores dashboard content, folder placement, and related raw inventory only.
 
 Example output:
 ```text

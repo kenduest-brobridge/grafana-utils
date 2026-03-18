@@ -1604,6 +1604,8 @@ fn prepare_inspect_live_import_dir(temp_root: &Path, args: &InspectLiveArgs) -> 
             Some(DATASOURCE_INVENTORY_FILENAME),
             None,
             None,
+            None,
+            None,
         ),
         &inspect_raw_dir.join(EXPORT_METADATA_FILENAME),
     )?;

@@ -4137,28 +4137,47 @@ class ExporterTests(unittest.TestCase):
             root_index = json.loads(
                 (Path(tmpdir) / "index.json").read_text(encoding="utf-8")
             )
+            root_metadata = json.loads(
+                (Path(tmpdir) / "export-metadata.json").read_text(encoding="utf-8")
+            )
             self.assertEqual(root_index["items"][0]["org"], "Org Two")
             self.assertEqual(root_index["items"][0]["orgId"], "2")
+            self.assertEqual(root_metadata["org"], "Org Two")
+            self.assertEqual(root_metadata["orgId"], "2")
 
     def test_dashboard_export_dashboards_with_all_orgs_uses_org_prefix_dirs(self):
         org_one_summary = {"uid": "abc", "title": "CPU", "folderTitle": "Infra"}
         org_two_summary = {"uid": "abc", "title": "CPU", "folderTitle": "Infra"}
         org_one_dashboard = {
-            "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+            "dashboard": {
+                "id": 7,
+                "uid": "abc",
+                "title": "CPU",
+                "panels": [{"datasource": {"uid": "prom-1", "type": "prometheus"}}],
+            },
             "meta": {"folderUid": "infra"},
         }
         org_two_dashboard = {
-            "dashboard": {"id": 8, "uid": "abc", "title": "CPU", "panels": []},
+            "dashboard": {
+                "id": 8,
+                "uid": "abc",
+                "title": "CPU",
+                "panels": [{"datasource": {"uid": "logs-2", "type": "loki"}}],
+            },
             "meta": {"folderUid": "infra"},
         }
         org_one_client = FakeDashboardWorkflowClient(
             summaries=[org_one_summary],
             dashboards={"abc": org_one_dashboard},
+            datasources=[
+                {"uid": "prom-1", "name": "Prometheus Main", "type": "prometheus"}
+            ],
             org={"id": 1, "name": "Main Org."},
         )
         org_two_client = FakeDashboardWorkflowClient(
             summaries=[org_two_summary],
             dashboards={"abc": org_two_dashboard},
+            datasources=[{"uid": "logs-2", "name": "Logs Main", "type": "loki"}],
             org={"id": 2, "name": "Org Two"},
         )
         client = FakeDashboardWorkflowClient(
@@ -4191,9 +4210,41 @@ class ExporterTests(unittest.TestCase):
             root_index = json.loads(
                 (Path(tmpdir) / "index.json").read_text(encoding="utf-8")
             )
+            root_metadata = json.loads(
+                (Path(tmpdir) / "export-metadata.json").read_text(encoding="utf-8")
+            )
+            raw_metadata = json.loads(
+                (Path(tmpdir) / "raw/export-metadata.json").read_text(
+                    encoding="utf-8"
+                )
+            )
             self.assertEqual(len(root_index["items"]), 2)
             self.assertEqual(
                 sorted(item["orgId"] for item in root_index["items"]),
+                ["1", "2"],
+            )
+            self.assertEqual(root_metadata["orgCount"], 2)
+            self.assertEqual(
+                sorted(item["orgId"] for item in root_metadata["orgs"]),
+                ["1", "2"],
+            )
+            self.assertTrue(
+                all("exportDir" in item for item in root_metadata["orgs"])
+            )
+            metadata_by_org = {
+                item["orgId"]: item for item in root_metadata["orgs"]
+            }
+            self.assertEqual(metadata_by_org["1"]["usedDatasourceCount"], 1)
+            self.assertEqual(
+                metadata_by_org["1"]["usedDatasources"][0]["uid"], "prom-1"
+            )
+            self.assertEqual(metadata_by_org["2"]["usedDatasourceCount"], 1)
+            self.assertEqual(
+                metadata_by_org["2"]["usedDatasources"][0]["uid"], "logs-2"
+            )
+            self.assertEqual(raw_metadata["orgCount"], 2)
+            self.assertEqual(
+                sorted(item["orgId"] for item in raw_metadata["orgs"]),
                 ["1", "2"],
             )
             self.assertTrue(

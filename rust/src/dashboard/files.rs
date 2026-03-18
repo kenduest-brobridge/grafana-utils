@@ -8,11 +8,12 @@ use std::path::{Path, PathBuf};
 use crate::common::{message, object_field, string_field, value_as_object, Result};
 
 use super::{
-    DashboardIndexItem, DatasourceInventoryItem, ExportMetadata, FolderInventoryItem,
-    RootExportIndex, RootExportVariants, VariantIndexEntry, DATASOURCE_INVENTORY_FILENAME,
-    DEFAULT_DASHBOARD_TITLE, DEFAULT_FOLDER_TITLE, DEFAULT_ORG_ID, DEFAULT_ORG_NAME,
-    EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME, PROMPT_EXPORT_SUBDIR, RAW_EXPORT_SUBDIR,
-    ROOT_INDEX_KIND, TOOL_SCHEMA_VERSION,
+    DashboardIndexItem, DatasourceInventoryItem, ExportMetadata, ExportOrgSummary,
+    FolderInventoryItem, RootExportIndex, RootExportVariants, VariantIndexEntry,
+    DASHBOARD_PERMISSION_BUNDLE_FILENAME, DATASOURCE_INVENTORY_FILENAME, DEFAULT_DASHBOARD_TITLE,
+    DEFAULT_FOLDER_TITLE, DEFAULT_ORG_ID, DEFAULT_ORG_NAME, EXPORT_METADATA_FILENAME,
+    FOLDER_INVENTORY_FILENAME, PROMPT_EXPORT_SUBDIR, RAW_EXPORT_SUBDIR, ROOT_INDEX_KIND,
+    TOOL_SCHEMA_VERSION,
 };
 
 /// discover dashboard files.
@@ -46,6 +47,7 @@ pub(crate) fn discover_dashboard_files(import_dir: &Path) -> Result<Vec<PathBuf>
             && file_name != Some(EXPORT_METADATA_FILENAME)
             && file_name != Some(FOLDER_INVENTORY_FILENAME)
             && file_name != Some(DATASOURCE_INVENTORY_FILENAME)
+            && file_name != Some(DASHBOARD_PERMISSION_BUNDLE_FILENAME)
     });
     files.sort();
 
@@ -66,9 +68,12 @@ pub(crate) fn build_export_metadata(
     format_name: Option<&str>,
     folders_file: Option<&str>,
     datasources_file: Option<&str>,
+    permissions_file: Option<&str>,
     org_name: Option<&str>,
     org_id: Option<&str>,
+    orgs: Option<Vec<ExportOrgSummary>>,
 ) -> ExportMetadata {
+    let org_count = orgs.as_ref().map(|items| items.len() as u64);
     ExportMetadata {
         schema_version: TOOL_SCHEMA_VERSION,
         kind: ROOT_INDEX_KIND.to_string(),
@@ -78,8 +83,11 @@ pub(crate) fn build_export_metadata(
         format: format_name.map(str::to_owned),
         folders_file: folders_file.map(str::to_owned),
         datasources_file: datasources_file.map(str::to_owned),
+        permissions_file: permissions_file.map(str::to_owned),
         org: org_name.map(str::to_owned),
         org_id: org_id.map(str::to_owned),
+        org_count,
+        orgs,
     }
 }
 

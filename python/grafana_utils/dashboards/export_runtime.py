@@ -1,7 +1,11 @@
 """Dashboard export dependency assembly helpers."""
 
 from .folder_support import collect_folder_inventory
-from .listing import attach_dashboard_org, build_datasource_inventory_record
+from .listing import (
+    attach_dashboard_org,
+    build_datasource_inventory_record,
+    resolve_dashboard_source_metadata,
+)
 from .output_support import (
     build_all_orgs_output_dir,
     build_dashboard_index_item,
@@ -61,7 +65,7 @@ def build_export_workflow_deps(config):
         "build_datasource_catalog": build_datasource_catalog,
         "build_datasource_inventory_record": build_datasource_inventory_record,
         "build_export_metadata": (
-            lambda variant, dashboard_count, format_name=None, folders_file=None, datasources_file=None, permissions_file=None: build_export_metadata(
+            lambda variant, dashboard_count, format_name=None, folders_file=None, datasources_file=None, permissions_file=None, org_name=None, org_id=None, orgs=None: build_export_metadata(
                 variant,
                 dashboard_count,
                 tool_schema_version=config["TOOL_SCHEMA_VERSION"],
@@ -70,6 +74,9 @@ def build_export_workflow_deps(config):
                 folders_file=folders_file,
                 datasources_file=datasources_file,
                 permissions_file=permissions_file,
+                org_name=org_name,
+                org_id=org_id,
+                orgs=orgs,
             )
         ),
         "build_export_variant_dirs": (
@@ -91,6 +98,16 @@ def build_export_workflow_deps(config):
             )
         ),
         "build_preserved_web_import_document": build_preserved_web_import_document,
+        "extract_dashboard_object": config["extract_dashboard_object"],
+        "resolve_dashboard_source_metadata": (
+            lambda payload, datasources_by_uid, datasources_by_name: resolve_dashboard_source_metadata(
+                payload,
+                extract_dashboard_object=config["extract_dashboard_object"],
+                datasource_error=config["GrafanaError"],
+                datasources_by_uid=datasources_by_uid,
+                datasources_by_name=datasources_by_name,
+            )
+        ),
         "build_root_export_index": (
             lambda index_items, raw_index_path, prompt_index_path: build_root_export_index(
                 index_items,

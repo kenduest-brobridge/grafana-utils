@@ -113,6 +113,9 @@ Exported prompt mem-main -> dashboards/prompt/Infra/MEM__mem-main.json
 Dashboard export completed: 2 dashboard(s), 4 file(s) written
 ```
 
+補充：
+- 使用 `--all-orgs` 時，匯出根目錄的 `export-metadata.json` 會包含 `orgCount` 與每個已匯出 org 的 `orgs[]` 摘要。
+
 ### 3.2 `dashboard list`
 
 **用途**：列出線上的 dashboards。

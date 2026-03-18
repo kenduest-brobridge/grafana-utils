@@ -117,6 +117,8 @@ grafana-util dashboard export \
 ```
 
 `dashboard export` writes `raw/` API-import JSON, `prompt/` UI-import JSON, and raw inventory metadata including `folders.json`, `datasources.json`, and `permissions.json` for dashboard/folder ACL backup.
+With `--all-orgs`, the export root `export-metadata.json` now summarizes every exported org instead of only one scoped org.
+`dashboard import` currently ignores `raw/permissions.json`, so the permission bundle remains export-only backup metadata for review and future restore flows.
 
 **Preview Changes Before Importing:**
 ```bash
