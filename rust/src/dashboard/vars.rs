@@ -5,6 +5,8 @@
 use reqwest::Url;
 use serde::Serialize;
 use serde_json::{Map, Value};
+use std::fs;
+use std::path::PathBuf;
 
 use crate::common::{message, object_field, string_field, value_as_object, Result};
 use crate::http::JsonHttpClient;
@@ -40,6 +42,21 @@ struct DashboardVariableDocument {
     pub variables: Vec<DashboardVariableRow>,
 }
 
+fn write_inspect_vars_output(output: &str, output_file: Option<&PathBuf>) -> Result<()> {
+    let normalized = output.trim_end_matches('\n');
+    if normalized.is_empty() {
+        return Ok(());
+    }
+    if let Some(output_path) = output_file {
+        if let Some(parent) = output_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(output_path, format!("{normalized}\n"))?;
+    }
+    println!("{normalized}");
+    Ok(())
+}
+
 /// inspect dashboard variables.
 pub(crate) fn inspect_dashboard_variables(args: &InspectVarsArgs) -> Result<()> {
     let dashboard_uid = resolve_dashboard_uid(args)?;
@@ -48,9 +65,12 @@ pub(crate) fn inspect_dashboard_variables(args: &InspectVarsArgs) -> Result<()> 
     if let Some(vars_query) = args.vars_query.as_deref() {
         apply_vars_query_overrides(&mut document.variables, vars_query)?;
     }
-    match args.output_format.unwrap_or(SimpleOutputFormat::Table) {
-        SimpleOutputFormat::Json => println!("{}", serde_json::to_string_pretty(&document)?),
+    let output = match args.output_format.unwrap_or(SimpleOutputFormat::Table) {
+        SimpleOutputFormat::Json => {
+            format!("{}\n", serde_json::to_string_pretty(&document)?)
+        }
         SimpleOutputFormat::Csv => {
+            let mut rendered = String::new();
             for line in render_csv(
                 &[
                     "name",
@@ -65,10 +85,13 @@ pub(crate) fn inspect_dashboard_variables(args: &InspectVarsArgs) -> Result<()> 
                 ],
                 &build_variable_table_rows(&document.variables),
             ) {
-                println!("{line}");
+                rendered.push_str(&line);
+                rendered.push('\n');
             }
+            rendered
         }
         SimpleOutputFormat::Table => {
+            let mut rendered = String::new();
             for line in render_simple_table(
                 &["NAME", "TYPE", "LABEL", "CURRENT", "DATASOURCE", "OPTIONS"],
                 &document
@@ -87,10 +110,13 @@ pub(crate) fn inspect_dashboard_variables(args: &InspectVarsArgs) -> Result<()> 
                     .collect::<Vec<Vec<String>>>(),
                 !args.no_header,
             ) {
-                println!("{line}");
+                rendered.push_str(&line);
+                rendered.push('\n');
             }
+            rendered
         }
-    }
+    };
+    write_inspect_vars_output(&output, args.output_file.as_ref())?;
     Ok(())
 }
 

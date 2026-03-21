@@ -7,6 +7,7 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
+use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::common::{message, object_field, string_field, value_as_object, Result};
@@ -15,6 +16,7 @@ use crate::dashboard_inspection_dependency_contract::build_offline_dependency_co
 use super::inspect_analyzer_flux;
 use super::inspect_analyzer_loki;
 use super::inspect_analyzer_prometheus;
+use super::inspect_analyzer_search;
 use super::inspect_analyzer_sql;
 use super::inspect_governance::{
     build_export_inspection_governance_document, normalize_family_name,
@@ -33,6 +35,10 @@ pub(crate) const DATASOURCE_FAMILY_LOKI: &str = "loki";
 pub(crate) const DATASOURCE_FAMILY_FLUX: &str = "flux";
 /// Constant for datasource family sql.
 pub(crate) const DATASOURCE_FAMILY_SQL: &str = "sql";
+/// Constant for datasource family search.
+pub(crate) const DATASOURCE_FAMILY_SEARCH: &str = "search";
+/// Constant for datasource family tracing.
+pub(crate) const DATASOURCE_FAMILY_TRACING: &str = "tracing";
 /// Constant for datasource family unknown.
 pub(crate) const DATASOURCE_FAMILY_UNKNOWN: &str = "unknown";
 
@@ -51,6 +57,7 @@ pub(crate) struct QueryExtractionContext<'a> {
     pub(crate) target: &'a Map<String, Value>,
     pub(crate) query_field: &'a str,
     pub(crate) query_text: &'a str,
+    pub(crate) resolved_datasource_type: &'a str,
 }
 
 struct QueryReportContext<'a> {
@@ -85,9 +92,7 @@ fn calculate_folder_full_path(folder_path: &str) -> String {
         .map(str::trim)
         .filter(|segment| !segment.is_empty())
         .collect::<Vec<&str>>();
-    if segments.is_empty()
-        || (segments.len() == 1 && segments[0] == DEFAULT_FOLDER_TITLE)
-    {
+    if segments.is_empty() || (segments.len() == 1 && segments[0] == DEFAULT_FOLDER_TITLE) {
         "/".to_string()
     } else {
         format!("/{}", segments.join("/"))
@@ -101,7 +106,11 @@ fn extract_dashboard_tags(dashboard: &Map<String, Value>) -> Vec<String> {
         .map(|tags| {
             let mut values = Vec::new();
             for tag in tags {
-                if let Some(value) = tag.as_str().map(str::trim).filter(|value| !value.is_empty()) {
+                if let Some(value) = tag
+                    .as_str()
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                {
                     ordered_unique_push(&mut values, value);
                 }
             }
@@ -137,7 +146,10 @@ fn value_is_truthy(value: Option<&Value>) -> bool {
         Some(Value::Bool(boolean)) => *boolean,
         Some(Value::Number(number)) => number.as_i64().unwrap_or(0) != 0,
         Some(Value::String(text)) => {
-            matches!(text.trim().to_ascii_lowercase().as_str(), "true" | "1" | "yes")
+            matches!(
+                text.trim().to_ascii_lowercase().as_str(),
+                "true" | "1" | "yes"
+            )
         }
         _ => false,
     }
@@ -171,6 +183,22 @@ fn normalize_index_entry_path(path: &str) -> String {
         .rsplit_once("/raw/")
         .map(|(_, remainder)| remainder.to_string())
         .unwrap_or(normalized)
+}
+
+fn write_inspect_output(output: &str, output_file: Option<&PathBuf>) -> Result<()> {
+    let normalized = output.trim_end_matches('\n');
+    if normalized.is_empty() {
+        return Ok(());
+    }
+    if let Some(output_path) = output_file {
+        if let Some(parent) = output_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(output_path, format!("{normalized}\n"))?;
+    }
+    print!("{normalized}");
+    println!();
+    Ok(())
 }
 
 fn load_export_identity_values(
@@ -513,7 +541,9 @@ fn summarize_datasource_name(
                 let normalized = text.trim();
                 datasource_inventory
                     .iter()
-                    .find(|datasource| datasource.uid == normalized || datasource.name == normalized)
+                    .find(|datasource| {
+                        datasource.uid == normalized || datasource.name == normalized
+                    })
                     .map(|datasource| datasource.name.clone())
                     .or_else(|| Some(text.to_string()))
             }
@@ -663,6 +693,11 @@ fn summarize_datasource_inventory_usage(
 
 /// Purpose: implementation note.
 pub(crate) fn resolve_query_analyzer_family(context: &QueryExtractionContext<'_>) -> &'static str {
+    if let Some(family) = resolve_query_analyzer_family_from_datasource_type(datasource_type_alias(
+        context.resolved_datasource_type,
+    )) {
+        return family;
+    }
     for reference in [
         context.target.get("datasource"),
         context.panel.get("datasource"),
@@ -671,36 +706,17 @@ pub(crate) fn resolve_query_analyzer_family(context: &QueryExtractionContext<'_>
     .flatten()
     {
         if let Some(datasource_type) = datasource_type_from_reference(reference) {
-            match datasource_type.as_str() {
-                "loki" => return DATASOURCE_FAMILY_LOKI,
-                "prometheus" => return DATASOURCE_FAMILY_PROMETHEUS,
-                "influxdb" | "flux" => return DATASOURCE_FAMILY_FLUX,
-                "mysql" | "postgres" | "mssql" => return DATASOURCE_FAMILY_SQL,
-                _ => {}
+            if let Some(family) =
+                resolve_query_analyzer_family_from_datasource_type(datasource_type.as_str())
+            {
+                return family;
             }
         }
     }
-    if matches!(context.query_field, "rawSql" | "sql") {
-        return DATASOURCE_FAMILY_SQL;
-    }
-    if context.query_field == "logql" {
-        return DATASOURCE_FAMILY_LOKI;
-    }
-    if context.query_field == "expr" {
-        return DATASOURCE_FAMILY_PROMETHEUS;
-    }
-    let trimmed = context.query_text.trim_start();
-    if trimmed.starts_with("from(") || trimmed.starts_with("from (") || trimmed.contains("|>") {
-        return DATASOURCE_FAMILY_FLUX;
-    }
-    let lowered = trimmed.to_ascii_lowercase();
-    if lowered.starts_with("select ")
-        || lowered.starts_with("with ")
-        || lowered.starts_with("insert ")
-        || lowered.starts_with("update ")
-        || lowered.starts_with("delete ")
+    if let Some(family) =
+        resolve_query_analyzer_family_from_query_signature(context.query_field, context.query_text)
     {
-        return DATASOURCE_FAMILY_SQL;
+        return family;
     }
     DATASOURCE_FAMILY_UNKNOWN
 }
@@ -727,6 +743,18 @@ pub(crate) fn dispatch_query_analysis(context: &QueryExtractionContext<'_>) -> Q
             context.query_text,
         ),
         DATASOURCE_FAMILY_SQL => inspect_analyzer_sql::analyze_query(
+            context.panel,
+            context.target,
+            context.query_field,
+            context.query_text,
+        ),
+        DATASOURCE_FAMILY_SEARCH => inspect_analyzer_search::analyze_query(
+            context.panel,
+            context.target,
+            context.query_field,
+            context.query_text,
+        ),
+        DATASOURCE_FAMILY_TRACING => analyze_tracing_query(
             context.panel,
             context.target,
             context.query_field,
@@ -774,10 +802,7 @@ fn extract_template_variable_names_from_text(text: &str) -> Vec<String> {
     values
 }
 
-fn extract_template_variable_names_from_value(
-    value: &Value,
-    skip_keys: &[&str],
-) -> Vec<String> {
+fn extract_template_variable_names_from_value(value: &Value, skip_keys: &[&str]) -> Vec<String> {
     fn visit(value: &Value, skip_keys: &[&str], values: &mut Vec<String>) {
         match value {
             Value::String(text) => {
@@ -859,15 +884,102 @@ pub(crate) fn ordered_unique_push(values: &mut Vec<String>, candidate: &str) {
 }
 
 fn datasource_type_from_reference(reference: &Value) -> Option<String> {
-    let Value::Object(object) = reference else {
-        return None;
-    };
-    object
-        .get("type")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty() && !is_placeholder_string(value))
-        .map(|value| datasource_type_alias(value).to_string())
+    match reference {
+        Value::Object(object) => object
+            .get("type")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty() && !is_placeholder_string(value))
+            .map(|value| datasource_type_alias(value).to_string()),
+        Value::String(text) => {
+            let trimmed = text.trim();
+            if trimmed.is_empty() || is_placeholder_string(trimmed) {
+                return None;
+            }
+            Some(datasource_type_alias(trimmed).to_string())
+        }
+        _ => None,
+    }
+}
+
+pub(crate) fn resolve_query_analyzer_family_from_datasource_type(
+    datasource_type: &str,
+) -> Option<&'static str> {
+    match datasource_type {
+        "loki" => Some(DATASOURCE_FAMILY_LOKI),
+        "prometheus" => Some(DATASOURCE_FAMILY_PROMETHEUS),
+        "tempo" | "jaeger" | "zipkin" => Some(DATASOURCE_FAMILY_TRACING),
+        "influxdb" | "flux" => Some(DATASOURCE_FAMILY_FLUX),
+        "mysql" | "postgres" | "mssql" => Some(DATASOURCE_FAMILY_SQL),
+        "elasticsearch" | "grafana-opensearch-datasource" | "opensearch" => {
+            Some(DATASOURCE_FAMILY_SEARCH)
+        }
+        _ => None,
+    }
+}
+
+pub(crate) fn resolve_query_analyzer_family_from_query_signature(
+    query_field: &str,
+    query_text: &str,
+) -> Option<&'static str> {
+    if matches!(query_field, "rawSql" | "sql") {
+        return Some(DATASOURCE_FAMILY_SQL);
+    }
+    if query_field == "logql" {
+        return Some(DATASOURCE_FAMILY_LOKI);
+    }
+    if query_field == "expr" {
+        return Some(DATASOURCE_FAMILY_PROMETHEUS);
+    }
+    let trimmed = query_text.trim_start();
+    if trimmed.starts_with("from(") || trimmed.starts_with("from (") || trimmed.contains("|>") {
+        return Some(DATASOURCE_FAMILY_FLUX);
+    }
+    let lowered = trimmed.to_ascii_lowercase();
+    if lowered.starts_with("select ")
+        || lowered.starts_with("with ")
+        || lowered.starts_with("insert ")
+        || lowered.starts_with("update ")
+        || lowered.starts_with("delete ")
+    {
+        return Some(DATASOURCE_FAMILY_SQL);
+    }
+    None
+}
+
+fn tracing_field_hint_regex() -> &'static Regex {
+    static REGEX: OnceLock<Regex> = OnceLock::new();
+    REGEX.get_or_init(|| {
+        Regex::new(
+            r#"(?i)(?:^|[^A-Za-z0-9_.-])((?:service\.name|span\.name|resource\.service\.name|trace\.id|traceID|traceId))\s*(?:=|:)\s*(?:"(?:\\.|[^"\\])*"|\[[^\]]*\]|\{[^}]*\}|\([^\)]*\)|[A-Za-z0-9_*?.-]+)"#,
+        )
+        .expect("invalid hard-coded tracing field regex")
+    })
+}
+
+fn extract_tracing_measurements(query_text: &str) -> Vec<String> {
+    let mut values = Vec::new();
+    for captures in tracing_field_hint_regex().captures_iter(query_text) {
+        if let Some(value) = captures.get(1) {
+            ordered_unique_push(&mut values, value.as_str());
+        }
+    }
+    values
+}
+
+/// Trace inspection is intentionally narrow: only explicit field-shaped hints are retained.
+pub(crate) fn analyze_tracing_query(
+    _panel: &Map<String, Value>,
+    _target: &Map<String, Value>,
+    _query_field: &str,
+    query_text: &str,
+) -> QueryAnalysis {
+    QueryAnalysis {
+        metrics: Vec::new(),
+        functions: Vec::new(),
+        measurements: extract_tracing_measurements(query_text),
+        buckets: Vec::new(),
+    }
 }
 
 /// extract query field and text.
@@ -1471,7 +1583,10 @@ fn collect_query_report_rows(
                 .filter_map(Value::as_object)
                 .filter(|target_object| {
                     !target_is_disabled(target_object)
-                        && !extract_query_field_and_text(target_object).1.trim().is_empty()
+                        && !extract_query_field_and_text(target_object)
+                            .1
+                            .trim()
+                            .is_empty()
                 })
                 .count();
             let mut panel_datasource_keys = std::collections::BTreeSet::new();
@@ -1551,6 +1666,7 @@ fn collect_query_report_rows(
                     target: target_object,
                     query_field: &query_field,
                     query_text: &query_text,
+                    resolved_datasource_type: &datasource_type,
                 });
                 rows.push(ExportInspectionQueryRow {
                     org: context.export_org.to_string(),
@@ -1659,7 +1775,11 @@ pub(crate) fn build_export_inspection_query_report(
             import_dir,
             &folders_by_uid,
         );
-        if folder_record.as_ref().map(|item| item.uid.is_empty()).unwrap_or(true) {
+        if folder_record
+            .as_ref()
+            .map(|item| item.uid.is_empty())
+            .unwrap_or(true)
+        {
             let scoped_matches = folders_by_uid
                 .values()
                 .filter(|item| {
@@ -1832,8 +1952,7 @@ pub(crate) fn build_export_inspection_summary(
     let metadata = load_export_metadata(import_dir, Some(RAW_EXPORT_SUBDIR))?;
     let source_root = load_inspect_source_root(import_dir);
     let export_org = resolve_export_identity_field(import_dir, metadata.as_ref(), "org")?;
-    let export_org_id =
-        resolve_export_identity_field(import_dir, metadata.as_ref(), "orgId")?;
+    let export_org_id = resolve_export_identity_field(import_dir, metadata.as_ref(), "orgId")?;
     let dashboard_files = discover_dashboard_files(import_dir)?;
     let folder_inventory = load_folder_inventory(import_dir, metadata.as_ref())?;
     let datasource_inventory = load_datasource_inventory(import_dir, metadata.as_ref())?;
@@ -2030,6 +2149,9 @@ pub(crate) fn build_export_inspection_summary_rows(
 }
 
 fn analyze_export_dir_at_path(args: &InspectExportArgs, import_dir: &Path) -> Result<usize> {
+    let write_output =
+        |output: &str| -> Result<()> { write_inspect_output(output, args.output_file.as_ref()) };
+
     if let Some(report_format) = effective_inspect_report_format(args) {
         let report = apply_query_report_filters(
             build_export_inspection_query_report(import_dir)?,
@@ -2041,18 +2163,23 @@ fn analyze_export_dir_at_path(args: &InspectExportArgs, import_dir: &Path) -> Re
         {
             let summary = build_export_inspection_summary(import_dir)?;
             let governance = build_export_inspection_governance_document(&summary, &report);
+            let mut output = String::new();
             if report_format == InspectExportReportFormat::GovernanceJson {
-                println!("{}", serde_json::to_string_pretty(&governance)?);
+                output.push_str(&serde_json::to_string_pretty(&governance)?);
+                output.push('\n');
             } else {
                 for line in render_governance_table_report(&summary.import_dir, &governance) {
-                    println!("{line}");
+                    output.push_str(&line);
+                    output.push('\n');
                 }
             }
+            write_output(&output)?;
             return Ok(summary.dashboard_count);
         }
         if report_format == InspectExportReportFormat::Json {
             let document = build_export_inspection_query_report_document(&report);
-            println!("{}", serde_json::to_string_pretty(&document)?);
+            let output = format!("{}\n", serde_json::to_string_pretty(&document)?);
+            write_output(&output)?;
             return Ok(report.summary.dashboard_count);
         }
         if report_format == InspectExportReportFormat::Dependency
@@ -2071,22 +2198,29 @@ fn analyze_export_dir_at_path(args: &InspectExportArgs, import_dir: &Path) -> Re
                 })
                 .collect::<Result<Vec<Value>>>()?;
             let payload = build_offline_dependency_contract(&query_rows, &datasource_inventory);
-            println!("{}", serde_json::to_string_pretty(&payload)?);
+            let output = format!("{}\n", serde_json::to_string_pretty(&payload)?);
+            write_output(&output)?;
             return Ok(report.summary.dashboard_count);
         }
         if report_format == InspectExportReportFormat::Tree {
+            let mut output = String::new();
             for line in render_grouped_query_report(&report) {
-                println!("{line}");
+                output.push_str(&line);
+                output.push('\n');
             }
+            write_output(&output)?;
             return Ok(report.summary.dashboard_count);
         }
 
         let column_ids =
             resolve_report_column_ids_for_format(Some(report_format), &args.report_columns)?;
         if report_format == InspectExportReportFormat::TreeTable {
+            let mut output = String::new();
             for line in render_grouped_query_table_report(&report, &column_ids, !args.no_header) {
-                println!("{line}");
+                output.push_str(&line);
+                output.push('\n');
             }
+            write_output(&output)?;
             return Ok(report.summary.dashboard_count);
         }
         let rows = report
@@ -2105,63 +2239,74 @@ fn analyze_export_dir_at_path(args: &InspectExportArgs, import_dir: &Path) -> Re
             .collect::<Vec<&str>>();
 
         if report_format == InspectExportReportFormat::Csv {
+            let mut output = String::new();
             for line in render_csv(&headers, &rows) {
-                println!("{line}");
+                output.push_str(&line);
+                output.push('\n');
             }
+            write_output(&output)?;
             return Ok(report.summary.dashboard_count);
         }
 
-        println!("Export inspection report: {}", report.import_dir);
-        println!();
-        println!("# Query report");
+        let mut output = String::new();
+        output.push_str(&format!(
+            "Export inspection report: {}\n\n",
+            report.import_dir
+        ));
+        output.push_str("# Query report\n");
         for line in render_simple_table(&headers, &rows, !args.no_header) {
-            println!("{line}");
+            output.push_str(&line);
+            output.push('\n');
         }
+        write_output(&output)?;
         return Ok(report.summary.dashboard_count);
     }
 
     let summary = build_export_inspection_summary(import_dir)?;
     if effective_inspect_json(args) {
         let document = build_export_inspection_summary_document(&summary);
-        println!("{}", serde_json::to_string_pretty(&document)?);
+        let output = format!("{}\n", serde_json::to_string_pretty(&document)?);
+        write_output(&output)?;
         return Ok(summary.dashboard_count);
     }
 
-    println!("Export inspection: {}", summary.import_dir);
+    let mut output = String::new();
+    output.push_str(&format!("Export inspection: {}\n", summary.import_dir));
     if effective_inspect_table(args) {
-        println!();
-        println!("# Summary");
+        output.push('\n');
+        output.push_str("# Summary\n");
         let summary_rows = build_export_inspection_summary_rows(&summary);
         for line in render_simple_table(&["METRIC", "VALUE"], &summary_rows, !args.no_header) {
-            println!("{line}");
+            output.push_str(&line);
+            output.push('\n');
         }
     } else {
         if let Some(export_org) = &summary.export_org {
-            println!("Export org: {}", export_org);
+            output.push_str(&format!("Export org: {}\n", export_org));
         }
         if let Some(export_org_id) = &summary.export_org_id {
-            println!("Export orgId: {}", export_org_id);
+            output.push_str(&format!("Export orgId: {}\n", export_org_id));
         }
-        println!("Dashboards: {}", summary.dashboard_count);
-        println!("Folders: {}", summary.folder_count);
-        println!("Panels: {}", summary.panel_count);
-        println!("Queries: {}", summary.query_count);
-        println!(
-            "Datasource inventory: {}",
+        output.push_str(&format!("Dashboards: {}\n", summary.dashboard_count));
+        output.push_str(&format!("Folders: {}\n", summary.folder_count));
+        output.push_str(&format!("Panels: {}\n", summary.panel_count));
+        output.push_str(&format!("Queries: {}\n", summary.query_count));
+        output.push_str(&format!(
+            "Datasource inventory: {}\n",
             summary.datasource_inventory_count
-        );
-        println!(
-            "Orphaned datasources: {}",
+        ));
+        output.push_str(&format!(
+            "Orphaned datasources: {}\n",
             summary.orphaned_datasource_count
-        );
-        println!(
-            "Mixed datasource dashboards: {}",
+        ));
+        output.push_str(&format!(
+            "Mixed datasource dashboards: {}\n",
             summary.mixed_dashboard_count
-        );
+        ));
     }
 
-    println!();
-    println!("# Folder paths");
+    output.push('\n');
+    output.push_str("# Folder paths\n");
     let folder_rows = summary
         .folder_paths
         .iter()
@@ -2172,11 +2317,12 @@ fn analyze_export_dir_at_path(args: &InspectExportArgs, import_dir: &Path) -> Re
         &folder_rows,
         !args.no_header,
     ) {
-        println!("{line}");
+        output.push_str(&line);
+        output.push('\n');
     }
 
-    println!();
-    println!("# Datasource usage");
+    output.push('\n');
+    output.push_str("# Datasource usage\n");
     let datasource_rows = summary
         .datasource_usage
         .iter()
@@ -2193,12 +2339,13 @@ fn analyze_export_dir_at_path(args: &InspectExportArgs, import_dir: &Path) -> Re
         &datasource_rows,
         !args.no_header,
     ) {
-        println!("{line}");
+        output.push_str(&line);
+        output.push('\n');
     }
 
     if !summary.datasource_inventory.is_empty() {
-        println!();
-        println!("# Datasource inventory");
+        output.push('\n');
+        output.push_str("# Datasource inventory\n");
         let datasource_inventory_rows = summary
             .datasource_inventory
             .iter()
@@ -2231,13 +2378,14 @@ fn analyze_export_dir_at_path(args: &InspectExportArgs, import_dir: &Path) -> Re
             &datasource_inventory_rows,
             !args.no_header,
         ) {
-            println!("{line}");
+            output.push_str(&line);
+            output.push('\n');
         }
     }
 
     if !summary.orphaned_datasources.is_empty() {
-        println!();
-        println!("# Orphaned datasources");
+        output.push('\n');
+        output.push_str("# Orphaned datasources\n");
         let orphaned_rows = summary
             .orphaned_datasources
             .iter()
@@ -2266,13 +2414,14 @@ fn analyze_export_dir_at_path(args: &InspectExportArgs, import_dir: &Path) -> Re
             &orphaned_rows,
             !args.no_header,
         ) {
-            println!("{line}");
+            output.push_str(&line);
+            output.push('\n');
         }
     }
 
     if !summary.mixed_dashboards.is_empty() {
-        println!();
-        println!("# Mixed datasource dashboards");
+        output.push('\n');
+        output.push_str("# Mixed datasource dashboards\n");
         let mixed_rows = summary
             .mixed_dashboards
             .iter()
@@ -2290,9 +2439,11 @@ fn analyze_export_dir_at_path(args: &InspectExportArgs, import_dir: &Path) -> Re
             &mixed_rows,
             !args.no_header,
         ) {
-            println!("{line}");
+            output.push_str(&line);
+            output.push('\n');
         }
     }
+    write_output(&output)?;
     Ok(summary.dashboard_count)
 }
 
@@ -2314,7 +2465,10 @@ impl TempInspectDir {
             .duration_since(UNIX_EPOCH)
             .map_err(|error| message(format!("Failed to build {prefix} temp path: {error}")))?
             .as_nanos();
-        let path = env::temp_dir().join(format!("grafana-utils-{prefix}-{}-{timestamp}", process::id()));
+        let path = env::temp_dir().join(format!(
+            "grafana-utils-{prefix}-{}-{timestamp}",
+            process::id()
+        ));
         fs::create_dir_all(&path)?;
         Ok(Self { path })
     }
@@ -2353,6 +2507,7 @@ fn build_export_inspect_args_from_live(
         table: args.table,
         report: args.report,
         output_format: args.output_format,
+        output_file: args.output_file.clone(),
         report_columns: args.report_columns.clone(),
         report_filter_datasource: args.report_filter_datasource.clone(),
         report_filter_panel_id: args.report_filter_panel_id.clone(),

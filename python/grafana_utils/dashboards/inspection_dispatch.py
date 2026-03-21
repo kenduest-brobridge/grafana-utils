@@ -2,6 +2,7 @@
 
 import json
 import sys
+from pathlib import Path
 
 from .inspection_dependency_models import build_dependency_rows_from_query_report
 
@@ -101,7 +102,17 @@ def resolve_inspect_dispatch_args(args, deps, grafana_error):
         "report_filter_panel_id": report_filter_panel_id,
         "report_format": report_format,
         "table_output": table_output,
+        "output_file": getattr(args, "output_file", None),
     }
+
+
+def _write_output_to_file(output, output_file):
+    if not output_file:
+        return
+    output_path = Path(output_file)
+    if output_path.parent:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(output, encoding="utf-8")
 
 
 def build_filtered_report_document(import_dir, deps, settings):
@@ -114,61 +125,55 @@ def build_filtered_report_document(import_dir, deps, settings):
 
 
 def _render_report_output(import_dir, deps, settings):
-    """Internal helper for render report output."""
+    """Build inspect report output without printing."""
     report_format = settings["report_format"]
     report_columns = settings["report_columns"]
     include_header = not settings["no_header"]
 
     if report_format == "json":
-        print(
+        return (
             json.dumps(
                 build_filtered_report_document(import_dir, deps, settings),
                 indent=2,
                 sort_keys=False,
                 ensure_ascii=False,
             )
+            + "\n"
         )
-        return 0
 
     if report_format == "table":
-        for line in deps["render_export_inspection_report_tables"](
+        lines = deps["render_export_inspection_report_tables"](
             build_filtered_report_document(import_dir, deps, settings),
             import_dir,
             include_header=include_header,
             selected_columns=report_columns,
-        ):
-            print(line)
-        return 0
+        )
+        return "\n".join(lines) + "\n"
 
     if report_format == "csv":
-        sys.stdout.write(
-            deps["render_export_inspection_report_csv"](
-                build_filtered_report_document(import_dir, deps, settings),
-                selected_columns=report_columns,
-                include_header=include_header,
-            )
+        return deps["render_export_inspection_report_csv"](
+            build_filtered_report_document(import_dir, deps, settings),
+            selected_columns=report_columns,
+            include_header=include_header,
         )
-        return 0
 
     if report_format in ("tree", "tree-table"):
         grouped_document = deps["build_grouped_export_inspection_report_document"](
             build_filtered_report_document(import_dir, deps, settings)
         )
         if report_format == "tree":
-            for line in deps["render_export_inspection_grouped_report"](
+            lines = deps["render_export_inspection_grouped_report"](
                 grouped_document,
                 import_dir,
-            ):
-                print(line)
-            return 0
-        for line in deps["render_export_inspection_tree_tables"](
+            )
+            return "\n".join(lines) + "\n"
+        lines = deps["render_export_inspection_tree_tables"](
             grouped_document,
             import_dir,
             include_header=include_header,
             selected_columns=report_columns,
-        ):
-            print(line)
-        return 0
+        )
+        return "\n".join(lines) + "\n"
 
     if report_format in ("dependency", "dependency-json"):
         report_document = build_filtered_report_document(import_dir, deps, settings)
@@ -183,15 +188,10 @@ def _render_report_output(import_dir, deps, settings):
         payload = {"kind": "grafana-utils-dashboard-dependency-contract"}
         payload.update(dependency_report)
         payload.update(dependency_report.get("summary", {}))
-        print(
-            json.dumps(
-                payload,
-                indent=2,
-                sort_keys=False,
-                ensure_ascii=False,
-            )
+        return (
+            json.dumps(payload, indent=2, sort_keys=False, ensure_ascii=False)
+            + "\n"
         )
-        return 0
 
     report_document = build_filtered_report_document(import_dir, deps, settings)
     governance_document = deps["build_export_inspection_governance_document"](
@@ -199,40 +199,40 @@ def _render_report_output(import_dir, deps, settings):
         report_document,
     )
     if report_format == "governance-json":
-        print(
+        return (
             json.dumps(
                 governance_document,
                 indent=2,
                 sort_keys=False,
                 ensure_ascii=False,
             )
+            + "\n"
         )
-        return 0
-    for line in deps["render_export_inspection_governance_tables"](
-        governance_document,
-        import_dir,
-    ):
-        print(line)
-    return 0
+    return "\n".join(
+        deps["render_export_inspection_governance_tables"](
+            governance_document,
+            import_dir,
+        )
+    ) + "\n"
 
 
 def _render_summary_output(import_dir, deps, settings):
-    """Internal helper for render summary output."""
+    """Build inspect summary output without printing."""
     document = deps["build_export_inspection_document"](import_dir)
     if settings["json_output"]:
-        print(json.dumps(document, indent=2, sort_keys=False, ensure_ascii=False))
-        return 0
+        return (
+            json.dumps(document, indent=2, sort_keys=False, ensure_ascii=False)
+            + "\n"
+        )
     if settings["table_output"]:
-        for line in deps["render_export_inspection_tables"](
-            document,
-            import_dir,
-            include_header=not settings["no_header"],
-        ):
-            print(line)
-        return 0
-    for line in deps["render_export_inspection_summary"](document, import_dir):
-        print(line)
-    return 0
+        return "\n".join(
+            deps["render_export_inspection_tables"](
+                document,
+                import_dir,
+                include_header=not settings["no_header"],
+            )
+        ) + "\n"
+    return "\n".join(deps["render_export_inspection_summary"](document, import_dir)) + "\n"
 
 
 def run_inspection_dispatch(import_dir, deps, settings):
@@ -242,5 +242,10 @@ def run_inspection_dispatch(import_dir, deps, settings):
     #   Downstream callees: 112, 215
 
     if settings["report_format"] is not None:
-        return _render_report_output(import_dir, deps, settings)
-    return _render_summary_output(import_dir, deps, settings)
+        output = _render_report_output(import_dir, deps, settings)
+    else:
+        output = _render_summary_output(import_dir, deps, settings)
+    _write_output_to_file(output, settings["output_file"])
+    if output:
+        sys.stdout.write(output)
+    return 0

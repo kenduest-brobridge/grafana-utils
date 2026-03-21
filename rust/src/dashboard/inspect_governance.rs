@@ -123,10 +123,24 @@ struct ResolvedDatasourceIdentity {
 pub(crate) fn normalize_family_name(datasource_type: &str) -> String {
     match datasource_type.trim().to_ascii_lowercase().as_str() {
         "" => "unknown".to_string(),
-        "grafana-postgresql-datasource" => "postgres".to_string(),
-        "grafana-mysql-datasource" => "mysql".to_string(),
+        "influxdb" | "flux" => "flux".to_string(),
+        "mysql" | "postgres" | "mssql" => "sql".to_string(),
+        "grafana-postgresql-datasource" | "grafana-mysql-datasource" => "sql".to_string(),
+        "elasticsearch" | "opensearch" | "grafana-opensearch-datasource" => "search".to_string(),
+        "tempo" | "jaeger" | "zipkin" => "tracing".to_string(),
         value => value.to_string(),
     }
+}
+
+fn normalize_family_list(families: &[String]) -> Vec<String> {
+    let mut normalized = Vec::new();
+    for family in families {
+        let family = normalize_family_name(family);
+        if !normalized.iter().any(|value| value == &family) {
+            normalized.push(family);
+        }
+    }
+    normalized
 }
 
 type InventoryIdentity = (String, String, String);
@@ -156,6 +170,12 @@ fn resolve_datasource_identity(
     inventory_by_uid: &BTreeMap<String, (String, String, String)>,
     inventory_by_name: &BTreeMap<String, (String, String, String)>,
 ) -> ResolvedDatasourceIdentity {
+    let normalized_family = normalize_family_name(&row.datasource_type);
+    let datasource_type = if matches!(normalized_family.as_str(), "search" | "tracing") {
+        row.datasource_type.clone()
+    } else {
+        "unknown".to_string()
+    };
     if !row.datasource_uid.trim().is_empty() {
         if let Some((uid, name, datasource_type)) = inventory_by_uid.get(&row.datasource_uid) {
             return ResolvedDatasourceIdentity {
@@ -185,20 +205,20 @@ fn resolve_datasource_identity(
             } else {
                 row.datasource.clone()
             },
-            datasource_type: "unknown".to_string(),
+            datasource_type,
         };
     }
     if !row.datasource.trim().is_empty() {
         return ResolvedDatasourceIdentity {
             uid: row.datasource.clone(),
             name: row.datasource.clone(),
-            datasource_type: "unknown".to_string(),
+            datasource_type,
         };
     }
     ResolvedDatasourceIdentity {
         uid: "unknown".to_string(),
         name: "unknown".to_string(),
-        datasource_type: "unknown".to_string(),
+        datasource_type,
     }
 }
 
@@ -391,7 +411,7 @@ pub(crate) fn build_dashboard_dependency_rows(
                 .map(|panel| panel.queries.len())
                 .sum::<usize>(),
             datasources: dashboard.datasources,
-            datasource_families: dashboard.datasource_families,
+            datasource_families: normalize_family_list(&dashboard.datasource_families),
         })
         .collect()
 }

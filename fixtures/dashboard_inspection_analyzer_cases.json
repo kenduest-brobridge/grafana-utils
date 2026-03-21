@@ -1,0 +1,631 @@
+[
+  {
+    "name": "prometheus-panel-datasource",
+    "panel": {
+      "datasource": {
+        "uid": "prom-main",
+        "type": "prometheus"
+      }
+    },
+    "target": {
+      "refId": "A"
+    },
+    "queryField": "expr",
+    "queryText": "sum(rate(node_cpu_seconds_total{job=\"node\"}[5m]))",
+    "expectedFamily": "prometheus",
+    "expectedAnalysis": {
+      "metrics": [
+        "node_cpu_seconds_total"
+      ],
+      "functions": [
+        "sum",
+        "rate"
+      ],
+      "measurements": [],
+      "buckets": [
+        "5m"
+      ]
+    }
+  },
+  {
+    "name": "prometheus-panel-datasource-histogram-quantile",
+    "panel": {
+      "datasource": {
+        "uid": "prom-main",
+        "type": "prometheus"
+      }
+    },
+    "target": {
+      "refId": "P2"
+    },
+    "queryField": "expr",
+    "queryText": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"api\",handler=\"/orders\"}[5m])) by (le))",
+    "expectedFamily": "prometheus",
+    "expectedAnalysis": {
+      "metrics": [
+        "http_request_duration_seconds_bucket"
+      ],
+      "functions": [
+        "histogram_quantile",
+        "sum",
+        "rate"
+      ],
+      "measurements": [],
+      "buckets": [
+        "5m"
+      ]
+    }
+  },
+  {
+    "name": "loki-panel-datasource",
+    "panel": {
+      "datasource": {
+        "uid": "loki-main",
+        "type": "loki"
+      }
+    },
+    "target": {
+      "refId": "A"
+    },
+    "queryField": "expr",
+    "queryText": "sum by (level) (count_over_time({job=\"grafana\",level=~\"error|warn\"} |= \"timeout\" | json | level=\"error\" [5m]))",
+    "expectedFamily": "loki",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [
+        "sum",
+        "count_over_time",
+        "json",
+        "line_filter_contains"
+      ],
+      "measurements": [
+        "{job=\"grafana\",level=~\"error|warn\"}",
+        "job=\"grafana\"",
+        "level=~\"error|warn\"",
+        "level=\"error\""
+      ],
+      "buckets": [
+        "5m"
+      ]
+    }
+  },
+  {
+    "name": "loki-panel-datasource-pipeline-stages",
+    "panel": {
+      "datasource": {
+        "uid": "loki-main",
+        "type": "loki"
+      }
+    },
+    "target": {
+      "refId": "L2"
+    },
+    "queryField": "expr",
+    "queryText": "sum by (namespace) (count_over_time({job=\"grafana\",namespace!=\"kube-system\",cluster=~\"prod|stage\"} |= \"timeout\" | json | logfmt [10m]))",
+    "expectedFamily": "loki",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [
+        "sum",
+        "count_over_time",
+        "json",
+        "logfmt",
+        "line_filter_contains"
+      ],
+      "measurements": [
+        "{job=\"grafana\",namespace!=\"kube-system\",cluster=~\"prod|stage\"}",
+        "job=\"grafana\"",
+        "namespace!=\"kube-system\"",
+        "cluster=~\"prod|stage\""
+      ],
+      "buckets": [
+        "10m"
+      ]
+    }
+  },
+  {
+    "name": "loki-panel-datasource-regex-filter",
+    "panel": {
+      "datasource": {
+        "uid": "loki-main",
+        "type": "loki"
+      }
+    },
+    "target": {
+      "refId": "R3"
+    },
+    "queryField": "expr",
+    "queryText": "sum by (namespace) (count_over_time({job=\"grafana\",namespace!=\"kube-system\",cluster=~\"prod|stage\"} |= \"timeout\" |~ \"panic|fatal\" | json | line_format \"{{.msg}}\" [10m]))",
+    "expectedFamily": "loki",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [
+        "sum",
+        "count_over_time",
+        "json",
+        "line_format",
+        "line_filter_contains",
+        "line_filter_regex"
+      ],
+      "measurements": [
+        "{job=\"grafana\",namespace!=\"kube-system\",cluster=~\"prod|stage\"}",
+        "job=\"grafana\"",
+        "namespace!=\"kube-system\"",
+        "cluster=~\"prod|stage\""
+      ],
+      "buckets": [
+        "10m"
+      ]
+    }
+  },
+  {
+    "name": "flux-query-text",
+    "panel": {},
+    "target": {
+      "refId": "B"
+    },
+    "queryField": "query",
+    "queryText": "from(bucket: \"prod\") |> range(start: -1h) |> filter(fn: (r) => r._measurement == \"http_requests\")",
+    "expectedFamily": "flux",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [
+        "from",
+        "filter",
+        "range"
+      ],
+      "measurements": [
+        "http_requests"
+      ],
+      "buckets": [
+        "prod"
+      ]
+    }
+  },
+  {
+    "name": "flux-query-text-pipeline-aggregate-window",
+    "panel": {},
+    "target": {
+      "refId": "F2"
+    },
+    "queryField": "query",
+    "queryText": "from(bucket: \"prod\") |> range(start: -1h) |> filter(fn: (r) => r._measurement == \"cpu\" and r.host == \"web-01\") |> aggregateWindow(every: 5m, fn: mean) |> yield(name: \"mean\")",
+    "expectedFamily": "flux",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [
+        "from",
+        "aggregateWindow",
+        "filter",
+        "range",
+        "yield"
+      ],
+      "measurements": [
+        "cpu"
+      ],
+      "buckets": [
+        "prod"
+      ]
+    }
+  },
+  {
+    "name": "sql-raw-sql-field",
+    "panel": {},
+    "target": {
+      "refId": "D"
+    },
+    "queryField": "rawSql",
+    "queryText": "SELECT count(*) FROM public.cpu_metrics WHERE host = 'web-01' GROUP BY host ORDER BY host LIMIT 5",
+    "expectedFamily": "sql",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [
+        "select",
+        "where",
+        "group_by",
+        "order_by",
+        "limit"
+      ],
+      "measurements": [
+        "public.cpu_metrics"
+      ],
+      "buckets": []
+    }
+  },
+  {
+    "name": "sql-raw-sql-field-cte-join-normalization",
+    "panel": {},
+    "target": {
+      "refId": "D2"
+    },
+    "queryField": "rawSql",
+    "queryText": "WITH recent_cpu AS (SELECT * FROM public.cpu_metrics) SELECT recent_cpu.host, hosts.owner FROM recent_cpu JOIN \"public\".\"hosts\" ON hosts.host = recent_cpu.host WHERE hosts.owner IS NOT NULL ORDER BY hosts.owner LIMIT 10",
+    "expectedFamily": "sql",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [
+        "with",
+        "select",
+        "join",
+        "where",
+        "order_by",
+        "limit"
+      ],
+      "measurements": [
+        "public.hosts",
+        "public.cpu_metrics"
+      ],
+      "buckets": []
+    }
+  },
+  {
+    "name": "elasticsearch-panel-datasource",
+    "panel": {
+      "datasource": {
+        "uid": "elastic-main",
+        "type": "elasticsearch"
+      }
+    },
+    "target": {
+      "refId": "E"
+    },
+    "queryField": "query",
+    "queryText": "status:500 AND status:500 AND _exists_:trace.id AND service.name:count AND category:rate",
+    "expectedFamily": "search",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [
+        "trace.id",
+        "status",
+        "service.name",
+        "category"
+      ],
+      "buckets": []
+    }
+  },
+  {
+    "name": "grafana-opensearch-datasource-panel-datasource-range-field",
+    "panel": {
+      "datasource": {
+        "uid": "search-main",
+        "type": "grafana-opensearch-datasource"
+      }
+    },
+    "target": {
+      "refId": "GR"
+    },
+    "queryField": "query",
+    "queryText": "_exists_:@timestamp AND resource.service.name:\"checkout\" AND status:[500 TO 599]",
+    "expectedFamily": "search",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [
+        "@timestamp",
+        "resource.service.name",
+        "status"
+      ],
+      "buckets": []
+    }
+  },
+  {
+    "name": "opensearch-panel-datasource",
+    "panel": {
+      "datasource": {
+        "uid": "search-main",
+        "type": "opensearch"
+      }
+    },
+    "target": {
+      "refId": "O"
+    },
+    "queryField": "query",
+    "queryText": "_exists_:host.name AND host.name:api AND response.status:404 AND response.status:404 AND level:error",
+    "expectedFamily": "search",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [
+        "host.name",
+        "response.status",
+        "level"
+      ],
+      "buckets": []
+    }
+  },
+  {
+    "name": "elasticsearch-panel-datasource-simple-status-field",
+    "panel": {
+      "datasource": {
+        "uid": "elastic-main",
+        "type": "elasticsearch"
+      }
+    },
+    "target": {
+      "refId": "E2"
+    },
+    "queryField": "query",
+    "queryText": "status:500",
+    "expectedFamily": "search",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [
+        "status"
+      ],
+      "buckets": []
+    }
+  },
+  {
+    "name": "opensearch-panel-datasource-dotted-field",
+    "panel": {
+      "datasource": {
+        "uid": "search-main",
+        "type": "opensearch"
+      }
+    },
+    "target": {
+      "refId": "O2"
+    },
+    "queryField": "query",
+    "queryText": "service.name:\"api\"",
+    "expectedFamily": "search",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [
+        "service.name"
+      ],
+      "buckets": []
+    }
+  },
+  {
+    "name": "elasticsearch-panel-datasource-exists-field",
+    "panel": {
+      "datasource": {
+        "uid": "elastic-main",
+        "type": "elasticsearch"
+      }
+    },
+    "target": {
+      "refId": "EX"
+    },
+    "queryField": "query",
+    "queryText": "_exists_:traceId",
+    "expectedFamily": "search",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [
+        "traceId"
+      ],
+      "buckets": []
+    }
+  },
+  {
+    "name": "opensearch-panel-datasource-boolean-dedupe",
+    "panel": {
+      "datasource": {
+        "uid": "search-main",
+        "type": "opensearch"
+      }
+    },
+    "target": {
+      "refId": "OD"
+    },
+    "queryField": "query",
+    "queryText": "status:500 AND service.name:\"api\"",
+    "expectedFamily": "search",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [
+        "status",
+        "service.name"
+      ],
+      "buckets": []
+    }
+  },
+  {
+    "name": "elasticsearch-panel-datasource-at-timestamp-range",
+    "panel": {
+      "datasource": {
+        "uid": "elastic-main",
+        "type": "elasticsearch"
+      }
+    },
+    "target": {
+      "refId": "ET"
+    },
+    "queryField": "query",
+    "queryText": "@timestamp:[now-15m TO now] AND level:error",
+    "expectedFamily": "search",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [
+        "@timestamp",
+        "level"
+      ],
+      "buckets": []
+    }
+  },
+  {
+    "name": "opensearch-panel-datasource-exists-at-timestamp",
+    "panel": {
+      "datasource": {
+        "uid": "search-main",
+        "type": "opensearch"
+      }
+    },
+    "target": {
+      "refId": "OT"
+    },
+    "queryField": "query",
+    "queryText": "_exists_:@timestamp AND service.name:\"api\"",
+    "expectedFamily": "search",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [
+        "@timestamp",
+        "service.name"
+      ],
+      "buckets": []
+    }
+  },
+  {
+    "name": "elasticsearch-panel-datasource-json-dsl-stays-empty",
+    "panel": {
+      "datasource": {
+        "uid": "elastic-main",
+        "type": "elasticsearch"
+      }
+    },
+    "target": {
+      "refId": "EJ"
+    },
+    "queryField": "rawQuery",
+    "queryText": "{\"query\":{\"match\":{\"status\":\"500\"}}}",
+    "expectedFamily": "search",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [],
+      "buckets": []
+    }
+  },
+  {
+    "name": "opensearch-panel-datasource-ppl-stays-empty",
+    "panel": {
+      "datasource": {
+        "uid": "search-main",
+        "type": "opensearch"
+      }
+    },
+    "target": {
+      "refId": "OP"
+    },
+    "queryField": "query",
+    "queryText": "source=logs | where status=500",
+    "expectedFamily": "search",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [],
+      "buckets": []
+    }
+  },
+  {
+    "name": "tempo-panel-datasource-tracing-field-hints",
+    "panel": {
+      "datasource": {
+        "uid": "tempo-main",
+        "type": "tempo"
+      }
+    },
+    "target": {
+      "refId": "T"
+    },
+    "queryField": "query",
+    "queryText": "service.name:checkout AND traceID=abc123 AND span.name:\"GET /orders\"",
+    "expectedFamily": "tracing",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [
+        "service.name",
+        "traceID",
+        "span.name"
+      ],
+      "buckets": []
+    }
+  },
+  {
+    "name": "jaeger-panel-datasource-tracing-field-hints",
+    "panel": {
+      "datasource": {
+        "uid": "jaeger-main",
+        "type": "jaeger"
+      }
+    },
+    "target": {
+      "refId": "J"
+    },
+    "queryField": "query",
+    "queryText": "trace.id:abc123 AND service.name:checkout",
+    "expectedFamily": "tracing",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [
+        "trace.id",
+        "service.name"
+      ],
+      "buckets": []
+    }
+  },
+  {
+    "name": "zipkin-panel-datasource-tracing-stays-empty",
+    "panel": {
+      "datasource": {
+        "uid": "zipkin-main",
+        "type": "zipkin"
+      }
+    },
+    "target": {
+      "refId": "Z"
+    },
+    "queryField": "query",
+    "queryText": "trace workflow text with no obvious fields",
+    "expectedFamily": "tracing",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [],
+      "buckets": []
+    }
+  },
+  {
+    "name": "zipkin-panel-datasource-resource-service-name-hints",
+    "panel": {
+      "datasource": {
+        "uid": "zipkin-main",
+        "type": "zipkin"
+      }
+    },
+    "target": {
+      "refId": "Z2"
+    },
+    "queryField": "query",
+    "queryText": "resource.service.name:checkout AND trace.id=abc123 AND span.name:\"GET /orders\"",
+    "expectedFamily": "tracing",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [
+        "resource.service.name",
+        "trace.id",
+        "span.name"
+      ],
+      "buckets": []
+    }
+  },
+  {
+    "name": "unknown-generic-fallback",
+    "panel": {},
+    "target": {
+      "refId": "Z"
+    },
+    "queryField": "query",
+    "queryText": "custom_metric()",
+    "expectedFamily": "unknown",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [],
+      "buckets": []
+    }
+  }
+]

@@ -3,14 +3,16 @@
 //! through the shared dashboard HTTP/auth context.
 use reqwest::Method;
 use serde_json::{Map, Value};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::common::{message, object_field, string_field, value_as_object, Result};
 use crate::http::{JsonHttpClient, JsonHttpClientConfig};
+use crate::sync::preflight::build_sync_preflight_document;
 
+use super::list::collect_dashboard_source_metadata;
 use super::*;
 
 #[derive(Default)]
@@ -1149,6 +1151,12 @@ pub(crate) fn render_import_dry_run_table(
     lines
 }
 
+pub(crate) fn format_routed_import_target_org_label(target_org_id: Option<i64>) -> String {
+    target_org_id
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| "<new>".to_string())
+}
+
 fn build_routed_import_org_row(plan: &ExportOrgTargetPlan, dashboard_count: usize) -> [String; 5] {
     [
         plan.source_org_id.to_string(),
@@ -1158,11 +1166,42 @@ fn build_routed_import_org_row(plan: &ExportOrgTargetPlan, dashboard_count: usiz
             plan.source_org_name.clone()
         },
         plan.org_action.to_string(),
-        plan.target_org_id
-            .map(|value| value.to_string())
-            .unwrap_or_else(|| "<new>".to_string()),
+        format_routed_import_target_org_label(plan.target_org_id),
         dashboard_count.to_string(),
     ]
+}
+
+pub(crate) fn format_routed_import_scope_summary_fields(
+    source_org_id: i64,
+    source_org_name: &str,
+    org_action: &str,
+    target_org_id: Option<i64>,
+    import_dir: &Path,
+) -> String {
+    let source_org_name = if source_org_name.is_empty() {
+        "-".to_string()
+    } else {
+        source_org_name.to_string()
+    };
+    let target_org_id = format_routed_import_target_org_label(target_org_id);
+    format!(
+        "export orgId={} name={} orgAction={} targetOrgId={} from {}",
+        source_org_id,
+        source_org_name,
+        org_action,
+        target_org_id,
+        import_dir.display()
+    )
+}
+
+fn format_routed_import_scope_summary(plan: &ExportOrgTargetPlan) -> String {
+    format_routed_import_scope_summary_fields(
+        plan.source_org_id,
+        &plan.source_org_name,
+        &plan.org_action,
+        plan.target_org_id,
+        &plan.import_dir,
+    )
 }
 
 /// Purpose: implementation note.
@@ -1392,9 +1431,175 @@ fn build_import_dry_run_json_value(report: &ImportDryRunReport) -> Value {
             "dashboardCount": report.dashboard_records.len(),
             "missingDashboards": report.dashboard_records.iter().filter(|row| row[1] == "missing").count(),
             "skippedMissingDashboards": report.skipped_missing_count,
-            "skippedFolderMismatchDashboards": report.skipped_folder_mismatch_count,
+        "skippedFolderMismatchDashboards": report.skipped_folder_mismatch_count,
         }
     })
+}
+
+fn collect_dashboard_panel_types(panels: &[Value], panel_types: &mut BTreeSet<String>) {
+    for panel in panels {
+        let Some(panel_object) = panel.as_object() else {
+            continue;
+        };
+        let panel_type = string_field(panel_object, "type", "");
+        if !panel_type.is_empty() {
+            panel_types.insert(panel_type);
+        }
+        if let Some(nested) = panel_object.get("panels").and_then(Value::as_array) {
+            collect_dashboard_panel_types(nested, panel_types);
+        }
+    }
+}
+
+fn build_dashboard_import_availability_with_request<F>(
+    mut request_json: F,
+) -> Result<Map<String, Value>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let mut availability = Map::new();
+    availability.insert("datasourceUids".to_string(), Value::Array(Vec::new()));
+    availability.insert("datasourceNames".to_string(), Value::Array(Vec::new()));
+    availability.insert("pluginIds".to_string(), Value::Array(Vec::new()));
+
+    match request_json(Method::GET, "/api/datasources", &[], None)? {
+        Some(Value::Array(datasources)) => {
+            let mut datasource_uids = BTreeSet::new();
+            let mut datasource_names = BTreeSet::new();
+            for datasource in datasources {
+                let object = value_as_object(
+                    &datasource,
+                    "Unexpected datasource list response from Grafana.",
+                )?;
+                if let Some(uid) = object
+                    .get("uid")
+                    .and_then(Value::as_str)
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                {
+                    datasource_uids.insert(uid.to_string());
+                }
+                if let Some(name) = object
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                {
+                    datasource_names.insert(name.to_string());
+                }
+            }
+            availability.insert(
+                "datasourceUids".to_string(),
+                Value::Array(
+                    datasource_uids
+                        .into_iter()
+                        .map(Value::String)
+                        .collect::<Vec<_>>(),
+                ),
+            );
+            availability.insert(
+                "datasourceNames".to_string(),
+                Value::Array(
+                    datasource_names
+                        .into_iter()
+                        .map(Value::String)
+                        .collect::<Vec<_>>(),
+                ),
+            );
+        }
+        Some(_) => return Err(message("Unexpected datasource list response from Grafana.")),
+        None => {}
+    }
+
+    match request_json(Method::GET, "/api/plugins", &[], None)? {
+        Some(Value::Array(plugins)) => {
+            let plugin_ids = plugins
+                .iter()
+                .filter_map(Value::as_object)
+                .filter_map(|plugin| plugin.get("id").and_then(Value::as_str))
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+                .collect::<BTreeSet<String>>();
+            availability.insert(
+                "pluginIds".to_string(),
+                Value::Array(
+                    plugin_ids
+                        .into_iter()
+                        .map(Value::String)
+                        .collect::<Vec<_>>(),
+                ),
+            );
+        }
+        Some(_) => return Err(message("Unexpected plugin list response from Grafana.")),
+        None => {}
+    }
+
+    Ok(availability)
+}
+
+fn build_dashboard_import_dependency_specs(
+    import_dir: &Path,
+    datasource_catalog: &super::prompt::DatasourceCatalog,
+) -> Result<Vec<Value>> {
+    let mut dashboard_files = discover_dashboard_files(import_dir)?;
+    dashboard_files.retain(|path| {
+        path.file_name().and_then(|name| name.to_str()) != Some(FOLDER_INVENTORY_FILENAME)
+    });
+    let mut desired_specs = Vec::new();
+    for dashboard_file in dashboard_files {
+        let document = load_json_file(&dashboard_file)?;
+        let document_object =
+            value_as_object(&document, "Dashboard payload must be a JSON object.")?;
+        let dashboard = extract_dashboard_object(document_object)?;
+        let uid = string_field(dashboard, "uid", "");
+        let title = string_field(dashboard, "title", DEFAULT_DASHBOARD_TITLE);
+        let (datasource_names, datasource_uids) =
+            collect_dashboard_source_metadata(&document, datasource_catalog)?;
+        let mut panel_types = BTreeSet::new();
+        if let Some(panels) = dashboard.get("panels").and_then(Value::as_array) {
+            collect_dashboard_panel_types(panels, &mut panel_types);
+        }
+        desired_specs.push(serde_json::json!({
+            "kind": "dashboard",
+            "uid": uid,
+            "title": title,
+            "body": {
+                "datasourceNames": datasource_names,
+                "datasourceUids": datasource_uids,
+                "pluginIds": panel_types.into_iter().collect::<Vec<String>>(),
+            },
+            "sourcePath": dashboard_file.display().to_string(),
+        }));
+    }
+    Ok(desired_specs)
+}
+
+fn validate_dashboard_import_dependencies_with_request<F>(
+    mut request_json: F,
+    import_dir: &Path,
+) -> Result<()>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let datasource_catalog =
+        build_datasource_catalog(&list_datasources_with_request(&mut request_json)?);
+    let desired_specs = build_dashboard_import_dependency_specs(import_dir, &datasource_catalog)?;
+    let availability = build_dashboard_import_availability_with_request(&mut request_json)?;
+    let document =
+        build_sync_preflight_document(&desired_specs, Some(&Value::Object(availability)))?;
+    let blocking = document
+        .get("summary")
+        .and_then(Value::as_object)
+        .and_then(|summary| summary.get("blockingCount"))
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+    if blocking > 0 {
+        return Err(message(format!(
+            "Refusing dashboard import because preflight reports {blocking} blocking checks."
+        )));
+    }
+    Ok(())
 }
 
 /// Purpose: implementation note.
@@ -1706,6 +1911,9 @@ where
         .into_iter()
         .map(|item| (item.uid.clone(), item))
         .collect();
+    if !args.dry_run {
+        validate_dashboard_import_dependencies_with_request(&mut request_json, &args.import_dir)?;
+    }
     let mut dashboard_files = discover_dashboard_files(&args.import_dir)?;
     dashboard_files.retain(|path| {
         path.file_name().and_then(|name| name.to_str()) != Some(FOLDER_INVENTORY_FILENAME)
@@ -2214,22 +2422,10 @@ where
         return Ok(0);
     }
     for target_plan in resolved_plans {
-        let target_org_id_label = target_plan
-            .target_org_id
-            .map(|value| value.to_string())
-            .unwrap_or_else(|| "-".to_string());
         if !args.table {
             println!(
-                "Importing export orgId={} name={} orgAction={} targetOrgId={} from {}",
-                target_plan.source_org_id,
-                if target_plan.source_org_name.is_empty() {
-                    "-"
-                } else {
-                    &target_plan.source_org_name
-                },
-                target_plan.org_action,
-                target_org_id_label,
-                target_plan.import_dir.display()
+                "Importing {}",
+                format_routed_import_scope_summary(&target_plan)
             );
         }
         let Some(target_org_id) = target_plan.target_org_id else {
@@ -2241,7 +2437,13 @@ where
         scoped_args.only_org_id = Vec::new();
         scoped_args.create_missing_orgs = false;
         scoped_args.import_dir = target_plan.import_dir.clone();
-        imported_count += import_for_org(target_org_id, &scoped_args)?;
+        imported_count += import_for_org(target_org_id, &scoped_args).map_err(|error| {
+            message(format!(
+                "Dashboard routed import failed for {}: {}",
+                format_routed_import_scope_summary(&target_plan),
+                error
+            ))
+        })?;
     }
     Ok(imported_count)
 }
@@ -2345,4 +2547,80 @@ pub fn diff_dashboards_with_client(client: &JsonHttpClient, args: &DiffArgs) -> 
         |method, path, params, payload| client.request_json(method, path, params, payload),
         args,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sync::preflight::build_sync_preflight_document;
+    use serde_json::json;
+    use tempfile::tempdir;
+
+    #[test]
+    fn build_dashboard_import_dependency_specs_detects_datasource_and_panel_dependencies() {
+        let temp = tempdir().unwrap();
+        let raw_dir = temp.path().join("raw");
+        std::fs::create_dir_all(&raw_dir).unwrap();
+        std::fs::write(
+            raw_dir.join(EXPORT_METADATA_FILENAME),
+            serde_json::to_string_pretty(&json!({
+                "kind": "grafana-utils-dashboard-export-index",
+                "schemaVersion": TOOL_SCHEMA_VERSION,
+                "variant": "raw",
+                "dashboardCount": 1,
+                "indexFile": "index.json",
+                "format": "grafana-web-import-preserve-uid"
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        std::fs::write(
+            raw_dir.join("dash.json"),
+            serde_json::to_string_pretty(&json!({
+                "dashboard": {
+                    "id": 7,
+                    "uid": "abc",
+                    "title": "CPU",
+                    "panels": [
+                        {
+                            "type": "row",
+                            "panels": [
+                                {
+                                    "type": "timeseries",
+                                    "datasource": {
+                                        "uid": "prom-main",
+                                        "name": "Prometheus Main"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        let datasource_catalog = build_datasource_catalog(&[]);
+        let desired_specs =
+            build_dashboard_import_dependency_specs(&raw_dir, &datasource_catalog).unwrap();
+
+        assert_eq!(desired_specs.len(), 1);
+        assert_eq!(
+            desired_specs[0]["body"]["datasourceUids"],
+            json!(["prom-main"])
+        );
+        assert_eq!(
+            desired_specs[0]["body"]["pluginIds"],
+            json!(["row", "timeseries"])
+        );
+
+        let availability = json!({
+            "datasourceUids": ["other"],
+            "datasourceNames": ["Other"],
+            "pluginIds": ["row"]
+        });
+        let document = build_sync_preflight_document(&desired_specs, Some(&availability)).unwrap();
+        assert_eq!(document["summary"]["blockingCount"], json!(3));
+    }
 }

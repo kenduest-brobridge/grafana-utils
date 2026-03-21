@@ -62,6 +62,7 @@ pub(crate) fn discover_dashboard_files(import_dir: &Path) -> Result<Vec<PathBuf>
 }
 
 /// Purpose: implementation note.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_export_metadata(
     variant: &str,
     dashboard_count: usize,

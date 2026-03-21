@@ -1,5 +1,5 @@
 //! Loki analyzer for dashboard query inspection.
-//! Parses stream selectors, label matchers, and pipeline operations used by report grouping.
+//! Parses stream selectors, label matchers, pipeline operations, and obvious line filters.
 use regex::Regex;
 use serde_json::{Map, Value};
 
@@ -16,10 +16,35 @@ fn ordered_unique_push(values: &mut Vec<String>, candidate: &str) {
 }
 
 fn extract_loki_stream_selectors(query_text: &str) -> Vec<String> {
-    let regex = Regex::new(r"\{[^{}]+\}").expect("invalid hard-coded loki stream selector regex");
     let mut values = Vec::new();
-    for matched in regex.find_iter(query_text) {
-        ordered_unique_push(&mut values, matched.as_str());
+    let mut in_quotes = false;
+    let mut escaped = false;
+    let mut capture_start: Option<usize> = None;
+    for (index, character) in query_text.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        match character {
+            '\\' if in_quotes => {
+                escaped = true;
+            }
+            '"' => {
+                in_quotes = !in_quotes;
+            }
+            '{' if !in_quotes => {
+                capture_start = Some(index);
+            }
+            '}' if !in_quotes => {
+                if let Some(start) = capture_start.take() {
+                    ordered_unique_push(
+                        &mut values,
+                        &query_text[start..index + character.len_utf8()],
+                    );
+                }
+            }
+            _ => {}
+        }
     }
     values
 }
@@ -79,6 +104,30 @@ fn extract_loki_pipeline_metrics(query_text: &str) -> Vec<String> {
         if let Some(value) = captures.get(1) {
             ordered_unique_push(&mut values, value.as_str());
         }
+    }
+    for value in extract_loki_line_filter_hints(query_text) {
+        ordered_unique_push(&mut values, &value);
+    }
+    values
+}
+
+fn extract_loki_line_filter_hints(query_text: &str) -> Vec<String> {
+    let quoted_regex =
+        Regex::new(r#""(?:\\.|[^"\\])*""#).expect("invalid hard-coded loki quoted regex");
+    let sanitized_query = quoted_regex.replace_all(query_text, "\"\"");
+    let regex = Regex::new(r#"\|\s*(=|~)\s*"(?:\\.|[^"\\])*""#)
+        .expect("invalid hard-coded loki line filter regex");
+    let mut values = Vec::new();
+    for captures in regex.captures_iter(&sanitized_query) {
+        let Some(operator) = captures.get(1).map(|item| item.as_str()) else {
+            continue;
+        };
+        let hint = match operator {
+            "=" => "line_filter_contains",
+            "~" => "line_filter_regex",
+            _ => continue,
+        };
+        ordered_unique_push(&mut values, hint);
     }
     values
 }

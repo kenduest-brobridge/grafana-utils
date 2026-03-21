@@ -580,10 +580,12 @@ pub(crate) fn normalize_query_report(
                 });
                 panels.len() - 1
             });
-        panels[panel_index].panel_target_count =
-            panels[panel_index].panel_target_count.max(row.panel_target_count);
-        panels[panel_index].panel_query_count =
-            panels[panel_index].panel_query_count.max(row.panel_query_count);
+        panels[panel_index].panel_target_count = panels[panel_index]
+            .panel_target_count
+            .max(row.panel_target_count);
+        panels[panel_index].panel_query_count = panels[panel_index]
+            .panel_query_count
+            .max(row.panel_query_count);
         if !row.datasource.is_empty()
             && !panels[panel_index]
                 .datasources

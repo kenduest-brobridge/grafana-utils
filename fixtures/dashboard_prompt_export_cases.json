@@ -1,0 +1,300 @@
+[
+  {
+    "name": "mixed_type_prometheus_loki",
+    "payload": {
+      "dashboard": {
+        "id": 19,
+        "title": "Mixed Type Prompt",
+        "panels": [
+          {
+            "id": 1,
+            "type": "timeseries",
+            "title": "CPU",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prom_uid"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "datasource": {
+                  "type": "prometheus",
+                  "uid": "prom_uid"
+                },
+                "expr": "up"
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "type": "logs",
+            "title": "Logs",
+            "datasource": {
+              "type": "loki",
+              "uid": "loki_uid"
+            },
+            "targets": [
+              {
+                "refId": "B",
+                "datasource": {
+                  "type": "loki",
+                  "uid": "loki_uid"
+                },
+                "expr": "{job=\"grafana\"} | json"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "catalog": [
+      {
+        "uid": "prom_uid",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "pluginVersion": "11.0.0"
+      },
+      {
+        "uid": "loki_uid",
+        "name": "Loki Logs",
+        "type": "loki",
+        "meta": {
+          "info": {
+            "version": "3.1.0"
+          }
+        }
+      }
+    ],
+    "expectedInputs": [
+      {
+        "name": "DS_LOKI_LOGS",
+        "label": "Loki Logs",
+        "description": "",
+        "type": "datasource",
+        "pluginId": "loki",
+        "pluginName": "Loki"
+      },
+      {
+        "name": "DS_PROMETHEUS_MAIN",
+        "label": "Prometheus Main",
+        "description": "",
+        "type": "datasource",
+        "pluginId": "prometheus",
+        "pluginName": "Prometheus"
+      }
+    ],
+    "expectedDatasourceRequires": [
+      {
+        "type": "datasource",
+        "id": "loki",
+        "name": "Loki",
+        "version": "3.1.0"
+      },
+      {
+        "type": "datasource",
+        "id": "prometheus",
+        "name": "Prometheus",
+        "version": "11.0.0"
+      }
+    ],
+    "expectedPanelRequires": [
+      {
+        "type": "panel",
+        "id": "logs",
+        "name": "Logs",
+        "version": ""
+      },
+      {
+        "type": "panel",
+        "id": "timeseries",
+        "name": "Time series",
+        "version": ""
+      }
+    ]
+  },
+  {
+    "name": "same_type_postgresql_distinct_names",
+    "payload": {
+      "dashboard": {
+        "id": 20,
+        "title": "Same Type PostgreSQL References",
+        "panels": [
+          {
+            "id": 1,
+            "type": "table",
+            "title": "Database",
+            "datasource": {
+              "type": "datasource",
+              "uid": "-- Mixed --"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "datasource": {
+                  "type": "postgres",
+                  "uid": "primary_db",
+                  "name": "Primary Database"
+                },
+                "rawSql": "select 1"
+              },
+              {
+                "refId": "B",
+                "datasource": {
+                  "type": "postgres",
+                  "uid": "replica_db",
+                  "name": "Replica Database"
+                },
+                "rawSql": "select 1"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "catalog": [
+      {
+        "uid": "primary_db",
+        "name": "Primary Database",
+        "type": "postgres",
+        "pluginVersion": "16.3.0"
+      },
+      {
+        "uid": "replica_db",
+        "name": "Replica Database",
+        "type": "postgres"
+      }
+    ],
+    "expectedInputs": [
+      {
+        "name": "DS_PRIMARY_DATABASE",
+        "label": "Primary Database",
+        "description": "",
+        "type": "datasource",
+        "pluginId": "postgres",
+        "pluginName": "PostgreSQL"
+      },
+      {
+        "name": "DS_REPLICA_DATABASE",
+        "label": "Replica Database",
+        "description": "",
+        "type": "datasource",
+        "pluginId": "postgres",
+        "pluginName": "PostgreSQL"
+      }
+    ],
+    "expectedDatasourceRequires": [
+      {
+        "type": "datasource",
+        "id": "postgres",
+        "name": "PostgreSQL",
+        "version": "16.3.0"
+      }
+    ],
+    "expectedPanelRequires": [
+      {
+        "type": "panel",
+        "id": "table",
+        "name": "Table",
+        "version": ""
+      }
+    ]
+  },
+  {
+    "name": "mixed_type_opensearch_postgresql",
+    "payload": {
+      "dashboard": {
+        "id": 21,
+        "title": "Mixed OpenSearch And PostgreSQL",
+        "panels": [
+          {
+            "id": 1,
+            "type": "table",
+            "title": "Search And SQL",
+            "datasource": {
+              "type": "datasource",
+              "uid": "-- Mixed --"
+            },
+            "targets": [
+              {
+                "refId": "A",
+                "datasource": {
+                  "type": "grafana-opensearch-datasource",
+                  "uid": "search_uid",
+                  "name": "Search Data"
+                },
+                "query": "status:200"
+              },
+              {
+                "refId": "B",
+                "datasource": {
+                  "type": "postgres",
+                  "uid": "reporting_uid",
+                  "name": "Reporting DB"
+                },
+                "rawSql": "select 1"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "catalog": [
+      {
+        "uid": "search_uid",
+        "name": "Search Data",
+        "type": "grafana-opensearch-datasource",
+        "pluginVersion": "2.25.0"
+      },
+      {
+        "uid": "reporting_uid",
+        "name": "Reporting DB",
+        "type": "postgres",
+        "meta": {
+          "info": {
+            "version": "1.0.0"
+          }
+        }
+      }
+    ],
+    "expectedInputs": [
+      {
+        "name": "DS_REPORTING_DB",
+        "label": "Reporting DB",
+        "description": "",
+        "type": "datasource",
+        "pluginId": "postgres",
+        "pluginName": "PostgreSQL"
+      },
+      {
+        "name": "DS_SEARCH_DATA",
+        "label": "Search Data",
+        "description": "",
+        "type": "datasource",
+        "pluginId": "grafana-opensearch-datasource",
+        "pluginName": "OpenSearch"
+      }
+    ],
+    "expectedDatasourceRequires": [
+      {
+        "type": "datasource",
+        "id": "grafana-opensearch-datasource",
+        "name": "OpenSearch",
+        "version": "2.25.0"
+      },
+      {
+        "type": "datasource",
+        "id": "postgres",
+        "name": "PostgreSQL",
+        "version": "1.0.0"
+      }
+    ],
+    "expectedPanelRequires": [
+      {
+        "type": "panel",
+        "id": "table",
+        "name": "Table",
+        "version": ""
+      }
+    ]
+  }
+]

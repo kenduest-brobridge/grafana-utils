@@ -434,6 +434,52 @@ class DashboardInspectionTests(unittest.TestCase):
             self.assertIn("Unused Main uid=unused-main", output)
             self.assertIn("Mixed Main (mixed-main) path=Platform / Infra", output)
 
+    def test_dashboard_inspection_inspect_export_supports_output_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self.write_summary_fixture(
+                import_dir,
+                dashboards=[
+                    {
+                        "path": Path("General") / "CPU_Main__cpu-main.json",
+                        "dashboard": {
+                            "id": None,
+                            "uid": "cpu-main",
+                            "title": "CPU Main",
+                            "panels": [],
+                        },
+                    }
+                ],
+                datasources=[
+                    {
+                        "uid": "prom-main",
+                        "name": "Prometheus Main",
+                        "type": "prometheus",
+                        "access": "proxy",
+                        "url": "http://prometheus:9090",
+                        "isDefault": "true",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    }
+                ],
+            )
+            output_file = import_dir / "inspect-export.txt"
+            result, output = self.run_inspect(
+                exporter.parse_args(
+                    [
+                        "inspect-export",
+                        "--import-dir",
+                        str(import_dir),
+                        "--output-file",
+                        str(output_file),
+                    ]
+                )
+            )
+
+            self.assertEqual(result, 0)
+            self.assertTrue(output_file.exists())
+            self.assertEqual(output_file.read_text(encoding="utf-8"), output)
+
     def test_dashboard_inspection_inspect_export_renders_json(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             import_dir = Path(tmpdir)

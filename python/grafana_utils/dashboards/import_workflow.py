@@ -22,6 +22,8 @@ class _CachedDashboardImportClient:
         self._client = client
         self._dashboard_cache = {}
         self._folder_cache = {}
+        self._current_org = None
+        self._orgs = None
 
     def __getattr__(self, name):
         # Purpose: implementation note.
@@ -87,6 +89,24 @@ class _CachedDashboardImportClient:
             record["parentUid"] = parent_uid
         self._folder_cache[str(uid or "")] = record
         return result
+
+    def fetch_current_org(self):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        if self._current_org is None:
+            self._current_org = self._client.fetch_current_org()
+        return dict(self._current_org)
+
+    def list_orgs(self):
+        # Purpose: implementation note.
+        # Args: see function signature.
+        # Returns: see implementation.
+
+        if self._orgs is None:
+            self._orgs = list(self._client.list_orgs())
+        return [dict(item) for item in self._orgs]
 
 
 def _normalize_org_id(org):
@@ -471,6 +491,21 @@ def _run_import_dashboards_for_single_org(args, deps):
     )
     _validate_export_org_match(args, deps, client, import_dir, metadata)
     dashboard_files = deps["discover_dashboard_files"](import_dir)
+    dashboard_documents = [
+        (dashboard_file, deps["load_json_file"](dashboard_file))
+        for dashboard_file in dashboard_files
+    ]
+    dependency_records = deps["collect_dashboard_import_dependency_records"](
+        dashboard_documents
+    )
+    if dependency_records and not bool(getattr(args, "dry_run", False)):
+        dependency_availability = deps[
+            "fetch_dashboard_import_dependency_availability"
+        ](client)
+        deps["validate_dashboard_import_dependencies"](
+            dependency_records,
+            dependency_availability,
+        )
     folder_inventory = deps["resolve_folder_inventory_requirements"](
         args, import_dir, metadata
     )
@@ -562,8 +597,7 @@ def _run_import_dashboards_for_single_org(args, deps):
             )
         )
     total_dashboards = len(dashboard_files)
-    for index, dashboard_file in enumerate(dashboard_files, 1):
-        document = deps["load_json_file"](dashboard_file)
+    for index, (dashboard_file, document) in enumerate(dashboard_documents, 1):
         dashboard = deps["extract_dashboard_object"](
             document, "Dashboard payload must be a JSON object."
         )

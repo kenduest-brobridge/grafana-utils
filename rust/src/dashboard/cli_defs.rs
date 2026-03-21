@@ -194,32 +194,6 @@ pub struct ListArgs {
     pub no_header: bool,
 }
 
-/// Struct definition for ListDataSourcesArgs.
-#[derive(Debug, Clone, Args)]
-pub struct ListDataSourcesArgs {
-    #[command(flatten)]
-    pub common: CommonCliArgs,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render datasource summaries as a table.")]
-    pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render datasource summaries as CSV.")]
-    pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render datasource summaries as JSON.")]
-    pub json: bool,
-    #[arg(
-        long,
-        value_enum,
-        conflicts_with_all = ["table", "csv", "json"],
-        help = "Alternative single-flag output selector. Use table, csv, or json."
-    )]
-    pub output_format: Option<SimpleOutputFormat>,
-    #[arg(
-        long,
-        default_value_t = false,
-        help = "Do not print table headers when rendering the default table output."
-    )]
-    pub no_header: bool,
-}
-
 /// Struct definition for ImportArgs.
 #[derive(Debug, Clone, Args)]
 pub struct ImportArgs {
@@ -638,6 +612,11 @@ pub struct InspectVarsArgs {
         help = "Do not print table or CSV headers when rendering inspect-vars output."
     )]
     pub no_header: bool,
+    #[arg(
+        long,
+        help = "Write inspect-vars output to this file while still printing to stdout."
+    )]
+    pub output_file: Option<PathBuf>,
 }
 
 /// Struct definition for InspectExportArgs.
@@ -709,6 +688,11 @@ pub struct InspectExportArgs {
         help = "Do not print table headers when rendering the table summary, table-like --report output, or compatible --output-format values."
     )]
     pub no_header: bool,
+    #[arg(
+        long,
+        help = "Write inspect output to this file while still printing to stdout."
+    )]
+    pub output_file: Option<PathBuf>,
 }
 
 /// Struct definition for InspectLiveArgs.
@@ -792,6 +776,11 @@ pub struct InspectLiveArgs {
         help = "Do not print headers when rendering table, csv, or tree-table inspection output, including compatible --output-format values."
     )]
     pub no_header: bool,
+    #[arg(
+        long,
+        help = "Write inspect output to this file while still printing to stdout."
+    )]
+    pub output_file: Option<PathBuf>,
 }
 
 /// Enum definition for DashboardCommand.
@@ -803,8 +792,6 @@ pub enum DashboardCommand {
         after_help = "Examples:\n\n  List dashboards from the current org with Basic auth:\n    grafana-util list --url http://localhost:3000 --basic-user admin --basic-password admin\n\n  List dashboards across all visible orgs with Basic auth:\n    grafana-util list --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --json\n\n  List dashboards from one explicit org ID:\n    grafana-util list --url http://localhost:3000 --basic-user admin --basic-password admin --org-id 2 --csv\n\n  List dashboards from the current org with an API token:\n    grafana-util list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json"
     )]
     List(ListArgs),
-    #[command(name = "list-data-sources", about = "List Grafana data sources.")]
-    ListDataSources(ListDataSourcesArgs),
     #[command(
         name = "export",
         about = "Export dashboards to raw/ and prompt/ JSON files.",
@@ -1015,12 +1002,6 @@ fn normalize_dry_run_output_format(
 pub fn normalize_dashboard_cli_args(mut args: DashboardCliArgs) -> DashboardCliArgs {
     match &mut args.command {
         DashboardCommand::List(list_args) => normalize_simple_output_format(
-            &mut list_args.table,
-            &mut list_args.csv,
-            &mut list_args.json,
-            list_args.output_format,
-        ),
-        DashboardCommand::ListDataSources(list_args) => normalize_simple_output_format(
             &mut list_args.table,
             &mut list_args.csv,
             &mut list_args.json,

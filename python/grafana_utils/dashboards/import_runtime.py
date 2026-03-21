@@ -21,16 +21,19 @@ from .folder_support import (
 )
 from .import_support import (
     build_dashboard_import_dry_run_record,
+    collect_dashboard_import_dependency_records,
     build_import_payload,
     describe_dashboard_import_mode,
     determine_dashboard_import_action,
     determine_import_folder_uid_override,
     extract_dashboard_object,
+    fetch_dashboard_import_dependency_availability,
     load_export_metadata,
     load_json_file,
     render_dashboard_import_dry_run_json,
     render_dashboard_import_dry_run_table,
     render_folder_inventory_dry_run_table,
+    validate_dashboard_import_dependencies,
 )
 from .progress import print_dashboard_import_progress
 
@@ -52,6 +55,9 @@ def build_import_workflow_deps(config):
         "build_folder_inventory_lookup": build_folder_inventory_lookup,
         "build_folder_path_match_result": build_folder_path_match_result,
         "build_import_payload": build_import_payload,
+        "collect_dashboard_import_dependency_records": (
+            collect_dashboard_import_dependency_records
+        ),
         "create_organization": (
             lambda client, org_name: client.create_organization({"name": org_name})
         ),
@@ -87,6 +93,9 @@ def build_import_workflow_deps(config):
                 expected_variant=expected_variant,
             )
         ),
+        "fetch_dashboard_import_dependency_availability": (
+            fetch_dashboard_import_dependency_availability
+        ),
         "load_json_file": load_json_file,
         "print_dashboard_import_progress": print_dashboard_import_progress,
         "render_dashboard_import_dry_run_json": render_dashboard_import_dry_run_json,
@@ -119,4 +128,7 @@ def build_import_workflow_deps(config):
             )
         ),
         "resolve_source_dashboard_folder_path": resolve_source_dashboard_folder_path,
+        "validate_dashboard_import_dependencies": (
+            validate_dashboard_import_dependencies
+        ),
     }

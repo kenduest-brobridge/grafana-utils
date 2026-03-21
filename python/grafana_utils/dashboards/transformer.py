@@ -121,8 +121,52 @@ def make_type_input_base(datasource_type: str) -> str:
 
 def format_plugin_name(datasource_type: str) -> str:
     """Format plugin name implementation."""
+    canonical_names = {
+        "cloudwatch": "CloudWatch",
+        "grafana-opensearch-datasource": "OpenSearch",
+        "influxdb": "InfluxDB",
+        "mssql": "Microsoft SQL Server",
+        "mysql": "MySQL",
+        "opensearch": "OpenSearch",
+        "opentsdb": "OpenTSDB",
+        "postgres": "PostgreSQL",
+        "postgresql": "PostgreSQL",
+    }
+    canonical = canonical_names.get(datasource_type.lower())
+    if canonical is not None:
+        return canonical
     alias = DATASOURCE_TYPE_ALIASES.get(datasource_type.lower(), datasource_type)
     return alias.replace("-", " ").replace("_", " ").title()
+
+
+PANEL_TYPE_DISPLAY_NAMES = {
+    "bargauge": "Bar gauge",
+    "dashlist": "Dash list",
+    "gauge": "Gauge",
+    "heatmap": "Heatmap",
+    "histogram": "Histogram",
+    "logs": "Logs",
+    "news": "News",
+    "piechart": "Pie chart",
+    "row": "Row",
+    "state-timeline": "State timeline",
+    "stat": "Stat",
+    "status-history": "Status history",
+    "table": "Table",
+    "text": "Text",
+    "timeseries": "Time series",
+}
+
+
+def format_panel_plugin_name(panel_type: str) -> str:
+    """Render Grafana-style panel plugin display names for __requires."""
+    text = str(panel_type or "").strip()
+    if not text:
+        return ""
+    display = PANEL_TYPE_DISPLAY_NAMES.get(text.lower())
+    if display:
+        return display
+    return text.replace("-", " ").replace("_", " ").title()
 
 
 def make_input_label(datasource_type: str, index: int) -> str:
@@ -688,7 +732,7 @@ def build_requires_block(
         {
             "type": "panel",
             "id": panel_type,
-            "name": panel_type,
+            "name": format_panel_plugin_name(panel_type),
             "version": "",
         }
         for panel_type in sorted(panel_types)

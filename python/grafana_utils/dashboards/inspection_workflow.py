@@ -162,6 +162,7 @@ def run_inspect_live(args, deps):
             import_dir=str(raw_dir),
             report=getattr(args, "report", None),
             output_format=getattr(args, "output_format", None),
+            output_file=getattr(args, "output_file", None),
             report_columns=getattr(args, "report_columns", None),
             report_filter_datasource=getattr(args, "report_filter_datasource", None),
             report_filter_panel_id=getattr(args, "report_filter_panel_id", None),

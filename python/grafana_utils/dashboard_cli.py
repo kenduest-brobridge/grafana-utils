@@ -40,6 +40,7 @@ Caveats:
 
 import argparse
 import getpass
+from pathlib import Path
 import sys
 from typing import Any, Optional
 
@@ -102,7 +103,6 @@ from .dashboards.listing import (
     format_dashboard_summary_line,
     format_data_source_line,
     list_dashboards as run_list_dashboards,
-    list_data_sources as run_list_data_sources,
     render_dashboard_summary_csv,
     render_dashboard_summary_json,
     render_dashboard_summary_table,
@@ -195,7 +195,6 @@ __all__ = [
     "inspect_folder_inventory",
     "inspect_live",
     "list_dashboards",
-    "list_data_sources",
     "main",
     "parse_args",
     "parse_report_columns",
@@ -469,42 +468,6 @@ def add_list_cli_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def add_list_data_sources_cli_args(parser: argparse.ArgumentParser) -> None:
-    """Add list data sources cli args implementation."""
-    output_group = parser.add_argument_group("Output Options")
-    render_group = output_group.add_mutually_exclusive_group()
-    render_group.add_argument(
-        "--table",
-        action="store_true",
-        help="Render datasource summaries as a table.",
-    )
-    render_group.add_argument(
-        "--csv",
-        action="store_true",
-        help="Render datasource summaries as CSV.",
-    )
-    render_group.add_argument(
-        "--json",
-        action="store_true",
-        help="Render datasource summaries as JSON.",
-    )
-    output_group.add_argument(
-        "--no-header",
-        action="store_true",
-        help="Do not print table headers when rendering the default table output.",
-    )
-    output_group.add_argument(
-        "--output-format",
-        choices=LIST_OUTPUT_FORMAT_CHOICES,
-        default=None,
-        help=(
-            "Alternative single-flag output selector for datasource list output. "
-            "Use table, csv, or json. This cannot be combined with --table, "
-            "--csv, or --json."
-        ),
-    )
-
-
 def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
     """Add import cli args implementation."""
     input_group = parser.add_argument_group("Input Options")
@@ -771,6 +734,11 @@ def add_inspect_export_cli_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="With table-like --output-format values, omit the per-section table header rows.",
     )
+    parser.add_argument(
+        "--output-file",
+        default=None,
+        help="Write inspect output to this file while still printing to stdout.",
+    )
 
 
 def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
@@ -861,6 +829,11 @@ def add_inspect_live_cli_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="With table-like --output-format values, omit the per-section table header rows.",
     )
+    parser.add_argument(
+        "--output-file",
+        default=None,
+        help="Write inspect output to this file while still printing to stdout.",
+    )
 
 
 def add_inspect_vars_cli_args(parser: argparse.ArgumentParser) -> None:
@@ -898,6 +871,11 @@ def add_inspect_vars_cli_args(parser: argparse.ArgumentParser) -> None:
         "--no-header",
         action="store_true",
         help="Do not print table or CSV headers when rendering inspect-vars output.",
+    )
+    output_group.add_argument(
+        "--output-file",
+        default=None,
+        help="Write inspect-vars output to this file while still printing to stdout.",
     )
 
 
@@ -1106,15 +1084,6 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     add_common_cli_args(list_parser)
     add_list_cli_args(list_parser)
 
-    list_data_sources_parser = subparsers.add_parser(
-        "list-data-sources",
-        help="List live Grafana data sources.",
-        epilog=LIST_DATASOURCES_HELP_EXAMPLES,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    add_common_cli_args(list_data_sources_parser)
-    add_list_data_sources_cli_args(list_data_sources_parser)
-
     import_parser = subparsers.add_parser(
         "import-dashboard",
         help="Import dashboards from exported raw JSON files.",
@@ -1202,14 +1171,6 @@ LIST_HELP_EXAMPLES = (
     "    grafana-util dashboard list-dashboard --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --table"
 )
 
-LIST_DATASOURCES_HELP_EXAMPLES = (
-    "Examples:\n\n"
-    "  List Grafana datasources as JSON:\n"
-    '    grafana-util dashboard list-data-sources --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --json\n\n'
-    "  Render datasource inventory as CSV without headers:\n"
-    '    grafana-util dashboard list-data-sources --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format csv --no-header'
-)
-
 IMPORT_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  Preview a dashboard import without changing Grafana:\n"
@@ -1254,7 +1215,7 @@ def _normalize_output_format_args(
     command = getattr(args, "command", None)
     if output_format is None:
         return
-    if command in ("list-dashboard", "list-data-sources"):
+    if command in ("list-dashboard",):
         if (
             bool(getattr(args, "table", False))
             or bool(getattr(args, "csv", False))
@@ -1376,11 +1337,6 @@ def list_dashboards(args: argparse.Namespace) -> int:
     )
 
 
-def list_data_sources(args: argparse.Namespace) -> int:
-    """List live Grafana data sources."""
-    return run_list_data_sources(args, build_client=build_client)
-
-
 def _build_inspection_workflow_deps() -> dict[str, Any]:
     """Internal helper for build inspection workflow deps."""
     return build_inspection_workflow_deps_from_runtime(
@@ -1430,8 +1386,15 @@ def inspect_vars(args: argparse.Namespace) -> int:
         output_format=getattr(args, "output_format", "table"),
         include_header=not bool(getattr(args, "no_header", False)),
     )
-    if rendered:
-        print(rendered)
+    normalized = rendered.rstrip("\n")
+    output_file = getattr(args, "output_file", None)
+    if output_file:
+        output_path = Path(output_file)
+        if output_path.parent:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(f"{normalized}\n", encoding="utf-8")
+    if normalized:
+        print(normalized)
     return 0
 
 
@@ -1535,8 +1498,6 @@ def main(argv: Optional[list[str]] = None) -> int:
     try:
         if args.command == "list-dashboard":
             return list_dashboards(args)
-        if args.command == "list-data-sources":
-            return list_data_sources(args)
         if args.command == "inspect-export":
             return inspect_export(args)
         if args.command == "inspect-live":

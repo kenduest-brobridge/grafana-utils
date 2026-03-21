@@ -96,6 +96,9 @@ PROGRESS_MODULE_PATH = PYTHON_ROOT / "grafana_utils" / "dashboards" / "progress.
 TRANSFORMER_MODULE_PATH = (
     PYTHON_ROOT / "grafana_utils" / "dashboards" / "transformer.py"
 )
+PROMPT_EXPORT_CASES_FIXTURE_PATH = (
+    REPO_ROOT / "fixtures" / "dashboard_prompt_export_cases.json"
+)
 MODULE_ENTRYPOINT_PATH = PYTHON_ROOT / "grafana_utils" / "__main__.py"
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(PYTHON_ROOT))
@@ -111,6 +114,13 @@ inspection_dispatcher = importlib.import_module(
 inspection_output_dispatch = importlib.import_module(
     "grafana_utils.dashboards.inspection_dispatch"
 )
+dashboard_import_workflow = importlib.import_module(
+    "grafana_utils.dashboards.import_workflow"
+)
+
+
+def load_prompt_export_cases():
+    return json.loads(PROMPT_EXPORT_CASES_FIXTURE_PATH.read_text())
 
 
 def build_export_metadata(
@@ -235,6 +245,8 @@ class FakeDashboardWorkflowClient:
         summaries=None,
         dashboards=None,
         datasources=None,
+        plugins=None,
+        contact_points=None,
         folders=None,
         dashboard_permissions=None,
         folder_permissions=None,
@@ -246,6 +258,8 @@ class FakeDashboardWorkflowClient:
         self.summaries = summaries or []
         self.dashboards = dashboards or {}
         self.datasources = datasources or []
+        self.plugins = plugins or []
+        self.contact_points = contact_points or []
         self.folders = folders or {}
         self.dashboard_permissions = dashboard_permissions or {}
         self.folder_permissions = folder_permissions or {}
@@ -256,6 +270,8 @@ class FakeDashboardWorkflowClient:
         self.imported_payloads = []
         self.created_folders = []
         self.created_orgs = []
+        self.fetch_current_org_calls = 0
+        self.list_orgs_calls = 0
 
     def iter_dashboard_summaries(self, page_size):
         return list(self.summaries)
@@ -291,9 +307,11 @@ class FakeDashboardWorkflowClient:
         return list(self.datasources)
 
     def fetch_current_org(self):
+        self.fetch_current_org_calls += 1
         return dict(self.org)
 
     def list_orgs(self):
+        self.list_orgs_calls += 1
         return list(self.orgs)
 
     def with_org_id(self, org_id):
@@ -303,6 +321,10 @@ class FakeDashboardWorkflowClient:
         return self.org_clients[key]
 
     def request_json(self, path, params=None, method="GET", payload=None):
+        if path == "/api/plugins":
+            return list(self.plugins)
+        if path == "/api/v1/provisioning/contact-points":
+            return list(self.contact_points)
         if path == "/api/orgs" and method == "POST":
             next_org_id = 1
             existing_ids = []
@@ -332,6 +354,24 @@ class FakeDashboardWorkflowClient:
 
 
 class ExporterTests(unittest.TestCase):
+    def test_dashboard_import_cached_client_caches_fetch_current_org(self):
+        client = FakeDashboardWorkflowClient()
+        cached = dashboard_import_workflow._CachedDashboardImportClient(client)
+
+        self.assertEqual(cached.fetch_current_org()["id"], 1)
+        self.assertEqual(cached.fetch_current_org()["id"], 1)
+        self.assertEqual(client.fetch_current_org_calls, 1)
+
+    def test_dashboard_import_cached_client_caches_list_orgs(self):
+        client = FakeDashboardWorkflowClient(
+            orgs=[{"id": 1, "name": "Main Org."}, {"id": 2, "name": "Ops"}]
+        )
+        cached = dashboard_import_workflow._CachedDashboardImportClient(client)
+
+        self.assertEqual(len(cached.list_orgs()), 2)
+        self.assertEqual(len(cached.list_orgs()), 2)
+        self.assertEqual(client.list_orgs_calls, 1)
+
     def _write_multi_org_import_root(self, root_dir, org_exports):
         for item in org_exports:
             org_id = str(item["org_id"])
@@ -443,6 +483,20 @@ class ExporterTests(unittest.TestCase):
                 "meta": {"folderUid": "infra"},
             },
             import_dir / "Infra" / "CPU_Main__cpu-main.json",
+        )
+
+    def _write_dependency_preflight_import(self, import_dir, dashboard):
+        exporter.write_json_document(
+            build_export_metadata(
+                variant=exporter.RAW_EXPORT_SUBDIR,
+                dashboard_count=1,
+                format_name="grafana-web-import-preserve-uid",
+            ),
+            import_dir / exporter.EXPORT_METADATA_FILENAME,
+        )
+        exporter.write_json_document(
+            {"dashboard": dashboard},
+            import_dir / "cpu__abc.json",
         )
 
     def test_dashboard_script_parses_as_python39_syntax(self):
@@ -1075,26 +1129,19 @@ class ExporterTests(unittest.TestCase):
         self.assertTrue(all_args.all_orgs)
         self.assertIsNone(all_args.org_id)
 
-    def test_dashboard_parse_args_supports_list_data_sources_mode(self):
-        args = exporter.parse_args(["list-data-sources"])
+    def test_dashboard_parse_args_rejects_list_data_sources_command(self):
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(["list-data-sources"])
 
-        self.assertEqual(args.command, "list-data-sources")
-        self.assertFalse(args.table)
-        self.assertFalse(args.csv)
-        self.assertFalse(args.json)
-        self.assertFalse(args.no_header)
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(["list-datasources"])
 
     def test_dashboard_parse_args_supports_list_output_format(self):
         list_args = exporter.parse_args(["list-dashboard", "--output-format", "csv"])
-        data_source_args = exporter.parse_args(
-            ["list-data-sources", "--output-format", "json"]
-        )
 
         self.assertEqual(list_args.output_format, "csv")
         self.assertTrue(list_args.csv)
         self.assertFalse(list_args.table)
-        self.assertTrue(data_source_args.json)
-        self.assertFalse(data_source_args.csv)
 
     def test_dashboard_parse_args_supports_list_csv_and_json_modes(self):
         csv_args = exporter.parse_args(["list-dashboard", "--csv"])
@@ -1136,25 +1183,10 @@ class ExporterTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             exporter.parse_args(["list-dashboard", "--csv", "--json"])
 
-    def test_dashboard_parse_args_rejects_multiple_list_data_sources_output_modes(self):
-        with self.assertRaises(SystemExit):
-            exporter.parse_args(["list-data-sources", "--table", "--csv"])
-
-        with self.assertRaises(SystemExit):
-            exporter.parse_args(["list-data-sources", "--table", "--json"])
-
-        with self.assertRaises(SystemExit):
-            exporter.parse_args(["list-data-sources", "--csv", "--json"])
-
     def test_dashboard_parse_args_rejects_list_output_format_with_legacy_flags(self):
         with self.assertRaises(SystemExit):
             exporter.parse_args(
                 ["list-dashboard", "--output-format", "table", "--json"]
-            )
-
-        with self.assertRaises(SystemExit):
-            exporter.parse_args(
-                ["list-data-sources", "--output-format", "csv", "--table"]
             )
 
     def test_dashboard_parse_args_supports_diff_mode(self):
@@ -3449,98 +3481,6 @@ class ExporterTests(unittest.TestCase):
             with self.assertRaises(exporter.GrafanaError):
                 exporter.list_dashboards(args)
 
-    def test_dashboard_list_data_sources_prints_table_by_default(self):
-        args = argparse.Namespace(
-            command="list-data-sources",
-            url="http://127.0.0.1:3000",
-            api_token=None,
-            username=None,
-            password=None,
-            timeout=30,
-            verify_ssl=False,
-            table=False,
-            csv=False,
-            json=False,
-            no_header=False,
-        )
-        client = FakeDashboardWorkflowClient(
-            datasources=[
-                {
-                    "uid": "prom_uid",
-                    "name": "Prometheus Main",
-                    "type": "prometheus",
-                    "url": "http://prometheus:9090",
-                    "isDefault": True,
-                },
-                {
-                    "uid": "loki_uid",
-                    "name": "Loki Logs",
-                    "type": "loki",
-                    "url": "http://loki:3100",
-                    "isDefault": False,
-                },
-            ]
-        )
-
-        with mock.patch.object(exporter, "build_client", return_value=client):
-            stdout = io.StringIO()
-            with redirect_stdout(stdout):
-                result = exporter.list_data_sources(args)
-
-        self.assertEqual(result, 0)
-        self.assertEqual(
-            stdout.getvalue().splitlines(),
-            [
-                "UID       NAME             TYPE        URL                     IS_DEFAULT",
-                "--------  ---------------  ----------  ----------------------  ----------",
-                "prom_uid  Prometheus Main  prometheus  http://prometheus:9090  true      ",
-                "loki_uid  Loki Logs        loki        http://loki:3100        false     ",
-                "",
-                "Listed 2 data source(s) from http://127.0.0.1:3000",
-            ],
-        )
-
-    def test_dashboard_list_data_sources_no_header_hides_table_header(self):
-        args = argparse.Namespace(
-            command="list-data-sources",
-            url="http://127.0.0.1:3000",
-            api_token=None,
-            username=None,
-            password=None,
-            timeout=30,
-            verify_ssl=False,
-            table=False,
-            csv=False,
-            json=False,
-            no_header=True,
-        )
-        client = FakeDashboardWorkflowClient(
-            datasources=[
-                {
-                    "uid": "prom_uid",
-                    "name": "Prometheus Main",
-                    "type": "prometheus",
-                    "url": "http://prometheus:9090",
-                    "isDefault": True,
-                }
-            ]
-        )
-
-        with mock.patch.object(exporter, "build_client", return_value=client):
-            stdout = io.StringIO()
-            with redirect_stdout(stdout):
-                result = exporter.list_data_sources(args)
-
-        self.assertEqual(result, 0)
-        self.assertEqual(
-            stdout.getvalue().splitlines(),
-            [
-                "prom_uid  Prometheus Main  prometheus  http://prometheus:9090  true      ",
-                "",
-                "Listed 1 data source(s) from http://127.0.0.1:3000",
-            ],
-        )
-
     def test_dashboard_write_dashboard_obeys_overwrite_flag(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "dash.json"
@@ -5202,6 +5142,232 @@ class ExporterTests(unittest.TestCase):
                 scoped_client.imported_payloads[0]["dashboard"]["uid"],
                 "abc",
             )
+
+    def test_dashboard_import_dashboards_live_preflights_dependencies_before_import(
+        self,
+    ):
+        client = FakeDashboardWorkflowClient(
+            datasources=[{"uid": "prom-main", "name": "Prometheus Main"}],
+            plugins=[{"id": "timeseries"}],
+            contact_points=[{"name": "alerts-team"}],
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self._write_dependency_preflight_import(
+                import_dir,
+                {
+                    "id": None,
+                    "uid": "abc",
+                    "title": "CPU",
+                    "panels": [
+                        {
+                            "id": 7,
+                            "type": "timeseries",
+                            "datasource": {
+                                "uid": "prom-main",
+                                "type": "prometheus",
+                            },
+                            "targets": [
+                                {
+                                    "refId": "A",
+                                    "expr": "sum(rate(node_cpu_seconds_total[5m]))",
+                                    "datasource": {
+                                        "uid": "prom-main",
+                                        "type": "prometheus",
+                                    },
+                                }
+                            ],
+                            "alert": {
+                                "name": "CPU alert",
+                                "datasourceUid": "prom-main",
+                                "receiver": "alerts-team",
+                            },
+                        }
+                    ],
+                },
+            )
+            args = exporter.parse_args(
+                ["import-dashboard", "--import-dir", str(import_dir)]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                result = exporter.import_dashboards(args)
+
+        self.assertEqual(result, 0)
+        self.assertEqual(len(client.imported_payloads), 1)
+        self.assertEqual(client.imported_payloads[0]["dashboard"]["uid"], "abc")
+
+    def test_dashboard_import_dashboards_live_preflight_rejects_missing_datasource(
+        self,
+    ):
+        client = FakeDashboardWorkflowClient(
+            plugins=[{"id": "timeseries"}],
+            contact_points=[{"name": "alerts-team"}],
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self._write_dependency_preflight_import(
+                import_dir,
+                {
+                    "id": None,
+                    "uid": "abc",
+                    "title": "CPU",
+                    "panels": [
+                        {
+                            "id": 7,
+                            "type": "timeseries",
+                            "datasource": {
+                                "uid": "prom-main",
+                                "type": "prometheus",
+                            },
+                            "targets": [
+                                {
+                                    "refId": "A",
+                                    "expr": "sum(rate(node_cpu_seconds_total[5m]))",
+                                    "datasource": {
+                                        "uid": "prom-main",
+                                        "type": "prometheus",
+                                    },
+                                }
+                            ],
+                            "alert": {
+                                "name": "CPU alert",
+                                "datasourceUid": "prom-main",
+                                "receiver": "alerts-team",
+                            },
+                        }
+                    ],
+                },
+            )
+            args = exporter.parse_args(
+                ["import-dashboard", "--import-dir", str(import_dir)]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                with self.assertRaisesRegex(
+                    exporter.GrafanaError,
+                    "Dashboard import dependency preflight failed",
+                ) as exc:
+                    exporter.import_dashboards(args)
+
+        self.assertIn("datasource=", str(exc.exception))
+        self.assertEqual(client.imported_payloads, [])
+
+    def test_dashboard_import_dashboards_live_preflight_rejects_missing_plugin(
+        self,
+    ):
+        client = FakeDashboardWorkflowClient(
+            datasources=[{"uid": "prom-main", "name": "Prometheus Main"}],
+            contact_points=[{"name": "alerts-team"}],
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self._write_dependency_preflight_import(
+                import_dir,
+                {
+                    "id": None,
+                    "uid": "abc",
+                    "title": "CPU",
+                    "panels": [
+                        {
+                            "id": 7,
+                            "type": "timeseries",
+                            "datasource": {
+                                "uid": "prom-main",
+                                "type": "prometheus",
+                            },
+                            "targets": [
+                                {
+                                    "refId": "A",
+                                    "expr": "sum(rate(node_cpu_seconds_total[5m]))",
+                                    "datasource": {
+                                        "uid": "prom-main",
+                                        "type": "prometheus",
+                                    },
+                                }
+                            ],
+                            "alert": {
+                                "name": "CPU alert",
+                                "datasourceUid": "prom-main",
+                                "receiver": "alerts-team",
+                            },
+                        }
+                    ],
+                },
+            )
+            args = exporter.parse_args(
+                ["import-dashboard", "--import-dir", str(import_dir)]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                with self.assertRaisesRegex(
+                    exporter.GrafanaError,
+                    "Dashboard import dependency preflight failed",
+                ) as exc:
+                    exporter.import_dashboards(args)
+
+        self.assertIn("panel-plugin=timeseries", str(exc.exception))
+        self.assertEqual(client.imported_payloads, [])
+
+    def test_dashboard_import_dashboards_live_preflight_rejects_missing_contact_point(
+        self,
+    ):
+        client = FakeDashboardWorkflowClient(
+            datasources=[{"uid": "prom-main", "name": "Prometheus Main"}],
+            plugins=[{"id": "timeseries"}],
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            self._write_dependency_preflight_import(
+                import_dir,
+                {
+                    "id": None,
+                    "uid": "abc",
+                    "title": "CPU",
+                    "panels": [
+                        {
+                            "id": 7,
+                            "type": "timeseries",
+                            "datasource": {
+                                "uid": "prom-main",
+                                "type": "prometheus",
+                            },
+                            "targets": [
+                                {
+                                    "refId": "A",
+                                    "expr": "sum(rate(node_cpu_seconds_total[5m]))",
+                                    "datasource": {
+                                        "uid": "prom-main",
+                                        "type": "prometheus",
+                                    },
+                                }
+                            ],
+                            "alert": {
+                                "name": "CPU alert",
+                                "datasourceUid": "prom-main",
+                                "receiver": "alerts-team",
+                            },
+                        }
+                    ],
+                },
+            )
+            args = exporter.parse_args(
+                ["import-dashboard", "--import-dir", str(import_dir)]
+            )
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                with self.assertRaisesRegex(
+                    exporter.GrafanaError,
+                    "Dashboard import dependency preflight failed",
+                ) as exc:
+                    exporter.import_dashboards(args)
+
+        self.assertIn("alert-contact-point=alerts-team", str(exc.exception))
+        self.assertEqual(client.imported_payloads, [])
 
     def test_dashboard_import_dashboards_dry_run_skips_api_write(self):
         client = FakeDashboardWorkflowClient(
@@ -7265,6 +7431,49 @@ class ExporterTests(unittest.TestCase):
             [("prometheus", "Prometheus", "11.0.0")],
         )
         self.assertNotIn("templating", document)
+
+    def test_dashboard_build_external_export_document_shared_prompt_export_cases(self):
+        for case in load_prompt_export_cases():
+            with self.subTest(case=case["name"]):
+                document = exporter.build_external_export_document(
+                    case["payload"],
+                    exporter.build_datasource_catalog(case["catalog"]),
+                )
+
+                self.assertEqual(
+                    document["__inputs"],
+                    case["expectedInputs"],
+                )
+                self.assertEqual(
+                    [
+                        (item["id"], item["name"], item["version"])
+                        for item in document["__requires"]
+                        if item["type"] == "datasource"
+                    ],
+                    [
+                        (
+                            item["id"],
+                            item["name"],
+                            item["version"],
+                        )
+                        for item in case["expectedDatasourceRequires"]
+                    ],
+                )
+                self.assertEqual(
+                    [
+                        (item["id"], item["name"], item["version"])
+                        for item in document["__requires"]
+                        if item["type"] == "panel"
+                    ],
+                    [
+                        (
+                            item["id"],
+                            item["name"],
+                            item["version"],
+                        )
+                        for item in case["expectedPanelRequires"]
+                    ],
+                )
 
     def test_dashboard_build_external_export_document_resolves_string_datasource_uid(
         self,

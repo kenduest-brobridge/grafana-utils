@@ -1,5 +1,6 @@
 import importlib
 import io
+import tempfile
 import sys
 import unittest
 from contextlib import redirect_stdout
@@ -32,6 +33,20 @@ class DashboardCaptureCliTests(unittest.TestCase):
         self.assertEqual(args.dashboard_uid, "cpu-main")
         self.assertEqual(args.vars_query, "var-env=prod")
         self.assertEqual(args.output_format, "json")
+
+    def test_dashboard_capture_parse_args_supports_inspect_vars_output_file(self):
+        args = dashboard_cli.parse_args(
+            [
+                "inspect-vars",
+                "--dashboard-uid",
+                "cpu-main",
+                "--output-file",
+                "/tmp/inspect-vars-output.txt",
+            ]
+        )
+
+        self.assertEqual(args.command, "inspect-vars")
+        self.assertEqual(args.output_file, "/tmp/inspect-vars-output.txt")
 
     def test_dashboard_capture_parse_args_supports_screenshot(self):
         args = dashboard_cli.parse_args(
@@ -117,6 +132,53 @@ class DashboardCaptureCliTests(unittest.TestCase):
 
         self.assertEqual(result, 13)
         mocked.assert_called_once()
+
+    def test_dashboard_capture_inspect_vars_supports_output_file(self):
+        output_dir = tempfile.TemporaryDirectory(prefix="grafana-util-inspect-vars-")
+        self.addCleanup(output_dir.cleanup)
+        output_file = Path(output_dir.name) / "inspect-vars.txt"
+        args = dashboard_cli.parse_args(
+            [
+                "inspect-vars",
+                "--dashboard-uid",
+                "cpu-main",
+                "--output-file",
+                str(output_file),
+                "--token",
+                "secret",
+            ]
+        )
+        with mock.patch.object(
+            dashboard_cli,
+            "inspect_dashboard_variables_with_client",
+            return_value={
+                "dashboardUid": "cpu-main",
+                "dashboardTitle": "CPU Main",
+                "variableCount": 1,
+                "variables": [
+                    {
+                        "name": "env",
+                        "type": "query",
+                        "label": "Environment",
+                        "current": "prod",
+                        "datasource": "prom-main",
+                        "query": "up",
+                        "multi": False,
+                        "includeAll": False,
+                        "optionCount": 1,
+                        "options": ["prod"],
+                    }
+                ],
+            },
+        ) as mocked:
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = dashboard_cli.inspect_vars(args)
+
+        self.assertEqual(result, 0)
+        self.assertTrue(mocked.called)
+        self.assertTrue(output_file.exists())
+        self.assertEqual(output_file.read_text(encoding="utf-8"), stdout.getvalue())
 
     def test_dashboard_capture_main_dispatches_screenshot(self):
         with mock.patch.object(

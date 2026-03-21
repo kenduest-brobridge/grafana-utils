@@ -3,9 +3,9 @@
 //! progress/formatting output for CLI-facing export modes.
 use reqwest::Method;
 use serde_json::{Map, Value};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::collections::BTreeSet;
 
 use crate::common::{message, sanitize_path_component, string_field, Result};
 use crate::http::JsonHttpClient;
@@ -19,13 +19,12 @@ use super::{
     build_external_export_document, build_http_client, build_http_client_for_org,
     build_preserved_web_import_document, build_root_export_index, build_variant_index,
     fetch_dashboard_permissions_with_request, fetch_dashboard_with_request,
-    fetch_folder_permissions_with_request,
-    list_dashboard_summaries_with_request, list_datasources_with_request, write_dashboard,
-    write_json_document, ExportArgs, ExportDatasourceUsageSummary, ExportOrgSummary,
-    FolderInventoryItem, RootExportIndex, DASHBOARD_PERMISSION_BUNDLE_FILENAME,
-    DATASOURCE_INVENTORY_FILENAME, DEFAULT_DASHBOARD_TITLE, DEFAULT_FOLDER_TITLE,
-    DEFAULT_UNKNOWN_UID, EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME,
-    PROMPT_EXPORT_SUBDIR, RAW_EXPORT_SUBDIR,
+    fetch_folder_permissions_with_request, list_dashboard_summaries_with_request,
+    list_datasources_with_request, write_dashboard, write_json_document, DashboardIndexItem,
+    ExportArgs, ExportDatasourceUsageSummary, ExportOrgSummary, FolderInventoryItem,
+    RootExportIndex, DASHBOARD_PERMISSION_BUNDLE_FILENAME, DATASOURCE_INVENTORY_FILENAME,
+    DEFAULT_DASHBOARD_TITLE, DEFAULT_FOLDER_TITLE, DEFAULT_UNKNOWN_UID, EXPORT_METADATA_FILENAME,
+    FOLDER_INVENTORY_FILENAME, PROMPT_EXPORT_SUBDIR, RAW_EXPORT_SUBDIR,
 };
 
 const PERMISSION_BUNDLE_KIND: &str = "grafana-utils-dashboard-permission-bundle";
@@ -708,8 +707,11 @@ where
         prompt_index_path.as_deref(),
         &folder_inventory,
     );
-    let used_datasources =
-        build_used_datasource_summaries(&datasource_inventory, &used_source_names, &used_source_uids);
+    let used_datasources = build_used_datasource_summaries(
+        &datasource_inventory,
+        &used_source_names,
+        &used_source_uids,
+    );
     let org_summary = ExportOrgSummary {
         org: current_org_name.clone(),
         org_id: current_org_id.clone(),
@@ -724,10 +726,7 @@ where
         },
     };
     if !args.dry_run {
-        write_json_document(
-            &root_index,
-            &scope_output_dir.join("index.json"),
-        )?;
+        write_json_document(&root_index, &scope_output_dir.join("index.json"))?;
         write_json_document(
             &build_export_metadata(
                 "root",
@@ -748,6 +747,33 @@ where
         root_index: Some(root_index),
         org_summary: Some(org_summary),
     })
+}
+
+fn write_all_orgs_root_export_bundle(
+    export_dir: &Path,
+    root_items: &[DashboardIndexItem],
+    root_folders: &[FolderInventoryItem],
+    org_summaries: Vec<ExportOrgSummary>,
+) -> Result<()> {
+    write_json_document(
+        &build_root_export_index(root_items, None, None, root_folders),
+        &export_dir.join("index.json"),
+    )?;
+    write_json_document(
+        &build_export_metadata(
+            "root",
+            root_items.len(),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(org_summaries),
+        ),
+        &export_dir.join(EXPORT_METADATA_FILENAME),
+    )?;
+    Ok(())
 }
 
 /// Purpose: implementation note.
@@ -781,23 +807,11 @@ where
             }
         }
         if !args.dry_run && !root_items.is_empty() {
-            write_json_document(
-                &build_root_export_index(&root_items, None, None, &root_folders),
-                &args.export_dir.join("index.json"),
-            )?;
-            write_json_document(
-                &build_export_metadata(
-                    "root",
-                    root_items.len(),
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    Some(org_summaries),
-                ),
-                &args.export_dir.join(EXPORT_METADATA_FILENAME),
+            write_all_orgs_root_export_bundle(
+                &args.export_dir,
+                &root_items,
+                &root_folders,
+                org_summaries,
             )?;
         }
         Ok(total)
@@ -825,47 +839,59 @@ pub(crate) fn export_dashboards_with_org_clients(args: &ExportArgs) -> Result<us
     if args.all_orgs {
         let admin_client = build_http_client(&args.common)?;
         let mut total = 0usize;
+        let mut root_items = Vec::new();
+        let mut root_folders = Vec::new();
+        let mut org_summaries = Vec::new();
         for org in list_orgs_with_request(|method, path, params, payload| {
             admin_client.request_json(method, path, params, payload)
         })? {
             let org_id = org_id_value(&org)?;
             let org_client = build_http_client_for_org(&args.common, org_id)?;
-            total += export_dashboards_in_scope_with_request(
+            let scope_result = export_dashboards_in_scope_with_request(
                 &mut |method, path, params, payload| {
                     org_client.request_json(method, path, params, payload)
                 },
                 args,
                 Some(&org),
                 None,
-            )?
-            .exported_count;
+            )?;
+            total += scope_result.exported_count;
+            if let Some(root_index) = scope_result.root_index {
+                root_items.extend(root_index.items);
+                root_folders.extend(root_index.folders);
+            }
+            if let Some(org_summary) = scope_result.org_summary {
+                org_summaries.push(org_summary);
+            }
+        }
+        if !args.dry_run && !root_items.is_empty() {
+            write_all_orgs_root_export_bundle(
+                &args.export_dir,
+                &root_items,
+                &root_folders,
+                org_summaries,
+            )?;
         }
         Ok(total)
     } else if let Some(org_id) = args.org_id {
         let org_client = build_http_client_for_org(&args.common, org_id)?;
-        Ok(
-            export_dashboards_in_scope_with_request(
-                &mut |method, path, params, payload| {
-                    org_client.request_json(method, path, params, payload)
-                },
-                args,
-                None,
-                None,
-            )?
-            .exported_count,
-        )
+        Ok(export_dashboards_in_scope_with_request(
+            &mut |method, path, params, payload| {
+                org_client.request_json(method, path, params, payload)
+            },
+            args,
+            None,
+            None,
+        )?
+        .exported_count)
     } else {
         let client = build_http_client(&args.common)?;
-        Ok(
-            export_dashboards_in_scope_with_request(
-                &mut |method, path, params, payload| {
-                    client.request_json(method, path, params, payload)
-                },
-                args,
-                None,
-                None,
-            )?
-            .exported_count,
-        )
+        Ok(export_dashboards_in_scope_with_request(
+            &mut |method, path, params, payload| client.request_json(method, path, params, payload),
+            args,
+            None,
+            None,
+        )?
+        .exported_count)
     }
 }

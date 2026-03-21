@@ -182,9 +182,7 @@ pub(crate) fn build_datasource_inventory_record(
     datasource: &Map<String, Value>,
     org: &Map<String, Value>,
 ) -> DatasourceInventoryItem {
-    let json_data = datasource
-        .get("jsonData")
-        .and_then(Value::as_object);
+    let json_data = datasource.get("jsonData").and_then(Value::as_object);
     let database = {
         let value = string_field(datasource, "database", "");
         if !value.is_empty() {

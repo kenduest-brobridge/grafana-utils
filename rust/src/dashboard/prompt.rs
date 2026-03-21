@@ -192,6 +192,42 @@ fn format_plugin_name(datasource_type: &str) -> String {
         .join(" ")
 }
 
+fn format_panel_plugin_name(panel_type: &str) -> String {
+    match panel_type.to_ascii_lowercase().as_str() {
+        "bargauge" => "Bar gauge".to_string(),
+        "dashlist" => "Dash list".to_string(),
+        "gauge" => "Gauge".to_string(),
+        "heatmap" => "Heatmap".to_string(),
+        "histogram" => "Histogram".to_string(),
+        "logs" => "Logs".to_string(),
+        "news" => "News".to_string(),
+        "piechart" => "Pie chart".to_string(),
+        "row" => "Row".to_string(),
+        "state-timeline" => "State timeline".to_string(),
+        "stat" => "Stat".to_string(),
+        "status-history" => "Status history".to_string(),
+        "table" => "Table".to_string(),
+        "text" => "Text".to_string(),
+        "timeseries" => "Time series".to_string(),
+        _ => panel_type
+            .replace(['-', '_'], " ")
+            .split_whitespace()
+            .map(|segment| {
+                let mut chars = segment.chars();
+                match chars.next() {
+                    Some(first) => format!(
+                        "{}{}",
+                        first.to_ascii_uppercase(),
+                        chars.as_str().to_ascii_lowercase()
+                    ),
+                    None => String::new(),
+                }
+            })
+            .collect::<Vec<String>>()
+            .join(" "),
+    }
+}
+
 fn make_input_label(datasource_type: &str, index: usize) -> String {
     let title = format_plugin_name(datasource_type);
     if index == 1 {
@@ -769,7 +805,7 @@ fn build_requires_block(
         requires.push(json!({
             "type": "panel",
             "id": panel_type,
-            "name": panel_type,
+            "name": format_panel_plugin_name(panel_type),
             "version": "",
         }));
     }

@@ -10,11 +10,11 @@ use crate::http::JsonHttpClient;
 
 use super::{
     build_datasource_catalog, build_folder_path, build_http_client, build_http_client_for_org,
-    datasource_type_alias, fetch_dashboard_with_request, fetch_folder_if_exists_with_request,
-    is_builtin_datasource_ref, is_placeholder_string, list_dashboard_summaries_with_request,
-    list_datasources_with_request, lookup_datasource, resolve_datasource_type_alias, ListArgs,
-    ListDataSourcesArgs, DEFAULT_DASHBOARD_TITLE, DEFAULT_FOLDER_TITLE, DEFAULT_FOLDER_UID,
-    DEFAULT_UNKNOWN_UID,
+    datasource_type_alias, extract_dashboard_object, fetch_dashboard_with_request,
+    fetch_folder_if_exists_with_request, is_builtin_datasource_ref, is_placeholder_string,
+    list_dashboard_summaries_with_request, list_datasources_with_request, lookup_datasource,
+    resolve_datasource_type_alias, ListArgs, DEFAULT_DASHBOARD_TITLE, DEFAULT_FOLDER_TITLE,
+    DEFAULT_FOLDER_UID, DEFAULT_UNKNOWN_UID,
 };
 
 /// attach dashboard folder paths with request.
@@ -446,108 +446,6 @@ pub(crate) fn render_dashboard_summary_json(
     )
 }
 
-fn build_data_source_record(datasource: &Map<String, Value>) -> Vec<String> {
-    vec![
-        string_field(datasource, "uid", ""),
-        string_field(datasource, "name", ""),
-        string_field(datasource, "type", ""),
-        string_field(datasource, "url", ""),
-        if datasource
-            .get("isDefault")
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
-        {
-            "true".to_string()
-        } else {
-            "false".to_string()
-        },
-    ]
-}
-
-/// format data source line.
-#[cfg_attr(not(test), allow(dead_code))]
-pub(crate) fn format_data_source_line(datasource: &Map<String, Value>) -> String {
-    let row = build_data_source_record(datasource);
-    format!(
-        "uid={} name={} type={} url={} isDefault={}",
-        row[0], row[1], row[2], row[3], row[4]
-    )
-}
-
-/// Purpose: implementation note.
-pub(crate) fn render_data_source_table(
-    datasources: &[Map<String, Value>],
-    include_header: bool,
-) -> Vec<String> {
-    let headers = vec![
-        "UID".to_string(),
-        "NAME".to_string(),
-        "TYPE".to_string(),
-        "URL".to_string(),
-        "IS_DEFAULT".to_string(),
-    ];
-    let rows: Vec<Vec<String>> = datasources.iter().map(build_data_source_record).collect();
-    let mut widths: Vec<usize> = headers.iter().map(|header| header.len()).collect();
-    for row in &rows {
-        for (index, value) in row.iter().enumerate() {
-            widths[index] = widths[index].max(value.len());
-        }
-    }
-    let format_row = |values: &[String]| -> String {
-        values
-            .iter()
-            .enumerate()
-            .map(|(index, value)| format!("{:<width$}", value, width = widths[index]))
-            .collect::<Vec<String>>()
-            .join("  ")
-    };
-    let separator: Vec<String> = widths.iter().map(|width| "-".repeat(*width)).collect();
-    let mut lines = Vec::new();
-    if include_header {
-        lines.extend([format_row(&headers), format_row(&separator)]);
-    }
-    lines.extend(rows.iter().map(|row| format_row(row)));
-    lines
-}
-
-/// Purpose: implementation note.
-pub(crate) fn render_data_source_csv(datasources: &[Map<String, Value>]) -> Vec<String> {
-    let mut lines = vec!["uid,name,type,url,isDefault".to_string()];
-    lines.extend(datasources.iter().map(|datasource| {
-        build_data_source_record(datasource)
-            .into_iter()
-            .map(|value| {
-                if value.contains(',') || value.contains('"') || value.contains('\n') {
-                    format!("\"{}\"", value.replace('"', "\"\""))
-                } else {
-                    value
-                }
-            })
-            .collect::<Vec<String>>()
-            .join(",")
-    }));
-    lines
-}
-
-/// Purpose: implementation note.
-pub(crate) fn render_data_source_json(datasources: &[Map<String, Value>]) -> Value {
-    Value::Array(
-        datasources
-            .iter()
-            .map(|datasource| {
-                let row = build_data_source_record(datasource);
-                Value::Object(Map::from_iter(vec![
-                    ("uid".to_string(), Value::String(row[0].clone())),
-                    ("name".to_string(), Value::String(row[1].clone())),
-                    ("type".to_string(), Value::String(row[2].clone())),
-                    ("url".to_string(), Value::String(row[3].clone())),
-                    ("isDefault".to_string(), Value::String(row[4].clone())),
-                ]))
-            })
-            .collect(),
-    )
-}
-
 fn lookup_unique_datasource_name_by_type(
     datasources_by_uid: &BTreeMap<String, Map<String, Value>>,
     datasource_type: &str,
@@ -675,10 +573,7 @@ pub(crate) fn collect_dashboard_source_metadata(
     datasource_catalog: &super::prompt::DatasourceCatalog,
 ) -> Result<(Vec<String>, Vec<String>)> {
     let payload_object = value_as_object(payload, "Unexpected dashboard payload from Grafana.")?;
-    let dashboard_object = payload_object
-        .get("dashboard")
-        .and_then(Value::as_object)
-        .ok_or_else(|| message("Unexpected dashboard payload from Grafana."))?;
+    let dashboard_object = extract_dashboard_object(payload_object)?;
     let mut refs = Vec::new();
     super::collect_datasource_refs(&Value::Object(dashboard_object.clone()), &mut refs);
     let mut names = BTreeSet::new();
@@ -876,48 +771,4 @@ pub(crate) fn list_dashboards_with_org_clients(args: &ListArgs) -> Result<usize>
         )?;
     }
     render_dashboard_list_output(&summaries, args)
-}
-
-/// Purpose: implementation note.
-pub(crate) fn list_data_sources_with_request<F>(
-    mut request_json: F,
-    args: &ListDataSourcesArgs,
-) -> Result<usize>
-where
-    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
-{
-    let datasources = list_datasources_with_request(&mut request_json)?;
-    if args.json {
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&render_data_source_json(&datasources))?
-        );
-    } else if args.csv {
-        for line in render_data_source_csv(&datasources) {
-            println!("{line}");
-        }
-    } else {
-        for line in render_data_source_table(&datasources, !args.no_header) {
-            println!("{line}");
-        }
-    }
-    if !args.csv && !args.json {
-        println!();
-        println!("Listed {} data source(s).", datasources.len());
-    }
-    Ok(datasources.len())
-}
-
-/// Purpose: implementation note.
-///
-/// Args: see function signature.
-/// Returns: see implementation.
-pub fn list_data_sources_with_client(
-    client: &JsonHttpClient,
-    args: &ListDataSourcesArgs,
-) -> Result<usize> {
-    list_data_sources_with_request(
-        |method, path, params, payload| client.request_json(method, path, params, payload),
-        args,
-    )
 }

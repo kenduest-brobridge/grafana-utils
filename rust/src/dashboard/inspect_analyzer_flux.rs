@@ -3,9 +3,9 @@
 use serde_json::{Map, Value};
 
 use super::inspect::{
-    extract_flux_pipeline_functions, extract_influxql_select_functions, extract_influxql_select_metrics,
-    extract_influxql_time_windows, extract_query_buckets, extract_query_measurements,
-    ordered_unique_push, QueryAnalysis,
+    extract_flux_pipeline_functions, extract_influxql_select_functions,
+    extract_influxql_select_metrics, extract_influxql_time_windows, extract_query_buckets,
+    extract_query_measurements, ordered_unique_push, QueryAnalysis,
 };
 
 /// analyze query.
@@ -16,18 +16,10 @@ pub(crate) fn analyze_query(
     query_text: &str,
 ) -> QueryAnalysis {
     let trimmed = query_text.trim_start();
-    let mut metrics = if trimmed.starts_with("from(")
-        || trimmed.starts_with("from (")
-        || query_text.contains("|>")
-    {
-        Vec::new()
-    } else {
-        Vec::new()
-    };
-    let mut functions = if trimmed.starts_with("from(")
-        || trimmed.starts_with("from (")
-        || query_text.contains("|>")
-    {
+    let has_flux_pipeline =
+        trimmed.starts_with("from(") || trimmed.starts_with("from (") || query_text.contains("|>");
+    let mut metrics = Vec::new();
+    let mut functions = if has_flux_pipeline {
         extract_flux_pipeline_functions(query_text)
     } else {
         Vec::new()

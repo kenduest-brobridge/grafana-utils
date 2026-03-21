@@ -3,8 +3,9 @@
 use serde_json::{Map, Value};
 
 use super::inspect::{
-    extract_prometheus_functions, extract_prometheus_metric_names, extract_prometheus_range_windows,
-    extract_query_buckets, extract_query_measurements, ordered_unique_push, QueryAnalysis,
+    extract_prometheus_functions, extract_prometheus_metric_names,
+    extract_prometheus_range_windows, extract_query_buckets, extract_query_measurements,
+    ordered_unique_push, QueryAnalysis,
 };
 
 /// analyze query.
