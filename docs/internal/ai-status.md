@@ -5,6 +5,27 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-21 - Task: Add Conservative Flux Window Bucket Extraction
+- State: Done
+- Scope: `rust/src/dashboard/inspect_analyzer_flux.rs`, `rust/src/dashboard/rust_tests.rs`, `fixtures/dashboard_inspection_analyzer_cases.json`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Flux inspection already tracked datasource buckets plus InfluxQL-style time windows, but it did not retain explicit `every:` durations from Flux window pipelines such as `aggregateWindow(every: 5m, ...)`.
+- Current Update: Added a narrow Flux-only bucket extractor that records concrete `every:` durations from Flux pipelines while ignoring quoted text, then updated the shared analyzer fixture and the core-family query-row contract to expect the extra `5m` hint alongside the datasource bucket.
+- Result: Flux query inspection now carries one more stable, family-specific bucket hint without broadening the analyzer beyond the existing conservative contract.
+
+## 2026-03-21 - Task: Surface Datasource Blast Radius In Rust Governance
+- State: Done
+- Scope: `rust/src/dashboard/inspect_governance.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust dashboard governance already rolled up dashboard-level query facts, but the datasource section still only showed counts. Operators could not see the actual dashboard UID blast radius from the existing report rows without cross-referencing elsewhere.
+- Current Update: Added `dashboardUids` to each datasource coverage row, surfaced panel counts and dashboard UID lists in the governance datasource table, and widened the governance summary table to include mixed-dashboard and orphaned-datasource counts.
+- Result: Rust dashboard governance now exposes a clearer datasource-to-dashboard blast-radius surface from already-extracted facts while staying out of cloud datasource scope.
+
+## 2026-03-21 - Task: Canonicalize Rust Dashboard Datasource-Type Family Routing
+- State: Done
+- Scope: `rust/src/dashboard/inspect.rs`, `rust/src/dashboard/rust_tests.rs`, `fixtures/dashboard_inspection_analyzer_cases.json`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust dashboard family resolution already preferred datasource types over query shape when the type was recognized, but Grafana plugin names that still carried `grafana-...-datasource` wrappers could fall through to generic query-shape fallback instead of landing in the supported family contract.
+- Current Update: Canonicalized datasource-type routing so wrapped Grafana plugin names collapse to the same family labels as the existing core aliases, then added a SQL fixture case that proves `grafana-postgresql-datasource` no longer falls back to generic metric scraping for an `up` query.
+- Result: Rust dashboard inspection now routes more datasource-type-driven queries directly into the supported family analyzers and relies less on the generic fallback path for core SQL inspection.
+
 ## 2026-03-21 - Task: Roll Up Rust Dashboard Dependency Analysis In Governance
 - State: Done
 - Scope: `rust/src/dashboard/inspect_governance.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

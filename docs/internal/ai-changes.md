@@ -1,5 +1,29 @@
 # ai-changes.md
 
+## 2026-03-21 - Surface Datasource Blast Radius In Rust Governance
+- Summary: Expanded the Rust governance datasource section so each datasource coverage row now carries the dashboard UID list behind its count, and the summary table now shows mixed-dashboard and orphaned-datasource counts alongside the existing governance totals.
+- Tests: Added a focused governance regression that asserts the new `dashboardUids`, `panelCount`, and `queryCount` fields for a datasource row, plus table-output coverage for the widened summary and datasource blast-radius headers. Kept the existing build-export inspection contract tests aligned with the current analyzer output.
+- Test Run: `cd rust && cargo test --quiet build_export_inspection`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`
+- Validation: The focused Rust inspection tests passed and `cargo fmt --manifest-path rust/Cargo.toml --all --check` passed.
+- Impact: `rust/src/dashboard/inspect_governance.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is an additive governance reporting change that only surfaces already-extracted facts more clearly.
+
+## 2026-03-21 - Add Conservative Flux Window Bucket Extraction
+- Summary: Added a Flux-only bucket hint extractor that records explicit `every:` durations from window pipelines such as `aggregateWindow(every: 5m, ...)` while keeping the rest of the Flux contract conservative.
+- Tests: Updated the shared analyzer fixture and the core-family query-row contract to expect the Flux `5m` window bucket, and added a focused Rust regression that asserts `dispatch_query_analysis` returns `["prod", "5m"]` for the Flux pipeline case.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet dispatch_query_analysis_matches_shared_analyzer_fixture_cases`; `cargo test --manifest-path rust/Cargo.toml --quiet resolve_query_analyzer_family`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`
+- Validation: The focused Rust tests passed. `cargo fmt --manifest-path rust/Cargo.toml --all --check` still reports unrelated pre-existing formatting drift in `rust/src/dashboard/inspect_governance.rs` and older tuple formatting in `rust/src/dashboard/rust_tests.rs`.
+- Impact: `rust/src/dashboard/inspect_analyzer_flux.rs`, `rust/src/dashboard/rust_tests.rs`, `fixtures/dashboard_inspection_analyzer_cases.json`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This only enriches the Flux analyzer with one more literal window hint and keeps generic fallback behavior unchanged for other families.
+
+## 2026-03-21 - Canonicalize Rust Dashboard Datasource-Type Family Routing
+- Summary: Tightened the Rust dashboard analyzer contract so wrapped Grafana plugin names like `grafana-postgresql-datasource` collapse into the existing family routing instead of drifting into generic query-shape fallback. The family resolver now normalizes `grafana-...-datasource` names before matching, which keeps SQL and the other supported core families on the datasource-type path when the plugin type is explicit.
+- Tests: Extended the family-resolution unit coverage to include wrapped Grafana plugin names and added a shared fixture case that routes a `grafana-postgresql-datasource` `up` query into SQL with empty analysis output.
+- Test Run: `cd rust && cargo test --quiet dispatch_query_analysis_matches_shared_analyzer_fixture_cases`; `cd rust && cargo test --quiet resolve_query_analyzer_family`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`
+- Validation: The targeted Rust analyzer tests passed. `cargo fmt --manifest-path rust/Cargo.toml --all --check` still reports pre-existing formatting drift in `rust/src/dashboard/inspect_governance.rs` from an unrelated worktree change, but the analyzer files I touched are formatted cleanly.
+- Impact: `rust/src/dashboard/inspect.rs`, `rust/src/dashboard/rust_tests.rs`, `fixtures/dashboard_inspection_analyzer_cases.json`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This change only broadens core-family datasource-type recognition and keeps query-shape fallback intact for anything still unknown.
+
 ## 2026-03-21 - Roll Up Rust Dashboard Dependency Analysis In Governance
 - Summary: Added dashboard-level dependency rollups to the Rust governance document. Each `dashboardDependencies` row now carries deduped `queryFields`, `metrics`, `functions`, `measurements`, and `buckets`, so operators can see the extracted query facts behind a dashboard's datasource blast radius.
 - Tests: Extended `rust/src/dashboard/rust_tests.rs` with a focused rollup regression plus table-header coverage, and updated the Loki analyzer contract expectations where existing tests had only asserted the generic `line_filter_contains` token.

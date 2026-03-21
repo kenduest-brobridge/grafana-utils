@@ -866,6 +866,7 @@ fn resolve_dashboard_import_folder_path_with_request<F>(
     cache: &mut ImportLookupCache,
     payload: &Value,
     folders_by_uid: &std::collections::BTreeMap<String, FolderInventoryItem>,
+    prefer_live_lookup: bool,
 ) -> Result<String>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -881,9 +882,11 @@ where
     if folder_uid.is_empty() || folder_uid == DEFAULT_FOLDER_UID {
         return Ok(DEFAULT_FOLDER_TITLE.to_string());
     }
-    if let Some(folder) = fetch_folder_if_exists_cached(request_json, cache, &folder_uid)? {
-        let fallback_title = string_field(&folder, "title", &folder_uid);
-        return Ok(build_folder_path(&folder, &fallback_title));
+    if prefer_live_lookup {
+        if let Some(folder) = fetch_folder_if_exists_cached(request_json, cache, &folder_uid)? {
+            let fallback_title = string_field(&folder, "title", &folder_uid);
+            return Ok(build_folder_path(&folder, &fallback_title));
+        }
     }
     if let Some(folder) = folders_by_uid.get(&folder_uid) {
         if !folder.path.is_empty() {
@@ -892,6 +895,10 @@ where
         if !folder.title.is_empty() {
             return Ok(folder.title.clone());
         }
+    }
+    if let Some(folder) = fetch_folder_if_exists_cached(request_json, cache, &folder_uid)? {
+        let fallback_title = string_field(&folder, "title", &folder_uid);
+        return Ok(build_folder_path(&folder, &fallback_title));
     }
     Ok(folder_uid)
 }
@@ -1635,7 +1642,7 @@ where
         metadata.as_ref(),
         None,
     )?;
-    let folder_inventory = if args.ensure_folders {
+    let folder_inventory = if args.ensure_folders || args.dry_run {
         load_folder_inventory(&args.import_dir, metadata.as_ref())?
     } else {
         Vec::new()
@@ -1730,11 +1737,14 @@ where
             (true, "", String::new(), None)
         };
         let action = apply_folder_path_guard_to_action(action, folder_paths_match);
+        let prefer_live_folder_path =
+            folder_uid_override.is_some() && args.import_folder_uid.is_none() && !uid.is_empty();
         let folder_path = resolve_dashboard_import_folder_path_with_request(
             &mut request_json,
             &mut lookup_cache,
             &payload,
             &folders_by_uid,
+            prefer_live_folder_path,
         )?;
         dashboard_records.push(build_import_dry_run_record(
             dashboard_file,
@@ -1878,7 +1888,7 @@ where
         metadata.as_ref(),
         None,
     )?;
-    let folder_inventory = if args.ensure_folders {
+    let folder_inventory = if args.ensure_folders || args.dry_run {
         load_folder_inventory(&args.import_dir, metadata.as_ref())?
     } else {
         Vec::new()
@@ -2038,11 +2048,15 @@ where
         let action =
             action.map(|value| apply_folder_path_guard_to_action(value, folder_paths_match));
         if args.dry_run {
+            let prefer_live_folder_path = folder_uid_override.is_some()
+                && args.import_folder_uid.is_none()
+                && !uid.is_empty();
             let folder_path = resolve_dashboard_import_folder_path_with_request(
                 &mut request_json,
                 &mut lookup_cache,
                 &payload,
                 &folders_by_uid,
+                prefer_live_folder_path,
             )?;
             let payload_object =
                 value_as_object(&payload, "Dashboard import payload must be a JSON object.")?;

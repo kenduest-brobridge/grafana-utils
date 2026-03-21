@@ -6401,7 +6401,7 @@ fn build_export_inspection_query_report_matches_core_family_query_row_contract()
             metrics: &[],
             functions: &["from", "aggregateWindow", "filter", "range", "yield"],
             measurements: &["cpu"],
-            buckets: &["prod"],
+            buckets: &["prod", "5m"],
         },
     );
     assert_core_family_query_row(
@@ -6630,7 +6630,7 @@ fn build_export_inspection_query_report_matches_core_family_query_row_contract()
         json_row("C")["queryField"],
         Value::String("query".to_string())
     );
-    assert_eq!(json_row("C")["buckets"], json!(["prod"]));
+    assert_eq!(json_row("C")["buckets"], json!(["prod", "5m"]));
 
     assert_eq!(
         json_row("D")["datasourceType"],
@@ -7823,14 +7823,35 @@ fn build_export_inspection_query_report_keeps_prometheus_metrics_and_skips_label
 fn resolve_query_analyzer_family_from_datasource_type_maps_supported_aliases_to_families() {
     let cases = [
         ("prometheus", Some(super::DATASOURCE_FAMILY_PROMETHEUS)),
+        (
+            "grafana-prometheus-datasource",
+            Some(super::DATASOURCE_FAMILY_PROMETHEUS),
+        ),
         ("loki", Some(super::DATASOURCE_FAMILY_LOKI)),
+        (
+            "grafana-loki-datasource",
+            Some(super::DATASOURCE_FAMILY_LOKI),
+        ),
         ("tempo", Some(super::DATASOURCE_FAMILY_TRACING)),
         ("jaeger", Some(super::DATASOURCE_FAMILY_TRACING)),
         ("zipkin", Some(super::DATASOURCE_FAMILY_TRACING)),
         ("influxdb", Some(super::DATASOURCE_FAMILY_FLUX)),
+        (
+            "grafana-influxdb-datasource",
+            Some(super::DATASOURCE_FAMILY_FLUX),
+        ),
         ("flux", Some(super::DATASOURCE_FAMILY_FLUX)),
         ("mysql", Some(super::DATASOURCE_FAMILY_SQL)),
+        (
+            "grafana-mysql-datasource",
+            Some(super::DATASOURCE_FAMILY_SQL),
+        ),
         ("postgres", Some(super::DATASOURCE_FAMILY_SQL)),
+        ("postgresql", Some(super::DATASOURCE_FAMILY_SQL)),
+        (
+            "grafana-postgresql-datasource",
+            Some(super::DATASOURCE_FAMILY_SQL),
+        ),
         ("mssql", Some(super::DATASOURCE_FAMILY_SQL)),
         ("elasticsearch", Some(super::DATASOURCE_FAMILY_SEARCH)),
         (
@@ -7898,6 +7919,48 @@ fn resolve_query_analyzer_family_from_query_signature_maps_fallback_shapes() {
 }
 
 #[test]
+fn dispatch_query_analysis_extracts_flux_every_window_hints() {
+    let panel = Map::new();
+    let target = Map::new();
+    let context = super::QueryExtractionContext {
+        panel: &panel,
+        target: &target,
+        query_field: "query",
+        query_text:
+            "from(bucket: \"prod\") |> range(start: -1h) |> aggregateWindow(every: 5m, fn: mean)",
+        resolved_datasource_type: "flux",
+    };
+
+    assert_eq!(
+        super::resolve_query_analyzer_family(&context),
+        super::DATASOURCE_FAMILY_FLUX
+    );
+    assert_eq!(
+        super::dispatch_query_analysis(&context).buckets,
+        vec!["prod".to_string(), "5m".to_string()]
+    );
+}
+
+#[test]
+fn dispatch_query_analysis_ignores_flux_every_outside_window_calls() {
+    let panel = Map::new();
+    let target = Map::new();
+    let context = super::QueryExtractionContext {
+        panel: &panel,
+        target: &target,
+        query_field: "query",
+        query_text:
+            "option task = {name: \"cpu\", every: 1h}\nfrom(bucket: \"prod\") |> range(start: -1h)",
+        resolved_datasource_type: "flux",
+    };
+
+    assert_eq!(
+        super::dispatch_query_analysis(&context).buckets,
+        vec!["prod".to_string()]
+    );
+}
+
+#[test]
 fn resolve_query_analyzer_family_prefers_target_datasource_then_panel_datasource() {
     let resolve = |panel_type: Option<&str>,
                    target_type: Option<&str>,
@@ -7943,6 +8006,13 @@ fn resolve_query_analyzer_family_prefers_target_datasource_then_panel_datasource
             "expr",
             "up",
             super::DATASOURCE_FAMILY_LOKI,
+        ),
+        (
+            None,
+            Some("grafana-postgresql-datasource"),
+            "query",
+            "up",
+            super::DATASOURCE_FAMILY_SQL,
         ),
         (
             None,
@@ -8257,8 +8327,11 @@ fn dispatch_query_analysis_keeps_search_family_conservative_for_non_lucene_shape
 fn normalize_family_name_covers_core_family_aliases() {
     let cases = [
         ("prometheus", "prometheus"),
+        ("grafana-prometheus-datasource", "prometheus"),
         ("loki", "loki"),
+        ("grafana-loki-datasource", "loki"),
         ("influxdb", "flux"),
+        ("grafana-influxdb-datasource", "flux"),
         ("flux", "flux"),
         ("mysql", "sql"),
         ("grafana-mysql-datasource", "sql"),
@@ -8269,6 +8342,7 @@ fn normalize_family_name_covers_core_family_aliases() {
         ("opensearch", "search"),
         ("grafana-opensearch-datasource", "search"),
         ("tempo", "tracing"),
+        ("grafana-tempo-datasource", "tracing"),
         ("jaeger", "tracing"),
         ("zipkin", "tracing"),
         ("custom", "custom"),
@@ -10190,6 +10264,95 @@ fn build_export_inspection_governance_document_rolls_up_dashboard_dependency_ana
 }
 
 #[test]
+fn build_export_inspection_governance_document_surfaces_datasource_blast_radius_dashboards() {
+    let summary = super::ExportInspectionSummary {
+        import_dir: "/tmp/raw".to_string(),
+        export_org: Some("Main Org.".to_string()),
+        export_org_id: Some("1".to_string()),
+        dashboard_count: 1,
+        folder_count: 1,
+        panel_count: 2,
+        query_count: 2,
+        datasource_inventory_count: 1,
+        orphaned_datasource_count: 0,
+        mixed_dashboard_count: 0,
+        folder_paths: Vec::new(),
+        datasource_usage: Vec::new(),
+        datasource_inventory: vec![super::DatasourceInventorySummary {
+            uid: "prom-main".to_string(),
+            name: "Prometheus Main".to_string(),
+            datasource_type: "prometheus".to_string(),
+            access: "proxy".to_string(),
+            url: "http://prometheus:9090".to_string(),
+            is_default: "true".to_string(),
+            org: "Main Org.".to_string(),
+            org_id: "1".to_string(),
+            reference_count: 2,
+            dashboard_count: 1,
+        }],
+        orphaned_datasources: Vec::new(),
+        mixed_dashboards: Vec::new(),
+    };
+    let query_a = make_core_family_report_row(
+        "core-main",
+        "7",
+        "A",
+        "prom-main",
+        "Prometheus Main",
+        "prometheus",
+        "prometheus",
+        "sum(rate(http_requests_total[5m]))",
+        &["job=\"grafana\""],
+    );
+    let mut query_b = make_core_family_report_row(
+        "core-main",
+        "8",
+        "B",
+        "prom-main",
+        "Prometheus Main",
+        "prometheus",
+        "prometheus",
+        "sum(rate(process_cpu_seconds_total[1h]))",
+        &["job=\"grafana\""],
+    );
+    query_b.query_field = "expr".to_string();
+
+    let report = super::ExportInspectionQueryReport {
+        import_dir: "/tmp/raw".to_string(),
+        summary: super::QueryReportSummary {
+            dashboard_count: 1,
+            panel_count: 2,
+            query_count: 2,
+            report_row_count: 2,
+        },
+        queries: vec![query_a, query_b],
+    };
+
+    let document = super::build_export_inspection_governance_document(&summary, &report);
+    let document_json = serde_json::to_value(&document).unwrap();
+    let datasource_row = &document_json["datasources"][0];
+
+    assert_eq!(document.summary.dashboard_count, 1);
+    assert_eq!(document.summary.query_record_count, 2);
+    assert_eq!(document.summary.datasource_family_count, 1);
+    assert_eq!(document.summary.datasource_coverage_count, 1);
+    assert_eq!(document.summary.risk_record_count, 0);
+    assert_eq!(datasource_row["dashboardUids"], json!(["core-main"]));
+    assert_eq!(datasource_row["dashboardCount"], Value::from(1));
+    assert_eq!(datasource_row["panelCount"], Value::from(2));
+    assert_eq!(datasource_row["queryCount"], Value::from(2));
+    assert_eq!(datasource_row["queryFields"], json!(["expr", "query"]));
+
+    let lines = super::render_governance_table_report("/tmp/raw", &document);
+    let output = lines.join("\n");
+    assert!(output.contains("MIXED_DASHBOARDS"));
+    assert!(output.contains("ORPHANED_DATASOURCES"));
+    assert!(output.contains("DASHBOARD_UIDS"));
+    assert!(output.contains("PANELS"));
+    assert!(output.contains("core-main"));
+}
+
+#[test]
 fn render_governance_table_report_displays_sections() {
     let summary = super::ExportInspectionSummary {
         import_dir: "/tmp/raw".to_string(),
@@ -10316,6 +10479,8 @@ fn render_governance_table_report_displays_sections() {
     assert!(output.contains("RECOMMENDATION"));
     assert!(output.contains("logs-main"));
     assert!(output.contains("unused-main"));
+    assert!(output.contains("MIXED_DASHBOARDS"));
+    assert!(output.contains("ORPHANED_DATASOURCES"));
     assert!(output.contains("orphaned-datasource"));
     assert!(output.contains("Remove the unused datasource"));
 }
@@ -14817,6 +14982,197 @@ fn render_import_dry_run_json_reports_skipped_folder_mismatch_dashboards() {
         value["summary"]["skippedFolderMismatchDashboards"],
         Value::from(1)
     );
+}
+
+#[test]
+fn collect_import_dry_run_report_uses_export_folder_inventory_for_target_paths() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(raw_dir.join("Platform")).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid",
+            "foldersFile": "folders.json"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join(FOLDER_INVENTORY_FILENAME),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "child",
+                "title": "Child",
+                "path": "Platform / Child",
+                "parentUid": "platform",
+                "org": "Main Org.",
+                "orgId": "1"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("dash.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU"},
+            "meta": {"folderUid": "child"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let args = ImportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
+        import_dir: raw_dir,
+        import_folder_uid: None,
+        ensure_folders: false,
+        replace_existing: false,
+        update_existing_only: false,
+        require_matching_folder_path: false,
+        require_matching_export_org: false,
+        import_message: "sync dashboards".to_string(),
+        dry_run: true,
+        table: false,
+        json: false,
+        output_format: None,
+        no_header: false,
+        output_columns: Vec::new(),
+        progress: false,
+        verbose: false,
+    };
+    let mut calls = Vec::new();
+
+    let report = super::import::collect_import_dry_run_report_with_request(
+        |method: reqwest::Method,
+         path: &str,
+         _params: &[(String, String)],
+         _payload: Option<&Value>| {
+            calls.push(format!("{} {}", method.as_str(), path));
+            match (method, path) {
+                (reqwest::Method::GET, "/api/dashboards/uid/abc") => Err(api_response(
+                    404,
+                    "http://127.0.0.1:3000/api/dashboards/uid/abc",
+                    "{\"message\":\"not found\"}",
+                )),
+                (reqwest::Method::GET, "/api/folders/child") => Err(super::message(
+                    "dry-run should use exported folder inventory",
+                )),
+                _ => Err(super::message(format!("unexpected path {path}"))),
+            }
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(calls, vec!["GET /api/dashboards/uid/abc"]);
+    assert_eq!(report.dashboard_records.len(), 1);
+    assert_eq!(report.dashboard_records[0][3], "Platform / Child");
+}
+
+#[test]
+fn collect_import_dry_run_report_prefers_live_folder_path_for_existing_dashboard_updates() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(raw_dir.join("Platform")).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid",
+            "foldersFile": "folders.json"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join(FOLDER_INVENTORY_FILENAME),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "dest-folder",
+                "title": "Child",
+                "path": "Platform / Child",
+                "parentUid": "platform",
+                "org": "Main Org.",
+                "orgId": "1"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("dash.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU"},
+            "meta": {"folderUid": "source-folder"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let args = ImportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
+        import_dir: raw_dir,
+        import_folder_uid: None,
+        ensure_folders: false,
+        replace_existing: true,
+        update_existing_only: false,
+        require_matching_folder_path: false,
+        require_matching_export_org: false,
+        import_message: "sync dashboards".to_string(),
+        dry_run: true,
+        table: false,
+        json: false,
+        output_format: None,
+        no_header: false,
+        output_columns: Vec::new(),
+        progress: false,
+        verbose: false,
+    };
+    let mut calls = Vec::new();
+
+    let report = super::import::collect_import_dry_run_report_with_request(
+        |method: reqwest::Method,
+         path: &str,
+         _params: &[(String, String)],
+         _payload: Option<&Value>| {
+            calls.push(format!("{} {}", method.as_str(), path));
+            match (method, path) {
+                (reqwest::Method::GET, "/api/dashboards/uid/abc") => Ok(Some(json!({
+                    "dashboard": {"id": 7, "uid": "abc", "title": "CPU"},
+                    "meta": {"folderUid": "dest-folder"}
+                }))),
+                (reqwest::Method::GET, "/api/folders/dest-folder") => Ok(Some(json!({
+                    "uid": "dest-folder",
+                    "title": "Ops",
+                    "parents": [{"uid": "platform", "title": "Platform"}]
+                }))),
+                _ => Err(super::message(format!("unexpected path {path}"))),
+            }
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert!(calls.contains(&"GET /api/folders/dest-folder".to_string()));
+    assert_eq!(report.dashboard_records.len(), 1);
+    assert_eq!(report.dashboard_records[0][3], "Platform / Ops");
 }
 
 #[test]

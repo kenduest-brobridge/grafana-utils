@@ -905,17 +905,29 @@ fn datasource_type_from_reference(reference: &Value) -> Option<String> {
 pub(crate) fn resolve_query_analyzer_family_from_datasource_type(
     datasource_type: &str,
 ) -> Option<&'static str> {
-    match datasource_type {
+    match canonicalize_query_analyzer_datasource_type(datasource_type) {
         "loki" => Some(DATASOURCE_FAMILY_LOKI),
         "prometheus" => Some(DATASOURCE_FAMILY_PROMETHEUS),
         "tempo" | "jaeger" | "zipkin" => Some(DATASOURCE_FAMILY_TRACING),
         "influxdb" | "flux" => Some(DATASOURCE_FAMILY_FLUX),
-        "mysql" | "postgres" | "mssql" => Some(DATASOURCE_FAMILY_SQL),
-        "elasticsearch" | "grafana-opensearch-datasource" | "opensearch" => {
-            Some(DATASOURCE_FAMILY_SEARCH)
-        }
+        "mysql" | "postgres" | "postgresql" | "mssql" => Some(DATASOURCE_FAMILY_SQL),
+        "elasticsearch" | "opensearch" => Some(DATASOURCE_FAMILY_SEARCH),
         _ => None,
     }
+}
+
+fn canonicalize_query_analyzer_datasource_type(datasource_type: &str) -> &str {
+    let datasource_type = datasource_type_alias(datasource_type);
+    if let Some(normalized) = datasource_type
+        .strip_prefix("grafana-")
+        .and_then(|value| value.strip_suffix("-datasource"))
+    {
+        return normalized;
+    }
+    if let Some(normalized) = datasource_type.strip_suffix("-datasource") {
+        return normalized;
+    }
+    datasource_type
 }
 
 pub(crate) fn resolve_query_analyzer_family_from_query_signature(

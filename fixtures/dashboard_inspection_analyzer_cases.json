@@ -208,7 +208,8 @@
         "cpu"
       ],
       "buckets": [
-        "prod"
+        "prod",
+        "5m"
       ]
     }
   },
@@ -613,6 +614,27 @@
         "trace.id",
         "span.name"
       ],
+      "buckets": []
+    }
+  },
+  {
+    "name": "grafana-postgresql-datasource-routes-to-sql-over-generic-query-shape",
+    "panel": {
+      "datasource": {
+        "uid": "sql-main",
+        "type": "grafana-postgresql-datasource"
+      }
+    },
+    "target": {
+      "refId": "PG"
+    },
+    "queryField": "query",
+    "queryText": "up",
+    "expectedFamily": "sql",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [],
       "buckets": []
     }
   },

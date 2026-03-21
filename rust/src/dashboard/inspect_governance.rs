@@ -57,6 +57,8 @@ pub(crate) struct DatasourceCoverageRow {
     pub(crate) dashboard_count: usize,
     #[serde(rename = "panelCount")]
     pub(crate) panel_count: usize,
+    #[serde(rename = "dashboardUids")]
+    pub(crate) dashboard_uids: Vec<String>,
     #[serde(rename = "queryFields")]
     pub(crate) query_fields: Vec<String>,
     pub(crate) orphaned: bool,
@@ -127,12 +129,19 @@ struct ResolvedDatasourceIdentity {
 // summaries and risk grouping.
 /// Purpose: implementation note.
 pub(crate) fn normalize_family_name(datasource_type: &str) -> String {
-    match datasource_type.trim().to_ascii_lowercase().as_str() {
+    let lowered = datasource_type.trim().to_ascii_lowercase();
+    let normalized = lowered
+        .strip_prefix("grafana-")
+        .and_then(|value| value.strip_suffix("-datasource"))
+        .unwrap_or_else(|| lowered.strip_suffix("-datasource").unwrap_or(&lowered));
+    match normalized {
         "" => "unknown".to_string(),
         "influxdb" | "flux" => "flux".to_string(),
+        "prometheus" => "prometheus".to_string(),
+        "loki" => "loki".to_string(),
         "mysql" | "postgres" | "mssql" => "sql".to_string(),
-        "grafana-postgresql-datasource" | "grafana-mysql-datasource" => "sql".to_string(),
-        "elasticsearch" | "opensearch" | "grafana-opensearch-datasource" => "search".to_string(),
+        "postgresql" => "sql".to_string(),
+        "elasticsearch" | "opensearch" => "search".to_string(),
         "tempo" | "jaeger" | "zipkin" => "tracing".to_string(),
         value => value.to_string(),
     }
@@ -398,6 +407,7 @@ pub(crate) fn build_datasource_coverage_rows(
                     query_count,
                     dashboard_count: dashboards.len(),
                     panel_count: panels.len(),
+                    dashboard_uids: dashboards.into_iter().collect(),
                     query_fields: query_fields.into_iter().collect(),
                     orphaned,
                 }
@@ -622,12 +632,25 @@ pub(crate) fn render_governance_table_report(
 
     lines.push("# Summary".to_string());
     lines.extend(render_simple_table(
-        &["DASHBOARDS", "QUERIES", "FAMILIES", "DATASOURCES", "RISKS"],
+        &[
+            "DASHBOARDS",
+            "QUERIES",
+            "FAMILIES",
+            "DATASOURCES",
+            "MIXED_DASHBOARDS",
+            "ORPHANED_DATASOURCES",
+            "RISKS",
+        ],
         &[vec![
             document.summary.dashboard_count.to_string(),
             document.summary.query_record_count.to_string(),
             document.summary.datasource_family_count.to_string(),
             document.summary.datasource_coverage_count.to_string(),
+            document
+                .summary
+                .mixed_datasource_dashboard_count
+                .to_string(),
+            document.summary.orphaned_datasource_count.to_string(),
             document.summary.risk_record_count.to_string(),
         ]],
         true,
@@ -719,12 +742,25 @@ pub(crate) fn render_governance_table_report(
         .datasources
         .iter()
         .map(|row| {
+            let dashboard_uids = if row.dashboard_uids.is_empty() {
+                "(none)".to_string()
+            } else {
+                row.dashboard_uids.join(",")
+            };
+            let query_fields = if row.query_fields.is_empty() {
+                "(none)".to_string()
+            } else {
+                row.query_fields.join(",")
+            };
             vec![
                 row.datasource_uid.clone(),
                 row.datasource.clone(),
                 row.family.clone(),
                 row.query_count.to_string(),
                 row.dashboard_count.to_string(),
+                row.panel_count.to_string(),
+                dashboard_uids,
+                query_fields,
                 if row.orphaned {
                     "true".to_string()
                 } else {
@@ -743,6 +779,9 @@ pub(crate) fn render_governance_table_report(
                 "FAMILY",
                 "QUERIES",
                 "DASHBOARDS",
+                "PANELS",
+                "DASHBOARD_UIDS",
+                "QUERY_FIELDS",
                 "ORPHANED",
             ],
             &datasource_rows,
