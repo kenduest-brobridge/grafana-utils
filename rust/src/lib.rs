@@ -22,6 +22,8 @@ pub mod dashboard_inspection_dependency_contract;
 pub mod dashboard_reference_models;
 /// Module definition for datasource.
 pub mod datasource;
+/// Module definition for datasource_catalog.
+pub mod datasource_catalog;
 /// Module definition for datasource_provider.
 pub mod datasource_provider;
 /// Module definition for help_styles.

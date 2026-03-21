@@ -30,11 +30,12 @@ use self::workbench::{
 use crate::alert::build_rule_import_payload;
 use crate::alert_sync::{assess_alert_sync_specs, ALERT_SYNC_KIND};
 use crate::common::{message, Result};
+use crate::dashboard::DASHBOARD_PERMISSION_BUNDLE_FILENAME;
 use crate::dashboard::{build_http_client, build_http_client_for_org, CommonCliArgs};
 
 /// Constant for default review token.
 pub const DEFAULT_REVIEW_TOKEN: &str = "reviewed-sync-plan";
-const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Summarize desired resources:\n    grafana-util sync summary --desired-file ./desired.json\n\n  Build a live-backed sync plan:\n    grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n\n  Apply a reviewed plan back to Grafana:\n    grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
+const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Summarize desired resources:\n    grafana-util sync summary --desired-file ./desired.json\n\n  Package local exports into one source bundle:\n    grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n\n  Compare a source bundle against target inventory before apply:\n    grafana-util sync bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output json\n\n  Build a live-backed sync plan:\n    grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n\n  Apply a reviewed plan back to Grafana:\n    grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
 const SYNC_SUMMARY_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync summary --desired-file ./desired.json\n  grafana-util sync summary --desired-file ./desired.json --output json";
 const SYNC_PLAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync plan --desired-file ./desired.json --live-file ./live.json\n  grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --allow-prune --output json";
 const SYNC_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync review --plan-file ./sync-plan.json\n  grafana-util sync review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output json";
@@ -1023,6 +1024,7 @@ fn load_dashboard_bundle_sections(export_dir: &Path) -> Result<DashboardBundleSe
             "export-metadata.json",
             "folders.json",
             "datasources.json",
+            DASHBOARD_PERMISSION_BUNDLE_FILENAME,
         ],
     )? {
         let source_path = path

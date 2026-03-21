@@ -1,0 +1,21 @@
+{
+  "crossDomainSummaryCase": {
+    "summary": {
+      "dashboardCount": 2,
+      "datasourceCount": 1,
+      "folderCount": 1,
+      "alertRuleCount": 1,
+      "contactPointCount": 1,
+      "muteTimingCount": 1,
+      "policyCount": 1,
+      "templateCount": 1
+    },
+    "textLines": [
+      "Sync source bundle",
+      "Dashboards: 2",
+      "Datasources: 1",
+      "Folders: 1",
+      "Alerting: rules=1 contact-points=1 mute-timings=1 policies=1 templates=1"
+    ]
+  }
+}

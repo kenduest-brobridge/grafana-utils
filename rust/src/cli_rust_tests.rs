@@ -178,6 +178,29 @@ fn parse_cli_supports_dashboard_group_alias() {
 }
 
 #[test]
+fn parse_cli_rejects_dashboard_list_datasources_subcommand() {
+    let error =
+        CliArgs::try_parse_from(["grafana-util", "dashboard", "list-data-sources", "--json"])
+            .unwrap_err();
+
+    assert!(error.to_string().contains("unrecognized subcommand"));
+    assert!(error.to_string().contains("list-data-sources"));
+}
+
+#[test]
+fn parse_cli_supports_datasource_list_command() {
+    let args: CliArgs = parse_cli_from(["grafana-util", "datasource", "list", "--json"]);
+
+    match args.command {
+        UnifiedCommand::Datasource { command } => match command {
+            DatasourceGroupCommand::List(inner) => assert!(inner.json),
+            _ => panic!("expected datasource list"),
+        },
+        _ => panic!("expected datasource group"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_alert_group() {
     let args: CliArgs = parse_cli_from([
         "grafana-util",
@@ -290,6 +313,14 @@ fn unified_help_full_colorizes_extended_example_labels_when_requested() {
 
 #[test]
 fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags() {
+    let default_help = maybe_render_unified_help_from_os_args(["grafana-util"], false).unwrap();
+    assert!(default_help.contains("[Dashboard Export]"));
+    assert!(default_help.contains("Print help with extended examples"));
+
+    let default_help_colorized =
+        maybe_render_unified_help_from_os_args(["grafana-util"], true).unwrap_or_default();
+    assert!(default_help_colorized.contains("\u{1b}[1;36m[Dashboard Export]\u{1b}[0m"));
+
     let root_help =
         maybe_render_unified_help_from_os_args(["grafana-util", "--help"], false).unwrap();
     assert!(root_help.contains("[Dashboard Export]"));
@@ -309,6 +340,9 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
             .unwrap();
     assert!(alert_help.contains("Extended Examples:"));
     assert!(alert_help.contains("[Alert List]"));
+    assert!(alert_help.contains("alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dry-run --json"));
+    assert!(alert_help
+        .contains("alert diff --url http://localhost:3000 --diff-dir ./alerts/raw --json"));
 
     let datasource_help = maybe_render_unified_help_from_os_args(
         ["grafana-util", "datasource", "--help-full"],
@@ -326,6 +360,8 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
         maybe_render_unified_help_from_os_args(["grafana-util", "sync", "--help-full"], false)
             .unwrap();
     assert!(sync_help.contains("[Sync Apply]"));
+    assert!(sync_help.contains("[Sync Bundle]"));
+    assert!(sync_help.contains("[Sync Bundle Preflight]"));
 
     let alert_short_help =
         maybe_render_unified_help_from_os_args(["grafana-util", "alert", "-h"], false).unwrap();

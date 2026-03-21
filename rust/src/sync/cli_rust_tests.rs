@@ -75,6 +75,14 @@ fn sync_bundle_preflight_help_includes_examples_and_grouped_headings() {
 }
 
 #[test]
+fn sync_bundle_help_includes_examples_and_output_heading() {
+    let help = render_sync_subcommand_help("bundle");
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("--dashboard-export-dir"));
+    assert!(help.contains("--output-file"));
+}
+
+#[test]
 fn sync_root_help_includes_examples() {
     let mut command = SyncCliArgs::command();
     let mut output = Vec::new();
@@ -85,6 +93,8 @@ fn sync_root_help_includes_examples() {
     assert!(help.contains("grafana-util sync summary"));
     assert!(help.contains("grafana-util sync plan"));
     assert!(help.contains("grafana-util sync apply"));
+    assert!(help.contains("grafana-util sync bundle"));
+    assert!(help.contains("grafana-util sync bundle-preflight"));
 }
 
 #[test]
@@ -933,10 +943,158 @@ fn run_sync_cli_bundle_writes_source_bundle_artifact() {
         bundle["alerting"]["exportDir"],
         json!(alert_export_dir.display().to_string())
     );
+    assert_eq!(bundle["alerting"]["summary"]["ruleCount"], json!(1));
+    assert_eq!(bundle["alerting"]["summary"]["contactPointCount"], json!(0));
+    assert_eq!(bundle["alerting"]["summary"]["policyCount"], json!(0));
     assert_eq!(
         bundle["metadata"]["alertExportDir"],
         json!(alert_export_dir.display().to_string())
     );
+}
+
+#[test]
+fn run_sync_cli_bundle_preserves_alert_export_artifact_metadata() {
+    let temp = tempdir().unwrap();
+    let alert_export_dir = temp.path().join("alerts").join("raw");
+    fs::create_dir_all(
+        alert_export_dir
+            .join("contact-points")
+            .join("Smoke_Webhook"),
+    )
+    .unwrap();
+    fs::create_dir_all(alert_export_dir.join("policies")).unwrap();
+    fs::write(
+        alert_export_dir
+            .join("contact-points")
+            .join("Smoke_Webhook")
+            .join("Smoke_Webhook__smoke-webhook.json"),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-contact-point",
+            "apiVersion": 1,
+            "schemaVersion": 1,
+            "spec": {
+                "uid": "smoke-webhook",
+                "name": "Smoke Webhook",
+                "type": "webhook",
+                "settings": {"url": "http://127.0.0.1/notify"}
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        alert_export_dir.join("contact-points").join("index.json"),
+        serde_json::to_string_pretty(&json!([
+            {
+                "kind": "grafana-contact-point",
+                "uid": "smoke-webhook",
+                "name": "Smoke Webhook",
+                "type": "webhook",
+                "path": "contact-points/Smoke_Webhook/Smoke_Webhook__smoke-webhook.json"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        alert_export_dir
+            .join("policies")
+            .join("notification-policies.json"),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-notification-policies",
+            "apiVersion": 1,
+            "schemaVersion": 1,
+            "spec": {"receiver": "grafana-default-email"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        alert_export_dir.join("export-metadata.json"),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-util-alert-export-index",
+            "apiVersion": 1,
+            "schemaVersion": 1
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let output_file = temp.path().join("bundle.json");
+
+    let result = run_sync_cli(SyncGroupCommand::Bundle(SyncBundleArgs {
+        dashboard_export_dir: None,
+        alert_export_dir: Some(alert_export_dir.clone()),
+        datasource_export_file: None,
+        metadata_file: None,
+        output_file: Some(output_file.clone()),
+        output: SyncOutputFormat::Json,
+    }));
+
+    assert!(result.is_ok());
+    let bundle: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&output_file).unwrap()).unwrap();
+    assert_eq!(bundle["alerting"]["summary"]["contactPointCount"], json!(1));
+    assert_eq!(bundle["alerting"]["summary"]["policyCount"], json!(1));
+    assert_eq!(
+        bundle["alerting"]["exportMetadata"]["kind"],
+        json!("grafana-util-alert-export-index")
+    );
+    assert_eq!(
+        bundle["alerting"]["contactPoints"][0]["sourcePath"],
+        json!("contact-points/Smoke_Webhook/Smoke_Webhook__smoke-webhook.json")
+    );
+    assert_eq!(
+        bundle["alerting"]["policies"][0]["sourcePath"],
+        json!("policies/notification-policies.json")
+    );
+}
+
+#[test]
+fn run_sync_cli_bundle_ignores_dashboard_permissions_bundle() {
+    let temp = tempdir().unwrap();
+    let dashboard_export_dir = temp.path().join("dashboards").join("raw");
+    fs::create_dir_all(&dashboard_export_dir).unwrap();
+    fs::write(
+        dashboard_export_dir.join("cpu.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "panels": []
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        dashboard_export_dir.join("permissions.json"),
+        serde_json::to_string_pretty(&json!({
+            "kind": "dashboard-permissions",
+            "permissions": [{
+                "uid": "cpu-main",
+                "role": "Viewer"
+            }]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let output_file = temp.path().join("bundle.json");
+
+    let result = run_sync_cli(SyncGroupCommand::Bundle(SyncBundleArgs {
+        dashboard_export_dir: Some(dashboard_export_dir.clone()),
+        alert_export_dir: None,
+        datasource_export_file: None,
+        metadata_file: None,
+        output_file: Some(output_file.clone()),
+        output: SyncOutputFormat::Json,
+    }));
+
+    assert!(result.is_ok(), "{result:?}");
+    let bundle: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&output_file).unwrap()).unwrap();
+    assert_eq!(bundle["summary"]["dashboardCount"], json!(1));
+    assert_eq!(bundle["dashboards"].as_array().unwrap().len(), 1);
+    assert_eq!(bundle["dashboards"][0]["uid"], json!("cpu-main"));
 }
 
 #[test]

@@ -1,4 +1,4 @@
-.PHONY: help print-version sync-version set-release-version set-dev-version poetry-install poetry-lock poetry-test poetry-quality-python build build-python build-rust build-rust-native build-rust-macos-arm64 build-rust-linux-amd64 build-rust-linux-amd64-zig seed-grafana-sample-data destroy-grafana-sample-data reset-grafana-all-data test test-python test-rust fmt-rust-check lint-rust quality quality-python quality-rust test-rust-live test-access-live test-python-datasource-live
+.PHONY: help print-version sync-version set-release-version set-dev-version poetry-install poetry-lock poetry-test poetry-quality-python build build-python build-rust build-rust-native build-rust-macos-arm64 build-rust-linux-amd64 build-rust-linux-amd64-zig seed-grafana-sample-data destroy-grafana-sample-data reset-grafana-all-data test test-python test-rust fmt-rust-check lint-rust quality quality-python quality-rust quality-alert-rust quality-sync-rust test-rust-live test-sync-live test-alert-live test-alert-live-artifact test-alert-live-replay test-access-live test-python-datasource-live test-datasource-live
 
 PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
@@ -37,9 +37,16 @@ help:
 		'  make quality       Run the repo quality gate scripts' \
 		'  make quality-python  Run the Python quality gate script' \
 		'  make quality-rust  Run the Rust quality gate script' \
+		'  make quality-alert-rust  Run focused Rust alert contract checks' \
+		'  make quality-sync-rust  Run focused Rust sync contract checks' \
 		'  make test-rust-live Start Grafana in Docker and run the Rust live smoke test' \
+		'  make test-sync-live Start Grafana in Docker and run the Rust sync live smoke path' \
+		'  make test-alert-live Start Grafana in Docker and run the Rust alert live smoke path' \
+		'  make test-alert-live-artifact Start Grafana in Docker and run the Rust alert artifact live smoke path' \
+		'  make test-alert-live-replay Start Grafana in Docker and run the Rust alert replay live smoke path' \
 		'  make test-access-live Start Grafana in Docker and run the Python access live smoke test' \
-		'  make test-python-datasource-live Start Grafana in Docker and run the Python datasource live smoke test'
+		'  make test-python-datasource-live Start Grafana in Docker and run the Python datasource live smoke test' \
+		'  make test-datasource-live Start Grafana in Docker and run the Rust and Python datasource live smoke tests'
 
 print-version:
 	bash ./scripts/set-version.sh --print-current
@@ -127,11 +134,42 @@ quality-python:
 quality-rust:
 	./scripts/check-rust-quality.sh
 
+quality-alert-rust:
+	cd $(RUST_DIR) && $(CARGO) test --quiet alert_
+	cd $(RUST_DIR) && $(CARGO) test --quiet run_sync_cli_bundle_preserves_alert_export_artifact_metadata
+	cd $(RUST_DIR) && $(CARGO) test --quiet build_sync_bundle_preflight_document_ignores_alert_replay_artifacts_but_keeps_zero_checks
+	cd $(RUST_DIR) && $(CARGO) test --quiet render_sync_source_bundle_text_reports_alert_replay_artifact_counts
+	cd $(RUST_DIR) && $(CARGO) fmt --check
+	cd $(RUST_DIR) && $(CARGO) check --quiet
+
+quality-sync-rust:
+	cd $(RUST_DIR) && $(CARGO) test --quiet sync_
+	cd $(RUST_DIR) && $(CARGO) test --quiet build_sync_source_bundle_document_matches_cross_domain_summary_contract
+	cd $(RUST_DIR) && $(CARGO) test --quiet build_sync_source_bundle_document_preserves_alert_replay_artifact_summary_and_paths
+	cd $(RUST_DIR) && $(CARGO) test --quiet build_sync_bundle_preflight_document_ignores_alert_replay_artifacts_but_keeps_zero_checks
+	cd $(RUST_DIR) && $(CARGO) fmt --check
+	cd $(RUST_DIR) && $(CARGO) check --quiet
+
 test-rust-live:
 	./scripts/test-rust-live-grafana.sh
+
+test-sync-live:
+	./scripts/test-rust-sync-live-grafana.sh
+
+test-alert-live:
+	./scripts/test-rust-alert-live-grafana.sh
+
+test-alert-live-artifact:
+	./scripts/test-rust-alert-artifact-live-grafana.sh
+
+test-alert-live-replay:
+	./scripts/test-rust-alert-replay-live-grafana.sh
 
 test-access-live:
 	./scripts/test-python-access-live-grafana.sh
 
 test-python-datasource-live:
 	bash ./scripts/test-python-datasource-live-grafana.sh
+
+test-datasource-live:
+	./scripts/test-combined-live-grafana.sh
