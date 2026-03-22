@@ -10536,6 +10536,10 @@ fn evaluate_dashboard_governance_gate_enforces_query_thresholds_and_warning_poli
     assert_eq!(
         result.summary.checked_rules,
         json!({
+            "datasourceAllowedFamilies": [],
+            "datasourceAllowedUids": [],
+            "forbidUnknown": false,
+            "forbidMixedFamilies": false,
             "maxQueriesPerDashboard": 1,
             "maxQueriesPerPanel": 1,
             "failOnWarnings": true
@@ -10556,6 +10560,10 @@ fn render_dashboard_governance_gate_result_lists_violations_and_warnings() {
             violation_count: 1,
             warning_count: 1,
             checked_rules: json!({
+                "datasourceAllowedFamilies": [],
+                "datasourceAllowedUids": [],
+                "forbidUnknown": false,
+                "forbidMixedFamilies": false,
                 "maxQueriesPerDashboard": 1,
                 "maxQueriesPerPanel": null,
                 "failOnWarnings": false
@@ -10611,6 +10619,10 @@ fn run_dashboard_governance_gate_writes_json_output_file() {
         &policy_path,
         serde_json::to_string_pretty(&json!({
             "version": 1,
+            "datasources": {
+                "allowedFamilies": [],
+                "allowedUids": []
+            },
             "queries": {
                 "maxQueriesPerDashboard": 4,
                 "maxQueriesPerPanel": 2
@@ -10675,6 +10687,91 @@ fn run_dashboard_governance_gate_writes_json_output_file() {
     assert_eq!(output["ok"], json!(true));
     assert_eq!(output["summary"]["violationCount"], json!(0));
     assert_eq!(output["summary"]["warningCount"], json!(0));
+}
+
+#[test]
+fn evaluate_dashboard_governance_gate_enforces_datasource_policy_rules() {
+    let policy = json!({
+        "version": 1,
+        "datasources": {
+            "allowedFamilies": ["prometheus"],
+            "allowedUids": ["prom-main"],
+            "forbidUnknown": true,
+            "forbidMixedFamilies": true
+        },
+        "enforcement": {
+            "failOnWarnings": false
+        }
+    });
+    let governance = json!({
+        "summary": {
+            "dashboardCount": 1,
+            "queryRecordCount": 2
+        },
+        "dashboardGovernance": [
+            {
+                "dashboardUid": "mixed-main",
+                "dashboardTitle": "Mixed Main",
+                "datasourceFamilies": ["prometheus", "unknown"],
+                "mixedDatasource": true
+            }
+        ],
+        "riskRecords": []
+    });
+    let queries = json!({
+        "summary": {
+            "dashboardCount": 1,
+            "queryRecordCount": 2
+        },
+        "queries": [
+            {
+                "dashboardUid": "mixed-main",
+                "dashboardTitle": "Mixed Main",
+                "panelId": "7",
+                "panelTitle": "CPU",
+                "refId": "A",
+                "datasource": "Prometheus Main",
+                "datasourceUid": "prom-main",
+                "datasourceFamily": "prometheus"
+            },
+            {
+                "dashboardUid": "mixed-main",
+                "dashboardTitle": "Mixed Main",
+                "panelId": "8",
+                "panelTitle": "Custom",
+                "refId": "B",
+                "datasource": "",
+                "datasourceUid": "custom-main",
+                "datasourceFamily": "unknown"
+            }
+        ]
+    });
+
+    let result = super::evaluate_dashboard_governance_gate(&policy, &governance, &queries).unwrap();
+    let codes = result
+        .violations
+        .iter()
+        .map(|item| item.code.as_str())
+        .collect::<Vec<&str>>();
+
+    assert!(!result.ok);
+    assert_eq!(result.summary.violation_count, 4);
+    assert!(codes.contains(&"datasource-unknown"));
+    assert!(codes.contains(&"datasource-family-not-allowed"));
+    assert!(codes.contains(&"datasource-uid-not-allowed"));
+    assert!(codes.contains(&"mixed-datasource-families-not-allowed"));
+    assert_eq!(
+        result.summary.checked_rules,
+        json!({
+            "datasourceAllowedFamilies": ["prometheus"],
+            "datasourceAllowedUids": ["prom-main"],
+            "forbidUnknown": true,
+            "forbidMixedFamilies": true,
+            "maxQueriesPerDashboard": null,
+            "maxQueriesPerPanel": null,
+            "failOnWarnings": false
+        })
+    );
 }
 
 #[test]

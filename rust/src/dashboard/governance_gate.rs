@@ -2,15 +2,19 @@
 //! Consumes governance-json and query-report JSON artifacts plus a small policy JSON.
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 
 use crate::common::{message, Result};
 
 use super::{write_json_document, GovernanceGateArgs, GovernanceGateOutputFormat};
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct QueryThresholdPolicy {
+    allowed_families: BTreeSet<String>,
+    allowed_uids: BTreeSet<String>,
+    forbid_unknown: bool,
+    forbid_mixed_families: bool,
     max_queries_per_dashboard: Option<usize>,
     max_queries_per_panel: Option<usize>,
     fail_on_warnings: bool,
@@ -97,6 +101,22 @@ fn value_to_bool(value: Option<&Value>, default: bool) -> Result<bool> {
     }
 }
 
+fn value_to_string_set(value: Option<&Value>) -> Result<BTreeSet<String>> {
+    match value {
+        None | Some(Value::Null) => Ok(BTreeSet::new()),
+        Some(Value::Array(values)) => Ok(values
+            .iter()
+            .filter_map(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(str::to_string)
+            .collect()),
+        Some(other) => Err(message(format!(
+            "Expected an array of strings in governance policy, got {other}."
+        ))),
+    }
+}
+
 fn parse_query_threshold_policy(policy: &Value) -> Result<QueryThresholdPolicy> {
     let Some(policy_object) = policy.as_object() else {
         return Err(message("Governance policy JSON must be an object."));
@@ -116,12 +136,21 @@ fn parse_query_threshold_policy(policy: &Value) -> Result<QueryThresholdPolicy> 
         .and_then(Value::as_object)
         .cloned()
         .unwrap_or_default();
+    let datasources = policy_object
+        .get("datasources")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
     let enforcement = policy_object
         .get("enforcement")
         .and_then(Value::as_object)
         .cloned()
         .unwrap_or_default();
     Ok(QueryThresholdPolicy {
+        allowed_families: value_to_string_set(datasources.get("allowedFamilies"))?,
+        allowed_uids: value_to_string_set(datasources.get("allowedUids"))?,
+        forbid_unknown: value_to_bool(datasources.get("forbidUnknown"), false)?,
+        forbid_mixed_families: value_to_bool(datasources.get("forbidMixedFamilies"), false)?,
         max_queries_per_dashboard: value_to_usize(queries.get("maxQueriesPerDashboard"))?,
         max_queries_per_panel: value_to_usize(queries.get("maxQueriesPerPanel"))?,
         fail_on_warnings: value_to_bool(enforcement.get("failOnWarnings"), false)?,
@@ -140,10 +169,56 @@ fn string_field(record: &Value, key: &str) -> String {
 
 fn build_checked_rules(policy: QueryThresholdPolicy) -> Value {
     serde_json::json!({
+        "datasourceAllowedFamilies": policy.allowed_families,
+        "datasourceAllowedUids": policy.allowed_uids,
+        "forbidUnknown": policy.forbid_unknown,
+        "forbidMixedFamilies": policy.forbid_mixed_families,
         "maxQueriesPerDashboard": policy.max_queries_per_dashboard,
         "maxQueriesPerPanel": policy.max_queries_per_panel,
         "failOnWarnings": policy.fail_on_warnings,
     })
+}
+
+fn build_query_violation(
+    code: &str,
+    message_text: String,
+    query: &Value,
+) -> DashboardGovernanceGateFinding {
+    DashboardGovernanceGateFinding {
+        severity: "error".to_string(),
+        code: code.to_string(),
+        message: message_text,
+        dashboard_uid: string_field(query, "dashboardUid"),
+        dashboard_title: string_field(query, "dashboardTitle"),
+        panel_id: string_field(query, "panelId"),
+        panel_title: string_field(query, "panelTitle"),
+        ref_id: string_field(query, "refId"),
+        datasource: string_field(query, "datasource"),
+        datasource_uid: string_field(query, "datasourceUid"),
+        datasource_family: string_field(query, "datasourceFamily"),
+        risk_kind: String::new(),
+    }
+}
+
+fn build_dashboard_violation(
+    code: &str,
+    message_text: String,
+    dashboard: &Value,
+) -> DashboardGovernanceGateFinding {
+    DashboardGovernanceGateFinding {
+        severity: "error".to_string(),
+        code: code.to_string(),
+        message: message_text,
+        dashboard_uid: string_field(dashboard, "dashboardUid"),
+        dashboard_title: string_field(dashboard, "dashboardTitle"),
+        panel_id: String::new(),
+        panel_title: String::new(),
+        ref_id: String::new(),
+        datasource: String::new(),
+        datasource_uid: String::new(),
+        datasource_family: String::new(),
+        risk_kind: String::new(),
+    }
 }
 
 pub(crate) fn evaluate_dashboard_governance_gate(
@@ -174,11 +249,15 @@ pub(crate) fn evaluate_dashboard_governance_gate(
 
     let mut dashboard_counts = BTreeMap::<String, (String, usize)>::new();
     let mut panel_counts = BTreeMap::<(String, String), (String, String, usize)>::new();
+    let mut violations = Vec::new();
     for query in queries {
         let dashboard_uid = string_field(query, "dashboardUid");
         let dashboard_title = string_field(query, "dashboardTitle");
         let panel_id = string_field(query, "panelId");
         let panel_title = string_field(query, "panelTitle");
+        let datasource = string_field(query, "datasource");
+        let datasource_uid = string_field(query, "datasourceUid");
+        let datasource_family = string_field(query, "datasourceFamily");
         let dashboard_entry = dashboard_counts
             .entry(dashboard_uid.clone())
             .or_insert((dashboard_title.clone(), 0usize));
@@ -189,9 +268,44 @@ pub(crate) fn evaluate_dashboard_governance_gate(
             0usize,
         ));
         panel_entry.2 += 1;
+
+        if policy.forbid_unknown
+            && (datasource_family.is_empty()
+                || datasource_family.eq_ignore_ascii_case("unknown")
+                || datasource.is_empty())
+        {
+            violations.push(build_query_violation(
+                "datasource-unknown",
+                "Datasource identity could not be resolved for this query row.".to_string(),
+                query,
+            ));
+        }
+        if !policy.allowed_families.is_empty()
+            && !policy.allowed_families.contains(&datasource_family)
+        {
+            let family = if datasource_family.is_empty() {
+                "unknown".to_string()
+            } else {
+                datasource_family.clone()
+            };
+            violations.push(build_query_violation(
+                "datasource-family-not-allowed",
+                format!("Datasource family {family} is not allowed by policy."),
+                query,
+            ));
+        }
+        if !policy.allowed_uids.is_empty()
+            && !datasource_uid.is_empty()
+            && !policy.allowed_uids.contains(&datasource_uid)
+        {
+            violations.push(build_query_violation(
+                "datasource-uid-not-allowed",
+                format!("Datasource uid {datasource_uid} is not allowed by policy."),
+                query,
+            ));
+        }
     }
 
-    let mut violations = Vec::new();
     if let Some(limit) = policy.max_queries_per_dashboard {
         for (dashboard_uid, (dashboard_title, query_count)) in &dashboard_counts {
             if *query_count > limit {
@@ -235,6 +349,43 @@ pub(crate) fn evaluate_dashboard_governance_gate(
                     datasource_family: String::new(),
                     risk_kind: String::new(),
                 });
+            }
+        }
+    }
+
+    if policy.forbid_mixed_families {
+        let dashboards = governance_document
+            .get("dashboardGovernance")
+            .and_then(Value::as_array)
+            .ok_or_else(|| {
+                message("Dashboard governance JSON must contain a dashboardGovernance array.")
+            })?;
+        for dashboard in dashboards {
+            let mixed = dashboard
+                .get("mixedDatasource")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            if mixed {
+                let families = dashboard
+                    .get("datasourceFamilies")
+                    .and_then(Value::as_array)
+                    .map(|values| {
+                        values
+                            .iter()
+                            .filter_map(Value::as_str)
+                            .collect::<Vec<&str>>()
+                            .join(",")
+                    })
+                    .unwrap_or_default();
+                violations.push(build_dashboard_violation(
+                    "mixed-datasource-families-not-allowed",
+                    format!(
+                        "Dashboard uses mixed datasource families{}{}.",
+                        if families.is_empty() { "" } else { ": " },
+                        families
+                    ),
+                    dashboard,
+                ));
             }
         }
     }
