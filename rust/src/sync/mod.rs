@@ -2424,11 +2424,30 @@ where
                 )?
                 .unwrap_or(Value::Null))
             }
-            "alert-contact-point" | "alert-mute-timing" | "alert-policy" | "alert-template" => {
-                Err(message(format!(
-                    "Sync live delete is not wired for {kind} resources yet."
-                )))
-            }
+            "alert-contact-point" => Ok(request_json(
+                Method::DELETE,
+                &format!("/api/v1/provisioning/contact-points/{identity}"),
+                &[],
+                None,
+            )?
+            .unwrap_or(Value::Null)),
+            "alert-mute-timing" => Ok(request_json(
+                Method::DELETE,
+                &format!("/api/v1/provisioning/mute-timings/{identity}"),
+                &[("version".to_string(), String::new())],
+                None,
+            )?
+            .unwrap_or(Value::Null)),
+            "alert-template" => Ok(request_json(
+                Method::DELETE,
+                &format!("/api/v1/provisioning/templates/{identity}"),
+                &[("version".to_string(), String::new())],
+                None,
+            )?
+            .unwrap_or(Value::Null)),
+            "alert-policy" => Err(message(
+                "Sync live delete is not wired for alert-policy resources yet.".to_string(),
+            )),
             _ => Err(message(format!("Unsupported alert sync kind {kind}."))),
         },
         "would-create" | "would-update" => match kind {

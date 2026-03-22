@@ -9,8 +9,8 @@ Historical note:
 - State: Done
 - Scope: `rust/src/sync/mod.rs`, `rust/src/sync/workbench.rs`, `rust/src/sync/preflight.rs`, `rust/src/sync/cli_rust_tests.rs`, `rust/src/sync/rust_tests.rs`
 - Baseline: Rust sync only treated alert rules as first-class sync resources. Contact points, mute timings, policies, and templates were visible in source bundles and bundle preflight, but they did not flow through live fetch, sync planning, preflight, or live apply as real sync resources.
-- Current Update: Extended sync resource normalization and bundle extraction to include contact points, mute timings, policies, and templates as alert-plane sync resources. Live fetch now inventories those resources, sync planning keeps unsupported prune deletes unmanaged instead of fabricating delete operations, preflight now marks non-rule alert resources as live-apply eligible, and live apply now supports create/update wiring for contact points, mute timings, policies, and templates.
-- Result: Rust sync now has one broader alert runtime shape instead of stopping at staged bundle metadata for non-rule alert artifacts.
+- Current Update: Extended sync resource normalization and bundle extraction to include contact points, mute timings, policies, and templates as alert-plane sync resources. Live fetch now inventories those resources, sync planning now allows prune deletes for contact points, mute timings, and templates while intentionally keeping policy-tree reset unmanaged, preflight marks non-rule alert resources as live-apply eligible, and live apply now supports create/update wiring for all four types plus delete wiring for the three resource-specific endpoints.
+- Result: Rust sync now has one broader alert runtime shape instead of stopping at staged bundle metadata for non-rule alert artifacts, with delete ownership still intentionally conservative only for the notification policy tree.
 
 ## 2026-03-23 - Task: Flag Broad Loki Selectors In Dashboard Governance
 - State: Done

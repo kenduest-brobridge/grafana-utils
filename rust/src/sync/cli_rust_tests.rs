@@ -846,6 +846,61 @@ fn execute_live_apply_with_request_supports_non_rule_alert_resources() {
 }
 
 #[test]
+fn execute_live_apply_with_request_supports_non_rule_alert_deletes() {
+    let mut calls = Vec::new();
+    let result = execute_live_apply_with_request(
+        |method, path, params, _| {
+            calls.push((method.clone(), path.to_string(), params.to_vec()));
+            match (method, path) {
+                (Method::DELETE, "/api/v1/provisioning/contact-points/cp-main") => Ok(None),
+                (Method::DELETE, "/api/v1/provisioning/mute-timings/Off Hours") => Ok(None),
+                (Method::DELETE, "/api/v1/provisioning/templates/slack.default") => Ok(None),
+                _ => Err(crate::common::message("unexpected request")),
+            }
+        },
+        &[
+            json!({
+                "kind": "alert-contact-point",
+                "identity": "cp-main",
+                "action": "would-delete"
+            }),
+            json!({
+                "kind": "alert-mute-timing",
+                "identity": "Off Hours",
+                "action": "would-delete"
+            }),
+            json!({
+                "kind": "alert-template",
+                "identity": "slack.default",
+                "action": "would-delete"
+            }),
+        ],
+        false,
+    )
+    .unwrap();
+
+    assert_eq!(result["appliedCount"], json!(3));
+    assert!(calls
+        .iter()
+        .any(|(method, path, _)| *method == Method::DELETE
+            && path == "/api/v1/provisioning/contact-points/cp-main"));
+    assert!(calls
+        .iter()
+        .any(|(method, path, params)| *method == Method::DELETE
+            && path == "/api/v1/provisioning/mute-timings/Off Hours"
+            && params
+                .iter()
+                .any(|(key, value)| key == "version" && value.is_empty())));
+    assert!(calls
+        .iter()
+        .any(|(method, path, params)| *method == Method::DELETE
+            && path == "/api/v1/provisioning/templates/slack.default"
+            && params
+                .iter()
+                .any(|(key, value)| key == "version" && value.is_empty())));
+}
+
+#[test]
 fn run_sync_cli_summary_accepts_local_desired_file() {
     let temp = tempdir().unwrap();
     let desired_file = temp.path().join("desired.json");

@@ -347,19 +347,15 @@ fn build_sync_apply_intent_document_filters_non_mutating_operations() {
 }
 
 #[test]
-fn build_sync_plan_document_keeps_non_rule_alert_prune_unmanaged() {
+fn build_sync_plan_document_keeps_alert_policy_prune_unmanaged() {
     let plan = build_sync_plan_document(
         &[],
         &[json!({
-            "kind": "alert-contact-point",
-            "uid": "cp-main",
-            "title": "PagerDuty Primary",
-            "managedFields": ["uid", "name", "type", "settings"],
+            "kind": "alert-policy",
+            "title": "grafana-default-email",
+            "managedFields": ["receiver"],
             "body": {
-                "uid": "cp-main",
-                "name": "PagerDuty Primary",
-                "type": "webhook",
-                "settings": {"url": "http://127.0.0.1/notify"}
+                "receiver": "grafana-default-email"
             }
         })],
         true,
@@ -372,5 +368,32 @@ fn build_sync_plan_document_keeps_non_rule_alert_prune_unmanaged() {
     assert_eq!(
         plan["operations"][0]["reason"],
         json!("delete-not-supported")
+    );
+}
+
+#[test]
+fn build_sync_plan_document_prunes_non_rule_alert_delete_when_supported() {
+    let plan = build_sync_plan_document(
+        &[],
+        &[json!({
+            "kind": "alert-template",
+            "name": "slack.default",
+            "title": "slack.default",
+            "managedFields": ["name", "template"],
+            "body": {
+                "name": "slack.default",
+                "template": "{{ define \"slack.default\" }}ok{{ end }}"
+            }
+        })],
+        true,
+    )
+    .unwrap();
+
+    assert_eq!(plan["summary"]["would_delete"], json!(1));
+    assert_eq!(plan["summary"]["unmanaged"], json!(0));
+    assert_eq!(plan["operations"][0]["action"], json!("would-delete"));
+    assert_eq!(
+        plan["operations"][0]["reason"],
+        json!("missing-from-desired-state")
     );
 }

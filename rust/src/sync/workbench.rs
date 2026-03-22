@@ -66,10 +66,7 @@ fn is_alert_sync_kind(kind: &str) -> bool {
 }
 
 fn supports_prune_delete(kind: &str) -> bool {
-    !matches!(
-        kind,
-        "alert-contact-point" | "alert-mute-timing" | "alert-policy" | "alert-template"
-    )
+    !matches!(kind, "alert-policy")
 }
 
 fn normalize_text(value: Option<&Value>) -> String {
