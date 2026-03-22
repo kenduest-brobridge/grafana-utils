@@ -389,6 +389,7 @@ Notes:
 - `--report-columns` is only valid with flat or grouped table-style report modes; it is rejected for summary JSON, dependency contracts, and governance output.
 - `--report-filter-datasource` matches datasource label, uid, type, or normalized family exactly.
 - `--report-filter-panel-id` is a report-only filter.
+- `dependency` / `dependency-json` outputs a machine-readable contract document: top-level count fields (`queryCount`, `datasourceCount`, `dashboardCount`) plus `queries` and `datasourceUsage`.
 
 ### 3.8 `dashboard inspect-vars`
 

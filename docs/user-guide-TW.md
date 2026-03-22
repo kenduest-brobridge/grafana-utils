@@ -351,6 +351,7 @@ grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user adm
 - `--report-columns` 只適用 flat 或 grouped table 類 report；summary JSON、dependency contract、governance 輸出都會拒絕。
 - `--report-filter-datasource` 會精準匹配 datasource label、uid、type、normalized family。
 - `--report-filter-panel-id` 只適用 report 類輸出。
+- `dependency` / `dependency-json` 會輸出機器可讀的契約文件：含 `queryCount`、`datasourceCount`、`dashboardCount` 等彙總欄位，以及 `queries`、`datasourceUsage` 內容區。
 
 ### 3.8 `dashboard inspect-vars`
 
