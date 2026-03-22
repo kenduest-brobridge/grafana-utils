@@ -202,6 +202,7 @@ fn render_sync_bundle_preflight_text_renders_summary() {
 
     assert!(output.contains("Sync bundle preflight summary"));
     assert!(output.contains("Resources: 1 total"));
+    assert!(output.contains("Alert artifacts: 0 total"));
     assert!(output.contains("Sync blocking:"));
     assert!(output.contains("Provider blocking:"));
 }
@@ -482,38 +483,13 @@ fn build_sync_bundle_preflight_document_falls_back_to_alerting_rule_documents() 
 }
 
 #[test]
-fn build_sync_bundle_preflight_document_ignores_non_rule_alert_export_artifacts_for_fallback() {
+fn build_sync_bundle_preflight_document_reports_non_rule_alert_export_artifacts_from_source_bundle()
+{
     let source_bundle = json!({
         "dashboards": [],
         "datasources": [],
         "folders": [],
-        "alerting": {
-            "rules": [],
-            "contactPoints": [
-                {
-                    "sourcePath": "contact-points/Smoke_Webhook/Smoke_Webhook__smoke-webhook.json",
-                    "document": {
-                        "kind": "grafana-contact-point",
-                        "spec": {
-                            "uid": "smoke-webhook",
-                            "name": "Smoke Webhook",
-                            "type": "webhook"
-                        }
-                    }
-                }
-            ],
-            "policies": [
-                {
-                    "sourcePath": "policies/notification-policies.json",
-                    "document": {
-                        "kind": "grafana-notification-policies",
-                        "spec": {
-                            "receiver": "grafana-default-email"
-                        }
-                    }
-                }
-            ]
-        }
+        "alerting": build_alert_replay_artifact_fixture(false)
     });
     let availability = json!({
         "pluginIds": [],
@@ -588,10 +564,12 @@ fn render_sync_source_bundle_text_reports_alert_replay_artifact_counts() {
         fixture["syncAlertingArtifacts"]["summary"]["templateCount"]
     );
     assert!(lines.iter().any(|line| line == &expected));
+    assert!(lines.iter().any(|line| line == "Alert artifacts: 4 total"));
 }
 
 #[test]
-fn build_sync_bundle_preflight_document_ignores_alert_replay_artifacts_but_keeps_zero_checks() {
+fn build_sync_bundle_preflight_document_reports_alert_replay_artifacts_and_keeps_sync_checks_zero()
+{
     let alerting = build_alert_replay_artifact_fixture(false);
     let source_bundle = json!({
         "dashboards": [],
@@ -611,7 +589,53 @@ fn build_sync_bundle_preflight_document_ignores_alert_replay_artifacts_but_keeps
         build_sync_bundle_preflight_document(&source_bundle, &json!({}), Some(&availability))
             .unwrap();
 
-    assert_eq!(document["summary"]["resourceCount"], json!(0));
+    assert_eq!(document["summary"]["alertArtifactCount"], json!(4));
+    assert_eq!(document["summary"]["alertArtifactPlanOnlyCount"], json!(1));
+    assert_eq!(document["summary"]["alertArtifactBlockedCount"], json!(3));
+    assert_eq!(
+        document["alertArtifactAssessment"]["summary"]["contactPointCount"],
+        json!(1)
+    );
+    assert_eq!(
+        document["alertArtifactAssessment"]["summary"]["muteTimingCount"],
+        json!(1)
+    );
+    assert_eq!(
+        document["alertArtifactAssessment"]["summary"]["policyCount"],
+        json!(1)
+    );
+    assert_eq!(
+        document["alertArtifactAssessment"]["summary"]["templateCount"],
+        json!(1)
+    );
+    assert!(document["alertArtifactAssessment"]["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["kind"] == "alert-contact-point"
+            && item["identity"] == "smoke-webhook"
+            && item["status"] == "plan-only"));
+    assert!(document["alertArtifactAssessment"]["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["kind"] == "alert-mute-timing"
+            && item["identity"] == "Off Hours"
+            && item["status"] == "blocked"));
+    assert!(document["alertArtifactAssessment"]["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["kind"] == "alert-policy"
+            && item["identity"] == "grafana-default-email"
+            && item["status"] == "blocked"));
+    assert!(document["alertArtifactAssessment"]["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["kind"] == "alert-template"
+            && item["identity"] == "slack.default"
+            && item["status"] == "blocked"));
     assert_eq!(document["summary"]["syncBlockingCount"], json!(0));
     assert_eq!(document["syncPreflight"]["checks"], json!([]));
 }

@@ -5,6 +5,20 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-23 - Task: Stage Non-Rule Alert Artifact Assessment In Sync Bundle Preflight
+- State: Done
+- Scope: `rust/src/sync/bundle_preflight.rs`, `rust/src/sync/bundle_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Sync bundle preflight already kept rule-level alert checks separate from the main sync plan, but contact points, mute timings, policies, and templates were still only represented indirectly through the broader source-bundle alert contract.
+- Current Update: Added a staged alert-artifact assessment to the sync bundle preflight document so non-rule alert export sections now surface explicit counts and per-artifact checks without broadening live wiring. The new assessment keeps contact points plan-only while classifying mute timings, policies, and templates as blocked for review.
+- Result: Sync bundle preflight now exposes the remaining non-rule alert artifact surface in a focused, additive way that is easy to test and leaves the existing sync plan checks intact.
+
+## 2026-03-23 - Task: Extract Rust Dashboard Dependency Query Parsing Module
+- State: Done
+- Scope: `rust/src/dashboard_inspection_dependency_contract.rs`, `rust/src/dashboard_inspection_query_features.rs`, `rust/src/lib.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: The dependency contract still owned the family-specific query parsing helpers inline, so parser logic, contract assembly, and regex-heavy extraction lived in one large module.
+- Current Update: Split the family-specific parser helpers into `rust/src/dashboard_inspection_query_features.rs`, kept the dependency contract on assembly/serialization, and wired the contract file through the new small internal interface. Tightened Loki text analysis at the same layer so negative line filters (`!=`, `!~`) are captured without misreading selector matchers inside `{...}`.
+- Result: Rust dashboard dependency parsing now has a smaller reusable module boundary plus more complete Loki filter hint extraction, and the focused dependency-contract/shared-fixture regressions pass.
+
 ## 2026-03-23 - Task: Extend Rust Dashboard Typed Datasource Reference Parsing
 - State: Done
 - Scope: `rust/src/dashboard/inspect.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

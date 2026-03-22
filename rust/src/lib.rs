@@ -18,6 +18,8 @@ pub mod common;
 pub mod dashboard;
 /// Module definition for dashboard_inspection_dependency_contract.
 pub mod dashboard_inspection_dependency_contract;
+/// Module definition for dashboard_inspection_query_features.
+pub(crate) mod dashboard_inspection_query_features;
 /// Module definition for dashboard_reference_models.
 pub mod dashboard_reference_models;
 /// Module definition for datasource.

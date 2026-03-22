@@ -6,7 +6,7 @@
 //! - Keep Rust-side bundle planning pure and import-safe before any CLI wiring.
 
 use super::preflight::build_sync_preflight_document;
-use crate::common::{message, Result};
+use crate::common::{message, string_field, Result};
 use crate::datasource_provider::{
     build_provider_plan, iter_provider_names, summarize_provider_plan,
 };
@@ -246,6 +246,207 @@ fn collect_alert_specs(source_bundle: &Map<String, Value>) -> Result<Vec<Value>>
     Ok(alerts)
 }
 
+fn build_alert_artifact_assessment(source_bundle: &Map<String, Value>) -> Value {
+    let Some(alerting) = source_bundle.get("alerting").and_then(Value::as_object) else {
+        return serde_json::json!({
+            "summary": {
+                "resourceCount": 0,
+                "contactPointCount": 0,
+                "muteTimingCount": 0,
+                "policyCount": 0,
+                "templateCount": 0,
+                "planOnlyCount": 0,
+                "blockedCount": 0,
+            },
+            "checks": [],
+        });
+    };
+
+    fn append_alert_artifact_section(
+        alerting: &Map<String, Value>,
+        section: &str,
+        kind: &str,
+        status: &str,
+        blocking: bool,
+        count_slot: &mut usize,
+        checks: &mut Vec<Value>,
+    ) {
+        let items = alerting
+            .get(section)
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        *count_slot = items.len();
+        for item in items {
+            let Some(object) = item.as_object() else {
+                continue;
+            };
+            let source_path = string_field(object, "sourcePath", "");
+            let document = object
+                .get("document")
+                .or_else(|| object.get("body"))
+                .unwrap_or(&item);
+            let Some(document_object) = document.as_object() else {
+                continue;
+            };
+            let spec = document_object
+                .get("spec")
+                .and_then(Value::as_object)
+                .unwrap_or(document_object);
+            let identity = match section {
+                "contactPoints" => {
+                    let uid = string_field(spec, "uid", "");
+                    if uid.is_empty() {
+                        string_field(spec, "name", "")
+                    } else {
+                        uid
+                    }
+                }
+                "muteTimings" => string_field(spec, "name", ""),
+                "policies" => {
+                    let receiver = string_field(spec, "receiver", "");
+                    if receiver.is_empty() {
+                        string_field(spec, "name", "")
+                    } else {
+                        receiver
+                    }
+                }
+                "templates" => string_field(spec, "name", ""),
+                _ => String::new(),
+            };
+            let title = match section {
+                "contactPoints" => {
+                    let name = string_field(spec, "name", "");
+                    if name.is_empty() {
+                        identity.clone()
+                    } else {
+                        name
+                    }
+                }
+                "muteTimings" => {
+                    let name = string_field(spec, "name", "");
+                    if name.is_empty() {
+                        identity.clone()
+                    } else {
+                        name
+                    }
+                }
+                "policies" => {
+                    let receiver = string_field(spec, "receiver", "");
+                    if receiver.is_empty() {
+                        let name = string_field(spec, "name", "");
+                        if name.is_empty() {
+                            identity.clone()
+                        } else {
+                            name
+                        }
+                    } else {
+                        receiver
+                    }
+                }
+                "templates" => {
+                    let name = string_field(spec, "name", "");
+                    if name.is_empty() {
+                        identity.clone()
+                    } else {
+                        name
+                    }
+                }
+                _ => identity.clone(),
+            };
+            let detail = match section {
+                "contactPoints" => {
+                    "Contact points are staged in the source bundle but are not live-wired yet."
+                }
+                "muteTimings" => {
+                    "Mute timings are staged in the source bundle but are not live-wired yet."
+                }
+                "policies" => {
+                    "Notification policies are staged in the source bundle but are not live-wired yet."
+                }
+                "templates" => {
+                    "Templates are staged in the source bundle but are not live-wired yet."
+                }
+                _ => "",
+            };
+            checks.push(serde_json::json!({
+                "kind": kind,
+                "identity": if identity.is_empty() { source_path.clone() } else { identity },
+                "title": title,
+                "sourcePath": source_path,
+                "status": status,
+                "blocking": blocking,
+                "detail": detail,
+            }));
+        }
+    }
+
+    let mut checks = Vec::new();
+    let mut contact_point_count = 0usize;
+    let mut mute_timing_count = 0usize;
+    let mut policy_count = 0usize;
+    let mut template_count = 0usize;
+
+    append_alert_artifact_section(
+        alerting,
+        "contactPoints",
+        "alert-contact-point",
+        "plan-only",
+        false,
+        &mut contact_point_count,
+        &mut checks,
+    );
+    append_alert_artifact_section(
+        alerting,
+        "muteTimings",
+        "alert-mute-timing",
+        "blocked",
+        true,
+        &mut mute_timing_count,
+        &mut checks,
+    );
+    append_alert_artifact_section(
+        alerting,
+        "policies",
+        "alert-policy",
+        "blocked",
+        true,
+        &mut policy_count,
+        &mut checks,
+    );
+    append_alert_artifact_section(
+        alerting,
+        "templates",
+        "alert-template",
+        "blocked",
+        true,
+        &mut template_count,
+        &mut checks,
+    );
+
+    let plan_only_count = checks
+        .iter()
+        .filter(|item| item.get("status").and_then(Value::as_str) == Some("plan-only"))
+        .count();
+    let blocked_count = checks
+        .iter()
+        .filter(|item| item.get("status").and_then(Value::as_str) == Some("blocked"))
+        .count();
+
+    serde_json::json!({
+        "summary": {
+            "resourceCount": checks.len(),
+            "contactPointCount": contact_point_count,
+            "muteTimingCount": mute_timing_count,
+            "policyCount": policy_count,
+            "templateCount": template_count,
+            "planOnlyCount": plan_only_count,
+            "blockedCount": blocked_count,
+        },
+        "checks": checks,
+    })
+}
+
 /// Purpose: implementation note.
 ///
 /// Args: see function signature.
@@ -274,6 +475,7 @@ pub fn build_sync_bundle_preflight_document(
     desired_specs.extend(collect_alert_specs(&source_bundle)?);
     let sync_preflight =
         build_sync_preflight_document(&desired_specs, Some(&Value::Object(availability.clone())))?;
+    let alert_artifact_assessment = build_alert_artifact_assessment(&source_bundle);
     let provider_assessment = build_provider_assessment(
         source_bundle
             .get("datasources")
@@ -318,9 +520,40 @@ pub fn build_sync_bundle_preflight_document(
                     "providerBlockingCount".to_string(),
                     Value::Number(provider_blocking_count.into()),
                 ),
+                (
+                    "alertArtifactCount".to_string(),
+                    Value::Number(
+                        alert_artifact_assessment["summary"]["resourceCount"]
+                            .as_i64()
+                            .unwrap_or(0)
+                            .into(),
+                    ),
+                ),
+                (
+                    "alertArtifactBlockedCount".to_string(),
+                    Value::Number(
+                        alert_artifact_assessment["summary"]["blockedCount"]
+                            .as_i64()
+                            .unwrap_or(0)
+                            .into(),
+                    ),
+                ),
+                (
+                    "alertArtifactPlanOnlyCount".to_string(),
+                    Value::Number(
+                        alert_artifact_assessment["summary"]["planOnlyCount"]
+                            .as_i64()
+                            .unwrap_or(0)
+                            .into(),
+                    ),
+                ),
             ])),
         ),
         ("syncPreflight".to_string(), sync_preflight),
+        (
+            "alertArtifactAssessment".to_string(),
+            alert_artifact_assessment.clone(),
+        ),
         ("providerAssessment".to_string(), provider_assessment),
     ])))
 }
@@ -361,6 +594,13 @@ pub fn render_sync_bundle_preflight_text(document: &Value) -> Result<Vec<String>
             "Provider blocking: {}",
             summary
                 .get("providerBlockingCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(0)
+        ),
+        format!(
+            "Alert artifacts: {} total",
+            summary
+                .get("alertArtifactCount")
                 .and_then(Value::as_i64)
                 .unwrap_or(0)
         ),

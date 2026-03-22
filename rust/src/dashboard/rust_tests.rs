@@ -7829,6 +7829,51 @@ fn build_export_inspection_query_report_ignores_loki_line_format_templates_when_
 }
 
 #[test]
+fn build_export_inspection_query_report_extracts_negative_loki_line_filters() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    write_basic_raw_export(
+        &raw_dir,
+        "1",
+        "Main Org.",
+        "loki-main",
+        "Logs Main",
+        "loki-main",
+        "loki",
+        "logs",
+        "folder-1",
+        "Logs",
+        "expr",
+        "sum by (namespace) (count_over_time({job=\"grafana\",namespace!=\"kube-system\"} != \"debug\" !~ \"health|metrics\" | json [15m]))",
+    );
+
+    let report = super::build_export_inspection_query_report(&raw_dir).unwrap();
+
+    assert_eq!(report.queries.len(), 1);
+    assert_eq!(
+        report.queries[0].functions,
+        vec![
+            "sum".to_string(),
+            "count_over_time".to_string(),
+            "json".to_string(),
+            "line_filter_not_contains".to_string(),
+            "line_filter_not_contains:debug".to_string(),
+            "line_filter_not_regex".to_string(),
+            "line_filter_not_regex:health|metrics".to_string(),
+        ]
+    );
+    assert_eq!(
+        report.queries[0].measurements,
+        vec![
+            "{job=\"grafana\",namespace!=\"kube-system\"}".to_string(),
+            "job=\"grafana\"".to_string(),
+            "namespace!=\"kube-system\"".to_string(),
+        ]
+    );
+    assert_eq!(report.queries[0].buckets, vec!["15m".to_string()]);
+}
+
+#[test]
 fn build_export_inspection_query_report_ignores_loki_regex_character_classes_when_extracting_buckets(
 ) {
     let temp = tempdir().unwrap();

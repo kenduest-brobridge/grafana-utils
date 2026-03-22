@@ -1,5 +1,21 @@
 # ai-changes.md
 
+## 2026-03-23 - Stage Non-Rule Alert Artifact Assessment In Sync Bundle Preflight
+- Summary: Added a staged alert-artifact assessment to the Rust sync bundle preflight document so contact points, mute timings, policies, and templates now show up as explicit review items alongside the existing sync preflight and provider assessment output. Contact points are marked plan-only, while mute timings, policies, and templates are surfaced as blocked review items without wiring the sync path to live artifact operations.
+- Tests: Added focused sync bundle preflight regressions that assert the new non-rule alert artifact counts, per-kind checks, and rendered summary text, and kept the existing source-bundle alert contract test aligned with the full alert replay artifact surface.
+- Test Run: `cd rust && cargo test --quiet build_sync_bundle_preflight_document_reports_non_rule_alert_export_artifacts_from_source_bundle`; `cd rust && cargo test --quiet render_sync_bundle_preflight_text_renders_summary`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`
+- Validation: The focused sync bundle preflight tests passed, and the touched Rust files are formatted cleanly.
+- Impact: `rust/src/sync/bundle_preflight.rs`, `rust/src/sync/bundle_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is an additive preflight/reporting change that only widens the staged assessment surface for non-rule alert artifacts and does not change live sync behavior.
+
+## 2026-03-23 - Extract Rust Dashboard Dependency Query Parsing Module
+- Summary: Split the family-specific query parsing helpers out of `rust/src/dashboard_inspection_dependency_contract.rs` into a new internal `rust/src/dashboard_inspection_query_features.rs` module with a minimal stable `build_query_features` entrypoint. The dependency contract now calls that helper and keeps only assembly/keying logic. In the same parser layer, Loki extraction now recognizes negative line filters (`!=`, `!~`) while ignoring matcher operators that appear inside stream selectors.
+- Tests: Added a focused Rust regression plus analyzer fixture coverage for Loki negative line filters, and re-ran the targeted dependency-contract/shared-analyzer tests and formatter checks on the touched Rust files.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_inspection_dependency_contract`; `cargo test --manifest-path rust/Cargo.toml --quiet dispatch_query_analysis_matches_shared_analyzer_fixture_cases`; `cargo test --manifest-path rust/Cargo.toml --quiet build_export_inspection_query_report_extracts_negative_loki_line_filters`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`
+- Validation: The focused dependency-contract and analyzer regressions passed, including the new Loki negative-filter coverage, and the touched Rust files are formatted cleanly.
+- Impact: `rust/src/dashboard_inspection_dependency_contract.rs`, `rust/src/dashboard_inspection_query_features.rs`, `rust/src/dashboard/inspect_analyzer_loki.rs`, `rust/src/dashboard/rust_tests.rs`, `fixtures/dashboard_inspection_analyzer_cases.json`, `rust/src/lib.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is mainly an internal module split plus additive Loki hint extraction, with unknown query text still falling back to the existing generic path.
+
 ## 2026-03-23 - Extend Rust Dashboard Typed Datasource Reference Parsing
 - Summary: Extended the internal Rust dashboard datasource-reference parser so `pluginId` now participates in the same typed lookup path as `uid`, `name`, and `type`. This lets inspection family resolution recognize plugin-id-only datasource objects without changing the surrounding report schema or raw panel-key handling.
 - Tests: Added a focused Rust resolver regression that feeds a `grafana-postgresql-datasource` plugin-id reference through the inspection family resolver and expects the SQL family.

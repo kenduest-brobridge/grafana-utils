@@ -163,6 +163,41 @@
     }
   },
   {
+    "name": "loki-panel-datasource-negative-filters",
+    "panel": {
+      "datasource": {
+        "uid": "loki-main",
+        "type": "loki"
+      }
+    },
+    "target": {
+      "refId": "L4"
+    },
+    "queryField": "expr",
+    "queryText": "sum by (namespace) (count_over_time({job=\"grafana\",namespace!=\"kube-system\"} != \"debug\" !~ \"health|metrics\" | json [15m]))",
+    "expectedFamily": "loki",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [
+        "sum",
+        "count_over_time",
+        "json",
+        "line_filter_not_contains",
+        "line_filter_not_contains:debug",
+        "line_filter_not_regex",
+        "line_filter_not_regex:health|metrics"
+      ],
+      "measurements": [
+        "{job=\"grafana\",namespace!=\"kube-system\"}",
+        "job=\"grafana\"",
+        "namespace!=\"kube-system\""
+      ],
+      "buckets": [
+        "15m"
+      ]
+    }
+  },
+  {
     "name": "flux-query-text",
     "panel": {},
     "target": {

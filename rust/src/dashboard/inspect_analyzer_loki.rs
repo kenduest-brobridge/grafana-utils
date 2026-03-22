@@ -117,6 +117,7 @@ fn extract_loki_line_filter_hints(query_text: &str) -> Vec<String> {
     let mut index = 0;
     let mut in_quotes = false;
     let mut escaped = false;
+    let mut selector_depth = 0usize;
     while index < bytes.len() {
         let byte = bytes[index];
         if escaped {
@@ -133,8 +134,16 @@ fn extract_loki_line_filter_hints(query_text: &str) -> Vec<String> {
                 in_quotes = !in_quotes;
                 index += 1;
             }
-            b'|' if !in_quotes => {
-                let mut cursor = index + 1;
+            b'{' if !in_quotes => {
+                selector_depth += 1;
+                index += 1;
+            }
+            b'}' if !in_quotes => {
+                selector_depth = selector_depth.saturating_sub(1);
+                index += 1;
+            }
+            b'|' | b'!' if !in_quotes && selector_depth == 0 => {
+                let mut cursor = if byte == b'|' { index + 1 } else { index };
                 while cursor < bytes.len() && bytes[cursor].is_ascii_whitespace() {
                     cursor += 1;
                 }
@@ -142,15 +151,23 @@ fn extract_loki_line_filter_hints(query_text: &str) -> Vec<String> {
                     index += 1;
                     continue;
                 };
-                let hint = match operator {
-                    b'=' => "line_filter_contains",
-                    b'~' => "line_filter_regex",
+                let (hint, separator_len) = match operator {
+                    b'=' if byte == b'|' => ("line_filter_contains", 1),
+                    b'~' if byte == b'|' => ("line_filter_regex", 1),
+                    b'!' => match bytes.get(cursor + 1).copied() {
+                        Some(b'=') => ("line_filter_not_contains", 2),
+                        Some(b'~') => ("line_filter_not_regex", 2),
+                        _ => {
+                            index += 1;
+                            continue;
+                        }
+                    },
                     _ => {
                         index += 1;
                         continue;
                     }
                 };
-                cursor += 1;
+                cursor += separator_len;
                 while cursor < bytes.len() && bytes[cursor].is_ascii_whitespace() {
                     cursor += 1;
                 }
