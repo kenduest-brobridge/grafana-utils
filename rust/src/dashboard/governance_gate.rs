@@ -13,8 +13,12 @@ use super::{write_json_document, GovernanceGateArgs, GovernanceGateOutputFormat}
 struct QueryThresholdPolicy {
     allowed_families: BTreeSet<String>,
     allowed_uids: BTreeSet<String>,
+    allowed_folder_prefixes: Vec<String>,
     forbid_unknown: bool,
     forbid_mixed_families: bool,
+    forbid_select_star: bool,
+    require_sql_time_filter: bool,
+    forbid_broad_loki_regex: bool,
     max_queries_per_dashboard: Option<usize>,
     max_queries_per_panel: Option<usize>,
     fail_on_warnings: bool,
@@ -146,11 +150,22 @@ fn parse_query_threshold_policy(policy: &Value) -> Result<QueryThresholdPolicy> 
         .and_then(Value::as_object)
         .cloned()
         .unwrap_or_default();
+    let routing = policy_object
+        .get("routing")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
     Ok(QueryThresholdPolicy {
         allowed_families: value_to_string_set(datasources.get("allowedFamilies"))?,
         allowed_uids: value_to_string_set(datasources.get("allowedUids"))?,
+        allowed_folder_prefixes: value_to_string_set(routing.get("allowedFolderPrefixes"))?
+            .into_iter()
+            .collect(),
         forbid_unknown: value_to_bool(datasources.get("forbidUnknown"), false)?,
         forbid_mixed_families: value_to_bool(datasources.get("forbidMixedFamilies"), false)?,
+        forbid_select_star: value_to_bool(queries.get("forbidSelectStar"), false)?,
+        require_sql_time_filter: value_to_bool(queries.get("requireSqlTimeFilter"), false)?,
+        forbid_broad_loki_regex: value_to_bool(queries.get("forbidBroadLokiRegex"), false)?,
         max_queries_per_dashboard: value_to_usize(queries.get("maxQueriesPerDashboard"))?,
         max_queries_per_panel: value_to_usize(queries.get("maxQueriesPerPanel"))?,
         fail_on_warnings: value_to_bool(enforcement.get("failOnWarnings"), false)?,
@@ -171,12 +186,39 @@ fn build_checked_rules(policy: QueryThresholdPolicy) -> Value {
     serde_json::json!({
         "datasourceAllowedFamilies": policy.allowed_families,
         "datasourceAllowedUids": policy.allowed_uids,
+        "allowedFolderPrefixes": policy.allowed_folder_prefixes,
         "forbidUnknown": policy.forbid_unknown,
         "forbidMixedFamilies": policy.forbid_mixed_families,
+        "forbidSelectStar": policy.forbid_select_star,
+        "requireSqlTimeFilter": policy.require_sql_time_filter,
+        "forbidBroadLokiRegex": policy.forbid_broad_loki_regex,
         "maxQueriesPerDashboard": policy.max_queries_per_dashboard,
         "maxQueriesPerPanel": policy.max_queries_per_panel,
         "failOnWarnings": policy.fail_on_warnings,
     })
+}
+
+fn is_sql_family(family: &str) -> bool {
+    matches!(
+        family.trim().to_ascii_lowercase().as_str(),
+        "mysql" | "postgres" | "mssql" | "sql"
+    )
+}
+
+fn query_uses_time_filter(query_text: &str) -> bool {
+    let lowered = query_text.trim().to_ascii_lowercase();
+    lowered.contains("$__timefilter(")
+        || lowered.contains("$__unixepochfilter(")
+        || lowered.contains("$timefilter")
+}
+
+fn loki_query_is_broad(query_text: &str) -> bool {
+    let lowered = query_text.trim().to_ascii_lowercase();
+    lowered.contains("=~\".*\"")
+        || lowered.contains("=~\".+\"")
+        || lowered.contains("|~\".*\"")
+        || lowered.contains("|~\".+\"")
+        || lowered.contains("{}")
 }
 
 fn build_query_violation(
@@ -258,6 +300,8 @@ pub(crate) fn evaluate_dashboard_governance_gate(
         let datasource = string_field(query, "datasource");
         let datasource_uid = string_field(query, "datasourceUid");
         let datasource_family = string_field(query, "datasourceFamily");
+        let folder_path = string_field(query, "folderPath");
+        let query_text = string_field(query, "query");
         let dashboard_entry = dashboard_counts
             .entry(dashboard_uid.clone())
             .or_insert((dashboard_title.clone(), 0usize));
@@ -301,6 +345,54 @@ pub(crate) fn evaluate_dashboard_governance_gate(
             violations.push(build_query_violation(
                 "datasource-uid-not-allowed",
                 format!("Datasource uid {datasource_uid} is not allowed by policy."),
+                query,
+            ));
+        }
+        if !policy.allowed_folder_prefixes.is_empty()
+            && !policy.allowed_folder_prefixes.iter().any(|prefix| {
+                folder_path == *prefix || folder_path.starts_with(&format!("{prefix} /"))
+            })
+        {
+            violations.push(build_query_violation(
+                "routing-folder-not-allowed",
+                format!(
+                    "Dashboard folderPath {} is not allowed by policy.",
+                    if folder_path.is_empty() {
+                        "unknown".to_string()
+                    } else {
+                        folder_path.clone()
+                    }
+                ),
+                query,
+            ));
+        }
+        if policy.forbid_select_star
+            && is_sql_family(&datasource_family)
+            && query_text.to_ascii_lowercase().contains("select *")
+        {
+            violations.push(build_query_violation(
+                "sql-select-star",
+                "SQL query uses SELECT * and violates the policy.".to_string(),
+                query,
+            ));
+        }
+        if policy.require_sql_time_filter
+            && is_sql_family(&datasource_family)
+            && !query_uses_time_filter(&query_text)
+        {
+            violations.push(build_query_violation(
+                "sql-missing-time-filter",
+                "SQL query does not include a Grafana time filter macro.".to_string(),
+                query,
+            ));
+        }
+        if policy.forbid_broad_loki_regex
+            && datasource_family.eq_ignore_ascii_case("loki")
+            && loki_query_is_broad(&query_text)
+        {
+            violations.push(build_query_violation(
+                "loki-broad-regex",
+                "Loki query contains a broad match or empty selector.".to_string(),
                 query,
             ));
         }

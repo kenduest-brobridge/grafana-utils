@@ -10538,8 +10538,12 @@ fn evaluate_dashboard_governance_gate_enforces_query_thresholds_and_warning_poli
         json!({
             "datasourceAllowedFamilies": [],
             "datasourceAllowedUids": [],
+            "allowedFolderPrefixes": [],
             "forbidUnknown": false,
             "forbidMixedFamilies": false,
+            "forbidSelectStar": false,
+            "requireSqlTimeFilter": false,
+            "forbidBroadLokiRegex": false,
             "maxQueriesPerDashboard": 1,
             "maxQueriesPerPanel": 1,
             "failOnWarnings": true
@@ -10562,8 +10566,12 @@ fn render_dashboard_governance_gate_result_lists_violations_and_warnings() {
             checked_rules: json!({
                 "datasourceAllowedFamilies": [],
                 "datasourceAllowedUids": [],
+                "allowedFolderPrefixes": [],
                 "forbidUnknown": false,
                 "forbidMixedFamilies": false,
+                "forbidSelectStar": false,
+                "requireSqlTimeFilter": false,
+                "forbidBroadLokiRegex": false,
                 "maxQueriesPerDashboard": 1,
                 "maxQueriesPerPanel": null,
                 "failOnWarnings": false
@@ -10687,6 +10695,24 @@ fn run_dashboard_governance_gate_writes_json_output_file() {
     assert_eq!(output["ok"], json!(true));
     assert_eq!(output["summary"]["violationCount"], json!(0));
     assert_eq!(output["summary"]["warningCount"], json!(0));
+    assert_eq!(
+        output["summary"]["checkedRules"],
+        json!({
+            "datasourceAllowedFamilies": [],
+            "datasourceAllowedUids": [],
+            "allowedFolderPrefixes": [],
+            "forbidUnknown": false,
+            "forbidMixedFamilies": false,
+            "forbidSelectStar": false,
+            "requireSqlTimeFilter": false,
+            "forbidBroadLokiRegex": false,
+            "maxQueriesPerDashboard": 4,
+            "maxQueriesPerPanel": 2,
+            "failOnWarnings": false
+        })
+    );
+    assert_eq!(output["violations"], json!([]));
+    assert_eq!(output["warnings"], json!([]));
 }
 
 #[test]
@@ -10765,8 +10791,109 @@ fn evaluate_dashboard_governance_gate_enforces_datasource_policy_rules() {
         json!({
             "datasourceAllowedFamilies": ["prometheus"],
             "datasourceAllowedUids": ["prom-main"],
+            "allowedFolderPrefixes": [],
             "forbidUnknown": true,
             "forbidMixedFamilies": true,
+            "forbidSelectStar": false,
+            "requireSqlTimeFilter": false,
+            "forbidBroadLokiRegex": false,
+            "maxQueriesPerDashboard": null,
+            "maxQueriesPerPanel": null,
+            "failOnWarnings": false
+        })
+    );
+}
+
+#[test]
+fn evaluate_dashboard_governance_gate_enforces_routing_sql_and_loki_policy_rules() {
+    let policy = json!({
+        "version": 1,
+        "routing": {
+            "allowedFolderPrefixes": ["Platform"]
+        },
+        "queries": {
+            "forbidSelectStar": true,
+            "requireSqlTimeFilter": true,
+            "forbidBroadLokiRegex": true
+        }
+    });
+    let governance = json!({
+        "summary": {
+            "dashboardCount": 2,
+            "queryRecordCount": 3
+        },
+        "dashboardGovernance": [],
+        "riskRecords": []
+    });
+    let queries = json!({
+        "summary": {
+            "dashboardCount": 2,
+            "queryRecordCount": 3
+        },
+        "queries": [
+            {
+                "dashboardUid": "sql-main",
+                "dashboardTitle": "SQL Main",
+                "folderPath": "Operations",
+                "panelId": "7",
+                "panelTitle": "Rows",
+                "refId": "A",
+                "datasource": "Warehouse",
+                "datasourceUid": "sql-main",
+                "datasourceFamily": "sql",
+                "query": "SELECT * FROM metrics"
+            },
+            {
+                "dashboardUid": "sql-main",
+                "dashboardTitle": "SQL Main",
+                "folderPath": "Operations",
+                "panelId": "8",
+                "panelTitle": "Latency",
+                "refId": "B",
+                "datasource": "Warehouse",
+                "datasourceUid": "sql-main",
+                "datasourceFamily": "sql",
+                "query": "SELECT count(*) FROM metrics"
+            },
+            {
+                "dashboardUid": "logs-main",
+                "dashboardTitle": "Logs Main",
+                "folderPath": "Platform / Logs",
+                "panelId": "9",
+                "panelTitle": "Errors",
+                "refId": "C",
+                "datasource": "Logs Main",
+                "datasourceUid": "logs-main",
+                "datasourceFamily": "loki",
+                "query": "{namespace=~\".*\"} |~ \".*\""
+            }
+        ]
+    });
+
+    let result = super::evaluate_dashboard_governance_gate(&policy, &governance, &queries).unwrap();
+    let codes = result
+        .violations
+        .iter()
+        .map(|item| item.code.as_str())
+        .collect::<Vec<&str>>();
+
+    assert!(!result.ok);
+    assert_eq!(result.summary.violation_count, 6);
+    assert!(codes.contains(&"routing-folder-not-allowed"));
+    assert!(codes.contains(&"sql-select-star"));
+    assert!(codes.contains(&"sql-missing-time-filter"));
+    assert!(codes.contains(&"loki-broad-regex"));
+    assert_eq!(
+        result.summary.checked_rules,
+        json!({
+            "datasourceAllowedFamilies": [],
+            "datasourceAllowedUids": [],
+            "allowedFolderPrefixes": ["Platform"],
+            "forbidUnknown": false,
+            "forbidMixedFamilies": false,
+            "forbidSelectStar": true,
+            "requireSqlTimeFilter": true,
+            "forbidBroadLokiRegex": true,
             "maxQueriesPerDashboard": null,
             "maxQueriesPerPanel": null,
             "failOnWarnings": false
