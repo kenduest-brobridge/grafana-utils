@@ -347,7 +347,7 @@ fn build_sync_apply_intent_document_filters_non_mutating_operations() {
 }
 
 #[test]
-fn build_sync_plan_document_keeps_alert_policy_prune_unmanaged() {
+fn build_sync_plan_document_prunes_alert_policy_when_requested() {
     let plan = build_sync_plan_document(
         &[],
         &[json!({
@@ -362,12 +362,12 @@ fn build_sync_plan_document_keeps_alert_policy_prune_unmanaged() {
     )
     .unwrap();
 
-    assert_eq!(plan["summary"]["would_delete"], json!(0));
-    assert_eq!(plan["summary"]["unmanaged"], json!(1));
-    assert_eq!(plan["operations"][0]["action"], json!("unmanaged"));
+    assert_eq!(plan["summary"]["would_delete"], json!(1));
+    assert_eq!(plan["summary"]["unmanaged"], json!(0));
+    assert_eq!(plan["operations"][0]["action"], json!("would-delete"));
     assert_eq!(
         plan["operations"][0]["reason"],
-        json!("delete-not-supported")
+        json!("missing-from-desired-state")
     );
 }
 

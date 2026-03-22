@@ -64,6 +64,7 @@ fn sync_apply_help_includes_examples_and_approval_flags() {
     assert!(help.contains("--approve"));
     assert!(help.contains("--execute-live"));
     assert!(help.contains("--allow-folder-delete"));
+    assert!(help.contains("--allow-policy-reset"));
 }
 
 #[test]
@@ -273,6 +274,7 @@ fn parse_sync_cli_supports_apply_command() {
             assert_eq!(inner.output, SyncOutputFormat::Json);
             assert!(!inner.execute_live);
             assert!(!inner.allow_folder_delete);
+            assert!(!inner.allow_policy_reset);
             assert_eq!(inner.applied_by, None);
             assert_eq!(inner.applied_at, None);
             assert_eq!(inner.approval_reason, None);
@@ -292,6 +294,7 @@ fn parse_sync_cli_supports_apply_execute_live_flags() {
         "--approve",
         "--execute-live",
         "--allow-folder-delete",
+        "--allow-policy-reset",
         "--org-id",
         "9",
         "--token",
@@ -302,6 +305,7 @@ fn parse_sync_cli_supports_apply_execute_live_flags() {
         SyncGroupCommand::Apply(inner) => {
             assert!(inner.execute_live);
             assert!(inner.allow_folder_delete);
+            assert!(inner.allow_policy_reset);
             assert_eq!(inner.org_id, Some(9));
         }
         _ => panic!("expected apply"),
@@ -748,6 +752,7 @@ fn execute_live_apply_with_request_supports_alert_create() {
             }
         })],
         false,
+        false,
     )
     .unwrap();
 
@@ -820,6 +825,7 @@ fn execute_live_apply_with_request_supports_non_rule_alert_resources() {
             }),
         ],
         false,
+        false,
     )
     .unwrap();
 
@@ -876,6 +882,7 @@ fn execute_live_apply_with_request_supports_non_rule_alert_deletes() {
             }),
         ],
         false,
+        false,
     )
     .unwrap();
 
@@ -898,6 +905,59 @@ fn execute_live_apply_with_request_supports_non_rule_alert_deletes() {
             && params
                 .iter()
                 .any(|(key, value)| key == "version" && value.is_empty())));
+}
+
+#[test]
+fn execute_live_apply_with_request_rejects_alert_policy_delete_without_reset_flag() {
+    let result = execute_live_apply_with_request(
+        |_, _, _, _| {
+            Err(crate::common::message(
+                "request handler should not be called",
+            ))
+        },
+        &[json!({
+            "kind": "alert-policy",
+            "identity": "grafana-default-email",
+            "action": "would-delete"
+        })],
+        false,
+        false,
+    );
+
+    assert!(result.is_err());
+    assert!(result
+        .err()
+        .unwrap()
+        .to_string()
+        .contains("--allow-policy-reset"));
+}
+
+#[test]
+fn execute_live_apply_with_request_supports_alert_policy_reset_when_allowed() {
+    let mut calls = Vec::new();
+    let result = execute_live_apply_with_request(
+        |method, path, params, _| {
+            calls.push((method.clone(), path.to_string(), params.to_vec()));
+            match (method, path) {
+                (Method::DELETE, "/api/v1/provisioning/policies") => Ok(None),
+                _ => Err(crate::common::message("unexpected request")),
+            }
+        },
+        &[json!({
+            "kind": "alert-policy",
+            "identity": "grafana-default-email",
+            "action": "would-delete"
+        })],
+        false,
+        true,
+    )
+    .unwrap();
+
+    assert_eq!(result["appliedCount"], json!(1));
+    assert!(calls
+        .iter()
+        .any(|(method, path, _)| *method == Method::DELETE
+            && path == "/api/v1/provisioning/policies"));
 }
 
 #[test]
@@ -1772,6 +1832,7 @@ fn run_sync_cli_apply_accepts_reviewed_plan_file() {
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -1824,6 +1885,7 @@ fn run_sync_cli_apply_rejects_reviewed_plan_with_wrong_lineage_parent() {
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -1874,6 +1936,7 @@ fn run_sync_cli_apply_rejects_unreviewed_plan_file() {
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Text,
         applied_by: None,
         applied_at: None,
@@ -1924,6 +1987,7 @@ fn run_sync_cli_apply_requires_explicit_approval() {
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Text,
         applied_by: None,
         applied_at: None,
@@ -1989,6 +2053,7 @@ fn run_sync_cli_apply_accepts_non_blocking_preflight_file() {
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -2056,6 +2121,7 @@ fn run_sync_cli_apply_rejects_preflight_with_mismatched_trace_id() {
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -2151,6 +2217,7 @@ fn run_sync_cli_apply_rejects_blocking_preflight_file() {
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Text,
         applied_by: None,
         applied_at: None,
@@ -2215,6 +2282,7 @@ fn run_sync_cli_apply_rejects_blocking_bundle_preflight_file() {
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Text,
         applied_by: None,
         applied_at: None,
@@ -2284,6 +2352,7 @@ fn run_sync_cli_apply_rejects_bundle_preflight_with_blocked_alert_artifacts() {
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Text,
         applied_by: None,
         applied_at: None,
@@ -2333,6 +2402,7 @@ fn run_sync_cli_apply_rejects_missing_trace_id() {
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -2385,6 +2455,7 @@ fn run_sync_cli_apply_rejects_plan_with_non_review_lineage() {
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -2449,6 +2520,7 @@ fn run_sync_cli_apply_accepts_non_blocking_bundle_preflight_file() {
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -2558,6 +2630,7 @@ fn run_sync_cli_apply_rejects_lineage_aware_preflight_without_trace_id() {
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -2629,6 +2702,7 @@ fn run_sync_cli_apply_rejects_lineage_aware_bundle_preflight_with_mismatched_par
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -2698,6 +2772,7 @@ fn run_sync_cli_apply_rejects_bundle_preflight_with_mismatched_trace_id() {
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
@@ -2787,6 +2862,7 @@ fn run_sync_cli_apply_accepts_explicit_audit_metadata() {
         org_id: None,
         execute_live: false,
         allow_folder_delete: false,
+        allow_policy_reset: false,
         output: SyncOutputFormat::Json,
         applied_by: Some("bob".to_string()),
         applied_at: Some("manual-apply".to_string()),

@@ -44,7 +44,7 @@ const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Summarize desired resources:\n
 const SYNC_SUMMARY_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync summary --desired-file ./desired.json\n  grafana-util sync summary --desired-file ./desired.json --output json";
 const SYNC_PLAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync plan --desired-file ./desired.json --live-file ./live.json\n  grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --allow-prune --output json";
 const SYNC_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync review --plan-file ./sync-plan.json\n  grafana-util sync review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output json";
-const SYNC_APPLY_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve\n  grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --allow-folder-delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
+const SYNC_APPLY_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve\n  grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --allow-folder-delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n  grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --allow-policy-reset --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
 const SYNC_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync preflight --desired-file ./desired.json --availability-file ./availability.json\n  grafana-util sync preflight --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output json";
 const SYNC_ASSESS_ALERTS_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync assess-alerts --alerts-file ./alerts.json\n  grafana-util sync assess-alerts --alerts-file ./alerts.json --output json";
 const SYNC_BUNDLE_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output json";
@@ -234,6 +234,13 @@ pub struct SyncApplyArgs {
         help_heading = "Approval Options"
     )]
     pub allow_folder_delete: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Allow live reset of the notification policy tree when a reviewed plan includes would-delete alert-policy operations.",
+        help_heading = "Approval Options"
+    )]
+    pub allow_policy_reset: bool,
     #[arg(
         long,
         value_enum,
@@ -2445,9 +2452,12 @@ where
                 None,
             )?
             .unwrap_or(Value::Null)),
-            "alert-policy" => Err(message(
-                "Sync live delete is not wired for alert-policy resources yet.".to_string(),
-            )),
+            "alert-policy" => {
+                Ok(
+                    request_json(Method::DELETE, "/api/v1/provisioning/policies", &[], None)?
+                        .unwrap_or(Value::Null),
+                )
+            }
             _ => Err(message(format!("Unsupported alert sync kind {kind}."))),
         },
         "would-create" | "would-update" => match kind {
@@ -2560,6 +2570,7 @@ fn execute_live_apply_with_request<F>(
     mut request_json: F,
     operations: &[Value],
     allow_folder_delete: bool,
+    allow_policy_reset: bool,
 ) -> Result<Value>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -2584,7 +2595,17 @@ where
             | "alert-contact-point"
             | "alert-mute-timing"
             | "alert-policy"
-            | "alert-template" => apply_alert_operation_with_request(&mut request_json, object)?,
+            | "alert-template" => {
+                if object.get("kind").and_then(Value::as_str) == Some("alert-policy")
+                    && object.get("action").and_then(Value::as_str) == Some("would-delete")
+                    && !allow_policy_reset
+                {
+                    return Err(message(
+                        "Refusing live notification policy reset without --allow-policy-reset.",
+                    ));
+                }
+                apply_alert_operation_with_request(&mut request_json, object)?
+            }
             _ => return Err(message(format!("Unsupported sync resource kind {kind}."))),
         };
         results.push(serde_json::json!({
@@ -2606,12 +2627,14 @@ fn execute_live_apply(
     org_id: Option<i64>,
     operations: &[Value],
     allow_folder_delete: bool,
+    allow_policy_reset: bool,
 ) -> Result<Value> {
     let client = build_sync_http_client(common, org_id)?;
     execute_live_apply_with_request(
         |method, path, params, payload| client.request_json(method, path, params, payload),
         operations,
         allow_folder_delete,
+        allow_policy_reset,
     )
 }
 
@@ -3034,6 +3057,7 @@ pub fn run_sync_cli(command: SyncGroupCommand) -> Result<()> {
                     args.org_id,
                     &operations,
                     args.allow_folder_delete,
+                    args.allow_policy_reset,
                 )?;
                 emit_text_or_json(
                     &live_result,

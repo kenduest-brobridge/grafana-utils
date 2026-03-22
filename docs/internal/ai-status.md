@@ -12,6 +12,13 @@ Historical note:
 - Current Update: Extended sync resource normalization and bundle extraction to include contact points, mute timings, policies, and templates as alert-plane sync resources. Live fetch now inventories those resources, sync planning now allows prune deletes for contact points, mute timings, and templates while intentionally keeping policy-tree reset unmanaged, preflight marks non-rule alert resources as live-apply eligible, and live apply now supports create/update wiring for all four types plus delete wiring for the three resource-specific endpoints.
 - Result: Rust sync now has one broader alert runtime shape instead of stopping at staged bundle metadata for non-rule alert artifacts, with delete ownership still intentionally conservative only for the notification policy tree.
 
+## 2026-03-23 - Task: Add Explicit Notification Policy Reset Ownership To Rust Sync
+- State: Done
+- Scope: `rust/src/sync/mod.rs`, `rust/src/sync/workbench.rs`, `rust/src/sync/cli_rust_tests.rs`, `rust/src/sync/rust_tests.rs`
+- Baseline: Rust sync had already promoted notification policies into live fetch, plan, preflight, and apply, but policy-tree delete/reset still stopped at an `unmanaged` plan result. That left the singleton policy tree outside the same reviewed ownership model used by the other alert provisioning resources.
+- Current Update: Sync planning now emits `would-delete` for `alert-policy` when prune is requested, and live apply now routes that operation to `DELETE /api/v1/provisioning/policies`. Because that endpoint resets the full notification policy tree, `sync apply --execute-live` refuses the operation unless the reviewed run explicitly passes `--allow-policy-reset`. The apply help, parser, and focused sync tests now pin the new gate.
+- Result: Rust sync now has a complete ownership contract for notification policy reset: plans can represent the operation, reviewed apply can block it by default, and operators must opt in explicitly before a live tree reset is allowed.
+
 ## 2026-03-23 - Task: Flag Broad Loki Selectors In Dashboard Governance
 - State: Done
 - Scope: `rust/src/dashboard/inspect_governance.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
