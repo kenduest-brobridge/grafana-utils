@@ -1458,6 +1458,42 @@ fn collect_dashboard_panel_types(panels: &[Value], panel_types: &mut BTreeSet<St
     }
 }
 
+fn dashboard_import_dependency_availability_requirements(
+    import_dir: &Path,
+) -> Result<(bool, bool)> {
+    let mut dashboard_files = discover_dashboard_files(import_dir)?;
+    dashboard_files.retain(|path| {
+        path.file_name().and_then(|name| name.to_str()) != Some(FOLDER_INVENTORY_FILENAME)
+    });
+    let mut needs_datasource_availability = false;
+    let mut needs_plugin_availability = false;
+    for dashboard_file in dashboard_files {
+        let document = load_json_file(&dashboard_file)?;
+        let document_object =
+            value_as_object(&document, "Dashboard payload must be a JSON object.")?;
+        let dashboard = extract_dashboard_object(document_object)?;
+        let mut refs = Vec::new();
+        collect_datasource_refs(&Value::Object(dashboard.clone()), &mut refs);
+        if refs
+            .iter()
+            .any(|reference| !is_builtin_datasource_ref(reference))
+        {
+            needs_datasource_availability = true;
+        }
+        if let Some(panels) = dashboard.get("panels").and_then(Value::as_array) {
+            let mut panel_types = BTreeSet::new();
+            collect_dashboard_panel_types(panels, &mut panel_types);
+            if !panel_types.is_empty() {
+                needs_plugin_availability = true;
+            }
+        }
+        if needs_datasource_availability && needs_plugin_availability {
+            break;
+        }
+    }
+    Ok((needs_datasource_availability, needs_plugin_availability))
+}
+
 fn build_dashboard_import_availability_from_datasources(
     datasources: &[Map<String, Value>],
 ) -> Map<String, Value> {
@@ -1507,11 +1543,15 @@ fn build_dashboard_import_availability_from_datasources(
 fn build_dashboard_import_availability_with_request<F>(
     mut request_json: F,
     datasources: &[Map<String, Value>],
+    fetch_plugins: bool,
 ) -> Result<Map<String, Value>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
     let mut availability = build_dashboard_import_availability_from_datasources(datasources);
+    if !fetch_plugins {
+        return Ok(availability);
+    }
     match request_json(Method::GET, "/api/plugins", &[], None)? {
         Some(Value::Array(plugins)) => {
             let plugin_ids = plugins
@@ -1583,11 +1623,20 @@ fn validate_dashboard_import_dependencies_with_request<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    let datasources = list_datasources_with_request(&mut request_json)?;
+    let (needs_datasource_availability, needs_plugin_availability) =
+        dashboard_import_dependency_availability_requirements(import_dir)?;
+    let datasources = if needs_datasource_availability {
+        list_datasources_with_request(&mut request_json)?
+    } else {
+        Vec::new()
+    };
     let datasource_catalog = build_datasource_catalog(&datasources);
     let desired_specs = build_dashboard_import_dependency_specs(import_dir, &datasource_catalog)?;
-    let availability =
-        build_dashboard_import_availability_with_request(&mut request_json, &datasources)?;
+    let availability = build_dashboard_import_availability_with_request(
+        &mut request_json,
+        &datasources,
+        needs_plugin_availability,
+    )?;
     let document =
         build_sync_preflight_document(&desired_specs, Some(&Value::Object(availability)))?;
     let blocking = document

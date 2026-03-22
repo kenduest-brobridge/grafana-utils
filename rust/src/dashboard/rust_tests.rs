@@ -14314,6 +14314,86 @@ fn import_dashboards_rejects_missing_dependencies_before_dashboard_lookup() {
 }
 
 #[test]
+fn import_dashboards_skips_dependency_preflight_for_dependency_free_dashboards() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(&raw_dir).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("dash.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "id": 7,
+                "uid": "abc",
+                "title": "CPU"
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let args = ImportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        org_id: None,
+        use_export_org: false,
+        only_org_id: Vec::new(),
+        create_missing_orgs: false,
+        import_dir: raw_dir,
+        import_folder_uid: None,
+        ensure_folders: false,
+        replace_existing: false,
+        update_existing_only: false,
+        require_matching_folder_path: false,
+        require_matching_export_org: false,
+        import_message: "sync dashboards".to_string(),
+        dry_run: false,
+        table: false,
+        json: false,
+        output_format: None,
+        no_header: false,
+        output_columns: Vec::new(),
+        progress: false,
+        verbose: false,
+    };
+    let mut calls = Vec::new();
+
+    let count = import_dashboards_with_request(
+        |method, path, _params, payload| {
+            calls.push(format!("{} {}", method.as_str(), path));
+            match (method, path) {
+                (reqwest::Method::POST, "/api/dashboards/db") => {
+                    let payload = payload.cloned().unwrap();
+                    assert_eq!(payload["dashboard"]["uid"], "abc");
+                    Ok(Some(json!({"status": "success"})))
+                }
+                (reqwest::Method::GET, "/api/datasources")
+                | (reqwest::Method::GET, "/api/plugins")
+                | (reqwest::Method::GET, "/api/dashboards/uid/abc") => {
+                    Err(super::message(format!("unexpected lookup {path}")))
+                }
+                _ => Err(super::message(format!("unexpected path {path}"))),
+            }
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 1);
+    assert_eq!(calls, vec!["POST /api/dashboards/db".to_string()]);
+}
+
+#[test]
 fn import_dashboards_with_shared_folder_lookup_reuses_folder_fetch_in_dry_run() {
     use std::cell::RefCell;
     use std::rc::Rc;
