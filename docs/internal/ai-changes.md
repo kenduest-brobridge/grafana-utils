@@ -1,5 +1,13 @@
 # ai-changes.md
 
+## 2026-03-23 - Add Datasource Governance Rollups To Rust Dashboard Inspection
+- Summary: Extended Rust dashboard governance with a datasource-level rollup layer instead of relying only on family coverage, dashboard dependencies, datasource edges, and flat risk rows. The new `datasourceGovernance` section aggregates per-datasource dashboard blast radius, panel/query counts, mixed-dashboard involvement, orphaned state, and rolled-up governance findings, while the summary now exposes `datasourceRiskCoverageCount`.
+- Tests: Updated focused governance regressions to pin the new datasource-governance JSON rows, summary count, and text-report sections for summarized risks, mixed dashboards, and datasource blast radius.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet build_export_inspection_governance_document_summarizes_families_and_risks`; `cargo test --manifest-path rust/Cargo.toml --quiet build_export_inspection_governance_document_rolls_up_dashboard_dependency_analysis`; `cargo test --manifest-path rust/Cargo.toml --quiet build_export_inspection_governance_document_surfaces_datasource_blast_radius_dashboards`; `cargo test --manifest-path rust/Cargo.toml --quiet render_governance_table_report_displays_sections`; `cargo test --manifest-path rust/Cargo.toml --quiet build_export_inspection_governance_document_adds_dashboard_datasource_edges`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`
+- Validation: The focused governance document and rendering regressions passed, and the touched Rust dashboard files remain formatted cleanly.
+- Impact: `rust/src/dashboard/inspect_governance.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. This is an additive governance-contract expansion, but downstream consumers of governance JSON will see a wider summary object and a new `datasourceGovernance` section.
+
 ## 2026-03-23 - Add Explicit Notification Policy Reset Ownership To Rust Sync
 - Summary: Finished the remaining Rust sync ownership gap for the singleton notification policy tree. Sync plan now emits `would-delete` for `alert-policy` under prune, live apply now maps that reviewed operation to `DELETE /api/v1/provisioning/policies`, and `sync apply --execute-live` rejects the reset unless the operator explicitly passes `--allow-policy-reset`.
 - Tests: Updated apply help and parser coverage for the new flag, added focused live-apply regressions for both the refusal and allowed-reset paths, and changed the sync-plan regression so policy prune is pinned as a real delete operation instead of `unmanaged`.

@@ -5,6 +5,13 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-23 - Task: Add Datasource Governance Rollups To Rust Dashboard Inspection
+- State: Done
+- Scope: `rust/src/dashboard/inspect_governance.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust dashboard governance already exposed family coverage, dashboard dependency rows, datasource coverage rows, datasource edges, and flat risk records, but it still lacked one datasource-level governance surface that answered blast radius and risk concentration directly.
+- Current Update: Added a new `datasourceGovernance` rollup to the governance JSON and text report. The new layer aggregates each datasource's dashboard count, panel count, query count, mixed-dashboard involvement, risk count, risk kinds, orphaned state, and dashboard UID blast radius. The governance summary now also exposes `datasourceRiskCoverageCount`, and the text renderer includes a dedicated `# Datasource Governance` section plus summary visibility for datasources with findings.
+- Result: Rust dashboard inspection now has a more complete governance model instead of only family rows plus flat risks. Operators can see which datasource objects carry the most governance pressure without reconstructing that view from edges and individual findings.
+
 ## 2026-03-23 - Task: Wire Non-Rule Alert Artifacts Into Rust Sync Runtime
 - State: Done
 - Scope: `rust/src/sync/mod.rs`, `rust/src/sync/workbench.rs`, `rust/src/sync/preflight.rs`, `rust/src/sync/cli_rust_tests.rs`, `rust/src/sync/rust_tests.rs`

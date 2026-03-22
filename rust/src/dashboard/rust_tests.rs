@@ -25,6 +25,7 @@ use crate::dashboard::inspect::{
     dispatch_query_analysis, extract_query_field_and_text, resolve_query_analyzer_family,
     QueryAnalysis, QueryExtractionContext,
 };
+use crate::dashboard::inspect_governance::governance_risk_spec;
 use clap::{CommandFactory, Parser};
 use serde_json::{json, Map, Value};
 use std::fs;
@@ -10182,9 +10183,11 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
     assert_eq!(document.summary.query_record_count, 2);
     assert_eq!(document.summary.datasource_family_count, 3);
     assert_eq!(document.summary.dashboard_datasource_edge_count, 2);
+    assert_eq!(document.summary.datasource_risk_coverage_count, 2);
     assert_eq!(document.summary.risk_record_count, 4);
     assert_eq!(document.dashboard_dependencies.len(), 2);
     assert_eq!(document.dashboard_datasource_edges.len(), 2);
+    assert_eq!(document.datasource_governance.len(), 4);
     assert_eq!(document.dashboard_dependencies[0].dashboard_uid, "cpu-main");
     let datasource_families = document.datasource_families.iter().collect::<Vec<_>>();
     assert_eq!(datasource_families.len(), 3);
@@ -10214,6 +10217,30 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
         .find(|item| item.datasource_uid == "unused-main")
         .unwrap();
     assert!(unused.orphaned);
+    let governance_unknown = document
+        .datasource_governance
+        .iter()
+        .find(|item| item.datasource_uid == "custom-main")
+        .unwrap();
+    assert_eq!(governance_unknown.risk_count, 3);
+    assert_eq!(
+        governance_unknown.risk_kinds,
+        vec![
+            "empty-query-analysis".to_string(),
+            "mixed-datasource-dashboard".to_string(),
+            "unknown-datasource-family".to_string()
+        ]
+    );
+    let governance_orphan = document
+        .datasource_governance
+        .iter()
+        .find(|item| item.datasource_uid == "unused-main")
+        .unwrap();
+    assert!(governance_orphan.orphaned);
+    assert_eq!(
+        governance_orphan.risk_kinds,
+        vec!["orphaned-datasource".to_string()]
+    );
     let risk_kinds = document
         .risk_records
         .iter()
@@ -10310,6 +10337,58 @@ fn build_export_inspection_governance_document_flags_broad_loki_selectors() {
     assert!(risk
         .recommendation
         .contains("Narrow the Loki stream selector"));
+}
+
+#[test]
+fn governance_risk_metadata_registry_covers_known_kinds() {
+    let cases = [
+        (
+            "mixed-datasource-dashboard",
+            "topology",
+            "medium",
+            "Split panel queries by datasource or document why mixed datasource composition is required.",
+        ),
+        (
+            "orphaned-datasource",
+            "inventory",
+            "low",
+            "Remove the unused datasource or reattach it to retained dashboards before the next cleanup cycle.",
+        ),
+        (
+            "unknown-datasource-family",
+            "coverage",
+            "medium",
+            "Map this datasource plugin type to a known governance family or extend analyzer support for it.",
+        ),
+        (
+            "empty-query-analysis",
+            "coverage",
+            "low",
+            "Review the query text and extend analyzer coverage if this datasource family should emit governance signals.",
+        ),
+        (
+            "broad-loki-selector",
+            "cost",
+            "medium",
+            "Narrow the Loki stream selector before running expensive line filters or aggregations.",
+        ),
+    ];
+
+    for (kind, category, severity, recommendation) in cases {
+        let metadata = governance_risk_spec(kind);
+        assert_eq!(metadata.0, category);
+        assert_eq!(metadata.1, severity);
+        assert_eq!(metadata.2, recommendation);
+    }
+
+    assert_eq!(
+        governance_risk_spec("custom-governance-kind"),
+        (
+            "other",
+            "low",
+            "Review this governance finding and assign a follow-up owner if action is needed.",
+        )
+    );
 }
 
 #[test]
@@ -10497,6 +10576,7 @@ fn build_export_inspection_governance_document_rolls_up_dashboard_dependency_ana
     assert_eq!(document.summary.datasource_family_count, 1);
     assert_eq!(document.summary.datasource_coverage_count, 1);
     assert_eq!(document.summary.dashboard_datasource_edge_count, 1);
+    assert_eq!(document.summary.datasource_risk_coverage_count, 0);
     assert_eq!(document.summary.risk_record_count, 0);
     assert_eq!(dependency_row["queryFields"], json!(["expr", "query"]));
     assert_eq!(
@@ -10586,29 +10666,30 @@ fn build_export_inspection_governance_document_surfaces_datasource_blast_radius_
 
     assert_eq!(document.summary.dashboard_count, 1);
     assert_eq!(document.summary.query_record_count, 2);
-    assert_eq!(document.summary.datasource_family_count, 2);
+    assert_eq!(document.summary.datasource_family_count, 1);
     assert_eq!(document.summary.datasource_coverage_count, 1);
     assert_eq!(document.summary.dashboard_datasource_edge_count, 1);
-    assert_eq!(document.summary.risk_record_count, 1);
+    assert_eq!(document.summary.datasource_risk_coverage_count, 0);
+    assert_eq!(document.summary.risk_record_count, 0);
     assert_eq!(datasource_row["dashboardUids"], json!(["core-main"]));
     assert_eq!(datasource_row["dashboardCount"], Value::from(1));
     assert_eq!(datasource_row["panelCount"], Value::from(2));
     assert_eq!(datasource_row["queryCount"], Value::from(2));
     assert_eq!(datasource_row["queryFields"], json!(["expr", "query"]));
-    assert_eq!(datasource_families.len(), 2);
-    let tempo_family = datasource_families
-        .iter()
-        .find(|row| row["family"] == Value::String("tempo".to_string()))
-        .unwrap();
-    assert_eq!(tempo_family["datasourceTypes"], json!(["tempo"]));
-    assert_eq!(tempo_family["datasourceCount"], Value::from(0));
-    assert_eq!(tempo_family["orphanedDatasourceCount"], Value::from(1));
-    assert_eq!(tempo_family["dashboardCount"], Value::from(0));
-    assert_eq!(tempo_family["panelCount"], Value::from(0));
-    assert_eq!(tempo_family["queryCount"], Value::from(0));
+    assert_eq!(datasource_families.len(), 1);
+    let datasource_governance_row = &document_json["datasourceGovernance"][0];
+    assert_eq!(
+        datasource_governance_row["datasourceUid"],
+        json!("prom-main")
+    );
+    assert_eq!(datasource_governance_row["riskKinds"], json!([]));
+    assert_eq!(datasource_governance_row["mixedDashboardCount"], json!(0));
 
     let lines = super::render_governance_table_report("/tmp/raw", &document);
     let output = lines.join("\n");
+    assert!(output.contains("DATASOURCES_WITH_RISKS"));
+    assert!(output.contains("# Datasource Governance"));
+    assert!(output.contains("RISK_KINDS"));
     assert!(output.contains("MIXED_DASHBOARDS"));
     assert!(output.contains("ORPHANED_DATASOURCES"));
     assert!(output.contains("DASHBOARD_UIDS"));
@@ -10731,6 +10812,7 @@ fn render_governance_table_report_displays_sections() {
     assert!(output.contains("# Datasource Families"));
     assert!(output.contains("# Dashboard Dependencies"));
     assert!(output.contains("# Dashboard Datasource Edges"));
+    assert!(output.contains("# Datasource Governance"));
     assert!(output.contains("# Datasources"));
     assert!(output.contains("# Risks"));
     assert!(output.contains("DASHBOARD_UID"));
@@ -10738,10 +10820,12 @@ fn render_governance_table_report_displays_sections() {
     assert!(output.contains("DATASOURCE_COUNT"));
     assert!(output.contains("DATASOURCE_FAMILY_COUNT"));
     assert!(output.contains("DASHBOARD_DATASOURCE_EDGES"));
+    assert!(output.contains("DATASOURCES_WITH_RISKS"));
     assert!(output.contains("METRICS"));
     assert!(output.contains("FUNCTIONS"));
     assert!(output.contains("MEASUREMENTS"));
     assert!(output.contains("BUCKETS"));
+    assert!(output.contains("RISK_KINDS"));
     assert!(output.contains("/tmp/raw/logs-main.json"));
     assert!(output.contains("CATEGORY"));
     assert!(output.contains("RECOMMENDATION"));
@@ -10869,9 +10953,12 @@ fn build_export_inspection_governance_document_adds_dashboard_datasource_edges()
     let edges = document_json["dashboardDatasourceEdges"]
         .as_array()
         .unwrap();
+    let datasource_governance = document_json["datasourceGovernance"].as_array().unwrap();
 
     assert_eq!(document.summary.dashboard_datasource_edge_count, 2);
+    assert_eq!(document.summary.datasource_risk_coverage_count, 2);
     assert_eq!(edges.len(), 2);
+    assert_eq!(datasource_governance.len(), 2);
 
     let prom_edge = edges
         .iter()
@@ -10901,6 +10988,25 @@ fn build_export_inspection_governance_document_adds_dashboard_datasource_edges()
     assert_eq!(loki_edge["panelCount"], json!(1));
     assert_eq!(loki_edge["queryCount"], json!(1));
     assert_eq!(loki_edge["functions"], json!(["line_filter_contains"]));
+
+    let prom_governance = datasource_governance
+        .iter()
+        .find(|row| row["datasourceUid"] == json!("prom-main"))
+        .unwrap();
+    assert_eq!(prom_governance["mixedDashboardCount"], json!(1));
+    assert_eq!(
+        prom_governance["riskKinds"],
+        json!(["mixed-datasource-dashboard"])
+    );
+
+    let loki_governance = datasource_governance
+        .iter()
+        .find(|row| row["datasourceUid"] == json!("logs-main"))
+        .unwrap();
+    assert_eq!(
+        loki_governance["riskKinds"],
+        json!(["mixed-datasource-dashboard"])
+    );
 }
 
 #[test]
