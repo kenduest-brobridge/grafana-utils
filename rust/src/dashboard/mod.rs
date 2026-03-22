@@ -22,6 +22,7 @@ use crate::http::JsonHttpClient;
 mod cli_defs;
 mod export;
 mod files;
+mod governance_gate;
 mod help;
 mod import;
 mod inspect;
@@ -44,9 +45,10 @@ mod vars;
 pub use cli_defs::{
     build_auth_context, build_http_client, build_http_client_for_org, normalize_dashboard_cli_args,
     parse_cli_from, CommonCliArgs, DashboardAuthContext, DashboardCliArgs, DashboardCommand,
-    DiffArgs, ExportArgs, ImportArgs, InspectExportArgs, InspectExportReportFormat,
-    InspectLiveArgs, InspectOutputFormat, InspectVarsArgs, ListArgs, ScreenshotArgs,
-    ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme, SimpleOutputFormat,
+    DiffArgs, ExportArgs, GovernanceGateArgs, GovernanceGateOutputFormat, ImportArgs,
+    InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat,
+    InspectVarsArgs, ListArgs, ScreenshotArgs, ScreenshotFullPageOutput, ScreenshotOutputFormat,
+    ScreenshotTheme, SimpleOutputFormat,
 };
 pub use export::{build_export_variant_dirs, build_output_path, export_dashboards_with_client};
 pub use help::{
@@ -76,6 +78,12 @@ pub(crate) use files::{
     discover_dashboard_files, extract_dashboard_object, load_datasource_inventory,
     load_export_metadata, load_folder_inventory, load_json_file, write_dashboard,
     write_json_document,
+};
+#[cfg(test)]
+pub(crate) use governance_gate::{
+    evaluate_dashboard_governance_gate, render_dashboard_governance_gate_result,
+    run_dashboard_governance_gate, DashboardGovernanceGateFinding, DashboardGovernanceGateResult,
+    DashboardGovernanceGateSummary,
 };
 #[cfg(test)]
 pub(crate) use import::{
@@ -282,6 +290,9 @@ pub fn run_dashboard_cli_with_client(
         DashboardCommand::InspectVars(inspect_vars_args) => {
             inspect_dashboard_variables(&inspect_vars_args)
         }
+        DashboardCommand::GovernanceGate(governance_gate_args) => {
+            governance_gate::run_dashboard_governance_gate(&governance_gate_args)
+        }
         DashboardCommand::Screenshot(screenshot_args) => {
             capture_dashboard_screenshot(&screenshot_args)
         }
@@ -351,6 +362,9 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
         }
         DashboardCommand::InspectVars(inspect_vars_args) => {
             inspect_dashboard_variables(&inspect_vars_args)
+        }
+        DashboardCommand::GovernanceGate(governance_gate_args) => {
+            governance_gate::run_dashboard_governance_gate(&governance_gate_args)
         }
         DashboardCommand::Screenshot(screenshot_args) => {
             capture_dashboard_screenshot(&screenshot_args)

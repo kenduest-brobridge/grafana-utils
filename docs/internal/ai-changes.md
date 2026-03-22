@@ -1,5 +1,13 @@
 # ai-changes.md
 
+## 2026-03-23 - Add Rust Dashboard Governance Gate Command
+- Summary: Added a first-pass Rust `dashboard governance-gate` command on top of the existing governance-json and query-report artifacts. The new subcommand reads `--policy`, `--governance`, and `--queries`, evaluates `maxQueriesPerDashboard`, `maxQueriesPerPanel`, and `failOnWarnings`, renders text or JSON, optionally writes normalized JSON via `--json-output`, and exits nonzero when the gate fails.
+- Tests: Added focused parser/help coverage for the new subcommand, evaluator coverage for query-threshold and warning-escalation behavior, text rendering coverage, and an output-file regression that pins the normalized JSON artifact contract.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet parse_cli_supports_dashboard_governance_gate_command`; `cargo test --manifest-path rust/Cargo.toml --quiet governance_gate_help_mentions_policy_and_queries_inputs`; `cargo test --manifest-path rust/Cargo.toml --quiet evaluate_dashboard_governance_gate_enforces_query_thresholds_and_warning_policy`; `cargo test --manifest-path rust/Cargo.toml --quiet render_dashboard_governance_gate_result_lists_violations_and_warnings`; `cargo test --manifest-path rust/Cargo.toml --quiet run_dashboard_governance_gate_writes_json_output_file`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`
+- Validation: The focused Rust CLI, evaluation, rendering, and JSON-output regressions passed, and the touched Rust dashboard files remain formatted cleanly.
+- Impact: `rust/src/dashboard/cli_defs.rs`, `rust/src/dashboard/governance_gate.rs`, `rust/src/dashboard/mod.rs`, `rust/src/dashboard/rust_tests.rs`, `rust/src/cli.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low to moderate. This adds a new Rust command and a new operator contract, but the initial rule surface is intentionally narrow and remains layered on top of existing report artifacts rather than mixing policy logic back into inspection.
+
 ## 2026-03-23 - Expand Rust Dashboard Governance Gate Contract
 - Summary: Strengthened the Rust dashboard governance output as a gate-friendly contract without embedding team-specific policy into the CLI. Governance risk metadata now comes from one shared registry, and the governance JSON/table output now includes `dashboardGovernance` rows plus `dashboardRiskCoverageCount` so downstream checkers can consume dashboard-level rollups directly instead of reconstructing them from flat `riskRecords`.
 - Tests: Added a focused metadata-registry regression and updated the governance document/rendering regressions to pin the new dashboard-governance section, summary count, mixed-dashboard rollups, and risk-kind aggregation.

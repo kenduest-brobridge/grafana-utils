@@ -26,6 +26,13 @@ pub enum DryRunOutputFormat {
     Json,
 }
 
+/// Enum definition for GovernanceGateOutputFormat.
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum GovernanceGateOutputFormat {
+    Text,
+    Json,
+}
+
 /// Struct definition for CommonCliArgs.
 #[derive(Debug, Clone, Args)]
 pub struct CommonCliArgs {
@@ -783,6 +790,29 @@ pub struct InspectLiveArgs {
     pub output_file: Option<PathBuf>,
 }
 
+/// Struct definition for GovernanceGateArgs.
+#[derive(Debug, Clone, Args)]
+pub struct GovernanceGateArgs {
+    #[arg(long, help = "Path to the dashboard governance policy JSON.")]
+    pub policy: PathBuf,
+    #[arg(long, help = "Path to dashboard inspect governance-json output.")]
+    pub governance: PathBuf,
+    #[arg(long, help = "Path to dashboard inspect report json output.")]
+    pub queries: PathBuf,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = GovernanceGateOutputFormat::Text,
+        help = "Render the governance gate result as text or JSON."
+    )]
+    pub output_format: GovernanceGateOutputFormat,
+    #[arg(
+        long,
+        help = "Optional path to also write the normalized governance gate result JSON."
+    )]
+    pub json_output: Option<PathBuf>,
+}
+
 /// Enum definition for DashboardCommand.
 #[derive(Debug, Clone, Subcommand)]
 pub enum DashboardCommand {
@@ -820,6 +850,12 @@ pub enum DashboardCommand {
         about = "List dashboard templating variables and datasource-like choices from live Grafana."
     )]
     InspectVars(InspectVarsArgs),
+    #[command(
+        name = "governance-gate",
+        about = "Evaluate a governance policy against dashboard governance-json and query-report JSON artifacts.",
+        after_help = "Examples:\n\n  Evaluate governance policy with text output:\n    grafana-util dashboard governance-gate --policy ./policy.json --governance ./governance.json --queries ./queries.json\n\n  Write the normalized result JSON while also printing machine-readable output:\n    grafana-util dashboard governance-gate --policy ./policy.json --governance ./governance.json --queries ./queries.json --output-format json --json-output ./governance-check.json"
+    )]
+    GovernanceGate(GovernanceGateArgs),
     #[command(
         name = "screenshot",
         about = "Open one Grafana dashboard in a headless browser and capture PNG, JPEG, or PDF output.",

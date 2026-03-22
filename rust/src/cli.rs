@@ -23,8 +23,9 @@ use crate::alert::{
 };
 use crate::common::Result;
 use crate::dashboard::{
-    run_dashboard_cli, DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs, ImportArgs,
-    InspectExportArgs, InspectLiveArgs, InspectVarsArgs, ListArgs, ScreenshotArgs,
+    run_dashboard_cli, DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs,
+    GovernanceGateArgs, ImportArgs, InspectExportArgs, InspectLiveArgs, InspectVarsArgs, ListArgs,
+    ScreenshotArgs,
 };
 use crate::datasource::{run_datasource_cli, DatasourceCliArgs, DatasourceGroupCommand};
 use crate::sync::{run_sync_cli, SyncCliArgs, SyncGroupCommand};
@@ -227,6 +228,8 @@ pub enum DashboardGroupCommand {
     InspectLive(InspectLiveArgs),
     #[command(about = "List dashboard templating variables from live Grafana.")]
     InspectVars(InspectVarsArgs),
+    #[command(about = "Evaluate governance policy against dashboard inspect JSON artifacts.")]
+    GovernanceGate(GovernanceGateArgs),
     #[command(about = "Open one dashboard in a headless browser and capture image or PDF output.")]
     Screenshot(ScreenshotArgs),
 }
@@ -310,6 +313,9 @@ fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
         }
         DashboardGroupCommand::InspectVars(inner) => {
             wrap_dashboard(DashboardCommand::InspectVars(inner))
+        }
+        DashboardGroupCommand::GovernanceGate(inner) => {
+            wrap_dashboard(DashboardCommand::GovernanceGate(inner))
         }
         DashboardGroupCommand::Screenshot(inner) => {
             wrap_dashboard(DashboardCommand::Screenshot(inner))

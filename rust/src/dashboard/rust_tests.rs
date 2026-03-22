@@ -11,10 +11,11 @@ use super::{
     format_folder_inventory_status_line, format_import_progress_line, format_import_verbose_line,
     import_dashboards_with_org_clients, import_dashboards_with_request,
     infer_screenshot_output_format, list_dashboards_with_request, parse_cli_from,
-    render_dashboard_summary_csv, render_dashboard_summary_json, render_dashboard_summary_table,
-    render_import_dry_run_json, render_import_dry_run_table, resolve_manifest_title,
-    validate_screenshot_args, CommonCliArgs, DashboardCliArgs, DashboardCommand, DiffArgs,
-    ExportArgs, FolderInventoryStatusKind, ImportArgs, InspectExportArgs,
+    render_dashboard_governance_gate_result, render_dashboard_summary_csv,
+    render_dashboard_summary_json, render_dashboard_summary_table, render_import_dry_run_json,
+    render_import_dry_run_table, resolve_manifest_title, validate_screenshot_args, CommonCliArgs,
+    DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs, FolderInventoryStatusKind,
+    GovernanceGateArgs, GovernanceGateOutputFormat, ImportArgs, InspectExportArgs,
     InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs,
     ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme, SimpleOutputFormat,
     DASHBOARD_PERMISSION_BUNDLE_FILENAME, DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME,
@@ -2736,6 +2737,50 @@ fn parse_cli_supports_inspect_live_all_orgs_flag() {
         }
         _ => panic!("expected inspect-live command"),
     }
+}
+
+#[test]
+fn parse_cli_supports_dashboard_governance_gate_command() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "governance-gate",
+        "--policy",
+        "./policy.json",
+        "--governance",
+        "./governance.json",
+        "--queries",
+        "./queries.json",
+        "--output-format",
+        "json",
+        "--json-output",
+        "./governance-check.json",
+    ]);
+
+    match args.command {
+        DashboardCommand::GovernanceGate(gate_args) => {
+            assert_eq!(gate_args.policy, Path::new("./policy.json"));
+            assert_eq!(gate_args.governance, Path::new("./governance.json"));
+            assert_eq!(gate_args.queries, Path::new("./queries.json"));
+            assert_eq!(gate_args.output_format, GovernanceGateOutputFormat::Json);
+            assert_eq!(
+                gate_args.json_output,
+                Some(PathBuf::from("./governance-check.json"))
+            );
+        }
+        _ => panic!("expected governance-gate command"),
+    }
+}
+
+#[test]
+fn governance_gate_help_mentions_policy_and_queries_inputs() {
+    let help = render_dashboard_subcommand_help("governance-gate");
+
+    assert!(help.contains("--policy"));
+    assert!(help.contains("--governance"));
+    assert!(help.contains("--queries"));
+    assert!(help.contains("--json-output"));
+    assert!(help.contains("--output-format"));
+    assert!(help.contains("governance-gate"));
 }
 
 #[test]
@@ -10422,6 +10467,214 @@ fn governance_risk_metadata_registry_covers_known_kinds() {
             "Review this governance finding and assign a follow-up owner if action is needed.",
         )
     );
+}
+
+#[test]
+fn evaluate_dashboard_governance_gate_enforces_query_thresholds_and_warning_policy() {
+    let policy = json!({
+        "version": 1,
+        "queries": {
+            "maxQueriesPerDashboard": 1,
+            "maxQueriesPerPanel": 1
+        },
+        "enforcement": {
+            "failOnWarnings": true
+        }
+    });
+    let governance = json!({
+        "summary": {
+            "dashboardCount": 1,
+            "queryRecordCount": 2
+        },
+        "riskRecords": [
+            {
+                "kind": "broad-loki-selector",
+                "dashboardUid": "core-main",
+                "panelId": "7",
+                "datasource": "Logs Main",
+                "detail": "{}",
+                "recommendation": "Narrow the Loki stream selector."
+            }
+        ]
+    });
+    let queries = json!({
+        "summary": {
+            "dashboardCount": 1,
+            "queryRecordCount": 2
+        },
+        "queries": [
+            {
+                "dashboardUid": "core-main",
+                "dashboardTitle": "Core Main",
+                "panelId": "7",
+                "panelTitle": "Errors",
+                "refId": "A",
+                "datasource": "Logs Main",
+                "datasourceUid": "logs-main",
+                "datasourceFamily": "loki"
+            },
+            {
+                "dashboardUid": "core-main",
+                "dashboardTitle": "Core Main",
+                "panelId": "7",
+                "panelTitle": "Errors",
+                "refId": "B",
+                "datasource": "Logs Main",
+                "datasourceUid": "logs-main",
+                "datasourceFamily": "loki"
+            }
+        ]
+    });
+
+    let result = super::evaluate_dashboard_governance_gate(&policy, &governance, &queries).unwrap();
+
+    assert!(!result.ok);
+    assert_eq!(result.summary.dashboard_count, 1);
+    assert_eq!(result.summary.query_record_count, 2);
+    assert_eq!(result.summary.violation_count, 2);
+    assert_eq!(result.summary.warning_count, 1);
+    assert_eq!(
+        result.summary.checked_rules,
+        json!({
+            "maxQueriesPerDashboard": 1,
+            "maxQueriesPerPanel": 1,
+            "failOnWarnings": true
+        })
+    );
+    assert_eq!(result.violations[0].code, "max-queries-per-dashboard");
+    assert_eq!(result.violations[1].code, "max-queries-per-panel");
+    assert_eq!(result.warnings[0].risk_kind, "broad-loki-selector");
+}
+
+#[test]
+fn render_dashboard_governance_gate_result_lists_violations_and_warnings() {
+    let result = super::DashboardGovernanceGateResult {
+        ok: false,
+        summary: super::DashboardGovernanceGateSummary {
+            dashboard_count: 1,
+            query_record_count: 2,
+            violation_count: 1,
+            warning_count: 1,
+            checked_rules: json!({
+                "maxQueriesPerDashboard": 1,
+                "maxQueriesPerPanel": null,
+                "failOnWarnings": false
+            }),
+        },
+        violations: vec![super::DashboardGovernanceGateFinding {
+            severity: "error".to_string(),
+            code: "max-queries-per-dashboard".to_string(),
+            message: "Dashboard query count 2 exceeds policy maxQueriesPerDashboard=1.".to_string(),
+            dashboard_uid: "core-main".to_string(),
+            dashboard_title: "Core Main".to_string(),
+            panel_id: String::new(),
+            panel_title: String::new(),
+            ref_id: String::new(),
+            datasource: String::new(),
+            datasource_uid: String::new(),
+            datasource_family: String::new(),
+            risk_kind: String::new(),
+        }],
+        warnings: vec![super::DashboardGovernanceGateFinding {
+            severity: "warning".to_string(),
+            code: "broad-loki-selector".to_string(),
+            message: "Narrow the Loki stream selector.".to_string(),
+            dashboard_uid: "core-main".to_string(),
+            dashboard_title: String::new(),
+            panel_id: "7".to_string(),
+            panel_title: String::new(),
+            ref_id: String::new(),
+            datasource: "Logs Main".to_string(),
+            datasource_uid: String::new(),
+            datasource_family: String::new(),
+            risk_kind: "broad-loki-selector".to_string(),
+        }],
+    };
+
+    let output = render_dashboard_governance_gate_result(&result);
+    assert!(output.contains("Dashboard governance gate: FAIL"));
+    assert!(output.contains("Violations:"));
+    assert!(output.contains("Warnings:"));
+    assert!(output.contains("max-queries-per-dashboard"));
+    assert!(output.contains("broad-loki-selector"));
+}
+
+#[test]
+fn run_dashboard_governance_gate_writes_json_output_file() {
+    let temp = tempdir().unwrap();
+    let policy_path = temp.path().join("policy.json");
+    let governance_path = temp.path().join("governance.json");
+    let queries_path = temp.path().join("queries.json");
+    let json_output = temp.path().join("governance-check.json");
+
+    fs::write(
+        &policy_path,
+        serde_json::to_string_pretty(&json!({
+            "version": 1,
+            "queries": {
+                "maxQueriesPerDashboard": 4,
+                "maxQueriesPerPanel": 2
+            },
+            "enforcement": {
+                "failOnWarnings": false
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        &governance_path,
+        serde_json::to_string_pretty(&json!({
+            "summary": {
+                "dashboardCount": 1,
+                "queryRecordCount": 2
+            },
+            "riskRecords": []
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        &queries_path,
+        serde_json::to_string_pretty(&json!({
+            "summary": {
+                "dashboardCount": 1,
+                "queryRecordCount": 2
+            },
+            "queries": [
+                {
+                    "dashboardUid": "core-main",
+                    "dashboardTitle": "Core Main",
+                    "panelId": "7",
+                    "panelTitle": "Errors",
+                    "refId": "A"
+                },
+                {
+                    "dashboardUid": "core-main",
+                    "dashboardTitle": "Core Main",
+                    "panelId": "8",
+                    "panelTitle": "Latency",
+                    "refId": "B"
+                }
+            ]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let args = GovernanceGateArgs {
+        policy: policy_path,
+        governance: governance_path,
+        queries: queries_path,
+        output_format: GovernanceGateOutputFormat::Json,
+        json_output: Some(json_output.clone()),
+    };
+
+    super::run_dashboard_governance_gate(&args).unwrap();
+    let output = read_json_output_file(&json_output);
+    assert_eq!(output["ok"], json!(true));
+    assert_eq!(output["summary"]["violationCount"], json!(0));
+    assert_eq!(output["summary"]["warningCount"], json!(0));
 }
 
 #[test]
