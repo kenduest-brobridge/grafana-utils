@@ -1,5 +1,6 @@
 //! Dashboard governance gate evaluator.
 //! Consumes governance-json and query-report JSON artifacts plus a small policy JSON.
+use regex::Regex;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
@@ -19,6 +20,8 @@ struct QueryThresholdPolicy {
     forbid_select_star: bool,
     require_sql_time_filter: bool,
     forbid_broad_loki_regex: bool,
+    max_query_complexity_score: Option<usize>,
+    max_dashboard_complexity_score: Option<usize>,
     max_queries_per_dashboard: Option<usize>,
     max_queries_per_panel: Option<usize>,
     fail_on_warnings: bool,
@@ -166,6 +169,8 @@ fn parse_query_threshold_policy(policy: &Value) -> Result<QueryThresholdPolicy> 
         forbid_select_star: value_to_bool(queries.get("forbidSelectStar"), false)?,
         require_sql_time_filter: value_to_bool(queries.get("requireSqlTimeFilter"), false)?,
         forbid_broad_loki_regex: value_to_bool(queries.get("forbidBroadLokiRegex"), false)?,
+        max_query_complexity_score: value_to_usize(queries.get("maxQueryComplexityScore"))?,
+        max_dashboard_complexity_score: value_to_usize(queries.get("maxDashboardComplexityScore"))?,
         max_queries_per_dashboard: value_to_usize(queries.get("maxQueriesPerDashboard"))?,
         max_queries_per_panel: value_to_usize(queries.get("maxQueriesPerPanel"))?,
         fail_on_warnings: value_to_bool(enforcement.get("failOnWarnings"), false)?,
@@ -192,6 +197,8 @@ fn build_checked_rules(policy: QueryThresholdPolicy) -> Value {
         "forbidSelectStar": policy.forbid_select_star,
         "requireSqlTimeFilter": policy.require_sql_time_filter,
         "forbidBroadLokiRegex": policy.forbid_broad_loki_regex,
+        "maxQueryComplexityScore": policy.max_query_complexity_score,
+        "maxDashboardComplexityScore": policy.max_dashboard_complexity_score,
         "maxQueriesPerDashboard": policy.max_queries_per_dashboard,
         "maxQueriesPerPanel": policy.max_queries_per_panel,
         "failOnWarnings": policy.fail_on_warnings,
@@ -219,6 +226,45 @@ fn loki_query_is_broad(query_text: &str) -> bool {
         || lowered.contains("|~\".*\"")
         || lowered.contains("|~\".+\"")
         || lowered.contains("{}")
+}
+
+fn value_array_len(record: &Value, key: &str) -> usize {
+    record
+        .get(key)
+        .and_then(Value::as_array)
+        .map(|values| values.len())
+        .unwrap_or(0)
+}
+
+fn score_query_complexity(query: &Value) -> usize {
+    let query_text = string_field(query, "query");
+    if query_text.is_empty() {
+        return 0;
+    }
+    let token_pattern = Regex::new(
+        r"\b(sum|avg|min|max|count|rate|increase|histogram_quantile|label_replace|topk|bottomk|join|union|group by|order by)\b",
+    )
+    .unwrap();
+    let lowered = query_text.to_ascii_lowercase();
+    let mut score = 1usize;
+    if query_text.len() > 80 {
+        score += 1;
+    }
+    if query_text.len() > 160 {
+        score += 1;
+    }
+    score += std::cmp::min(3, token_pattern.find_iter(&query_text).count());
+    score += std::cmp::min(2, lowered.matches('|').count());
+    if query_text.contains("=~") || query_text.contains("!~") {
+        score += 1;
+    }
+    if query_text.contains('(') && query_text.contains(')') {
+        score += std::cmp::min(2, query_text.matches('(').count() / 2);
+    }
+    score += std::cmp::min(2, value_array_len(query, "metrics"));
+    score += std::cmp::min(1, value_array_len(query, "measurements"));
+    score += std::cmp::min(1, value_array_len(query, "buckets"));
+    score
 }
 
 fn build_query_violation(
@@ -290,6 +336,7 @@ pub(crate) fn evaluate_dashboard_governance_gate(
         .unwrap_or(queries.len() as u64) as usize;
 
     let mut dashboard_counts = BTreeMap::<String, (String, usize)>::new();
+    let mut dashboard_complexity_scores = BTreeMap::<(String, String), usize>::new();
     let mut panel_counts = BTreeMap::<(String, String), (String, String, usize)>::new();
     let mut violations = Vec::new();
     for query in queries {
@@ -302,10 +349,14 @@ pub(crate) fn evaluate_dashboard_governance_gate(
         let datasource_family = string_field(query, "datasourceFamily");
         let folder_path = string_field(query, "folderPath");
         let query_text = string_field(query, "query");
+        let complexity_score = score_query_complexity(query);
         let dashboard_entry = dashboard_counts
             .entry(dashboard_uid.clone())
             .or_insert((dashboard_title.clone(), 0usize));
         dashboard_entry.1 += 1;
+        *dashboard_complexity_scores
+            .entry((dashboard_uid.clone(), dashboard_title.clone()))
+            .or_insert(0usize) += complexity_score;
         let panel_entry = panel_counts.entry((dashboard_uid, panel_id)).or_insert((
             dashboard_title,
             panel_title,
@@ -396,6 +447,17 @@ pub(crate) fn evaluate_dashboard_governance_gate(
                 query,
             ));
         }
+        if let Some(limit) = policy.max_query_complexity_score {
+            if complexity_score > limit {
+                violations.push(build_query_violation(
+                    "query-complexity-too-high",
+                    format!(
+                        "Query complexity score {complexity_score} exceeds policy maxQueryComplexityScore={limit}."
+                    ),
+                    query,
+                ));
+            }
+        }
     }
 
     if let Some(limit) = policy.max_queries_per_dashboard {
@@ -435,6 +497,28 @@ pub(crate) fn evaluate_dashboard_governance_gate(
                     dashboard_title: dashboard_title.clone(),
                     panel_id: panel_id.clone(),
                     panel_title: panel_title.clone(),
+                    ref_id: String::new(),
+                    datasource: String::new(),
+                    datasource_uid: String::new(),
+                    datasource_family: String::new(),
+                    risk_kind: String::new(),
+                });
+            }
+        }
+    }
+    if let Some(limit) = policy.max_dashboard_complexity_score {
+        for ((dashboard_uid, dashboard_title), complexity_score) in &dashboard_complexity_scores {
+            if *complexity_score > limit {
+                violations.push(DashboardGovernanceGateFinding {
+                    severity: "error".to_string(),
+                    code: "dashboard-complexity-too-high".to_string(),
+                    message: format!(
+                        "Dashboard complexity score {complexity_score} exceeds policy maxDashboardComplexityScore={limit}."
+                    ),
+                    dashboard_uid: dashboard_uid.clone(),
+                    dashboard_title: dashboard_title.clone(),
+                    panel_id: String::new(),
+                    panel_title: String::new(),
                     ref_id: String::new(),
                     datasource: String::new(),
                     datasource_uid: String::new(),

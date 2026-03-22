@@ -10544,6 +10544,8 @@ fn evaluate_dashboard_governance_gate_enforces_query_thresholds_and_warning_poli
             "forbidSelectStar": false,
             "requireSqlTimeFilter": false,
             "forbidBroadLokiRegex": false,
+            "maxQueryComplexityScore": null,
+            "maxDashboardComplexityScore": null,
             "maxQueriesPerDashboard": 1,
             "maxQueriesPerPanel": 1,
             "failOnWarnings": true
@@ -10572,6 +10574,8 @@ fn render_dashboard_governance_gate_result_lists_violations_and_warnings() {
                 "forbidSelectStar": false,
                 "requireSqlTimeFilter": false,
                 "forbidBroadLokiRegex": false,
+                "maxQueryComplexityScore": null,
+                "maxDashboardComplexityScore": null,
                 "maxQueriesPerDashboard": 1,
                 "maxQueriesPerPanel": null,
                 "failOnWarnings": false
@@ -10797,6 +10801,8 @@ fn evaluate_dashboard_governance_gate_enforces_datasource_policy_rules() {
             "forbidSelectStar": false,
             "requireSqlTimeFilter": false,
             "forbidBroadLokiRegex": false,
+            "maxQueryComplexityScore": null,
+            "maxDashboardComplexityScore": null,
             "maxQueriesPerDashboard": null,
             "maxQueriesPerPanel": null,
             "failOnWarnings": false
@@ -10894,6 +10900,94 @@ fn evaluate_dashboard_governance_gate_enforces_routing_sql_and_loki_policy_rules
             "forbidSelectStar": true,
             "requireSqlTimeFilter": true,
             "forbidBroadLokiRegex": true,
+            "maxQueryComplexityScore": null,
+            "maxDashboardComplexityScore": null,
+            "maxQueriesPerDashboard": null,
+            "maxQueriesPerPanel": null,
+            "failOnWarnings": false
+        })
+    );
+}
+
+#[test]
+fn evaluate_dashboard_governance_gate_enforces_query_and_dashboard_complexity_rules() {
+    let policy = json!({
+        "version": 1,
+        "queries": {
+            "maxQueryComplexityScore": 3,
+            "maxDashboardComplexityScore": 6
+        }
+    });
+    let governance = json!({
+        "summary": {
+            "dashboardCount": 1,
+            "queryRecordCount": 2
+        },
+        "dashboardGovernance": [],
+        "riskRecords": []
+    });
+    let queries = json!({
+        "summary": {
+            "dashboardCount": 1,
+            "queryRecordCount": 2
+        },
+        "queries": [
+            {
+                "dashboardUid": "core-main",
+                "dashboardTitle": "Core Main",
+                "folderPath": "Platform",
+                "panelId": "7",
+                "panelTitle": "CPU",
+                "refId": "A",
+                "datasource": "Prometheus Main",
+                "datasourceUid": "prom-main",
+                "datasourceFamily": "prometheus",
+                "metrics": ["http_requests_total", "process_cpu_seconds_total"],
+                "measurements": ["job=\"grafana\""],
+                "buckets": ["5m"],
+                "query": "sum(rate(http_requests_total{job=~\"grafana\"}[5m]))"
+            },
+            {
+                "dashboardUid": "core-main",
+                "dashboardTitle": "Core Main",
+                "folderPath": "Platform",
+                "panelId": "8",
+                "panelTitle": "Memory",
+                "refId": "B",
+                "datasource": "Prometheus Main",
+                "datasourceUid": "prom-main",
+                "datasourceFamily": "prometheus",
+                "metrics": ["node_memory_MemAvailable_bytes"],
+                "measurements": [],
+                "buckets": [],
+                "query": "max(node_memory_MemAvailable_bytes)"
+            }
+        ]
+    });
+
+    let result = super::evaluate_dashboard_governance_gate(&policy, &governance, &queries).unwrap();
+    let codes = result
+        .violations
+        .iter()
+        .map(|item| item.code.as_str())
+        .collect::<Vec<&str>>();
+
+    assert!(!result.ok);
+    assert!(codes.contains(&"query-complexity-too-high"));
+    assert!(codes.contains(&"dashboard-complexity-too-high"));
+    assert_eq!(
+        result.summary.checked_rules,
+        json!({
+            "datasourceAllowedFamilies": [],
+            "datasourceAllowedUids": [],
+            "allowedFolderPrefixes": [],
+            "forbidUnknown": false,
+            "forbidMixedFamilies": false,
+            "forbidSelectStar": false,
+            "requireSqlTimeFilter": false,
+            "forbidBroadLokiRegex": false,
+            "maxQueryComplexityScore": 3,
+            "maxDashboardComplexityScore": 6,
             "maxQueriesPerDashboard": null,
             "maxQueriesPerPanel": null,
             "failOnWarnings": false
