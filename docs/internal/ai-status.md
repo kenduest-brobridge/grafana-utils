@@ -5,6 +5,27 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-22 - Task: Start Typed Rust Dashboard Datasource Reference Parsing
+- State: Done
+- Scope: `rust/src/dashboard/inspect.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust dashboard inspection still unpacked datasource `uid`/`name`/`type` object fields by hand in several helpers, which made the stable datasource-reference shape easy to duplicate and drift.
+- Current Update: Added an internal typed datasource-reference model in `inspect.rs`, routed the stable name/uid/type/inventory lookups through it, and kept the raw panel-key path separate so placeholder datasource labels still count exactly as before. Added a focused regression for name-only object references falling back to the panel datasource UID and inventory-backed metadata.
+- Result: Dashboard datasource-reference handling is now partially typed on the stable object path, with external behavior preserved and one lower-risk seam ready for further refactors.
+
+## 2026-03-22 - Task: Route Datasource-Less Search Queries Into The Search Analyzer
+- State: Done
+- Scope: `rust/src/dashboard/inspect.rs`, `rust/src/dashboard/inspect_analyzer_search.rs`, `rust/src/dashboard/rust_tests.rs`, `fixtures/dashboard_inspection_analyzer_cases.json`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust dashboard inspection already routed explicit search datasources into the search analyzer, but datasource-less Lucene/OpenSearch-style queries still fell through to the generic fallback path unless a datasource type happened to be present.
+- Current Update: Added a conservative search-signature detector for explicit `_exists_:` and field-clause queries, wired the router to use it, and kept tracing field names out of that search heuristic so trace-only queries still fail closed. Updated the shared analyzer fixture with a datasource-less search case and tightened the resolver test to cover both the new search routing and the tracing exclusion.
+- Result: Rust dashboard inspection now classifies obvious search-family query text more consistently, which reduces generic fallback for a supported family without widening the analyzer beyond explicit field hints.
+
+## 2026-03-22 - Task: Clarify Rust Dashboard Dependency Blast Radius Counts
+- State: Done
+- Scope: `rust/src/dashboard_inspection_dependency_contract.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust dashboard dependency output already showed per-datasource query facts, but the operator-facing dependency summary still conflated dashboard blast radius with query-row totals and did not expose a panel-level count.
+- Current Update: Deduped the dependency contract `dashboardCount` by dashboard UID, added a new `panelCount` summary for unique panels, and surfaced the same `panelCount` on each `datasourceUsage` row. Added a focused Rust regression that proves repeated queries on one datasource are counted as one dashboard and one panel per unique scope, while still preserving the existing query total.
+- Result: Rust dashboard dependency output now gives operators a clearer blast-radius summary from already-extracted facts without changing the cloud datasource scope.
+
 ## 2026-03-21 - Task: Add Conservative Flux Window Bucket Extraction
 - State: Done
 - Scope: `rust/src/dashboard/inspect_analyzer_flux.rs`, `rust/src/dashboard/rust_tests.rs`, `fixtures/dashboard_inspection_analyzer_cases.json`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

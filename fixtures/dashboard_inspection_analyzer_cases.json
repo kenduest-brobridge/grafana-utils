@@ -639,6 +639,26 @@
     }
   },
   {
+    "name": "search-query-text-signature-only",
+    "panel": {},
+    "target": {
+      "refId": "S"
+    },
+    "queryField": "query",
+    "queryText": "_exists_:host.name AND host.name:api AND response.status:404 AND level:error",
+    "expectedFamily": "search",
+    "expectedAnalysis": {
+      "metrics": [],
+      "functions": [],
+      "measurements": [
+        "host.name",
+        "response.status",
+        "level"
+      ],
+      "buckets": []
+    }
+  },
+  {
     "name": "unknown-generic-fallback",
     "panel": {},
     "target": {

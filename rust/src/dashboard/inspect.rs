@@ -478,67 +478,145 @@ fn count_dashboard_panels_and_queries(dashboard: &Map<String, Value>) -> (usize,
     (panel_count, query_count)
 }
 
-fn summarize_datasource_ref(reference: &Value) -> Option<String> {
-    if reference.is_null() || is_builtin_datasource_ref(reference) {
-        return None;
-    }
-    match reference {
-        Value::String(text) => {
-            if is_placeholder_string(text) {
-                None
-            } else {
-                Some(text.to_string())
-            }
-        }
-        Value::Object(object) => {
-            for key in ["name", "uid", "type"] {
-                if let Some(value) = object.get(key).and_then(Value::as_str) {
-                    if !value.is_empty() && !is_placeholder_string(value) {
-                        return Some(value.to_string());
-                    }
-                }
-            }
-            None
-        }
-        _ => None,
-    }
+#[derive(Clone, Copy, Debug)]
+enum DatasourceReference<'a> {
+    String(&'a str),
+    Object(DatasourceReferenceObject<'a>),
 }
 
-fn summarize_datasource_uid(reference: &Value) -> Option<String> {
-    if reference.is_null() || is_builtin_datasource_ref(reference) {
-        return None;
-    }
-    match reference {
-        Value::String(text) => {
-            if is_placeholder_string(text) {
-                None
-            } else {
-                Some(text.to_string())
-            }
-        }
-        Value::Object(object) => object
+#[derive(Clone, Copy, Debug)]
+struct DatasourceReferenceObject<'a> {
+    uid: Option<&'a str>,
+    name: Option<&'a str>,
+    datasource_type: Option<&'a str>,
+}
+
+impl<'a> DatasourceReferenceObject<'a> {
+    fn from_value(reference: &'a Value) -> Option<Self> {
+        let object = reference.as_object()?;
+        let uid = object
             .get("uid")
             .and_then(Value::as_str)
             .map(str::trim)
-            .filter(|value| !value.is_empty() && !is_placeholder_string(value))
-            .map(ToString::to_string),
-        _ => None,
+            .filter(|value| !value.is_empty() && !is_placeholder_string(value));
+        let name = object
+            .get("name")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty() && !is_placeholder_string(value));
+        let datasource_type = object
+            .get("type")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty() && !is_placeholder_string(value));
+        if uid.is_none() && name.is_none() && datasource_type.is_none() {
+            None
+        } else {
+            Some(Self {
+                uid,
+                name,
+                datasource_type,
+            })
+        }
+    }
+
+    fn summary_label(self) -> Option<&'a str> {
+        self.name.or(self.uid).or(self.datasource_type)
+    }
+
+    fn uid_label(self) -> Option<&'a str> {
+        self.uid
+    }
+
+    fn inventory_item(
+        self,
+        datasource_inventory: &'a [DatasourceInventoryItem],
+    ) -> Option<&'a DatasourceInventoryItem> {
+        datasource_inventory.iter().find(|datasource| {
+            self.uid
+                .map(|value| datasource.uid == value)
+                .unwrap_or(false)
+                || self
+                    .name
+                    .map(|value| datasource.name == value)
+                    .unwrap_or(false)
+        })
+    }
+
+    fn name_label(self, datasource_inventory: &'a [DatasourceInventoryItem]) -> Option<String> {
+        if let Some(datasource) = self.inventory_item(datasource_inventory) {
+            if !datasource.name.is_empty() {
+                return Some(datasource.name.clone());
+            }
+        }
+        self.uid
+            .map(str::to_string)
+            .or_else(|| self.name.map(str::to_string))
+    }
+
+    fn type_label(self, datasource_inventory: &'a [DatasourceInventoryItem]) -> Option<String> {
+        if let Some(datasource) = self.inventory_item(datasource_inventory) {
+            if !datasource.datasource_type.is_empty() {
+                return Some(datasource.datasource_type.clone());
+            }
+        }
+        self.datasource_type
+            .map(|value| datasource_type_alias(value).to_string())
     }
 }
 
-fn summarize_datasource_name(
-    reference: &Value,
-    datasource_inventory: &[DatasourceInventoryItem],
-) -> Option<String> {
-    if reference.is_null() || is_builtin_datasource_ref(reference) {
-        return None;
-    }
-    match reference {
-        Value::String(text) => {
-            if is_placeholder_string(text) {
-                None
-            } else {
+impl<'a> DatasourceReference<'a> {
+    fn parse(reference: &'a Value) -> Option<Self> {
+        if reference.is_null() || is_builtin_datasource_ref(reference) {
+            return None;
+        }
+        match reference {
+            Value::String(text) => {
                 let normalized = text.trim();
+                if normalized.is_empty() {
+                    None
+                } else {
+                    Some(Self::String(normalized))
+                }
+            }
+            Value::Object(_) => DatasourceReferenceObject::from_value(reference).map(Self::Object),
+            _ => None,
+        }
+    }
+
+    fn summary_label(self) -> Option<String> {
+        match self {
+            Self::String(text) => {
+                if is_placeholder_string(text) {
+                    None
+                } else {
+                    Some(text.to_string())
+                }
+            }
+            Self::Object(reference) => reference.summary_label().map(str::to_string),
+        }
+    }
+
+    fn uid_label(self) -> Option<String> {
+        match self {
+            Self::String(text) => {
+                if is_placeholder_string(text) {
+                    None
+                } else {
+                    Some(text.to_string())
+                }
+            }
+            Self::Object(reference) => reference.uid_label().map(str::to_string),
+        }
+    }
+
+    fn name_label(self, datasource_inventory: &'a [DatasourceInventoryItem]) -> Option<String> {
+        match self {
+            Self::String(text) => {
+                let normalized = text.trim();
+                if normalized.is_empty() || is_placeholder_string(normalized) {
+                    return None;
+                }
                 datasource_inventory
                     .iter()
                     .find(|datasource| {
@@ -547,123 +625,77 @@ fn summarize_datasource_name(
                     .map(|datasource| datasource.name.clone())
                     .or_else(|| Some(text.to_string()))
             }
+            Self::Object(reference) => reference.name_label(datasource_inventory),
         }
-        Value::Object(object) => {
-            let uid = object
-                .get("uid")
-                .and_then(Value::as_str)
-                .map(str::trim)
-                .filter(|value| !value.is_empty() && !is_placeholder_string(value));
-            let name = object
-                .get("name")
-                .and_then(Value::as_str)
-                .map(str::trim)
-                .filter(|value| !value.is_empty() && !is_placeholder_string(value));
-            if let Some(datasource) = datasource_inventory.iter().find(|datasource| {
-                uid.map(|value| datasource.uid == value).unwrap_or(false)
-                    || name.map(|value| datasource.name == value).unwrap_or(false)
-            }) {
-                if !datasource.name.is_empty() {
-                    return Some(datasource.name.clone());
+    }
+
+    fn type_label(self, datasource_inventory: &'a [DatasourceInventoryItem]) -> Option<String> {
+        match self {
+            Self::String(text) => {
+                let normalized = text.trim();
+                if normalized.is_empty() || is_placeholder_string(normalized) {
+                    None
+                } else {
+                    datasource_inventory
+                        .iter()
+                        .find(|datasource| {
+                            datasource.uid == normalized || datasource.name == normalized
+                        })
+                        .map(|datasource| datasource.datasource_type.clone())
+                        .or_else(|| Some(datasource_type_alias(normalized).to_string()))
                 }
             }
-            if let Some(uid) = uid {
-                return Some(uid.to_string());
-            }
-            if let Some(name) = name {
-                return Some(name.to_string());
-            }
-            None
+            Self::Object(reference) => reference.type_label(datasource_inventory),
         }
-        _ => None,
     }
+
+    fn inventory_item(
+        self,
+        datasource_inventory: &'a [DatasourceInventoryItem],
+    ) -> Option<&'a DatasourceInventoryItem> {
+        match self {
+            Self::String(text) => {
+                let normalized = text.trim();
+                if normalized.is_empty() || is_placeholder_string(normalized) {
+                    None
+                } else {
+                    datasource_inventory.iter().find(|datasource| {
+                        datasource.uid == normalized || datasource.name == normalized
+                    })
+                }
+            }
+            Self::Object(reference) => reference.inventory_item(datasource_inventory),
+        }
+    }
+}
+
+fn summarize_datasource_ref(reference: &Value) -> Option<String> {
+    DatasourceReference::parse(reference)?.summary_label()
+}
+
+fn summarize_datasource_uid(reference: &Value) -> Option<String> {
+    DatasourceReference::parse(reference)?.uid_label()
+}
+
+fn summarize_datasource_name(
+    reference: &Value,
+    datasource_inventory: &[DatasourceInventoryItem],
+) -> Option<String> {
+    DatasourceReference::parse(reference)?.name_label(datasource_inventory)
 }
 
 fn summarize_datasource_type(
     reference: &Value,
     datasource_inventory: &[DatasourceInventoryItem],
 ) -> Option<String> {
-    if reference.is_null() || is_builtin_datasource_ref(reference) {
-        return None;
-    }
-    let lookup_inventory_type = |candidate: &str| -> Option<String> {
-        let normalized = candidate.trim();
-        if normalized.is_empty() || is_placeholder_string(normalized) {
-            return None;
-        }
-        datasource_inventory
-            .iter()
-            .find(|datasource| datasource.uid == normalized || datasource.name == normalized)
-            .map(|datasource| datasource.datasource_type.clone())
-            .or_else(|| Some(datasource_type_alias(normalized).to_string()))
-    };
-    match reference {
-        Value::String(text) => lookup_inventory_type(text),
-        Value::Object(object) => {
-            let uid = object
-                .get("uid")
-                .and_then(Value::as_str)
-                .map(str::trim)
-                .filter(|value| !value.is_empty() && !is_placeholder_string(value));
-            let name = object
-                .get("name")
-                .and_then(Value::as_str)
-                .map(str::trim)
-                .filter(|value| !value.is_empty() && !is_placeholder_string(value));
-            if let Some(datasource) = datasource_inventory.iter().find(|datasource| {
-                uid.map(|value| datasource.uid == value).unwrap_or(false)
-                    || name.map(|value| datasource.name == value).unwrap_or(false)
-            }) {
-                if !datasource.datasource_type.is_empty() {
-                    return Some(datasource.datasource_type.clone());
-                }
-            }
-            object
-                .get("type")
-                .and_then(Value::as_str)
-                .map(str::trim)
-                .filter(|value| !value.is_empty() && !is_placeholder_string(value))
-                .map(|value| datasource_type_alias(value).to_string())
-        }
-        _ => None,
-    }
+    DatasourceReference::parse(reference)?.type_label(datasource_inventory)
 }
 
 fn resolve_datasource_inventory_item<'a>(
-    reference: &Value,
+    reference: &'a Value,
     datasource_inventory: &'a [DatasourceInventoryItem],
 ) -> Option<&'a DatasourceInventoryItem> {
-    if reference.is_null() || is_builtin_datasource_ref(reference) {
-        return None;
-    }
-    match reference {
-        Value::String(text) => {
-            let normalized = text.trim();
-            if normalized.is_empty() || is_placeholder_string(normalized) {
-                return None;
-            }
-            datasource_inventory
-                .iter()
-                .find(|datasource| datasource.uid == normalized || datasource.name == normalized)
-        }
-        Value::Object(object) => {
-            let uid = object
-                .get("uid")
-                .and_then(Value::as_str)
-                .map(str::trim)
-                .filter(|value| !value.is_empty() && !is_placeholder_string(value));
-            let name = object
-                .get("name")
-                .and_then(Value::as_str)
-                .map(str::trim)
-                .filter(|value| !value.is_empty() && !is_placeholder_string(value));
-            datasource_inventory.iter().find(|datasource| {
-                uid.map(|value| datasource.uid == value).unwrap_or(false)
-                    || name.map(|value| datasource.name == value).unwrap_or(false)
-            })
-        }
-        _ => None,
-    }
+    DatasourceReference::parse(reference)?.inventory_item(datasource_inventory)
 }
 
 fn summarize_datasource_inventory_usage(
@@ -884,22 +916,7 @@ pub(crate) fn ordered_unique_push(values: &mut Vec<String>, candidate: &str) {
 }
 
 fn datasource_type_from_reference(reference: &Value) -> Option<String> {
-    match reference {
-        Value::Object(object) => object
-            .get("type")
-            .and_then(Value::as_str)
-            .map(str::trim)
-            .filter(|value| !value.is_empty() && !is_placeholder_string(value))
-            .map(|value| datasource_type_alias(value).to_string()),
-        Value::String(text) => {
-            let trimmed = text.trim();
-            if trimmed.is_empty() || is_placeholder_string(trimmed) {
-                return None;
-            }
-            Some(datasource_type_alias(trimmed).to_string())
-        }
-        _ => None,
-    }
+    DatasourceReference::parse(reference)?.type_label(&[])
 }
 
 pub(crate) fn resolve_query_analyzer_family_from_datasource_type(
@@ -955,6 +972,9 @@ pub(crate) fn resolve_query_analyzer_family_from_query_signature(
         || lowered.starts_with("delete ")
     {
         return Some(DATASOURCE_FAMILY_SQL);
+    }
+    if inspect_analyzer_search::query_text_looks_like_search(query_text) {
+        return Some(DATASOURCE_FAMILY_SEARCH);
     }
     None
 }
@@ -1580,7 +1600,7 @@ fn collect_query_report_rows(
             .unwrap_or_default();
         let panel_title = string_field(panel_object, "title", "");
         let panel_type = string_field(panel_object, "type", "");
-        let panel_datasource = panel_object.get("datasource");
+        let panel_datasource_value = panel_object.get("datasource");
         let panel_variables = extract_template_variable_names_from_value(
             &Value::Object(panel_object.clone()),
             &["targets", "panels"],
@@ -1611,8 +1631,8 @@ fn collect_query_report_rows(
                 }
                 let panel_datasource_label = target_object
                     .get("datasource")
-                    .or(panel_datasource)
                     .and_then(summarize_panel_datasource_key)
+                    .or_else(|| panel_datasource_value.and_then(summarize_panel_datasource_key))
                     .unwrap_or_default();
                 if !panel_datasource_label.is_empty() {
                     panel_datasource_keys.insert(panel_datasource_label);
@@ -1626,7 +1646,7 @@ fn collect_query_report_rows(
                 let datasource = target_object
                     .get("datasource")
                     .and_then(summarize_datasource_ref)
-                    .or_else(|| panel_datasource.and_then(summarize_datasource_ref))
+                    .or_else(|| panel_datasource_value.and_then(summarize_datasource_ref))
                     .unwrap_or_default();
                 let datasource_name = target_object
                     .get("datasource")
@@ -1634,7 +1654,7 @@ fn collect_query_report_rows(
                         summarize_datasource_name(value, context.datasource_inventory)
                     })
                     .or_else(|| {
-                        panel_datasource.and_then(|value| {
+                        panel_datasource_value.and_then(|value| {
                             summarize_datasource_name(value, context.datasource_inventory)
                         })
                     })
@@ -1642,7 +1662,7 @@ fn collect_query_report_rows(
                 let datasource_uid = target_object
                     .get("datasource")
                     .and_then(summarize_datasource_uid)
-                    .or_else(|| panel_datasource.and_then(summarize_datasource_uid))
+                    .or_else(|| panel_datasource_value.and_then(summarize_datasource_uid))
                     .unwrap_or_default();
                 let datasource_type = target_object
                     .get("datasource")
@@ -1650,7 +1670,7 @@ fn collect_query_report_rows(
                         summarize_datasource_type(value, context.datasource_inventory)
                     })
                     .or_else(|| {
-                        panel_datasource.and_then(|value| {
+                        panel_datasource_value.and_then(|value| {
                             summarize_datasource_type(value, context.datasource_inventory)
                         })
                     })
@@ -1661,7 +1681,7 @@ fn collect_query_report_rows(
                         resolve_datasource_inventory_item(value, context.datasource_inventory)
                     })
                     .or_else(|| {
-                        panel_datasource.and_then(|value| {
+                        panel_datasource_value.and_then(|value| {
                             resolve_datasource_inventory_item(value, context.datasource_inventory)
                         })
                     });

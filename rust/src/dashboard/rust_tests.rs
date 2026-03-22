@@ -7125,6 +7125,81 @@ fn build_export_inspection_query_report_includes_datasource_config_fields() {
 }
 
 #[test]
+fn build_export_inspection_query_report_resolves_datasource_name_only_objects_against_inventory() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(raw_dir.join("General")).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid",
+            "datasourcesFile": DATASOURCE_INVENTORY_FILENAME
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join(DATASOURCE_INVENTORY_FILENAME),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "prom-main",
+                "name": "Prometheus Main",
+                "type": "prometheus",
+                "access": "proxy",
+                "url": "http://prometheus:9090",
+                "isDefault": "false",
+                "org": "Main Org.",
+                "orgId": "1"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("General").join("inventory.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "inventory",
+                "title": "Inventory",
+                "panels": [
+                    {
+                        "id": 1,
+                        "title": "CPU",
+                        "type": "timeseries",
+                        "datasource": {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus"},
+                        "targets": [
+                            {
+                                "refId": "A",
+                                "datasource": {"name": "Prometheus Main"},
+                                "expr": "up"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let report = super::build_export_inspection_query_report(&raw_dir).unwrap();
+    let row = &report.queries[0];
+
+    assert_eq!(row.datasource, "Prometheus Main");
+    assert_eq!(row.datasource_name, "Prometheus Main");
+    assert_eq!(row.datasource_uid, "prom-main");
+    assert_eq!(row.datasource_type, "prometheus");
+    assert_eq!(row.datasource_family, "prometheus");
+    assert_eq!(row.datasource_org, "Main Org.");
+    assert_eq!(row.panel_datasource_count, 1);
+}
+
+#[test]
 fn build_export_inspection_query_report_emits_search_family_for_inventory_backed_elasticsearch_and_opensearch_rows(
 ) {
     let temp = tempdir().unwrap();
@@ -7873,7 +7948,7 @@ fn resolve_query_analyzer_family_from_datasource_type_maps_supported_aliases_to_
 }
 
 #[test]
-fn resolve_query_analyzer_family_from_query_signature_maps_fallback_shapes() {
+fn resolve_query_analyzer_family_from_query_signature_maps_fallback_and_search_shapes() {
     let cases = [
         (
             "rawSql",
@@ -7906,6 +7981,12 @@ fn resolve_query_analyzer_family_from_query_signature_maps_fallback_shapes() {
             "update cpu set value = 1",
             Some(super::DATASOURCE_FAMILY_SQL),
         ),
+        (
+            "query",
+            "_exists_:host.name AND host.name:api AND response.status:404",
+            Some(super::DATASOURCE_FAMILY_SEARCH),
+        ),
+        ("query", "service.name:checkout AND trace.id=abc123", None),
         ("query", "up", None),
     ];
 
@@ -11118,6 +11199,10 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
     );
     assert_eq!(
         export_dependency_document["summary"]["dashboardCount"],
+        Value::from(1)
+    );
+    assert_eq!(
+        export_dependency_document["summary"]["panelCount"],
         Value::from(6)
     );
     assert_eq!(
@@ -11503,6 +11588,10 @@ fn inspect_live_dashboards_with_request_all_orgs_aggregates_multiple_org_exports
     );
     assert_eq!(
         export_dependency_document["summary"]["dashboardCount"],
+        Value::from(2)
+    );
+    assert_eq!(
+        export_dependency_document["summary"]["panelCount"],
         Value::from(2)
     );
     assert_eq!(

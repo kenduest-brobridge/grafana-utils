@@ -12,8 +12,24 @@ on:
   pull_request:
 
 jobs:
+  python-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Python runtime dependencies
+        run: |
+          python3 -m pip install --upgrade pip .
+          python3 -m pip install "Pillow>=10,<12"
+      - name: Run Python quality gate
+        run: make quality-python
+
   rust-quality:
     runs-on: ubuntu-latest
+    needs:
+      - python-quality
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable

@@ -1,5 +1,29 @@
 # ai-changes.md
 
+## 2026-03-22 - Start Typed Rust Dashboard Datasource Reference Parsing
+- Summary: Introduced a narrow internal typed datasource-reference model in `rust/src/dashboard/inspect.rs` so stable `uid`/`name`/`type` lookups now go through one parsed shape instead of repeated raw-map access. The raw panel datasource key path still uses the existing placeholder-aware behavior so dashboard source counts remain unchanged.
+- Tests: Added a focused dashboard inspection regression that proves a name-only datasource object resolves its inventory-backed name/type while still falling back to the panel datasource UID. Revalidated the dashboard Rust test target and the formatter check.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet dashboard`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`
+- Validation: The focused dashboard Rust suite passed and the formatter check passed.
+- Impact: `rust/src/dashboard/inspect.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is a narrow internal refactor that preserves the existing dashboard output contract while making the stable reference path more explicit.
+
+## 2026-03-22 - Route Datasource-Less Search Queries Into The Search Analyzer
+- Summary: Added a conservative search-signature detector so datasource-less Lucene/OpenSearch-style queries such as `_exists_:` and simple field clauses route into the search analyzer instead of the generic fallback path. The detector stays narrow and excludes tracing field names, so trace-only queries still fail closed.
+- Tests: Updated the shared dashboard inspection analyzer fixture with a datasource-less search case, tightened the query-signature resolver regression to cover the new search routing plus a tracing exclusion case, and revalidated the shared dispatch fixture against the new behavior.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet dispatch_query_analysis_matches_shared_analyzer_fixture_cases`; `cargo test --manifest-path rust/Cargo.toml --quiet resolve_query_analyzer_family`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`
+- Validation: The focused Rust analyzer tests passed and the formatter check passed.
+- Impact: `rust/src/dashboard/inspect.rs`, `rust/src/dashboard/inspect_analyzer_search.rs`, `rust/src/dashboard/rust_tests.rs`, `fixtures/dashboard_inspection_analyzer_cases.json`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This only broadens explicit search-family routing for conservative field-shape queries; unknown text still falls back to the generic path.
+
+## 2026-03-22 - Clarify Rust Dashboard Dependency Blast Radius Counts
+- Summary: Tightened the Rust dashboard dependency contract so `dashboardCount` now reflects unique dashboards instead of per-query accumulation, and added a new `panelCount` to both the top-level summary and each `datasourceUsage` row. This makes the operator-facing blast-radius view clearer without changing the query extraction contract or cloud datasource scope.
+- Tests: Added a focused Rust dependency-contract regression that feeds repeated queries for one datasource across multiple panels/dashboards and asserts the unique dashboard, panel, and query totals in the JSON output. Updated the existing dashboard inspection contract assertions to pin the new summary shape.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet build_export_inspection`; `cargo test --manifest-path rust/Cargo.toml --quiet build_offline_dependency_contract_reports_unique_dashboard_and_panel_counts`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`
+- Validation: The focused Rust dashboard tests passed and the formatter check passed.
+- Impact: `rust/src/dashboard_inspection_dependency_contract.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. The change is additive in surface area but does adjust the meaning of the dependency contract `dashboardCount` to a more operator-accurate unique count.
+
 ## 2026-03-21 - Add Dashboard Dependency Count Fields In Rust Governance
 - Summary: Added explicit `datasourceCount` and `datasourceFamilyCount` fields to each Rust governance dashboard dependency row so operators can gauge blast radius without manually counting the listed datasources and families. The governance table now shows those counts alongside the existing datasource and family lists.
 - Tests: Extended the governance regression to assert the new count fields in JSON output, added table-header coverage for the new count columns, and pinned the multi-datasource live/export parity case to the new dashboard-level counts.

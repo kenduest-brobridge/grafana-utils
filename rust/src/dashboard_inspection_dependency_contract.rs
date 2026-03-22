@@ -19,6 +19,7 @@ pub struct DependencyUsageSummary {
     pub family: String,
     pub query_count: usize,
     pub dashboard_count: usize,
+    pub panel_count: usize,
     pub reference_count: usize,
     pub query_fields: Vec<String>,
 }
@@ -35,6 +36,7 @@ impl DependencyUsageSummary {
             "family": self.family,
             "queryCount": self.query_count,
             "dashboardCount": self.dashboard_count,
+            "panelCount": self.panel_count,
             "referenceCount": self.reference_count,
             "queryFields": self.query_fields,
         })
@@ -235,8 +237,11 @@ pub(crate) fn build_offline_dependency_contract(
 ) -> Value {
     let mut queries = Vec::new();
     let mut query_features = BTreeMap::new();
-    let mut usage = BTreeMap::<String, DependencyUsageSummary>::new();
+    let mut usage =
+        BTreeMap::<String, (DependencyUsageSummary, BTreeSet<String>, BTreeSet<String>)>::new();
     let mut query_fields = BTreeMap::<String, BTreeSet<String>>::new();
+    let mut dashboard_uids = BTreeSet::new();
+    let mut panel_keys = BTreeSet::new();
 
     for row in query_report_rows {
         let Some(reference) = build_query_reference_payload(row) else {
@@ -244,6 +249,11 @@ pub(crate) fn build_offline_dependency_contract(
         };
         let key = query_signature_key(&reference);
         let hint = parse_query_text_families(&reference);
+        dashboard_uids.insert(reference.dashboard_uid.clone());
+        panel_keys.insert(format!(
+            "{}:{}",
+            reference.dashboard_uid, reference.panel_id
+        ));
         query_features.insert(
             key,
             QueryFeatureSet {
@@ -258,21 +268,29 @@ pub(crate) fn build_offline_dependency_contract(
             .or_default();
         fields.insert(reference.query_field.clone());
 
-        let summary_entry =
-            usage
-                .entry(reference.datasource_name.clone())
-                .or_insert(DependencyUsageSummary {
-                    datasource_identity: reference.datasource_name.clone(),
-                    family: reference.datasource_family.clone(),
-                    query_count: 0,
-                    dashboard_count: 0,
-                    reference_count: 0,
-                    query_fields: Vec::new(),
-                });
-        summary_entry.query_count += 1;
-        summary_entry.reference_count += 1;
-        summary_entry.query_fields = fields.iter().cloned().collect();
-        summary_entry.dashboard_count += 1;
+        let summary_entry = usage.entry(reference.datasource_name.clone()).or_insert((
+            DependencyUsageSummary {
+                datasource_identity: reference.datasource_name.clone(),
+                family: reference.datasource_family.clone(),
+                query_count: 0,
+                dashboard_count: 0,
+                panel_count: 0,
+                reference_count: 0,
+                query_fields: Vec::new(),
+            },
+            BTreeSet::new(),
+            BTreeSet::new(),
+        ));
+        summary_entry.0.query_count += 1;
+        summary_entry.0.reference_count += 1;
+        summary_entry.0.query_fields = fields.iter().cloned().collect();
+        summary_entry.1.insert(reference.dashboard_uid.clone());
+        summary_entry.2.insert(format!(
+            "{}:{}",
+            reference.dashboard_uid, reference.panel_id
+        ));
+        summary_entry.0.dashboard_count = summary_entry.1.len();
+        summary_entry.0.panel_count = summary_entry.2.len();
         queries.push(reference);
     }
 
@@ -300,19 +318,21 @@ pub(crate) fn build_offline_dependency_contract(
         }
     }
 
-    let mut usage_rows = usage.into_values().collect::<Vec<_>>();
+    let mut usage_rows = usage
+        .into_values()
+        .map(|(summary, _, _)| summary)
+        .collect::<Vec<_>>();
     usage_rows.sort_by(|left, right| left.datasource_identity.cmp(&right.datasource_identity));
 
     let mut summary = BTreeMap::new();
     summary.insert("queryCount".to_string(), Value::from(queries.len()));
     summary.insert(
         "dashboardCount".to_string(),
-        Value::from(
-            usage_rows
-                .iter()
-                .map(|item| item.dashboard_count)
-                .sum::<usize>() as u64,
-        ),
+        Value::from(dashboard_uids.len() as u64),
+    );
+    summary.insert(
+        "panelCount".to_string(),
+        Value::from(panel_keys.len() as u64),
     );
     summary.insert(
         "datasourceCount".to_string(),
@@ -331,4 +351,87 @@ pub(crate) fn build_offline_dependency_contract(
         orphaned,
     }
     .as_json()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::dashboard::DatasourceInventoryItem;
+    use serde_json::json;
+
+    #[test]
+    fn build_offline_dependency_contract_reports_unique_dashboard_and_panel_counts() {
+        let document = build_offline_dependency_contract(
+            &[
+                json!({
+                    "dashboardUid": "dash-a",
+                    "dashboardTitle": "Dash A",
+                    "panelId": "1",
+                    "panelTitle": "Panel One",
+                    "panelType": "timeseries",
+                    "refId": "A",
+                    "datasource": "Prometheus Main",
+                    "datasourceUid": "prom-main",
+                    "datasourceType": "prometheus",
+                    "file": "dash-a.json",
+                    "queryField": "expr",
+                    "query": "up"
+                }),
+                json!({
+                    "dashboardUid": "dash-a",
+                    "dashboardTitle": "Dash A",
+                    "panelId": "1",
+                    "panelTitle": "Panel One",
+                    "panelType": "timeseries",
+                    "refId": "B",
+                    "datasource": "Prometheus Main",
+                    "datasourceUid": "prom-main",
+                    "datasourceType": "prometheus",
+                    "file": "dash-a.json",
+                    "queryField": "expr",
+                    "query": "sum(rate(up[5m]))"
+                }),
+                json!({
+                    "dashboardUid": "dash-b",
+                    "dashboardTitle": "Dash B",
+                    "panelId": "2",
+                    "panelTitle": "Panel Two",
+                    "panelType": "timeseries",
+                    "refId": "A",
+                    "datasource": "Prometheus Main",
+                    "datasourceUid": "prom-main",
+                    "datasourceType": "prometheus",
+                    "file": "dash-b.json",
+                    "queryField": "expr",
+                    "query": "rate(http_requests_total[5m])"
+                }),
+            ],
+            &[DatasourceInventoryItem {
+                uid: "prom-main".to_string(),
+                name: "Prometheus Main".to_string(),
+                datasource_type: "prometheus".to_string(),
+                access: String::new(),
+                url: String::new(),
+                database: String::new(),
+                default_bucket: String::new(),
+                organization: String::new(),
+                index_pattern: String::new(),
+                is_default: String::new(),
+                org: String::new(),
+                org_id: String::new(),
+            }],
+        );
+
+        assert_eq!(document["summary"]["queryCount"], json!(3));
+        assert_eq!(document["summary"]["dashboardCount"], json!(2));
+        assert_eq!(document["summary"]["panelCount"], json!(2));
+        assert_eq!(document["summary"]["datasourceCount"], json!(1));
+        assert_eq!(document["datasourceUsage"][0]["queryCount"], json!(3));
+        assert_eq!(document["datasourceUsage"][0]["dashboardCount"], json!(2));
+        assert_eq!(document["datasourceUsage"][0]["panelCount"], json!(2));
+        assert_eq!(
+            document["datasourceUsage"][0]["queryFields"],
+            json!(["expr"])
+        );
+    }
 }

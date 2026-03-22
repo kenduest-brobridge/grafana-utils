@@ -60,6 +60,43 @@ fn extract_search_field_references(query_text: &str) -> Vec<String> {
     values
 }
 
+fn is_tracing_field_name(field: &str) -> bool {
+    matches!(
+        field.to_ascii_lowercase().as_str(),
+        "service.name" | "span.name" | "resource.service.name" | "trace.id" | "traceid"
+    )
+}
+
+/// Detect conservative search-style query signatures.
+///
+/// Keep this narrow so explicit Lucene/OpenSearch field clauses can route to the
+/// search analyzer without pulling in JSON DSL or tracing field-only queries.
+pub(crate) fn query_text_looks_like_search(query_text: &str) -> bool {
+    let trimmed = query_text.trim_start();
+    if trimmed.starts_with('{') || trimmed.starts_with('[') {
+        return false;
+    }
+    for captures in search_exists_regex().captures_iter(query_text) {
+        if let Some(value) = captures.get(1) {
+            if !is_tracing_field_name(value.as_str()) {
+                return true;
+            }
+        }
+    }
+    for captures in search_field_regex().captures_iter(query_text) {
+        if let Some(value) = captures.get(1) {
+            let field = value.as_str();
+            if field.eq_ignore_ascii_case("_exists_") {
+                continue;
+            }
+            if !is_tracing_field_name(field) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 /// analyze query.
 pub(crate) fn analyze_query(
     _panel: &Map<String, Value>,
