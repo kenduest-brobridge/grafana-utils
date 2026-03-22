@@ -851,7 +851,7 @@ class DatasourceCliTests(unittest.TestCase):
                 "--preset-profile",
                 "full",
                 "--json-data",
-                '{"tlsAuth":true}',
+                '{"tlsAuth":false}',
             ]
         )
         client = FakeDatasourceClient(datasources=[])
@@ -863,7 +863,7 @@ class DatasourceCliTests(unittest.TestCase):
 
         self.assertEqual(result, 0)
         payload = client.imported_payloads[0]["payload"]
-        self.assertEqual(payload["jsonData"]["database"], "analytics")
+        self.assertEqual(payload["jsonData"]["database"], "grafana")
         self.assertFalse(payload["jsonData"]["tlsAuth"])
         self.assertEqual(payload["jsonData"]["maxOpenConns"], 100)
         self.assertEqual(payload["jsonData"]["maxIdleConns"], 100)
@@ -1196,7 +1196,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("--preset-profile", help_text)
         self.assertIn("starter", help_text)
         self.assertIn("full", help_text)
-        self.assertIn("preset-profiles: starter, full", help_text)
+        self.assertIn("--preset-profile {starter,full}", help_text)
         self.assertIn("--basic-auth", help_text)
         self.assertIn("--basic-auth-user", help_text)
         self.assertIn("--basic-auth-password", help_text)

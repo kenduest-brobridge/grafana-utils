@@ -825,7 +825,7 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("datasourceType", help_text)
         self.assertIn("datasourceFamily", help_text)
         self.assertIn("folderLevel", help_text)
-        self.assertIn("all, dashboard_uid", help_text)
+        self.assertIn("dashboard_uid", help_text)
         self.assertIn("datasource label, uid, type,", help_text)
         self.assertIn("or family exactly matches this value", help_text)
         self.assertNotIn("\n  --json", help_text)
@@ -886,7 +886,7 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("datasourceType", help_text)
         self.assertIn("datasourceFamily", help_text)
         self.assertIn("folderLevel", help_text)
-        self.assertIn("all, dashboard_uid", help_text)
+        self.assertIn("dashboard_uid", help_text)
         self.assertIn("datasource label, uid, type,", help_text)
         self.assertIn("or family exactly matches this value", help_text)
         self.assertNotIn("\n  --report ", help_text)
@@ -1648,7 +1648,8 @@ class ExporterTests(unittest.TestCase):
             query_text='from(bucket: "ops") |> range(start: -1h) |> filter(fn: (r) => r._measurement == "cpu")',
         )
 
-        self.assertEqual(analysis["metrics"], ["from", "range", "filter"])
+        self.assertEqual(analysis["metrics"], [])
+        self.assertEqual(analysis["functions"], ["from", "range", "filter"])
         self.assertEqual(analysis["measurements"], ["cpu"])
         self.assertEqual(analysis["buckets"], ["ops"])
 
@@ -1660,7 +1661,8 @@ class ExporterTests(unittest.TestCase):
             query_text='SELECT mean("usage") FROM "cpu" WHERE $timeFilter GROUP BY time(2m) fill(null)',
         )
 
-        self.assertEqual(analysis["metrics"], [])
+        self.assertEqual(analysis["metrics"], ["usage"])
+        self.assertEqual(analysis["functions"], ["mean"])
         self.assertEqual(analysis["measurements"], [])
         self.assertEqual(analysis["buckets"], ["2m"])
 
@@ -1672,7 +1674,8 @@ class ExporterTests(unittest.TestCase):
             query_text="select count(*) from public.cpu_metrics where host = 'web-01'",
         )
 
-        self.assertEqual(analysis["metrics"], ["select", "where"])
+        self.assertEqual(analysis["metrics"], [])
+        self.assertEqual(analysis["functions"], ["select", "where"])
         self.assertEqual(analysis["measurements"], ["public.cpu_metrics"])
         self.assertEqual(analysis["buckets"], [])
 
@@ -1684,8 +1687,9 @@ class ExporterTests(unittest.TestCase):
             query_text='sum by (job) (count_over_time({job="varlogs",app=~"api|web"} |= "error" | json [5m]))',
         )
 
+        self.assertEqual(analysis["metrics"], [])
         self.assertEqual(
-            analysis["metrics"],
+            analysis["functions"],
             ["sum", "count_over_time", "filter_eq", "json"],
         )
         self.assertEqual(
@@ -2623,11 +2627,16 @@ class ExporterTests(unittest.TestCase):
             self.assertEqual(
                 payload["queries"][0]["metrics"], ["node_cpu_seconds_total"]
             )
-            self.assertEqual(payload["queries"][1]["metrics"], ["from", "filter"])
+            self.assertEqual(payload["queries"][1]["metrics"], [])
+            self.assertEqual(payload["queries"][1]["functions"], ["from", "filter"])
             self.assertEqual(payload["queries"][1]["measurements"], ["cpu"])
             self.assertEqual(payload["queries"][1]["buckets"], ["prod"])
             self.assertEqual(
                 payload["queries"][2]["metrics"],
+                [],
+            )
+            self.assertEqual(
+                payload["queries"][2]["functions"],
                 ["sum", "count_over_time", "filter_eq", "json"],
             )
             self.assertEqual(
@@ -2635,10 +2644,12 @@ class ExporterTests(unittest.TestCase):
                 ['job="varlogs"', 'app=~"api|web"'],
             )
             self.assertEqual(payload["queries"][2]["buckets"], ["5m"])
-            self.assertEqual(payload["queries"][3]["metrics"], ["select", "where"])
+            self.assertEqual(payload["queries"][3]["metrics"], [])
+            self.assertEqual(payload["queries"][3]["functions"], ["select", "where"])
             self.assertEqual(payload["queries"][3]["measurements"], ["metrics.cpu"])
             self.assertEqual(payload["queries"][3]["buckets"], [])
-            self.assertEqual(payload["queries"][4]["metrics"], [])
+            self.assertEqual(payload["queries"][4]["functions"], ["mean"])
+            self.assertEqual(payload["queries"][4]["metrics"], ["usage"])
             self.assertEqual(payload["queries"][4]["measurements"], [])
             self.assertEqual(payload["queries"][4]["buckets"], ["$__interval"])
 
@@ -2723,7 +2734,7 @@ class ExporterTests(unittest.TestCase):
                     "--report",
                     "tree-table",
                     "--report-columns",
-                    "panel_id,datasource,metrics,measurements,buckets,query",
+                    "panel_id,datasource,functions,measurements,buckets,query",
                 ]
             )
             stdout = io.StringIO()
@@ -2735,7 +2746,7 @@ class ExporterTests(unittest.TestCase):
             self.assertIn(
                 "Export inspection tree-table report: %s" % import_dir, output
             )
-            self.assertIn("PANEL_ID  DATASOURCE  METRICS", output)
+            self.assertIn("PANEL_ID  DATASOURCE  FUNCTIONS", output)
             self.assertIn("11", output)
             self.assertIn("loki-main", output)
             self.assertIn("sum,count_over_time,filter_eq,json", output)
@@ -2824,7 +2835,7 @@ class ExporterTests(unittest.TestCase):
                     "--report",
                     "table",
                     "--report-columns",
-                    "panel_id,datasource,metrics,measurements,buckets,query",
+                    "panel_id,datasource,functions,measurements,buckets,query",
                 ]
             )
             stdout = io.StringIO()
@@ -2834,7 +2845,7 @@ class ExporterTests(unittest.TestCase):
             output = stdout.getvalue()
             self.assertEqual(result, 0)
             self.assertIn("Export inspection report: %s" % import_dir, output)
-            self.assertIn("PANEL_ID  DATASOURCE  METRICS", output)
+            self.assertIn("PANEL_ID  DATASOURCE  FUNCTIONS", output)
             self.assertIn("11", output)
             self.assertIn("loki-main", output)
             self.assertIn("sum,count_over_time,filter_eq,json", output)
