@@ -1,5 +1,21 @@
 # ai-changes.md
 
+## 2026-03-23 - Extend Rust Dashboard Typed Datasource Reference Parsing
+- Summary: Extended the internal Rust dashboard datasource-reference parser so `pluginId` now participates in the same typed lookup path as `uid`, `name`, and `type`. This lets inspection family resolution recognize plugin-id-only datasource objects without changing the surrounding report schema or raw panel-key handling.
+- Tests: Added a focused Rust resolver regression that feeds a `grafana-postgresql-datasource` plugin-id reference through the inspection family resolver and expects the SQL family.
+- Test Run: `rustfmt --edition 2021 --check rust/src/dashboard/inspect.rs rust/src/dashboard/rust_tests.rs`; `cargo test --manifest-path rust/Cargo.toml --quiet resolve_query_analyzer_family_uses_plugin_id_datasource_refs`
+- Validation: The touched Rust files are formatted cleanly and the focused resolver regression passes.
+- Impact: `rust/src/dashboard/inspect.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is an additive parser fallback for a typed datasource reference shape and should only affect cases where `pluginId` is the only available type signal.
+
+## 2026-03-23 - Expand Rust Dashboard Governance With Dashboard Datasource Edges
+- Summary: Added one more governance layer on top of the existing dashboard and datasource rollups. Governance output now includes explicit `dashboardDatasourceEdges` rows so operators can inspect dashboard-to-datasource blast radius directly, and empty-analysis risk detection now treats function-only rows as analyzed instead of flagging them spuriously.
+- Tests: Added a focused governance regression that pins two datasource edges under one dashboard with rolled-up query fields and analysis hints, and updated the existing governance summary/table assertions to include the new edge count and table section.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet build_export_inspection_governance_document`; `cargo test --manifest-path rust/Cargo.toml --quiet render_governance_table_report`
+- Validation: Focused governance tests pass, including the new edge-rollup coverage and table rendering assertions.
+- Impact: `rust/src/dashboard/inspect_governance.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: Low. This is an additive governance/reporting change and a small risk-classification fix; it should only widen operator visibility and remove false-positive empty-analysis findings for function-only rows.
+
 ## 2026-03-23 - Optimize Rust Dashboard Import Action Resolution With Summary Cache
 - Summary: Added a shared dashboard-summary cache in `rust/src/dashboard/import.rs` to avoid per-dashboard `GET /api/dashboards/uid/{uid}` calls during import and dry-run action calculation. The cache now backs `update_existing_only` and replace decisions for missing/existing checks and also reuses summary `folderUid` to resolve existing folder paths before fetching full dashboard payloads.
 - Tests: Added new dry-run/import regressions for search-summary reuse (missing and present dashboards), summary-backed folder UID reuse for replace-existing, and updated existing import preview assertions that now explicitly expect one summary fetch instead of dashboard-by-dashboard probes in dry-run paths.

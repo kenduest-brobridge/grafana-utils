@@ -352,6 +352,69 @@ fn build_sync_source_bundle_document_includes_alert_contract() {
 }
 
 #[test]
+fn build_sync_source_bundle_document_preserves_full_alert_contract_sections() {
+    let source_bundle = build_sync_source_bundle_document(
+        &[],
+        &[],
+        &[],
+        &[],
+        Some(&build_alert_replay_artifact_fixture(true)),
+        None,
+    )
+    .unwrap();
+
+    let contract = &source_bundle["alertContract"];
+    assert_eq!(
+        contract["summary"],
+        json!({
+            "total": 5,
+            "safeForSync": 2
+        })
+    );
+    assert_eq!(
+        contract["countsByKind"],
+        json!([
+            {"kind": "grafana-alert-rule", "count": 1},
+            {"kind": "grafana-contact-point", "count": 1},
+            {"kind": "grafana-mute-timing", "count": 1},
+            {"kind": "grafana-notification-policies", "count": 1},
+            {"kind": "grafana-notification-template", "count": 1}
+        ])
+    );
+    assert_eq!(contract["resources"].as_array().unwrap().len(), 5);
+    assert!(contract["resources"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|resource| {
+            resource["kind"] == "grafana-contact-point" && resource["safeForSync"] == json!(true)
+        }));
+    assert!(contract["resources"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|resource| {
+            resource["kind"] == "grafana-mute-timing" && resource["safeForSync"] == json!(false)
+        }));
+    assert!(contract["resources"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|resource| {
+            resource["kind"] == "grafana-notification-policies"
+                && resource["safeForSync"] == json!(false)
+        }));
+    assert!(contract["resources"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|resource| {
+            resource["kind"] == "grafana-notification-template"
+                && resource["safeForSync"] == json!(false)
+        }));
+}
+
+#[test]
 fn build_sync_bundle_preflight_document_falls_back_to_alerting_rule_documents() {
     let source_bundle = json!({
         "dashboards": [],

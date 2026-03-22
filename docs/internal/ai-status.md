@@ -5,6 +5,20 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-23 - Task: Extend Rust Dashboard Typed Datasource Reference Parsing
+- State: Done
+- Scope: `rust/src/dashboard/inspect.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Dashboard inspection already parsed typed datasource objects through a narrow stable path, but `pluginId`-only datasource objects still fell through that path and could miss family routing when they were the only explicit type signal.
+- Current Update: Extended the internal datasource-reference parser so `pluginId` now participates in the stable summary/type lookup path alongside `uid`, `name`, and `type`. Added a focused resolver regression that routes a `grafana-postgresql-datasource` plugin-id reference into the SQL family without changing the surrounding inspection contract.
+- Result: Rust dashboard inspection now covers one more typed datasource-reference shape while keeping the existing output schema and raw panel-key behavior intact.
+
+## 2026-03-23 - Task: Expand Rust Dashboard Governance With Dashboard-To-Datasource Edges
+- State: Done
+- Scope: `rust/src/dashboard/inspect_governance.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Governance output already exposed dashboard-level rollups and datasource-level blast radius, but it still lacked a direct dashboard-to-datasource governance surface and could misclassify functions-only rows as empty analysis.
+- Current Update: Added `dashboardDatasourceEdges` to the governance document and table output, including per-dashboard/per-datasource panel counts, query counts, query fields, and rolled-up metrics/functions/measurements/buckets. Tightened empty-analysis risk detection so function-only rows no longer trigger the warning.
+- Result: Rust governance now exposes a broader datasource-usage governance view without changing the existing report families or dependency row schema, and the new edge surface is covered by focused governance tests.
+
 ## 2026-03-23 - Task: Optimize Rust Dashboard Import Action Resolution With Summary Cache
 - State: Done
 - Scope: `rust/src/dashboard/import.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

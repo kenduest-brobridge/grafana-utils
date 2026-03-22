@@ -5281,6 +5281,36 @@ fn resolve_query_analyzer_family_uses_string_loki_datasource_refs() {
 }
 
 #[test]
+fn resolve_query_analyzer_family_uses_plugin_id_datasource_refs() {
+    let panel = Map::from_iter(vec![(
+        "datasource".to_string(),
+        json!({"pluginId": "grafana-postgresql-datasource"}),
+    )]);
+    let target = Map::from_iter(vec![
+        (
+            "datasource".to_string(),
+            json!({"pluginId": "grafana-postgresql-datasource"}),
+        ),
+        (
+            "query".to_string(),
+            Value::String("custom.metric".to_string()),
+        ),
+    ]);
+    let context = super::QueryExtractionContext {
+        panel: &panel,
+        target: &target,
+        query_field: "query",
+        query_text: "custom.metric",
+        resolved_datasource_type: "",
+    };
+
+    assert_eq!(
+        super::resolve_query_analyzer_family(&context),
+        super::DATASOURCE_FAMILY_SQL
+    );
+}
+
+#[test]
 fn resolve_query_analyzer_family_ignores_placeholder_string_datasource_refs() {
     let panel = Map::from_iter(vec![(
         "datasource".to_string(),
@@ -10106,8 +10136,10 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
     assert_eq!(document.summary.dashboard_count, 2);
     assert_eq!(document.summary.query_record_count, 2);
     assert_eq!(document.summary.datasource_family_count, 2);
+    assert_eq!(document.summary.dashboard_datasource_edge_count, 2);
     assert_eq!(document.summary.risk_record_count, 4);
     assert_eq!(document.dashboard_dependencies.len(), 2);
+    assert_eq!(document.dashboard_datasource_edges.len(), 2);
     assert_eq!(document.dashboard_dependencies[0].dashboard_uid, "cpu-main");
     assert_eq!(
         document.dashboard_dependencies[1].datasource_families,
@@ -10332,6 +10364,7 @@ fn build_export_inspection_governance_document_rolls_up_dashboard_dependency_ana
     assert_eq!(document.summary.query_record_count, 2);
     assert_eq!(document.summary.datasource_family_count, 1);
     assert_eq!(document.summary.datasource_coverage_count, 1);
+    assert_eq!(document.summary.dashboard_datasource_edge_count, 1);
     assert_eq!(document.summary.risk_record_count, 0);
     assert_eq!(dependency_row["queryFields"], json!(["expr", "query"]));
     assert_eq!(
@@ -10422,6 +10455,7 @@ fn build_export_inspection_governance_document_surfaces_datasource_blast_radius_
     assert_eq!(document.summary.query_record_count, 2);
     assert_eq!(document.summary.datasource_family_count, 1);
     assert_eq!(document.summary.datasource_coverage_count, 1);
+    assert_eq!(document.summary.dashboard_datasource_edge_count, 1);
     assert_eq!(document.summary.risk_record_count, 0);
     assert_eq!(datasource_row["dashboardUids"], json!(["core-main"]));
     assert_eq!(datasource_row["dashboardCount"], Value::from(1));
@@ -10552,12 +10586,14 @@ fn render_governance_table_report_displays_sections() {
     assert!(output.contains("# Summary"));
     assert!(output.contains("# Datasource Families"));
     assert!(output.contains("# Dashboard Dependencies"));
+    assert!(output.contains("# Dashboard Datasource Edges"));
     assert!(output.contains("# Datasources"));
     assert!(output.contains("# Risks"));
     assert!(output.contains("DASHBOARD_UID"));
     assert!(output.contains("QUERY_FIELDS"));
     assert!(output.contains("DATASOURCE_COUNT"));
     assert!(output.contains("DATASOURCE_FAMILY_COUNT"));
+    assert!(output.contains("DASHBOARD_DATASOURCE_EDGES"));
     assert!(output.contains("METRICS"));
     assert!(output.contains("FUNCTIONS"));
     assert!(output.contains("MEASUREMENTS"));
@@ -10571,6 +10607,156 @@ fn render_governance_table_report_displays_sections() {
     assert!(output.contains("ORPHANED_DATASOURCES"));
     assert!(output.contains("orphaned-datasource"));
     assert!(output.contains("Remove the unused datasource"));
+}
+
+#[test]
+fn build_export_inspection_governance_document_adds_dashboard_datasource_edges() {
+    let summary = super::ExportInspectionSummary {
+        import_dir: "/tmp/raw".to_string(),
+        export_org: Some("Main Org.".to_string()),
+        export_org_id: Some("1".to_string()),
+        dashboard_count: 1,
+        folder_count: 1,
+        panel_count: 3,
+        query_count: 3,
+        datasource_inventory_count: 2,
+        orphaned_datasource_count: 0,
+        mixed_dashboard_count: 1,
+        folder_paths: Vec::new(),
+        datasource_usage: Vec::new(),
+        datasource_inventory: vec![
+            super::DatasourceInventorySummary {
+                uid: "prom-main".to_string(),
+                name: "Prometheus Main".to_string(),
+                datasource_type: "prometheus".to_string(),
+                access: "proxy".to_string(),
+                url: "http://prometheus:9090".to_string(),
+                is_default: "true".to_string(),
+                org: "Main Org.".to_string(),
+                org_id: "1".to_string(),
+                reference_count: 2,
+                dashboard_count: 1,
+            },
+            super::DatasourceInventorySummary {
+                uid: "logs-main".to_string(),
+                name: "Logs Main".to_string(),
+                datasource_type: "loki".to_string(),
+                access: "proxy".to_string(),
+                url: "http://loki:3100".to_string(),
+                is_default: "false".to_string(),
+                org: "Main Org.".to_string(),
+                org_id: "1".to_string(),
+                reference_count: 1,
+                dashboard_count: 1,
+            },
+        ],
+        orphaned_datasources: Vec::new(),
+        mixed_dashboards: vec![super::MixedDashboardSummary {
+            uid: "core-main".to_string(),
+            title: "Core Main".to_string(),
+            folder_path: "Platform".to_string(),
+            datasource_count: 2,
+            datasources: vec!["prom-main".to_string(), "logs-main".to_string()],
+        }],
+    };
+
+    let mut prom_a = make_core_family_report_row(
+        "core-main",
+        "7",
+        "A",
+        "prom-main",
+        "Prometheus Main",
+        "prometheus",
+        "prometheus",
+        "sum(rate(http_requests_total[5m]))",
+        &["job=\"grafana\""],
+    );
+    prom_a.query_field = "expr".to_string();
+    prom_a.metrics = vec!["http_requests_total".to_string()];
+    prom_a.functions = vec!["rate".to_string(), "sum".to_string()];
+    prom_a.measurements = vec!["job=\"grafana\"".to_string()];
+    prom_a.buckets = vec!["5m".to_string()];
+
+    let mut prom_b = make_core_family_report_row(
+        "core-main",
+        "8",
+        "B",
+        "prom-main",
+        "Prometheus Main",
+        "prometheus",
+        "prometheus",
+        "sum(rate(process_cpu_seconds_total[1h]))",
+        &["service.name"],
+    );
+    prom_b.query_field = "query".to_string();
+    prom_b.metrics = vec!["process_cpu_seconds_total".to_string()];
+    prom_b.functions = vec!["rate".to_string(), "sum".to_string()];
+    prom_b.measurements = vec!["service.name".to_string()];
+    prom_b.buckets = vec!["1h".to_string()];
+
+    let mut loki = make_core_family_report_row(
+        "core-main",
+        "9",
+        "C",
+        "logs-main",
+        "Logs Main",
+        "loki",
+        "loki",
+        "{job=\"grafana\"} |= \"error\"",
+        &["job=\"grafana\""],
+    );
+    loki.query_field = "expr".to_string();
+    loki.functions = vec!["line_filter_contains".to_string()];
+    loki.measurements = vec!["job=\"grafana\"".to_string()];
+
+    let report = super::ExportInspectionQueryReport {
+        import_dir: "/tmp/raw".to_string(),
+        summary: super::QueryReportSummary {
+            dashboard_count: 1,
+            panel_count: 3,
+            query_count: 3,
+            report_row_count: 3,
+        },
+        queries: vec![prom_a, prom_b, loki],
+    };
+
+    let document = super::build_export_inspection_governance_document(&summary, &report);
+    let document_json = serde_json::to_value(&document).unwrap();
+    let edges = document_json["dashboardDatasourceEdges"]
+        .as_array()
+        .unwrap();
+
+    assert_eq!(document.summary.dashboard_datasource_edge_count, 2);
+    assert_eq!(edges.len(), 2);
+
+    let prom_edge = edges
+        .iter()
+        .find(|row| row["datasourceUid"] == json!("prom-main"))
+        .unwrap();
+    assert_eq!(prom_edge["dashboardUid"], json!("core-main"));
+    assert_eq!(prom_edge["dashboardTitle"], json!("core-main Dashboard"));
+    assert_eq!(prom_edge["panelCount"], json!(2));
+    assert_eq!(prom_edge["queryCount"], json!(2));
+    assert_eq!(prom_edge["queryFields"], json!(["expr", "query"]));
+    assert_eq!(
+        prom_edge["metrics"],
+        json!(["http_requests_total", "process_cpu_seconds_total"])
+    );
+    assert_eq!(prom_edge["functions"], json!(["rate", "sum"]));
+    assert_eq!(
+        prom_edge["measurements"],
+        json!(["job=\"grafana\"", "service.name"])
+    );
+    assert_eq!(prom_edge["buckets"], json!(["1h", "5m"]));
+
+    let loki_edge = edges
+        .iter()
+        .find(|row| row["datasourceUid"] == json!("logs-main"))
+        .unwrap();
+    assert_eq!(loki_edge["family"], json!("loki"));
+    assert_eq!(loki_edge["panelCount"], json!(1));
+    assert_eq!(loki_edge["queryCount"], json!(1));
+    assert_eq!(loki_edge["functions"], json!(["line_filter_contains"]));
 }
 
 #[test]

@@ -488,6 +488,7 @@ enum DatasourceReference<'a> {
 struct DatasourceReferenceObject<'a> {
     uid: Option<&'a str>,
     name: Option<&'a str>,
+    plugin_id: Option<&'a str>,
     datasource_type: Option<&'a str>,
 }
 
@@ -504,24 +505,33 @@ impl<'a> DatasourceReferenceObject<'a> {
             .and_then(Value::as_str)
             .map(str::trim)
             .filter(|value| !value.is_empty() && !is_placeholder_string(value));
+        let plugin_id = object
+            .get("pluginId")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty() && !is_placeholder_string(value));
         let datasource_type = object
             .get("type")
             .and_then(Value::as_str)
             .map(str::trim)
             .filter(|value| !value.is_empty() && !is_placeholder_string(value));
-        if uid.is_none() && name.is_none() && datasource_type.is_none() {
+        if uid.is_none() && name.is_none() && plugin_id.is_none() && datasource_type.is_none() {
             None
         } else {
             Some(Self {
                 uid,
                 name,
+                plugin_id,
                 datasource_type,
             })
         }
     }
 
     fn summary_label(self) -> Option<&'a str> {
-        self.name.or(self.uid).or(self.datasource_type)
+        self.name
+            .or(self.uid)
+            .or(self.plugin_id)
+            .or(self.datasource_type)
     }
 
     fn uid_label(self) -> Option<&'a str> {
@@ -561,6 +571,7 @@ impl<'a> DatasourceReferenceObject<'a> {
             }
         }
         self.datasource_type
+            .or(self.plugin_id)
             .map(|value| datasource_type_alias(value).to_string())
     }
 }

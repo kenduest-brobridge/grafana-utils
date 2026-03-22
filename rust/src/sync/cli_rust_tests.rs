@@ -962,7 +962,9 @@ fn run_sync_cli_bundle_preserves_alert_export_artifact_metadata() {
             .join("Smoke_Webhook"),
     )
     .unwrap();
+    fs::create_dir_all(alert_export_dir.join("mute-timings")).unwrap();
     fs::create_dir_all(alert_export_dir.join("policies")).unwrap();
+    fs::create_dir_all(alert_export_dir.join("templates")).unwrap();
     fs::write(
         alert_export_dir
             .join("contact-points")
@@ -997,6 +999,25 @@ fn run_sync_cli_bundle_preserves_alert_export_artifact_metadata() {
     )
     .unwrap();
     fs::write(
+        alert_export_dir.join("mute-timings").join("Off_Hours.json"),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-mute-timing",
+            "apiVersion": 1,
+            "schemaVersion": 1,
+            "spec": {
+                "name": "Off Hours",
+                "time_intervals": [{
+                    "times": [{
+                        "start_time": "00:00",
+                        "end_time": "06:00"
+                    }]
+                }]
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
         alert_export_dir
             .join("policies")
             .join("notification-policies.json"),
@@ -1005,6 +1026,22 @@ fn run_sync_cli_bundle_preserves_alert_export_artifact_metadata() {
             "apiVersion": 1,
             "schemaVersion": 1,
             "spec": {"receiver": "grafana-default-email"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        alert_export_dir
+            .join("templates")
+            .join("slack.default.json"),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-notification-template",
+            "apiVersion": 1,
+            "schemaVersion": 1,
+            "spec": {
+                "name": "slack.default",
+                "template": "{{ define \"slack.default\" }}ok{{ end }}"
+            }
         }))
         .unwrap(),
     )
@@ -1034,10 +1071,16 @@ fn run_sync_cli_bundle_preserves_alert_export_artifact_metadata() {
     let bundle: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(&output_file).unwrap()).unwrap();
     assert_eq!(bundle["alerting"]["summary"]["contactPointCount"], json!(1));
+    assert_eq!(bundle["alerting"]["summary"]["muteTimingCount"], json!(1));
     assert_eq!(bundle["alerting"]["summary"]["policyCount"], json!(1));
+    assert_eq!(bundle["alerting"]["summary"]["templateCount"], json!(1));
     assert_eq!(
         bundle["alerting"]["exportMetadata"]["kind"],
         json!("grafana-util-alert-export-index")
+    );
+    assert_eq!(
+        bundle["alerting"]["muteTimings"][0]["sourcePath"],
+        json!("mute-timings/Off_Hours.json")
     );
     assert_eq!(
         bundle["alerting"]["contactPoints"][0]["sourcePath"],
@@ -1046,6 +1089,10 @@ fn run_sync_cli_bundle_preserves_alert_export_artifact_metadata() {
     assert_eq!(
         bundle["alerting"]["policies"][0]["sourcePath"],
         json!("policies/notification-policies.json")
+    );
+    assert_eq!(
+        bundle["alerting"]["templates"][0]["sourcePath"],
+        json!("templates/slack.default.json")
     );
 }
 

@@ -20,6 +20,8 @@ pub(crate) struct GovernanceSummary {
     pub(crate) datasource_family_count: usize,
     #[serde(rename = "datasourceCoverageCount")]
     pub(crate) datasource_coverage_count: usize,
+    #[serde(rename = "dashboardDatasourceEdgeCount")]
+    pub(crate) dashboard_datasource_edge_count: usize,
     #[serde(rename = "mixedDatasourceDashboardCount")]
     pub(crate) mixed_datasource_dashboard_count: usize,
     #[serde(rename = "orphanedDatasourceCount")]
@@ -94,6 +96,33 @@ pub(crate) struct DashboardDependencyRow {
     pub(crate) buckets: Vec<String>,
 }
 
+/// Struct definition for DashboardDatasourceEdgeRow.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub(crate) struct DashboardDatasourceEdgeRow {
+    #[serde(rename = "dashboardUid")]
+    pub(crate) dashboard_uid: String,
+    #[serde(rename = "dashboardTitle")]
+    pub(crate) dashboard_title: String,
+    #[serde(rename = "folderPath")]
+    pub(crate) folder_path: String,
+    #[serde(rename = "datasourceUid")]
+    pub(crate) datasource_uid: String,
+    pub(crate) datasource: String,
+    #[serde(rename = "datasourceType")]
+    pub(crate) datasource_type: String,
+    pub(crate) family: String,
+    #[serde(rename = "panelCount")]
+    pub(crate) panel_count: usize,
+    #[serde(rename = "queryCount")]
+    pub(crate) query_count: usize,
+    #[serde(rename = "queryFields")]
+    pub(crate) query_fields: Vec<String>,
+    pub(crate) metrics: Vec<String>,
+    pub(crate) functions: Vec<String>,
+    pub(crate) measurements: Vec<String>,
+    pub(crate) buckets: Vec<String>,
+}
+
 /// Struct definition for GovernanceRiskRow.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub(crate) struct GovernanceRiskRow {
@@ -117,6 +146,8 @@ pub(crate) struct ExportInspectionGovernanceDocument {
     pub(crate) datasource_families: Vec<DatasourceFamilyCoverageRow>,
     #[serde(rename = "dashboardDependencies")]
     pub(crate) dashboard_dependencies: Vec<DashboardDependencyRow>,
+    #[serde(rename = "dashboardDatasourceEdges")]
+    pub(crate) dashboard_datasource_edges: Vec<DashboardDatasourceEdgeRow>,
     pub(crate) datasources: Vec<DatasourceCoverageRow>,
     #[serde(rename = "riskRecords")]
     pub(crate) risk_records: Vec<GovernanceRiskRow>,
@@ -494,6 +525,99 @@ pub(crate) fn build_dashboard_dependency_rows(
 }
 
 /// Purpose: implementation note.
+pub(crate) fn build_dashboard_datasource_edge_rows(
+    summary: &ExportInspectionSummary,
+    report: &ExportInspectionQueryReport,
+) -> Vec<DashboardDatasourceEdgeRow> {
+    let (inventory_by_uid, inventory_by_name) = build_inventory_lookup(summary);
+    let mut edges = BTreeMap::<
+        (String, String),
+        (
+            String,
+            String,
+            String,
+            String,
+            String,
+            BTreeSet<String>,
+            BTreeSet<String>,
+            BTreeSet<String>,
+            BTreeSet<String>,
+            BTreeSet<String>,
+            BTreeSet<String>,
+            usize,
+        ),
+    >::new();
+    for row in &report.queries {
+        let identity = resolve_datasource_identity(row, &inventory_by_uid, &inventory_by_name);
+        let edge = edges
+            .entry((row.dashboard_uid.clone(), identity.uid.clone()))
+            .or_insert_with(|| {
+                (
+                    row.dashboard_title.clone(),
+                    row.folder_path.clone(),
+                    identity.name.clone(),
+                    identity.datasource_type.clone(),
+                    normalize_family_name(&identity.datasource_type),
+                    BTreeSet::new(),
+                    BTreeSet::new(),
+                    BTreeSet::new(),
+                    BTreeSet::new(),
+                    BTreeSet::new(),
+                    BTreeSet::new(),
+                    0usize,
+                )
+            });
+        edge.5
+            .insert(format!("{}:{}", row.dashboard_uid, row.panel_id));
+        if !row.query_field.trim().is_empty() {
+            edge.6.insert(row.query_field.clone());
+        }
+        edge.7.extend(row.metrics.iter().cloned());
+        edge.8.extend(row.functions.iter().cloned());
+        edge.9.extend(row.measurements.iter().cloned());
+        edge.10.extend(row.buckets.iter().cloned());
+        edge.11 += 1;
+    }
+    edges
+        .into_iter()
+        .map(
+            |(
+                (dashboard_uid, datasource_uid),
+                (
+                    dashboard_title,
+                    folder_path,
+                    datasource,
+                    datasource_type,
+                    family,
+                    panel_keys,
+                    query_fields,
+                    metrics,
+                    functions,
+                    measurements,
+                    buckets,
+                    query_count,
+                ),
+            )| DashboardDatasourceEdgeRow {
+                dashboard_uid,
+                dashboard_title,
+                folder_path,
+                datasource_uid,
+                datasource,
+                datasource_type,
+                family,
+                panel_count: panel_keys.len(),
+                query_count,
+                query_fields: query_fields.into_iter().collect(),
+                metrics: metrics.into_iter().collect(),
+                functions: functions.into_iter().collect(),
+                measurements: measurements.into_iter().collect(),
+                buckets: buckets.into_iter().collect(),
+            },
+        )
+        .collect()
+}
+
+/// Purpose: implementation note.
 pub(crate) fn build_governance_risk_rows(
     summary: &ExportInspectionSummary,
     report: &ExportInspectionQueryReport,
@@ -568,7 +692,11 @@ pub(crate) fn build_governance_risk_rows(
                 risks.push(risk);
             }
         }
-        if row.metrics.is_empty() && row.measurements.is_empty() && row.buckets.is_empty() {
+        if row.metrics.is_empty()
+            && row.functions.is_empty()
+            && row.measurements.is_empty()
+            && row.buckets.is_empty()
+        {
             let risk = GovernanceRiskRow {
                 kind: "empty-query-analysis".to_string(),
                 severity: build_risk_metadata("empty-query-analysis").1.to_string(),
@@ -602,6 +730,7 @@ pub(crate) fn build_export_inspection_governance_document(
 ) -> ExportInspectionGovernanceDocument {
     let datasource_families = build_datasource_family_coverage_rows(summary, report);
     let dashboard_dependencies = build_dashboard_dependency_rows(report);
+    let dashboard_datasource_edges = build_dashboard_datasource_edge_rows(summary, report);
     let datasources = build_datasource_coverage_rows(summary, report);
     let risk_records = build_governance_risk_rows(summary, report);
     ExportInspectionGovernanceDocument {
@@ -611,6 +740,7 @@ pub(crate) fn build_export_inspection_governance_document(
             datasource_inventory_count: summary.datasource_inventory_count,
             datasource_family_count: datasource_families.len(),
             datasource_coverage_count: datasources.len(),
+            dashboard_datasource_edge_count: dashboard_datasource_edges.len(),
             mixed_datasource_dashboard_count: summary.mixed_dashboard_count,
             orphaned_datasource_count: summary
                 .datasource_inventory
@@ -621,6 +751,7 @@ pub(crate) fn build_export_inspection_governance_document(
         },
         datasource_families,
         dashboard_dependencies,
+        dashboard_datasource_edges,
         datasources,
         risk_records,
     }
@@ -643,6 +774,7 @@ pub(crate) fn render_governance_table_report(
             "QUERIES",
             "FAMILIES",
             "DATASOURCES",
+            "DASHBOARD_DATASOURCE_EDGES",
             "MIXED_DASHBOARDS",
             "ORPHANED_DATASOURCES",
             "RISKS",
@@ -652,6 +784,7 @@ pub(crate) fn render_governance_table_report(
             document.summary.query_record_count.to_string(),
             document.summary.datasource_family_count.to_string(),
             document.summary.datasource_coverage_count.to_string(),
+            document.summary.dashboard_datasource_edge_count.to_string(),
             document
                 .summary
                 .mixed_datasource_dashboard_count
@@ -742,6 +875,55 @@ pub(crate) fn render_governance_table_report(
                 "FILE",
             ],
             &dashboard_rows,
+            true,
+        ));
+    }
+
+    lines.push(String::new());
+    lines.push("# Dashboard Datasource Edges".to_string());
+    let edge_rows = document
+        .dashboard_datasource_edges
+        .iter()
+        .map(|row| {
+            vec![
+                row.dashboard_uid.clone(),
+                row.dashboard_title.clone(),
+                row.folder_path.clone(),
+                row.datasource_uid.clone(),
+                row.datasource.clone(),
+                row.datasource_type.clone(),
+                row.family.clone(),
+                row.panel_count.to_string(),
+                row.query_count.to_string(),
+                row.query_fields.join(","),
+                row.metrics.join(","),
+                row.functions.join(","),
+                row.measurements.join(","),
+                row.buckets.join(","),
+            ]
+        })
+        .collect::<Vec<Vec<String>>>();
+    if edge_rows.is_empty() {
+        lines.push("(none)".to_string());
+    } else {
+        lines.extend(render_simple_table(
+            &[
+                "DASHBOARD_UID",
+                "TITLE",
+                "FOLDER_PATH",
+                "DATASOURCE_UID",
+                "DATASOURCE",
+                "DATASOURCE_TYPE",
+                "FAMILY",
+                "PANELS",
+                "QUERIES",
+                "QUERY_FIELDS",
+                "METRICS",
+                "FUNCTIONS",
+                "MEASUREMENTS",
+                "BUCKETS",
+            ],
+            &edge_rows,
             true,
         ));
     }
