@@ -835,6 +835,12 @@ pub struct InspectLiveArgs {
         help = "Write inspect output to this file while still printing to stdout."
     )]
     pub output_file: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Open an interactive terminal browser over the live inspection artifacts."
+    )]
+    pub interactive: bool,
 }
 
 /// Struct definition for GovernanceGateArgs.
@@ -858,6 +864,12 @@ pub struct GovernanceGateArgs {
         help = "Optional path to also write the normalized governance gate result JSON."
     )]
     pub json_output: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Open an interactive terminal browser over governance findings."
+    )]
+    pub interactive: bool,
 }
 
 /// Struct definition for TopologyArgs.
@@ -878,6 +890,7 @@ pub struct TopologyArgs {
     #[arg(
         long,
         value_enum,
+        default_value_t = TopologyOutputFormat::Text,
         help = "Render the topology as text, json, mermaid, or dot."
     )]
     pub output_format: TopologyOutputFormat,
@@ -886,6 +899,12 @@ pub struct TopologyArgs {
         help = "Optional path to also write the rendered topology output."
     )]
     pub output_file: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Open an interactive terminal browser over topology nodes and edges."
+    )]
+    pub interactive: bool,
 }
 
 /// Struct definition for ImpactArgs.
@@ -911,9 +930,16 @@ pub struct ImpactArgs {
     #[arg(
         long,
         value_enum,
+        default_value_t = ImpactOutputFormat::Text,
         help = "Render the blast radius summary as text or json."
     )]
     pub output_format: ImpactOutputFormat,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Open an interactive terminal browser over the blast radius document."
+    )]
+    pub interactive: bool,
 }
 
 /// Struct definition for ValidateExportArgs.

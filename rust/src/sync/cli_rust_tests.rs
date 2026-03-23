@@ -1,12 +1,13 @@
 //! Sync CLI test suite.
 //! Verifies sync argument parsing, plan/review/apply routing, and rendering contracts.
 use super::{
-    audit::render_sync_audit_text, execute_live_apply_with_request,
-    fetch_live_availability_with_request, fetch_live_resource_specs_with_request,
-    render_alert_sync_assessment_text, render_sync_apply_intent_text, render_sync_plan_text,
-    render_sync_summary_text, run_sync_cli, SyncApplyArgs, SyncAssessAlertsArgs, SyncAuditArgs,
-    SyncBundleArgs, SyncBundlePreflightArgs, SyncCliArgs, SyncGroupCommand, SyncOutputFormat,
-    SyncPlanArgs, SyncPreflightArgs, SyncReviewArgs, SyncSummaryArgs, DEFAULT_REVIEW_TOKEN,
+    audit::render_sync_audit_text, build_sync_audit_tui_groups, build_sync_audit_tui_rows,
+    execute_live_apply_with_request, fetch_live_availability_with_request,
+    fetch_live_resource_specs_with_request, render_alert_sync_assessment_text,
+    render_sync_apply_intent_text, render_sync_plan_text, render_sync_summary_text, run_sync_cli,
+    SyncApplyArgs, SyncAssessAlertsArgs, SyncAuditArgs, SyncBundleArgs, SyncBundlePreflightArgs,
+    SyncCliArgs, SyncGroupCommand, SyncOutputFormat, SyncPlanArgs, SyncPreflightArgs,
+    SyncReviewArgs, SyncSummaryArgs, DEFAULT_REVIEW_TOKEN,
 };
 use crate::dashboard::CommonCliArgs;
 use clap::{CommandFactory, Parser};
@@ -74,6 +75,7 @@ fn sync_audit_help_mentions_lock_and_drift_controls() {
     assert!(help.contains("--lock-file"));
     assert!(help.contains("--write-lock"));
     assert!(help.contains("--fail-on-drift"));
+    assert!(help.contains("--interactive"));
 }
 
 #[test]
@@ -168,6 +170,7 @@ fn parse_sync_cli_supports_audit_command() {
         "--write-lock",
         "./next-lock.json",
         "--fail-on-drift",
+        "--interactive",
         "--output",
         "json",
     ]);
@@ -179,6 +182,7 @@ fn parse_sync_cli_supports_audit_command() {
             assert_eq!(inner.live_file.unwrap(), Path::new("./live.json"));
             assert_eq!(inner.write_lock.unwrap(), Path::new("./next-lock.json"));
             assert!(inner.fail_on_drift);
+            assert!(inner.interactive);
             assert_eq!(inner.output, SyncOutputFormat::Json);
         }
         _ => panic!("expected audit"),
@@ -2939,10 +2943,154 @@ fn build_review_operation_diff_model_formats_changed_fields_side_by_side() {
     assert_eq!(model.action, "would-update");
     assert_eq!(model.live_lines.len(), 2);
     assert_eq!(model.desired_lines.len(), 2);
-    assert!(model.live_lines.iter().all(|row| row.0));
-    assert!(model.desired_lines.iter().all(|row| row.0));
-    assert!(model.live_lines[0].1.contains("title"));
-    assert!(model.desired_lines[1].1.contains("refresh"));
+    assert!(model.live_lines.iter().all(|row| row.changed));
+    assert!(model.desired_lines.iter().all(|row| row.changed));
+    assert_eq!(model.live_lines[0].marker, '-');
+    assert_eq!(model.desired_lines[0].marker, '+');
+    assert!(model.live_lines[0].content.starts_with("  1 | "));
+    assert!(model.desired_lines[1].content.starts_with("  2 | "));
+    assert!(model.live_lines[0].content.contains("title"));
+    assert!(model.desired_lines[1].content.contains("refresh"));
+    assert!(model.live_lines[0].highlight_range.is_some());
+    assert!(model.desired_lines[0].highlight_range.is_some());
+}
+
+#[test]
+fn review_operation_preview_uses_readable_action_labels() {
+    let plan = json!({
+        "kind": "grafana-utils-sync-plan",
+        "operations": [
+            {
+                "kind": "datasource",
+                "identity": "prom-main",
+                "action": "would-update",
+                "changedFields": ["url"]
+            }
+        ]
+    });
+
+    let items = super::review_tui::collect_reviewable_operations(&plan).unwrap();
+    let preview = super::review_tui::operation_preview(&items[0]);
+    let title = super::review_tui::selection_title_with_position(Some(&items[0]), None, None);
+    let positioned_title =
+        super::review_tui::selection_title_with_position(Some(&items[0]), Some(0), Some(3));
+    let detail_lines = super::review_tui::operation_detail_line_count(&items[0]);
+    let changed_count = super::review_tui::operation_changed_count(&items[0]);
+
+    assert_eq!(preview[0], "Action: UPDATE");
+    assert_eq!(title, "Selection [UPDATE] prom-main");
+    assert_eq!(positioned_title, "Selection 1/3 [UPDATE] prom-main");
+    assert_eq!(detail_lines, 1);
+    assert_eq!(changed_count, 0);
+    assert_eq!(
+        super::review_tui::diff_pane_title("Live", "would-update", "datasource prom-main", 0, 3),
+        "Live 1/3 [would-update] datasource prom-main"
+    );
+    let controls = super::review_tui::build_diff_controls_lines(
+        0,
+        3,
+        super::review_tui::DiffPaneFocus::Live,
+        false,
+        true,
+        2,
+        12,
+        1,
+        0,
+    );
+    assert_eq!(controls.len(), 3);
+    assert!(controls[0].to_string().contains("Item 1/3"));
+    assert!(controls[0].to_string().contains("Live wrap OFF"));
+    assert!(controls[0].to_string().contains("Desired wrap ON"));
+}
+
+#[test]
+fn review_diff_scroll_max_uses_longer_side() {
+    let model = super::review_tui::ReviewDiffModel {
+        title: "dashboard cpu-main".to_string(),
+        action: "would-update".to_string(),
+        live_lines: vec![super::review_tui::ReviewDiffLine {
+            changed: true,
+            marker: '-',
+            content: "  1 | title: \"old\"".to_string(),
+            highlight_range: Some((13, 16)),
+        }],
+        desired_lines: vec![
+            super::review_tui::ReviewDiffLine {
+                changed: true,
+                marker: '+',
+                content: "  1 | title: \"new\"".to_string(),
+                highlight_range: Some((13, 16)),
+            },
+            super::review_tui::ReviewDiffLine {
+                changed: true,
+                marker: '+',
+                content: "  2 | refresh: \"5s\"".to_string(),
+                highlight_range: Some((15, 19)),
+            },
+            super::review_tui::ReviewDiffLine {
+                changed: true,
+                marker: '+',
+                content: "  3 | tags: [\"prod\"]".to_string(),
+                highlight_range: Some((11, 19)),
+            },
+        ],
+    };
+
+    assert_eq!(
+        super::review_tui::diff_scroll_max(&model, super::review_tui::DiffPaneFocus::Live),
+        0
+    );
+    assert_eq!(
+        super::review_tui::diff_scroll_max(&model, super::review_tui::DiffPaneFocus::Desired),
+        2
+    );
+}
+
+#[test]
+fn wrap_text_chunks_splits_long_diff_lines_for_pane_width() {
+    let wrapped = super::review_tui::wrap_text_chunks(
+        "  1 | datasourceUid: \"smoke-prom-extra-with-very-long-name\"",
+        18,
+    );
+
+    assert!(wrapped.len() > 1);
+    assert_eq!(wrapped[0], "  1 | datasourceUi");
+}
+
+#[test]
+fn clip_text_window_slices_nowrap_diff_content() {
+    let clipped = super::review_tui::clip_text_window(
+        "  1 | datasourceUid: \"smoke-prom-extra-with-very-long-name\"",
+        6,
+        16,
+    );
+
+    assert_eq!(clipped, "datasourceUid: \"");
+}
+
+#[test]
+fn review_diff_model_orders_changed_fields_before_unchanged_fields() {
+    let operation = json!({
+        "kind": "datasource",
+        "identity": "prom-main",
+        "action": "would-update",
+        "live": {
+            "name": "Prometheus Main",
+            "type": "prometheus",
+            "url": "http://prometheus:9090"
+        },
+        "desired": {
+            "name": "Prometheus Main",
+            "type": "prometheus",
+            "url": "http://prometheus-v2:9090"
+        }
+    });
+
+    let model = super::review_tui::build_review_operation_diff_model(&operation).unwrap();
+
+    assert_eq!(model.live_lines[0].marker, '-');
+    assert!(model.live_lines[0].content.contains("url"));
+    assert_eq!(model.live_lines[1].marker, '=');
 }
 
 #[test]
@@ -2971,6 +3119,86 @@ fn render_sync_audit_text_reports_drift_summary_and_rows() {
     assert!(lines[2].contains("Drift: count=2"));
     assert!(lines[3].contains("[drift-detected] dashboard cpu-main"));
     assert!(lines[4].contains("[missing-live] datasource prom-main"));
+}
+
+#[test]
+fn build_sync_audit_tui_groups_summarizes_triage_sections() {
+    let audit = json!({
+        "summary": {
+            "managedCount": 4,
+            "baselineCount": 4,
+            "currentPresentCount": 3,
+            "currentMissingCount": 1,
+            "driftCount": 2,
+            "inSyncCount": 1,
+            "missingLockCount": 1,
+            "missingLiveCount": 1
+        },
+        "drifts": []
+    });
+
+    let groups = build_sync_audit_tui_groups(&audit).expect("build groups");
+    assert_eq!(groups[0].label, "All");
+    assert_eq!(groups[0].count, 4);
+    assert_eq!(groups[1].label, "Missing Live");
+    assert_eq!(groups[1].count, 1);
+    assert_eq!(groups[2].label, "Missing Lock");
+    assert_eq!(groups[2].count, 1);
+    assert_eq!(groups[3].label, "Drift");
+    assert_eq!(groups[3].count, 2);
+}
+
+#[test]
+fn build_sync_audit_tui_rows_filters_by_status() {
+    let audit = json!({
+        "summary": {
+            "managedCount": 4,
+            "baselineCount": 4,
+            "currentPresentCount": 3,
+            "currentMissingCount": 1,
+            "driftCount": 1,
+            "inSyncCount": 1,
+            "missingLockCount": 1,
+            "missingLiveCount": 1
+        },
+        "drifts": [
+            {
+                "status":"drift-detected",
+                "kind":"dashboard",
+                "identity":"cpu-main",
+                "baselineStatus":"present",
+                "currentStatus":"present",
+                "driftedFields":["title","refresh"]
+            },
+            {
+                "status":"missing-live",
+                "kind":"datasource",
+                "identity":"prom-main",
+                "baselineStatus":"present",
+                "currentStatus":"missing",
+                "driftedFields":[]
+            },
+            {
+                "status":"missing-lock",
+                "kind":"contact-point",
+                "identity":"ops-email",
+                "baselineStatus":"missing",
+                "currentStatus":"present",
+                "driftedFields":[]
+            }
+        ]
+    });
+
+    let drift_rows = build_sync_audit_tui_rows(&audit, "drift-detected").expect("drift rows");
+    let missing_live_rows =
+        build_sync_audit_tui_rows(&audit, "missing-live").expect("missing-live rows");
+    let all_rows = build_sync_audit_tui_rows(&audit, "all").expect("all rows");
+
+    assert_eq!(drift_rows.len(), 1);
+    assert_eq!(drift_rows[0].kind, "drift-detected");
+    assert_eq!(missing_live_rows.len(), 1);
+    assert_eq!(missing_live_rows[0].kind, "missing-live");
+    assert_eq!(all_rows.len(), 3);
 }
 
 #[test]
@@ -3055,6 +3283,7 @@ fn run_sync_cli_audit_builds_lock_and_allows_clean_write() {
         write_lock: Some(lock_file.clone()),
         fail_on_drift: false,
         output: SyncOutputFormat::Json,
+        interactive: false,
     }));
 
     assert!(result.is_ok());
@@ -3115,6 +3344,7 @@ fn run_sync_cli_audit_rejects_drift_when_fail_on_drift_is_set() {
         write_lock: None,
         fail_on_drift: true,
         output: SyncOutputFormat::Json,
+        interactive: false,
     }))
     .unwrap_err()
     .to_string();

@@ -4,24 +4,29 @@
 use super::{
     attach_dashboard_folder_paths_with_request, build_dashboard_capture_url, build_export_metadata,
     build_export_variant_dirs, build_external_export_document, build_folder_inventory_status,
-    build_folder_path, build_impact_document, build_import_auth_context, build_import_payload,
-    build_output_path, build_preserved_web_import_document, build_root_export_index,
-    build_topology_document, diff_dashboards_with_request, discover_dashboard_files,
-    export_dashboards_with_request, extract_dashboard_variables, format_dashboard_summary_line,
-    format_export_progress_line, format_export_verbose_line, format_folder_inventory_status_line,
-    format_import_progress_line, format_import_verbose_line, import_dashboards_with_org_clients,
-    import_dashboards_with_request, infer_screenshot_output_format, list_dashboards_with_request,
-    parse_cli_from, render_dashboard_governance_gate_result, render_dashboard_summary_csv,
+    build_folder_path, build_governance_gate_tui_groups, build_governance_gate_tui_items,
+    build_impact_browser_items, build_impact_document, build_impact_tui_groups,
+    build_import_auth_context, build_import_payload, build_output_path,
+    build_preserved_web_import_document, build_root_export_index, build_topology_document,
+    build_topology_tui_groups, diff_dashboards_with_request, discover_dashboard_files,
+    export_dashboards_with_request, extract_dashboard_variables, filter_impact_tui_items,
+    filter_topology_tui_items, format_dashboard_summary_line, format_export_progress_line,
+    format_export_verbose_line, format_folder_inventory_status_line, format_import_progress_line,
+    format_import_verbose_line, import_dashboards_with_org_clients, import_dashboards_with_request,
+    infer_screenshot_output_format, list_dashboards_with_request, parse_cli_from,
+    render_dashboard_governance_gate_result, render_dashboard_summary_csv,
     render_dashboard_summary_json, render_dashboard_summary_table, render_impact_text,
     render_import_dry_run_json, render_import_dry_run_table, render_topology_dot,
     render_topology_mermaid, resolve_manifest_title, validate_screenshot_args, CommonCliArgs,
-    DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs, FolderInventoryStatusKind,
-    GovernanceGateArgs, GovernanceGateOutputFormat, ImpactOutputFormat, ImportArgs,
+    DashboardCliArgs, DashboardCommand, DashboardGovernanceGateFinding,
+    DashboardGovernanceGateResult, DashboardGovernanceGateSummary, DiffArgs, ExportArgs,
+    FolderInventoryStatusKind, GovernanceGateArgs, GovernanceGateOutputFormat, ImpactAlertResource,
+    ImpactDashboard, ImpactDocument, ImpactOutputFormat, ImpactSummary, ImportArgs,
     InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs,
     ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme, SimpleOutputFormat,
-    TopologyOutputFormat, ValidationOutputFormat, DASHBOARD_PERMISSION_BUNDLE_FILENAME,
-    DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME,
-    TOOL_SCHEMA_VERSION,
+    TopologyDocument, TopologyOutputFormat, ValidationOutputFormat,
+    DASHBOARD_PERMISSION_BUNDLE_FILENAME, DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME,
+    FOLDER_INVENTORY_FILENAME, TOOL_SCHEMA_VERSION,
 };
 use crate::common::api_response;
 use crate::dashboard::inspect::{
@@ -73,6 +78,54 @@ fn load_inspection_analyzer_cases() -> Vec<Value> {
         "../../../fixtures/dashboard_inspection_analyzer_cases.json"
     ))
     .unwrap()
+}
+
+fn sample_topology_tui_document() -> TopologyDocument {
+    let governance = json!({
+        "dashboardGovernance": [
+            {
+                "dashboardUid": "cpu-main",
+                "dashboardTitle": "CPU Main"
+            }
+        ],
+        "dashboardDatasourceEdges": [
+            {
+                "dashboardUid": "cpu-main",
+                "dashboardTitle": "CPU Main",
+                "datasourceUid": "prom-main",
+                "datasource": "Prometheus Main",
+                "panelCount": 1,
+                "queryCount": 1,
+                "queryFields": ["expr"],
+                "queryVariables": ["cluster"],
+                "metrics": ["up"],
+                "functions": [],
+                "measurements": [],
+                "buckets": []
+            }
+        ],
+        "dashboardDependencies": [
+            {
+                "dashboardUid": "cpu-main",
+                "panelIds": ["7"],
+                "panelVariables": ["cluster"],
+                "queryVariables": ["cluster"]
+            }
+        ]
+    });
+    let alert_contract = json!({
+        "kind": "grafana-utils-sync-alert-contract",
+        "resources": [
+            {
+                "kind": "grafana-alert-rule",
+                "identity": "cpu-high",
+                "title": "CPU High",
+                "references": ["prom-main", "cpu-main"]
+            }
+        ]
+    });
+
+    build_topology_document(&governance, Some(&alert_contract)).unwrap()
 }
 
 fn with_dashboard_import_live_preflight<F>(
@@ -2800,6 +2853,7 @@ fn parse_cli_supports_dashboard_topology_command() {
         "mermaid",
         "--output-file",
         "./dashboard-topology.mmd",
+        "--interactive",
     ]);
 
     match args.command {
@@ -2814,6 +2868,7 @@ fn parse_cli_supports_dashboard_topology_command() {
                 topology_args.output_file,
                 Some(PathBuf::from("./dashboard-topology.mmd"))
             );
+            assert!(topology_args.interactive);
         }
         _ => panic!("expected topology command"),
     }
@@ -2827,6 +2882,7 @@ fn topology_help_mentions_alert_contract_and_visual_formats() {
     assert!(help.contains("--alert-contract"));
     assert!(help.contains("--output-format"));
     assert!(help.contains("--output-file"));
+    assert!(help.contains("--interactive"));
     assert!(help.contains("mermaid"));
     assert!(help.contains("dot"));
     assert!(help.contains("graph"));
@@ -2976,6 +3032,7 @@ fn parse_cli_supports_dashboard_impact_command() {
         "./alert-contract.json",
         "--output-format",
         "json",
+        "--interactive",
     ]);
 
     match args.command {
@@ -2987,6 +3044,7 @@ fn parse_cli_supports_dashboard_impact_command() {
                 Some(PathBuf::from("./alert-contract.json"))
             );
             assert_eq!(impact_args.output_format, ImpactOutputFormat::Json);
+            assert!(impact_args.interactive);
         }
         _ => panic!("expected impact command"),
     }
@@ -3000,7 +3058,437 @@ fn impact_help_mentions_datasource_uid_and_output_format() {
     assert!(help.contains("--datasource-uid"));
     assert!(help.contains("--alert-contract"));
     assert!(help.contains("--output-format"));
+    assert!(help.contains("--interactive"));
     assert!(help.contains("blast radius"));
+}
+
+#[test]
+fn build_impact_tui_groups_summarizes_operator_sections() {
+    let document = ImpactDocument {
+        summary: ImpactSummary {
+            datasource_uid: "prom-main".to_string(),
+            dashboard_count: 1,
+            alert_resource_count: 4,
+            alert_rule_count: 1,
+            contact_point_count: 1,
+            mute_timing_count: 1,
+            notification_policy_count: 1,
+            template_count: 0,
+        },
+        dashboards: vec![ImpactDashboard {
+            dashboard_uid: "cpu-main".to_string(),
+            dashboard_title: "CPU Main".to_string(),
+            folder_path: "Platform".to_string(),
+            panel_count: 2,
+            query_count: 3,
+        }],
+        alert_resources: vec![
+            ImpactAlertResource {
+                kind: "alert-rule".to_string(),
+                identity: "cpu-high".to_string(),
+                title: "CPU High".to_string(),
+                source_path: "rules/cpu-high.json".to_string(),
+            },
+            ImpactAlertResource {
+                kind: "mute-timing".to_string(),
+                identity: "weekday".to_string(),
+                title: "Weekday".to_string(),
+                source_path: "mute/weekday.yaml".to_string(),
+            },
+            ImpactAlertResource {
+                kind: "contact-point".to_string(),
+                identity: "ops-email".to_string(),
+                title: "Ops Email".to_string(),
+                source_path: "contact/ops-email.yaml".to_string(),
+            },
+            ImpactAlertResource {
+                kind: "notification-policy".to_string(),
+                identity: "default".to_string(),
+                title: "Default Policy".to_string(),
+                source_path: "policies/default.yaml".to_string(),
+            },
+        ],
+        affected_contact_points: vec![ImpactAlertResource {
+            kind: "contact-point".to_string(),
+            identity: "ops-email".to_string(),
+            title: "Ops Email".to_string(),
+            source_path: "contact/ops-email.yaml".to_string(),
+        }],
+        affected_policies: vec![ImpactAlertResource {
+            kind: "notification-policy".to_string(),
+            identity: "default".to_string(),
+            title: "Default Policy".to_string(),
+            source_path: "policies/default.yaml".to_string(),
+        }],
+        affected_templates: Vec::new(),
+    };
+    let groups = build_impact_tui_groups(&document);
+
+    assert_eq!(groups[0].label, "All");
+    assert_eq!(groups[0].count, 5);
+    assert_eq!(groups[1].label, "Dashboards");
+    assert_eq!(groups[1].count, 1);
+    assert_eq!(groups[2].label, "Alert Rules");
+    assert_eq!(groups[2].count, 1);
+    assert_eq!(groups[4].label, "Contact Points");
+    assert_eq!(groups[4].count, 1);
+}
+
+#[test]
+fn filter_impact_tui_items_limits_items_to_selected_group() {
+    let document = ImpactDocument {
+        summary: ImpactSummary {
+            datasource_uid: "prom-main".to_string(),
+            dashboard_count: 1,
+            alert_resource_count: 3,
+            alert_rule_count: 1,
+            contact_point_count: 1,
+            mute_timing_count: 0,
+            notification_policy_count: 1,
+            template_count: 0,
+        },
+        dashboards: vec![ImpactDashboard {
+            dashboard_uid: "cpu-main".to_string(),
+            dashboard_title: "CPU Main".to_string(),
+            folder_path: "Platform".to_string(),
+            panel_count: 2,
+            query_count: 3,
+        }],
+        alert_resources: vec![
+            ImpactAlertResource {
+                kind: "alert-rule".to_string(),
+                identity: "cpu-high".to_string(),
+                title: "CPU High".to_string(),
+                source_path: "rules/cpu-high.json".to_string(),
+            },
+            ImpactAlertResource {
+                kind: "contact-point".to_string(),
+                identity: "ops-email".to_string(),
+                title: "Ops Email".to_string(),
+                source_path: "contact/ops-email.yaml".to_string(),
+            },
+            ImpactAlertResource {
+                kind: "notification-policy".to_string(),
+                identity: "default".to_string(),
+                title: "Default Policy".to_string(),
+                source_path: "policies/default.yaml".to_string(),
+            },
+        ],
+        affected_contact_points: vec![ImpactAlertResource {
+            kind: "contact-point".to_string(),
+            identity: "ops-email".to_string(),
+            title: "Ops Email".to_string(),
+            source_path: "contact/ops-email.yaml".to_string(),
+        }],
+        affected_policies: vec![ImpactAlertResource {
+            kind: "notification-policy".to_string(),
+            identity: "default".to_string(),
+            title: "Default Policy".to_string(),
+            source_path: "policies/default.yaml".to_string(),
+        }],
+        affected_templates: Vec::new(),
+    };
+    let dashboard_items = filter_impact_tui_items(&document, "dashboard");
+    let alert_rule_items = filter_impact_tui_items(&document, "alert-rule");
+    let all_items = filter_impact_tui_items(&document, "all");
+
+    assert_eq!(dashboard_items.len(), 1);
+    assert!(dashboard_items.iter().all(|item| item.kind == "dashboard"));
+    assert_eq!(alert_rule_items.len(), 1);
+    assert!(alert_rule_items
+        .iter()
+        .all(|item| item.kind == "alert-rule"));
+    assert_eq!(all_items.len(), build_impact_browser_items(&document).len());
+}
+
+#[test]
+fn governance_gate_help_mentions_interactive_browser() {
+    let help = render_dashboard_subcommand_help("governance-gate");
+    assert!(help.contains("--interactive"));
+}
+
+#[test]
+fn build_governance_gate_tui_groups_summarizes_findings() {
+    let result = DashboardGovernanceGateResult {
+        ok: false,
+        summary: DashboardGovernanceGateSummary {
+            dashboard_count: 2,
+            query_record_count: 5,
+            violation_count: 2,
+            warning_count: 1,
+            checked_rules: json!([]),
+        },
+        violations: vec![
+            DashboardGovernanceGateFinding {
+                severity: "error".to_string(),
+                code: "max-queries-per-dashboard".to_string(),
+                risk_kind: "".to_string(),
+                dashboard_uid: "cpu-main".to_string(),
+                dashboard_title: "CPU Main".to_string(),
+                panel_id: "".to_string(),
+                panel_title: "".to_string(),
+                ref_id: "".to_string(),
+                datasource: "".to_string(),
+                datasource_uid: "".to_string(),
+                datasource_family: "".to_string(),
+                message: "too many queries".to_string(),
+            },
+            DashboardGovernanceGateFinding {
+                severity: "error".to_string(),
+                code: "forbid-mixed-families".to_string(),
+                risk_kind: "".to_string(),
+                dashboard_uid: "logs-main".to_string(),
+                dashboard_title: "Logs Main".to_string(),
+                panel_id: "".to_string(),
+                panel_title: "".to_string(),
+                ref_id: "".to_string(),
+                datasource: "".to_string(),
+                datasource_uid: "".to_string(),
+                datasource_family: "".to_string(),
+                message: "mixed families".to_string(),
+            },
+        ],
+        warnings: vec![DashboardGovernanceGateFinding {
+            severity: "warning".to_string(),
+            code: "warning-risk".to_string(),
+            risk_kind: "broad-loki-selector".to_string(),
+            dashboard_uid: "logs-main".to_string(),
+            dashboard_title: "Logs Main".to_string(),
+            panel_id: "".to_string(),
+            panel_title: "".to_string(),
+            ref_id: "".to_string(),
+            datasource: "".to_string(),
+            datasource_uid: "".to_string(),
+            datasource_family: "loki".to_string(),
+            message: "wide query".to_string(),
+        }],
+    };
+
+    let groups = build_governance_gate_tui_groups(&result);
+    assert_eq!(groups[0].label, "All");
+    assert_eq!(groups[0].count, 3);
+    assert_eq!(groups[1].label, "Violations");
+    assert_eq!(groups[1].count, 2);
+    assert_eq!(groups[2].label, "Warnings");
+    assert_eq!(groups[2].count, 1);
+}
+
+#[test]
+fn build_governance_gate_tui_items_filters_by_kind() {
+    let result = DashboardGovernanceGateResult {
+        ok: false,
+        summary: DashboardGovernanceGateSummary {
+            dashboard_count: 2,
+            query_record_count: 5,
+            violation_count: 1,
+            warning_count: 1,
+            checked_rules: json!([]),
+        },
+        violations: vec![DashboardGovernanceGateFinding {
+            severity: "error".to_string(),
+            code: "max-queries-per-dashboard".to_string(),
+            risk_kind: "".to_string(),
+            dashboard_uid: "cpu-main".to_string(),
+            dashboard_title: "CPU Main".to_string(),
+            panel_id: "".to_string(),
+            panel_title: "".to_string(),
+            ref_id: "".to_string(),
+            datasource: "".to_string(),
+            datasource_uid: "".to_string(),
+            datasource_family: "".to_string(),
+            message: "too many queries".to_string(),
+        }],
+        warnings: vec![DashboardGovernanceGateFinding {
+            severity: "warning".to_string(),
+            code: "warning-risk".to_string(),
+            risk_kind: "broad-loki-selector".to_string(),
+            dashboard_uid: "logs-main".to_string(),
+            dashboard_title: "Logs Main".to_string(),
+            panel_id: "".to_string(),
+            panel_title: "".to_string(),
+            ref_id: "".to_string(),
+            datasource: "".to_string(),
+            datasource_uid: "".to_string(),
+            datasource_family: "loki".to_string(),
+            message: "wide query".to_string(),
+        }],
+    };
+
+    let violation_items = build_governance_gate_tui_items(&result, "violation");
+    let warning_items = build_governance_gate_tui_items(&result, "warning");
+    let all_items = build_governance_gate_tui_items(&result, "all");
+
+    assert_eq!(violation_items.len(), 1);
+    assert_eq!(violation_items[0].kind, "violation");
+    assert_eq!(warning_items.len(), 1);
+    assert_eq!(warning_items[0].kind, "warning");
+    assert_eq!(all_items.len(), 2);
+}
+
+#[test]
+fn inspect_live_help_mentions_interactive_browser() {
+    let help = render_dashboard_subcommand_help("inspect-live");
+    assert!(help.contains("--interactive"));
+}
+
+fn make_inspect_live_tui_fixture() -> (
+    super::ExportInspectionSummary,
+    super::inspect_governance::ExportInspectionGovernanceDocument,
+    super::ExportInspectionQueryReport,
+) {
+    let summary = super::ExportInspectionSummary {
+        import_dir: "/tmp/raw".to_string(),
+        export_org: Some("Main Org.".to_string()),
+        export_org_id: Some("1".to_string()),
+        dashboard_count: 1,
+        folder_count: 1,
+        panel_count: 1,
+        query_count: 1,
+        datasource_inventory_count: 1,
+        orphaned_datasource_count: 0,
+        mixed_dashboard_count: 0,
+        folder_paths: Vec::new(),
+        datasource_usage: Vec::new(),
+        datasource_inventory: Vec::new(),
+        orphaned_datasources: Vec::new(),
+        mixed_dashboards: Vec::new(),
+    };
+    let query = make_core_family_report_row(
+        "cpu-main",
+        "7",
+        "A",
+        "prom-main",
+        "Prometheus Main",
+        "prometheus",
+        "prometheus",
+        "up",
+        &[],
+    );
+    let report = super::ExportInspectionQueryReport {
+        import_dir: "/tmp/raw".to_string(),
+        summary: super::QueryReportSummary {
+            dashboard_count: 1,
+            panel_count: 1,
+            query_count: 1,
+            report_row_count: 1,
+        },
+        queries: vec![query],
+    };
+    let governance = super::inspect_governance::ExportInspectionGovernanceDocument {
+        summary: super::inspect_governance::GovernanceSummary {
+            dashboard_count: 1,
+            query_record_count: 1,
+            datasource_inventory_count: 1,
+            datasource_family_count: 1,
+            datasource_coverage_count: 1,
+            dashboard_datasource_edge_count: 1,
+            datasource_risk_coverage_count: 1,
+            dashboard_risk_coverage_count: 1,
+            mixed_datasource_dashboard_count: 0,
+            orphaned_datasource_count: 0,
+            risk_record_count: 2,
+            query_audit_count: 1,
+            dashboard_audit_count: 0,
+        },
+        datasource_families: Vec::new(),
+        dashboard_dependencies: Vec::new(),
+        dashboard_governance: vec![super::inspect_governance::DashboardGovernanceRow {
+            dashboard_uid: "cpu-main".to_string(),
+            dashboard_title: "CPU Main".to_string(),
+            folder_path: "General".to_string(),
+            panel_count: 1,
+            query_count: 1,
+            datasource_count: 1,
+            datasource_family_count: 1,
+            datasources: vec!["prom-main".to_string()],
+            datasource_families: vec!["prometheus".to_string()],
+            mixed_datasource: false,
+            risk_count: 1,
+            risk_kinds: vec!["prometheus-query-cost-score".to_string()],
+        }],
+        dashboard_datasource_edges: Vec::new(),
+        datasource_governance: Vec::new(),
+        datasources: Vec::new(),
+        risk_records: vec![super::inspect_governance::GovernanceRiskRow {
+            kind: "prometheus-query-cost-score".to_string(),
+            severity: "high".to_string(),
+            category: "cost".to_string(),
+            dashboard_uid: "cpu-main".to_string(),
+            panel_id: "7".to_string(),
+            datasource: "Prometheus Main".to_string(),
+            detail: "cost=3".to_string(),
+            recommendation: "Reduce expensive Prometheus query shapes before broad rollout."
+                .to_string(),
+        }],
+        query_audits: vec![super::inspect_governance::QueryAuditRow {
+            dashboard_uid: "cpu-main".to_string(),
+            dashboard_title: "CPU Main".to_string(),
+            folder_path: "General".to_string(),
+            panel_id: "7".to_string(),
+            panel_title: "CPU".to_string(),
+            ref_id: "A".to_string(),
+            datasource: "Prometheus Main".to_string(),
+            datasource_uid: "prom-main".to_string(),
+            datasource_family: "prometheus".to_string(),
+            aggregation_depth: 0,
+            regex_matcher_count: 0,
+            estimated_series_risk: "low".to_string(),
+            query_cost_score: 3,
+            score: 2,
+            severity: "medium".to_string(),
+            reasons: vec![
+                "broad-prometheus-selector".to_string(),
+                "prometheus-query-cost-score".to_string(),
+            ],
+            recommendations: vec![
+                "Add label filters to the Prometheus selector.".to_string(),
+                "Trim costly aggregation and range windows.".to_string(),
+            ],
+        }],
+        dashboard_audits: Vec::new(),
+    };
+
+    (summary, governance, report)
+}
+
+#[test]
+fn build_inspect_live_tui_groups_summarizes_dashboard_query_and_risk_sections() {
+    let (summary, governance, report) = make_inspect_live_tui_fixture();
+    let groups = super::build_inspect_live_tui_groups(&summary, &governance, &report);
+
+    assert_eq!(groups.len(), 4);
+    assert_eq!(groups[0].label, "All");
+    assert_eq!(groups[0].count, 5);
+    assert_eq!(groups[1].label, "Dashboards");
+    assert_eq!(groups[1].count, 1);
+    assert_eq!(groups[2].label, "Queries");
+    assert_eq!(groups[2].count, 1);
+    assert_eq!(groups[3].label, "Risks");
+    assert_eq!(groups[3].count, 3);
+}
+
+#[test]
+fn filter_inspect_live_tui_items_limits_items_to_selected_group() {
+    let (summary, governance, report) = make_inspect_live_tui_fixture();
+    let dashboard_items =
+        super::filter_inspect_live_tui_items(&summary, &governance, &report, "dashboards");
+    let query_items =
+        super::filter_inspect_live_tui_items(&summary, &governance, &report, "queries");
+    let risk_items = super::filter_inspect_live_tui_items(&summary, &governance, &report, "risks");
+    let all_items = super::filter_inspect_live_tui_items(&summary, &governance, &report, "all");
+
+    assert_eq!(dashboard_items.len(), 1);
+    assert!(dashboard_items.iter().all(|item| item.kind == "dashboard"));
+    assert_eq!(query_items.len(), 1);
+    assert!(query_items.iter().all(|item| item.kind == "query"));
+    assert_eq!(risk_items.len(), 3);
+    assert!(risk_items.iter().any(|item| item.kind == "dashboard-risk"));
+    assert!(risk_items.iter().any(|item| item.kind == "risk-record"));
+    assert!(risk_items.iter().any(|item| item.kind == "query-audit"));
+    assert_eq!(all_items.len(), 5);
+    assert!(all_items.iter().any(|item| item.kind == "dashboard"));
+    assert!(all_items.iter().any(|item| item.kind == "query"));
+    assert!(all_items.iter().any(|item| item.kind == "risk-record"));
 }
 
 #[test]
@@ -3264,6 +3752,51 @@ fn build_dashboard_topology_document_renders_mermaid_and_dot() {
         "\"datasource:prom-main\" -> \"alert:grafana-alert-rule:cpu-high\" [label=\"alerts-on\"]"
     ));
     assert!(dot.contains("\"datasource:prom-main\" -> \"dashboard:cpu-main\" [label=\"feeds\"]"));
+}
+
+#[test]
+fn build_topology_tui_groups_summarize_node_kinds() {
+    let document = sample_topology_tui_document();
+    let groups = build_topology_tui_groups(&document);
+
+    let counts = groups
+        .iter()
+        .map(|group| (group.label.as_str(), group.count))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        counts,
+        vec![
+            ("All", 5),
+            ("Datasources", 1),
+            ("Dashboards", 1),
+            ("Panels", 1),
+            ("Variables", 1),
+            ("Alert Rules", 1),
+            ("Contact Points", 0),
+            ("Mute Timings", 0),
+            ("Policies", 0),
+            ("Templates", 0),
+            ("Alert Resources", 0),
+        ]
+    );
+}
+
+#[test]
+fn filter_topology_tui_items_limits_items_to_selected_group() {
+    let document = sample_topology_tui_document();
+
+    let variables = filter_topology_tui_items(&document, "variable");
+    assert_eq!(variables.len(), 1);
+    assert_eq!(variables[0].kind, "variable");
+    assert_eq!(variables[0].title, "cluster");
+
+    let panels = filter_topology_tui_items(&document, "panel");
+    assert_eq!(panels.len(), 1);
+    assert_eq!(panels[0].kind, "panel");
+    assert_eq!(panels[0].title, "Panel 7");
+
+    let all = filter_topology_tui_items(&document, "all");
+    assert_eq!(all.len(), document.nodes.len());
 }
 
 #[test]
@@ -11974,6 +12507,7 @@ fn run_dashboard_governance_gate_writes_json_output_file() {
         queries: queries_path,
         output_format: GovernanceGateOutputFormat::Json,
         json_output: Some(json_output.clone()),
+        interactive: false,
     };
 
     super::run_dashboard_governance_gate(&args).unwrap();
@@ -13006,6 +13540,7 @@ fn inspect_live_dashboards_with_request_reports_live_json_via_temp_raw_export() 
         help_full: false,
         no_header: false,
         output_file: None,
+        interactive: false,
     };
 
     let count = super::inspect_live_dashboards_with_request(
@@ -13104,6 +13639,7 @@ fn inspect_live_dashboards_with_request_writes_governance_json_to_output_file() 
         help_full: false,
         no_header: false,
         output_file: Some(output_file.clone()),
+        interactive: false,
     };
 
     let count = super::inspect_live_dashboards_with_request(
@@ -13432,6 +13968,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         help_full: false,
         no_header: false,
         output_file: Some(live_report_output.clone()),
+        interactive: false,
     };
 
     let live_report_count = super::inspect_live_dashboards_with_request(
@@ -13499,6 +14036,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         help_full: false,
         no_header: false,
         output_file: Some(live_governance_output.clone()),
+        interactive: false,
     };
     let live_governance_count = super::inspect_live_dashboards_with_request(
         core_family_inspect_live_request_fixture(
@@ -13545,6 +14083,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         help_full: false,
         no_header: false,
         output_file: Some(live_dependency_output.clone()),
+        interactive: false,
     };
     let live_dependency_count = super::inspect_live_dashboards_with_request(
         core_family_inspect_live_request_fixture(
@@ -13868,6 +14407,7 @@ fn inspect_live_dashboards_with_request_all_orgs_aggregates_multiple_org_exports
         help_full: false,
         no_header: false,
         output_file: Some(live_report_output.clone()),
+        interactive: false,
     };
     let live_report_count = super::inspect_live_dashboards_with_request(
         all_orgs_inspect_live_request_fixture(),
@@ -13911,6 +14451,7 @@ fn inspect_live_dashboards_with_request_all_orgs_aggregates_multiple_org_exports
         help_full: false,
         no_header: false,
         output_file: Some(live_governance_output.clone()),
+        interactive: false,
     };
     let live_governance_count = super::inspect_live_dashboards_with_request(
         all_orgs_inspect_live_request_fixture(),
@@ -13954,6 +14495,7 @@ fn inspect_live_dashboards_with_request_all_orgs_aggregates_multiple_org_exports
         help_full: false,
         no_header: false,
         output_file: Some(live_dependency_output.clone()),
+        interactive: false,
     };
     let live_dependency_count = super::inspect_live_dashboards_with_request(
         all_orgs_inspect_live_request_fixture(),
@@ -14311,6 +14853,7 @@ fn inspect_live_dashboards_with_request_all_orgs_matches_export_root_governance_
         help_full: false,
         no_header: false,
         output_file: Some(live_governance_output.clone()),
+        interactive: false,
     };
     let live_governance_count =
         super::inspect_live_dashboards_with_request(&mut request_fixture, &live_governance_args)
@@ -14352,6 +14895,7 @@ fn inspect_live_dashboards_with_request_all_orgs_matches_export_root_governance_
         help_full: false,
         no_header: false,
         output_file: Some(live_report_output.clone()),
+        interactive: false,
     };
     let live_report_count =
         super::inspect_live_dashboards_with_request(&mut request_fixture, &live_report_args)
@@ -14393,6 +14937,7 @@ fn inspect_live_dashboards_with_request_all_orgs_matches_export_root_governance_
         help_full: false,
         no_header: false,
         output_file: Some(live_dependency_output.clone()),
+        interactive: false,
     };
     let live_dependency_count =
         super::inspect_live_dashboards_with_request(&mut request_fixture, &live_dependency_args)

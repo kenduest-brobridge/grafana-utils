@@ -25,6 +25,7 @@ use super::inspect_governance::{
     build_export_inspection_governance_document, normalize_family_name,
     render_governance_table_report,
 };
+use super::inspect_live_tui::run_inspect_live_interactive as run_inspect_live_tui;
 use super::inspect_render::{
     render_csv, render_grouped_query_report, render_grouped_query_table_report, render_simple_table,
 };
@@ -2493,6 +2494,14 @@ fn analyze_export_dir_at_path(args: &InspectExportArgs, import_dir: &Path) -> Re
     Ok(summary.dashboard_count)
 }
 
+fn run_interactive_inspect_live_tui_from_dir(import_dir: &Path) -> Result<usize> {
+    let summary = build_export_inspection_summary(import_dir)?;
+    let report = build_export_inspection_query_report(import_dir)?;
+    let governance = build_export_inspection_governance_document(&summary, &report);
+    run_inspect_live_tui(&summary, &governance, &report)?;
+    Ok(summary.dashboard_count)
+}
+
 /// analyze export dir.
 pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
     validate_inspect_export_report_args(args)?;
@@ -2642,6 +2651,9 @@ pub(crate) fn inspect_live_dashboards_with_client(
         &summaries,
     )?;
     write_json_document(&folder_inventory, &raw_dir.join(FOLDER_INVENTORY_FILENAME))?;
+    if args.interactive {
+        return run_interactive_inspect_live_tui_from_dir(&raw_dir);
+    }
     let inspect_args = build_export_inspect_args_from_live(args, raw_dir);
     analyze_export_dir(&inspect_args)
 }
@@ -2872,6 +2884,9 @@ where
     let export_args = build_live_export_args(args, temp_dir.path.clone());
     let _ = export::export_dashboards_with_request(&mut request_json, &export_args)?;
     let inspect_import_dir = prepare_inspect_live_import_dir(&temp_dir.path, args)?;
+    if args.interactive {
+        return run_interactive_inspect_live_tui_from_dir(&inspect_import_dir);
+    }
     let inspect_args = build_export_inspect_args_from_live(args, inspect_import_dir);
     analyze_export_dir(&inspect_args)
 }

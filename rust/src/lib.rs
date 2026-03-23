@@ -32,6 +32,8 @@ pub mod datasource_provider;
 pub mod help_styles;
 /// Module definition for http.
 pub mod http;
+/// Module definition for interactive_browser.
+pub(crate) mod interactive_browser;
 /// Module definition for sync.
 pub mod sync;
 /// Module definition for sync_bundle_alert_contracts.

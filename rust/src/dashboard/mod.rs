@@ -23,7 +23,9 @@ mod cli_defs;
 mod export;
 mod files;
 mod governance_gate;
+mod governance_gate_tui;
 mod help;
+mod impact_tui;
 mod import;
 mod inspect;
 mod inspect_analyzer_flux;
@@ -32,6 +34,7 @@ mod inspect_analyzer_prometheus;
 mod inspect_analyzer_search;
 mod inspect_analyzer_sql;
 mod inspect_governance;
+mod inspect_live_tui;
 mod inspect_render;
 mod inspect_report;
 mod inspect_summary;
@@ -41,6 +44,7 @@ mod models;
 mod prompt;
 mod screenshot;
 mod topology;
+mod topology_tui;
 mod validate;
 mod vars;
 
@@ -91,6 +95,12 @@ pub(crate) use governance_gate::{
     DashboardGovernanceGateSummary,
 };
 #[cfg(test)]
+pub(crate) use governance_gate_tui::{
+    build_governance_gate_tui_groups, build_governance_gate_tui_items,
+};
+#[cfg(test)]
+pub(crate) use impact_tui::{build_impact_tui_groups, filter_impact_tui_items};
+#[cfg(test)]
 pub(crate) use import::{
     build_import_auth_context, describe_dashboard_import_mode, diff_dashboards_with_request,
     format_import_progress_line, format_import_verbose_line, import_dashboards_with_org_clients,
@@ -116,6 +126,8 @@ pub(crate) use inspect_governance::{
     build_export_inspection_governance_document, normalize_family_name,
     render_governance_table_report,
 };
+#[cfg(test)]
+pub(crate) use inspect_live_tui::{build_inspect_live_tui_groups, filter_inspect_live_tui_items};
 #[cfg(test)]
 pub(crate) use inspect_render::{
     render_csv, render_grouped_query_report, render_grouped_query_table_report,
@@ -172,9 +184,12 @@ pub(crate) use screenshot::{
 };
 #[cfg(test)]
 pub(crate) use topology::{
-    build_impact_document, build_topology_document, render_impact_text, render_topology_dot,
-    render_topology_mermaid,
+    build_impact_browser_items, build_impact_document, build_topology_document, render_impact_text,
+    render_topology_dot, render_topology_mermaid, ImpactAlertResource, ImpactDashboard,
+    ImpactDocument, ImpactSummary, TopologyDocument,
 };
+#[cfg(test)]
+pub(crate) use topology_tui::{build_topology_tui_groups, filter_topology_tui_items};
 #[cfg(test)]
 pub(crate) use validate::{render_validation_result_json, validate_dashboard_export_dir};
 #[cfg(test)]

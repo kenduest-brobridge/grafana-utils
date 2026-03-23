@@ -8,10 +8,12 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use reqwest::Method;
 use serde_json::{Map, Value};
+use std::cmp::Ordering;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 pub mod audit;
+pub mod audit_tui;
 pub mod bundle_alert_contracts;
 pub mod bundle_preflight;
 pub mod preflight;
@@ -22,6 +24,7 @@ use self::audit::{
     build_sync_audit_document, build_sync_lock_document, build_sync_lock_document_from_lock,
     render_sync_audit_text,
 };
+use self::audit_tui::run_sync_audit_interactive;
 use self::bundle_preflight::{
     build_sync_bundle_preflight_document, render_sync_bundle_preflight_text,
     SYNC_BUNDLE_PREFLIGHT_KIND,
@@ -77,6 +80,9 @@ pub struct SyncCliArgs {
     #[command(subcommand)]
     pub command: SyncGroupCommand,
 }
+
+#[cfg(test)]
+pub(crate) use audit_tui::{build_sync_audit_tui_groups, build_sync_audit_tui_rows};
 
 /// Struct definition for SyncSummaryArgs.
 #[derive(Debug, Clone, Args)]
@@ -342,6 +348,13 @@ pub struct SyncAuditArgs {
         help_heading = "Output Options"
     )]
     pub output: SyncOutputFormat,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Open an interactive terminal browser over drift rows.",
+        help_heading = "Output Options"
+    )]
+    pub interactive: bool,
 }
 
 /// Struct definition for SyncPreflightArgs.
@@ -2956,6 +2969,106 @@ fn emit_text_or_json(document: &Value, lines: Vec<String>, output: SyncOutputFor
     Ok(())
 }
 
+fn sync_audit_field<'a>(row: &'a Value, key: &str) -> &'a str {
+    row.get(key).and_then(Value::as_str).unwrap_or("")
+}
+
+fn sync_audit_display<'a>(value: &'a str, fallback: &'a str) -> &'a str {
+    if value.is_empty() {
+        fallback
+    } else {
+        value
+    }
+}
+
+fn sync_audit_status_rank(status: &str) -> u8 {
+    match status {
+        "missing-live" => 0,
+        "missing-lock" => 1,
+        "drift-detected" => 2,
+        _ => 3,
+    }
+}
+
+fn sync_audit_drift_cmp(left: &Value, right: &Value) -> Ordering {
+    sync_audit_status_rank(sync_audit_field(left, "status"))
+        .cmp(&sync_audit_status_rank(sync_audit_field(right, "status")))
+        .then_with(|| sync_audit_field(left, "kind").cmp(sync_audit_field(right, "kind")))
+        .then_with(|| sync_audit_field(left, "identity").cmp(sync_audit_field(right, "identity")))
+        .then_with(|| sync_audit_field(left, "title").cmp(sync_audit_field(right, "title")))
+        .then_with(|| {
+            sync_audit_field(left, "sourcePath").cmp(sync_audit_field(right, "sourcePath"))
+        })
+}
+
+fn sync_audit_drift_title(drift: &Value) -> String {
+    format!(
+        "{} {}",
+        sync_audit_display(sync_audit_field(drift, "kind"), "unknown"),
+        sync_audit_display(sync_audit_field(drift, "identity"), "unknown"),
+    )
+}
+
+fn sync_audit_drift_meta(drift: &Value) -> String {
+    let baseline_status = sync_audit_display(sync_audit_field(drift, "baselineStatus"), "unknown");
+    let current_status = sync_audit_display(sync_audit_field(drift, "currentStatus"), "unknown");
+    format!(
+        "{} | base={} cur={}",
+        sync_audit_display(sync_audit_field(drift, "status"), "unknown"),
+        baseline_status,
+        current_status
+    )
+}
+
+fn sync_audit_drift_details(drift: &Value) -> Vec<String> {
+    let mut details = vec![
+        format!(
+            "Triage: {}",
+            sync_audit_display(sync_audit_field(drift, "status"), "(unknown)")
+        ),
+        format!(
+            "Baseline/current: {} -> {}",
+            sync_audit_display(sync_audit_field(drift, "baselineStatus"), "(unknown)"),
+            sync_audit_display(sync_audit_field(drift, "currentStatus"), "(unknown)")
+        ),
+        format!(
+            "Source: {}",
+            sync_audit_display(sync_audit_field(drift, "sourcePath"), "(not set)")
+        ),
+    ];
+
+    let drifted_fields = drift
+        .get("driftedFields")
+        .and_then(Value::as_array)
+        .map(|values| values.iter().filter_map(Value::as_str).collect::<Vec<_>>())
+        .unwrap_or_default();
+    details.push(format!(
+        "Fields: {}",
+        if drifted_fields.is_empty() {
+            "none".to_string()
+        } else {
+            drifted_fields.join(", ")
+        }
+    ));
+    let baseline_checksum = drift
+        .get("baselineChecksum")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("(none)");
+    let current_checksum = drift
+        .get("currentChecksum")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("(none)");
+    if baseline_checksum != "(none)" || current_checksum != "(none)" {
+        details.push(format!(
+            "Checksums: baseline={} current={}",
+            baseline_checksum, current_checksum
+        ));
+    }
+    details
+}
+
 fn run_sync_audit(args: SyncAuditArgs) -> Result<()> {
     if args.managed_file.is_none() && args.lock_file.is_none() {
         return Err(message(
@@ -3005,6 +3118,9 @@ fn run_sync_audit(args: SyncAuditArgs) -> Result<()> {
         return Err(message(format!(
             "Sync audit detected {drift_count} drifted resource(s)."
         )));
+    }
+    if args.interactive {
+        return run_sync_audit_interactive(&audit);
     }
     emit_text_or_json(&audit, render_sync_audit_text(&audit)?, args.output)
 }

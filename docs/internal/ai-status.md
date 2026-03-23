@@ -5,6 +5,48 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-23 - Task: Specialize Rust Dashboard Inspect-Live Interactive TUI
+- State: Done
+- Scope: `rust/src/dashboard/inspect.rs`, `rust/src/dashboard/inspect_live_tui.rs`, `rust/src/dashboard/mod.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `dashboard inspect-live --interactive` still routed through the shared browser path, so operators got a flat list instead of a dashboard-specific review surface for governance rollups, query rows, and risk artifacts.
+- Current Update: Routed live inspect into the dedicated `inspect_live_tui` module, kept the three-pane operator layout, and expanded risk grouping so dashboard risk rows, query audits, and risk records all appear in the specialized TUI. The test-only helpers now pin the group counts and group-filtered item projection for the new live review surface.
+- Result: Rust dashboard inspect-live now uses a command-specific interactive TUI instead of the generic browser path, while the non-interactive artifact outputs stay unchanged.
+
+## 2026-03-23 - Task: Specialize Rust Dashboard Topology Interactive TUI
+- State: Done
+- Scope: `rust/src/dashboard/topology.rs`, `rust/src/dashboard/topology_tui.rs`, `rust/src/dashboard/mod.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `dashboard topology --interactive` still projected topology nodes into the shared browser path, so operators got a flat review surface instead of a topology-specific grouping layout for datasources, dashboards, panels, variables, and alert resources.
+- Current Update: Added a dedicated topology TUI with grouped node kinds on the left, filtered nodes in the middle, and node metadata plus inbound/outbound edge detail on the right. The non-interactive graph outputs stay unchanged, and test-only interactive behavior still uses the browser projection so the existing harness remains stable.
+- Result: Rust topology interactive review now has a command-specific operator layout instead of the generic shared browser, while helper tests pin the group counts and filtered node projection.
+
+## 2026-03-23 - Task: Add Shared Rust Interactive Browsers For Review-Heavy Commands
+- State: Done
+- Scope: `rust/src/interactive_browser.rs`, `rust/src/dashboard/cli_defs.rs`, `rust/src/dashboard/topology.rs`, `rust/src/dashboard/governance_gate.rs`, `rust/src/dashboard/inspect.rs`, `rust/src/dashboard/rust_tests.rs`, `rust/src/sync/mod.rs`, `rust/src/sync/cli_rust_tests.rs`, `rust/src/lib.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust only had one full-screen TUI path, `sync review --interactive`. Other review-heavy commands such as `dashboard impact`, `dashboard topology`, `dashboard governance-gate`, `dashboard inspect-live`, and `sync audit` were text/json-only, even though they already emitted artifact documents that were more suitable for browsing than for one-shot rendering.
+- Current Update: Added a shared read-only list/detail TUI browser and wired first-pass `--interactive` browsing into the five review-heavy commands above. The browser stays intentionally generic for now: a summary block, an item list on the left, and a detail pane on the right, with the command-specific item builders projecting existing artifact rows into browser items instead of duplicating five custom TUI implementations.
+- Result: Rust now has a consistent interactive browsing path for impact, topology, governance findings, inspect-live artifacts, and sync drift review, while keeping the existing non-interactive output formats intact.
+
+## 2026-03-23 - Task: Specialize Rust Dashboard Impact Interactive TUI
+- State: Done
+- Scope: `rust/src/dashboard/impact_tui.rs`, `rust/src/dashboard/mod.rs`, `rust/src/dashboard/topology.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `dashboard impact --interactive` existed only as a projection into the shared browser, so operators could browse rows but still lacked a blast-radius-specific layout that separated resource groups from affected items and detailed impact context.
+- Current Update: Added a dedicated `impact_tui` module and routed `dashboard impact --interactive` into a three-pane operator layout: impact groups on the left, affected items in the middle, and item details on the right. Groups now summarize the blast radius by dashboards, alert rules, mute timings, contact points, policies, and templates, while focused item lists stay scoped to the selected group.
+- Result: Rust now has a command-specific impact TUI instead of only the generic browser, making datasource migration and outage review materially easier without changing the non-interactive impact contract.
+
+## 2026-03-23 - Task: Specialize Rust Sync Audit Interactive TUI
+- State: Done
+- Scope: `rust/src/sync/audit_tui.rs`, `rust/src/sync/mod.rs`, `rust/src/sync/cli_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `sync audit --interactive` only projected drift rows into the shared browser, so operators could browse drift records but still lacked a triage-specific layout for missing-live, missing-lock, and drift-detected review.
+- Current Update: Added a dedicated `audit_tui` module and routed `sync audit --interactive` into a three-pane triage layout: status groups on the left, filtered drift rows in the middle, and diagnostic detail on the right. The groups now reflect audit triage categories directly, and the row projection stays focused on baseline/current status, source path, drifted fields, and checksums.
+- Result: Rust sync audit now has a command-specific terminal triage surface instead of a generic browser, which makes lock drift review much closer to an operator workflow.
+
+## 2026-03-23 - Task: Specialize Rust Governance Gate Interactive TUI
+- State: Done
+- Scope: `rust/src/dashboard/governance_gate_tui.rs`, `rust/src/dashboard/governance_gate.rs`, `rust/src/dashboard/mod.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `dashboard governance-gate --interactive` only projected ordered findings into the shared browser, so operators could browse rows but still lacked a dedicated findings-review layout for separating violations from warnings and drilling into scope/reason context quickly.
+- Current Update: Added a dedicated `governance_gate_tui` module and routed `dashboard governance-gate --interactive` into a three-pane findings reviewer: finding groups on the left, filtered findings in the middle, and detailed scope/reason context on the right. Violations and warnings now become explicit review groups while the existing non-interactive outputs and non-zero exit semantics remain unchanged.
+- Result: Rust governance gate now has a command-specific interactive reviewer instead of a generic browser, making policy-triage workflows much closer to an operator review surface.
+
 ## 2026-03-23 - Task: Add Rust Prometheus Query Cost Audit Signals
 - State: Done
 - Scope: `rust/src/dashboard/inspect_governance.rs`, `rust/src/dashboard/governance_gate.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
