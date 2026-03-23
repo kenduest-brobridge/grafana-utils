@@ -23,6 +23,16 @@ pub(crate) struct TopologySummary {
     pub(crate) dashboard_count: usize,
     #[serde(rename = "alertResourceCount")]
     pub(crate) alert_resource_count: usize,
+    #[serde(rename = "alertRuleCount")]
+    pub(crate) alert_rule_count: usize,
+    #[serde(rename = "contactPointCount")]
+    pub(crate) contact_point_count: usize,
+    #[serde(rename = "muteTimingCount")]
+    pub(crate) mute_timing_count: usize,
+    #[serde(rename = "notificationPolicyCount")]
+    pub(crate) notification_policy_count: usize,
+    #[serde(rename = "templateCount")]
+    pub(crate) template_count: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -54,6 +64,16 @@ pub(crate) struct ImpactSummary {
     pub(crate) dashboard_count: usize,
     #[serde(rename = "alertResourceCount")]
     pub(crate) alert_resource_count: usize,
+    #[serde(rename = "alertRuleCount")]
+    pub(crate) alert_rule_count: usize,
+    #[serde(rename = "contactPointCount")]
+    pub(crate) contact_point_count: usize,
+    #[serde(rename = "muteTimingCount")]
+    pub(crate) mute_timing_count: usize,
+    #[serde(rename = "notificationPolicyCount")]
+    pub(crate) notification_policy_count: usize,
+    #[serde(rename = "templateCount")]
+    pub(crate) template_count: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -85,6 +105,90 @@ pub(crate) struct ImpactDocument {
     pub(crate) dashboards: Vec<ImpactDashboard>,
     #[serde(rename = "alertResources")]
     pub(crate) alert_resources: Vec<ImpactAlertResource>,
+    #[serde(rename = "affectedContactPoints")]
+    pub(crate) affected_contact_points: Vec<ImpactAlertResource>,
+    #[serde(rename = "affectedPolicies")]
+    pub(crate) affected_policies: Vec<ImpactAlertResource>,
+    #[serde(rename = "affectedTemplates")]
+    pub(crate) affected_templates: Vec<ImpactAlertResource>,
+}
+
+#[derive(Clone, Debug)]
+struct ParsedAlertResource {
+    normalized_kind: String,
+    identity: String,
+    title: String,
+    source_path: String,
+    references: Vec<String>,
+    node_id: String,
+}
+
+fn normalize_alert_kind(kind: &str) -> &str {
+    match kind {
+        "grafana-alert-rule" => "alert-rule",
+        "grafana-contact-point" => "contact-point",
+        "grafana-mute-timing" => "mute-timing",
+        "grafana-notification-policies" | "grafana-notification-policy" => "notification-policy",
+        "grafana-notification-template" => "template",
+        _ => "alert-resource",
+    }
+}
+
+fn alert_resource_label(title: &str, identity: &str) -> String {
+    if title.is_empty() {
+        identity.to_string()
+    } else {
+        title.to_string()
+    }
+}
+
+fn collect_alert_resources(alert_contract: &Value) -> Result<Vec<ParsedAlertResource>> {
+    let resources = alert_contract
+        .get("resources")
+        .and_then(Value::as_array)
+        .ok_or_else(|| message("Alert contract JSON must contain a resources array."))?;
+    let mut parsed_resources = Vec::new();
+    for resource in resources {
+        let kind = string_field(resource, "kind");
+        let identity = string_field(resource, "identity");
+        let title = string_field(resource, "title");
+        if kind.is_empty() || identity.is_empty() {
+            continue;
+        }
+        let references = resource
+            .get("references")
+            .and_then(Value::as_array)
+            .map(|values| {
+                values
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .map(str::trim)
+                    .filter(|value| !value.is_empty())
+                    .map(str::to_string)
+                    .collect::<Vec<String>>()
+            })
+            .unwrap_or_default();
+        parsed_resources.push(ParsedAlertResource {
+            node_id: format!("alert:{kind}:{identity}"),
+            normalized_kind: normalize_alert_kind(&kind).to_string(),
+            identity,
+            title,
+            source_path: string_field(resource, "sourcePath"),
+            references,
+        });
+    }
+    Ok(parsed_resources)
+}
+
+fn edge_relation_for_alert_reference(source_kind: &str, target_kind: &str) -> Option<&'static str> {
+    match (source_kind, target_kind) {
+        ("alert-rule", "contact-point") => Some("routes-to"),
+        ("alert-rule", "notification-policy") => Some("routes-to"),
+        ("alert-rule", "template") => Some("uses-template"),
+        ("contact-point", "template") => Some("uses-template"),
+        ("notification-policy", "template") => Some("uses-template"),
+        _ => None,
+    }
 }
 
 fn load_object(path: &Path) -> Result<Value> {
@@ -165,6 +269,7 @@ pub(crate) fn build_topology_document(
     let mut edges = BTreeSet::<(String, String, String)>::new();
     let mut dashboard_lookup = BTreeMap::<String, (String, String, usize, usize)>::new();
     let mut alert_identity_to_node = BTreeMap::<String, String>::new();
+    let mut alert_identity_to_kind = BTreeMap::<String, String>::new();
     let mut datasource_names_to_uid = BTreeMap::<String, String>::new();
 
     for dashboard in dashboards {
@@ -231,64 +336,59 @@ pub(crate) fn build_topology_document(
 
     let mut alert_resource_count = 0usize;
     if let Some(alert_contract) = alert_contract_document {
-        let resources = alert_contract
-            .get("resources")
-            .and_then(Value::as_array)
-            .ok_or_else(|| message("Alert contract JSON must contain a resources array."))?;
-        for resource in resources {
-            let kind = string_field(resource, "kind");
-            let identity = string_field(resource, "identity");
-            let title = string_field(resource, "title");
-            if kind.is_empty() || identity.is_empty() {
-                continue;
-            }
+        let parsed_alert_resources = collect_alert_resources(alert_contract)?;
+        for resource in &parsed_alert_resources {
             alert_resource_count += 1;
-            let node_id = format!("alert:{kind}:{identity}");
-            alert_identity_to_node.insert(identity.clone(), node_id.clone());
+            alert_identity_to_node.insert(resource.identity.clone(), resource.node_id.clone());
+            alert_identity_to_kind
+                .insert(resource.identity.clone(), resource.normalized_kind.clone());
             push_unique_node(
                 &mut nodes,
-                node_id.clone(),
-                "alert-resource",
-                if title.is_empty() {
-                    identity.clone()
-                } else {
-                    format!("{kind}: {title}")
-                },
+                resource.node_id.clone(),
+                &resource.normalized_kind,
+                alert_resource_label(&resource.title, &resource.identity),
             );
-            if let Some(references) = resource.get("references").and_then(Value::as_array) {
-                for reference in references.iter().filter_map(Value::as_str) {
-                    let reference = reference.trim();
-                    if reference.is_empty() {
-                        continue;
+        }
+        for resource in &parsed_alert_resources {
+            for reference in &resource.references {
+                if let Some(target_node) = alert_identity_to_node.get(reference) {
+                    if let Some(target_kind) = alert_identity_to_kind.get(reference) {
+                        if let Some(relation) = edge_relation_for_alert_reference(
+                            &resource.normalized_kind,
+                            target_kind,
+                        ) {
+                            push_unique_edge(
+                                &mut edges,
+                                resource.node_id.clone(),
+                                target_node.clone(),
+                                relation,
+                            );
+                        }
                     }
-                    if let Some(target_node) = alert_identity_to_node.get(reference) {
-                        push_unique_edge(
-                            &mut edges,
-                            node_id.clone(),
-                            target_node.clone(),
-                            "routes",
-                        );
-                    }
-                    let datasource_uid = datasource_names_to_uid
-                        .get(reference)
-                        .cloned()
-                        .unwrap_or_else(|| reference.to_string());
-                    if nodes.contains_key(&format!("datasource:{datasource_uid}")) {
-                        push_unique_edge(
-                            &mut edges,
-                            format!("datasource:{datasource_uid}"),
-                            node_id.clone(),
-                            "alerts-on",
-                        );
-                    }
-                    if nodes.contains_key(&format!("dashboard:{reference}")) {
-                        push_unique_edge(
-                            &mut edges,
-                            format!("dashboard:{reference}"),
-                            node_id.clone(),
-                            "backs",
-                        );
-                    }
+                }
+                let datasource_uid = datasource_names_to_uid
+                    .get(reference)
+                    .cloned()
+                    .unwrap_or_else(|| reference.clone());
+                if nodes.contains_key(&format!("datasource:{datasource_uid}"))
+                    && resource.normalized_kind == "alert-rule"
+                {
+                    push_unique_edge(
+                        &mut edges,
+                        format!("datasource:{datasource_uid}"),
+                        resource.node_id.clone(),
+                        "alerts-on",
+                    );
+                }
+                if nodes.contains_key(&format!("dashboard:{reference}"))
+                    && resource.normalized_kind == "alert-rule"
+                {
+                    push_unique_edge(
+                        &mut edges,
+                        format!("dashboard:{reference}"),
+                        resource.node_id.clone(),
+                        "backs",
+                    );
                 }
             }
         }
@@ -304,6 +404,23 @@ pub(crate) fn build_topology_document(
         .filter(|node| node.kind == "datasource")
         .count();
     let dashboard_count = nodes.iter().filter(|node| node.kind == "dashboard").count();
+    let alert_rule_count = nodes
+        .iter()
+        .filter(|node| node.kind == "alert-rule")
+        .count();
+    let contact_point_count = nodes
+        .iter()
+        .filter(|node| node.kind == "contact-point")
+        .count();
+    let mute_timing_count = nodes
+        .iter()
+        .filter(|node| node.kind == "mute-timing")
+        .count();
+    let notification_policy_count = nodes
+        .iter()
+        .filter(|node| node.kind == "notification-policy")
+        .count();
+    let template_count = nodes.iter().filter(|node| node.kind == "template").count();
 
     Ok(TopologyDocument {
         summary: TopologySummary {
@@ -312,6 +429,11 @@ pub(crate) fn build_topology_document(
             datasource_count,
             dashboard_count,
             alert_resource_count,
+            alert_rule_count,
+            contact_point_count,
+            mute_timing_count,
+            notification_policy_count,
+            template_count,
         },
         nodes,
         edges,
@@ -320,12 +442,17 @@ pub(crate) fn build_topology_document(
 
 pub(crate) fn render_topology_text(document: &TopologyDocument) -> String {
     let mut lines = vec![format!(
-        "Dashboard topology: nodes={} edges={} datasources={} dashboards={} alert-resources={}",
+        "Dashboard topology: nodes={} edges={} datasources={} dashboards={} alert-resources={} alert-rules={} contact-points={} mute-timings={} notification-policies={} templates={}",
         document.summary.node_count,
         document.summary.edge_count,
         document.summary.datasource_count,
         document.summary.dashboard_count,
-        document.summary.alert_resource_count
+        document.summary.alert_resource_count,
+        document.summary.alert_rule_count,
+        document.summary.contact_point_count,
+        document.summary.mute_timing_count,
+        document.summary.notification_policy_count,
+        document.summary.template_count
     )];
     for edge in &document.edges {
         lines.push(format!(
@@ -381,12 +508,6 @@ pub(crate) fn build_impact_document(
     alert_contract_document: Option<&Value>,
     datasource_uid: &str,
 ) -> Result<ImpactDocument> {
-    let dashboard_edges = governance_document
-        .get("dashboardDatasourceEdges")
-        .and_then(Value::as_array)
-        .ok_or_else(|| {
-            message("Dashboard governance JSON must contain a dashboardDatasourceEdges array.")
-        })?;
     let dashboards = governance_document
         .get("dashboardGovernance")
         .and_then(Value::as_array)
@@ -417,59 +538,80 @@ pub(crate) fn build_impact_document(
         );
     }
 
-    let mut affected_dashboards = BTreeMap::<String, ImpactDashboard>::new();
-    let mut datasource_names = BTreeSet::<String>::new();
-    for edge in dashboard_edges {
-        if string_field(edge, "datasourceUid") != datasource_uid {
+    let topology = build_topology_document(governance_document, alert_contract_document)?;
+    let mut adjacency = BTreeMap::<String, Vec<String>>::new();
+    for edge in &topology.edges {
+        adjacency
+            .entry(edge.from.clone())
+            .or_default()
+            .push(edge.to.clone());
+    }
+
+    let mut reachable = BTreeSet::<String>::new();
+    let mut stack = vec![format!("datasource:{datasource_uid}")];
+    while let Some(node_id) = stack.pop() {
+        if !reachable.insert(node_id.clone()) {
             continue;
         }
-        datasource_names.insert(string_field(edge, "datasource"));
-        let dashboard_uid = string_field(edge, "dashboardUid");
-        if let Some(dashboard) = dashboard_lookup.get(&dashboard_uid) {
-            affected_dashboards.insert(dashboard_uid, dashboard.clone());
+        if let Some(targets) = adjacency.get(&node_id) {
+            stack.extend(targets.iter().cloned());
         }
     }
 
-    let mut alert_resources = BTreeMap::<(String, String), ImpactAlertResource>::new();
+    let mut affected_dashboards = BTreeMap::<String, ImpactDashboard>::new();
+    for node in &topology.nodes {
+        if node.kind != "dashboard" || !reachable.contains(&node.id) {
+            continue;
+        }
+        let dashboard_uid = node.id.strip_prefix("dashboard:").unwrap_or(&node.id);
+        if let Some(dashboard) = dashboard_lookup.get(dashboard_uid) {
+            affected_dashboards.insert(dashboard_uid.to_string(), dashboard.clone());
+        }
+    }
+
+    let mut alert_resources = BTreeMap::<String, ImpactAlertResource>::new();
     if let Some(alert_contract) = alert_contract_document {
-        let resources = alert_contract
-            .get("resources")
-            .and_then(Value::as_array)
-            .ok_or_else(|| message("Alert contract JSON must contain a resources array."))?;
-        for resource in resources {
-            let refs = resource
-                .get("references")
-                .and_then(Value::as_array)
-                .map(|values| {
-                    values
-                        .iter()
-                        .filter_map(Value::as_str)
-                        .collect::<Vec<&str>>()
-                })
-                .unwrap_or_default();
-            let touches_datasource = refs.iter().any(|reference| {
-                *reference == datasource_uid || datasource_names.contains(*reference)
-            });
-            let touches_dashboard = refs
-                .iter()
-                .any(|reference| affected_dashboards.contains_key(*reference));
-            if !touches_datasource && !touches_dashboard {
-                continue;
-            }
-            let kind = string_field(resource, "kind");
-            let identity = string_field(resource, "identity");
-            if kind.is_empty() || identity.is_empty() {
+        for resource in collect_alert_resources(alert_contract)? {
+            if !reachable.contains(&resource.node_id) {
                 continue;
             }
             alert_resources.insert(
-                (kind.clone(), identity.clone()),
+                resource.node_id.clone(),
                 ImpactAlertResource {
-                    kind,
-                    identity,
-                    title: string_field(resource, "title"),
-                    source_path: string_field(resource, "sourcePath"),
+                    kind: resource.normalized_kind,
+                    identity: resource.identity,
+                    title: resource.title,
+                    source_path: resource.source_path,
                 },
             );
+        }
+    }
+
+    let mut affected_contact_points = Vec::new();
+    let mut affected_policies = Vec::new();
+    let mut affected_templates = Vec::new();
+    let mut alert_rule_count = 0usize;
+    let mut contact_point_count = 0usize;
+    let mut mute_timing_count = 0usize;
+    let mut notification_policy_count = 0usize;
+    let mut template_count = 0usize;
+    for resource in alert_resources.values() {
+        match resource.kind.as_str() {
+            "alert-rule" => alert_rule_count += 1,
+            "contact-point" => {
+                contact_point_count += 1;
+                affected_contact_points.push(resource.clone());
+            }
+            "mute-timing" => mute_timing_count += 1,
+            "notification-policy" => {
+                notification_policy_count += 1;
+                affected_policies.push(resource.clone());
+            }
+            "template" => {
+                template_count += 1;
+                affected_templates.push(resource.clone());
+            }
+            _ => {}
         }
     }
 
@@ -478,18 +620,31 @@ pub(crate) fn build_impact_document(
             datasource_uid: datasource_uid.to_string(),
             dashboard_count: affected_dashboards.len(),
             alert_resource_count: alert_resources.len(),
+            alert_rule_count,
+            contact_point_count,
+            mute_timing_count,
+            notification_policy_count,
+            template_count,
         },
         dashboards: affected_dashboards.into_values().collect(),
         alert_resources: alert_resources.into_values().collect(),
+        affected_contact_points,
+        affected_policies,
+        affected_templates,
     })
 }
 
 pub(crate) fn render_impact_text(document: &ImpactDocument) -> String {
     let mut lines = vec![format!(
-        "Datasource impact: {} dashboards={} alert-resources={}",
+        "Datasource impact: {} dashboards={} alert-resources={} alert-rules={} contact-points={} mute-timings={} notification-policies={} templates={}",
         document.summary.datasource_uid,
         document.summary.dashboard_count,
-        document.summary.alert_resource_count
+        document.summary.alert_resource_count,
+        document.summary.alert_rule_count,
+        document.summary.contact_point_count,
+        document.summary.mute_timing_count,
+        document.summary.notification_policy_count,
+        document.summary.template_count
     )];
     if !document.dashboards.is_empty() {
         lines.push("Dashboards:".to_string());
@@ -506,6 +661,33 @@ pub(crate) fn render_impact_text(document: &ImpactDocument) -> String {
     if !document.alert_resources.is_empty() {
         lines.push("Alert resources:".to_string());
         for resource in &document.alert_resources {
+            lines.push(format!(
+                "  {}:{} {}",
+                resource.kind, resource.identity, resource.title
+            ));
+        }
+    }
+    if !document.affected_contact_points.is_empty() {
+        lines.push("Affected contact points:".to_string());
+        for resource in &document.affected_contact_points {
+            lines.push(format!(
+                "  {}:{} {}",
+                resource.kind, resource.identity, resource.title
+            ));
+        }
+    }
+    if !document.affected_policies.is_empty() {
+        lines.push("Affected policies:".to_string());
+        for resource in &document.affected_policies {
+            lines.push(format!(
+                "  {}:{} {}",
+                resource.kind, resource.identity, resource.title
+            ));
+        }
+    }
+    if !document.affected_templates.is_empty() {
+        lines.push("Affected templates:".to_string());
+        for resource in &document.affected_templates {
             lines.push(format!(
                 "  {}:{} {}",
                 resource.kind, resource.identity, resource.title

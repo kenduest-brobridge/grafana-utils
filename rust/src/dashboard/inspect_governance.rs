@@ -34,6 +34,10 @@ pub(crate) struct GovernanceSummary {
     pub(crate) orphaned_datasource_count: usize,
     #[serde(rename = "riskRecordCount")]
     pub(crate) risk_record_count: usize,
+    #[serde(rename = "queryAuditCount")]
+    pub(crate) query_audit_count: usize,
+    #[serde(rename = "dashboardAuditCount")]
+    pub(crate) dashboard_audit_count: usize,
 }
 
 /// Struct definition for DatasourceFamilyCoverageRow.
@@ -198,6 +202,53 @@ pub(crate) struct GovernanceRiskRow {
     pub(crate) recommendation: String,
 }
 
+/// Struct definition for QueryAuditRow.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub(crate) struct QueryAuditRow {
+    #[serde(rename = "dashboardUid")]
+    pub(crate) dashboard_uid: String,
+    #[serde(rename = "dashboardTitle")]
+    pub(crate) dashboard_title: String,
+    #[serde(rename = "folderPath")]
+    pub(crate) folder_path: String,
+    #[serde(rename = "panelId")]
+    pub(crate) panel_id: String,
+    #[serde(rename = "panelTitle")]
+    pub(crate) panel_title: String,
+    #[serde(rename = "refId")]
+    pub(crate) ref_id: String,
+    pub(crate) datasource: String,
+    #[serde(rename = "datasourceUid")]
+    pub(crate) datasource_uid: String,
+    #[serde(rename = "datasourceFamily")]
+    pub(crate) datasource_family: String,
+    pub(crate) score: usize,
+    pub(crate) severity: String,
+    pub(crate) reasons: Vec<String>,
+    pub(crate) recommendations: Vec<String>,
+}
+
+/// Struct definition for DashboardAuditRow.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub(crate) struct DashboardAuditRow {
+    #[serde(rename = "dashboardUid")]
+    pub(crate) dashboard_uid: String,
+    #[serde(rename = "dashboardTitle")]
+    pub(crate) dashboard_title: String,
+    #[serde(rename = "folderPath")]
+    pub(crate) folder_path: String,
+    #[serde(rename = "panelCount")]
+    pub(crate) panel_count: usize,
+    #[serde(rename = "queryCount")]
+    pub(crate) query_count: usize,
+    #[serde(rename = "refreshIntervalSeconds")]
+    pub(crate) refresh_interval_seconds: Option<u64>,
+    pub(crate) score: usize,
+    pub(crate) severity: String,
+    pub(crate) reasons: Vec<String>,
+    pub(crate) recommendations: Vec<String>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct GovernanceRiskSpec {
     category: &'static str,
@@ -343,6 +394,10 @@ pub(crate) struct ExportInspectionGovernanceDocument {
     pub(crate) datasources: Vec<DatasourceCoverageRow>,
     #[serde(rename = "riskRecords")]
     pub(crate) risk_records: Vec<GovernanceRiskRow>,
+    #[serde(rename = "queryAudits")]
+    pub(crate) query_audits: Vec<QueryAuditRow>,
+    #[serde(rename = "dashboardAudits")]
+    pub(crate) dashboard_audits: Vec<DashboardAuditRow>,
 }
 
 #[derive(Clone, Debug)]
@@ -394,6 +449,24 @@ fn collect_unique_strings(values: impl IntoIterator<Item = String>) -> Vec<Strin
         .collect()
 }
 
+fn severity_for_score(score: usize) -> String {
+    match score {
+        0..=1 => "low".to_string(),
+        2..=3 => "medium".to_string(),
+        _ => "high".to_string(),
+    }
+}
+
+fn ordered_push(values: &mut Vec<String>, candidate: &str) {
+    let candidate = candidate.trim();
+    if candidate.is_empty() {
+        return;
+    }
+    if !values.iter().any(|value| value == candidate) {
+        values.push(candidate.to_string());
+    }
+}
+
 fn parse_duration_seconds(value: &str) -> Option<u64> {
     let trimmed = value.trim();
     if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("off") {
@@ -419,6 +492,121 @@ fn parse_duration_seconds(value: &str) -> Option<u64> {
         _ => return None,
     };
     Some(number.saturating_mul(multiplier))
+}
+
+fn build_query_audit_row(
+    row: &ExportInspectionQueryRow,
+    datasource_name: String,
+    datasource_uid: String,
+    datasource_family: String,
+) -> QueryAuditRow {
+    let mut score = 0usize;
+    let mut reasons = Vec::new();
+    let mut recommendations = Vec::new();
+    if query_uses_broad_prometheus_selector(row) {
+        score += 2;
+        ordered_push(&mut reasons, GOVERNANCE_RISK_KIND_BROAD_PROMETHEUS_SELECTOR);
+        ordered_push(
+            &mut recommendations,
+            lookup_governance_risk_spec(GOVERNANCE_RISK_KIND_BROAD_PROMETHEUS_SELECTOR)
+                .recommendation,
+        );
+    }
+    if query_uses_prometheus_regex(row) {
+        score += 1;
+        ordered_push(&mut reasons, GOVERNANCE_RISK_KIND_PROMETHEUS_REGEX_HEAVY);
+        ordered_push(
+            &mut recommendations,
+            lookup_governance_risk_spec(GOVERNANCE_RISK_KIND_PROMETHEUS_REGEX_HEAVY).recommendation,
+        );
+    }
+    if largest_bucket_seconds(row).unwrap_or(0) >= 60 * 60
+        && normalize_family_name(&row.datasource_type) == "prometheus"
+    {
+        score += 2;
+        ordered_push(&mut reasons, GOVERNANCE_RISK_KIND_LARGE_PROMETHEUS_RANGE);
+        ordered_push(
+            &mut recommendations,
+            lookup_governance_risk_spec(GOVERNANCE_RISK_KIND_LARGE_PROMETHEUS_RANGE).recommendation,
+        );
+    }
+    if query_uses_unscoped_loki_search(row) {
+        score += 3;
+        ordered_push(&mut reasons, GOVERNANCE_RISK_KIND_UNSCOPED_LOKI_SEARCH);
+        ordered_push(
+            &mut recommendations,
+            lookup_governance_risk_spec(GOVERNANCE_RISK_KIND_UNSCOPED_LOKI_SEARCH).recommendation,
+        );
+    }
+    QueryAuditRow {
+        dashboard_uid: row.dashboard_uid.clone(),
+        dashboard_title: row.dashboard_title.clone(),
+        folder_path: row.folder_path.clone(),
+        panel_id: row.panel_id.clone(),
+        panel_title: row.panel_title.clone(),
+        ref_id: row.ref_id.clone(),
+        datasource: datasource_name,
+        datasource_uid,
+        datasource_family,
+        score,
+        severity: severity_for_score(score),
+        reasons,
+        recommendations,
+    }
+}
+
+fn build_dashboard_audit_rows(report: &ExportInspectionQueryReport) -> Vec<DashboardAuditRow> {
+    let refresh_by_dashboard = load_dashboard_refresh_by_uid(report);
+    build_dashboard_dependency_rows(report)
+        .into_iter()
+        .map(|dashboard| {
+            let mut score = 0usize;
+            let mut reasons = Vec::new();
+            let mut recommendations = Vec::new();
+            if dashboard.panel_count > 30 {
+                score += 2;
+                ordered_push(&mut reasons, GOVERNANCE_RISK_KIND_DASHBOARD_PANEL_PRESSURE);
+                ordered_push(
+                    &mut recommendations,
+                    lookup_governance_risk_spec(GOVERNANCE_RISK_KIND_DASHBOARD_PANEL_PRESSURE)
+                        .recommendation,
+                );
+            }
+            let refresh_interval_seconds = refresh_by_dashboard
+                .get(&dashboard.dashboard_uid)
+                .and_then(|value| parse_duration_seconds(value));
+            if refresh_interval_seconds.unwrap_or(0) != 0
+                && refresh_interval_seconds.unwrap_or(0) < 30
+            {
+                score += if refresh_interval_seconds.unwrap_or(0) < 10 {
+                    3
+                } else {
+                    2
+                };
+                ordered_push(
+                    &mut reasons,
+                    GOVERNANCE_RISK_KIND_DASHBOARD_REFRESH_PRESSURE,
+                );
+                ordered_push(
+                    &mut recommendations,
+                    lookup_governance_risk_spec(GOVERNANCE_RISK_KIND_DASHBOARD_REFRESH_PRESSURE)
+                        .recommendation,
+                );
+            }
+            DashboardAuditRow {
+                dashboard_uid: dashboard.dashboard_uid,
+                dashboard_title: dashboard.dashboard_title,
+                folder_path: dashboard.folder_path,
+                panel_count: dashboard.panel_count,
+                query_count: dashboard.query_count,
+                refresh_interval_seconds,
+                score,
+                severity: severity_for_score(score),
+                reasons,
+                recommendations,
+            }
+        })
+        .collect()
 }
 
 fn query_uses_broad_prometheus_selector(row: &ExportInspectionQueryRow) -> bool {
@@ -1505,6 +1693,31 @@ pub(crate) fn build_governance_risk_rows(
     risks
 }
 
+pub(crate) fn build_query_audit_rows(
+    summary: &ExportInspectionSummary,
+    report: &ExportInspectionQueryReport,
+) -> Vec<QueryAuditRow> {
+    let (inventory_by_uid, inventory_by_name) = build_inventory_lookup(summary);
+    let mut rows = Vec::new();
+    for row in &report.queries {
+        let identity = resolve_datasource_identity(row, &inventory_by_uid, &inventory_by_name);
+        let datasource_family = normalize_family_name(&identity.datasource_type);
+        let audit = build_query_audit_row(row, identity.name, identity.uid, datasource_family);
+        if audit.score != 0 {
+            rows.push(audit);
+        }
+    }
+    rows.sort_by(|left, right| {
+        right
+            .score
+            .cmp(&left.score)
+            .then(left.dashboard_uid.cmp(&right.dashboard_uid))
+            .then(left.panel_id.cmp(&right.panel_id))
+            .then(left.ref_id.cmp(&right.ref_id))
+    });
+    rows
+}
+
 /// Purpose: implementation note.
 pub(crate) fn build_export_inspection_governance_document(
     summary: &ExportInspectionSummary,
@@ -1512,6 +1725,8 @@ pub(crate) fn build_export_inspection_governance_document(
 ) -> ExportInspectionGovernanceDocument {
     let datasource_families = build_datasource_family_coverage_rows(summary, report);
     let dashboard_dependencies = build_dashboard_dependency_rows(report);
+    let query_audits = build_query_audit_rows(summary, report);
+    let dashboard_audits = build_dashboard_audit_rows(report);
     let risk_records = build_governance_risk_rows(summary, report);
     let dashboard_governance = build_dashboard_governance_rows(report, &risk_records);
     let dashboard_datasource_edges = build_dashboard_datasource_edge_rows(summary, report);
@@ -1540,6 +1755,8 @@ pub(crate) fn build_export_inspection_governance_document(
                 .filter(|item| item.reference_count == 0 && item.dashboard_count == 0)
                 .count(),
             risk_record_count: risk_records.len(),
+            query_audit_count: query_audits.len(),
+            dashboard_audit_count: dashboard_audits.iter().filter(|row| row.score != 0).count(),
         },
         datasource_families,
         dashboard_dependencies,
@@ -1548,6 +1765,8 @@ pub(crate) fn build_export_inspection_governance_document(
         datasource_governance,
         datasources,
         risk_records,
+        query_audits,
+        dashboard_audits,
     }
 }
 

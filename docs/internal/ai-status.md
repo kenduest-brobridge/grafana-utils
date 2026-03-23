@@ -5,6 +5,20 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-23 - Task: Add Rust Query Audit Contract And Gate Enforcement
+- State: Done
+- Scope: `rust/src/dashboard/inspect_governance.rs`, `rust/src/dashboard/governance_gate.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust dashboard governance already emitted additive risk rows and some artifact-driven policy checks, but it still lacked a stable audit contract that could carry scored query/dashboard quality signals into gating without re-encoding each rule independently.
+- Current Update: Added `queryAudits` and `dashboardAudits` to the governance contract with stable `score`, `severity`, `reasons`, and `recommendations`, then wired the governance gate to enforce those artifacts through max-score, max-reason-count, blocked-reason, and dashboard-load policy knobs. Updated all-org governance parity expectations and focused regressions so export and live governance stay aligned with the additive audit output.
+- Result: Rust inspection now produces a reusable deep-query audit layer, and Rust governance-gate can block expensive dashboards using contract-level scored signals instead of only ad hoc point rules.
+
+## 2026-03-23 - Task: Deepen Rust Dashboard Topology And Impact Alert Classification
+- State: Done
+- Scope: `rust/src/dashboard/topology.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust dashboard topology and impact already linked datasources to dashboards and treated alert-contract resources as a single generic alert bucket, but it still flattened alert kinds and only surfaced direct datasource/dashboard reachability.
+- Current Update: Classified alert-contract nodes into `alert-rule`, `contact-point`, `mute-timing`, `notification-policy`, and `template`, then added richer edges for datasource/dashboard-backed alert rules and alert-plane references such as routes-to and uses-template where the contract references support them. Extended impact output with by-kind counts plus `affectedContactPoints`, `affectedPolicies`, and `affectedTemplates` while preserving the existing `alertResources` array.
+- Result: Rust dashboard topology now shows a deeper alert-plane dependency graph, and datasource impact summaries can distinguish which alert artifacts and template dependencies are actually reachable from the selected datasource.
+
 ## 2026-03-23 - Task: Add Rust Schema Validation, Interactive Sync Review, And Concurrent Dashboard Scan
 - State: Done
 - Scope: `rust/src/dashboard/cli_defs.rs`, `rust/src/dashboard/governance_gate.rs`, `rust/src/dashboard/inspect_governance.rs`, `rust/src/dashboard/mod.rs`, `rust/src/dashboard/topology.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

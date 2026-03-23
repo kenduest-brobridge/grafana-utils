@@ -26,6 +26,10 @@ struct QueryThresholdPolicy {
     forbid_unscoped_loki_search: bool,
     max_panels_per_dashboard: Option<usize>,
     min_refresh_interval_seconds: Option<usize>,
+    max_audit_score: Option<usize>,
+    max_reason_count: Option<usize>,
+    block_reasons: BTreeSet<String>,
+    max_dashboard_load_score: Option<usize>,
     max_query_complexity_score: Option<usize>,
     max_dashboard_complexity_score: Option<usize>,
     max_queries_per_dashboard: Option<usize>,
@@ -194,6 +198,10 @@ fn parse_query_threshold_policy(policy: &Value) -> Result<QueryThresholdPolicy> 
         forbid_unscoped_loki_search: value_to_bool(queries.get("forbidUnscopedLokiSearch"), false)?,
         max_panels_per_dashboard: value_to_usize(dashboards.get("maxPanelsPerDashboard"))?,
         min_refresh_interval_seconds: value_to_usize(dashboards.get("minRefreshIntervalSeconds"))?,
+        max_audit_score: value_to_usize(queries.get("maxAuditScore"))?,
+        max_reason_count: value_to_usize(queries.get("maxReasonCount"))?,
+        block_reasons: value_to_string_set(queries.get("blockReasons"))?,
+        max_dashboard_load_score: value_to_usize(dashboards.get("maxDashboardLoadScore"))?,
         max_query_complexity_score: value_to_usize(queries.get("maxQueryComplexityScore"))?,
         max_dashboard_complexity_score: value_to_usize(queries.get("maxDashboardComplexityScore"))?,
         max_queries_per_dashboard: value_to_usize(queries.get("maxQueriesPerDashboard"))?,
@@ -228,6 +236,10 @@ fn build_checked_rules(policy: QueryThresholdPolicy) -> Value {
         "forbidUnscopedLokiSearch": policy.forbid_unscoped_loki_search,
         "maxPanelsPerDashboard": policy.max_panels_per_dashboard,
         "minRefreshIntervalSeconds": policy.min_refresh_interval_seconds,
+        "maxAuditScore": policy.max_audit_score,
+        "maxReasonCount": policy.max_reason_count,
+        "blockReasons": policy.block_reasons,
+        "maxDashboardLoadScore": policy.max_dashboard_load_score,
         "maxQueryComplexityScore": policy.max_query_complexity_score,
         "maxDashboardComplexityScore": policy.max_dashboard_complexity_score,
         "maxQueriesPerDashboard": policy.max_queries_per_dashboard,
@@ -469,6 +481,14 @@ fn build_dashboard_violation_from_fields(
         datasource_family: String::new(),
         risk_kind: String::new(),
     }
+}
+
+fn array_of_objects<'a>(document: &'a Value, key: &str) -> Result<&'a Vec<Value>> {
+    document.get(key).and_then(Value::as_array).ok_or_else(|| {
+        message(format!(
+            "Dashboard governance JSON must contain a {key} array."
+        ))
+    })
 }
 
 pub(crate) fn evaluate_dashboard_governance_gate(
@@ -786,12 +806,7 @@ pub(crate) fn evaluate_dashboard_governance_gate(
         }
     }
     if policy.max_panels_per_dashboard.is_some() || policy.min_refresh_interval_seconds.is_some() {
-        let dashboards = governance_document
-            .get("dashboardGovernance")
-            .and_then(Value::as_array)
-            .ok_or_else(|| {
-                message("Dashboard governance JSON must contain a dashboardGovernance array.")
-            })?;
+        let dashboards = array_of_objects(governance_document, "dashboardGovernance")?;
         if let Some(limit) = policy.max_panels_per_dashboard {
             for dashboard in dashboards {
                 let panel_count = dashboard
@@ -836,6 +851,82 @@ pub(crate) fn evaluate_dashboard_governance_gate(
                         ),
                         dashboard_uid,
                         dashboard_title,
+                    ));
+                }
+            }
+        }
+    }
+
+    if policy.max_audit_score.is_some()
+        || policy.max_reason_count.is_some()
+        || !policy.block_reasons.is_empty()
+        || policy.max_dashboard_load_score.is_some()
+    {
+        let query_audits = array_of_objects(governance_document, "queryAudits")?;
+        for audit in query_audits {
+            let score = audit.get("score").and_then(Value::as_u64).unwrap_or(0) as usize;
+            let reasons = audit
+                .get("reasons")
+                .and_then(Value::as_array)
+                .map(|items| {
+                    items
+                        .iter()
+                        .filter_map(Value::as_str)
+                        .map(str::to_string)
+                        .collect::<Vec<String>>()
+                })
+                .unwrap_or_default();
+            if let Some(limit) = policy.max_audit_score {
+                if score > limit {
+                    violations.push(build_query_violation(
+                        "query-audit-score-too-high",
+                        format!(
+                            "Query audit score {score} exceeds policy maxAuditScore={limit}. reasons={}",
+                            reasons.join(",")
+                        ),
+                        audit,
+                    ));
+                }
+            }
+            if let Some(limit) = policy.max_reason_count {
+                if reasons.len() > limit {
+                    violations.push(build_query_violation(
+                        "query-audit-reason-count-too-high",
+                        format!(
+                            "Query audit reason count {} exceeds policy maxReasonCount={limit}. reasons={}",
+                            reasons.len(),
+                            reasons.join(",")
+                        ),
+                        audit,
+                    ));
+                }
+            }
+            if !policy.block_reasons.is_empty()
+                && reasons
+                    .iter()
+                    .any(|reason| policy.block_reasons.contains(reason))
+            {
+                violations.push(build_query_violation(
+                    "query-audit-blocked-reason",
+                    format!(
+                        "Query audit contains blocked reasons: {}",
+                        reasons.join(",")
+                    ),
+                    audit,
+                ));
+            }
+        }
+        let dashboard_audits = array_of_objects(governance_document, "dashboardAudits")?;
+        if let Some(limit) = policy.max_dashboard_load_score {
+            for audit in dashboard_audits {
+                let score = audit.get("score").and_then(Value::as_u64).unwrap_or(0) as usize;
+                if score > limit {
+                    violations.push(build_dashboard_violation(
+                        "dashboard-load-score-too-high",
+                        format!(
+                            "Dashboard load score {score} exceeds policy maxDashboardLoadScore={limit}."
+                        ),
+                        audit,
                     ));
                 }
             }

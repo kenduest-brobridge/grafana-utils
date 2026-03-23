@@ -2904,7 +2904,28 @@ fn build_topology_document_renders_mermaid_and_dot_edges() {
                 "identity": "cpu-high",
                 "title": "CPU High",
                 "sourcePath": "rules/cpu-high.json",
-                "references": ["prom-main", "slack.default"]
+                "references": ["prom-main", "cpu-main", "pagerduty-primary", "paging-policy", "slack.default"]
+            },
+            {
+                "kind": "grafana-contact-point",
+                "identity": "pagerduty-primary",
+                "title": "PagerDuty Primary",
+                "sourcePath": "contact-points/pagerduty-primary.json",
+                "references": ["slack.default"]
+            },
+            {
+                "kind": "grafana-mute-timing",
+                "identity": "off-hours",
+                "title": "Off Hours",
+                "sourcePath": "mute-timings/off-hours.json",
+                "references": []
+            },
+            {
+                "kind": "grafana-notification-policies",
+                "identity": "paging-policy",
+                "title": "Paging Policy",
+                "sourcePath": "policies/paging-policy.json",
+                "references": ["slack.default"]
             },
             {
                 "kind": "grafana-notification-template",
@@ -2919,7 +2940,14 @@ fn build_topology_document_renders_mermaid_and_dot_edges() {
     let document = build_topology_document(&governance, Some(&alert_contract)).unwrap();
     assert_eq!(document.summary.datasource_count, 1);
     assert_eq!(document.summary.dashboard_count, 1);
-    assert_eq!(document.summary.alert_resource_count, 2);
+    assert_eq!(document.summary.alert_resource_count, 5);
+    assert_eq!(document.summary.alert_rule_count, 1);
+    assert_eq!(document.summary.contact_point_count, 1);
+    assert_eq!(document.summary.mute_timing_count, 1);
+    assert_eq!(document.summary.notification_policy_count, 1);
+    assert_eq!(document.summary.template_count, 1);
+    assert_eq!(document.summary.node_count, 7);
+    assert_eq!(document.summary.edge_count, 8);
     assert!(document
         .edges
         .iter()
@@ -2929,15 +2957,45 @@ fn build_topology_document_renders_mermaid_and_dot_edges() {
         .iter()
         .any(|edge| edge.from == "datasource:prom-main"
             && edge.to == "alert:grafana-alert-rule:cpu-high"));
+    assert!(document.edges.iter().any(|edge| {
+        edge.from == "dashboard:cpu-main"
+            && edge.to == "alert:grafana-alert-rule:cpu-high"
+            && edge.relation == "backs"
+    }));
+    assert!(document.edges.iter().any(|edge| {
+        edge.from == "alert:grafana-alert-rule:cpu-high"
+            && edge.to == "alert:grafana-contact-point:pagerduty-primary"
+            && edge.relation == "routes-to"
+    }));
+    assert!(document.edges.iter().any(|edge| {
+        edge.from == "alert:grafana-contact-point:pagerduty-primary"
+            && edge.to == "alert:grafana-notification-template:slack.default"
+            && edge.relation == "uses-template"
+    }));
+    assert!(document.edges.iter().any(|edge| {
+        edge.from == "alert:grafana-notification-policies:paging-policy"
+            && edge.to == "alert:grafana-notification-template:slack.default"
+            && edge.relation == "uses-template"
+    }));
 
     let mermaid = render_topology_mermaid(&document);
     assert!(mermaid.contains("graph TD"));
     assert!(mermaid.contains("datasource_prom_main"));
     assert!(mermaid.contains("alert_grafana_alert_rule_cpu_high"));
+    assert!(mermaid.contains("alert_grafana_contact_point_pagerduty_primary"));
+    assert!(mermaid.contains("alert_grafana_notification_policies_paging_policy"));
+    assert!(mermaid.contains("alert_grafana_notification_template_slack_default"));
+    assert!(mermaid.contains("alert_grafana_mute_timing_off_hours"));
+    assert!(mermaid.contains("alert_grafana_alert_rule_cpu_high -->|routes-to| alert_grafana_contact_point_pagerduty_primary"));
+    assert!(mermaid.contains("alert_grafana_contact_point_pagerduty_primary -->|uses-template| alert_grafana_notification_template_slack_default"));
 
     let dot = render_topology_dot(&document);
     assert!(dot.contains("digraph grafana_topology"));
     assert!(dot.contains("\"datasource:prom-main\" -> \"dashboard:cpu-main\""));
+    assert!(dot.contains("\"alert:grafana-alert-rule:cpu-high\" [label=\"CPU High\\nalert-rule\"]"));
+    assert!(dot.contains("\"alert:grafana-contact-point:pagerduty-primary\" [label=\"PagerDuty Primary\\ncontact-point\"]"));
+    assert!(dot.contains("\"alert:grafana-notification-policies:paging-policy\" [label=\"Paging Policy\\nnotification-policy\"]"));
+    assert!(dot.contains("\"alert:grafana-notification-template:slack.default\" [label=\"Slack Default\\ntemplate\"]"));
 }
 
 #[test]
@@ -3067,9 +3125,7 @@ fn build_dashboard_topology_document_renders_mermaid_and_dot() {
     assert!(dot.contains("digraph grafana_topology {"));
     assert!(dot.contains("\"dashboard:cpu-main\" [label=\"CPU Main\\ndashboard\"]"));
     assert!(dot.contains("\"datasource:prom-main\" [label=\"Prometheus Main\\ndatasource\"]"));
-    assert!(dot.contains(
-        "\"alert:grafana-alert-rule:cpu-high\" [label=\"grafana-alert-rule: CPU High\\nalert-resource\"]"
-    ));
+    assert!(dot.contains("\"alert:grafana-alert-rule:cpu-high\" [label=\"CPU High\\nalert-rule\"]"));
     assert!(dot.contains(
         "\"dashboard:cpu-main\" -> \"alert:grafana-alert-rule:cpu-high\" [label=\"backs\"]"
     ));
@@ -3104,13 +3160,31 @@ fn build_dashboard_impact_document_reports_reachable_dashboards_and_alerts() {
                 "kind": "grafana-alert-rule",
                 "identity": "cpu-high",
                 "title": "CPU High",
-                "references": ["prom-main", "cpu-main"]
+                "references": ["prom-main", "cpu-main", "pagerduty-primary", "paging-policy", "slack.default"]
             },
             {
                 "kind": "grafana-contact-point",
                 "identity": "pagerduty-primary",
                 "title": "PagerDuty Primary",
-                "references": ["pagerduty-primary"]
+                "references": ["slack.default"]
+            },
+            {
+                "kind": "grafana-notification-policies",
+                "identity": "paging-policy",
+                "title": "Paging Policy",
+                "references": ["slack.default"]
+            },
+            {
+                "kind": "grafana-notification-template",
+                "identity": "slack.default",
+                "title": "Slack Default",
+                "references": []
+            },
+            {
+                "kind": "grafana-alert-rule",
+                "identity": "logs-high",
+                "title": "Logs High",
+                "references": ["logs-main"]
             }
         ]
     });
@@ -3118,16 +3192,38 @@ fn build_dashboard_impact_document_reports_reachable_dashboards_and_alerts() {
     let document = build_impact_document(&governance, Some(&alert_contract), "prom-main").unwrap();
     assert_eq!(document.summary.datasource_uid, "prom-main");
     assert_eq!(document.summary.dashboard_count, 1);
-    assert_eq!(document.summary.alert_resource_count, 1);
+    assert_eq!(document.summary.alert_resource_count, 4);
+    assert_eq!(document.summary.alert_rule_count, 1);
+    assert_eq!(document.summary.contact_point_count, 1);
+    assert_eq!(document.summary.mute_timing_count, 0);
+    assert_eq!(document.summary.notification_policy_count, 1);
+    assert_eq!(document.summary.template_count, 1);
     assert_eq!(document.dashboards[0].dashboard_uid, "cpu-main");
+    assert_eq!(document.alert_resources.len(), 4);
     assert_eq!(document.alert_resources[0].identity, "cpu-high");
+    assert_eq!(document.alert_resources[1].identity, "pagerduty-primary");
+    assert_eq!(document.alert_resources[2].identity, "paging-policy");
+    assert_eq!(document.alert_resources[3].identity, "slack.default");
+    assert_eq!(document.affected_contact_points.len(), 1);
+    assert_eq!(
+        document.affected_contact_points[0].identity,
+        "pagerduty-primary"
+    );
+    assert_eq!(document.affected_policies.len(), 1);
+    assert_eq!(document.affected_policies[0].identity, "paging-policy");
+    assert_eq!(document.affected_templates.len(), 1);
+    assert_eq!(document.affected_templates[0].identity, "slack.default");
 
     let output = render_impact_text(&document);
     assert!(output.contains("Datasource impact"));
-    assert!(output.contains("Datasource impact: prom-main dashboards=1 alert-resources=1"));
+    assert!(output.contains(
+        "Datasource impact: prom-main dashboards=1 alert-resources=4 alert-rules=1 contact-points=1 mute-timings=0 notification-policies=1 templates=1"
+    ));
     assert!(output.contains("Alert resources:"));
-    assert!(output.contains("grafana-alert-rule:cpu-high"));
-    assert!(!output.contains("pagerduty-primary"));
+    assert!(output.contains("alert-rule:cpu-high"));
+    assert!(output.contains("Affected contact points:"));
+    assert!(output.contains("Affected policies:"));
+    assert!(output.contains("Affected templates:"));
 }
 
 #[test]
@@ -10725,8 +10821,8 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
     assert_eq!(document.summary.datasource_family_count, 3);
     assert_eq!(document.summary.dashboard_datasource_edge_count, 2);
     assert_eq!(document.summary.datasource_risk_coverage_count, 2);
-    assert_eq!(document.summary.dashboard_risk_coverage_count, 1);
-    assert_eq!(document.summary.risk_record_count, 4);
+    assert_eq!(document.summary.dashboard_risk_coverage_count, 2);
+    assert_eq!(document.summary.risk_record_count, 5);
     assert_eq!(document.dashboard_dependencies.len(), 2);
     assert_eq!(document.dashboard_governance.len(), 2);
     assert_eq!(document.dashboard_datasource_edges.len(), 2);
@@ -10899,8 +10995,12 @@ fn build_export_inspection_governance_document_flags_broad_loki_selectors() {
 
     let document = super::build_export_inspection_governance_document(&summary, &report);
 
-    assert_eq!(document.summary.risk_record_count, 1);
-    let risk = &document.risk_records[0];
+    assert_eq!(document.summary.risk_record_count, 2);
+    let risk = document
+        .risk_records
+        .iter()
+        .find(|item| item.kind == "broad-loki-selector")
+        .unwrap();
     assert_eq!(risk.kind, "broad-loki-selector");
     assert_eq!(risk.category, "cost");
     assert_eq!(risk.severity, "medium");
@@ -11063,6 +11163,23 @@ fn build_export_inspection_governance_document_flags_query_quality_and_dashboard
     };
 
     let document = super::build_export_inspection_governance_document(&summary, &report);
+    assert_eq!(document.summary.query_audit_count, 31);
+    assert_eq!(document.summary.dashboard_audit_count, 1);
+    assert!(document.query_audits.iter().any(|item| item
+        .reasons
+        .contains(&"broad-prometheus-selector".to_string())));
+    assert!(document
+        .query_audits
+        .iter()
+        .any(|item| item.reasons.contains(&"unscoped-loki-search".to_string())));
+    assert_eq!(document.dashboard_audits.len(), 1);
+    assert_eq!(
+        document.dashboard_audits[0].reasons,
+        vec![
+            "dashboard-panel-pressure".to_string(),
+            "dashboard-refresh-pressure".to_string()
+        ]
+    );
     let kinds = document
         .risk_records
         .iter()
@@ -11245,6 +11362,10 @@ fn evaluate_dashboard_governance_gate_enforces_query_thresholds_and_warning_poli
             "forbidUnscopedLokiSearch": false,
             "maxPanelsPerDashboard": null,
             "minRefreshIntervalSeconds": null,
+            "maxAuditScore": null,
+            "maxReasonCount": null,
+            "blockReasons": [],
+            "maxDashboardLoadScore": null,
             "maxQueryComplexityScore": null,
             "maxDashboardComplexityScore": null,
             "maxQueriesPerDashboard": 1,
@@ -11379,6 +11500,100 @@ fn evaluate_dashboard_governance_gate_enforces_perf_and_dashboard_pressure_rules
 }
 
 #[test]
+fn evaluate_dashboard_governance_gate_enforces_query_audit_contract_rules() {
+    let policy = json!({
+        "version": 1,
+        "queries": {
+            "maxAuditScore": 2,
+            "maxReasonCount": 1,
+            "blockReasons": ["unscoped-loki-search"]
+        },
+        "dashboards": {
+            "maxDashboardLoadScore": 2
+        }
+    });
+    let governance = json!({
+        "summary": {
+            "dashboardCount": 1,
+            "queryRecordCount": 2
+        },
+        "dashboardGovernance": [
+            {
+                "dashboardUid": "cpu-main",
+                "dashboardTitle": "CPU Main",
+                "panelCount": 31,
+                "queryCount": 2
+            }
+        ],
+        "riskRecords": [],
+        "queryAudits": [
+            {
+                "dashboardUid": "cpu-main",
+                "dashboardTitle": "CPU Main",
+                "folderPath": "Platform",
+                "panelId": "7",
+                "panelTitle": "CPU",
+                "refId": "A",
+                "datasource": "Prometheus Main",
+                "datasourceUid": "prom-main",
+                "datasourceFamily": "prometheus",
+                "score": 3,
+                "severity": "medium",
+                "reasons": ["broad-prometheus-selector", "prometheus-regex-heavy"],
+                "recommendations": ["scope it"]
+            },
+            {
+                "dashboardUid": "cpu-main",
+                "dashboardTitle": "CPU Main",
+                "folderPath": "Platform",
+                "panelId": "8",
+                "panelTitle": "Logs",
+                "refId": "B",
+                "datasource": "Logs Main",
+                "datasourceUid": "logs-main",
+                "datasourceFamily": "loki",
+                "score": 4,
+                "severity": "high",
+                "reasons": ["unscoped-loki-search"],
+                "recommendations": ["scope labels"]
+            }
+        ],
+        "dashboardAudits": [
+            {
+                "dashboardUid": "cpu-main",
+                "dashboardTitle": "CPU Main",
+                "folderPath": "Platform",
+                "panelCount": 31,
+                "queryCount": 2,
+                "refreshIntervalSeconds": 5,
+                "score": 4,
+                "severity": "high",
+                "reasons": ["dashboard-panel-pressure", "dashboard-refresh-pressure"],
+                "recommendations": ["split it"]
+            }
+        ]
+    });
+    let queries = json!({
+        "summary": {
+            "dashboardCount": 1,
+            "queryRecordCount": 2
+        },
+        "queries": []
+    });
+
+    let result = super::evaluate_dashboard_governance_gate(&policy, &governance, &queries).unwrap();
+    let codes = result
+        .violations
+        .iter()
+        .map(|item| item.code.as_str())
+        .collect::<Vec<_>>();
+    assert!(codes.contains(&"query-audit-score-too-high"));
+    assert!(codes.contains(&"query-audit-reason-count-too-high"));
+    assert!(codes.contains(&"query-audit-blocked-reason"));
+    assert!(codes.contains(&"dashboard-load-score-too-high"));
+}
+
+#[test]
 fn render_dashboard_governance_gate_result_lists_violations_and_warnings() {
     let result = super::DashboardGovernanceGateResult {
         ok: false,
@@ -11402,6 +11617,10 @@ fn render_dashboard_governance_gate_result_lists_violations_and_warnings() {
                 "forbidUnscopedLokiSearch": false,
                 "maxPanelsPerDashboard": null,
                 "minRefreshIntervalSeconds": null,
+                "maxAuditScore": null,
+                "maxReasonCount": null,
+                "blockReasons": [],
+                "maxDashboardLoadScore": null,
                 "maxQueryComplexityScore": null,
                 "maxDashboardComplexityScore": null,
                 "maxQueriesPerDashboard": 1,
@@ -11544,6 +11763,10 @@ fn run_dashboard_governance_gate_writes_json_output_file() {
             "forbidUnscopedLokiSearch": false,
             "maxPanelsPerDashboard": null,
             "minRefreshIntervalSeconds": null,
+            "maxAuditScore": null,
+            "maxReasonCount": null,
+            "blockReasons": [],
+            "maxDashboardLoadScore": null,
             "maxQueryComplexityScore": null,
             "maxDashboardComplexityScore": null,
             "maxQueriesPerDashboard": 4,
@@ -11643,6 +11866,10 @@ fn evaluate_dashboard_governance_gate_enforces_datasource_policy_rules() {
             "forbidUnscopedLokiSearch": false,
             "maxPanelsPerDashboard": null,
             "minRefreshIntervalSeconds": null,
+            "maxAuditScore": null,
+            "maxReasonCount": null,
+            "blockReasons": [],
+            "maxDashboardLoadScore": null,
             "maxQueryComplexityScore": null,
             "maxDashboardComplexityScore": null,
             "maxQueriesPerDashboard": null,
@@ -11748,6 +11975,10 @@ fn evaluate_dashboard_governance_gate_enforces_routing_sql_and_loki_policy_rules
             "forbidUnscopedLokiSearch": false,
             "maxPanelsPerDashboard": null,
             "minRefreshIntervalSeconds": null,
+            "maxAuditScore": null,
+            "maxReasonCount": null,
+            "blockReasons": [],
+            "maxDashboardLoadScore": null,
             "maxQueryComplexityScore": null,
             "maxDashboardComplexityScore": null,
             "maxQueriesPerDashboard": null,
@@ -11840,6 +12071,10 @@ fn evaluate_dashboard_governance_gate_enforces_query_and_dashboard_complexity_ru
             "forbidUnscopedLokiSearch": false,
             "maxPanelsPerDashboard": null,
             "minRefreshIntervalSeconds": null,
+            "maxAuditScore": null,
+            "maxReasonCount": null,
+            "blockReasons": [],
+            "maxDashboardLoadScore": null,
             "maxQueryComplexityScore": 3,
             "maxDashboardComplexityScore": 6,
             "maxQueriesPerDashboard": null,
@@ -12035,8 +12270,8 @@ fn build_export_inspection_governance_document_rolls_up_dashboard_dependency_ana
     assert_eq!(document.summary.datasource_coverage_count, 1);
     assert_eq!(document.summary.dashboard_datasource_edge_count, 1);
     assert_eq!(document.summary.datasource_risk_coverage_count, 0);
-    assert_eq!(document.summary.dashboard_risk_coverage_count, 0);
-    assert_eq!(document.summary.risk_record_count, 0);
+    assert_eq!(document.summary.dashboard_risk_coverage_count, 1);
+    assert_eq!(document.summary.risk_record_count, 1);
     assert_eq!(dependency_row["queryFields"], json!(["expr", "query"]));
     assert_eq!(
         dependency_row["metrics"],
@@ -12479,7 +12714,7 @@ fn build_export_inspection_governance_document_adds_dashboard_datasource_edges()
     assert_eq!(dashboard_governance_row["mixedDatasource"], json!(true));
     assert_eq!(
         dashboard_governance_row["riskKinds"],
-        json!(["mixed-datasource-dashboard"])
+        json!(["large-prometheus-range", "mixed-datasource-dashboard"])
     );
 }
 
@@ -13553,7 +13788,7 @@ fn inspect_live_dashboards_with_request_all_orgs_aggregates_multiple_org_exports
     );
     assert_eq!(
         export_governance_document["summary"]["riskRecordCount"],
-        Value::from(0)
+        Value::from(1)
     );
     assert_eq!(
         live_governance_document["summary"]["datasourceFamilyCount"],
@@ -13561,7 +13796,7 @@ fn inspect_live_dashboards_with_request_all_orgs_aggregates_multiple_org_exports
     );
     assert_eq!(
         live_governance_document["summary"]["riskRecordCount"],
-        Value::from(0)
+        Value::from(1)
     );
     assert_eq!(
         export_governance_document["dashboardDependencies"]
@@ -13966,7 +14201,7 @@ fn inspect_live_dashboards_with_request_all_orgs_matches_export_root_governance_
     );
     assert_eq!(
         export_governance_document["summary"]["riskRecordCount"],
-        Value::from(0)
+        Value::from(1)
     );
     assert_eq!(
         live_governance_document["summary"]["datasourceFamilyCount"],
@@ -13974,7 +14209,7 @@ fn inspect_live_dashboards_with_request_all_orgs_matches_export_root_governance_
     );
     assert_eq!(
         live_governance_document["summary"]["riskRecordCount"],
-        Value::from(0)
+        Value::from(1)
     );
     assert_eq!(
         export_dependency_document["summary"]["queryCount"],
