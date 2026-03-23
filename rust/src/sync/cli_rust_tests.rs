@@ -1,12 +1,12 @@
 //! Sync CLI test suite.
 //! Verifies sync argument parsing, plan/review/apply routing, and rendering contracts.
 use super::{
-    execute_live_apply_with_request, fetch_live_availability_with_request,
-    fetch_live_resource_specs_with_request, render_alert_sync_assessment_text,
-    render_sync_apply_intent_text, render_sync_plan_text, render_sync_summary_text, run_sync_cli,
-    SyncApplyArgs, SyncAssessAlertsArgs, SyncBundleArgs, SyncBundlePreflightArgs, SyncCliArgs,
-    SyncGroupCommand, SyncOutputFormat, SyncPlanArgs, SyncPreflightArgs, SyncReviewArgs,
-    SyncSummaryArgs, DEFAULT_REVIEW_TOKEN,
+    audit::render_sync_audit_text, execute_live_apply_with_request,
+    fetch_live_availability_with_request, fetch_live_resource_specs_with_request,
+    render_alert_sync_assessment_text, render_sync_apply_intent_text, render_sync_plan_text,
+    render_sync_summary_text, run_sync_cli, SyncApplyArgs, SyncAssessAlertsArgs, SyncAuditArgs,
+    SyncBundleArgs, SyncBundlePreflightArgs, SyncCliArgs, SyncGroupCommand, SyncOutputFormat,
+    SyncPlanArgs, SyncPreflightArgs, SyncReviewArgs, SyncSummaryArgs, DEFAULT_REVIEW_TOKEN,
 };
 use crate::dashboard::CommonCliArgs;
 use clap::{CommandFactory, Parser};
@@ -68,6 +68,15 @@ fn sync_apply_help_includes_examples_and_approval_flags() {
 }
 
 #[test]
+fn sync_audit_help_mentions_lock_and_drift_controls() {
+    let help = render_sync_subcommand_help("audit");
+    assert!(help.contains("--managed-file"));
+    assert!(help.contains("--lock-file"));
+    assert!(help.contains("--write-lock"));
+    assert!(help.contains("--fail-on-drift"));
+}
+
+#[test]
 fn sync_review_help_mentions_interactive_review() {
     let help = render_sync_subcommand_help("review");
     assert!(help.contains("--interactive"));
@@ -100,6 +109,7 @@ fn sync_root_help_includes_examples() {
     assert!(help.contains("grafana-util sync summary"));
     assert!(help.contains("grafana-util sync plan"));
     assert!(help.contains("grafana-util sync apply"));
+    assert!(help.contains("grafana-util sync audit"));
     assert!(help.contains("grafana-util sync bundle"));
     assert!(help.contains("grafana-util sync bundle-preflight"));
 }
@@ -141,6 +151,37 @@ fn parse_sync_cli_supports_assess_alerts_command() {
             assert_eq!(inner.output, SyncOutputFormat::Json);
         }
         _ => panic!("expected assess-alerts"),
+    }
+}
+
+#[test]
+fn parse_sync_cli_supports_audit_command() {
+    let args = SyncCliArgs::parse_from([
+        "grafana-util",
+        "audit",
+        "--managed-file",
+        "./desired.json",
+        "--lock-file",
+        "./sync-lock.json",
+        "--live-file",
+        "./live.json",
+        "--write-lock",
+        "./next-lock.json",
+        "--fail-on-drift",
+        "--output",
+        "json",
+    ]);
+
+    match args.command {
+        SyncGroupCommand::Audit(inner) => {
+            assert_eq!(inner.managed_file.unwrap(), Path::new("./desired.json"));
+            assert_eq!(inner.lock_file.unwrap(), Path::new("./sync-lock.json"));
+            assert_eq!(inner.live_file.unwrap(), Path::new("./live.json"));
+            assert_eq!(inner.write_lock.unwrap(), Path::new("./next-lock.json"));
+            assert!(inner.fail_on_drift);
+            assert_eq!(inner.output, SyncOutputFormat::Json);
+        }
+        _ => panic!("expected audit"),
     }
 }
 
@@ -2873,6 +2914,212 @@ fn filter_review_plan_operations_recalculates_summary_and_alert_assessment() {
         json!(1)
     );
     assert_eq!(filtered["operations"].as_array().unwrap().len(), 2);
+}
+
+#[test]
+fn build_review_operation_diff_model_formats_changed_fields_side_by_side() {
+    let operation = json!({
+        "kind": "dashboard",
+        "identity": "cpu-main",
+        "action": "would-update",
+        "changedFields": ["title", "refresh"],
+        "live": {
+            "title": "CPU Old",
+            "refresh": "30s"
+        },
+        "desired": {
+            "title": "CPU New",
+            "refresh": "5s"
+        }
+    });
+
+    let model = super::review_tui::build_review_operation_diff_model(&operation).unwrap();
+
+    assert_eq!(model.title, "dashboard cpu-main");
+    assert_eq!(model.action, "would-update");
+    assert_eq!(model.live_lines.len(), 2);
+    assert_eq!(model.desired_lines.len(), 2);
+    assert!(model.live_lines.iter().all(|row| row.0));
+    assert!(model.desired_lines.iter().all(|row| row.0));
+    assert!(model.live_lines[0].1.contains("title"));
+    assert!(model.desired_lines[1].1.contains("refresh"));
+}
+
+#[test]
+fn render_sync_audit_text_reports_drift_summary_and_rows() {
+    let lines = render_sync_audit_text(&json!({
+        "kind": "grafana-utils-sync-audit",
+        "summary": {
+            "managedCount": 2,
+            "baselineCount": 2,
+            "currentPresentCount": 1,
+            "currentMissingCount": 1,
+            "inSyncCount": 0,
+            "driftCount": 2,
+            "missingLockCount": 1,
+            "missingLiveCount": 1
+        },
+        "drifts": [
+            {"status":"drift-detected","kind":"dashboard","identity":"cpu-main","driftedFields":["title","refresh"]},
+            {"status":"missing-live","kind":"datasource","identity":"prom-main","driftedFields":[]}
+        ]
+    }))
+    .unwrap();
+
+    assert_eq!(lines[0], "Sync audit");
+    assert!(lines[1].contains("Managed: 2"));
+    assert!(lines[2].contains("Drift: count=2"));
+    assert!(lines[3].contains("[drift-detected] dashboard cpu-main"));
+    assert!(lines[4].contains("[missing-live] datasource prom-main"));
+}
+
+#[test]
+fn build_sync_audit_document_without_baseline_only_flags_missing_live() {
+    let current_lock = json!({
+        "kind": "grafana-utils-sync-lock",
+        "resources": [
+            {
+                "kind": "dashboard",
+                "identity": "cpu-main",
+                "title": "CPU Main",
+                "status": "present",
+                "managedFields": ["title"],
+                "checksum": "aaaa",
+                "snapshot": {"title":"CPU Main"},
+                "sourcePath": "dashboards/cpu.json"
+            },
+            {
+                "kind": "datasource",
+                "identity": "prom-main",
+                "title": "Prometheus Main",
+                "status": "missing-live",
+                "managedFields": ["url"],
+                "checksum": null,
+                "snapshot": null,
+                "sourcePath": "datasources/prom.json"
+            }
+        ]
+    });
+
+    let document = super::audit::build_sync_audit_document(&current_lock, None).unwrap();
+
+    assert_eq!(document["summary"]["driftCount"], json!(1));
+    assert_eq!(document["summary"]["inSyncCount"], json!(1));
+    assert_eq!(document["summary"]["missingLiveCount"], json!(1));
+    assert_eq!(document["drifts"][0]["status"], json!("missing-live"));
+}
+
+#[test]
+fn run_sync_cli_audit_builds_lock_and_allows_clean_write() {
+    let temp = tempdir().unwrap();
+    let managed_file = temp.path().join("desired.json");
+    let live_file = temp.path().join("live.json");
+    let lock_file = temp.path().join("sync-lock.json");
+    fs::write(
+        &managed_file,
+        serde_json::to_string_pretty(&json!([
+            {
+                "kind": "dashboard",
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "managedFields": ["title", "refresh"],
+                "body": {"title":"CPU Main","refresh":"5s"}
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        &live_file,
+        serde_json::to_string_pretty(&json!([
+            {
+                "kind": "dashboard",
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "managedFields": ["title", "refresh"],
+                "body": {"title":"CPU Main","refresh":"5s"}
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let result = run_sync_cli(SyncGroupCommand::Audit(SyncAuditArgs {
+        managed_file: Some(managed_file),
+        lock_file: None,
+        live_file: Some(live_file),
+        fetch_live: false,
+        common: sync_common_args(),
+        org_id: None,
+        page_size: 100,
+        write_lock: Some(lock_file.clone()),
+        fail_on_drift: false,
+        output: SyncOutputFormat::Json,
+    }));
+
+    assert!(result.is_ok());
+    let lock: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(lock_file).unwrap()).unwrap();
+    assert_eq!(lock["kind"], json!("grafana-utils-sync-lock"));
+    assert_eq!(lock["summary"]["presentCount"], json!(1));
+}
+
+#[test]
+fn run_sync_cli_audit_rejects_drift_when_fail_on_drift_is_set() {
+    let temp = tempdir().unwrap();
+    let lock_file = temp.path().join("sync-lock.json");
+    let live_file = temp.path().join("live.json");
+    fs::write(
+        &lock_file,
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-sync-lock",
+            "resources": [
+                {
+                    "kind": "dashboard",
+                    "identity": "cpu-main",
+                    "title": "CPU Main",
+                    "status": "present",
+                    "managedFields": ["title"],
+                    "checksum": "aaaa",
+                    "snapshot": {"title":"CPU Main"},
+                    "sourcePath": "dashboards/cpu.json"
+                }
+            ]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        &live_file,
+        serde_json::to_string_pretty(&json!([
+            {
+                "kind": "dashboard",
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "managedFields": ["title"],
+                "body": {"title":"CPU Main Updated"}
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let error = run_sync_cli(SyncGroupCommand::Audit(SyncAuditArgs {
+        managed_file: None,
+        lock_file: Some(lock_file),
+        live_file: Some(live_file),
+        fetch_live: false,
+        common: sync_common_args(),
+        org_id: None,
+        page_size: 100,
+        write_lock: None,
+        fail_on_drift: true,
+        output: SyncOutputFormat::Json,
+    }))
+    .unwrap_err()
+    .to_string();
+
+    assert!(error.contains("detected 1 drifted resource"));
 }
 
 #[test]

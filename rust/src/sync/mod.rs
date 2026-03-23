@@ -11,12 +11,17 @@ use serde_json::{Map, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+pub mod audit;
 pub mod bundle_alert_contracts;
 pub mod bundle_preflight;
 pub mod preflight;
 pub mod review_tui;
 pub mod workbench;
 
+use self::audit::{
+    build_sync_audit_document, build_sync_lock_document, build_sync_lock_document_from_lock,
+    render_sync_audit_text,
+};
 use self::bundle_preflight::{
     build_sync_bundle_preflight_document, render_sync_bundle_preflight_text,
     SYNC_BUNDLE_PREFLIGHT_KIND,
@@ -42,11 +47,12 @@ use crate::dashboard::{build_http_client, build_http_client_for_org, CommonCliAr
 
 /// Constant for default review token.
 pub const DEFAULT_REVIEW_TOKEN: &str = "reviewed-sync-plan";
-const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Summarize desired resources:\n    grafana-util sync summary --desired-file ./desired.json\n\n  Package local exports into one source bundle:\n    grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n\n  Compare a source bundle against target inventory before apply:\n    grafana-util sync bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output json\n\n  Build a live-backed sync plan:\n    grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n\n  Apply a reviewed plan back to Grafana:\n    grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
+const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Summarize desired resources:\n    grafana-util sync summary --desired-file ./desired.json\n\n  Audit managed resources against a staged checksum lock:\n    grafana-util sync audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --fail-on-drift --output json\n\n  Package local exports into one source bundle:\n    grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n\n  Compare a source bundle against target inventory before apply:\n    grafana-util sync bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output json\n\n  Build a live-backed sync plan:\n    grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n\n  Apply a reviewed plan back to Grafana:\n    grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
 const SYNC_SUMMARY_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync summary --desired-file ./desired.json\n  grafana-util sync summary --desired-file ./desired.json --output json";
 const SYNC_PLAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync plan --desired-file ./desired.json --live-file ./live.json\n  grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --allow-prune --output json";
 const SYNC_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync review --plan-file ./sync-plan.json\n  grafana-util sync review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output json";
 const SYNC_APPLY_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve\n  grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --allow-folder-delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n  grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --allow-policy-reset --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
+const SYNC_AUDIT_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync audit --managed-file ./desired.json --live-file ./live.json --write-lock ./sync-lock.json\n  grafana-util sync audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --fail-on-drift --output json";
 const SYNC_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync preflight --desired-file ./desired.json --availability-file ./availability.json\n  grafana-util sync preflight --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output json";
 const SYNC_ASSESS_ALERTS_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync assess-alerts --alerts-file ./alerts.json\n  grafana-util sync assess-alerts --alerts-file ./alerts.json --output json";
 const SYNC_BUNDLE_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output json";
@@ -273,6 +279,71 @@ pub struct SyncApplyArgs {
     pub apply_note: Option<String>,
 }
 
+#[derive(Debug, Clone, Args)]
+pub struct SyncAuditArgs {
+    #[arg(
+        long,
+        help = "Optional JSON file containing the managed desired sync resource list used to define audit scope and managed fields.",
+        help_heading = "Input Options"
+    )]
+    pub managed_file: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Optional JSON file containing a staged sync lock document to compare against.",
+        help_heading = "Input Options"
+    )]
+    pub lock_file: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Optional JSON file containing the current live sync resource list.",
+        help_heading = "Input Options"
+    )]
+    pub live_file: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Fetch the current live state directly from Grafana instead of --live-file.",
+        help_heading = "Live Options"
+    )]
+    pub fetch_live: bool,
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(
+        long,
+        help = "Optional Grafana org id used when --fetch-live is active.",
+        help_heading = "Live Options"
+    )]
+    pub org_id: Option<i64>,
+    #[arg(
+        long,
+        default_value_t = 500usize,
+        help = "Dashboard search page size when --fetch-live is active.",
+        help_heading = "Live Options"
+    )]
+    pub page_size: usize,
+    #[arg(
+        long,
+        help = "Optional JSON file path to write the newly generated lock snapshot.",
+        help_heading = "Output Options"
+    )]
+    pub write_lock: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Fail the command when the audit detects drift.",
+        help_heading = "Output Options"
+    )]
+    pub fail_on_drift: bool,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = SyncOutputFormat::Text,
+        help = "Render the audit document as text or json.",
+        help_heading = "Output Options"
+    )]
+    pub output: SyncOutputFormat,
+}
+
 /// Struct definition for SyncPreflightArgs.
 #[derive(Debug, Clone, Args)]
 pub struct SyncPreflightArgs {
@@ -418,6 +489,8 @@ pub enum SyncGroupCommand {
     Review(SyncReviewArgs),
     #[command(about = "Build a gated local apply intent from a reviewed sync plan.", after_help = SYNC_APPLY_HELP_TEXT)]
     Apply(SyncApplyArgs),
+    #[command(about = "Audit managed Grafana resources against a checksum lock and current live state.", after_help = SYNC_AUDIT_HELP_TEXT)]
+    Audit(SyncAuditArgs),
     #[command(about = "Summarize local desired sync resources from JSON.", after_help = SYNC_SUMMARY_HELP_TEXT)]
     Summary(SyncSummaryArgs),
     #[command(about = "Build a staged sync preflight document from local JSON.", after_help = SYNC_PREFLIGHT_HELP_TEXT)]
@@ -2883,6 +2956,59 @@ fn emit_text_or_json(document: &Value, lines: Vec<String>, output: SyncOutputFor
     Ok(())
 }
 
+fn run_sync_audit(args: SyncAuditArgs) -> Result<()> {
+    if args.managed_file.is_none() && args.lock_file.is_none() {
+        return Err(message(
+            "Sync audit requires --managed-file, --lock-file, or both.",
+        ));
+    }
+    let live = if args.fetch_live {
+        fetch_live_resource_specs(&args.common, args.org_id, args.page_size)?
+    } else {
+        let live_file = args.live_file.as_ref().ok_or_else(|| {
+            message("Sync audit requires --live-file unless --fetch-live is used.")
+        })?;
+        load_json_array_file(live_file, "Sync live input")?
+    };
+    let baseline_lock = match args.lock_file.as_ref() {
+        Some(path) => Some(load_json_value(path, "Sync lock input")?),
+        None => None,
+    };
+    let current_lock = match args.managed_file.as_ref() {
+        Some(path) => {
+            let managed = load_json_array_file(path, "Sync managed input")?;
+            build_sync_lock_document(&managed, &live)?
+        }
+        None => {
+            let baseline = baseline_lock
+                .as_ref()
+                .ok_or_else(|| message("Sync audit requires --managed-file or --lock-file."))?;
+            build_sync_lock_document_from_lock(baseline, &live)?
+        }
+    };
+    let audit = build_sync_audit_document(&current_lock, baseline_lock.as_ref())?;
+    let drift_count = audit
+        .get("summary")
+        .and_then(Value::as_object)
+        .and_then(|summary| summary.get("driftCount"))
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+    if let Some(path) = args.write_lock.as_ref() {
+        if !(args.fail_on_drift && drift_count > 0) {
+            fs::write(
+                path,
+                format!("{}\n", serde_json::to_string_pretty(&current_lock)?),
+            )?;
+        }
+    }
+    if args.fail_on_drift && drift_count > 0 {
+        return Err(message(format!(
+            "Sync audit detected {drift_count} drifted resource(s)."
+        )));
+    }
+    emit_text_or_json(&audit, render_sync_audit_text(&audit)?, args.output)
+}
+
 fn run_sync_bundle(args: SyncBundleArgs) -> Result<()> {
     // Call graph (hierarchy): this function is used in related modules.
     // Upstream callers: sync.rs:run_sync_cli
@@ -3094,6 +3220,7 @@ pub fn run_sync_cli(command: SyncGroupCommand) -> Result<()> {
                 )
             }
         }
+        SyncGroupCommand::Audit(args) => run_sync_audit(args),
         SyncGroupCommand::Summary(args) => {
             let desired = load_json_array_file(&args.desired_file, "Sync desired input")?;
             let document = build_sync_summary_document(&desired)?;

@@ -5,6 +5,13 @@ Historical note:
 - Older entries describe the repo state and `TODO.md` backlog as they existed on the entry date.
 - `TODO.md` now tracks only the active backlog; completed or superseded TODO items moved to `docs/internal/todo-archive.md`.
 
+## 2026-03-23 - Task: Add Rust Sync Audit And Field-Level Review Diff
+- State: Done
+- Scope: `rust/src/cli.rs`, `rust/src/sync/audit.rs`, `rust/src/sync/cli_rust_tests.rs`, `rust/src/sync/mod.rs`, `rust/src/sync/review_tui.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust sync already had staged plan/review/apply contracts and a simple interactive review checklist, but it still lacked a CI-friendly drift guard and did not let operators inspect concrete field-level mutations before confirming a plan.
+- Current Update: Added a new Rust `sync audit` command that builds deterministic checksum lock snapshots for managed resources, compares them against live state or a staged baseline lock, and reports drift such as missing-live, missing-lock, or changed managed fields. Added `--write-lock` and `--fail-on-drift` so the same command can bootstrap a lock file or fail CI when a managed Grafana resource drifts. Upgraded the interactive sync review TUI from a single checklist into two modes: the list view still toggles actionable operations, while `Enter` now opens a side-by-side live vs desired field diff for the selected operation and `c` confirms the filtered review.
+- Result: Rust sync now has a first-pass GitOps drift guard and a materially stronger operator review surface. Teams can snapshot managed Grafana state into a lock artifact, audit live drift in CI, and inspect exact JSON field mutations before apply without leaving the terminal.
+
 ## 2026-03-23 - Task: Add Rust Query Audit Contract And Gate Enforcement
 - State: Done
 - Scope: `rust/src/dashboard/inspect_governance.rs`, `rust/src/dashboard/governance_gate.rs`, `rust/src/dashboard/rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
