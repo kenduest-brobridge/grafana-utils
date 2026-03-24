@@ -56,6 +56,46 @@ grafana-util alert -h
 grafana-util access -h
 ```
 
+## Common Operator Scenarios
+
+List dashboards:
+```bash
+grafana-util dashboard list \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
+  --with-sources \
+  --table
+```
+
+Inspect live dashboards:
+```bash
+grafana-util dashboard inspect-live \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
+  --output-format governance-json
+```
+
+List datasources:
+```bash
+grafana-util datasource list \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
+  --table
+```
+
+List users:
+```bash
+grafana-util access user list \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
+  --scope global \
+  --table
+```
+
 Export dashboards:
 ```bash
 grafana-util dashboard export \

@@ -51,6 +51,7 @@ Default URLs:
 
 - `Example command` shows a practical invocation shape.
 - `Example output` shows the expected format, not a guarantee that your own UIDs, names, counts, or folders will match exactly.
+- When a section includes a `Live note`, the command shape and output excerpt were checked against a local Docker Grafana `12.4.1` service.
 - Table output is best for operators.
 - JSON output is best for scripts, CI, or when you need stable machine-readable fields.
 - Common `ACTION` values:
@@ -794,6 +795,12 @@ grafana-util datasource add \
   --dry-run --table
 ```
 
+Example output:
+```text
+INDEX  NAME               TYPE         ACTION  DETAIL
+1      prometheus-main    prometheus   create  would create datasource uid=prom-main
+```
+
 Example: Loki with tenant header
 ```bash
 grafana-util datasource add \
@@ -806,6 +813,18 @@ grafana-util datasource add \
   --datasource-url http://loki:3100 \
   --http-header X-Scope-OrgID=tenant-a \
   --dry-run --json
+```
+
+Example output:
+```json
+[
+  {
+    "name": "loki-main",
+    "type": "loki",
+    "action": "create",
+    "detail": "would create datasource uid=loki-main"
+  }
+]
 ```
 
 Example: InfluxDB with extra plugin settings
@@ -823,6 +842,15 @@ grafana-util datasource add \
   --json-data '{"version":"Flux","organization":"main-org","defaultBucket":"metrics"}' \
   --dry-run --table
 ```
+
+Example output:
+```text
+INDEX  NAME          TYPE       ACTION  DETAIL
+1      influx-main   influxdb   create  would create datasource uid=influx-main
+```
+
+Live note:
+- The datasource mutation surface is validated in the Docker Grafana `12.4.1` live smoke path, including dry-run preview and persisted secret-field behavior on live add/modify flows.
 
 6) Access Commands
 ------------------

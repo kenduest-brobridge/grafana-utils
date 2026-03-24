@@ -51,6 +51,14 @@ grafana-util <domain> <command> [options]
 | `--timeout` | HTTP 請求逾時時間 | 處理大規模資料或網路不穩時可調高（預設 30s） |
 | `--verify-ssl` | 啟用 TLS 憑證驗證 | 生產環境建議開啟（預設為關閉） |
 
+### 2.1 如何閱讀範例輸出
+
+- `範例指令` 代表實際可用的呼叫方式。
+- `範例輸出` 代表預期格式，不保證您的 UID、名稱、筆數、folder 一定完全相同。
+- 若段落帶有 `實跑註記`，代表命令形態與輸出片段已用本地 Docker Grafana `12.4.1` 服務驗證過。
+- 表格輸出適合人工操作。
+- JSON 輸出適合腳本、自動化與 CI。
+
 ### 命令分區（快速導覽）
 
 - Dashboard：`dashboard export`、`dashboard list`、`dashboard import`、`dashboard diff`、`dashboard inspect-export`、`dashboard inspect-live`、`dashboard inspect-vars`、`dashboard screenshot`
@@ -780,36 +788,36 @@ grafana-util datasource add \
   --dry-run --table
 ```
 
+範例輸出：
+```text
+INDEX  NAME          TYPE       ACTION  DETAIL
+1      influx-main   influxdb   create  would create datasource uid=influx-main
+```
+
+實跑註記：
+- datasource mutation 這組命令已在 Docker Grafana `12.4.1` live smoke 流程中驗證，包含 dry-run preview，以及 live add/modify 的 secret field 持久化行為。
+
 6) Access (存取控制) 指令模組
 -------------
 
-這是本工具的核心功能，專為大規模環境的**權限治理與狀態同步**設計。
+`group` 是 `team` 的別名。
 
-### 6.1 使用者管理 (User Operations)
-- `access user list`: 支援 `org` 與 `global` 範圍的權限盤點。
-- `access user export`: 建立使用者快照，包含其組織角色與團隊成員關係。
-- `access user import`: **宣告式還原**使用者狀態。
-- **`--with-teams`**: 匯出/匯入時包含 Team 成員關係同步（還原權限時必備）。
+### 6.1 `access user list`
 
-### 6.2 團隊管理 (Team Operations)
-- `access team import`: 執行確定性（Deterministic）的成員同步。
-- **組態漂移檢查**: 使用 `access team diff` 識別本地快照與線上環境的成員差異。
-- **安全警告**: 若匯入操作會移除現有成員，必須加上 `--yes` 以避免非預期的權限丟失。
+**用途**：列出 org 或 global 範圍的使用者。
 
----
-
-8) 常見維運情境 SOP (Best Practices)
-------------------
-
-### 8.1 跨環境 Dashboard 遷移 (Promote to Prod)
-1. **備份與提交**: 在來源環境執行 `export` 並將產出的 JSON 提交至 Git 倉庫。
-2. **差異模擬執行**: 在目標環境執行 `import --dry-run --table --import-dir <DIR>/raw`。
-3. **安全更新**: 確認無誤後，執行 `import --replace-existing` 完成同步。
-
-### 8.2 資產稽核與漂移盤點
-1. **線上掃描**: 定期執行 `dashboard inspect-live --output-format governance-json` 識別孤立資源。
-2. **組態比對**：利用 `datasource diff` 確保線上資料來源設定與標準庫一致。
-3. **權限稽核**: 執行 `access user list --scope global --csv` 產出年度審計報表。
+| 參數 | 用途 | 差異 / 情境 |
+| --- | --- | --- |
+| `--scope` | `org` 或 `global` | 指定列舉範圍 |
+| `--query` | 模糊搜尋 login/email/name | 大範圍搜尋 |
+| `--login` | 精準比對 login | 精準定位 |
+| `--email` | 精準比對 email | 精準定位 |
+| `--org-role` | 依 org role 篩選 | 權限盤點 |
+| `--grafana-admin` | 依 server admin 身分篩選 | 管理員盤點 |
+| `--with-teams` | 顯示 team 成員資訊 | 檢查團隊歸屬 |
+| `--page`、`--per-page` | 分頁 | 大量使用者 |
+| `--table`、`--csv`、`--json` | 輸出模式 | 人工與自動化 |
+| `--output-format table\|csv\|json` | 單一輸出旗標 | 取代舊三旗標 |
 
 範例指令：
 ```bash
@@ -823,6 +831,10 @@ ID   LOGIN      EMAIL                NAME             ORG_ROLE   GRAFANA_ADMIN
 7    svc-ci     ci@example.com       CI Service       Editor     false
 9    alice      alice@example.com    Alice Chen       Viewer     false
 ```
+
+補充：
+- `ORG_ROLE` 是 org 內角色，不等於全域管理員權限。
+- `GRAFANA_ADMIN=true` 通常只應出現在少數維運帳號。
 
 ### 6.2 `access user add`
 
