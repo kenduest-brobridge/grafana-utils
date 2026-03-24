@@ -1504,7 +1504,7 @@ grafana-util alert list-rules --url <URL> --basic-user <USER> --basic-password <
 
 grafana-util datasource list --url <URL> --token <TOKEN> [--table|--csv|--json]
 grafana-util datasource list --url <URL> --basic-user <USER> --basic-password <PASS> [--org-id <ORG_ID>|--all-orgs] [--table|--csv|--json]
-python3 -m grafana_utils datasource add --url <URL> --token <TOKEN> --name <NAME> --type <TYPE> [--uid <UID>] [--access proxy|direct] [--datasource-url <URL>] [--basic-auth] [--basic-auth-user <USER>] [--basic-auth-password <PASS>] [--user <USER>] [--password <PASS>] [--with-credentials] [--http-header NAME=VALUE] [--tls-skip-verify] [--server-name <NAME>] [--json-data <JSON>] [--secure-json-data <JSON>] [--dry-run] [--table|--json|--output-format text|table|json]
+python3 -m grafana_utils datasource add --url <URL> --token <TOKEN> --name <NAME> --type <TYPE> [--uid <UID>] [--access proxy|direct] [--datasource-url <URL>] [--basic-auth] [--basic-auth-user <USER>] [--basic-auth-password <PASS>] [--user <USER>] [--password <PASS>] [--with-credentials] [--http-header NAME=VALUE] [--tls-skip-verify] [--server-name <NAME>] [--json-data <JSON>] [--secure-json-data <JSON>] [--dry-run] [--output-format text|table|json]
 grafana-util datasource export --url <URL> --basic-user <USER> --basic-password <PASS> --export-dir <DIR> [--overwrite] [--org-id <ORG_ID>|--all-orgs]
 grafana-util datasource import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR> --replace-existing [--org-id <ORG_ID>] [--use-export-org [--only-org-id <ORG_ID>]... [--create-missing-orgs]] [--dry-run]
 grafana-util datasource diff --url <URL> --basic-user <USER> --basic-password <PASS> --diff-dir <DIR>
