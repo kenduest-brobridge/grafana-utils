@@ -2,29 +2,42 @@
 //! Validates CLI parsing/help text surfaces and handler contract behavior with stubbed
 //! request closures.
 use super::{
-    add_service_account_token_with_request, add_service_account_with_request,
-    add_team_with_request, add_user_with_request, build_team_import_dry_run_document,
-    build_user_import_dry_run_document, delete_org_with_request,
-    delete_service_account_token_with_request, delete_service_account_with_request,
-    delete_team_with_request, delete_user_with_request, diff_orgs_with_request,
-    diff_service_accounts_with_request, diff_teams_with_request, diff_users_with_request,
-    export_orgs_with_request, export_service_accounts_with_request, export_teams_with_request,
-    export_users_with_request, import_orgs_with_request, import_service_accounts_with_request,
-    import_teams_with_request, import_users_with_request, list_orgs_with_request,
-    list_service_accounts_command_with_request, list_teams_command_with_request,
-    list_users_with_request, modify_org_with_request, modify_team_with_request,
-    modify_user_with_request, parse_cli_from, run_access_cli_with_request, AccessCommand,
-    CommonCliArgs, DryRunOutputFormat, OrgCommand, OrgDeleteArgs, OrgDiffArgs, OrgExportArgs,
-    OrgImportArgs, OrgListArgs, OrgModifyArgs, Scope, ServiceAccountAddArgs, ServiceAccountCommand,
-    ServiceAccountDeleteArgs, ServiceAccountDiffArgs, ServiceAccountExportArgs,
-    ServiceAccountImportArgs, ServiceAccountListArgs, ServiceAccountTokenAddArgs,
-    ServiceAccountTokenCommand, ServiceAccountTokenDeleteArgs, TeamAddArgs, TeamCommand,
-    TeamDeleteArgs, TeamDiffArgs, TeamExportArgs, TeamImportArgs, TeamListArgs, TeamModifyArgs,
-    UserAddArgs, UserCommand, UserDeleteArgs, UserDiffArgs, UserExportArgs, UserImportArgs,
-    UserListArgs, UserModifyArgs,
+    cli_defs::AccessCliRoot,
+    cli_defs::CommonCliArgsNoOrgId,
+    org::{
+        delete_org_with_request, diff_orgs_with_request, export_orgs_with_request,
+        import_orgs_with_request, list_orgs_with_request, modify_org_with_request,
+    },
+    parse_cli_from,
+    pending_delete::{
+        delete_service_account_token_with_request, delete_service_account_with_request,
+        delete_team_with_request,
+    },
+    run_access_cli_with_request,
+    service_account::{
+        add_service_account_token_with_request, add_service_account_with_request,
+        diff_service_accounts_with_request, export_service_accounts_with_request,
+        import_service_accounts_with_request, list_service_accounts_command_with_request,
+    },
+    team::{
+        add_team_with_request, build_team_import_dry_run_document, diff_teams_with_request,
+        export_teams_with_request, import_teams_with_request, list_teams_command_with_request,
+        modify_team_with_request,
+    },
+    user::{
+        add_user_with_request, build_user_import_dry_run_document, delete_user_with_request,
+        diff_users_with_request, export_users_with_request, import_users_with_request,
+        list_users_with_request, modify_user_with_request,
+    },
+    AccessCommand, CommonCliArgs, DryRunOutputFormat, OrgCommand, OrgDeleteArgs, OrgDiffArgs,
+    OrgExportArgs, OrgImportArgs, OrgListArgs, OrgModifyArgs, Scope, ServiceAccountAddArgs,
+    ServiceAccountCommand, ServiceAccountDeleteArgs, ServiceAccountDiffArgs,
+    ServiceAccountExportArgs, ServiceAccountImportArgs, ServiceAccountListArgs,
+    ServiceAccountTokenAddArgs, ServiceAccountTokenCommand, ServiceAccountTokenDeleteArgs,
+    TeamAddArgs, TeamCommand, TeamDeleteArgs, TeamDiffArgs, TeamExportArgs, TeamImportArgs,
+    TeamListArgs, TeamModifyArgs, UserAddArgs, UserCommand, UserDeleteArgs, UserDiffArgs,
+    UserExportArgs, UserImportArgs, UserListArgs, UserModifyArgs,
 };
-use crate::access::cli_defs::AccessCliRoot;
-use crate::access::cli_defs::CommonCliArgsNoOrgId;
 use clap::{CommandFactory, Parser};
 use reqwest::Method;
 use serde_json::{json, Value};
@@ -1165,7 +1178,7 @@ fn run_access_cli_with_request_routes_user_export() {
                 panic!("unexpected path {path}");
             }
         },
-        args,
+        &args,
     );
     assert!(result.is_ok());
 }
@@ -1182,7 +1195,7 @@ fn run_access_cli_with_request_routes_team_export() {
                 panic!("unexpected path {path}");
             }
         },
-        args,
+        &args,
     );
     assert!(result.is_ok());
 }
@@ -1215,7 +1228,7 @@ fn run_access_cli_with_request_routes_team_import() {
                 _ => panic!("unexpected path {path}"),
             }
         },
-        args,
+        &args,
     );
 
     assert!(result.is_ok());
@@ -1248,7 +1261,7 @@ fn run_access_cli_with_request_routes_org_export() {
             ]))),
             _ => panic!("unexpected path {path}"),
         },
-        args,
+        &args,
     );
     assert!(result.is_ok());
 }
@@ -1307,7 +1320,7 @@ fn run_access_cli_with_request_routes_org_import() {
                 _ => panic!("unexpected path {path}"),
             }
         },
-        args,
+        &args,
     );
     assert!(result.is_ok());
     assert!(calls
@@ -1358,7 +1371,7 @@ fn run_access_cli_with_request_routes_org_diff() {
             ]))),
             _ => panic!("unexpected path {path}"),
         },
-        args,
+        &args,
     );
     assert!(result.is_ok());
 }
@@ -1763,7 +1776,7 @@ fn run_access_cli_with_request_routes_user_diff() {
                 _ => panic!("unexpected path {path}"),
             }
         },
-        args,
+        &args,
     );
     assert!(result.is_ok());
 }
@@ -1793,7 +1806,7 @@ fn run_access_cli_with_request_routes_team_diff() {
             )),
             _ => panic!("unexpected path {path}"),
         },
-        args,
+        &args,
     );
     assert!(result.is_ok());
 }
@@ -4225,7 +4238,7 @@ fn run_access_cli_with_request_routes_user_list() {
             "/api/org/users" => Ok(Some(json!([]))),
             _ => panic!("unexpected path {path}"),
         },
-        args,
+        &args,
     );
     assert!(result.is_ok());
 }

@@ -1,5 +1,7 @@
-//! Access delete staging surface (parser-only, not yet wired to runtime handlers).
-//! Kept adjacent to access CLI modules to avoid command-surface churn while handler work is staged.
+//! Access delete handlers for teams, service accounts, and service-account tokens.
+//!
+//! Keeps identity checks, confirmation gates, and response formatting close to the delete
+//! requests they support.
 use clap::{Args, Subcommand};
 use reqwest::Method;
 use serde_json::{Map, Value};
@@ -11,20 +13,7 @@ use super::{
     request_object, CommonCliArgs, TeamAddArgs, TeamListArgs, TeamModifyArgs, DEFAULT_PAGE_SIZE,
 };
 
-// Staging module for the remaining access-management delete surface.
-//
-// This file intentionally contains only argument shapes and parser-level plumbing so
-// the incomplete delete surface can be reviewed incrementally without forcing runtime
-// behavior changes. Keep it aligned with `access.rs` as command handlers are re-enabled.
-//
-// Intended future wiring:
-// - declare this module from `access.rs`
-// - re-export the staged arg types from `access.rs` and `cli_defs.rs`
-// - extend `TeamCommand`, `ServiceAccountCommand`, and `ServiceAccountTokenCommand`
-// - dispatch the new handlers from `run_access_cli_with_request` and `run_access_cli`
-// - optionally materialize `GroupCommandStage` as a compatibility alias for `team`
-
-/// Struct definition for TeamDeleteArgs.
+/// CLI arguments for team delete.
 #[derive(Debug, Clone, Args)]
 pub struct TeamDeleteArgs {
     #[command(flatten)]
@@ -39,7 +28,7 @@ pub struct TeamDeleteArgs {
     pub json: bool,
 }
 
-/// Struct definition for ServiceAccountDeleteArgs.
+/// CLI arguments for service-account delete.
 #[derive(Debug, Clone, Args)]
 pub struct ServiceAccountDeleteArgs {
     #[command(flatten)]
@@ -54,7 +43,7 @@ pub struct ServiceAccountDeleteArgs {
     pub json: bool,
 }
 
-/// Struct definition for ServiceAccountTokenDeleteArgs.
+/// CLI arguments for service-account token delete.
 #[derive(Debug, Clone, Args)]
 pub struct ServiceAccountTokenDeleteArgs {
     #[command(flatten)]
@@ -73,7 +62,7 @@ pub struct ServiceAccountTokenDeleteArgs {
     pub json: bool,
 }
 
-/// Enum definition for GroupCommandStage.
+/// Parser grouping for the team command surface.
 #[derive(Debug, Clone, Subcommand)]
 pub enum GroupCommandStage {
     List(TeamListArgs),
@@ -91,7 +80,7 @@ fn validate_confirmation(yes: bool, noun: &str) -> Result<()> {
     }
 }
 
-/// Purpose: implementation note.
+/// Render a JSON object as pretty-printed output.
 fn render_single_object_json(object: &Map<String, Value>) -> Result<String> {
     serde_json::to_string_pretty(&Value::Object(object.clone())).map_err(Into::into)
 }
@@ -133,7 +122,7 @@ fn validate_token_identity(args: &ServiceAccountTokenDeleteArgs) -> Result<()> {
     }
 }
 
-/// List one page of teams for staged delete resolution.
+/// List one page of teams for delete resolution.
 fn list_teams_with_request<F>(
     mut request_json: F,
     query: Option<&str>,
@@ -167,7 +156,7 @@ where
     }
 }
 
-/// Purpose: implementation note.
+/// Find a team by exact name.
 fn lookup_team_by_name<F>(mut request_json: F, name: &str) -> Result<Map<String, Value>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -179,7 +168,7 @@ where
         .ok_or_else(|| message(format!("Grafana team lookup did not find {name}.")))
 }
 
-/// Fetch one team record for staged delete confirmation output.
+/// Fetch one team record for delete confirmation output.
 fn get_team_with_request<F>(mut request_json: F, team_id: &str) -> Result<Map<String, Value>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -241,7 +230,7 @@ fn team_delete_result(
     ])
 }
 
-/// Purpose: implementation note.
+/// Build a stable summary line for a deleted team.
 fn team_delete_summary_line(result: &Map<String, Value>) -> String {
     let mut parts = vec![
         format!("teamId={}", map_get_text(result, "teamId")),
@@ -289,7 +278,7 @@ where
     Ok(0)
 }
 
-/// List one page of service accounts for staged token/account deletion.
+/// List one page of service accounts for delete resolution.
 fn list_service_accounts_with_request<F>(
     mut request_json: F,
     query: Option<&str>,
@@ -329,7 +318,7 @@ where
     }
 }
 
-/// Purpose: implementation note.
+/// Find a service account by exact name.
 fn lookup_service_account_by_name<F>(mut request_json: F, name: &str) -> Result<Map<String, Value>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -414,7 +403,7 @@ fn service_account_delete_result(
     row
 }
 
-/// Purpose: implementation note.
+/// Build a stable summary line for a deleted service account.
 fn service_account_delete_summary_line(result: &Map<String, Value>) -> String {
     let mut parts = vec![
         format!(
@@ -507,7 +496,7 @@ where
     }
 }
 
-/// Find one token by exact name for staged token deletion workflows.
+/// Find one token by exact name for token deletion workflows.
 fn lookup_service_account_token_by_name<F>(
     mut request_json: F,
     service_account_id: &str,
@@ -548,7 +537,7 @@ where
     )
 }
 
-/// Purpose: implementation note.
+/// Build a stable result row for a deleted service-account token.
 fn service_account_token_delete_result(
     service_account: &Map<String, Value>,
     token: &Map<String, Value>,
@@ -596,7 +585,7 @@ fn service_account_token_delete_result(
     ])
 }
 
-/// Purpose: implementation note.
+/// Build a stable summary line for a deleted service-account token.
 fn service_account_token_delete_summary_line(result: &Map<String, Value>) -> String {
     [
         format!(

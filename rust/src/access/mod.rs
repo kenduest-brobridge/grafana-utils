@@ -1,20 +1,7 @@
 //! Access-management domain orchestrator.
 //!
-//! Purpose:
-//! - Own access command taxonomy (`user`, `team`, `service-account`) and argument
-//!   normalization.
-//! - Centralize dispatch between repository-owned handlers and injectable request backends.
-//! - Re-export shared access parser/model types for CLI and test call sites.
-//!
-//! Flow:
-//! - Parse CLI args via `cli_defs`.
-//! - For each subcommand, normalize args, build HTTP client(s), and delegate handler calls.
-//! - Allow `run_access_cli_with_request` to receive a mockable request function for tests.
-//!
-//! Caveats:
-//! - Do not implement request semantics in handler branches; keep transport concerns inside
-//!   `http` or per-handler client code.
-//! - Keep this module focused on orchestration, not resource-specific JSON shape details.
+//! Owns access command dispatch, argument normalization, and the shared parser/model re-exports
+//! used by the CLI and tests.
 use reqwest::Method;
 use serde_json::{Map, Value};
 
@@ -53,35 +40,6 @@ pub use cli_defs::{
 };
 pub use pending_delete::{
     GroupCommandStage, ServiceAccountDeleteArgs, ServiceAccountTokenDeleteArgs, TeamDeleteArgs,
-};
-
-#[cfg(test)]
-pub(crate) use org::{
-    delete_org_with_request, diff_orgs_with_request, export_orgs_with_request,
-    import_orgs_with_request, list_orgs_with_request, modify_org_with_request,
-};
-#[cfg(test)]
-pub(crate) use pending_delete::{
-    delete_service_account_token_with_request, delete_service_account_with_request,
-    delete_team_with_request,
-};
-#[cfg(test)]
-pub(crate) use service_account::{
-    add_service_account_token_with_request, add_service_account_with_request,
-    diff_service_accounts_with_request, export_service_accounts_with_request,
-    import_service_accounts_with_request, list_service_accounts_command_with_request,
-};
-#[cfg(test)]
-pub(crate) use team::{
-    add_team_with_request, build_team_import_dry_run_document, diff_teams_with_request,
-    export_teams_with_request, import_teams_with_request, list_teams_command_with_request,
-    modify_team_with_request,
-};
-#[cfg(test)]
-pub(crate) use user::{
-    add_user_with_request, build_user_import_dry_run_document, delete_user_with_request,
-    diff_users_with_request, export_users_with_request, import_users_with_request,
-    list_users_with_request, modify_user_with_request,
 };
 
 fn request_object<F>(
@@ -123,141 +81,248 @@ where
 
 /// Access execution path for callers that already own a configured `JsonHttpClient`.
 /// Delegates to the request-injection path to keep side effects explicit and testable.
-pub fn run_access_cli_with_client(client: &JsonHttpClient, args: AccessCliArgs) -> Result<()> {
-    // Call graph (hierarchy): this function is used in related modules.
-    // Upstream callers: access.rs:run_access_cli
-    // Downstream callees: access.rs:run_access_cli_with_request
-
+pub fn run_access_cli_with_client(client: &JsonHttpClient, args: &AccessCliArgs) -> Result<()> {
     run_access_cli_with_request(
         |method, path, params, payload| client.request_json(method, path, params, payload),
         args,
     )
 }
 
+fn run_access_cli_with_common<C, F>(common: &C, args: &AccessCliArgs, build_client: F) -> Result<()>
+where
+    F: FnOnce(&C) -> Result<JsonHttpClient>,
+{
+    let client = build_client(common)?;
+    run_access_cli_with_client(&client, args)
+}
+
+fn run_user_access_cli(command: &UserCommand, args: &AccessCliArgs) -> Result<()> {
+    match command {
+        UserCommand::List(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        UserCommand::Add(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        UserCommand::Modify(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        UserCommand::Export(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        UserCommand::Import(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        UserCommand::Diff(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        UserCommand::Delete(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+    }
+}
+
+fn run_org_access_cli(command: &OrgCommand, args: &AccessCliArgs) -> Result<()> {
+    match command {
+        OrgCommand::List(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client_no_org_id)
+        }
+        OrgCommand::Add(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client_no_org_id)
+        }
+        OrgCommand::Modify(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client_no_org_id)
+        }
+        OrgCommand::Export(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client_no_org_id)
+        }
+        OrgCommand::Import(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client_no_org_id)
+        }
+        OrgCommand::Diff(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client_no_org_id)
+        }
+        OrgCommand::Delete(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client_no_org_id)
+        }
+    }
+}
+
+fn run_team_access_cli(command: &TeamCommand, args: &AccessCliArgs) -> Result<()> {
+    match command {
+        TeamCommand::List(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        TeamCommand::Add(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        TeamCommand::Modify(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        TeamCommand::Export(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        TeamCommand::Import(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        TeamCommand::Diff(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        TeamCommand::Delete(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+    }
+}
+
+fn run_service_account_access_cli(
+    command: &ServiceAccountCommand,
+    args: &AccessCliArgs,
+) -> Result<()> {
+    match command {
+        ServiceAccountCommand::List(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        ServiceAccountCommand::Add(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        ServiceAccountCommand::Export(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        ServiceAccountCommand::Import(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        ServiceAccountCommand::Diff(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        ServiceAccountCommand::Delete(inner) => {
+            run_access_cli_with_common(&inner.common, args, build_http_client)
+        }
+        ServiceAccountCommand::Token { command } => match command {
+            ServiceAccountTokenCommand::Add(inner) => {
+                run_access_cli_with_common(&inner.common, args, build_http_client)
+            }
+            ServiceAccountTokenCommand::Delete(inner) => {
+                run_access_cli_with_common(&inner.common, args, build_http_client)
+            }
+        },
+    }
+}
+
 /// Access execution path with request-function injection.
 ///
 /// Receives fully parsed CLI args and routes each command branch to matching handler
 /// functions that perform request execution.
-pub fn run_access_cli_with_request<F>(mut request_json: F, args: AccessCliArgs) -> Result<()>
+pub fn run_access_cli_with_request<F>(mut request_json: F, args: &AccessCliArgs) -> Result<()>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    // Call graph (hierarchy): this function is used in related modules.
-    // Upstream callers: access.rs:run_access_cli_with_client, rust_tests.rs:run_access_cli_with_request_routes_org_export, rust_tests.rs:run_access_cli_with_request_routes_org_import, rust_tests.rs:run_access_cli_with_request_routes_team_diff, rust_tests.rs:run_access_cli_with_request_routes_team_export, rust_tests.rs:run_access_cli_with_request_routes_team_import, rust_tests.rs:run_access_cli_with_request_routes_user_diff, rust_tests.rs:run_access_cli_with_request_routes_user_export, rust_tests.rs:run_access_cli_with_request_routes_user_list
-    // Downstream callees: 無
-
-    match args.command {
+    match &args.command {
         AccessCommand::User { command } => match command {
             UserCommand::List(args) => {
-                let _ = user::list_users_with_request(&mut request_json, &args)?;
+                let _ = user::list_users_with_request(&mut request_json, args)?;
             }
             UserCommand::Add(args) => {
-                let _ = user::add_user_with_request(&mut request_json, &args)?;
+                let _ = user::add_user_with_request(&mut request_json, args)?;
             }
             UserCommand::Modify(args) => {
-                let _ = user::modify_user_with_request(&mut request_json, &args)?;
+                let _ = user::modify_user_with_request(&mut request_json, args)?;
             }
             UserCommand::Export(args) => {
-                let _ = user::export_users_with_request(&mut request_json, &args)?;
+                let _ = user::export_users_with_request(&mut request_json, args)?;
             }
             UserCommand::Import(args) => {
-                let _ = user::import_users_with_request(&mut request_json, &args)?;
+                let _ = user::import_users_with_request(&mut request_json, args)?;
             }
             UserCommand::Diff(args) => {
-                let _ = user::diff_users_with_request(&mut request_json, &args)?;
+                let _ = user::diff_users_with_request(&mut request_json, args)?;
             }
             UserCommand::Delete(args) => {
-                let _ = user::delete_user_with_request(&mut request_json, &args)?;
+                let _ = user::delete_user_with_request(&mut request_json, args)?;
             }
         },
         AccessCommand::Org { command } => match command {
             OrgCommand::List(args) => {
-                let _ = org::list_orgs_with_request(&mut request_json, &args)?;
+                let _ = org::list_orgs_with_request(&mut request_json, args)?;
             }
             OrgCommand::Add(args) => {
-                let _ = org::add_org_with_request(&mut request_json, &args)?;
+                let _ = org::add_org_with_request(&mut request_json, args)?;
             }
             OrgCommand::Modify(args) => {
-                let _ = org::modify_org_with_request(&mut request_json, &args)?;
+                let _ = org::modify_org_with_request(&mut request_json, args)?;
             }
             OrgCommand::Export(args) => {
-                let _ = org::export_orgs_with_request(&mut request_json, &args)?;
+                let _ = org::export_orgs_with_request(&mut request_json, args)?;
             }
             OrgCommand::Import(args) => {
-                let _ = org::import_orgs_with_request(&mut request_json, &args)?;
+                let _ = org::import_orgs_with_request(&mut request_json, args)?;
             }
             OrgCommand::Diff(args) => {
-                let _ = org::diff_orgs_with_request(&mut request_json, &args)?;
+                let _ = org::diff_orgs_with_request(&mut request_json, args)?;
             }
             OrgCommand::Delete(args) => {
-                let _ = org::delete_org_with_request(&mut request_json, &args)?;
+                let _ = org::delete_org_with_request(&mut request_json, args)?;
             }
         },
         AccessCommand::Team { command } => match command {
             TeamCommand::List(args) => {
-                let _ = team::list_teams_command_with_request(&mut request_json, &args)?;
+                let _ = team::list_teams_command_with_request(&mut request_json, args)?;
             }
             TeamCommand::Add(args) => {
-                let _ = team::add_team_with_request(&mut request_json, &args)?;
+                let _ = team::add_team_with_request(&mut request_json, args)?;
             }
             TeamCommand::Modify(args) => {
-                let _ = team::modify_team_with_request(&mut request_json, &args)?;
+                let _ = team::modify_team_with_request(&mut request_json, args)?;
             }
             TeamCommand::Export(args) => {
-                let _ = team::export_teams_with_request(&mut request_json, &args)?;
+                let _ = team::export_teams_with_request(&mut request_json, args)?;
             }
             TeamCommand::Import(args) => {
-                let _ = team::import_teams_with_request(&mut request_json, &args)?;
+                let _ = team::import_teams_with_request(&mut request_json, args)?;
             }
             TeamCommand::Diff(args) => {
-                let _ = team::diff_teams_with_request(&mut request_json, &args)?;
+                let _ = team::diff_teams_with_request(&mut request_json, args)?;
             }
             TeamCommand::Delete(args) => {
-                let _ = pending_delete::delete_team_with_request(&mut request_json, &args)?;
+                let _ = pending_delete::delete_team_with_request(&mut request_json, args)?;
             }
         },
         AccessCommand::ServiceAccount { command } => match command {
             ServiceAccountCommand::List(args) => {
                 let _ = service_account::list_service_accounts_command_with_request(
                     &mut request_json,
-                    &args,
+                    args,
                 )?;
             }
             ServiceAccountCommand::Add(args) => {
-                let _ =
-                    service_account::add_service_account_with_request(&mut request_json, &args)?;
+                let _ = service_account::add_service_account_with_request(&mut request_json, args)?;
             }
             ServiceAccountCommand::Export(args) => {
-                let _ = service_account::export_service_accounts_with_request(
-                    &mut request_json,
-                    &args,
-                )?;
+                let _ =
+                    service_account::export_service_accounts_with_request(&mut request_json, args)?;
             }
             ServiceAccountCommand::Import(args) => {
-                let _ = service_account::import_service_accounts_with_request(
-                    &mut request_json,
-                    &args,
-                )?;
+                let _ =
+                    service_account::import_service_accounts_with_request(&mut request_json, args)?;
             }
             ServiceAccountCommand::Diff(args) => {
                 let _ =
-                    service_account::diff_service_accounts_with_request(&mut request_json, &args)?;
+                    service_account::diff_service_accounts_with_request(&mut request_json, args)?;
             }
             ServiceAccountCommand::Delete(args) => {
                 let _ =
-                    pending_delete::delete_service_account_with_request(&mut request_json, &args)?;
+                    pending_delete::delete_service_account_with_request(&mut request_json, args)?;
             }
             ServiceAccountCommand::Token { command } => match command {
                 ServiceAccountTokenCommand::Add(args) => {
                     let _ = service_account::add_service_account_token_with_request(
                         &mut request_json,
-                        &args,
+                        args,
                     )?;
                 }
                 ServiceAccountTokenCommand::Delete(args) => {
                     let _ = pending_delete::delete_service_account_token_with_request(
                         &mut request_json,
-                        &args,
+                        args,
                     )?;
                 }
             },
@@ -271,138 +336,12 @@ where
 /// Normalizes arguments and builds one HTTP client per concrete subcommand branch before
 /// delegating to the request-injection runner.
 pub fn run_access_cli(args: AccessCliArgs) -> Result<()> {
-    // Call graph (hierarchy): this function is used in related modules.
-    // Upstream callers: 無
-    // Downstream callees: access.rs:run_access_cli_with_client, cli_defs.rs:build_http_client_no_org_id, cli_defs.rs:normalize_access_cli_args
-
     let args = normalize_access_cli_args(args);
     match &args.command {
-        AccessCommand::User { command } => match command {
-            UserCommand::List(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            UserCommand::Add(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            UserCommand::Modify(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            UserCommand::Export(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            UserCommand::Import(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            UserCommand::Diff(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            UserCommand::Delete(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-        },
-        AccessCommand::Org { command } => match command {
-            OrgCommand::List(inner) => {
-                let client = build_http_client_no_org_id(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            OrgCommand::Add(inner) => {
-                let client = build_http_client_no_org_id(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            OrgCommand::Modify(inner) => {
-                let client = build_http_client_no_org_id(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            OrgCommand::Export(inner) => {
-                let client = build_http_client_no_org_id(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            OrgCommand::Import(inner) => {
-                let client = build_http_client_no_org_id(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            OrgCommand::Diff(inner) => {
-                let client = build_http_client_no_org_id(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            OrgCommand::Delete(inner) => {
-                let client = build_http_client_no_org_id(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-        },
-        AccessCommand::Team { command } => match command {
-            TeamCommand::List(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            TeamCommand::Add(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            TeamCommand::Modify(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            TeamCommand::Export(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            TeamCommand::Import(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            TeamCommand::Diff(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            TeamCommand::Delete(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-        },
-        AccessCommand::ServiceAccount { command } => match command {
-            ServiceAccountCommand::List(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            ServiceAccountCommand::Add(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            ServiceAccountCommand::Export(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            ServiceAccountCommand::Import(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            ServiceAccountCommand::Diff(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            ServiceAccountCommand::Delete(inner) => {
-                let client = build_http_client(&inner.common)?;
-                run_access_cli_with_client(&client, args)
-            }
-            ServiceAccountCommand::Token { command } => match command {
-                ServiceAccountTokenCommand::Add(inner) => {
-                    let client = build_http_client(&inner.common)?;
-                    run_access_cli_with_client(&client, args)
-                }
-                ServiceAccountTokenCommand::Delete(inner) => {
-                    let client = build_http_client(&inner.common)?;
-                    run_access_cli_with_client(&client, args)
-                }
-            },
-        },
+        AccessCommand::User { command } => run_user_access_cli(command, &args),
+        AccessCommand::Org { command } => run_org_access_cli(command, &args),
+        AccessCommand::Team { command } => run_team_access_cli(command, &args),
+        AccessCommand::ServiceAccount { command } => run_service_account_access_cli(command, &args),
     }
 }
 
