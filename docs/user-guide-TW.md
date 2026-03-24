@@ -1458,9 +1458,9 @@ python3 scripts/check_dashboard_governance.py \
 # dashboard
 grafana-util dashboard export --url <URL> --basic-user <USER> --basic-password <PASS> --export-dir <DIR> [--overwrite] [--all-orgs]
 grafana-util dashboard export --url <URL> --token <TOKEN> --org-id <ORG_ID> --export-dir <DIR> [--overwrite]
-grafana-util dashboard list --url <URL> --basic-user <USER> --basic-password <PASS> [--org-id <ORG_ID>|--all-orgs] [--table|--csv|--json|--output-format table|csv|json] [--with-sources]
-grafana-util dashboard list-data-sources --url <URL> --basic-user <USER> --basic-password <PASS> [--table|--csv|--json|--output-format table|csv|json]
-grafana-util dashboard import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw --replace-existing [--dry-run] [--table|--json|--output-format text|table|json] [--output-columns uid,destination,action,folder_path,destination_folder_path,file]
+grafana-util dashboard list --url <URL> --basic-user <USER> --basic-password <PASS> [--org-id <ORG_ID>|--all-orgs] [--output-format table|csv|json] [--with-sources]
+grafana-util dashboard list-data-sources --url <URL> --basic-user <USER> --basic-password <PASS> [--output-format table|csv|json]
+grafana-util dashboard import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw --replace-existing [--dry-run] [--output-format text|table|json] [--output-columns uid,destination,action,folder_path,destination_folder_path,file]
 grafana-util dashboard diff --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR>/raw [--import-folder-uid <UID>] [--context-lines 3]
 grafana-util dashboard inspect-export --import-dir <DIR>/raw --output-format report-tree
 grafana-util dashboard inspect-live --url <URL> --basic-user <USER> --basic-password <PASS> --output-format report-json
@@ -1475,7 +1475,7 @@ grafana-util alert list-rules --url <URL> --basic-user <USER> --basic-password <
 # datasource
 grafana-util datasource list --url <URL> --token <TOKEN> [--table|--csv|--json]
 grafana-util datasource list --url <URL> --basic-user <USER> --basic-password <PASS> [--org-id <ORG_ID>|--all-orgs] [--table|--csv|--json]
-grafana-util datasource add --url <URL> --token <TOKEN> --name <NAME> --type <TYPE> [--uid <UID>] [--access proxy|direct] [--datasource-url <URL>] [--basic-auth] [--basic-auth-user <USER>] [--basic-auth-password <PASS>] [--user <USER>] [--password <PASS>] [--with-credentials] [--http-header NAME=VALUE] [--tls-skip-verify] [--server-name <NAME>] [--json-data <JSON>] [--secure-json-data <JSON>] [--dry-run] [--table|--json|--output-format text|table|json]
+grafana-util datasource add --url <URL> --token <TOKEN> --name <NAME> --type <TYPE> [--uid <UID>] [--access proxy|direct] [--datasource-url <URL>] [--basic-auth] [--basic-auth-user <USER>] [--basic-auth-password <PASS>] [--user <USER>] [--password <PASS>] [--with-credentials] [--http-header NAME=VALUE] [--tls-skip-verify] [--server-name <NAME>] [--json-data <JSON>] [--secure-json-data <JSON>] [--dry-run] [--output-format text|table|json]
 grafana-util datasource export --url <URL> --basic-user <USER> --basic-password <PASS> --export-dir <DIR> [--overwrite] [--dry-run] [--org-id <ORG_ID>|--all-orgs]
 grafana-util datasource import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR> --replace-existing [--org-id <ORG_ID>] [--use-export-org [--only-org-id <ORG_ID>]... [--create-missing-orgs]] [--dry-run] [--output-format table|text|json] [--output-columns uid,name,type,destination,action,org_id,file]
 grafana-util datasource diff --url <URL> --basic-user <USER> --basic-password <PASS> --diff-dir <DIR>
@@ -1486,7 +1486,7 @@ grafana-util access user add --url <URL> --basic-user <USER> --basic-password <P
 grafana-util access user modify --url <URL> --basic-user <USER> --basic-password <PASS> --login <LOGIN> --set-email <EMAIL> [--set-name <NAME>] [--set-org-role Viewer|Editor|Admin|None] [--set-grafana-admin true|false]
 grafana-util access user delete --url <URL> --basic-user <USER> --basic-password <PASS> --login <LOGIN> --scope global --yes
 grafana-util access user export --url <URL> --token <TOKEN> --export-dir ./access-users [--scope org|global] [--with-teams]
-grafana-util access user import --url <URL> --token <TOKEN> --import-dir ./access-users --replace-existing [--dry-run] [--table|--json|--output-format text|table|json] [--yes]
+grafana-util access user import --url <URL> --token <TOKEN> --import-dir ./access-users --replace-existing [--dry-run] [--output-format text|table|json] [--yes]
 grafana-util access user diff --url <URL> --token <TOKEN> --diff-dir ./access-users [--scope org|global]
 grafana-util access team list --url <URL> --token <TOKEN> [--query <QUERY>|--name <NAME>] [--with-members] [--table|--csv|--json]
 grafana-util access team add --url <URL> --token <TOKEN> --name <NAME> [--email <EMAIL>] [--member <LOGIN_OR_EMAIL>] [--admin <LOGIN_OR_EMAIL>]
@@ -1494,9 +1494,9 @@ grafana-util access team modify --url <URL> --token <TOKEN> --name <NAME> [--add
 grafana-util access team delete --url <URL> --token <TOKEN> --name <NAME> --yes
 grafana-util access team export --url <URL> --token <TOKEN> --export-dir ./access-teams [--with-members]
 grafana-util access team diff --url <URL> --token <TOKEN> --diff-dir ./access-teams
-grafana-util access team import --url <URL> --token <TOKEN> --import-dir ./access-teams --replace-existing [--dry-run] [--table|--json|--output-format text|table|json] [--yes]
+grafana-util access team import --url <URL> --token <TOKEN> --import-dir ./access-teams --replace-existing [--dry-run] [--output-format text|table|json] [--yes]
 grafana-util access service-account export --url <URL> --token <TOKEN> --export-dir ./access-service-accounts [--overwrite]
-grafana-util access service-account import --url <URL> --token <TOKEN> --import-dir ./access-service-accounts --replace-existing [--dry-run] [--table|--json|--output-format text|table|json]
+grafana-util access service-account import --url <URL> --token <TOKEN> --import-dir ./access-service-accounts --replace-existing [--dry-run] [--output-format text|table|json]
 grafana-util access service-account diff --url <URL> --token <TOKEN> --diff-dir ./access-service-accounts
 grafana-util access service-account list --url <URL> --token <TOKEN> [--query <QUERY>] [--table|--csv|--json]
 grafana-util access service-account add --url <URL> --token <TOKEN> --name <NAME> [--role Viewer|Editor|Admin|None] [--disabled true|false]
@@ -1513,7 +1513,7 @@ grafana-util access service-account token delete --url <URL> --token <TOKEN> --n
 | 命令 | `--output-format` 允許值 | `--table/--csv/--json` 同時可用 | 備註 |
 | --- | --- | --- | --- |
 | dashboard list | table/csv/json | 不可 | output-format 取代三旗標 |
-| dashboard list-data-sources | table/csv/json | 不可 | 同上 |
+| dashboard list-data-sources | table/csv/json | 不可 | 相容命令；新流程優先 `datasource list` |
 | dashboard import | text/table/json | 不可（僅 text/table/json） | text 為 dry-run 匯總資訊 |
 | alert list-* | table/csv/json | 不可 | list 命令共用 |
 | datasource list | table/csv/json | 不可 | 同上 |

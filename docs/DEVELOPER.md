@@ -83,18 +83,21 @@ Commit message default for this repo:
 - `VERSION` is the checked-in maintainer version source used by `scripts/set-version.sh`.
 - Use `make print-version` to inspect the current `VERSION`, Python package version, Rust crate version, and Rust lockfile package version together.
 - Use `make sync-version` after editing `VERSION` manually to push that version into `pyproject.toml`, `rust/Cargo.toml`, and `rust/Cargo.lock`.
-- Prefer keeping `dev` and `main` on the same plain checked-in version between releases so normal merges do not conflict on version lines by default.
 - Use `make set-release-version VERSION=X.Y.Z` when preparing `main` for a formal release version and the matching `vX.Y.Z` tag.
 - Use `make set-dev-version VERSION=X.Y.Z DEV_ITERATION=N` only when you intentionally need branch-specific preview artifacts such as `X.Y.Z.devN` / `X.Y.Z-dev.N`.
 - Preferred release ritual:
   - keep day-to-day work on `dev`
   - switch to `main`
-  - run `make set-release-version VERSION=X.Y.Z`
   - merge `dev` into `main`
+  - run `make set-release-version VERSION=X.Y.Z` on `main`
   - keep the plain release values in `VERSION`, `pyproject.toml`, `rust/Cargo.toml`, and `rust/Cargo.lock` if a version conflict still appears
   - run `make test`
   - create tag `vX.Y.Z`
-- If `dev` is not carrying a preview-only version, there is no required post-release `.dev1` bump.
+  - merge `main` back into `dev` immediately after the release/tag so workflow, packaging, docs, and helper-script changes do not drift between branches
+  - run `make set-dev-version VERSION=X.Y.$((Z+1)) DEV_ITERATION=1` or the intended next preview version on `dev`
+  - push both the sync-back merge and the next preview version bump to `origin/dev`
+- Treat the post-release `main -> dev` sync as required, not optional. In practice this prevents recurring merge failures where `ci.yml` looks suspicious but the real drift is in `Makefile`, version metadata, lockfiles, release docs, or helper scripts.
+- `main` should carry the plain release version. `dev` should normally carry the next preview version after that release, so the only expected steady-state branch difference is the intentional preview suffix and whatever new feature work has landed on `dev`.
 
 ### Python CLI Boundaries
 
