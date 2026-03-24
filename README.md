@@ -4,52 +4,11 @@ Language: **English** | [繁體中文版](README.zh-TW.md)
 
 `grafana-utils` is an operator-focused toolkit designed for Grafana administrators and SREs.
 
-## Project Status
-
-This project is still in active development.
-
-- Expect ongoing CLI, workflow, and documentation refinement.
-- Bug reports, edge cases, and operator feedback are welcome.
-- Please use GitHub issues or pull requests for reporting and discussion.
-- Maintainer: `Kenduest`
-
-### 💡 The Philosophy: Why This Tool?
-
-**"Official tools are for users. Grafana Utilities is for admins."**
-
-While the official Grafana UI and CLI are excellent for day-to-day interactions, they often fall short when managing **environments at scale**—dozens of datasources, hundreds of dashboards, and multiple clusters. Administrators frequently face these operational challenges:
-
-- **Inventory Blind Spots**: Difficult to quickly answer "What assets exist?", "Which datasources are unused or broken?", or "What changed since the last snapshot?"
-- **Migration Friction**: Manual export/import struggles to preserve folder structures and UID consistency without repeatable, automated workflows.
-- **Risky Live Mutations**: Applying changes directly to production is dangerous. The lack of a preview (dry-run) mechanism can lead to broken dashboards or silent alert failures.
-- **Fragmented Governance**: Dashboards, datasources, and access rules often drift into inconsistent manual habits instead of a standardized workflow.
-
-`grafana-utils` turns these problems into **standardized CLI operations** with stable outputs, diffing capabilities, dry-run support, and environment-to-environment state synchronization.
-
----
-
-## 🚀 Key Capabilities & Advantages
-
-### 1. Deep Environment Inventory
-- Full-spectrum scanning of Dashboards, Datasources, Alerting rules, Organizations, Users, Teams, and Service Accounts.
-- Multiple output modes (Table, CSV, JSON) for human review or CI/CD integration.
-
-### 2. Safe Change Management
-- **Diffing**: Compare local snapshots with live environments before committing any changes.
-- **Dry-run Support**: Preview expected actions (Create/Update/Skip) in detail to ensure operational safety.
-
-### 3. Smart Backup & Migration
-- **Folder-aware Workflows**: Automatically reconstruct folder hierarchies and handle path-matching across environments.
-- **State Replay**: Transform Grafana state into Git-ops-friendly JSON for rapid restoration or environment mirroring.
-
-### 4. Governance-Oriented Inspection
-- Analyze dashboard structures and query inventory to identify redundant or inefficient resources.
-- Optimized for large-scale instances using high-performance pagination and processing (powered by Rust).
-
-### 5. Dashboard Snapshots & Screenshots
-- **High-Fidelity Captures**: Capture full dashboards or individual panels as PNG, JPEG, or PDF using headless Chromium.
-- **State Replay**: Support replaying template variables and query states via URL or CLI parameters to ensure screenshots reflect the desired data state.
-- **Reporting Ready**: Add customizable dark headers with titles, URLs, and timestamps directly to captured images.
+`grafana-util` helps operators:
+- inventory dashboards, datasources, alerts, orgs, users, teams, and service accounts
+- export, import, diff, and dry-run Grafana state changes
+- inspect dashboards for governance, query usage, and datasource dependencies
+- capture dashboards and panels as screenshots or PDFs
 
 ### Support Matrix
 
@@ -68,8 +27,8 @@ While the official Grafana UI and CLI are excellent for day-to-day interactions,
 ## 🏗️ Technical Architecture
 
 The current maintained CLI is the Rust-based `grafana-util` binary.
-- **Rust CLI Engine**: Handles command parsing, workflow orchestration, data inspection, and release binaries.
-- **Unified Command Surface**: Keeps dashboard, datasource, alert, access, and sync workflows under one namespaced operator interface.
+- User-facing docs and releases target the Rust binary.
+- Python implementation details remain in maintainer docs for parity and validation work.
 
 ---
 
@@ -77,11 +36,14 @@ The current maintained CLI is the Rust-based `grafana-util` binary.
 
 ### Installation
 
-**GitHub Releases:**
-Published release assets are available at:
-`https://github.com/kenduest-brobridge/grafana-utils/releases`
+Download points:
+- Latest release page: `https://github.com/kenduest-brobridge/grafana-utils/releases/latest`
+- All releases: `https://github.com/kenduest-brobridge/grafana-utils/releases`
 
-Download the prebuilt Rust binary for your target platform from the same Releases page when a tagged release is published.
+What to download:
+- Open the release page and expand `Assets`.
+- Download the prebuilt `grafana-util` binary archive for your OS and CPU.
+- If you are not using a tagged release yet, build from source locally.
 
 Build locally:
 ```bash
@@ -99,10 +61,6 @@ grafana-util dashboard export \
   --export-dir ./dashboards \
   --overwrite
 ```
-
-`dashboard export` writes `raw/` API-import JSON, `prompt/` UI-import JSON, and raw inventory metadata including `folders.json`, `datasources.json`, and `permissions.json` for dashboard/folder ACL backup.
-With `--all-orgs`, the export root `export-metadata.json` now summarizes every exported org instead of only one scoped org.
-`dashboard import` currently ignores `raw/permissions.json`, so the permission bundle remains export-only backup metadata for review and future restore flows.
 
 **Preview Changes Before Importing:**
 ```bash
@@ -128,3 +86,7 @@ grafana-util dashboard import \
 - **OS**: RHEL 8+, macOS (ARM/Intel), Linux.
 - **Runtime**: Rust release binary.
 - **Grafana**: Supports v8.x, v9.x, v10.x+.
+
+## Project Status
+
+This project is under active development. Bug reports and operator feedback are welcome.
