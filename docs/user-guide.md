@@ -1,7 +1,7 @@
 Grafana Utilities User Guide
 ============================
 
-This guide documents the shared command surface used by the repository. Use `grafana-util ...` as the primary command shape throughout this manual; the same CLI model applies across the packaged Python CLI and the Rust binary.
+This guide documents the maintained Rust command surface used by the repository. Use `grafana-util ...` as the primary command shape throughout this manual.
 
 1) Before You Start
 -------------------
@@ -247,7 +247,7 @@ grafana-util dashboard import --url http://localhost:3000 --basic-user admin --b
 ```
 
 Current note:
-- Both Python and Rust `dashboard import` currently ignore the exported `raw/permissions.json` bundle. The permission bundle is backed up by default for later review or future restore flows, but the current import path still restores dashboard content, folder placement, and related raw inventory only.
+- `dashboard import` currently ignores the exported `raw/permissions.json` bundle. The permission bundle is backed up by default for later review or future restore flows, but the current import path still restores dashboard content, folder placement, and related raw inventory only.
 
 Example output:
 ```text
@@ -679,7 +679,7 @@ Datasource export completed: 3 item(s)
 ```
 
 Live note:
-- The command shape above is exercised against a real Grafana `12.4.1` Docker server in `make test-python-datasource-live` and `make test-rust-live`.
+- The command shape above is exercised against a real Grafana `12.4.1` Docker server in the Rust live smoke flow.
 
 ### 5.3 `datasource import`
 
@@ -750,7 +750,7 @@ uid=loki-prod
 Purpose: create one live datasource directly in Grafana without using a local export bundle.
 
 Note:
-- `datasource add`, `datasource modify`, and `datasource delete` are now exposed in both the Python CLI and the Rust CLI command surfaces.
+- `datasource add`, `datasource modify`, and `datasource delete` are part of the maintained `grafana-util` command surface.
 
 | Option | Purpose | Difference / scenario |
 | --- | --- | --- |
@@ -780,7 +780,7 @@ Notes:
 
 Example: Prometheus with basic auth
 ```bash
-python3 -m grafana_utils datasource add \
+grafana-util datasource add \
   --url http://localhost:3000 \
   --token <TOKEN> \
   --uid prom-main \
@@ -796,7 +796,7 @@ python3 -m grafana_utils datasource add \
 
 Example: Loki with tenant header
 ```bash
-python3 -m grafana_utils datasource add \
+grafana-util datasource add \
   --url http://localhost:3000 \
   --token <TOKEN> \
   --uid loki-main \
@@ -810,7 +810,7 @@ python3 -m grafana_utils datasource add \
 
 Example: InfluxDB with extra plugin settings
 ```bash
-python3 -m grafana_utils datasource add \
+grafana-util datasource add \
   --url http://localhost:3000 \
   --token <TOKEN> \
   --uid influx-main \
@@ -1465,7 +1465,7 @@ grafana-util dashboard inspect-export --import-dir ./dashboards/raw --report jso
 3. Evaluate a team policy file against those reports:
 
 ```bash
-python3 scripts/check_dashboard_governance.py \
+./scripts/check_dashboard_governance.py \
   --policy examples/dashboard-governance-policy.json \
   --governance governance.json \
   --queries queries.json \
@@ -1504,7 +1504,7 @@ grafana-util alert list-rules --url <URL> --basic-user <USER> --basic-password <
 
 grafana-util datasource list --url <URL> --token <TOKEN> [--table|--csv|--json]
 grafana-util datasource list --url <URL> --basic-user <USER> --basic-password <PASS> [--org-id <ORG_ID>|--all-orgs] [--table|--csv|--json]
-python3 -m grafana_utils datasource add --url <URL> --token <TOKEN> --name <NAME> --type <TYPE> [--uid <UID>] [--access proxy|direct] [--datasource-url <URL>] [--basic-auth] [--basic-auth-user <USER>] [--basic-auth-password <PASS>] [--user <USER>] [--password <PASS>] [--with-credentials] [--http-header NAME=VALUE] [--tls-skip-verify] [--server-name <NAME>] [--json-data <JSON>] [--secure-json-data <JSON>] [--dry-run] [--output-format text|table|json]
+grafana-util datasource add --url <URL> --token <TOKEN> --name <NAME> --type <TYPE> [--uid <UID>] [--access proxy|direct] [--datasource-url <URL>] [--basic-auth] [--basic-auth-user <USER>] [--basic-auth-password <PASS>] [--user <USER>] [--password <PASS>] [--with-credentials] [--http-header NAME=VALUE] [--tls-skip-verify] [--server-name <NAME>] [--json-data <JSON>] [--secure-json-data <JSON>] [--dry-run] [--output-format text|table|json]
 grafana-util datasource export --url <URL> --basic-user <USER> --basic-password <PASS> --export-dir <DIR> [--overwrite] [--org-id <ORG_ID>|--all-orgs]
 grafana-util datasource import --url <URL> --basic-user <USER> --basic-password <PASS> --import-dir <DIR> --replace-existing [--org-id <ORG_ID>] [--use-export-org [--only-org-id <ORG_ID>]... [--create-missing-orgs]] [--dry-run]
 grafana-util datasource diff --url <URL> --basic-user <USER> --basic-password <PASS> --diff-dir <DIR>

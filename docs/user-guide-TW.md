@@ -1,7 +1,7 @@
 Grafana Utilities 維運指南 (繁體中文)
 ===================================
 
-本指南以**統一 CLI 介面**為主，使用 `grafana-util ...` 作為範例指令。相同的命令模型適用於安裝後的 CLI，以及專案內不同實作所提供的對應入口：
+本指南以目前維護中的 Rust `grafana-util` 統一 CLI 介面為主，使用 `grafana-util ...` 作為範例指令：
 
 - **全域參數優先**：通用於所有指令的設定。
 - **功能模組獨立**：依資源類型（Dashboard、Alert、Datasource、Access）劃分。
@@ -639,7 +639,7 @@ Datasource export completed: 3 item(s)
 ```
 
 實跑註記：
-- 上面的命令型態已在 `make test-python-datasource-live` 與 `make test-rust-live` 中，對真實 Grafana `12.4.1` Docker 服務驗證過。
+- 上面的命令型態已在 Rust live smoke 流程中，對真實 Grafana `12.4.1` Docker 服務驗證過。
 
 ### 5.3 `datasource import`
 
@@ -706,7 +706,7 @@ uid=loki-prod
 **用途**：直接在 Grafana 建立一筆線上 datasource，不經過本地 export bundle。
 
 說明：
-- 目前 `datasource add`、`datasource modify`、`datasource delete` 已在 Python CLI 與 Rust CLI 提供對應命令面。
+- 目前 `datasource add`、`datasource modify`、`datasource delete` 已納入維護中的 `grafana-util` 指令面。
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
@@ -1426,7 +1426,7 @@ grafana-util dashboard inspect-export --import-dir ./dashboards/raw --report jso
 3. 用 policy 檔做治理檢查：
 
 ```bash
-python3 scripts/check_dashboard_governance.py \
+./scripts/check_dashboard_governance.py \
   --policy examples/dashboard-governance-policy.json \
   --governance governance.json \
   --queries queries.json \
