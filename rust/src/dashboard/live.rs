@@ -87,13 +87,15 @@ pub(crate) fn fetch_folder_if_exists_with_request<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    match request_json(Method::GET, &format!("/api/folders/{uid}"), &[], None)? {
-        Some(value) => {
+    match request_json(Method::GET, &format!("/api/folders/{uid}"), &[], None) {
+        Ok(Some(value)) => {
             let object =
                 value_as_object(&value, &format!("Unexpected folder payload for UID {uid}."))?;
             Ok(Some(object.clone()))
         }
-        None => Ok(None),
+        Ok(None) => Ok(None),
+        Err(error) if error.status_code() == Some(404) => Ok(None),
+        Err(error) => Err(error),
     }
 }
 
@@ -496,6 +498,64 @@ pub fn import_dashboard_request(client: &JsonHttpClient, payload: &Value) -> Res
             client.request_json(method, path, params, request_payload)
         },
         payload,
+    )
+}
+
+pub(crate) fn delete_dashboard_request_with_request<F>(
+    mut request_json: F,
+    uid: &str,
+) -> Result<Map<String, Value>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let path = format!("/api/dashboards/uid/{uid}");
+    match request_json(Method::DELETE, &path, &[], None)? {
+        Some(value) => {
+            let object = value_as_object(
+                &value,
+                &format!("Unexpected dashboard delete response for UID {uid}."),
+            )?;
+            Ok(object.clone())
+        }
+        None => Err(message(format!(
+            "Unexpected empty dashboard delete response for UID {uid}."
+        ))),
+    }
+}
+
+pub fn delete_dashboard_request(client: &JsonHttpClient, uid: &str) -> Result<Map<String, Value>> {
+    delete_dashboard_request_with_request(
+        |method, path, params, payload| client.request_json(method, path, params, payload),
+        uid,
+    )
+}
+
+pub(crate) fn delete_folder_request_with_request<F>(
+    mut request_json: F,
+    uid: &str,
+) -> Result<Map<String, Value>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let path = format!("/api/folders/{uid}");
+    match request_json(Method::DELETE, &path, &[], None)? {
+        Some(value) => {
+            let object = value_as_object(
+                &value,
+                &format!("Unexpected folder delete response for UID {uid}."),
+            )?;
+            Ok(object.clone())
+        }
+        None => Err(message(format!(
+            "Unexpected empty folder delete response for UID {uid}."
+        ))),
+    }
+}
+
+pub fn delete_folder_request(client: &JsonHttpClient, uid: &str) -> Result<Map<String, Value>> {
+    delete_folder_request_with_request(
+        |method, path, params, payload| client.request_json(method, path, params, payload),
+        uid,
     )
 }
 

@@ -1,15 +1,38 @@
 //! Dashboard domain orchestrator for the unified dashboard CLI.
+//!
+//! This file is the boundary between unified command parsing and the lower-level
+//! dashboard modules that implement export/import/live/inspect/screenshot logic.
 use crate::common::{message, Result};
 use crate::http::JsonHttpClient;
 use serde::Serialize;
 
+// Keep the dashboard surface area split by concern. This file should stay focused
+// on re-exports, shared constants, and top-level command dispatch.
+mod browse;
+mod browse_actions;
+mod browse_edit_dialog;
+mod browse_history_dialog;
+mod browse_input;
+mod browse_render;
+mod browse_state;
+mod browse_support;
+mod browse_terminal;
+mod browse_tui;
 mod cli_defs;
+mod delete;
+mod delete_interactive;
+mod delete_render;
+mod delete_support;
+mod edit;
+mod edit_external;
+mod edit_prompt;
 mod export;
 mod files;
 mod governance_gate;
 mod governance_gate_rules;
 mod governance_gate_tui;
 mod help;
+mod history;
 mod impact_tui;
 mod import;
 mod import_compare;
@@ -42,12 +65,13 @@ mod vars;
 
 pub use cli_defs::{
     build_auth_context, build_http_client, build_http_client_for_org, normalize_dashboard_cli_args,
-    parse_cli_from, CommonCliArgs, DashboardAuthContext, DashboardCliArgs, DashboardCommand,
-    DiffArgs, ExportArgs, GovernanceGateArgs, GovernanceGateOutputFormat, ImpactArgs,
-    ImpactOutputFormat, ImportArgs, InspectExportArgs, InspectExportReportFormat, InspectLiveArgs,
-    InspectOutputFormat, InspectVarsArgs, ListArgs, ScreenshotArgs, ScreenshotFullPageOutput,
-    ScreenshotOutputFormat, ScreenshotTheme, SimpleOutputFormat, TopologyArgs,
-    TopologyOutputFormat, ValidateExportArgs, ValidationOutputFormat,
+    parse_cli_from, BrowseArgs, CommonCliArgs, DashboardAuthContext, DashboardCliArgs,
+    DashboardCommand, DeleteArgs, DiffArgs, ExportArgs, GovernanceGateArgs,
+    GovernanceGateOutputFormat, ImpactArgs, ImpactOutputFormat, ImportArgs, InspectExportArgs,
+    InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, InspectVarsArgs, ListArgs,
+    ScreenshotArgs, ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme,
+    SimpleOutputFormat, TopologyArgs, TopologyOutputFormat, ValidateExportArgs,
+    ValidationOutputFormat,
 };
 pub use export::{build_export_variant_dirs, build_output_path, export_dashboards_with_client};
 pub use help::{
@@ -57,10 +81,13 @@ pub use help::{
 pub use import::{diff_dashboards_with_client, import_dashboards_with_client};
 pub use list::list_dashboards_with_client;
 pub use live::{
-    fetch_dashboard, import_dashboard_request, list_dashboard_summaries, list_datasources,
+    delete_dashboard_request, delete_folder_request, fetch_dashboard, import_dashboard_request,
+    list_dashboard_summaries, list_datasources,
 };
 pub use prompt::build_external_export_document;
 
+use browse::browse_dashboards_with_org_client;
+use delete::delete_dashboards_with_org_clients;
 use export::export_dashboards_with_org_clients;
 use inspect::analyze_export_dir;
 use inspect_live::inspect_live_dashboards_with_client;
@@ -97,7 +124,7 @@ pub(crate) use prompt::{
     resolve_datasource_type_alias,
 };
 
-// Shared dashboard defaults and export filenames.
+// Shared dashboard defaults and export filenames used across export/import/live flows.
 pub const DEFAULT_URL: &str = "http://localhost:3000";
 pub const DEFAULT_TIMEOUT: u64 = 30;
 pub const DEFAULT_PAGE_SIZE: usize = 500;
@@ -151,7 +178,13 @@ pub fn run_dashboard_cli_with_client(
     client: &JsonHttpClient,
     args: DashboardCliArgs,
 ) -> Result<()> {
+    // Use this path when callers already resolved auth/org/client concerns and
+    // only need dashboard command execution.
     match args.command {
+        DashboardCommand::Browse(browse_args) => {
+            let _ = browse::browse_dashboards_with_client(client, &browse_args)?;
+            Ok(())
+        }
         DashboardCommand::List(list_args) => {
             let _ = list_dashboards_with_client(client, &list_args)?;
             Ok(())
@@ -164,7 +197,13 @@ pub fn run_dashboard_cli_with_client(
             let _ = import_dashboards_with_client(client, &import_args)?;
             Ok(())
         }
+        DashboardCommand::Delete(delete_args) => {
+            let _ = delete::delete_dashboards_with_client(client, &delete_args)?;
+            Ok(())
+        }
         DashboardCommand::Diff(diff_args) => {
+            // Diff is treated as a failing command when changes are found so shell
+            // automation can gate on a non-zero exit status.
             let differences = diff_dashboards_with_client(client, &diff_args)?;
             if differences > 0 {
                 return Err(message(format!(
@@ -175,6 +214,8 @@ pub fn run_dashboard_cli_with_client(
             Ok(())
         }
         DashboardCommand::InspectExport(inspect_args) => {
+            // `--help-full` is handled here because inspect-export can be executed
+            // both from the unified CLI and from direct dashboard parser paths.
             if inspect_args.help_full {
                 print!("{}", render_inspect_export_help_full());
                 return Ok(());
@@ -209,13 +250,22 @@ pub fn run_dashboard_cli_with_client(
 
 /// Run the dashboard CLI after normalizing args and creating clients as needed.
 pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
+    // This is the main runtime entrypoint for dashboard commands from the binary:
+    // normalize CLI args first, then decide whether each branch needs org fan-out,
+    // one live client, or no client at all.
     let args = normalize_dashboard_cli_args(args);
     match args.command {
+        DashboardCommand::Browse(browse_args) => {
+            let _ = browse_dashboards_with_org_client(&browse_args)?;
+            Ok(())
+        }
         DashboardCommand::List(list_args) => {
             let _ = list_dashboards_with_org_clients(&list_args)?;
             Ok(())
         }
         DashboardCommand::Export(export_args) => {
+            // Reject the "export nothing" shape early so lower layers can assume at
+            // least one artifact variant will be written.
             if export_args.without_dashboard_raw && export_args.without_dashboard_prompt {
                 return Err(message(
                     "At least one export variant must stay enabled. Remove --without-dashboard-raw or --without-dashboard-prompt.",
@@ -226,6 +276,10 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
         }
         DashboardCommand::Import(import_args) => {
             let _ = import::import_dashboards_with_org_clients(&import_args)?;
+            Ok(())
+        }
+        DashboardCommand::Delete(delete_args) => {
+            let _ = delete_dashboards_with_org_clients(&delete_args)?;
             Ok(())
         }
         DashboardCommand::Diff(diff_args) => {

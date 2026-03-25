@@ -1,14 +1,15 @@
 #![allow(unused_imports)]
 
 pub(crate) use crate::common::message;
+pub(crate) use crate::dashboard::browse_support::build_dashboard_browse_document;
 pub(crate) use crate::dashboard::cli_defs::{
     build_auth_context, build_http_client, build_http_client_for_org, normalize_dashboard_cli_args,
-    parse_cli_from, CommonCliArgs, DashboardAuthContext, DashboardCliArgs, DashboardCommand,
-    DiffArgs, ExportArgs, GovernanceGateArgs, GovernanceGateOutputFormat, ImpactArgs,
-    ImpactOutputFormat, ImportArgs, InspectExportArgs, InspectExportReportFormat, InspectLiveArgs,
-    InspectOutputFormat, InspectVarsArgs, ListArgs, ScreenshotArgs, ScreenshotFullPageOutput,
-    ScreenshotOutputFormat, ScreenshotTheme, SimpleOutputFormat, TopologyArgs,
-    TopologyOutputFormat, ValidateExportArgs, ValidationOutputFormat,
+    parse_cli_from, BrowseArgs, CommonCliArgs, DashboardAuthContext, DashboardCliArgs,
+    DashboardCommand, DiffArgs, ExportArgs, GovernanceGateArgs, GovernanceGateOutputFormat,
+    ImpactArgs, ImpactOutputFormat, ImportArgs, InspectExportArgs, InspectExportReportFormat,
+    InspectLiveArgs, InspectOutputFormat, InspectVarsArgs, ListArgs, ScreenshotArgs,
+    ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme, SimpleOutputFormat,
+    TopologyArgs, TopologyOutputFormat, ValidateExportArgs, ValidationOutputFormat,
 };
 pub(crate) use crate::dashboard::export::{
     build_export_variant_dirs, build_output_path, export_dashboards_with_client,

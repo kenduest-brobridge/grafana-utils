@@ -23,9 +23,9 @@ use crate::alert::{
 };
 use crate::common::Result;
 use crate::dashboard::{
-    run_dashboard_cli, DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs,
-    GovernanceGateArgs, ImportArgs, InspectExportArgs, InspectLiveArgs, InspectVarsArgs, ListArgs,
-    ScreenshotArgs, TopologyArgs,
+    run_dashboard_cli, BrowseArgs, DashboardCliArgs, DashboardCommand, DeleteArgs, DiffArgs,
+    ExportArgs, GovernanceGateArgs, ImportArgs, InspectExportArgs, InspectLiveArgs,
+    InspectVarsArgs, ListArgs, ScreenshotArgs, TopologyArgs,
 };
 use crate::datasource::{run_datasource_cli, DatasourceCliArgs, DatasourceGroupCommand};
 use crate::sync::{run_sync_cli, SyncCliArgs, SyncGroupCommand};
@@ -101,15 +101,11 @@ fn inject_help_full_hint(help: String) -> String {
     help.replace("\nExamples:\n", &format!("\n{HELP_FULL_HINT}\nExamples:\n"))
 }
 
-/// Purpose: implementation note.
+/// Render unified help text and apply compact "full examples" markers.
 ///
-/// Args: see function signature.
-/// Returns: see implementation.
+/// This keeps default help stable while allowing operators to discover the
+/// extended example section when needed.
 pub fn render_unified_help_text(colorize: bool) -> String {
-    // Call graph (hierarchy): this function is used in related modules.
-    // Upstream callers: cli.rs:maybe_render_unified_help_from_os_args, cli.rs:render_unified_help_full_text, cli_rust_tests.rs:render_unified_help, cli_rust_tests.rs:render_unified_help_text_colorizes_bracketed_usage_tokens_when_requested, cli_rust_tests.rs:render_unified_help_text_colorizes_example_labels_when_requested
-    // Downstream callees: cli.rs:colorize_unified_help_examples, cli.rs:inject_help_full_hint, cli.rs:render_long_help_with_color_choice
-
     let mut command = CliArgs::command();
     let help = inject_help_full_hint(render_long_help_with_color_choice(&mut command, colorize));
     if colorize {
@@ -140,10 +136,7 @@ fn render_domain_help_full_text(
     help
 }
 
-/// Purpose: implementation note.
-///
-/// Args: see function signature.
-/// Returns: see implementation.
+/// Render the unified help text with the longer `--help-full` example block.
 pub fn render_unified_help_full_text(colorize: bool) -> String {
     let mut help = render_unified_help_text(colorize);
     if colorize {
@@ -160,10 +153,8 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
-    // Call graph (hierarchy): this function is used in related modules.
-    // Upstream callers: cli_rust_tests.rs:maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags
-    // Downstream callees: cli.rs:render_domain_help_full_text, cli.rs:render_domain_help_text, cli.rs:render_unified_help_full_text, cli.rs:render_unified_help_text
-
+    // Fast path for `-h/--help` and `--help-full` before command parsing.
+    // This avoids constructing a full `CliArgs` value for top-level help usage.
     let args = iter
         .into_iter()
         .map(|value| value.into().to_string_lossy().into_owned())
@@ -211,15 +202,19 @@ where
     }
 }
 
-/// Enum definition for DashboardGroupCommand.
+/// Dashboard subcommands exposed through the unified root CLI.
 #[derive(Debug, Clone, Subcommand)]
 pub enum DashboardGroupCommand {
+    #[command(about = "Browse the live dashboard tree in an interactive terminal UI.")]
+    Browse(BrowseArgs),
     #[command(about = "List dashboard summaries without writing export files.")]
     List(ListArgs),
     #[command(about = "Export dashboards to raw/ and prompt/ JSON files.")]
     Export(ExportArgs),
     #[command(about = "Import dashboard JSON files through the Grafana API.")]
     Import(ImportArgs),
+    #[command(about = "Delete live dashboards by UID or folder path.")]
+    Delete(DeleteArgs),
     #[command(about = "Compare local raw dashboard files against live Grafana dashboards.")]
     Diff(DiffArgs),
     #[command(about = "Analyze a raw dashboard export directory and summarize its structure.")]
@@ -240,7 +235,7 @@ pub enum DashboardGroupCommand {
     Screenshot(ScreenshotArgs),
 }
 
-/// Enum definition for UnifiedCommand.
+/// Namespaced root commands handled by the Rust `grafana-util` binary.
 #[derive(Debug, Clone, Subcommand)]
 pub enum UnifiedCommand {
     #[command(
@@ -280,7 +275,7 @@ pub enum UnifiedCommand {
     after_help = UNIFIED_HELP_TEXT,
     styles = crate::help_styles::CLI_HELP_STYLES
 )]
-/// Struct definition for CliArgs.
+/// Parsed root CLI arguments for the Rust unified binary.
 pub struct CliArgs {
     #[command(subcommand)]
     pub command: UnifiedCommand,
@@ -294,10 +289,8 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
-    // Call graph (hierarchy): this function is used in related modules.
-    // Upstream callers: 無
-    // Downstream callees: 無
-
+    // Keep parser invocation in one place so runtime entrypoints all share identical
+    // argument normalization and Clap error handling.
     CliArgs::parse_from(iter)
 }
 
@@ -307,9 +300,11 @@ fn wrap_dashboard(command: DashboardCommand) -> DashboardCliArgs {
 
 fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
     match command {
+        DashboardGroupCommand::Browse(inner) => wrap_dashboard(DashboardCommand::Browse(inner)),
         DashboardGroupCommand::List(inner) => wrap_dashboard(DashboardCommand::List(inner)),
         DashboardGroupCommand::Export(inner) => wrap_dashboard(DashboardCommand::Export(inner)),
         DashboardGroupCommand::Import(inner) => wrap_dashboard(DashboardCommand::Import(inner)),
+        DashboardGroupCommand::Delete(inner) => wrap_dashboard(DashboardCommand::Delete(inner)),
         DashboardGroupCommand::Diff(inner) => wrap_dashboard(DashboardCommand::Diff(inner)),
         DashboardGroupCommand::InspectExport(inner) => {
             wrap_dashboard(DashboardCommand::InspectExport(inner))
@@ -332,6 +327,10 @@ fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
 
 // Centralized command fan-out before invoking domain runners.
 // Every unified CLI variant is normalized into one of dashboard/alert/datasource/access runners here.
+/// Dispatch the normalized root command into exactly one domain handler.
+///
+/// Handlers are injected as callables so tests can assert routing without
+/// triggering network-heavy domain execution.
 fn dispatch_with_handlers<FD, FS, FY, FA, FX>(
     args: CliArgs,
     mut run_dashboard: FD,
@@ -361,10 +360,7 @@ where
 /// Keeping handler execution injectable via `dispatch_with_handlers` allows tests to
 /// validate dispatch logic without touching network transport.
 pub fn run_cli(args: CliArgs) -> Result<()> {
-    // Call graph (hierarchy): this function is used in related modules.
-    // Upstream callers: 無
-    // Downstream callees: cli.rs:dispatch_with_handlers
-
+    // Keep one executable boundary: parse-independent dispatch + injected runners.
     dispatch_with_handlers(
         args,
         run_dashboard_cli,

@@ -10,7 +10,7 @@ use super::{
     DEFAULT_EXPORT_DIR, DEFAULT_IMPORT_MESSAGE, DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT, DEFAULT_URL,
 };
 
-/// Enum definition for SimpleOutputFormat.
+/// Shared tabular/list output selectors for dashboard commands.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum SimpleOutputFormat {
     Table,
@@ -18,7 +18,7 @@ pub enum SimpleOutputFormat {
     Json,
 }
 
-/// Enum definition for DryRunOutputFormat.
+/// Output selectors for dashboard dry-run style commands.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum DryRunOutputFormat {
     Text,
@@ -26,14 +26,14 @@ pub enum DryRunOutputFormat {
     Json,
 }
 
-/// Enum definition for GovernanceGateOutputFormat.
+/// Output selectors for dashboard governance-gate reports.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum GovernanceGateOutputFormat {
     Text,
     Json,
 }
 
-/// Enum definition for TopologyOutputFormat.
+/// Output selectors for dashboard topology rendering.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum TopologyOutputFormat {
     Text,
@@ -42,21 +42,21 @@ pub enum TopologyOutputFormat {
     Dot,
 }
 
-/// Enum definition for ImpactOutputFormat.
+/// Output selectors for dashboard impact reports.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum ImpactOutputFormat {
     Text,
     Json,
 }
 
-/// Enum definition for ValidationOutputFormat.
+/// Output selectors for dashboard validation reports.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum ValidationOutputFormat {
     Text,
     Json,
 }
 
-/// Struct definition for CommonCliArgs.
+/// Shared Grafana connection/authentication arguments for dashboard commands.
 #[derive(Debug, Clone, Args)]
 pub struct CommonCliArgs {
     #[arg(long, default_value = DEFAULT_URL, help = "Grafana base URL.")]
@@ -99,7 +99,7 @@ pub struct CommonCliArgs {
     pub verify_ssl: bool,
 }
 
-/// Struct definition for ExportArgs.
+/// Arguments for exporting dashboards into raw and prompt variants.
 #[derive(Debug, Clone, Args)]
 pub struct ExportArgs {
     #[command(flatten)]
@@ -170,7 +170,7 @@ pub struct ExportArgs {
     pub verbose: bool,
 }
 
-/// Struct definition for ListArgs.
+/// Arguments for listing dashboards from live Grafana.
 #[derive(Debug, Clone, Args)]
 pub struct ListArgs {
     #[command(flatten)]
@@ -224,7 +224,7 @@ pub struct ListArgs {
     pub no_header: bool,
 }
 
-/// Struct definition for ImportArgs.
+/// Arguments for importing dashboards from a local export directory.
 #[derive(Debug, Clone, Args)]
 pub struct ImportArgs {
     #[command(flatten)]
@@ -362,6 +362,116 @@ pub struct ImportArgs {
         help = "Show detailed per-item import output, including target paths, dry-run actions, and folder status details. Overrides --progress output."
     )]
     pub verbose: bool,
+}
+
+/// Arguments for deleting live dashboards by UID or folder path.
+#[derive(Debug, Clone, Args)]
+pub struct DeleteArgs {
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(
+        long,
+        default_value_t = DEFAULT_PAGE_SIZE,
+        help = "Dashboard search page size used to resolve delete selectors."
+    )]
+    pub page_size: usize,
+    #[arg(
+        long,
+        help = "Delete dashboards from one explicit Grafana org ID instead of the current org. Use this when the same Basic auth credentials can reach multiple orgs."
+    )]
+    pub org_id: Option<i64>,
+    #[arg(
+        long,
+        help = "Dashboard UID to delete.",
+        help_heading = "Target Options"
+    )]
+    pub uid: Option<String>,
+    #[arg(
+        long,
+        help = "Grafana folder path root to delete recursively, for example 'Platform / Infra'.",
+        help_heading = "Target Options"
+    )]
+    pub path: Option<String>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "With --path, also delete matched Grafana folders after deleting dashboards in the subtree.",
+        help_heading = "Target Options"
+    )]
+    pub delete_folders: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Acknowledge the live dashboard delete. Required unless --dry-run or --interactive is set.",
+        help_heading = "Safety Options"
+    )]
+    pub yes: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Prompt for the delete selector, preview the delete plan, and confirm interactively.",
+        help_heading = "Safety Options"
+    )]
+    pub interactive: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Preview what dashboard delete would do without changing Grafana.",
+        help_heading = "Output Options"
+    )]
+    pub dry_run: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "For --dry-run only, render a compact table instead of plain text.",
+        help_heading = "Output Options"
+    )]
+    pub table: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "For --dry-run only, render one JSON document.",
+        help_heading = "Output Options"
+    )]
+    pub json: bool,
+    #[arg(
+        long,
+        value_enum,
+        conflicts_with_all = ["table", "json"],
+        help = "Alternative single-flag output selector for dashboard delete dry-run output. Use text, table, or json.",
+        help_heading = "Output Options"
+    )]
+    pub output_format: Option<DryRunOutputFormat>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "For --dry-run --table only, omit the table header row.",
+        help_heading = "Output Options"
+    )]
+    pub no_header: bool,
+}
+
+/// Arguments for browsing the live dashboard tree in a TUI.
+#[derive(Debug, Clone, Args)]
+pub struct BrowseArgs {
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(
+        long,
+        default_value_t = DEFAULT_PAGE_SIZE,
+        help = "Dashboard search page size used to build the live browser tree."
+    )]
+    pub page_size: usize,
+    #[arg(
+        long,
+        help = "Browse dashboards from one explicit Grafana org ID instead of the current org."
+    )]
+    pub org_id: Option<i64>,
+    #[arg(
+        long,
+        help = "Optional folder path root to open instead of the full dashboard tree, for example 'Platform / Infra'."
+    )]
+    pub path: Option<String>,
 }
 
 /// Struct definition for DiffArgs.
@@ -998,6 +1108,18 @@ pub enum DashboardCommand {
         about = "Import dashboard JSON files through the Grafana API."
     )]
     Import(ImportArgs),
+    #[command(
+        name = "browse",
+        about = "Browse the live dashboard tree in an interactive terminal UI.",
+        after_help = "Examples:\n\n  Browse the full dashboard tree from the current org:\n    grafana-util dashboard browse --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n\n  Open the browser at one folder subtree:\n    grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --basic-password admin --path 'Platform / Infra'\n\n  Browse one explicit org:\n    grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --basic-password admin --org-id 2"
+    )]
+    Browse(BrowseArgs),
+    #[command(
+        name = "delete",
+        about = "Delete live dashboards by UID or folder path.",
+        after_help = "Examples:\n\n  Dry-run one dashboard delete by UID:\n    grafana-util dashboard delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --uid cpu-main --dry-run --json\n\n  Delete all dashboards under one folder subtree:\n    grafana-util dashboard delete --url http://localhost:3000 --basic-user admin --basic-password admin --path 'Platform / Infra' --yes\n\n  Interactively preview and confirm a folder delete:\n    grafana-util dashboard delete --url http://localhost:3000 --interactive"
+    )]
+    Delete(DeleteArgs),
     #[command(about = "Compare local raw dashboard files against live Grafana dashboards.")]
     Diff(DiffArgs),
     #[command(
@@ -1231,6 +1353,11 @@ pub fn normalize_dashboard_cli_args(mut args: DashboardCliArgs) -> DashboardCliA
             &mut import_args.table,
             &mut import_args.json,
             import_args.output_format,
+        ),
+        DashboardCommand::Delete(delete_args) => normalize_dry_run_output_format(
+            &mut delete_args.table,
+            &mut delete_args.json,
+            delete_args.output_format,
         ),
         _ => {}
     }

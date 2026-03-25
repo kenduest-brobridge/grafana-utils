@@ -363,6 +363,89 @@ fn parse_cli_supports_import_dry_run_output_format_table() {
 }
 
 #[test]
+fn parse_cli_supports_browse_with_path() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "browse",
+        "--url",
+        "https://grafana.example.com",
+        "--org-id",
+        "2",
+        "--path",
+        "Platform / Infra",
+    ]);
+
+    match args.command {
+        DashboardCommand::Browse(browse_args) => {
+            assert_eq!(browse_args.common.url, "https://grafana.example.com");
+            assert_eq!(browse_args.org_id, Some(2));
+            assert_eq!(browse_args.path.as_deref(), Some("Platform / Infra"));
+            assert_eq!(browse_args.page_size, 500);
+        }
+        _ => panic!("expected browse command"),
+    }
+}
+
+#[test]
+fn browse_help_mentions_live_tree_controls() {
+    let help = render_dashboard_subcommand_help("browse");
+    assert!(help.contains("interactive terminal UI"));
+    assert!(help.contains("--path"));
+    assert!(help.contains("--org-id"));
+    assert!(help.contains("Open the browser at one folder subtree"));
+}
+
+#[test]
+fn parse_cli_supports_delete_by_uid() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "delete",
+        "--url",
+        "https://grafana.example.com",
+        "--uid",
+        "cpu-main",
+    ]);
+
+    match args.command {
+        DashboardCommand::Delete(delete_args) => {
+            assert_eq!(delete_args.uid.as_deref(), Some("cpu-main"));
+            assert_eq!(delete_args.path, None);
+            assert!(!delete_args.delete_folders);
+            assert!(!delete_args.interactive);
+        }
+        _ => panic!("expected delete command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_delete_output_format_json() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "delete",
+        "--uid",
+        "cpu-main",
+        "--output-format",
+        "json",
+    ]);
+
+    match args.command {
+        DashboardCommand::Delete(delete_args) => {
+            assert!(delete_args.json);
+            assert!(!delete_args.table);
+        }
+        _ => panic!("expected delete command"),
+    }
+}
+
+#[test]
+fn delete_help_mentions_interactive_and_delete_folders() {
+    let help = render_dashboard_subcommand_help("delete");
+    assert!(help.contains("--interactive"));
+    assert!(help.contains("--delete-folders"));
+    assert!(help.contains("--yes"));
+}
+
+#[test]
 fn parse_cli_supports_import_dry_run_output_columns() {
     let args = parse_cli_from([
         "grafana-util",
