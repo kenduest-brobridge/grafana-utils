@@ -302,6 +302,7 @@ fn inspect_export_help_lists_datasource_uid_report_column() {
     assert!(help.contains("dashboardUid"));
     assert!(help.contains("datasource label, uid, type, or family"));
     assert!(help.contains("--output-format"));
+    assert!(help.contains("--interactive"));
 }
 
 #[test]
@@ -310,6 +311,7 @@ fn inspect_export_help_full_includes_extended_examples() {
 
     assert!(help.contains("--help-full"));
     assert!(help.contains("Extended Examples:"));
+    assert!(help.contains("--interactive"));
     assert!(help.contains("--report tree-table"));
     assert!(help.contains("--report-filter-datasource"));
     assert!(help.contains("--report-filter-panel-id 7"));
@@ -331,6 +333,7 @@ fn inspect_live_help_full_includes_extended_examples() {
 
     assert!(help.contains("--help-full"));
     assert!(help.contains("Extended Examples:"));
+    assert!(help.contains("--interactive"));
     assert!(help.contains("--token \"$GRAFANA_API_TOKEN\""));
     assert!(help.contains("--report tree-table"));
     assert!(help.contains("--report-filter-panel-id"));

@@ -107,6 +107,25 @@ fn parse_cli_supports_inspect_export_output_file() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_export_interactive_flag() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--interactive",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
+            assert!(inspect_args.interactive);
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_inspect_export_report_json_flag() {
     let args = parse_cli_from([
         "grafana-util",

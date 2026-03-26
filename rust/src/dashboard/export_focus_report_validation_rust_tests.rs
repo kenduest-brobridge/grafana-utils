@@ -19,6 +19,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_without_report() {
         help_full: false,
         no_header: false,
         output_file: None,
+        interactive: false,
     };
 
     let error = test_support::validate_inspect_export_report_args(&args).unwrap_err();
@@ -41,6 +42,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_json_report() 
         help_full: false,
         no_header: false,
         output_file: None,
+        interactive: false,
     };
 
     let error = test_support::validate_inspect_export_report_args(&args).unwrap_err();
@@ -63,6 +65,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_dependency_rep
         help_full: false,
         no_header: false,
         output_file: None,
+        interactive: false,
     };
 
     let error = test_support::validate_inspect_export_report_args(&args).unwrap_err();
@@ -85,6 +88,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_tree_report() 
         help_full: false,
         no_header: false,
         output_file: None,
+        interactive: false,
     };
 
     let error = test_support::validate_inspect_export_report_args(&args).unwrap_err();
@@ -107,6 +111,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_governance_rep
         help_full: false,
         no_header: false,
         output_file: None,
+        interactive: false,
     };
 
     let error = test_support::validate_inspect_export_report_args(&args).unwrap_err();
@@ -129,6 +134,7 @@ fn validate_inspect_export_report_args_allows_report_columns_for_tree_table_repo
         help_full: false,
         no_header: false,
         output_file: None,
+        interactive: false,
     };
 
     test_support::validate_inspect_export_report_args(&args).unwrap();
@@ -148,6 +154,7 @@ fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
         help_full: false,
         no_header: false,
         output_file: None,
+        interactive: false,
     };
 
     let error = test_support::validate_inspect_export_report_args(&args).unwrap_err();

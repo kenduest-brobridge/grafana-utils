@@ -866,6 +866,12 @@ pub struct InspectExportArgs {
         help = "Write inspect output to this file while still printing to stdout."
     )]
     pub output_file: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Open the shared interactive inspect workbench over the export artifacts."
+    )]
+    pub interactive: bool,
 }
 
 /// Struct definition for InspectLiveArgs.
@@ -969,7 +975,7 @@ pub struct InspectLiveArgs {
     #[arg(
         long,
         default_value_t = false,
-        help = "Open an interactive terminal browser over the live inspection artifacts."
+        help = "Open the shared interactive inspect workbench over the live inspection artifacts."
     )]
     pub interactive: bool,
 }
@@ -1162,12 +1168,14 @@ pub enum DashboardCommand {
     Diff(DiffArgs),
     #[command(
         name = "inspect-export",
-        about = "Analyze a raw dashboard export directory and summarize its structure."
+        about = "Analyze a raw dashboard export directory and summarize its structure.",
+        after_help = "Examples:\n\n  Render a dashboard summary table from raw exports:\n    grafana-util dashboard inspect-export --import-dir ./dashboards/raw --table\n\n  Open the interactive inspect workbench over raw exports:\n    grafana-util dashboard inspect-export --import-dir ./dashboards/raw --interactive\n\n  Render governance JSON from raw exports:\n    grafana-util dashboard inspect-export --import-dir ./dashboards/raw --report governance-json"
     )]
     InspectExport(InspectExportArgs),
     #[command(
         name = "inspect-live",
-        about = "Analyze live Grafana dashboards via a temporary raw-export snapshot."
+        about = "Analyze live Grafana dashboards via a temporary raw-export snapshot.",
+        after_help = "Examples:\n\n  Render governance JSON from live Grafana:\n    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format governance-json\n\n  Open the interactive inspect workbench over live Grafana:\n    grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin --basic-password admin --interactive"
     )]
     InspectLive(InspectLiveArgs),
     #[command(

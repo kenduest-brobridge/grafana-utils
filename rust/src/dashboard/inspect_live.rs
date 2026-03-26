@@ -238,6 +238,7 @@ fn build_export_inspect_args_from_live(
         report_filter_panel_id: args.report_filter_panel_id.clone(),
         help_full: args.help_full,
         no_header: args.no_header,
+        interactive: args.interactive,
     }
 }
 

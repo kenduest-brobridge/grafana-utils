@@ -92,6 +92,7 @@ pub(crate) use crate::dashboard::inspect_summary::{
     DatasourceInventorySummary, ExportInspectionSummary, ExportInspectionSummaryDocument,
     ExportInspectionSummaryJsonSummary, MixedDashboardSummary,
 };
+pub(crate) use crate::dashboard::inspect_workbench_support::build_inspect_workbench_document;
 pub(crate) use crate::dashboard::list::{
     attach_dashboard_folder_paths_with_request, collect_dashboard_source_metadata,
     format_dashboard_summary_line, list_dashboards_with_client, list_dashboards_with_request,

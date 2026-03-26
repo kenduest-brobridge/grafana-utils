@@ -1201,40 +1201,128 @@ fn build_inspect_live_tui_groups_summarizes_dashboard_query_and_risk_sections() 
     let groups = test_support::build_inspect_live_tui_groups(&summary, &governance, &report);
 
     assert_eq!(groups.len(), 4);
-    assert_eq!(groups[0].label, "All");
-    assert_eq!(groups[0].count, 5);
-    assert_eq!(groups[1].label, "Dashboards");
-    assert_eq!(groups[1].count, 1);
+    assert_eq!(groups[0].label, "Overview");
+    assert_eq!(groups[0].count, 1);
+    assert_eq!(groups[1].label, "Findings");
+    assert_eq!(groups[1].count, 2);
     assert_eq!(groups[2].label, "Queries");
     assert_eq!(groups[2].count, 1);
-    assert_eq!(groups[3].label, "Risks");
-    assert_eq!(groups[3].count, 3);
+    assert_eq!(groups[3].label, "Dependencies");
+    assert_eq!(groups[3].count, 0);
 }
 
 #[test]
-fn filter_inspect_live_tui_items_limits_items_to_selected_group() {
+fn inspect_live_group_order_uses_human_review_modes() {
     let (summary, governance, report) = make_inspect_live_tui_fixture();
-    let dashboard_items =
-        test_support::filter_inspect_live_tui_items(&summary, &governance, &report, "dashboards");
+    let groups = test_support::build_inspect_live_tui_groups(&summary, &governance, &report);
+
+    let labels = groups
+        .iter()
+        .map(|group| group.label.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        labels,
+        vec!["Overview", "Findings", "Queries", "Dependencies"]
+    );
+}
+
+#[test]
+fn filter_inspect_live_tui_items_limits_items_to_selected_mode() {
+    let (summary, governance, report) = make_inspect_live_tui_fixture();
+    let overview_items =
+        test_support::filter_inspect_live_tui_items(&summary, &governance, &report, "overview");
     let query_items =
         test_support::filter_inspect_live_tui_items(&summary, &governance, &report, "queries");
-    let risk_items =
-        test_support::filter_inspect_live_tui_items(&summary, &governance, &report, "risks");
-    let all_items =
-        test_support::filter_inspect_live_tui_items(&summary, &governance, &report, "all");
+    let finding_items =
+        test_support::filter_inspect_live_tui_items(&summary, &governance, &report, "findings");
+    let dependency_items =
+        test_support::filter_inspect_live_tui_items(&summary, &governance, &report, "dependencies");
 
-    assert_eq!(dashboard_items.len(), 1);
-    assert!(dashboard_items.iter().all(|item| item.kind == "dashboard"));
+    assert_eq!(overview_items.len(), 1);
+    assert!(overview_items
+        .iter()
+        .all(|item| item.kind == "dashboard-summary"));
     assert_eq!(query_items.len(), 1);
     assert!(query_items.iter().all(|item| item.kind == "query"));
-    assert_eq!(risk_items.len(), 3);
-    assert!(risk_items.iter().any(|item| item.kind == "dashboard-risk"));
-    assert!(risk_items.iter().any(|item| item.kind == "risk-record"));
-    assert!(risk_items.iter().any(|item| item.kind == "query-audit"));
-    assert_eq!(all_items.len(), 5);
-    assert!(all_items.iter().any(|item| item.kind == "dashboard"));
-    assert!(all_items.iter().any(|item| item.kind == "query"));
-    assert!(all_items.iter().any(|item| item.kind == "risk-record"));
+    assert_eq!(finding_items.len(), 2);
+    assert!(finding_items.iter().any(|item| item.kind == "finding"));
+    assert!(finding_items.iter().any(|item| item.kind == "query-review"));
+    assert!(dependency_items.is_empty());
+}
+
+#[test]
+fn build_inspect_workbench_document_adds_dependency_coverage_views() {
+    let (summary, mut governance, report) = make_inspect_live_tui_fixture();
+    governance.datasources = vec![test_support::inspect_governance::DatasourceCoverageRow {
+        datasource_uid: "prom-main".to_string(),
+        datasource: "Prometheus Main".to_string(),
+        family: "prometheus".to_string(),
+        query_count: 1,
+        dashboard_count: 1,
+        panel_count: 1,
+        dashboard_uids: vec!["cpu-main".to_string()],
+        query_fields: vec!["expr".to_string()],
+        orphaned: false,
+    }];
+    governance.datasource_governance =
+        vec![test_support::inspect_governance::DatasourceGovernanceRow {
+            datasource_uid: "prom-main".to_string(),
+            datasource: "Prometheus Main".to_string(),
+            family: "prometheus".to_string(),
+            query_count: 1,
+            dashboard_count: 1,
+            panel_count: 1,
+            mixed_dashboard_count: 0,
+            risk_count: 1,
+            risk_kinds: vec!["prometheus-query-cost-score".to_string()],
+            dashboard_uids: vec!["cpu-main".to_string()],
+            orphaned: false,
+        }];
+
+    let document = test_support::build_inspect_workbench_document(
+        "export artifacts",
+        &summary,
+        &governance,
+        &report,
+    );
+
+    assert_eq!(document.groups.len(), 4);
+    assert_eq!(document.groups[0].label, "Overview");
+    assert_eq!(document.groups[1].label, "Findings");
+    assert_eq!(document.groups[2].label, "Queries");
+    assert_eq!(document.groups[3].label, "Dependencies");
+    let dependency_group = document
+        .groups
+        .iter()
+        .find(|group| group.kind == "dependencies")
+        .expect("dependency group");
+    assert_eq!(dependency_group.views.len(), 2);
+    assert_eq!(dependency_group.views[0].label, "Usage Coverage");
+    assert_eq!(dependency_group.views[1].label, "Finding Coverage");
+    assert_eq!(dependency_group.views[0].items.len(), 1);
+    assert_eq!(dependency_group.views[1].items.len(), 1);
+    assert!(document.summary_lines[0].contains("Source=export artifacts"));
+    assert!(document.summary_lines[2].contains("Overview"));
+}
+
+#[test]
+fn overview_mode_items_use_human_dashboard_summary_kind() {
+    let (summary, governance, report) = make_inspect_live_tui_fixture();
+    let overview_items =
+        test_support::filter_inspect_live_tui_items(&summary, &governance, &report, "overview");
+
+    assert_eq!(overview_items[0].kind, "dashboard-summary");
+}
+
+#[test]
+fn finding_mode_items_use_human_finding_kinds() {
+    let (summary, governance, report) = make_inspect_live_tui_fixture();
+    let finding_items =
+        test_support::filter_inspect_live_tui_items(&summary, &governance, &report, "findings");
+
+    assert!(finding_items
+        .iter()
+        .all(|item| { item.kind == "finding" || item.kind == "query-review" }));
 }
 
 #[test]

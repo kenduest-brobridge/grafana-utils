@@ -24,6 +24,7 @@ fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
         help_full: false,
         no_header: false,
         output_file: None,
+        interactive: false,
     };
 
     let error = test_support::validate_inspect_export_report_args(&args).unwrap_err();

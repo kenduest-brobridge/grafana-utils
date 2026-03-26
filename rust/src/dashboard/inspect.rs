@@ -36,6 +36,8 @@ use super::files::{
     discover_dashboard_files, extract_dashboard_object, load_datasource_inventory,
     load_export_metadata, load_folder_inventory, load_json_file,
 };
+#[cfg(feature = "tui")]
+use super::inspect_governance::build_export_inspection_governance_document;
 use super::inspect_live::load_variant_index_entries;
 #[cfg(test)]
 pub(crate) use super::inspect_query::QueryAnalysis;
@@ -56,6 +58,10 @@ use super::inspect_summary::{
     DatasourceInventorySummary, ExportDatasourceUsage, ExportFolderUsage, ExportInspectionSummary,
     MixedDashboardSummary,
 };
+#[cfg(feature = "tui")]
+use super::inspect_workbench::run_inspect_workbench;
+#[cfg(feature = "tui")]
+use super::inspect_workbench_support::build_inspect_workbench_document;
 use super::models::{
     DatasourceInventoryItem, ExportMetadata, FolderInventoryItem, VariantIndexEntry,
 };
@@ -862,6 +868,9 @@ fn render_export_inspection_summary_output(
 }
 
 fn analyze_export_dir_at_path(args: &InspectExportArgs, import_dir: &Path) -> Result<usize> {
+    if args.interactive {
+        return run_interactive_export_workbench(import_dir);
+    }
     let write_output =
         |output: &str| -> Result<()> { write_inspect_output(output, args.output_file.as_ref()) };
 
@@ -881,6 +890,22 @@ fn analyze_export_dir_at_path(args: &InspectExportArgs, import_dir: &Path) -> Re
     let output = render_export_inspection_summary_output(args, &summary)?;
     write_output(&output)?;
     Ok(summary.dashboard_count)
+}
+
+#[cfg(feature = "tui")]
+fn run_interactive_export_workbench(import_dir: &Path) -> Result<usize> {
+    let summary = build_export_inspection_summary(import_dir)?;
+    let report = build_export_inspection_query_report(import_dir)?;
+    let governance = build_export_inspection_governance_document(&summary, &report);
+    let document =
+        build_inspect_workbench_document("export artifacts", &summary, &governance, &report);
+    run_inspect_workbench(document)?;
+    Ok(summary.dashboard_count)
+}
+
+#[cfg(not(feature = "tui"))]
+fn run_interactive_export_workbench(_import_dir: &Path) -> Result<usize> {
+    super::tui_not_built("inspect-export --interactive")
 }
 
 pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
