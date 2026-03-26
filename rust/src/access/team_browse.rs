@@ -10,8 +10,12 @@ use serde_json::Value;
 
 use crate::common::Result;
 
+#[cfg(feature = "tui")]
 use super::browse_terminal::TerminalSession;
+#[cfg(feature = "tui")]
 use super::{default_user_browse_args_from_team, BrowseSwitch, TeamBrowseArgs};
+#[cfg(not(feature = "tui"))]
+use super::{BrowseSwitch, TeamBrowseArgs};
 #[cfg(feature = "tui")]
 #[path = "team_browse_dialog.rs"]
 mod team_browse_dialog;

@@ -12,6 +12,7 @@ use ratatui::backend::CrosstermBackend;
 #[cfg(feature = "tui")]
 use ratatui::Terminal;
 
+#[cfg(feature = "tui")]
 use crate::common::Result;
 
 #[cfg(feature = "tui")]
