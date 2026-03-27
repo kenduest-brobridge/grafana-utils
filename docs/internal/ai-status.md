@@ -6,6 +6,13 @@ Current AI-maintained status only.
 - Detailed 2026-03-27 entries moved to [`archive/ai-status-archive-2026-03-27.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-27.md).
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 
+## 2026-03-28 - Maintainer backlog phase/status sync
+- State: Done
+- Scope: `docs/internal/maintainer-backlog-2026-03-28.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the maintainer backlog still described dashboard cleanup as only starting, datasource secret handling as future work, and promotion as a skeleton even though the Rust state had already moved forward.
+- Current Update: synchronized the backlog to call out landed dashboard inspect splits, the now-usable datasource secret operator contract and import dry-run visibility, and promotion as a partially landed staged review handoff.
+- Result: the maintainer docs now match the current Rust architecture and progress language more closely without changing any code-facing docs.
+
 ## 2026-03-28 - Promotion preflight review handoff
 - State: Done
 - Scope: `rust/src/sync/promotion_preflight.rs`, `rust/src/sync/promotion_preflight_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
@@ -120,4 +127,4 @@ Current AI-maintained status only.
 ## 2026-03-27 - Open Follow-Up
 - State: Planned
 - Scope: `rust/src/dashboard/`, `rust/src/datasource.rs`, `rust/src/datasource_import_export.rs`, `rust/src/lib.rs`, related dashboard and datasource tests
-- Next Step: continue dashboard subsystem boundary cleanup beyond dependency rendering and family normalization, keep narrowing public-vs-internal crate boundaries, and then decide whether datasource secret handling should expand from the now-wired mutation/import contracts into dry-run/preflight visibility or stay mutation-only for now.
+- Next Step: continue dashboard subsystem boundary cleanup beyond the already-landed inspect/report/governance splits, keep narrowing public-vs-internal crate boundaries, and then decide what follows the now-usable datasource secret operator contract and import dry-run secretVisibility.

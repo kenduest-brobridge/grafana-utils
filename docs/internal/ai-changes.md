@@ -6,6 +6,14 @@ Current AI change log only.
 - Detailed 2026-03-27 entries moved to [`archive/ai-changes-archive-2026-03-27.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-03-27.md).
 - Keep this file limited to the latest active architecture and maintenance changes.
 
+## 2026-03-28 - Maintainer backlog phase/status sync
+- Summary: updated the internal maintainer backlog so it reflects the current Rust state more accurately: dashboard inspect cleanup is described as landed in its current slices, datasource secret handling is described as already having a usable operator contract plus dry-run `secretVisibility`, and promotion is described as a partially landed staged review handoff instead of a pure skeleton.
+- Tests: not applicable. This is docs-only.
+- Test Run: not run.
+- Validation: reread the backlog and current AI trace entries to make sure the phase language and progress wording match the current Rust architecture notes.
+- Impact: `docs/internal/maintainer-backlog-2026-03-28.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. Revert if the backlog wording needs to go back to the prior phase framing.
+
 ## 2026-03-28 - Promotion preflight review handoff
 - Summary: added a structured `handoffSummary` to the staged sync promotion-preflight document so operators can see whether the result is ready to move into review, then rendered the same handoff state in the text output with a `review-required` and `next-stage` line.
 - Tests: extended promotion-preflight regression coverage to assert the new handoff summary in both blocked and clean cases, plus the rendered handoff line in the text output.

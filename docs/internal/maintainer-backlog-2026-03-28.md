@@ -13,14 +13,25 @@ working backlog.
 It is intentionally narrower than `project-roadmap.md` and more action-oriented
 than `architecture-review-2026-03-27.md`.
 
+## Phase Progress
+
+- Phase 1 landed: dashboard inspect boundary cleanup now includes
+  `inspect_output_report.rs`, `inspect_workbench_content.rs`, and
+  `inspect_governance_render.rs`.
+- Phase 1 partially landed: datasource secret handling now has the first
+  usable operator contract through import/mutation wiring and import dry-run
+  `secretVisibility`.
+- Phase 2 partially landed: promotion is now a staged review handoff rather
+  than just a skeleton, but apply-side handoff work is still open.
+
 ## Now
 
 ### 1. Finish dashboard dependency report output
 
 Why now:
 
-- This is the only item explicitly marked `In Progress` in current maintainer
-  trace docs.
+- This is the remaining piece of the dashboard inspection cleanup loop after
+  the report/workbench/governance splits already landed.
 - It closes an already-open loop instead of starting another broad refactor.
 
 Scope:
@@ -35,14 +46,14 @@ Target files:
 - `rust/src/dashboard/inspect_output.rs`
 - focused dashboard inspect tests
 
-### 2. Start dashboard subsystem boundary cleanup
+### 2. Continue dashboard subsystem boundary cleanup
 
 Why now:
 
 - `dashboard` is now the clearest primary complexity center in the architecture
   review.
-- More feature work will keep landing here unless ownership boundaries are made
-  more explicit.
+- More feature work will keep landing here unless ownership boundaries stay
+  explicit after the recent inspect/report/governance splits.
 
 Scope:
 
@@ -83,13 +94,14 @@ Target areas:
 Why next:
 
 - secret handling is now the clearest remaining adoption gap
-- the staged placeholder preflight contract is in place, but the workflow is
-  still incomplete
+- the first operator-facing contract is in place, but provider/backfill
+  coverage and any later-stage explainability remain incomplete
 
 Scope:
 
 - formalize operator input for placeholder secret mappings
-- wire datasource import and mutation paths to the staged secret contract
+- keep datasource import and mutation paths aligned with the staged secret
+  contract
 - make secret-missing and secret-loss cases explicit through later workflow
   stages, not only bundle-preflight
 
@@ -144,7 +156,8 @@ Target areas:
 
 Why later:
 
-- promotion is no longer missing, but it is still intentionally a skeleton
+- promotion is no longer missing; the staged review handoff is partially
+  landed, but apply-side refinement still follows later
 - current docs place dashboard boundaries and datasource secret wiring ahead of
   deeper promotion refinement
 
@@ -186,8 +199,8 @@ Scope:
 If only a few slices move next, the recommended order is:
 
 1. finish dashboard dependency report output
-2. start dashboard subsystem boundary cleanup
-3. wire fuller datasource secret handling
+2. continue dashboard subsystem boundary cleanup
+3. extend datasource secret handling
 4. tighten crate boundaries
 5. continue promotion review/apply work later
 
