@@ -1,7 +1,8 @@
 //! Sync promotion-preflight contract and render coverage.
 use crate::sync::promotion_preflight::{
     build_sync_promotion_preflight_document, render_sync_promotion_preflight_text,
-    SyncPromotionPreflightSummary, SYNC_PROMOTION_PREFLIGHT_KIND,
+    SyncPromotionPreflightSummary, SYNC_PROMOTION_MAPPING_KIND,
+    SYNC_PROMOTION_MAPPING_SCHEMA_VERSION, SYNC_PROMOTION_PREFLIGHT_KIND,
 };
 use serde_json::json;
 
@@ -57,6 +58,12 @@ fn build_sync_promotion_preflight_document_reports_direct_mapped_and_missing_ref
         ]
     });
     let mapping = json!({
+        "kind": SYNC_PROMOTION_MAPPING_KIND,
+        "schemaVersion": SYNC_PROMOTION_MAPPING_SCHEMA_VERSION,
+        "metadata": {
+            "sourceEnvironment": "staging",
+            "targetEnvironment": "prod"
+        },
         "folders": {"ops-src": "ops-dst"},
         "datasources": {
             "uids": {"prom-src": "prom-dst"},
@@ -83,6 +90,25 @@ fn build_sync_promotion_preflight_document_reports_direct_mapped_and_missing_ref
     assert_eq!(document["summary"]["missingMappingCount"], json!(2));
     assert_eq!(document["summary"]["bundleBlockingCount"], json!(5));
     assert_eq!(document["summary"]["blockingCount"], json!(7));
+    assert_eq!(
+        document["mappingSummary"]["mappingKind"],
+        json!(SYNC_PROMOTION_MAPPING_KIND)
+    );
+    assert_eq!(
+        document["mappingSummary"]["sourceEnvironment"],
+        json!("staging")
+    );
+    assert_eq!(
+        document["mappingSummary"]["targetEnvironment"],
+        json!("prod")
+    );
+    assert!(document["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|item| item["kind"] == "folder-remap"
+            && item["resolution"] == "explicit-map"
+            && item["mappingSource"] == "folders"));
     assert!(document["checks"]
         .as_array()
         .unwrap()
@@ -126,6 +152,10 @@ fn render_sync_promotion_preflight_text_renders_summary_and_bundle_context() {
             "blockingCount": 1
         },
         "mappingSummary": {
+            "mappingKind": SYNC_PROMOTION_MAPPING_KIND,
+            "mappingSchemaVersion": 1,
+            "sourceEnvironment": "staging",
+            "targetEnvironment": "prod",
             "folderMappingCount": 1,
             "datasourceUidMappingCount": 1,
             "datasourceNameMappingCount": 0
@@ -135,6 +165,8 @@ fn render_sync_promotion_preflight_text_renders_summary_and_bundle_context() {
             "identity": "cpu-main",
             "sourceValue": "ops-src",
             "targetValue": "ops-dst",
+            "resolution": "explicit-map",
+            "mappingSource": "folders",
             "status": "mapped",
             "detail": "Promotion mapping resolves this source identifier onto the target inventory.",
             "blocking": false
@@ -158,7 +190,25 @@ fn render_sync_promotion_preflight_text_renders_summary_and_bundle_context() {
 
     assert!(output.contains("Sync promotion preflight"));
     assert!(output.contains("missing-mappings=1"));
+    assert!(output.contains("source-env=staging"));
+    assert!(output.contains("target-env=prod"));
     assert!(output.contains("folders=1"));
     assert!(output.contains("promotion stays blocked"));
+    assert!(output.contains("resolution=explicit-map"));
+    assert!(output.contains("mapping-source=folders"));
     assert!(output.contains("Sync bundle preflight summary"));
+}
+
+#[test]
+fn build_sync_promotion_preflight_document_rejects_unknown_mapping_kind() {
+    let error = build_sync_promotion_preflight_document(
+        &json!({"dashboards": [], "datasources": [], "folders": [], "alerts": [], "alerting": {}, "summary": {}}),
+        &json!({"folders": [], "datasources": []}),
+        None,
+        Some(&json!({"kind": "wrong-kind"})),
+    )
+    .unwrap_err()
+    .to_string();
+
+    assert!(error.contains("mapping input kind is not supported"));
 }

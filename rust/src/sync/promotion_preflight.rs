@@ -18,6 +18,8 @@ use std::collections::BTreeSet;
 
 pub const SYNC_PROMOTION_PREFLIGHT_KIND: &str = "grafana-utils-sync-promotion-preflight";
 pub const SYNC_PROMOTION_PREFLIGHT_SCHEMA_VERSION: i64 = 1;
+pub const SYNC_PROMOTION_MAPPING_KIND: &str = "grafana-utils-sync-promotion-mapping";
+pub const SYNC_PROMOTION_MAPPING_SCHEMA_VERSION: i64 = 1;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
@@ -36,6 +38,8 @@ struct PromotionCheck {
     identity: String,
     source_value: String,
     target_value: String,
+    resolution: String,
+    mapping_source: String,
     status: String,
     detail: String,
     blocking: bool,
@@ -83,6 +87,53 @@ fn nested_mapping(
     }
 }
 
+fn parse_promotion_mapping_document(value: Option<&Value>) -> Result<(Map<String, Value>, Value)> {
+    let Some(value) = value else {
+        return Ok((Map::new(), Value::Object(Map::new())));
+    };
+    let object = require_json_object(value, "Sync promotion mapping input")?;
+    let kind = normalize_text(object.get("kind"));
+    if !kind.is_empty() && kind != SYNC_PROMOTION_MAPPING_KIND {
+        return Err(message(
+            "Sync promotion mapping input kind is not supported.",
+        ));
+    }
+    if let Some(schema_version) = object.get("schemaVersion").and_then(Value::as_i64) {
+        if schema_version != SYNC_PROMOTION_MAPPING_SCHEMA_VERSION {
+            return Err(message(format!(
+                "Sync promotion mapping schemaVersion must be {}.",
+                SYNC_PROMOTION_MAPPING_SCHEMA_VERSION
+            )));
+        }
+    }
+    let metadata = object
+        .get("metadata")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+    let source_environment = metadata
+        .get("sourceEnvironment")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let target_environment = metadata
+        .get("targetEnvironment")
+        .cloned()
+        .unwrap_or(Value::Null);
+    let mut mapping = object.clone();
+    mapping.remove("kind");
+    mapping.remove("schemaVersion");
+    mapping.remove("metadata");
+    Ok((
+        mapping,
+        serde_json::json!({
+            "kind": if kind.is_empty() { Value::Null } else { Value::String(kind) },
+            "schemaVersion": object.get("schemaVersion").cloned().unwrap_or(Value::Null),
+            "sourceEnvironment": source_environment,
+            "targetEnvironment": target_environment,
+        }),
+    ))
+}
+
 fn target_uids(document: &Map<String, Value>, key: &str) -> BTreeSet<String> {
     document
         .get(key)
@@ -126,6 +177,7 @@ fn classify_mapping_check(
     identity: String,
     source_value: String,
     mapped_value: String,
+    mapping_source: &str,
     target_values: &BTreeSet<String>,
     missing_detail: String,
 ) -> Option<PromotionCheck> {
@@ -138,6 +190,8 @@ fn classify_mapping_check(
             identity,
             source_value: source_value.clone(),
             target_value: source_value,
+            resolution: "direct-match".to_string(),
+            mapping_source: "inventory".to_string(),
             status: "direct".to_string(),
             detail: "Target inventory already contains the same identifier.".to_string(),
             blocking: false,
@@ -149,6 +203,8 @@ fn classify_mapping_check(
             identity,
             source_value,
             target_value: mapped_value,
+            resolution: "explicit-map".to_string(),
+            mapping_source: mapping_source.to_string(),
             status: "mapped".to_string(),
             detail: "Promotion mapping resolves this source identifier onto the target inventory."
                 .to_string(),
@@ -160,6 +216,8 @@ fn classify_mapping_check(
         identity,
         source_value,
         target_value: mapped_value,
+        resolution: "missing-map".to_string(),
+        mapping_source: mapping_source.to_string(),
         status: "missing-target".to_string(),
         detail: missing_detail,
         blocking: true,
@@ -190,6 +248,7 @@ fn dashboard_folder_checks(
                 },
                 folder_uid.clone(),
                 mapped_target(mapping, &folder_uid),
+                "folders",
                 &target_folder_uids,
                 "Dashboard folder UID is missing from the target inventory and has no valid promotion mapping."
                     .to_string(),
@@ -230,6 +289,7 @@ fn datasource_reference_checks(
                 dashboard_uid.clone(),
                 source_uid.clone(),
                 mapped_target(uid_mapping, &source_uid),
+                "datasources.uids",
                 &target_datasource_uids,
                 "Datasource UID is missing from the target inventory and has no valid promotion mapping."
                     .to_string(),
@@ -249,6 +309,7 @@ fn datasource_reference_checks(
                 dashboard_uid.clone(),
                 source_name.clone(),
                 mapped_target(name_mapping, &source_name),
+                "datasources.names",
                 &target_datasource_names,
                 "Datasource name is missing from the target inventory and has no valid promotion mapping."
                     .to_string(),
@@ -283,6 +344,7 @@ fn datasource_reference_checks(
                 alert_uid.clone(),
                 source_uid.clone(),
                 mapped_target(uid_mapping, &source_uid),
+                "datasources.uids",
                 &target_datasource_uids,
                 "Alert datasource UID is missing from the target inventory and has no valid promotion mapping."
                     .to_string(),
@@ -302,6 +364,7 @@ fn datasource_reference_checks(
                 alert_uid.clone(),
                 source_name.clone(),
                 mapped_target(name_mapping, &source_name),
+                "datasources.names",
                 &target_datasource_names,
                 "Alert datasource name is missing from the target inventory and has no valid promotion mapping."
                     .to_string(),
@@ -326,10 +389,7 @@ pub fn build_sync_promotion_preflight_document(
         &Value::Object(target_inventory.clone()),
         availability,
     )?;
-    let mapping = match mapping {
-        Some(value) => require_json_object(value, "Sync promotion mapping input")?.clone(),
-        None => Map::new(),
-    };
+    let (mapping, mapping_document) = parse_promotion_mapping_document(mapping)?;
     let folder_mapping = nested_mapping(&mapping, "folders", None);
     let datasource_uid_mapping = nested_mapping(&mapping, "datasources", Some("uids"));
     let datasource_name_mapping = nested_mapping(&mapping, "datasources", Some("names"));
@@ -368,6 +428,10 @@ pub fn build_sync_promotion_preflight_document(
         },
         "bundlePreflight": bundle_preflight,
         "mappingSummary": {
+            "mappingKind": mapping_document.get("kind").cloned().unwrap_or(Value::Null),
+            "mappingSchemaVersion": mapping_document.get("schemaVersion").cloned().unwrap_or(Value::Null),
+            "sourceEnvironment": mapping_document.get("sourceEnvironment").cloned().unwrap_or(Value::Null),
+            "targetEnvironment": mapping_document.get("targetEnvironment").cloned().unwrap_or(Value::Null),
             "folderMappingCount": folder_mapping.len(),
             "datasourceUidMappingCount": datasource_uid_mapping.len(),
             "datasourceNameMappingCount": datasource_name_mapping.len(),
@@ -377,6 +441,8 @@ pub fn build_sync_promotion_preflight_document(
             "identity": item.identity,
             "sourceValue": item.source_value,
             "targetValue": item.target_value,
+            "resolution": item.resolution,
+            "mappingSource": item.mapping_source,
             "status": item.status,
             "detail": item.detail,
             "blocking": item.blocking,
@@ -411,7 +477,11 @@ pub fn render_sync_promotion_preflight_text(document: &Value) -> Result<Vec<Stri
             summary.blocking_count,
         ),
         format!(
-            "Mappings: folders={} datasource-uids={} datasource-names={}",
+            "Mappings: kind={} schema={} source-env={} target-env={} folders={} datasource-uids={} datasource-names={}",
+            normalize_text(mapping_summary.get("mappingKind")),
+            normalize_text(mapping_summary.get("mappingSchemaVersion")),
+            normalize_text(mapping_summary.get("sourceEnvironment")),
+            normalize_text(mapping_summary.get("targetEnvironment")),
             mapping_summary
                 .get("folderMappingCount")
                 .and_then(Value::as_i64)
@@ -438,11 +508,13 @@ pub fn render_sync_promotion_preflight_text(document: &Value) -> Result<Vec<Stri
             for check in checks {
                 if let Some(object) = check.as_object() {
                     lines.push(format!(
-                        "- {} identity={} source={} target={} status={} detail={}",
+                        "- {} identity={} source={} target={} resolution={} mapping-source={} status={} detail={}",
                         normalize_text(object.get("kind")),
                         normalize_text(object.get("identity")),
                         normalize_text(object.get("sourceValue")),
                         normalize_text(object.get("targetValue")),
+                        normalize_text(object.get("resolution")),
+                        normalize_text(object.get("mappingSource")),
                         normalize_text(object.get("status")),
                         normalize_text(object.get("detail")),
                     ));
