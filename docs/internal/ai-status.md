@@ -6,6 +6,13 @@ Current AI-maintained status only.
 - Detailed 2026-03-27 entries moved to [`archive/ai-status-archive-2026-03-27.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-27.md).
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 
+## 2026-03-28 - Dashboard and datasource browse shell grammar convergence
+- State: Done
+- Scope: `rust/src/dashboard/browse_render.rs`, `rust/src/datasource_browse_render.rs`
+- Baseline: dashboard browse still hand-built its header/footer shell, datasource browse duplicated key-chip/plain footer styling, and both browse headers still mixed status text into the summary area instead of using the shared footer status path consistently.
+- Current Update: aligned both browse renderers with `crate::tui_shell` for header/footer/control grammar, moved the browse status text into the shared footer path, and kept the destructive delete overlay path unchanged.
+- Result: dashboard and datasource browse now share the shell helpers for their visible terminal chrome, while the delete confirmation overlay behavior and browse state handling stay intact.
+
 ## 2026-03-28 - TUI overlay and workbench state cleanup
 - State: Done
 - Scope: `rust/src/tui_shell.rs`, `rust/src/dashboard/browse_render.rs`, `rust/src/datasource_browse_render.rs`, `rust/src/sync/review_tui.rs`, `rust/src/dashboard/inspect_workbench_state.rs`, related inspect/review/browse render paths

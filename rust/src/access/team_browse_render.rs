@@ -1,3 +1,4 @@
+use crate::tui_shell;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -28,16 +29,15 @@ pub(super) fn render_frame(
         .split(outer[1]);
 
     frame.render_widget(
-        Paragraph::new(vec![
-            Line::from(format!(
+        tui_shell::build_header(
+            "Team Browser",
+            vec![Line::from(format!(
                 "Teams={}  expanded={}  url={}",
                 state.team_rows.len(),
                 state.expanded_team_ids.len(),
                 args.common.url
-            )),
-            Line::from(state.status.clone()),
-        ])
-        .block(Block::default().borders(Borders::ALL).title("Team Browser")),
+            ))],
+        ),
         outer[0],
     );
 
@@ -78,28 +78,30 @@ pub(super) fn render_frame(
     }
 
     frame.render_widget(
-        Paragraph::new(vec![
-            control_line(&[
-                ("Up/Down", Color::Blue, "move"),
-                ("Tab", Color::Blue, "toggle facts"),
-                ("Enter", Color::Blue, "expand"),
-                ("Left", Color::Blue, "collapse"),
-                ("g", Color::Magenta, "jump users"),
-                ("c", Color::Magenta, "toggle all"),
-                ("e", Color::Green, "edit"),
-                ("d", Color::Red, "delete"),
-                ("l", Color::Cyan, "refresh"),
-                ("i", Color::Magenta, "numbers"),
-            ]),
-            control_line(&[
-                ("/ ?", Color::Yellow, "search"),
-                ("n", Color::Yellow, "next"),
-                ("Home/End", Color::Blue, "jump"),
-                ("PgUp/PgDn", Color::Blue, "scroll"),
-            ]),
-            control_line(&[("q", Color::Gray, "exit"), ("Esc", Color::Gray, "exit")]),
-        ])
-        .block(Block::default().borders(Borders::ALL).title("Controls")),
+        tui_shell::build_footer(
+            vec![
+                control_line(&[
+                    ("Up/Down", Color::Blue, "move"),
+                    ("Tab", Color::Blue, "toggle facts"),
+                    ("Enter", Color::Blue, "expand"),
+                    ("Left", Color::Blue, "collapse"),
+                    ("g", Color::Magenta, "jump users"),
+                    ("c", Color::Magenta, "toggle all"),
+                    ("e", Color::Green, "edit"),
+                    ("d", Color::Red, "delete"),
+                    ("l", Color::Cyan, "refresh"),
+                    ("i", Color::Magenta, "numbers"),
+                ]),
+                control_line(&[
+                    ("/ ?", Color::Yellow, "search"),
+                    ("n", Color::Yellow, "next"),
+                    ("Home/End", Color::Blue, "jump"),
+                    ("PgUp/PgDn", Color::Blue, "scroll"),
+                ]),
+                control_line(&[("q", Color::Gray, "exit"), ("Esc", Color::Gray, "exit")]),
+            ],
+            state.status.clone(),
+        ),
         outer[2],
     );
 
@@ -373,19 +375,7 @@ fn render_member_detail_panel(
 }
 
 fn pane_block(title: &str, focused: bool, accent: Color) -> Block<'static> {
-    Block::default()
-        .borders(Borders::ALL)
-        .title(if focused {
-            format!("{title} [Focused]")
-        } else {
-            title.to_string()
-        })
-        .border_style(Style::default().fg(if focused { accent } else { Color::Gray }))
-        .title_style(
-            Style::default()
-                .fg(Color::White)
-                .add_modifier(Modifier::BOLD),
-        )
+    tui_shell::pane_block(title, focused, accent, Color::Reset)
 }
 
 fn render_focusable_lines(
@@ -439,29 +429,15 @@ fn detail_line(label: &str, value: &str) -> Line<'static> {
 }
 
 fn key_chip(label: &'static str, bg: Color) -> Span<'static> {
-    Span::styled(
-        format!(" {label} "),
-        Style::default()
-            .fg(Color::White)
-            .bg(bg)
-            .add_modifier(Modifier::BOLD),
-    )
+    tui_shell::key_chip(label, bg)
 }
 
 fn control_line(segments: &[(&'static str, Color, &'static str)]) -> Line<'static> {
-    let mut spans = Vec::new();
-    for (index, (key, color, label)) in segments.iter().enumerate() {
-        if index > 0 {
-            spans.push(plain("  "));
-        }
-        spans.push(key_chip(key, *color));
-        spans.push(plain(format!(" {label:<12}")));
-    }
-    Line::from(spans)
+    tui_shell::control_line(segments)
 }
 
 fn plain(text: impl Into<std::borrow::Cow<'static, str>>) -> Span<'static> {
-    Span::styled(text.into(), Style::default().fg(Color::White))
+    tui_shell::plain(text.into())
 }
 
 fn blank_dash(value: &str) -> &str {

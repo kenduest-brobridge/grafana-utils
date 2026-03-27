@@ -1,6 +1,7 @@
 #![cfg(feature = "tui")]
 
 use crate::tui_shell;
+use crate::tui_shell::pane_block;
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -116,7 +117,6 @@ fn summary_lines(state: &BrowserState) -> Vec<String> {
                 "browse"
             }
         ),
-        "[*] marks the default datasource for the current org scope.".to_string(),
     ]
 }
 
@@ -343,7 +343,7 @@ fn render_detail_panel(
                 plain_boxed(&item.url, Color::Rgb(40, 49, 61)),
                 Span::raw("   "),
                 muted("ORG "),
-                plain_owned(format!(
+                tui_shell::plain(format!(
                     "{} ({})",
                     blank_dash(&item.org),
                     blank_dash(&item.org_id)
@@ -377,26 +377,29 @@ fn render_detail_panel(
     let shortcut_lines = if item.is_org_row() {
         vec![
             Line::from(vec![
-                badge("Up/Down", Color::Blue),
-                plain(" select org or datasource row"),
+                tui_shell::key_chip("Up/Down", Color::Blue),
+                tui_shell::plain(" select org or datasource row"),
             ]),
             Line::from(vec![
-                badge("l", Color::Cyan),
-                plain(" refresh all visible orgs"),
+                tui_shell::key_chip("l", Color::Cyan),
+                tui_shell::plain(" refresh all visible orgs"),
                 Span::raw("   "),
-                badge("e/d", Color::DarkGray),
-                plain(" datasource rows only"),
+                tui_shell::key_chip("e/d", Color::DarkGray),
+                tui_shell::plain(" datasource rows only"),
             ]),
         ]
     } else {
         vec![
-            Line::from(vec![badge("e", Color::Green), plain(" edit datasource")]),
             Line::from(vec![
-                badge("d", Color::Red),
-                plain(" delete datasource"),
+                tui_shell::key_chip("e", Color::Green),
+                tui_shell::plain(" edit datasource"),
+            ]),
+            Line::from(vec![
+                tui_shell::key_chip("d", Color::Red),
+                tui_shell::plain(" delete datasource"),
                 Span::raw("   "),
-                badge("l", Color::Cyan),
-                plain(" refresh live data"),
+                tui_shell::key_chip("l", Color::Cyan),
+                tui_shell::plain(" refresh live data"),
             ]),
         ]
     };
@@ -481,24 +484,12 @@ fn control_line(segments: &[(&'static str, Color, &'static str)]) -> Line<'stati
     let mut spans = Vec::new();
     for (index, (key, color, label)) in segments.iter().enumerate() {
         if index > 0 {
-            spans.push(plain("  "));
+            spans.push(tui_shell::plain("  "));
         }
         spans.push(tui_shell::key_chip(key, *color));
-        spans.push(plain(format!(" {:<14}", label)));
+        spans.push(tui_shell::plain(format!(" {:<14}", label)));
     }
     Line::from(spans)
-}
-
-fn badge(text: &'static str, bg: Color) -> Span<'static> {
-    tui_shell::key_chip(text, bg)
-}
-
-fn plain(text: impl Into<std::borrow::Cow<'static, str>>) -> Span<'static> {
-    Span::styled(text.into(), Style::default().fg(Color::White))
-}
-
-fn plain_owned(text: impl Into<String>) -> Span<'static> {
-    Span::styled(text.into(), Style::default().fg(Color::White))
 }
 
 fn plain_boxed(text: &str, bg: Color) -> Span<'static> {
@@ -510,10 +501,6 @@ fn plain_boxed(text: &str, bg: Color) -> Span<'static> {
 
 fn muted(text: &'static str) -> Span<'static> {
     Span::styled(text, Style::default().fg(Color::Gray))
-}
-
-fn pane_block(title: &str, focused: bool, accent: Color, bg: Color) -> Block<'static> {
-    tui_shell::pane_block(title, focused, accent, bg)
 }
 
 fn render_focusable_lines(
@@ -623,8 +610,10 @@ mod tests {
     fn summary_lines_surface_focus_and_mode() {
         let state = BrowserState::new(empty_document());
         let lines = summary_lines(&state);
+        assert_eq!(lines.len(), 2);
         assert!(lines[1].contains("Active=list"));
         assert!(lines[1].contains("mode=browse"));
+        assert!(!lines.iter().any(|line| line.contains("default datasource")));
     }
 
     #[test]
@@ -636,6 +625,7 @@ mod tests {
             id: 7,
         });
         let lines = summary_lines(&state);
+        assert_eq!(lines.len(), 2);
         assert!(lines[1].contains("mode=confirm-delete"));
     }
 }

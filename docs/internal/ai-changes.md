@@ -6,6 +6,14 @@ Current AI change log only.
 - Detailed 2026-03-27 entries moved to [`archive/ai-changes-archive-2026-03-27.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-03-27.md).
 - Keep this file limited to the latest active architecture and maintenance changes.
 
+## 2026-03-28 - Dashboard and datasource browse shell grammar convergence
+- Summary: moved dashboard browse onto `tui_shell::build_header` and `tui_shell::build_footer`, shifted browse status text into the shared footer path for both browse surfaces, and rewired the datasource browse control rows to reuse shared key-chip/plain helpers instead of duplicating shell styling locally.
+- Tests: added focused browse-render unit coverage for the header/status split in both dashboard and datasource browse.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check` passed; `cargo test --manifest-path rust/Cargo.toml --quiet browse_render` passed; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings` passed.
+- Impact: `rust/src/dashboard/browse_render.rs`, `rust/src/datasource_browse_render.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low-to-moderate. This is TUI chrome only, but it does move visible status placement and shared helper usage, so revert if the footer/header split needs to stay on the older layout.
+- Follow-up: none.
+
 ## 2026-03-28 - TUI overlay and workbench state cleanup
 - Summary: moved dashboard and datasource destructive confirmations off the detail pane into a shared centered overlay pattern, dropped the extra preview pane from sync review diff mode so the diff workspace stays dominant, and split inspect workbench full-detail viewer state into its own `InspectFullDetailState`.
 - Tests: kept the changes pinned with focused browse/review/inspect render-state tests.

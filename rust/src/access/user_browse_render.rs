@@ -1,3 +1,4 @@
+use crate::tui_shell;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
@@ -36,21 +37,22 @@ pub(super) fn render_frame(
         .constraints([Constraint::Percentage(42), Constraint::Percentage(58)])
         .split(outer[1]);
 
-    let header = Paragraph::new(vec![
-        Line::from(format!(
-            "Scope {}  mode={}  rows={}  url={}",
-            user_scope_text(&args.scope),
-            match state.display_mode {
-                DisplayMode::GlobalAccounts => "global-accounts",
-                DisplayMode::OrgMemberships => "org-memberships",
-            },
-            state.rows.len(),
-            args.common.url
-        )),
-        Line::from(state.status.clone()),
-    ])
-    .block(Block::default().borders(Borders::ALL).title("User Browser"));
-    frame.render_widget(header, outer[0]);
+    frame.render_widget(
+        tui_shell::build_header(
+            "User Browser",
+            vec![Line::from(format!(
+                "Scope {}  mode={}  rows={}  url={}",
+                user_scope_text(&args.scope),
+                match state.display_mode {
+                    DisplayMode::GlobalAccounts => "global-accounts",
+                    DisplayMode::OrgMemberships => "org-memberships",
+                },
+                state.rows.len(),
+                args.common.url
+            ))],
+        ),
+        outer[0],
+    );
 
     let list = List::new(build_list_items(&state.rows, state.show_numbers))
         .block(pane_block(
@@ -85,28 +87,32 @@ pub(super) fn render_frame(
         render_detail_panel(frame, panes[1], state);
     }
 
-    let footer = Paragraph::new(vec![
-        control_line(&[
-            ("Up/Down", Color::Blue, "move"),
-            ("Tab", Color::Blue, "toggle facts"),
-            ("g", Color::Magenta, "jump teams"),
-            ("v", Color::Magenta, "view"),
-            ("c", Color::Magenta, "toggle all"),
-            ("e", Color::Green, "edit"),
-            ("d", Color::Red, "delete"),
-            ("l", Color::Cyan, "refresh"),
-            ("i", Color::Magenta, "numbers"),
-        ]),
-        control_line(&[
-            ("/ ?", Color::Yellow, "search"),
-            ("n", Color::Yellow, "next"),
-            ("Home/End", Color::Blue, "jump"),
-            ("PgUp/PgDn", Color::Blue, "scroll"),
-        ]),
-        control_line(&[("q", Color::Gray, "exit"), ("Esc", Color::Gray, "exit")]),
-    ])
-    .block(Block::default().borders(Borders::ALL).title("Controls"));
-    frame.render_widget(footer, outer[2]);
+    frame.render_widget(
+        tui_shell::build_footer(
+            vec![
+                control_line(&[
+                    ("Up/Down", Color::Blue, "move"),
+                    ("Tab", Color::Blue, "toggle facts"),
+                    ("g", Color::Magenta, "jump teams"),
+                    ("v", Color::Magenta, "view"),
+                    ("c", Color::Magenta, "toggle all"),
+                    ("e", Color::Green, "edit"),
+                    ("d", Color::Red, "delete"),
+                    ("l", Color::Cyan, "refresh"),
+                    ("i", Color::Magenta, "numbers"),
+                ]),
+                control_line(&[
+                    ("/ ?", Color::Yellow, "search"),
+                    ("n", Color::Yellow, "next"),
+                    ("Home/End", Color::Blue, "jump"),
+                    ("PgUp/PgDn", Color::Blue, "scroll"),
+                ]),
+                control_line(&[("q", Color::Gray, "exit"), ("Esc", Color::Gray, "exit")]),
+            ],
+            state.status.clone(),
+        ),
+        outer[2],
+    );
 
     if let Some(edit) = state.pending_edit.as_ref() {
         edit.render(frame);
@@ -589,18 +595,7 @@ fn render_team_detail_panel(
 }
 
 fn pane_block(title: &str, focused: bool, accent: Color) -> Block<'static> {
-    Block::default()
-        .borders(Borders::ALL)
-        .title(if focused {
-            format!("{title} [Focused]")
-        } else {
-            title.to_string()
-        })
-        .border_style(if focused {
-            Style::default().fg(accent).add_modifier(Modifier::BOLD)
-        } else {
-            Style::default().fg(Color::DarkGray)
-        })
+    tui_shell::pane_block(title, focused, accent, Color::Reset)
 }
 
 fn render_focusable_lines(
@@ -654,29 +649,15 @@ fn detail_line(label: &str, value: &str) -> Line<'static> {
 }
 
 fn key_chip(label: &'static str, bg: Color) -> Span<'static> {
-    Span::styled(
-        format!(" {label} "),
-        Style::default()
-            .fg(Color::White)
-            .bg(bg)
-            .add_modifier(Modifier::BOLD),
-    )
+    tui_shell::key_chip(label, bg)
 }
 
 fn control_line(segments: &[(&'static str, Color, &'static str)]) -> Line<'static> {
-    let mut spans = Vec::new();
-    for (index, (key, color, label)) in segments.iter().enumerate() {
-        if index > 0 {
-            spans.push(plain("    "));
-        }
-        spans.push(key_chip(key, *color));
-        spans.push(plain(format!(" {label}")));
-    }
-    Line::from(spans)
+    tui_shell::control_line(segments)
 }
 
 fn plain(text: impl Into<std::borrow::Cow<'static, str>>) -> Span<'static> {
-    Span::styled(text.into(), Style::default().fg(Color::White))
+    tui_shell::plain(text.into())
 }
 
 fn blank_dash(value: &str) -> &str {
