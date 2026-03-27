@@ -1,13 +1,14 @@
 # Project Roadmap
 
-Date: 2026-03-15
-Source: Derived from `docs/internal/project-value-assessment.md`, `TODO.md`, and current repo state.
+Date: 2026-03-27
+Scope: Rust runtime roadmap for the maintained `grafana-util` CLI.
+Source: Derived from current repository state, maintainer docs, and product-direction review.
 
 ## Purpose
 
-This roadmap exists to keep the project moving in a coherent direction.
+This roadmap defines what should come next for the project and what should stay out of scope.
 
-It is not a raw backlog dump. It is a prioritization document for deciding what to do next, what to defer, and what outcomes should define success.
+It is not a raw feature backlog. It is a prioritization document for keeping the project coherent as the Rust CLI grows.
 
 ## Positioning
 
@@ -15,223 +16,240 @@ The project should continue to position itself as:
 
 - a Grafana migration, inspection, diff, and governance CLI
 - a practical bridge between imperative Grafana operations and safer reviewable workflows
+- a local-first operator tool that favors explicit plans, preflight checks, and fail-closed behavior
 
 The project should not drift into:
 
 - a generic all-in-one Grafana platform
 - a full replacement for Terraform or native provisioning
 - a browser-heavy product that eclipses the CLI's core operator value
+- a SaaS-style control plane
 
 ## Planning Principles
 
-- Prefer features that improve migration safety, inspection depth, and governance value.
-- Prefer work that compounds the current Python + Rust architecture instead of fragmenting it.
-- Keep Python and Rust behavior aligned through shared contracts, fixtures, and docs where the public workflow is shared.
-- Treat secret handling, dry-run accuracy, and explicit preflight checks as first-class safety requirements.
-- Add higher-level workflows only when they clearly reduce manual Grafana maintenance for real operators.
+- Prefer work that deepens the current Rust operator workflows instead of widening scope indiscriminately.
+- Treat migration safety, dry-run accuracy, and preflight clarity as first-class requirements.
+- Prefer typed contracts and reviewable documents over implicit mutation logic.
+- Add higher-level automation only when it reduces real operator toil.
+- Keep architecture pressure visible: complex domains should be split before they become maintenance bottlenecks.
 
 ## Current State
 
 Current strengths:
 
-- Python and Rust both expose meaningful dashboard, datasource, alert, and access command surfaces.
-- export / import / diff / inspect workflows already exist and are useful in real operator scenarios.
-- inspection and query-analysis capabilities already provide more governance value than a basic backup/restore tool.
-- datasource import/export now has an explicit normalized contract rather than loose best-effort replay.
+- The Rust CLI already exposes meaningful `dashboard`, `alert`, `access`, `datasource`, and `sync` surfaces.
+- Export, import, diff, inspect, preflight, and staged review flows already form a credible operator toolkit.
+- Dashboard inspection and query-analysis features are already stronger than a basic backup/restore utility.
+- The staged `sync` workflow has a strong product direction: explicit plan, review, and apply intent rather than blind mutation.
+- Test coverage is broad across CLI topology, contract behavior, and domain workflows.
 
 Current constraints:
 
-- dashboard and inspection workflows are still the main complexity center.
-- Python and Rust dual maintenance increases coordination cost.
-- environment-to-environment promotion still needs more explicit workflow support.
-- datasource secret handling is intentionally conservative and does not yet integrate with external secret stores.
+- `dashboard` and `sync` remain the main complexity centers.
+- Several large orchestration and contract modules will keep absorbing behavior unless they are actively split.
+- Environment-to-environment promotion still lacks a first-class operator workflow.
+- Datasource secret handling is intentionally conservative and still blocks broader automation adoption.
+- The project has strong primitives, but some higher-level flows still feel like connected building blocks rather than one polished operator path.
+
+## Next-Phase Strategy
+
+The next phase should focus on going deeper, not broader.
+
+The priority is to make the existing differentiators more complete and more trustworthy:
+
+1. inspection and dependency visibility
+2. safer environment promotion
+3. more reviewable and trustworthy sync flows
+4. explicit secret-reference handling
+5. ongoing architecture simplification in high-complexity Rust modules
 
 ## Roadmap Overview
 
-### Phase 1: Finish Inspection And Dependency Governance
+### Phase 1: Deepen Inspection And Dependency Governance
 
 Target outcome:
 
-- operators can answer dependency, blast-radius, and query-governance questions directly from CLI output without custom scripts
+- operators can answer dependency, blast-radius, governance, and dashboard quality questions directly from built-in CLI outputs
 
 Priority items:
 
-- reduce Python/Rust inspect-live and inspect-export drift by keeping one stable summary/report schema
-- deepen datasource usage and orphan-detection reporting
-- add a first-class resource dependency graph export such as `graph --output-format dot|svg|json`
-- refactor query extraction behind datasource-type-specific analyzers so Prometheus, Loki, Flux/Influx, SQL, and future families can evolve independently
-- add management-friendly report rendering such as static HTML inspection output when it reuses the same canonical report model
+- deepen datasource usage, orphan detection, and stale-reference reporting
+- add first-class dependency graph export such as `graph --output-format dot|svg|json`
+- strengthen datasource-family analyzers so Prometheus, Loki, Flux/Influx, SQL, and future families stay independently evolvable
+- add management-friendly outputs such as static HTML inspection reports when they reuse the canonical report model
+- add stronger governance and quality signals such as risky query traits, oversized dashboards, and variable-chain risk summaries
 
 Why this phase comes first:
 
-- inspection is already one of the repo's strongest differentiators
-- dependency visibility and governance reporting directly strengthen the current value proposition without forcing a broader platform scope
+- inspection is already one of the project's strongest differentiators
+- stronger dependency and governance reporting improves operator value without expanding product scope
 
 Definition of done for this phase:
 
-- operators can see dashboard-to-datasource dependency summaries and common blast radius views from built-in commands
-- report modes stay aligned across Python and Rust where they represent the same public contract
-- richer report outputs reuse the same underlying inspection data instead of creating parallel ad hoc pipelines
+- operators can see dashboard-to-datasource dependency summaries and common blast-radius views without custom scripts
+- richer reports reuse the same underlying inspection model instead of creating parallel ad hoc pipelines
+- dependency and governance outputs are strong enough to support review meetings, migration planning, and cleanup decisions
 
 Explicit non-goals for this phase:
 
 - no attempt to parse every possible query language exhaustively
 - no separate web product or always-on service layer
 
-### Phase 2: Add Environment Promotion And Preflight Safety
+### Phase 2: Add First-Class Environment Promotion And Preflight Safety
 
 Target outcome:
 
-- promoting dashboards, alerts, and datasource state across environments becomes safer, more explicit, and less manual
+- promoting dashboards, alerts, and datasource state between environments becomes safer, more explicit, and less manual
 
 Priority items:
 
-- add a first-class promotion workflow such as `promote --from <env> --to <env>` around the existing export/import/diff foundations
+- add a first-class promotion workflow around the existing export/import/diff foundations
+- improve UID, folder, datasource, and naming remap support for cross-environment migration
 - expand import preflight for datasources, plugins, alert/contact references, library panels, and other common prerequisites
-- improve UID/name remapping support for datasource and dashboard promotion cases
-- keep dry-run and diff outputs trustworthy enough for team review before mutation
-- evaluate bundle/package workflows that snapshot dashboards, alerts, datasource inventory, and metadata together when that clearly improves portability
+- keep dry-run and diff outputs trustworthy enough for peer review before mutation
+- evaluate bundle/package workflows that snapshot dashboards, alerts, datasource inventory, and migration metadata together when that improves portability
 
 Why this phase matters:
 
-- environment promotion is one of the most common high-value operator workflows after basic export/import exists
+- environment promotion is one of the highest-value workflows after export/import exists
 - better preflight prevents bad writes before they reach production Grafana
 
 Definition of done for this phase:
 
-- operators can promote common Grafana resources between environments with explicit rewrite/preflight visibility
+- operators can promote common Grafana resources between environments with explicit rewrite and preflight visibility
 - promotion flows can detect common blockers before mutation starts
-- cross-environment remapping rules are documented and testable rather than hidden in ad hoc scripts
+- cross-environment remapping rules are documented, reviewable, and testable
 
 Explicit non-goals for this phase:
 
 - no general deployment orchestrator
 - no attempt to own every environment-management concern outside Grafana resource migration
 
-### Phase 3: Introduce GitOps-Oriented Declarative Sync
+### Phase 3: Make Sync More Trustworthy Before Making It Broader
 
 Target outcome:
 
-- the repo supports a constrained declarative sync workflow that uses Git-managed state as the review surface while preserving the project's safety-first CLI behavior
+- the `grafana-util sync` workflow is reviewable, predictable, and trusted enough for constrained Git-managed operations
 
 Priority items:
 
-- design a declarative sync command such as `grafana-util sync` around an explicit export/import/diff contract
-- define a narrow supported state model for dashboards, datasources, folders, and selected alert resources
-- require reviewable plan/dry-run output before live mutation
-- keep sync semantics compatible with existing normalized export formats wherever practical
-- document where declarative sync complements rather than replaces Terraform/native Grafana provisioning
+- strengthen fail-closed handling for ambiguous or unsupported resource states
+- improve plan explainability so blocked, candidate, and applyable states are easier to understand
+- deepen preflight and audit coverage before expanding resource scope
+- keep sync semantics compatible with existing normalized export formats where practical
+- improve review surfaces so operators can validate intent before any live mutation path is enabled
 
-Why this phase is later:
+Why this phase comes after promotion:
 
-- this is strategically valuable, but it should be built on top of already-safe promotion and preflight primitives
-- a GitOps surface without clear constraints would risk turning the repo into a vague platform
+- sync becomes strategically valuable only when the lower-level migration and preflight primitives are already trustworthy
+- broadening sync too early would increase scope faster than operator confidence
 
 Definition of done for this phase:
 
-- operators can declare a supported subset of Grafana state in versioned files and reconcile drift through one explicit workflow
-- sync results are reviewable, predictable, and fail closed on unsupported ambiguity
-- the feature reuses existing contracts instead of inventing a second incompatible resource model
+- operators can declare a constrained subset of Grafana state in versioned files and reconcile drift through one explicit workflow
+- sync plans fail closed on unsupported ambiguity and explain why
+- apply flows remain review-first instead of silently becoming an imperative mutation shortcut
 
 Explicit non-goals for this phase:
 
 - no claim to replace full Terraform-style resource management
-- no broad always-reconcile controller or daemon
+- no always-reconcile controller or daemon
 
-### Phase 4: Strengthen Secret Handling For Datasource And Access Workflows
+### Phase 4: Formalize Secret Handling For Datasource Automation
 
 Target outcome:
 
-- sensitive values are handled more safely during datasource and access operations without weakening the repo's explicit operator controls
+- datasource workflows can reference secrets safely enough for real environment promotion and sync usage without weakening explicit operator control
 
 Priority items:
 
-- evaluate external secret provider integration for datasource import workflows
-- support placeholder-based secret references in reviewed config or bundle inputs
-- preserve the current fail-closed behavior for unsupported secret-bearing datasource mutations
-- keep password/token file and prompt-based flows aligned across Python and Rust
+- formalize placeholder-based secret references in reviewed config, bundle, or staged inputs
+- evaluate external secret-provider integration on top of the staged contract
+- preserve the current fail-closed behavior for unsupported secret-bearing mutations
+- make secret-loss and secret-missing cases explicit in preflight and apply intent outputs
 
 Why this phase matters:
 
 - secret handling remains one of the main blockers for safer datasource lifecycle automation
-- better secret injection makes promotion and declarative sync materially more usable in real environments
+- promotion and sync become materially more useful once secret references are explicit and reviewable
 
 Definition of done for this phase:
 
 - datasource workflows can reference secrets without encouraging plaintext storage in exported artifacts
 - unsafe secret-loss cases remain explicit and blocked by default
-- the repo still keeps a narrow, auditable secret contract instead of smuggling opaque blobs through exports
+- the project keeps a narrow and auditable secret contract instead of passing opaque blobs through exports
 
 Explicit non-goals for this phase:
 
 - no secret-management abstraction that hides risk behind silent magic
 - no promise to round-trip every datasource vendor's secure settings automatically
 
-### Phase 5: Explore Assisted Analysis And Local Runtime Extensions
+### Phase 5: Keep Advanced Analysis And Packaging Exploratory
 
 Target outcome:
 
-- the project can optionally offer higher-level analysis surfaces without making them a core requirement for safe CLI use
+- the project can explore higher-level analysis surfaces without making them part of the core correctness path
 
 Priority items:
 
-- evaluate AI-assisted query analysis or `inspect --ai-fix` style suggestions only on top of the existing analyzer outputs
-- keep any assisted recommendations explainable and optional rather than silently mutating resources
-- explore Rust-to-WASM packaging only if it cleanly reuses the existing Rust analysis core and stays local/offline-first
+- evaluate optional AI-assisted or rule-assisted query review only on top of existing analyzer outputs
+- keep any recommendations explainable and optional rather than silently mutating resources
+- explore Rust-to-WASM or local browser packaging only if it cleanly reuses the Rust analysis core
 
-Why this phase is last:
+Why this phase is later:
 
-- these ideas can be valuable, but they are additive multipliers rather than core blockers
-- the foundation should first be strong in deterministic migration, governance, promotion, and secret safety
+- these ideas are additive multipliers, not current blockers
+- the core workflow layers should be stronger before optional higher-level extensions are expanded
 
 Definition of done for this phase:
 
-- assisted analysis is strictly optional and grounded in existing report models
-- any local browser/WASM packaging reuses the Rust core instead of forking logic into a separate implementation
+- assisted analysis remains optional and grounded in existing report models
+- any local packaging path reuses the Rust core instead of forking business logic
 
 Explicit non-goals for this phase:
 
 - no dependency on an online AI service for baseline CLI correctness
-- no separate SaaS direction
+- no SaaS direction
 
 ## Cross-Cutting Work
 
-These items should continue across phases instead of waiting for one specific milestone:
+These items should continue across all phases:
 
-- keep CI aligned with local quality commands
-- keep Python and Rust help text, contracts, and fixtures synchronized
-- reduce oversized orchestration modules before they become the default place for every new feature
-- update maintainer docs when behavior or architecture changes materially
-- resist scope creep that does not reinforce migration, inspection, diff, promotion, or governance value
+- keep CI aligned with local quality commands and release gates
+- reduce oversized Rust orchestration modules before they become default dumping grounds
+- keep CLI help, output contracts, and maintainer docs aligned with real behavior
+- add tests for every user-visible workflow change, especially contract and preflight behavior
+- keep domain outputs typed and reviewable instead of relying on implicit CLI conventions
+- resist scope creep that does not reinforce migration, inspection, diff, promotion, sync, or governance value
 
-## Priority Order Right Now
+## Recommended Priority Order Right Now
 
-If only a small number of items can be advanced next, the recommended order is:
+If only a small number of items can advance next, the recommended order is:
 
-1. finish inspection/dependency reporting and shared report contracts
-2. add environment promotion and stronger preflight checks
-3. design a constrained GitOps/declarative sync workflow
-4. integrate safer secret-reference handling for datasource workflows
-5. keep assisted analysis and WASM packaging exploratory until the core workflow layers are stable
+1. deepen inspection and dependency reporting
+2. add first-class promotion and stronger preflight checks
+3. improve sync trustworthiness before broadening scope
+4. formalize secret-reference handling for datasource workflows
+5. keep advanced analysis and alternate packaging exploratory
 
 ## Success Metrics
 
 The roadmap is working if these become true:
 
 - dashboard and alert migrations require less manual repair between environments
-- inspection reports replace one-off operator scripts for common governance and blast-radius questions
-- promotion and sync workflows stay reviewable and fail closed when the target state is ambiguous
+- inspection outputs replace one-off operator scripts for common governance and blast-radius questions
+- promotion and sync workflows stay reviewable and fail closed when target state is ambiguous
 - datasource secret handling is safer without weakening explicit operator control
-- Python and Rust stay aligned without frequent parity regressions
+- high-complexity Rust modules are gradually split instead of expanding without bound
 
 ## Bottom Line
 
-The project should grow by going deeper on its strongest use cases, then carefully layering higher-level automation on top.
+The project should grow by going deeper on its strongest operator use cases, then carefully layering higher-level automation on top.
 
-The best direction is:
+The best direction for the next phase is:
 
 - stronger inspection and dependency visibility
 - safer environment promotion
-- constrained GitOps-style reconciliation
+- more trustworthy review-first sync workflows
 - clearer secret handling
-- stable cross-language behavior
+- sustained Rust architecture simplification

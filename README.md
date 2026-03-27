@@ -27,7 +27,7 @@ Language: **English** | [繁體中文版](README.zh-TW.md)
 
 The current maintained CLI is the Rust-based `grafana-util` binary.
 - User-facing docs and releases target the Rust binary.
-- Python implementation details remain in maintainer docs for parity and validation work.
+- Older Python implementation details remain in maintainer docs as historical and maintainer-only reference material.
 
 ## Support Overview
 

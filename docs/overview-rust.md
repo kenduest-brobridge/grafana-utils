@@ -188,9 +188,9 @@ Rust crate 提供四個 CLI domain 的核心執行能力：
 - 新增/調整 dashboard query analysis：優先看 `dashboard/mod.rs` 再往 `dashboard/inspect.rs` 與 `dashboard/inspect_query.rs` 分流。
 - 新增/調整 dashboard inspect 資料契約時，先對齊這條最短修改路徑：
   - input contract：`dashboard/inspect_live.rs` 先把 live fetch 轉成與 offline inspect 相同的 raw export tree；`dashboard/inspect.rs` 假設輸入已包含 `export-metadata.json`、`index.json`、folder inventory、datasource inventory 與 dashboard JSON。
-  - normalized internal model：`ExportInspectionSummary`、`ExportInspectionQueryReport`、`QueryAnalysis`，以及 governance document rows 是 downstream renderer 與 parity test 的共同中介形狀。
+  - normalized internal model：`ExportInspectionSummary`、`ExportInspectionQueryReport`、`QueryAnalysis`，以及 governance document rows 是 downstream renderer 與跨路徑回歸測試的共同中介形狀。
   - output contract：`inspect_summary.rs` 與 `inspect_report.rs` 負責 typed summary/report document boundary；`inspect_governance.rs` 與 `inspect_render.rs` 分別擁有 governance 與 text-table-json 的輸出形狀。
-  - shortest modification path：改 query extraction 就看 `inspect.rs` + `inspect_query.rs`；改 live staging 就看 `inspect_live.rs`；改輸出形狀就看 summary/report/governance/render 模組；改回歸測試先看 `inspect_live_rust_tests.rs`，再看 `dashboard_rust_tests.rs` 中跨路徑的 parity case。
+  - shortest modification path：改 query extraction 就看 `inspect.rs` + `inspect_query.rs`；改 live staging 就看 `inspect_live.rs`；改輸出形狀就看 summary/report/governance/render 模組；改回歸測試先看 `inspect_live_rust_tests.rs`，再看 `dashboard_rust_tests.rs` 中跨路徑 contract case。
 - 新增/調整 sync live/apply boundary：優先看 `sync/mod.rs`，再分別調整 `sync/cli.rs`、`sync/live.rs`、`sync/json.rs`、`sync/bundle_inputs.rs`、`sync/staged_documents.rs`、`sync/workbench.rs`。
 - 改 parser：先改對應 `*_cli_defs.rs` 再補 test。
 - 改輸出：優先對應子模組的 render/report 檔案。

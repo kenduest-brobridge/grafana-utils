@@ -1,13 +1,13 @@
 # Developer Notes
 
-This document is for maintainers. Keep `README.md` and the user guides operator-facing; keep dual-runtime implementation notes, release ritual, and validation guidance here.
+This document is for maintainers. Keep `README.md` and the user guides operator-facing; keep Rust runtime notes, release ritual, and validation guidance here.
 
 ## Documentation Contract
 
 - Keep `README.md`, `README.zh-TW.md`, `docs/user-guide.md`, and `docs/user-guide-TW.md` focused on the maintained user-facing `grafana-util` command surface.
-- Keep Python implementation notes in maintainer-only docs such as this file and the internal reference pages under `docs/`.
+- Keep older Python implementation notes in maintainer-only docs and internal reference pages only when they remain useful for historical context.
 - When command behavior or parameter shapes change, update both user guides together.
-- When Python/Rust parity or validation behavior changes, update maintainer docs here instead of surfacing that detail in README unless operators need it.
+- When maintainer validation or release behavior changes, update the relevant maintainer docs here instead of surfacing that detail in README unless operators need it.
 
 ## Repository Scope
 
@@ -21,16 +21,16 @@ This document is for maintainers. Keep `README.md` and the user guides operator-
 - `rust/src/access/`: access org, user, team, and service-account workflows plus shared renderers and request helpers.
 - `rust/src/sync/`: staged sync bundle, preflight, review, and apply flows.
 
-### Developer-only validation and parity runtime
+### Legacy maintainer reference runtime
 
-- `python/grafana_utils/unified_cli.py`: unified Python dispatcher used for parity testing and source-tree validation.
+- `python/grafana_utils/unified_cli.py`: older unified Python dispatcher kept as maintainer-only reference.
 - `python/grafana_utils/dashboard_cli.py`: Python dashboard facade.
 - `python/grafana_utils/datasource_cli.py`: Python datasource facade.
 - `python/grafana_utils/alert_cli.py`: Python alert facade.
 - `python/grafana_utils/access_cli.py`: Python access facade.
 - `python/grafana_utils/http_transport.py`: shared Python transport abstraction.
-- `python/grafana_utils/dashboards/`, `python/grafana_utils/datasource/`, `python/grafana_utils/access/`, `python/grafana_utils/alerts/`: Python workflow and helper modules used to keep behavior traceable against the Rust surface.
-- `python/tests/`: Python regression coverage used as a secondary implementation and validation lane.
+- `python/grafana_utils/dashboards/`, `python/grafana_utils/datasource/`, `python/grafana_utils/access/`, `python/grafana_utils/alerts/`: older Python workflow and helper modules kept for maintainer reference.
+- `python/tests/`: older Python regression coverage retained for maintainers when needed.
 
 ### Build, scripts, and docs
 
@@ -43,7 +43,7 @@ This document is for maintainers. Keep `README.md` and the user guides operator-
 - `docs/overview-rust.md`: Rust architecture walkthrough.
 - `docs/overview-python.md`: Python maintainer architecture walkthrough.
 - `docs/core-python-call-hierarchy.md`: Python call graph reference for maintainers.
-- `docs/unit-test-inventory.md`: Python and Rust test inventory reference for maintainers.
+- `docs/unit-test-inventory.md`: test inventory reference for maintainers.
 - `docs/internal/examples/`: maintainer-only demo scripts for intentionally unwired Python API flows.
 
 ## Shortest Modification Paths
@@ -57,7 +57,7 @@ This document is for maintainers. Keep `README.md` and the user guides operator-
 
 - `dev` is the preview branch; `main` is the release branch.
 - `VERSION` is the checked-in maintainer version source.
-- Use `make print-version` to inspect the current checked-in version state across Python and Rust metadata.
+- Use `make print-version` to inspect the current checked-in version state across package metadata.
 - Use `make sync-version` after editing `VERSION` manually.
 - Use `make set-release-version VERSION=X.Y.Z` when preparing `main` for release.
 - Use `make set-dev-version VERSION=X.Y.Z DEV_ITERATION=N` when moving `dev` to the next preview cycle.
@@ -75,32 +75,32 @@ This document is for maintainers. Keep `README.md` and the user guides operator-
 
 - The maintained operator entrypoint is `grafana-util`.
 - The Rust binary is the primary user-facing runtime.
-- The Python implementation remains in-repo for developer validation, parity checking, and source-tree testing.
-- Keep user docs Rust-first, but do not remove internal Python maintenance guidance unless the Python implementation is actually retired.
+- The Python implementation remains in-repo only as legacy maintainer reference material.
+- Keep user docs Rust-first and avoid treating Python internals as part of the supported operator story.
 
 ## Python Maintainer Notes
 
 - Python remains useful for:
-  - parity checks when Rust behavior changes
-  - workflow prototyping and comparison during refactors
-  - validation against existing Python unit and smoke coverage
+  - historical behavior lookup during refactors
+  - old workflow reference when investigating regressions
+  - selective maintainer validation when a legacy comparison is still useful
 - Keep Python command examples inside maintainer docs only.
 - Prefer `PYTHONPATH=python python3 -m unittest -v` for full Python validation.
 - Keep Python version metadata aligned with Rust version metadata through the shared version bump flow.
 
 ## Quality Gates
 
-- `make quality-python` runs the Python validation lane used for parity and regression checking.
+- `make quality-python` runs the legacy Python validation lane when maintainers still need it.
 - `make quality-rust` runs the Rust validation lane used by the maintained runtime.
-- `make test` should remain the broad maintainer gate that exercises both implementations where applicable.
+- `make test` should remain the broad maintainer gate across the repository.
 - `cargo clippy --all-targets -- -D warnings` is release-blocking in CI.
 - Keep CI wired to shared scripts rather than duplicating logic in workflow YAML.
 
 ## Maintenance Rules
 
 - Keep README and user guides free of Python installation or entrypoint guidance unless Python becomes a supported user distribution again.
-- Keep internal Python docs available for maintainers while the dual implementation still exists.
+- Keep internal Python docs available only as maintainer reference while those files still exist in-repo.
 - Keep `examples/` limited to operator-facing sample assets; place unwired demos and maintainer-only prototypes under `docs/internal/`.
 - If a workflow change affects operator behavior, update both user guides in the same change.
-- If a parity or validation rule changes, update this file and the relevant internal reference docs in the same change.
-- Historical notes in `docs/internal/` are archival and may still mention older Python/Rust rollout context.
+- If a maintainer validation or release rule changes, update this file and the relevant internal reference docs in the same change.
+- Historical notes in `docs/internal/` are archival and may still mention older rollout context.
