@@ -6,6 +6,14 @@ Current AI change log only.
 - Detailed 2026-03-27 entries moved to [`archive/ai-changes-archive-2026-03-27.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-03-27.md).
 - Keep this file limited to the latest active architecture and maintenance changes.
 
+## 2026-03-28 - Datasource secret resolution aggregation
+- Summary: updated the shared datasource secret resolver so live mutation/import now accumulates every missing or empty placeholder name and returns one fail-closed error before any write attempt, instead of stopping at the first unresolved secret.
+- Tests: refreshed the focused secret helper regression to cover aggregate missing/empty reporting and updated the import preflight regression to assert the new later-stage failure text.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check` failed because the worktree already contains unrelated dashboard formatting diffs; `rustfmt --check rust/src/datasource_secret.rs rust/src/datasource_secret_rust_tests.rs rust/src/datasource_import_export.rs` passed; `cargo test --manifest-path rust/Cargo.toml --quiet datasource_secret_rust_tests` failed because unrelated dashboard compile errors are still present in the worktree; `cargo test --manifest-path rust/Cargo.toml --quiet datasource_rust_tests` failed for the same reason.
+- Impact: `rust/src/datasource_secret.rs`, `rust/src/datasource_secret_rust_tests.rs`, `rust/src/datasource_import_export.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. The behavior stays staged/fail-closed and only expands the unresolved-secret error report; revert if downstream consumers depend on the older single-placeholder error wording.
+- Follow-up: none.
+
 ## 2026-03-28 - Maintainer backlog phase/status sync
 - Summary: updated the internal maintainer backlog so it reflects the current Rust state more accurately: dashboard inspect cleanup is described as landed in its current slices, datasource secret handling is described as already having a usable operator contract plus dry-run `secretVisibility`, and promotion is described as a partially landed staged review handoff instead of a pure skeleton.
 - Tests: not applicable. This is docs-only.

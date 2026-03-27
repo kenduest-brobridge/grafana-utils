@@ -54,6 +54,18 @@ struct PromotionHandoffSummary {
     review_instruction: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+struct PromotionContinuationSummary {
+    staged_only: bool,
+    live_mutation_allowed: bool,
+    ready_for_continuation: bool,
+    next_stage: String,
+    resolved_count: i64,
+    blocking_count: i64,
+    continuation_instruction: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PromotionCheck {
     kind: String,
@@ -159,6 +171,32 @@ fn summarize_promotion_handoff(blocking_count: i64) -> PromotionHandoffSummary {
             "promotion handoff is ready to move into review".to_string()
         } else {
             "promotion handoff is blocked until the listed remaps and bundle issues are cleared"
+                .to_string()
+        },
+    }
+}
+
+fn summarize_promotion_continuation(
+    resolved_count: i64,
+    blocking_count: i64,
+) -> PromotionContinuationSummary {
+    let ready_for_continuation = blocking_count == 0;
+    PromotionContinuationSummary {
+        staged_only: true,
+        live_mutation_allowed: false,
+        ready_for_continuation,
+        next_stage: if ready_for_continuation {
+            "staged-apply-continuation".to_string()
+        } else {
+            "resolve-blockers".to_string()
+        },
+        resolved_count,
+        blocking_count,
+        continuation_instruction: if ready_for_continuation {
+            "reviewed remaps can continue into a staged apply continuation without enabling live mutation"
+                .to_string()
+        } else {
+            "keep the promotion staged until blockers clear; do not enter the apply continuation"
                 .to_string()
         },
     }
@@ -518,6 +556,8 @@ pub fn build_sync_promotion_preflight_document(
         + bundle_summary.secret_placeholder_blocking_count
         + bundle_summary.alert_artifact_blocked_count;
     let blocking_count = bundle_blocking_count + missing_mapping_count;
+    let continuation_summary =
+        summarize_promotion_continuation(check_summary.resolved_count, blocking_count);
     let resource_count = source_bundle
         .get("summary")
         .and_then(Value::as_object)
@@ -547,6 +587,7 @@ pub fn build_sync_promotion_preflight_document(
         },
         "checkSummary": serde_json::to_value(check_summary)?,
         "handoffSummary": serde_json::to_value(summarize_promotion_handoff(blocking_count))?,
+        "continuationSummary": serde_json::to_value(continuation_summary)?,
         "checks": checks.iter().map(|item| serde_json::json!({
             "kind": item.kind,
             "identity": item.identity,
@@ -611,6 +652,11 @@ pub fn render_sync_promotion_preflight_text(document: &Value) -> Result<Vec<Stri
     let handoff_summary = require_json_object_field(
         require_json_object(document, "Sync promotion preflight document")?,
         "handoffSummary",
+        "Sync promotion preflight document",
+    )?;
+    let continuation_summary = require_json_object_field(
+        require_json_object(document, "Sync promotion preflight document")?,
+        "continuationSummary",
         "Sync promotion preflight document",
     )?;
     let bundle_preflight = document
@@ -697,6 +743,33 @@ pub fn render_sync_promotion_preflight_text(document: &Value) -> Result<Vec<Stri
                 .and_then(Value::as_i64)
                 .unwrap_or(0),
             normalize_text(handoff_summary.get("reviewInstruction")),
+        ),
+        String::new(),
+        "# Controlled apply continuation".to_string(),
+        format!(
+            "- staged-only={} live-mutation-allowed={} ready-for-continuation={} next-stage={} resolved={} blocking={} instruction={}",
+            continuation_summary
+                .get("stagedOnly")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+            continuation_summary
+                .get("liveMutationAllowed")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+            continuation_summary
+                .get("readyForContinuation")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+            normalize_text(continuation_summary.get("nextStage")),
+            continuation_summary
+                .get("resolvedCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(resolved_remap_count),
+            continuation_summary
+                .get("blockingCount")
+                .and_then(Value::as_i64)
+                .unwrap_or(blocking_remap_count),
+            normalize_text(continuation_summary.get("continuationInstruction")),
         ),
         String::new(),
         "# Resolved remaps".to_string(),

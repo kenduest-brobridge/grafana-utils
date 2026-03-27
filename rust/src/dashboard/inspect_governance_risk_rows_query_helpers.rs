@@ -1,7 +1,7 @@
 use crate::dashboard::inspect_report::ExportInspectionQueryRow;
 
-use super::super::super::normalize_family_name;
 use super::super::inspect_governance_risk_spec::parse_duration_seconds;
+use crate::dashboard::inspect_family::normalize_family_name;
 
 pub(super) fn query_uses_broad_prometheus_selector(row: &ExportInspectionQueryRow) -> bool {
     if normalize_family_name(&row.datasource_type) != "prometheus" {

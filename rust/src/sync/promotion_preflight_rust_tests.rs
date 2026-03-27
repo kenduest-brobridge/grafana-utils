@@ -101,6 +101,27 @@ fn build_sync_promotion_preflight_document_reports_direct_mapped_and_missing_ref
         document["handoffSummary"]["reviewInstruction"],
         json!("promotion handoff is blocked until the listed remaps and bundle issues are cleared")
     );
+    assert_eq!(document["continuationSummary"]["stagedOnly"], json!(true));
+    assert_eq!(
+        document["continuationSummary"]["liveMutationAllowed"],
+        json!(false)
+    );
+    assert_eq!(
+        document["continuationSummary"]["readyForContinuation"],
+        json!(false)
+    );
+    assert_eq!(
+        document["continuationSummary"]["nextStage"],
+        json!("resolve-blockers")
+    );
+    assert_eq!(document["continuationSummary"]["resolvedCount"], json!(3));
+    assert_eq!(document["continuationSummary"]["blockingCount"], json!(7));
+    assert_eq!(
+        document["continuationSummary"]["continuationInstruction"],
+        json!(
+            "keep the promotion staged until blockers clear; do not enter the apply continuation"
+        )
+    );
     assert_eq!(
         document["mappingSummary"]["mappingKind"],
         json!(SYNC_PROMOTION_MAPPING_KIND)
@@ -211,6 +232,15 @@ fn render_sync_promotion_preflight_text_renders_summary_and_bundle_context() {
             "blockingCount": 1,
             "reviewInstruction": "promotion handoff is blocked until the listed remaps and bundle issues are cleared"
         },
+        "continuationSummary": {
+            "stagedOnly": true,
+            "liveMutationAllowed": false,
+            "readyForContinuation": false,
+            "nextStage": "resolve-blockers",
+            "resolvedCount": 1,
+            "blockingCount": 1,
+            "continuationInstruction": "keep the promotion staged until blockers clear; do not enter the apply continuation"
+        },
         "resolvedChecks": [{
             "kind": "folder-remap",
             "identity": "cpu-main",
@@ -261,6 +291,9 @@ fn render_sync_promotion_preflight_text_renders_summary_and_bundle_context() {
     assert!(output.contains("mapped=1"));
     assert!(output.contains("folders=1"));
     assert!(output.contains("promotion stays blocked"));
+    assert!(output.contains("# Controlled apply continuation"));
+    assert!(output.contains("staged-only=true"));
+    assert!(output.contains("ready-for-continuation=false"));
     assert!(output.contains(
         "Handoff: review-required=true ready-for-review=false next-stage=resolve-blockers blocking=1 instruction=promotion handoff is blocked until the listed remaps and bundle issues are cleared"
     ));
@@ -331,6 +364,25 @@ fn build_sync_promotion_preflight_document_reports_review_handoff_when_clean() {
     assert_eq!(
         document["handoffSummary"]["reviewInstruction"],
         json!("promotion handoff is ready to move into review")
+    );
+    assert_eq!(document["continuationSummary"]["stagedOnly"], json!(true));
+    assert_eq!(
+        document["continuationSummary"]["liveMutationAllowed"],
+        json!(false)
+    );
+    assert_eq!(
+        document["continuationSummary"]["readyForContinuation"],
+        json!(true)
+    );
+    assert_eq!(
+        document["continuationSummary"]["nextStage"],
+        json!("staged-apply-continuation")
+    );
+    assert_eq!(document["continuationSummary"]["resolvedCount"], json!(1));
+    assert_eq!(document["continuationSummary"]["blockingCount"], json!(0));
+    assert_eq!(
+        document["continuationSummary"]["continuationInstruction"],
+        json!("reviewed remaps can continue into a staged apply continuation without enabling live mutation")
     );
 }
 

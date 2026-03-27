@@ -6,6 +6,13 @@ Current AI-maintained status only.
 - Detailed 2026-03-27 entries moved to [`archive/ai-status-archive-2026-03-27.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-27.md).
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 
+## 2026-03-28 - Datasource secret resolution aggregation
+- State: Done
+- Scope: `rust/src/datasource_secret.rs`, `rust/src/datasource_import_export.rs`, `rust/src/datasource_secret_rust_tests.rs`
+- Baseline: datasource secret resolution stopped at the first missing or empty placeholder, which could hide other unresolved values from the later-stage import failure path.
+- Current Update: changed secret resolution to accumulate every missing or empty placeholder name and return one fail-closed error before any write attempt, then pinned that behavior in focused datasource secret tests and the import preflight regression.
+- Result: datasource add/modify/import now report the full unresolved secret set more coherently, while the staged review and dry-run placeholder visibility remain unchanged.
+
 ## 2026-03-28 - Maintainer backlog phase/status sync
 - State: Done
 - Scope: `docs/internal/maintainer-backlog-2026-03-28.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

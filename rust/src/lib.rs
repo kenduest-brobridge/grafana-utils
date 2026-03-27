@@ -9,7 +9,8 @@ pub mod alert;
 /// Alert-specific sync assessment helpers used by preflight and sync flows.
 pub(crate) mod alert_sync;
 /// Cross-resource bundle preflight assembly built above sync resource contracts.
-pub mod bundle_preflight;
+#[cfg(test)]
+pub(crate) mod bundle_preflight;
 /// Unified top-level CLI parsing and dispatch for the Rust binary.
 pub mod cli;
 /// Structured help/example text used by the unified CLI renderer.

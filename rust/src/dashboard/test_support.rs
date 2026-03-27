@@ -58,9 +58,9 @@ pub(crate) mod import {
 pub(crate) mod inspect_governance {
     pub(crate) use crate::dashboard::inspect_governance::*;
 }
+pub(crate) use crate::dashboard::inspect_family::normalize_family_name;
 pub(crate) use crate::dashboard::inspect_governance::{
-    build_export_inspection_governance_document, normalize_family_name,
-    render_governance_table_report,
+    build_export_inspection_governance_document, render_governance_table_report,
 };
 pub(crate) use crate::dashboard::inspect_live::{
     inspect_live_dashboards_with_client, inspect_live_dashboards_with_request,

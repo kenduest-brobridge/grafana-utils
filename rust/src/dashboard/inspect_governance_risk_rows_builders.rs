@@ -6,8 +6,8 @@ use crate::dashboard::inspect_report::{ExportInspectionQueryReport, ExportInspec
 use crate::dashboard::ExportInspectionSummary;
 
 use super::super::super::{
-    build_dashboard_dependency_rows, build_inventory_lookup, normalize_family_name,
-    resolve_datasource_identity, DashboardAuditRow, GovernanceRiskRow, QueryAuditRow,
+    build_dashboard_dependency_rows, build_inventory_lookup, resolve_datasource_identity,
+    DashboardAuditRow, GovernanceRiskRow, QueryAuditRow,
 };
 use super::super::inspect_governance_risk_spec::{
     lookup_governance_risk_spec, ordered_push, parse_duration_seconds, severity_for_score,
@@ -26,6 +26,7 @@ use super::inspect_governance_risk_rows_query_helpers::{
     query_uses_broad_prometheus_selector, query_uses_high_cardinality_prometheus_regex,
     query_uses_prometheus_regex, query_uses_unscoped_loki_search,
 };
+use crate::dashboard::inspect_family::normalize_family_name;
 
 fn build_query_audit_row(
     row: &ExportInspectionQueryRow,

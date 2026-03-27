@@ -114,28 +114,29 @@ pub fn resolve_secret_placeholders(
     provided_secrets: &Map<String, Value>,
 ) -> Result<Map<String, Value>> {
     let mut resolved = Map::new();
+    let mut unresolved_placeholder_names = Vec::new();
     for placeholder in placeholders {
-        let secret_value = provided_secrets
+        let Some(secret_value) = provided_secrets
             .get(&placeholder.placeholder_name)
-            .ok_or_else(|| {
-                message(format!(
-                    "Missing datasource secret placeholder '{}'.",
-                    placeholder.placeholder_name
-                ))
-            })?
-            .as_str()
+            .and_then(Value::as_str)
             .map(str::trim)
             .filter(|value| !value.is_empty())
-            .ok_or_else(|| {
-                message(format!(
-                    "Resolved datasource secret '{}' must be a non-empty string.",
-                    placeholder.placeholder_name
-                ))
-            })?;
+        else {
+            unresolved_placeholder_names.push(placeholder.placeholder_name.clone());
+            continue;
+        };
         resolved.insert(
             placeholder.field_name.clone(),
             Value::String(secret_value.to_string()),
         );
+    }
+    if !unresolved_placeholder_names.is_empty() {
+        unresolved_placeholder_names.sort();
+        unresolved_placeholder_names.dedup();
+        return Err(message(format!(
+            "Datasource secret placeholders must resolve to non-empty strings before import: {}.",
+            unresolved_placeholder_names.join(", ")
+        )));
     }
     Ok(resolved)
 }

@@ -10,10 +10,11 @@ use super::{
     build_datasource_family_coverage_rows, build_datasource_governance_rows,
     build_governance_risk_rows, build_inventory_lookup, build_query_audit_rows,
     dashboard_dependency_normalize_family_list, dashboard_dependency_unique_strings,
-    normalize_family_name, DashboardDatasourceEdgeRow, DashboardDependencyRow,
-    DashboardGovernanceRow, ExportInspectionGovernanceDocument, ExportInspectionSummary,
+    DashboardDatasourceEdgeRow, DashboardDependencyRow, DashboardGovernanceRow,
+    ExportInspectionGovernanceDocument, ExportInspectionSummary,
     GOVERNANCE_RISK_KIND_MIXED_DASHBOARD,
 };
+use crate::dashboard::inspect_family::normalize_family_name;
 
 #[derive(Clone, Debug)]
 pub(crate) struct ResolvedDatasourceIdentity {

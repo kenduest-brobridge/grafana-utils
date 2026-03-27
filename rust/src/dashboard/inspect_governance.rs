@@ -2,8 +2,6 @@
 //! Keeps the stable row models in a sibling module while document assembly lives here.
 use serde::Serialize;
 
-pub(crate) use super::inspect_family::normalize_family_name;
-
 #[path = "inspect_governance_coverage.rs"]
 mod inspect_governance_coverage;
 #[path = "inspect_governance_document.rs"]

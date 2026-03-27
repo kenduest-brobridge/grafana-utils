@@ -39,7 +39,7 @@ fn build_secret_placeholder_plan_shapes_review_summary() {
 }
 
 #[test]
-fn resolve_secret_placeholders_fails_closed_on_missing_or_empty_values() {
+fn resolve_secret_placeholders_reports_all_missing_or_empty_values() {
     let datasource = json!({
         "uid": "loki-main",
         "name": "Loki Main",
@@ -59,20 +59,22 @@ fn resolve_secret_placeholders_fails_closed_on_missing_or_empty_values() {
     )
     .unwrap_err()
     .to_string();
-    assert!(missing_error.contains("Missing datasource secret placeholder 'loki-tenant-token'"));
+    assert!(missing_error.contains("must resolve to non-empty strings before import"));
+    assert!(missing_error.contains("loki-tenant-token"));
 
     let empty_error = resolve_secret_placeholders(
         &plan.placeholders,
         json!({
-            "loki-basic-auth": "secret-value",
-            "loki-tenant-token": ""
+            "loki-basic-auth": "",
         })
         .as_object()
         .unwrap(),
     )
     .unwrap_err()
     .to_string();
-    assert!(empty_error.contains("must be a non-empty string"));
+    assert!(empty_error.contains("must resolve to non-empty strings before import"));
+    assert!(empty_error.contains("loki-basic-auth"));
+    assert!(empty_error.contains("loki-tenant-token"));
 }
 
 #[test]

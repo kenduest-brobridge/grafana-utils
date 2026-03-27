@@ -17,3 +17,24 @@ pub(crate) fn normalize_family_name(datasource_type: &str) -> String {
         value => value.to_string(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_family_name;
+
+    #[test]
+    fn normalize_family_name_handles_trimmed_aliases() {
+        assert_eq!(
+            normalize_family_name(" grafana-prometheus-datasource "),
+            "prometheus"
+        );
+        assert_eq!(normalize_family_name("grafana-loki-datasource"), "loki");
+        assert_eq!(normalize_family_name("PostgreSQL"), "sql");
+    }
+
+    #[test]
+    fn normalize_family_name_preserves_unknown_types() {
+        assert_eq!(normalize_family_name("custom-plugin"), "custom-plugin");
+        assert_eq!(normalize_family_name(""), "unknown");
+    }
+}

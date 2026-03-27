@@ -709,7 +709,8 @@ mod tests {
         stop.store(true, Ordering::SeqCst);
         handle.join().unwrap();
 
-        assert!(error.contains("Missing datasource secret placeholder 'loki-tenant-token'"));
+        assert!(error.contains("must resolve to non-empty strings before import"));
+        assert!(error.contains("loki-tenant-token"));
         assert!(!saw_write.load(Ordering::SeqCst));
     }
 
