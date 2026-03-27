@@ -393,6 +393,32 @@ fn run_sync_bundle_preflight(args: SyncBundlePreflightArgs) -> Result<()> {
     )
 }
 
+fn run_sync_promotion_preflight(args: SyncPromotionPreflightArgs) -> Result<()> {
+    let source_bundle = load_json_value(&args.source_bundle, "Sync source bundle input")?;
+    let target_inventory = load_json_value(&args.target_inventory, "Sync target inventory input")?;
+    let mapping = match args.mapping_file.as_ref() {
+        Some(path) => Some(load_json_value(path, "Sync promotion mapping input")?),
+        None => None,
+    };
+    let availability = load_sync_merged_availability(
+        args.fetch_live,
+        &args.common,
+        args.org_id,
+        args.availability_file.as_ref(),
+    )?;
+    let document = build_sync_promotion_preflight_document(
+        &source_bundle,
+        &target_inventory,
+        availability.as_ref(),
+        mapping.as_ref(),
+    )?;
+    emit_text_or_json(
+        &document,
+        render_sync_promotion_preflight_text(&document)?,
+        args.output,
+    )
+}
+
 pub fn run_sync_cli(command: SyncGroupCommand) -> Result<()> {
     match command {
         SyncGroupCommand::Plan(args) => run_sync_plan(args),
@@ -403,6 +429,7 @@ pub fn run_sync_cli(command: SyncGroupCommand) -> Result<()> {
         SyncGroupCommand::Preflight(args) => run_sync_preflight(args),
         SyncGroupCommand::AssessAlerts(args) => run_sync_assess_alerts(args),
         SyncGroupCommand::BundlePreflight(args) => run_sync_bundle_preflight(args),
+        SyncGroupCommand::PromotionPreflight(args) => run_sync_promotion_preflight(args),
         SyncGroupCommand::Bundle(args) => run_sync_bundle(args),
     }
 }

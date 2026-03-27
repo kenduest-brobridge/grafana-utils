@@ -27,6 +27,7 @@ mod json;
 pub mod live;
 mod plan_builder;
 pub mod preflight;
+pub mod promotion_preflight;
 pub mod review_tui;
 mod staged_documents;
 mod summary_builder;
@@ -41,6 +42,9 @@ use self::bundle_preflight::{
     build_sync_bundle_preflight_document, render_sync_bundle_preflight_text,
 };
 use self::preflight::{build_sync_preflight_document, render_sync_preflight_text};
+use self::promotion_preflight::{
+    build_sync_promotion_preflight_document, render_sync_promotion_preflight_text,
+};
 use self::workbench::{
     build_sync_apply_intent_document, build_sync_plan_document, build_sync_source_bundle_document,
     build_sync_summary_document, render_sync_source_bundle_text,
@@ -50,7 +54,7 @@ use crate::common::{message, Result};
 use crate::dashboard::CommonCliArgs;
 /// Constant for default review token.
 pub const DEFAULT_REVIEW_TOKEN: &str = "reviewed-sync-plan";
-const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Summarize desired resources:\n    grafana-util sync summary --desired-file ./desired.json\n\n  Audit managed resources against a staged checksum lock:\n    grafana-util sync audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --fail-on-drift --output json\n\n  Package local exports into one source bundle:\n    grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n\n  Compare a source bundle against target inventory before apply:\n    grafana-util sync bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output json\n\n  Build a live-backed sync plan:\n    grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n\n  Apply a reviewed plan back to Grafana:\n    grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
+const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Summarize desired resources:\n    grafana-util sync summary --desired-file ./desired.json\n\n  Audit managed resources against a staged checksum lock:\n    grafana-util sync audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --fail-on-drift --output json\n\n  Package local exports into one source bundle:\n    grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n\n  Compare a source bundle against target inventory before apply:\n    grafana-util sync bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output json\n\n  Assess cross-environment remaps before promotion:\n    grafana-util sync promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --output json\n\n  Build a live-backed sync plan:\n    grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n\n  Apply a reviewed plan back to Grafana:\n    grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
 const SYNC_SUMMARY_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync summary --desired-file ./desired.json\n  grafana-util sync summary --desired-file ./desired.json --output json";
 const SYNC_PLAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync plan --desired-file ./desired.json --live-file ./live.json\n  grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --allow-prune --output json";
 const SYNC_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync review --plan-file ./sync-plan.json\n  grafana-util sync review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output json";
@@ -59,6 +63,7 @@ const SYNC_AUDIT_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync audit --man
 const SYNC_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync preflight --desired-file ./desired.json --availability-file ./availability.json\n  grafana-util sync preflight --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output json";
 const SYNC_ASSESS_ALERTS_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync assess-alerts --alerts-file ./alerts.json\n  grafana-util sync assess-alerts --alerts-file ./alerts.json --output json";
 const SYNC_BUNDLE_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output json";
+const SYNC_PROMOTION_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util sync promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json --mapping-file ./promotion-mapping.json --output json";
 const SYNC_BUNDLE_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n  grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --datasource-export-file ./datasources/datasources.json --output json";
 
 /// Output formats shared by staged sync document commands.
@@ -456,6 +461,54 @@ pub struct SyncBundlePreflightArgs {
     pub output: SyncOutputFormat,
 }
 
+/// Struct definition for SyncPromotionPreflightArgs.
+#[derive(Debug, Clone, Args)]
+pub struct SyncPromotionPreflightArgs {
+    #[arg(
+        long,
+        help = "JSON file containing the staged multi-resource source bundle.",
+        help_heading = "Input Options"
+    )]
+    pub source_bundle: PathBuf,
+    #[arg(
+        long,
+        help = "JSON file containing the staged target inventory snapshot.",
+        help_heading = "Input Options"
+    )]
+    pub target_inventory: PathBuf,
+    #[arg(
+        long,
+        help = "Optional JSON object file containing explicit cross-environment promotion mappings."
+    )]
+    pub mapping_file: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Optional JSON object file containing staged availability hints."
+    )]
+    pub availability_file: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Fetch availability hints from Grafana instead of relying only on --availability-file.",
+        help_heading = "Live Options"
+    )]
+    pub fetch_live: bool,
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(
+        long,
+        help = "Optional Grafana org id used when --fetch-live is active."
+    )]
+    pub org_id: Option<i64>,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = SyncOutputFormat::Text,
+        help = "Render the promotion preflight document as text or json."
+    )]
+    pub output: SyncOutputFormat,
+}
+
 /// Struct definition for SyncBundleArgs.
 #[derive(Debug, Clone, Args)]
 pub struct SyncBundleArgs {
@@ -512,6 +565,8 @@ pub enum SyncGroupCommand {
     AssessAlerts(SyncAssessAlertsArgs),
     #[command(about = "Build a staged bundle-level sync preflight document from local JSON.", after_help = SYNC_BUNDLE_PREFLIGHT_HELP_TEXT)]
     BundlePreflight(SyncBundlePreflightArgs),
+    #[command(about = "Assess cross-environment remap needs on top of staged bundle preflight.", after_help = SYNC_PROMOTION_PREFLIGHT_HELP_TEXT)]
+    PromotionPreflight(SyncPromotionPreflightArgs),
     #[command(
         about = "Package exported dashboards, alerting resources, datasource inventory, and metadata into one local source bundle.",
         after_help = SYNC_BUNDLE_HELP_TEXT

@@ -67,6 +67,14 @@ fn sync_bundle_preflight_help_includes_examples_and_grouped_headings() {
 }
 
 #[test]
+fn sync_promotion_preflight_help_includes_mapping_input() {
+    let help = render_sync_subcommand_help("promotion-preflight");
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("Input Options"));
+    assert!(help.contains("--mapping-file"));
+}
+
+#[test]
 fn sync_bundle_help_includes_examples_and_output_heading() {
     let help = render_sync_subcommand_help("bundle");
     assert!(help.contains("Examples:"));
@@ -88,6 +96,7 @@ fn sync_root_help_includes_examples() {
     assert!(help.contains("grafana-util sync audit"));
     assert!(help.contains("grafana-util sync bundle"));
     assert!(help.contains("grafana-util sync bundle-preflight"));
+    assert!(help.contains("promotion-preflight"));
 }
 
 #[test]
@@ -127,6 +136,35 @@ fn parse_sync_cli_supports_assess_alerts_command() {
             assert_eq!(inner.output, SyncOutputFormat::Json);
         }
         _ => panic!("expected assess-alerts"),
+    }
+}
+
+#[test]
+fn parse_sync_cli_supports_promotion_preflight_command() {
+    let args = SyncCliArgs::parse_from([
+        "grafana-util",
+        "promotion-preflight",
+        "--source-bundle",
+        "./bundle.json",
+        "--target-inventory",
+        "./target.json",
+        "--mapping-file",
+        "./promotion-map.json",
+        "--output",
+        "json",
+    ]);
+
+    match args.command {
+        SyncGroupCommand::PromotionPreflight(inner) => {
+            assert_eq!(inner.source_bundle, Path::new("./bundle.json"));
+            assert_eq!(inner.target_inventory, Path::new("./target.json"));
+            assert_eq!(
+                inner.mapping_file,
+                Some(Path::new("./promotion-map.json").to_path_buf())
+            );
+            assert_eq!(inner.output, SyncOutputFormat::Json);
+        }
+        _ => panic!("expected promotion-preflight"),
     }
 }
 

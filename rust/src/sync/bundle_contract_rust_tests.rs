@@ -9,3 +9,7 @@ mod sync_bundle_contract_source_bundle_rust_tests;
 #[cfg(test)]
 #[path = "bundle_contract_preflight_rust_tests.rs"]
 mod sync_bundle_contract_preflight_rust_tests;
+
+#[cfg(test)]
+#[path = "promotion_preflight_rust_tests.rs"]
+mod sync_promotion_preflight_rust_tests;

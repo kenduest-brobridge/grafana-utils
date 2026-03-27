@@ -20,6 +20,13 @@ Current AI-maintained status only.
 - Current Update: added a small blocked-reason helper that extracts concrete blocking details from staged check arrays, threaded those reasons into apply rejection messages, and added concise reason lines to plan/apply/bundle-preflight text output.
 - Result: operators now see specific blocking causes in sync apply failures and clearer review/apply guidance in the staged text renderers without redesigning the JSON contracts.
 
+## 2026-03-27 - Promotion preflight skeleton
+- State: Done
+- Scope: `rust/src/sync/promotion_preflight.rs`, `rust/src/sync/cli.rs`, `rust/src/sync/mod.rs`, focused sync help/contract tests
+- Baseline: the repo already had source-bundle and bundle-preflight primitives, but there was no first-class staged contract for cross-environment remap visibility before moving into promotion workflows.
+- Current Update: added a `sync promotion-preflight` command plus a staged `grafana-utils-sync-promotion-preflight` document that layers folder and datasource remap checks on top of the existing bundle-preflight assessment and optional mapping input.
+- Result: maintainers now have a concrete promotion entry point that surfaces direct matches, explicit remaps, missing mappings, and inherited bundle blockers without claiming a full promotion/apply workflow yet.
+
 ## 2026-03-27 - Unified CLI help/example source split
 - State: Done
 - Scope: `rust/src/cli.rs`, `rust/src/cli_help_examples.rs`, `rust/src/lib.rs`, focused unified CLI help tests
