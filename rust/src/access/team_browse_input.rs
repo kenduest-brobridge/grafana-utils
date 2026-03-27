@@ -355,12 +355,6 @@ fn split_csv(value: &str) -> Vec<String> {
 fn current_detail_line_count(state: &BrowserState) -> usize {
     if state.pending_delete {
         6
-    } else if state
-        .selected_row()
-        .map(row_kind)
-        .is_some_and(|kind| kind == "member")
-    {
-        5
     } else {
         5
     }

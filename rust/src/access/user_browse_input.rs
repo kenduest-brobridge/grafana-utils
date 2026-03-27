@@ -21,6 +21,8 @@ use super::user_browse_state::{
 use super::UserBrowseArgs;
 use std::collections::{BTreeMap, BTreeSet};
 
+type RawOrgUsers = (String, String, Vec<Map<String, Value>>);
+
 pub(super) enum BrowseAction {
     Continue,
     Exit,
@@ -548,7 +550,7 @@ where
         "Unexpected organization list response from Grafana.",
     )?;
 
-    let mut raw_orgs: Vec<(String, String, Vec<Map<String, Value>>)> = Vec::new();
+    let mut raw_orgs: Vec<RawOrgUsers> = Vec::new();
     let mut summaries: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for org in orgs {
         let org_id = scalar_text(org.get("id"));

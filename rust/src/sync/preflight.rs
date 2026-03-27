@@ -336,7 +336,7 @@ fn build_alert_checks(
                 .to_string(),
         blocking: true,
     }];
-    for datasource_uid in collect_alert_datasource_uids(&body)? {
+    for datasource_uid in collect_alert_datasource_uids(body)? {
         let available = available_datasource_uids.contains(&datasource_uid);
         checks.push(SyncPreflightCheck {
             kind: "alert-datasource".to_string(),
@@ -351,7 +351,7 @@ fn build_alert_checks(
             blocking: !available,
         });
     }
-    for datasource_name in collect_alert_datasource_names(&body)? {
+    for datasource_name in collect_alert_datasource_names(body)? {
         let available = available_datasource_names.contains(&datasource_name);
         checks.push(SyncPreflightCheck {
             kind: "alert-datasource-name".to_string(),
@@ -381,7 +381,7 @@ fn build_alert_checks(
             blocking: !available,
         });
     }
-    for contact_point in collect_alert_contact_points(&body)? {
+    for contact_point in collect_alert_contact_points(body)? {
         let available = available_contact_points.contains(&contact_point);
         checks.push(SyncPreflightCheck {
             kind: "alert-contact-point".to_string(),

@@ -3,6 +3,7 @@
 use serde_json::{Map, Value};
 
 use crate::common::{message, string_field, Result};
+use crate::dashboard::DEFAULT_ORG_ID;
 use crate::http::JsonHttpClient;
 
 use super::DatasourceBrowseArgs;
@@ -163,7 +164,7 @@ fn load_single_org_document(client: &JsonHttpClient) -> Result<DatasourceBrowseD
     let org_id = org
         .get("id")
         .map(|value| value.to_string())
-        .unwrap_or_else(|| super::DEFAULT_ORG_ID.to_string());
+        .unwrap_or_else(|| DEFAULT_ORG_ID.to_string());
     let items = datasource_rows_for_org(client, &org_name, &org_id, 0)?;
     let datasource_count = items.len();
     Ok(DatasourceBrowseDocument {

@@ -26,6 +26,10 @@ mod service_account;
 mod team;
 #[path = "team_browse.rs"]
 mod team_browse;
+#[path = "team_import_export_diff.rs"]
+mod team_import_export_diff;
+#[path = "team_runtime.rs"]
+mod team_runtime;
 #[path = "user.rs"]
 mod user;
 #[path = "user_browse.rs"]
@@ -133,12 +137,12 @@ fn request_object_list_field<F>(
     params: &[(String, String)],
     payload: Option<&Value>,
     field: &str,
-    object_error_message: &str,
-    list_error_message: &str,
+    error_messages: (&str, &str),
 ) -> Result<Vec<Map<String, Value>>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
+    let (object_error_message, list_error_message) = error_messages;
     let object = request_object(
         &mut request_json,
         method,

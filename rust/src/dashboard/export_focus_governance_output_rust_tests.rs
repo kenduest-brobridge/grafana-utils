@@ -410,17 +410,18 @@ fn load_governance_policy_source_uses_builtin_policy_source() {
     assert_eq!(policy["queries"]["maxQueriesPerPanel"], json!(8));
 }
 
-fn assert_builtin_policy_profile(
-    name: &str,
-    expected_max_queries_per_dashboard: i64,
-    expected_max_queries_per_panel: i64,
-    expected_max_query_complexity_score: i64,
-    expected_max_dashboard_complexity_score: i64,
-    expected_fail_on_warnings: bool,
-    expected_forbid_select_star: bool,
-    expected_require_sql_time_filter: bool,
-    expected_forbid_broad_loki_regex: bool,
-) {
+struct BuiltinPolicyExpectations {
+    max_queries_per_dashboard: i64,
+    max_queries_per_panel: i64,
+    max_query_complexity_score: i64,
+    max_dashboard_complexity_score: i64,
+    fail_on_warnings: bool,
+    forbid_select_star: bool,
+    require_sql_time_filter: bool,
+    forbid_broad_loki_regex: bool,
+}
+
+fn assert_builtin_policy_profile(name: &str, expected: BuiltinPolicyExpectations) {
     let policy = test_support::load_governance_policy_source(
         GovernancePolicySource::Builtin,
         None,
@@ -431,43 +432,79 @@ fn assert_builtin_policy_profile(
     assert_eq!(policy["version"], json!(1));
     assert_eq!(
         policy["queries"]["maxQueriesPerDashboard"],
-        json!(expected_max_queries_per_dashboard)
+        json!(expected.max_queries_per_dashboard)
     );
     assert_eq!(
         policy["queries"]["maxQueriesPerPanel"],
-        json!(expected_max_queries_per_panel)
+        json!(expected.max_queries_per_panel)
     );
     assert_eq!(
         policy["queries"]["maxQueryComplexityScore"],
-        json!(expected_max_query_complexity_score)
+        json!(expected.max_query_complexity_score)
     );
     assert_eq!(
         policy["queries"]["maxDashboardComplexityScore"],
-        json!(expected_max_dashboard_complexity_score)
+        json!(expected.max_dashboard_complexity_score)
     );
     assert_eq!(
         policy["enforcement"]["failOnWarnings"],
-        json!(expected_fail_on_warnings)
+        json!(expected.fail_on_warnings)
     );
     assert_eq!(
         policy["queries"]["forbidSelectStar"],
-        json!(expected_forbid_select_star)
+        json!(expected.forbid_select_star)
     );
     assert_eq!(
         policy["queries"]["requireSqlTimeFilter"],
-        json!(expected_require_sql_time_filter)
+        json!(expected.require_sql_time_filter)
     );
     assert_eq!(
         policy["queries"]["forbidBroadLokiRegex"],
-        json!(expected_forbid_broad_loki_regex)
+        json!(expected.forbid_broad_loki_regex)
     );
 }
 
 #[test]
 fn load_governance_policy_source_supports_builtin_strict_balanced_and_lenient_profiles() {
-    assert_builtin_policy_profile("strict", 40, 4, 4, 20, true, true, true, true);
-    assert_builtin_policy_profile("balanced", 60, 6, 5, 30, false, true, true, true);
-    assert_builtin_policy_profile("lenient", 120, 12, 8, 60, false, false, false, false);
+    assert_builtin_policy_profile(
+        "strict",
+        BuiltinPolicyExpectations {
+            max_queries_per_dashboard: 40,
+            max_queries_per_panel: 4,
+            max_query_complexity_score: 4,
+            max_dashboard_complexity_score: 20,
+            fail_on_warnings: true,
+            forbid_select_star: true,
+            require_sql_time_filter: true,
+            forbid_broad_loki_regex: true,
+        },
+    );
+    assert_builtin_policy_profile(
+        "balanced",
+        BuiltinPolicyExpectations {
+            max_queries_per_dashboard: 60,
+            max_queries_per_panel: 6,
+            max_query_complexity_score: 5,
+            max_dashboard_complexity_score: 30,
+            fail_on_warnings: false,
+            forbid_select_star: true,
+            require_sql_time_filter: true,
+            forbid_broad_loki_regex: true,
+        },
+    );
+    assert_builtin_policy_profile(
+        "lenient",
+        BuiltinPolicyExpectations {
+            max_queries_per_dashboard: 120,
+            max_queries_per_panel: 12,
+            max_query_complexity_score: 8,
+            max_dashboard_complexity_score: 60,
+            fail_on_warnings: false,
+            forbid_select_star: false,
+            require_sql_time_filter: false,
+            forbid_broad_loki_regex: false,
+        },
+    );
 }
 
 #[test]

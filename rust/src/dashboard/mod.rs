@@ -63,6 +63,7 @@ mod list;
 mod live;
 mod models;
 mod prompt;
+mod prompt_helpers;
 mod screenshot;
 mod topology;
 mod topology_tui;
@@ -117,6 +118,7 @@ pub(crate) use governance_policy::{
 };
 pub(crate) use inspect_report::ExportInspectionQueryRow;
 pub(crate) use inspect_summary::ExportInspectionSummary;
+#[allow(unused_imports)]
 pub(crate) use live::{
     build_datasource_inventory_record, build_folder_path, collect_folder_inventory_with_request,
     fetch_dashboard_if_exists_with_request, fetch_dashboard_permissions_with_request,

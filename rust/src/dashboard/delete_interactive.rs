@@ -27,7 +27,7 @@ pub(crate) fn prepare_interactive_delete_args(args: &DeleteArgs) -> Result<Delet
             }
         }
     }
-    if resolved.path.as_deref().unwrap_or("").trim().len() > 0 && !resolved.delete_folders {
+    if !resolved.path.as_deref().unwrap_or("").trim().is_empty() && !resolved.delete_folders {
         resolved.delete_folders = prompt_yes_no("Also delete matching folders? [y/N]: ")?;
     }
     Ok(resolved)
