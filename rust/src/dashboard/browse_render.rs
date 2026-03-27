@@ -398,9 +398,21 @@ fn render_summary_lines(state: &BrowserState) -> Vec<String> {
             )
         },
         if state.pending_delete.is_some() {
-            "Mode=confirm-delete   Confirm with y, cancel with Esc.".to_string()
+            format!(
+                "Mode=confirm-delete   active-pane={}   y confirms delete, Esc/q cancel.",
+                match state.focus {
+                    PaneFocus::Tree => "tree",
+                    PaneFocus::Facts => "facts",
+                }
+            )
         } else {
-            "Mode=browse".to_string()
+            format!(
+                "Mode=browse   active-pane={}",
+                match state.focus {
+                    PaneFocus::Tree => "tree",
+                    PaneFocus::Facts => "facts",
+                }
+            )
         },
     ]
 }
@@ -411,20 +423,20 @@ fn control_lines(has_pending_delete: bool, has_pending_edit: bool) -> Vec<Line<'
             Line::from(vec![
                 muted("Delete preview active. "),
                 tui_shell::key_chip("y", Color::Rgb(150, 38, 46)),
-                tui_shell::plain(" confirm"),
+                tui_shell::plain(" confirm delete"),
                 tui_shell::plain("   "),
                 tui_shell::key_chip("n", Color::Rgb(90, 98, 107)),
                 tui_shell::plain(" cancel"),
                 tui_shell::plain("   "),
                 tui_shell::key_chip("Esc", Color::Rgb(90, 98, 107)),
-                tui_shell::plain(" close"),
+                tui_shell::plain(" cancel"),
+                tui_shell::plain("   "),
+                tui_shell::key_chip("q", Color::Rgb(90, 98, 107)),
+                tui_shell::plain(" cancel"),
             ]),
             Line::from(vec![
                 tui_shell::key_chip("l", Color::Rgb(24, 78, 140)),
                 tui_shell::plain(" refresh"),
-                tui_shell::plain("   "),
-                tui_shell::key_chip("q", Color::Rgb(90, 98, 107)),
-                tui_shell::plain(" exit"),
             ]),
         ]
     } else if has_pending_edit {
@@ -442,10 +454,10 @@ fn control_lines(has_pending_delete: bool, has_pending_edit: bool) -> Vec<Line<'
             ]),
             Line::from(vec![
                 tui_shell::key_chip("Tab", Color::Rgb(24, 78, 140)),
-                tui_shell::plain(" next"),
+                tui_shell::plain(" next field"),
                 tui_shell::plain("   "),
                 tui_shell::key_chip("Shift+Tab", Color::Rgb(24, 78, 140)),
-                tui_shell::plain(" previous"),
+                tui_shell::plain(" previous field"),
                 tui_shell::plain("   "),
                 tui_shell::key_chip("Backspace", Color::Rgb(90, 98, 107)),
                 tui_shell::plain(" delete char"),
@@ -458,7 +470,7 @@ fn control_lines(has_pending_delete: bool, has_pending_edit: bool) -> Vec<Line<'
                 tui_shell::plain(" move"),
                 tui_shell::plain("   "),
                 tui_shell::key_chip("PgUp/PgDn", Color::Rgb(24, 78, 140)),
-                tui_shell::plain(" detail"),
+                tui_shell::plain(" scroll detail"),
                 tui_shell::plain("   "),
                 tui_shell::key_chip("Home/End", Color::Rgb(24, 78, 140)),
                 tui_shell::plain(" jump"),
@@ -468,7 +480,7 @@ fn control_lines(has_pending_delete: bool, has_pending_edit: bool) -> Vec<Line<'
             ]),
             Line::from(vec![
                 tui_shell::key_chip("Shift+Tab", Color::Rgb(164, 116, 19)),
-                tui_shell::plain(" prev pane"),
+                tui_shell::plain(" previous pane"),
                 tui_shell::plain("   "),
                 tui_shell::key_chip("/ ?", Color::Rgb(164, 116, 19)),
                 tui_shell::plain(" search"),
@@ -503,6 +515,9 @@ fn control_lines(has_pending_delete: bool, has_pending_edit: bool) -> Vec<Line<'
                 tui_shell::plain("   "),
                 tui_shell::key_chip("l", Color::Rgb(24, 78, 140)),
                 tui_shell::plain(" refresh"),
+                tui_shell::plain("   "),
+                tui_shell::key_chip("Esc", Color::Rgb(90, 98, 107)),
+                tui_shell::plain(" exit"),
                 tui_shell::plain("   "),
                 tui_shell::key_chip("q", Color::Rgb(90, 98, 107)),
                 tui_shell::plain(" exit"),
@@ -652,6 +667,7 @@ mod tests {
         assert!(lines[0].contains("Folders: 0"));
         assert!(lines[0].contains("Dashboards: 0"));
         assert!(lines[1].contains("Mode=browse"));
+        assert!(lines[1].contains("active-pane=tree"));
         assert!(!lines
             .iter()
             .any(|line| line.contains("Loaded dashboard tree")));
@@ -669,5 +685,31 @@ mod tests {
         });
         let lines = render_summary_lines(&state);
         assert!(lines[1].contains("Mode=confirm-delete"));
+        assert!(lines[1].contains("active-pane=tree"));
+    }
+
+    #[test]
+    fn control_lines_use_consistent_pane_and_exit_labels() {
+        let lines = control_lines(false, false)
+            .into_iter()
+            .map(|line| line.to_string())
+            .collect::<Vec<_>>();
+        assert!(lines[0].contains("next pane"));
+        assert!(lines[1].contains("previous pane"));
+        assert!(lines[1].contains("search"));
+        assert!(lines[2].contains("exit"));
+        assert!(lines[2].contains("Esc"));
+    }
+
+    #[test]
+    fn delete_control_lines_use_cancel_labels() {
+        let lines = control_lines(true, false)
+            .into_iter()
+            .map(|line| line.to_string())
+            .collect::<Vec<_>>();
+        assert!(lines[0].contains("confirm delete"));
+        assert!(lines[0].contains("cancel"));
+        assert!(lines[1].contains("refresh"));
+        assert!(!lines.iter().any(|line| line.contains("exit")));
     }
 }

@@ -55,7 +55,7 @@ pub(crate) fn run_inspect_workbench(document: InspectWorkbenchDocument) -> Resul
             if key.kind != KeyEventKind::Press {
                 continue;
             }
-            if state.full_detail.open {
+            if state.modal.full_detail.open {
                 match key.code {
                     KeyCode::Up => state.move_full_detail_focus(-1),
                     KeyCode::Down => state.move_full_detail_focus(1),
@@ -74,7 +74,7 @@ pub(crate) fn run_inspect_workbench(document: InspectWorkbenchDocument) -> Resul
                 }
                 continue;
             }
-            if state.pending_search.is_some() {
+            if state.modal.pending_search.is_some() {
                 handle_search_key(&mut state, &key);
                 continue;
             }
@@ -170,7 +170,7 @@ pub(crate) fn run_inspect_workbench(document: InspectWorkbenchDocument) -> Resul
                     if let Some(index) = state.repeat_last_search() {
                         state.item_state.select(Some(index));
                         state.detail_cursor = 0;
-                        if let Some(SearchState { query, .. }) = state.last_search.as_ref() {
+                        if let Some(SearchState { query, .. }) = state.modal.last_search.as_ref() {
                             state.status = format!("Matched next inspect row for {query}.");
                         }
                     } else {

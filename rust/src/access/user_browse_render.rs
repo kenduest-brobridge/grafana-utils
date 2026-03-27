@@ -41,13 +41,17 @@ pub(super) fn render_frame(
         tui_shell::build_header(
             "User Browser",
             vec![Line::from(format!(
-                "Scope {}  mode={}  rows={}  url={}",
+                "Scope {}  Mode={}  rows={}  active-pane={}  url={}",
                 user_scope_text(&args.scope),
                 match state.display_mode {
                     DisplayMode::GlobalAccounts => "global-accounts",
                     DisplayMode::OrgMemberships => "org-memberships",
                 },
                 state.rows.len(),
+                match state.focus {
+                    PaneFocus::List => "list",
+                    PaneFocus::Facts => "facts",
+                },
                 args.common.url
             ))],
         ),
@@ -92,20 +96,21 @@ pub(super) fn render_frame(
             vec![
                 control_line(&[
                     ("Up/Down", Color::Blue, "move"),
-                    ("Tab", Color::Blue, "toggle facts"),
+                    ("Tab", Color::Blue, "next pane"),
                     ("g", Color::Magenta, "jump teams"),
                     ("v", Color::Magenta, "view"),
                     ("c", Color::Magenta, "toggle all"),
                     ("e", Color::Green, "edit"),
                     ("d", Color::Red, "delete"),
-                    ("l", Color::Cyan, "refresh"),
-                    ("i", Color::Magenta, "numbers"),
                 ]),
                 control_line(&[
+                    ("Shift+Tab", Color::Blue, "previous pane"),
                     ("/ ?", Color::Yellow, "search"),
-                    ("n", Color::Yellow, "next"),
+                    ("n", Color::Yellow, "next match"),
                     ("Home/End", Color::Blue, "jump"),
-                    ("PgUp/PgDn", Color::Blue, "scroll"),
+                    ("PgUp/PgDn", Color::Blue, "scroll detail"),
+                    ("l", Color::Cyan, "refresh"),
+                    ("i", Color::Magenta, "numbers"),
                 ]),
                 control_line(&[("q", Color::Gray, "exit"), ("Esc", Color::Gray, "exit")]),
             ],

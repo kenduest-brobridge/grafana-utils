@@ -672,7 +672,7 @@ pub(crate) fn build_diff_controls_lines(state: &DiffControlsState) -> Vec<Line<'
                 Style::default().fg(Color::Green),
             ),
         ]),
-        Line::from("Tab pane  Up/Down scroll  [/] item  PgUp/PgDn jump  Home/End bounds"),
-        Line::from("Space toggle selection  c confirm  Esc/q back"),
+        Line::from("Tab switch pane  Up/Down scroll  [/] item  PgUp/PgDn jump  Home/End bounds"),
+        Line::from("Space keep/drop  c confirm staged selection  Esc/q return"),
     ]
 }

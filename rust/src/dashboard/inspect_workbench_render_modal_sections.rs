@@ -271,7 +271,7 @@ pub(crate) fn render_full_detail_viewer(
     let rendered_rows = viewer_rows(
         state.current_full_detail_lines(),
         body_inner.width.saturating_sub(1) as usize,
-        state.full_detail.wrapped,
+        state.modal.full_detail.wrapped,
     );
     state.sync_full_detail_row_mapping(
         rendered_rows
@@ -283,7 +283,7 @@ pub(crate) fn render_full_detail_viewer(
     let max_scroll = rendered_rows.len().saturating_sub(visible_height.max(1));
     state.ensure_full_detail_focus_visible(visible_height);
     state.clamp_full_detail_scroll(max_scroll);
-    let scroll_y = state.full_detail.scroll;
+    let scroll_y = state.modal.full_detail.scroll;
 
     frame.render_widget(Clear, area);
     frame.render_widget(container, area);
@@ -320,7 +320,7 @@ pub(crate) fn render_full_detail_viewer(
             Line::from(vec![
                 Span::styled("Wrap     ", Style::default().fg(Color::Gray)),
                 Span::styled(
-                    if state.full_detail.wrapped {
+                    if state.modal.full_detail.wrapped {
                         "enabled"
                     } else {
                         "disabled"
@@ -337,7 +337,7 @@ pub(crate) fn render_full_detail_viewer(
         .skip(scroll_y)
         .take(visible_height)
         .map(|row| {
-            let style = if row.logical_index == state.full_detail.active_logical {
+            let style = if row.logical_index == state.modal.full_detail.active_logical {
                 Style::default()
                     .fg(Color::White)
                     .bg(Color::Blue)

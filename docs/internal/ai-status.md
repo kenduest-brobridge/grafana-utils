@@ -6,6 +6,27 @@ Current AI-maintained status only.
 - Detailed 2026-03-27 entries moved to [`archive/ai-status-archive-2026-03-27.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-27.md).
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 
+## 2026-03-28 - Browse TUI interaction wording convergence
+- State: Done
+- Scope: `rust/src/dashboard/browse_render.rs`, `rust/src/datasource_browse_render.rs`, `rust/src/access/user_browse_render.rs`, `rust/src/access/team_browse_render.rs`
+- Baseline: the browse TUIs already shared shell helpers, but their mode strings, active-pane wording, confirm/cancel copy, and focus-cycle labels still varied across dashboard, datasource, user, and team browsers.
+- Current Update: aligned browse summaries and footers around `Mode=...`, `active-pane=...`, `next pane`, `previous pane`, `search`, `next match`, and consistent confirm-delete or cancel wording.
+- Result: the browse surfaces now read more like one Rust operator console even though their row models and actions remain domain-specific.
+
+## 2026-03-28 - Sync review TUI interaction grammar alignment
+- State: Done
+- Scope: `rust/src/sync/review_tui.rs`, `rust/src/sync/review_tui_helpers.rs`, `rust/src/sync/cli_review_tui_rust_tests.rs`
+- Baseline: the sync review checklist/diff footer copy still uses older phrasing such as "workspace primary", "toggle operations", and "confirm the reviewed selection", which reads differently from the shared TUI shell grammar used elsewhere in the Rust UI surfaces.
+- Current Update: tightened the checklist, diff, and footer copy to say staged review/selection/confirm instead of the older mixed phrasing, and pinned the new wording with a focused Rust regression test.
+- Result: sync review now uses clearer shared interaction copy while keeping the staged-only selection flow unchanged.
+
+## 2026-03-28 - Inspect workbench modal state split
+- State: Done
+- Scope: `rust/src/dashboard/inspect_workbench_state.rs`, `rust/src/dashboard/inspect_workbench.rs`, `rust/src/dashboard/inspect_workbench_render.rs`, `rust/src/dashboard/inspect_workbench_render_modal*.rs`, new inspect workbench modal state helper
+- Baseline: inspect workbench still keeps search prompt state, repeat-search state, and full-detail viewer state flattened into the main workbench state and accessed directly from the renderer and event loop.
+- Current Update: extracted the search prompt, last-search memory, and full-detail viewer state into `InspectWorkbenchModalState`, then rewired the workbench and renderer to read through the nested modal state.
+- Result: the inspect workbench now has a clearer modal-state boundary while operator behavior and test coverage stayed stable.
+
 ## 2026-03-28 - Dashboard and datasource browse shell grammar convergence
 - State: Done
 - Scope: `rust/src/dashboard/browse_render.rs`, `rust/src/datasource_browse_render.rs`

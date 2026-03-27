@@ -86,6 +86,14 @@ fn review_operation_preview_uses_readable_action_labels() {
         assert!(controls[0].to_string().contains("Item 1/3"));
         assert!(controls[0].to_string().contains("Live wrap OFF"));
         assert!(controls[0].to_string().contains("Desired wrap ON"));
+        assert_eq!(
+            controls[1].to_string(),
+            "Tab switch pane  Up/Down scroll  [/] item  PgUp/PgDn jump  Home/End bounds"
+        );
+        assert_eq!(
+            controls[2].to_string(),
+            "Space keep/drop  c confirm staged selection  Esc/q return"
+        );
     }
     #[cfg(feature = "tui")]
     {
@@ -94,10 +102,20 @@ fn review_operation_preview_uses_readable_action_labels() {
         assert_eq!(header_lines.len(), 3);
         assert!(header_lines[0]
             .to_string()
-            .contains("Reviewable operations=3"));
+            .contains("Reviewable staged operations=3"));
         assert!(header_lines[1].to_string().contains("Mode=diff"));
         assert!(header_lines[1].to_string().contains("active-pane=desired"));
-        assert!(review_tui::review_status(true).contains("Diff mode active"));
+        assert_eq!(
+            review_tui::review_status(true),
+            "Diff mode active. Tab switches pane, Esc returns to the checklist, c confirms the staged selection."
+        );
+        assert_eq!(
+            review_tui::review_status(false),
+            "Checklist mode active. Space keeps or drops staged operations, Enter opens the diff view, c confirms the staged selection."
+        );
+        assert!(header_lines[2]
+            .to_string()
+            .contains("Keep the staged plan primary."));
     }
 }
 

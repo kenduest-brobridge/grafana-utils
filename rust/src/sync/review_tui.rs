@@ -90,7 +90,7 @@ pub(crate) fn build_review_header_lines(
 ) -> Vec<Line<'static>> {
     vec![
         Line::from(format!(
-            "Reviewable operations={}   selected={}   pending-drop={}",
+            "Reviewable staged operations={}   selected={}   pending-drop={}",
             item_count,
             selected_count,
             item_count.saturating_sub(selected_count)
@@ -105,7 +105,7 @@ pub(crate) fn build_review_header_lines(
             }
         )),
         Line::from(
-            "Keep the workspace primary. Review operations first, then confirm the staged selection."
+            "Keep the staged plan primary. Review operations first, then confirm the staged selection."
                 .to_string(),
         ),
     ]
@@ -114,9 +114,9 @@ pub(crate) fn build_review_header_lines(
 #[cfg(feature = "tui")]
 pub(crate) fn review_status(diff_mode: bool) -> String {
     if diff_mode {
-        "Diff mode active. Tab switches pane, Esc returns to the checklist, c confirms the reviewed selection.".to_string()
+        "Diff mode active. Tab switches pane, Esc returns to the checklist, c confirms the staged selection.".to_string()
     } else {
-        "Checklist mode active. Space toggles operations, Enter opens diff, c confirms the reviewed selection.".to_string()
+        "Checklist mode active. Space keeps or drops staged operations, Enter opens the diff view, c confirms the staged selection.".to_string()
     }
 }
 
@@ -336,11 +336,11 @@ pub(crate) fn run_sync_review_tui(plan: &Value) -> Result<Value> {
                         vec![
                             tui_shell::control_line(&[
                                 ("Up/Down", Color::Blue, "move"),
-                                ("Space", Color::Yellow, "toggle"),
+                                ("Space", Color::Yellow, "keep/drop"),
                                 ("a", Color::Cyan, "select-all"),
                                 ("n", Color::Cyan, "select-none"),
-                                ("Enter", Color::Blue, "diff"),
-                                ("c", Color::Green, "confirm"),
+                                ("Enter", Color::Blue, "open diff"),
+                                ("c", Color::Green, "confirm staged selection"),
                             ]),
                             tui_shell::control_line(&[
                                 ("q", Color::Gray, "cancel"),

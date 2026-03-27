@@ -105,8 +105,7 @@ fn summary_lines(state: &BrowserState) -> Vec<String> {
             )
         },
         format!(
-            "Active={}   mode={}",
-            state.focus_label(),
+            "Mode={}   active-pane={}",
             if state.pending_delete.is_some() {
                 "confirm-delete"
             } else if state.pending_edit.is_some() {
@@ -115,7 +114,8 @@ fn summary_lines(state: &BrowserState) -> Vec<String> {
                 "search"
             } else {
                 "browse"
-            }
+            },
+            state.focus_label()
         ),
     ]
 }
@@ -459,18 +459,19 @@ fn control_lines(has_pending_delete: bool, has_pending_edit: bool) -> Vec<Line<'
             ("Esc", Color::Gray, "cancel"),
             ("Ctrl+X", Color::Gray, "close"),
             ("Tab", Color::Blue, "next field"),
+            ("Shift+Tab", Color::Blue, "previous field"),
         ])];
     }
     vec![
         control_line(&[
-            ("Up/Down", Color::Blue, "select"),
+            ("Up/Down", Color::Blue, "move"),
             ("PgUp/PgDn", Color::Blue, "scroll detail"),
             ("Tab", Color::Blue, "next pane"),
             ("e", Color::Green, "edit"),
             ("d", Color::Red, "delete"),
         ]),
         control_line(&[
-            ("Shift+Tab", Color::Blue, "prev pane"),
+            ("Shift+Tab", Color::Blue, "previous pane"),
             ("/ ?", Color::Yellow, "search"),
             ("n", Color::Yellow, "next match"),
             ("l", Color::Cyan, "refresh"),
@@ -611,8 +612,8 @@ mod tests {
         let state = BrowserState::new(empty_document());
         let lines = summary_lines(&state);
         assert_eq!(lines.len(), 2);
-        assert!(lines[1].contains("Active=list"));
-        assert!(lines[1].contains("mode=browse"));
+        assert!(lines[1].contains("Mode=browse"));
+        assert!(lines[1].contains("active-pane=list"));
         assert!(!lines.iter().any(|line| line.contains("default datasource")));
     }
 
@@ -626,6 +627,20 @@ mod tests {
         });
         let lines = summary_lines(&state);
         assert_eq!(lines.len(), 2);
-        assert!(lines[1].contains("mode=confirm-delete"));
+        assert!(lines[1].contains("Mode=confirm-delete"));
+        assert!(lines[1].contains("active-pane=list"));
+    }
+
+    #[test]
+    fn control_lines_surface_consistent_focus_cycle_and_exit_labels() {
+        let lines = control_lines(false, false)
+            .into_iter()
+            .map(|line| line.to_string())
+            .collect::<Vec<_>>();
+        assert!(lines[0].contains("next pane"));
+        assert!(lines[1].contains("previous pane"));
+        assert!(lines[1].contains("search"));
+        assert!(lines[2].contains("exit"));
+        assert!(lines[2].contains("Esc"));
     }
 }

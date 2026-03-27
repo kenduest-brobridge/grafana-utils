@@ -6,6 +6,30 @@ Current AI change log only.
 - Detailed 2026-03-27 entries moved to [`archive/ai-changes-archive-2026-03-27.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-03-27.md).
 - Keep this file limited to the latest active architecture and maintenance changes.
 
+## 2026-03-28 - Browse TUI interaction wording convergence
+- Summary: aligned the dashboard, datasource, user, and team browsers around the same interaction wording so browse summaries and footers now use `Mode=...`, `active-pane=...`, `next pane`, `previous pane`, `search`, `next match`, and consistent confirm-delete or cancel labels.
+- Tests: extended focused browse-render assertions for the new dashboard and datasource wording; access browse remained render-only wiring with no new dedicated test module.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check` passed; `cargo test --manifest-path rust/Cargo.toml --quiet browse_render` passed; `cargo test --manifest-path rust/Cargo.toml --quiet datasource_browse_render` passed.
+- Impact: `rust/src/dashboard/browse_render.rs`, `rust/src/datasource_browse_render.rs`, `rust/src/access/user_browse_render.rs`, `rust/src/access/team_browse_render.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. This changes operator-facing wording only and keeps browse state, input handling, and destructive behavior unchanged.
+- Follow-up: none.
+
+## 2026-03-28 - Inspect workbench modal state split
+- Summary: extracted the inspect workbench search prompt, repeat-search memory, and full-detail viewer fields into a dedicated `InspectWorkbenchModalState` helper, then rewired the workbench input loop and modal renderer to read through the nested modal state instead of the flattened top-level fields.
+- Tests: added a focused repeat-search regression alongside the existing inspect workbench state coverage.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check` passed; `cargo test --manifest-path rust/Cargo.toml --quiet inspect_workbench_state` passed with 6 tests.
+- Impact: `rust/src/dashboard/inspect_workbench_modal_state.rs`, `rust/src/dashboard/inspect_workbench_state.rs`, `rust/src/dashboard/inspect_workbench.rs`, `rust/src/dashboard/inspect_workbench_render.rs`, `rust/src/dashboard/inspect_workbench_render_modal_sections.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. This is an internal ownership split with no intended operator-facing behavior change, but it does move the modal/search state access path, so revert if a later workbench change wants the fields flattened again.
+- Follow-up: none.
+
+## 2026-03-28 - Sync review TUI interaction grammar alignment
+- Summary: tightened the sync review checklist/diff/footer copy to use clearer staged-review language, replacing older phrases like "workspace primary", "toggle operations", and "confirm the reviewed selection" with wording that more closely matches the shared Rust TUI interaction grammar.
+- Tests: updated the focused sync review regression to pin the new header, diff-controls, and status copy.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check` passed; `cargo test --manifest-path rust/Cargo.toml --quiet cli_review_tui_rust_tests` passed with 6 tests.
+- Impact: `rust/src/sync/review_tui.rs`, `rust/src/sync/review_tui_helpers.rs`, `rust/src/sync/cli_review_tui_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. This is TUI copy only and the staged-only selection/filter behavior did not change, but revert the wording if downstream operators prefer the older phrasing.
+- Follow-up: none.
+
 ## 2026-03-28 - Dashboard and datasource browse shell grammar convergence
 - Summary: moved dashboard browse onto `tui_shell::build_header` and `tui_shell::build_footer`, shifted browse status text into the shared footer path for both browse surfaces, and rewired the datasource browse control rows to reuse shared key-chip/plain helpers instead of duplicating shell styling locally.
 - Tests: added focused browse-render unit coverage for the header/status split in both dashboard and datasource browse.

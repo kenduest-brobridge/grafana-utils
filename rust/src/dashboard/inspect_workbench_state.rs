@@ -4,52 +4,19 @@ use ratatui::widgets::ListState;
 
 use super::inspect_workbench_support::{InspectWorkbenchDocument, InspectWorkbenchGroup};
 
+#[path = "inspect_workbench_modal_state.rs"]
+mod inspect_workbench_modal_state;
+
+pub(crate) use inspect_workbench_modal_state::{
+    InspectFullDetailState, InspectWorkbenchModalState, SearchDirection, SearchPromptState,
+    SearchState,
+};
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum InspectPane {
     Groups,
     Items,
     Facts,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum SearchDirection {
-    Forward,
-    Backward,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct SearchPromptState {
-    pub(crate) direction: SearchDirection,
-    pub(crate) query: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct SearchState {
-    pub(crate) direction: SearchDirection,
-    pub(crate) query: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct InspectFullDetailState {
-    pub(crate) open: bool,
-    pub(crate) scroll: usize,
-    pub(crate) active_logical: usize,
-    pub(crate) wrapped: bool,
-    pub(crate) row_logical_indexes: Vec<usize>,
-    pub(crate) pending_anchor_logical: Option<usize>,
-}
-
-impl Default for InspectFullDetailState {
-    fn default() -> Self {
-        Self {
-            open: false,
-            scroll: 0,
-            active_logical: 0,
-            wrapped: true,
-            row_logical_indexes: Vec::new(),
-            pending_anchor_logical: None,
-        }
-    }
 }
 
 pub(crate) struct InspectWorkbenchState {
@@ -59,10 +26,8 @@ pub(crate) struct InspectWorkbenchState {
     pub(crate) focus: InspectPane,
     pub(crate) item_horizontal_offset: usize,
     pub(crate) detail_cursor: usize,
-    pub(crate) full_detail: InspectFullDetailState,
+    pub(crate) modal: InspectWorkbenchModalState,
     pub(crate) status: String,
-    pub(crate) pending_search: Option<SearchPromptState>,
-    pub(crate) last_search: Option<SearchState>,
     pub(crate) group_view_indexes: Vec<usize>,
 }
 
@@ -78,11 +43,9 @@ impl InspectWorkbenchState {
             focus: InspectPane::Groups,
             item_horizontal_offset: 0,
             detail_cursor: 0,
-            full_detail: InspectFullDetailState::default(),
+            modal: InspectWorkbenchModalState::default(),
             status: "Loaded inspect workbench. Tab panes, / search, g modes, v mode view."
                 .to_string(),
-            pending_search: None,
-            last_search: None,
             group_view_indexes,
         };
         state.reset_items();
@@ -169,7 +132,7 @@ impl InspectWorkbenchState {
             .select((!self.current_items().is_empty()).then_some(0));
         self.item_horizontal_offset = 0;
         self.detail_cursor = 0;
-        self.full_detail = InspectFullDetailState::default();
+        self.modal.full_detail = InspectFullDetailState::default();
     }
 
     pub(crate) fn focus_next(&mut self) {
@@ -263,35 +226,24 @@ impl InspectWorkbenchState {
     }
 
     pub(crate) fn start_search(&mut self, direction: SearchDirection) {
-        self.pending_search = Some(SearchPromptState {
-            direction,
-            query: String::new(),
-        });
+        self.modal.start_search(direction);
         self.status = "Search current inspect rows by title, meta, or facts.".to_string();
     }
 
     pub(crate) fn open_full_detail(&mut self) {
-        self.full_detail.open = true;
-        self.full_detail.scroll = 0;
-        self.full_detail.active_logical = 0;
-        self.full_detail.pending_anchor_logical = None;
+        self.modal.open_full_detail();
         self.status =
             "Opened full detail viewer. w toggles wrap; Esc, q, or Enter closes.".to_string();
     }
 
     pub(crate) fn close_full_detail(&mut self) {
-        self.full_detail.open = false;
-        self.full_detail.scroll = 0;
-        self.full_detail.active_logical = 0;
-        self.full_detail.row_logical_indexes.clear();
-        self.full_detail.pending_anchor_logical = None;
+        self.modal.close_full_detail();
         self.status = "Closed full detail viewer.".to_string();
     }
 
     pub(crate) fn toggle_full_detail_wrap(&mut self) {
-        self.full_detail.pending_anchor_logical = Some(self.full_detail.active_logical);
-        self.full_detail.wrapped = !self.full_detail.wrapped;
-        self.status = if self.full_detail.wrapped {
+        self.modal.toggle_full_detail_wrap();
+        self.status = if self.modal.full_detail.wrapped {
             "Full detail viewer wrap enabled.".to_string()
         } else {
             "Full detail viewer wrap disabled.".to_string()
@@ -300,115 +252,38 @@ impl InspectWorkbenchState {
 
     pub(crate) fn move_full_detail_focus(&mut self, delta: isize) {
         let line_count = self.current_full_detail_lines().len();
-        if line_count == 0 {
-            self.full_detail.active_logical = 0;
-            return;
-        }
-        let current = self.full_detail.active_logical as isize;
-        self.full_detail.active_logical =
-            (current + delta).clamp(0, line_count.saturating_sub(1) as isize) as usize;
+        self.modal.move_full_detail_focus(line_count, delta);
     }
 
     pub(crate) fn set_full_detail_focus(&mut self, index: usize) {
         let line_count = self.current_full_detail_lines().len();
-        self.full_detail.active_logical = if line_count == 0 {
-            0
-        } else {
-            index.min(line_count.saturating_sub(1))
-        };
+        self.modal.set_full_detail_focus(line_count, index);
     }
 
     pub(crate) fn clamp_full_detail_scroll(&mut self, max_scroll: usize) {
-        self.full_detail.scroll = self.full_detail.scroll.min(max_scroll);
+        self.modal.clamp_full_detail_scroll(max_scroll);
     }
 
     pub(crate) fn sync_full_detail_row_mapping(&mut self, logical_indexes: Vec<usize>) {
-        self.full_detail.row_logical_indexes = logical_indexes;
-        if let Some(anchor) = self.full_detail.pending_anchor_logical.take() {
-            self.full_detail.active_logical = anchor;
-        }
+        self.modal.sync_full_detail_row_mapping(logical_indexes);
     }
 
     pub(crate) fn ensure_full_detail_focus_visible(&mut self, viewport_height: usize) {
-        let mut first_match = None;
-        let mut last_match = None;
-        for (index, logical_index) in self.full_detail.row_logical_indexes.iter().enumerate() {
-            if *logical_index == self.full_detail.active_logical {
-                first_match.get_or_insert(index);
-                last_match = Some(index);
-            }
-        }
-        let Some(first) = first_match else {
-            self.full_detail.scroll = 0;
-            return;
-        };
-        let last = last_match.unwrap_or(first);
-        let viewport_height = viewport_height.max(1);
-        if first < self.full_detail.scroll {
-            self.full_detail.scroll = first;
-            return;
-        }
-        let visible_end = self
-            .full_detail
-            .scroll
-            .saturating_add(viewport_height.saturating_sub(1));
-        if last > visible_end {
-            self.full_detail.scroll = last.saturating_add(1).saturating_sub(viewport_height);
-        }
+        self.modal.ensure_full_detail_focus_visible(viewport_height);
     }
 
     pub(crate) fn find_match(&self, query: &str, direction: SearchDirection) -> Option<usize> {
-        self.find_match_from(query, direction, self.item_state.selected())
+        self.modal.find_match(
+            self.current_items(),
+            query,
+            direction,
+            self.item_state.selected(),
+        )
     }
 
     pub(crate) fn repeat_last_search(&self) -> Option<usize> {
-        let search = self.last_search.as_ref()?;
-        let next_start = self
-            .item_state
-            .selected()
-            .map(|index| match search.direction {
-                SearchDirection::Forward => index.saturating_add(1),
-                SearchDirection::Backward => index.saturating_sub(1),
-            });
-        self.find_match_from(&search.query, search.direction, next_start)
-    }
-
-    fn find_match_from(
-        &self,
-        query: &str,
-        direction: SearchDirection,
-        start: Option<usize>,
-    ) -> Option<usize> {
-        let normalized = query.trim().to_ascii_lowercase();
-        if normalized.is_empty() {
-            return None;
-        }
-        let items = self.current_items();
-        if items.is_empty() {
-            return None;
-        }
-        match direction {
-            SearchDirection::Forward => {
-                let start = start.unwrap_or(0);
-                (start..items.len())
-                    .find(|index| item_matches(&items[*index], &normalized))
-                    .or_else(|| {
-                        (0..start.min(items.len()))
-                            .find(|index| item_matches(&items[*index], &normalized))
-                    })
-            }
-            SearchDirection::Backward => {
-                let start = start.unwrap_or_else(|| items.len().saturating_sub(1));
-                (0..=start.min(items.len().saturating_sub(1)))
-                    .rev()
-                    .find(|index| item_matches(&items[*index], &normalized))
-                    .or_else(|| {
-                        ((start.saturating_add(1)).min(items.len())..items.len())
-                            .rev()
-                            .find(|index| item_matches(&items[*index], &normalized))
-                    })
-            }
-        }
+        self.modal
+            .repeat_last_search(self.current_items(), self.item_state.selected())
     }
 
     pub(crate) fn cycle_group_view(&mut self) {
@@ -435,33 +310,24 @@ fn fact_line(label: &str, value: &str) -> String {
     format!("{label:<16}: {value}")
 }
 
-fn item_matches(item: &crate::interactive_browser::BrowserItem, query: &str) -> bool {
-    item.title.to_ascii_lowercase().contains(query)
-        || item.meta.to_ascii_lowercase().contains(query)
-        || item
-            .details
-            .iter()
-            .any(|line| line.to_ascii_lowercase().contains(query))
-}
-
 pub(crate) fn handle_search_key(state: &mut InspectWorkbenchState, key: &KeyEvent) {
-    let Some(search) = state.pending_search.as_mut() else {
+    let Some(search) = state.modal.pending_search.as_mut() else {
         return;
     };
     match key.code {
         KeyCode::Esc => {
-            state.pending_search = None;
+            state.modal.pending_search = None;
             state.status = "Cancelled search.".to_string();
         }
         KeyCode::Enter => {
             let query = search.query.trim().to_string();
             let direction = search.direction;
-            state.pending_search = None;
+            state.modal.pending_search = None;
             if query.is_empty() {
                 state.status = "Search query is empty.".to_string();
                 return;
             }
-            state.last_search = Some(SearchState {
+            state.modal.last_search = Some(SearchState {
                 direction,
                 query: query.clone(),
             });
@@ -488,7 +354,7 @@ pub(crate) fn handle_search_key(state: &mut InspectWorkbenchState, key: &KeyEven
 
 #[cfg(test)]
 mod tests {
-    use super::InspectWorkbenchState;
+    use super::{InspectWorkbenchState, SearchDirection, SearchState};
     use crate::dashboard::inspect_workbench_support::build_inspect_workbench_document;
     use crate::dashboard::test_support::{inspect_governance, make_core_family_report_row};
     use crate::dashboard::test_support::{
@@ -626,15 +492,15 @@ mod tests {
         let mut state = sample_state();
 
         state.open_full_detail();
-        assert!(state.full_detail.open);
-        assert_eq!(state.full_detail.scroll, 0);
-        assert!(state.full_detail.wrapped);
+        assert!(state.modal.full_detail.open);
+        assert_eq!(state.modal.full_detail.scroll, 0);
+        assert!(state.modal.full_detail.wrapped);
 
         state.toggle_full_detail_wrap();
-        assert!(!state.full_detail.wrapped);
+        assert!(!state.modal.full_detail.wrapped);
 
         state.toggle_full_detail_wrap();
-        assert!(state.full_detail.wrapped);
+        assert!(state.modal.full_detail.wrapped);
     }
 
     #[test]
@@ -643,13 +509,25 @@ mod tests {
 
         state.open_full_detail();
         state.move_full_detail_focus(3);
-        assert_eq!(state.full_detail.active_logical, 3);
+        assert_eq!(state.modal.full_detail.active_logical, 3);
 
         state.move_full_detail_focus(-1);
-        assert_eq!(state.full_detail.active_logical, 2);
+        assert_eq!(state.modal.full_detail.active_logical, 2);
 
         state.set_full_detail_focus(0);
-        assert_eq!(state.full_detail.active_logical, 0);
+        assert_eq!(state.modal.full_detail.active_logical, 0);
+    }
+
+    #[test]
+    fn repeat_last_search_uses_the_nested_modal_search_state() {
+        let mut state = sample_state();
+        state.item_state.select(Some(0));
+        state.modal.last_search = Some(SearchState {
+            direction: SearchDirection::Forward,
+            query: "cpu".to_string(),
+        });
+
+        assert_eq!(state.repeat_last_search(), Some(0));
     }
 
     #[test]

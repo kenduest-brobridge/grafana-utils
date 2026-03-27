@@ -32,9 +32,13 @@ pub(super) fn render_frame(
         tui_shell::build_header(
             "Team Browser",
             vec![Line::from(format!(
-                "Teams={}  expanded={}  url={}",
+                "Teams={}  expanded={}  active-pane={}  url={}",
                 state.team_rows.len(),
                 state.expanded_team_ids.len(),
+                match state.focus {
+                    PaneFocus::List => "list",
+                    PaneFocus::Facts => "facts",
+                },
                 args.common.url
             ))],
         ),
@@ -82,21 +86,22 @@ pub(super) fn render_frame(
             vec![
                 control_line(&[
                     ("Up/Down", Color::Blue, "move"),
-                    ("Tab", Color::Blue, "toggle facts"),
+                    ("Tab", Color::Blue, "next pane"),
                     ("Enter", Color::Blue, "expand"),
                     ("Left", Color::Blue, "collapse"),
                     ("g", Color::Magenta, "jump users"),
                     ("c", Color::Magenta, "toggle all"),
                     ("e", Color::Green, "edit"),
                     ("d", Color::Red, "delete"),
-                    ("l", Color::Cyan, "refresh"),
-                    ("i", Color::Magenta, "numbers"),
                 ]),
                 control_line(&[
+                    ("Shift+Tab", Color::Blue, "previous pane"),
                     ("/ ?", Color::Yellow, "search"),
-                    ("n", Color::Yellow, "next"),
+                    ("n", Color::Yellow, "next match"),
                     ("Home/End", Color::Blue, "jump"),
-                    ("PgUp/PgDn", Color::Blue, "scroll"),
+                    ("PgUp/PgDn", Color::Blue, "scroll detail"),
+                    ("l", Color::Cyan, "refresh"),
+                    ("i", Color::Magenta, "numbers"),
                 ]),
                 control_line(&[("q", Color::Gray, "exit"), ("Esc", Color::Gray, "exit")]),
             ],
