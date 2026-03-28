@@ -8,81 +8,14 @@ use serde_json::Value;
 use crate::common::{message, string_field, value_as_object, Result};
 
 use super::build_preserved_web_import_document;
-use super::import_interactive::{
-    InteractiveImportDiffData, InteractiveImportItem, InteractiveImportReview,
-    InteractiveImportReviewState,
-};
+use super::import_interactive::{InteractiveImportDiffData, InteractiveImportReview};
 use super::import_lookup::{
     apply_folder_path_guard_to_action, build_folder_path_match_result,
     determine_dashboard_import_action_with_request,
     determine_import_folder_uid_override_with_request, fetch_dashboard_if_exists_cached,
     resolve_dashboard_import_folder_path_with_request,
-    resolve_existing_dashboard_folder_path_with_request, resolve_source_dashboard_folder_path,
-    ImportLookupCache,
+    resolve_existing_dashboard_folder_path_with_request, ImportLookupCache,
 };
-
-#[cfg(test)]
-pub(crate) fn load_interactive_import_items(
-    args: &super::ImportArgs,
-) -> Result<Vec<InteractiveImportItem>> {
-    Ok(load_interactive_import_context(args)?.0)
-}
-
-pub(crate) fn load_interactive_import_context(
-    args: &super::ImportArgs,
-) -> Result<(
-    Vec<InteractiveImportItem>,
-    BTreeMap<String, super::FolderInventoryItem>,
-)> {
-    let metadata = super::load_export_metadata(&args.import_dir, Some(super::RAW_EXPORT_SUBDIR))?;
-    let folder_inventory = super::load_folder_inventory(&args.import_dir, metadata.as_ref())?;
-    let folders_by_uid: BTreeMap<String, super::FolderInventoryItem> = folder_inventory
-        .into_iter()
-        .map(|item| (item.uid.clone(), item))
-        .collect();
-    let mut items = Vec::new();
-    for path in super::import::dashboard_files_for_import(&args.import_dir)? {
-        let document = super::load_json_file(&path)?;
-        let document_object =
-            value_as_object(&document, "Dashboard payload must be a JSON object.")?;
-        let dashboard = super::extract_dashboard_object(document_object)?;
-        let uid = string_field(dashboard, "uid", super::DEFAULT_UNKNOWN_UID).to_string();
-        let title = string_field(dashboard, "title", super::DEFAULT_DASHBOARD_TITLE).to_string();
-        let folder_path = resolve_source_dashboard_folder_path(
-            &document,
-            &path,
-            &args.import_dir,
-            &folders_by_uid,
-        )
-        .unwrap_or_default();
-        let file_label = path
-            .strip_prefix(&args.import_dir)
-            .unwrap_or(&path)
-            .display()
-            .to_string();
-        items.push(InteractiveImportItem {
-            path,
-            uid,
-            title,
-            folder_path,
-            file_label,
-            review: InteractiveImportReviewState::Pending,
-        });
-    }
-    items.sort_by(|left, right| {
-        (
-            left.folder_path.as_str(),
-            left.title.as_str(),
-            left.uid.as_str(),
-        )
-            .cmp(&(
-                right.folder_path.as_str(),
-                right.title.as_str(),
-                right.uid.as_str(),
-            ))
-    });
-    Ok((items, folders_by_uid))
-}
 
 pub(crate) fn build_interactive_import_review_with_request<F>(
     request_json: &mut F,

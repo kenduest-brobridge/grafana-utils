@@ -27,6 +27,13 @@ Current AI-maintained status only.
 - Current Update: moved the interactive import item/review types plus `InteractiveImportState` and its state-machine methods into `import_interactive_state.rs`, while keeping `import_interactive.rs` as the thin orchestration entrypoint and re-export surface used by existing renderer and test paths.
 - Result: the dashboard import workbench now has a cleaner state/model seam, so future work can keep refining the import subsystem without growing the entrypoint back into a hub module.
 
+## 2026-03-28 - Interactive dashboard import loader/review split
+- State: Done
+- Scope: `rust/src/dashboard/import_interactive_loader.rs`, `rust/src/dashboard/import_interactive_review.rs`, `rust/src/dashboard/import_interactive.rs`, `rust/src/dashboard/mod.rs`
+- Baseline: the new interactive import subsystem already had separate state, render, and context helpers, but `import_interactive_review.rs` still bundled two distinct responsibilities: loading local import artifacts and building live review/diff data.
+- Current Update: split local artifact/context loading into `import_interactive_loader.rs` and left `import_interactive_review.rs` focused on live review resolution and diff synthesis, while keeping the existing `import_interactive` re-export path stable for tests and callers.
+- Result: the import workbench now has clearer loader-versus-review ownership, which lowers the risk that local import discovery and live comparison logic grow back into one mixed helper module.
+
 ## 2026-03-28 - Interactive dashboard import dry-run review mode
 - State: Done
 - Scope: `rust/src/dashboard/import_interactive.rs`, `rust/src/dashboard/import_apply.rs`, `rust/src/dashboard/cli_defs_command.rs`, focused dashboard import help/workflow tests

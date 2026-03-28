@@ -8,7 +8,7 @@ use serde_json::Value;
 use crate::common::{message, Result};
 
 #[cfg(test)]
-pub(crate) use super::import_interactive_review::load_interactive_import_items;
+pub(crate) use super::import_interactive_loader::load_interactive_import_items;
 pub(crate) use super::import_interactive_state::{
     InteractiveImportAction, InteractiveImportContextView, InteractiveImportDiffData,
     InteractiveImportDiffDepth, InteractiveImportGrouping, InteractiveImportItem,
@@ -37,7 +37,7 @@ where
         return Err(message("Dashboard import interactive mode requires a TTY."));
     }
     let (items, _folders_by_uid) =
-        super::import_interactive_review::load_interactive_import_context(args)?;
+        super::import_interactive_loader::load_interactive_import_context(args)?;
     if items.is_empty() {
         return Err(message(format!(
             "No dashboard JSON files were found under {}.",

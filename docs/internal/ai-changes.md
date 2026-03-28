@@ -30,6 +30,14 @@ Current AI change log only.
 - Rollback/Risk: low. This is a follow-on ownership cleanup that keeps the same entrypoint and re-export paths while narrowing the orchestration file to TTY gating and top-level delegation.
 - Follow-up: the next useful split is to separate import-context loading from live review/diff synthesis inside `import_interactive_review.rs` if that module keeps growing.
 
+## 2026-03-28 - Interactive dashboard import loader/review split
+- Summary: split `dashboard import --interactive` once more by moving local import artifact and folder-context loading into `import_interactive_loader.rs`, leaving `import_interactive_review.rs` focused on live review and diff construction instead of mixed local-plus-live responsibilities.
+- Tests: reused the focused dashboard import workflow regressions because the public `crate::dashboard::import_interactive::*` paths and interactive behavior stay unchanged.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check` passed; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_browse_workflow_rust_tests` passed; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings` passed.
+- Impact: `rust/src/dashboard/import_interactive_loader.rs`, `rust/src/dashboard/import_interactive_review.rs`, `rust/src/dashboard/import_interactive.rs`, `rust/src/dashboard/mod.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. This is a narrow subsystem cleanup that preserves behavior and symbol paths while reducing ownership overlap inside the import workbench helpers.
+- Follow-up: if the import review module grows again, the next split should isolate diff formatting from live review resolution instead of recombining the loader path.
+
 ## 2026-03-28 - Interactive dashboard import dry-run review mode
 - Summary: made `dashboard import --interactive --dry-run` an explicit operator-facing mode by switching the interactive header, status copy, Enter action label, help text, and cancellation message over to dry-run review wording instead of reusing the import wording.
 - Tests: added a focused dry-run state regression for the interactive import workbench and extended the import help regression to assert the new dry-run wording.

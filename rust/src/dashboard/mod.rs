@@ -39,6 +39,7 @@ mod import;
 mod import_compare;
 mod import_interactive;
 mod import_interactive_context;
+mod import_interactive_loader;
 mod import_interactive_render;
 mod import_interactive_review;
 mod import_interactive_state;
