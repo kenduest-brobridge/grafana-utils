@@ -18,6 +18,10 @@ than `architecture-review-2026-03-27.md`.
 - Phase 1 landed: dashboard inspect boundary cleanup now includes
   `inspect_output_report.rs`, `inspect_workbench_content.rs`, and
   `inspect_governance_render.rs`.
+- Phase 1 partially landed: dashboard import now has a review-first interactive
+  workbench with dry-run mode, context views, and an in-progress boundary split
+  across `import_interactive.rs`, `import_interactive_render.rs`,
+  `import_interactive_review.rs`, and `import_interactive_context.rs`.
 - Phase 1 partially landed: datasource secret handling now has the first
   usable operator contract through import/mutation wiring and import dry-run
   `secretVisibility`.
@@ -26,27 +30,7 @@ than `architecture-review-2026-03-27.md`.
 
 ## Now
 
-### 1. Finish dashboard dependency report output
-
-Why now:
-
-- This is the remaining piece of the dashboard inspection cleanup loop after
-  the report/workbench/governance splits already landed.
-- It closes an already-open loop instead of starting another broad refactor.
-
-Scope:
-
-- finish typed dependency usage and orphan reporting
-- complete the human-readable non-JSON renderer
-- add the focused dashboard inspect tests that are still pending
-
-Target files:
-
-- `rust/src/dashboard_inspection_dependency_contract.rs`
-- `rust/src/dashboard/inspect_output.rs`
-- focused dashboard inspect tests
-
-### 2. Continue dashboard subsystem boundary cleanup
+### 1. Continue dashboard subsystem boundary cleanup
 
 Why now:
 
@@ -54,11 +38,16 @@ Why now:
   review.
 - More feature work will keep landing here unless ownership boundaries stay
   explicit after the recent inspect/report/governance splits.
+- the current worktree has already started the next correct slice: splitting
+  the interactive import workbench into state, render, review, and context
+  seams instead of letting it become another monolithic dashboard facade.
 
 Scope:
 
 - separate inspect pipeline ownership from governance evaluation
 - keep interactive workbench logic from bleeding into unrelated paths
+- keep `dashboard import --interactive` moving toward a real subsystem instead
+  of one hub module
 - continue shrinking orchestration facades instead of only splitting helper
   files
 
@@ -67,7 +56,46 @@ Target areas:
 - `rust/src/dashboard/`
 - related dashboard tests
 
-### 3. Preserve current sync and promotion contract discipline
+### 2. Deepen inspection and governance outputs
+
+Why now:
+
+- inspection remains one of the strongest differentiators in the roadmap
+- dashboard dependency usage and orphan reporting already landed, so the next
+  useful inspection work is broader governance depth and stronger operator
+  visibility rather than reopening the finished dependency-report loop
+
+Scope:
+
+- add stronger governance and quality signals
+- deepen blast-radius and stale-resource visibility
+- prefer richer report outputs that still reuse the canonical inspection model
+
+Target areas:
+
+- dashboard inspect and governance modules
+
+### 3. Continue selective crate-boundary cleanup
+
+Why now:
+
+- safe `pub(crate)` tightening already happened, but the remaining public
+  surface still deserves review before more compatibility exposure accumulates
+- this is no longer a first-pass visibility cleanup; it is a selective
+  follow-through task
+
+Scope:
+
+- review the remaining public top-level modules and compatibility re-exports
+- avoid widening the crate surface again for convenience-only helper paths
+- keep contract modules explicit and implementation helpers less visible
+
+Target files:
+
+- `rust/src/lib.rs`
+- any modules currently exported only for convenience
+
+### 4. Preserve current sync and promotion contract discipline
 
 Why now:
 
@@ -89,21 +117,23 @@ Target areas:
 
 ## Next
 
-### 1. Wire fuller datasource secret handling
+### 1. Extend datasource secret handling beyond the wired baseline
 
 Why next:
 
 - secret handling is now the clearest remaining adoption gap
 - the first operator-facing contract is in place, but provider/backfill
-  coverage and any later-stage explainability remain incomplete
+  coverage and later-stage review or failure handling remain incomplete
 
 Scope:
 
-- formalize operator input for placeholder secret mappings
-- keep datasource import and mutation paths aligned with the staged secret
-  contract
+- keep import, mutation, and staged secret wording aligned
 - make secret-missing and secret-loss cases explicit through later workflow
   stages, not only bundle-preflight
+- add stronger reviewability for placeholder availability and missing-secret
+  states
+- evaluate provider-aware integration only where it remains explicit and
+  reviewable
 
 Target areas:
 
@@ -111,44 +141,24 @@ Target areas:
 - `rust/src/datasource_secret.rs`
 - sync/apply integration points
 
-### 2. Tighten public vs internal crate boundaries
+### 2. Keep sync trustworthiness strong while promotion and secret flows grow
 
 Why next:
 
-- `lib.rs` still exports a wider surface than the maintainers likely want to
-  support long-term
-- this is easier to tighten before more modules accumulate compatibility
-  exposure
+- `sync` is no longer missing core staged structure, but it is still one of the
+  clearest places where new behavior could collapse back into broad facades
+- promotion and secret work now depend on keeping staged/live and review/apply
+  seams explicit
 
 Scope:
 
-- review public modules and compatibility re-exports
-- reduce public exposure for internal-only helper paths where possible
-- keep contract modules explicit and implementation helpers less visible
-
-Target files:
-
-- `rust/src/lib.rs`
-- any modules currently exported only for convenience
-
-### 3. Deepen inspection and governance outputs
-
-Why next:
-
-- inspection remains one of the strongest differentiators in the roadmap
-- better dependency and governance reporting adds operator value without large
-  product-scope drift
-
-Scope:
-
-- deepen datasource usage and orphan reporting
-- add stronger governance and quality signals
-- reuse the canonical inspection report model instead of adding parallel
-  ad hoc outputs
+- preserve staged/live ownership
+- preserve review/apply and promotion-module seams
+- avoid routing new cross-resource logic into orchestration facades by default
 
 Target areas:
 
-- dashboard inspect and governance modules
+- `rust/src/sync/`
 
 ## Later
 
@@ -198,10 +208,11 @@ Scope:
 
 If only a few slices move next, the recommended order is:
 
-1. finish dashboard dependency report output
-2. continue dashboard subsystem boundary cleanup
-3. extend datasource secret handling
-4. tighten crate boundaries
+1. continue dashboard subsystem boundary cleanup
+2. deepen inspection and governance outputs
+3. continue selective crate-boundary cleanup
+4. preserve sync and promotion contract discipline
+5. extend datasource secret handling
 5. continue promotion review/apply work later
 
 ## Non-Goals For This Backlog

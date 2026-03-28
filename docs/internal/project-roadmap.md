@@ -67,6 +67,10 @@ The priority is to make the existing differentiators more complete and more trus
 
 ### Phase 1: Deepen Inspection And Dependency Governance
 
+Status:
+
+- largely landed, with targeted output gaps still open
+
 Target outcome:
 
 - operators can answer dependency, blast-radius, governance, and dashboard quality questions directly from built-in CLI outputs
@@ -96,6 +100,11 @@ Explicit non-goals for this phase:
 - no separate web product or always-on service layer
 
 ### Phase 2: Add First-Class Environment Promotion And Preflight Safety
+
+Status:
+
+- partially landed; staged preflight and review handoff exist, but controlled
+  promotion continuation does not
 
 Target outcome:
 
@@ -127,6 +136,11 @@ Explicit non-goals for this phase:
 
 ### Phase 3: Make Sync More Trustworthy Before Making It Broader
 
+Status:
+
+- partially landed; staged review/apply/preflight exists, but the model remains
+  intentionally constrained and still needs deeper trust surfaces
+
 Target outcome:
 
 - the `grafana-util sync` workflow is reviewable, predictable, and trusted enough for constrained Git-managed operations
@@ -157,6 +171,12 @@ Explicit non-goals for this phase:
 
 ### Phase 4: Formalize Secret Handling For Datasource Automation
 
+Status:
+
+- partially landed; placeholder planning, dry-run visibility, and staged
+  blockers exist, but provider-backed execution and fuller review coherence do
+  not
+
 Target outcome:
 
 - datasource workflows can reference secrets safely enough for real environment promotion and sync usage without weakening explicit operator control
@@ -185,6 +205,11 @@ Explicit non-goals for this phase:
 - no promise to round-trip every datasource vendor's secure settings automatically
 
 ### Phase 5: Keep Advanced Analysis And Packaging Exploratory
+
+Status:
+
+- mostly open, with only limited rule-assisted analysis already visible in the
+  existing governance path
 
 Target outcome:
 
