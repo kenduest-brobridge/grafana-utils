@@ -7,6 +7,11 @@ This file is the source of truth for the Rust `overview` design intent:
 - how data moves from staged artifacts to output
 - how to extend the system without turning it into AI-shaped sprawl
 
+`overview` is the current shipped owner of staged-artifact aggregation and
+document projection. The broader shared `status` contract is described in the
+internal `project-status` architecture notes and should be treated as shared
+architecture, not as a second overview-owned product surface.
+
 It is not an operator guide. Keep command examples and user-facing behavior in
 `README.md` and the user guides.
 
@@ -21,8 +26,9 @@ parallel analysis pipeline. Its job is to:
 - assemble one stable overview document
 - project that document into text, JSON, and interactive views
 - expose a conservative staged `projectStatus` layer for cross-domain triage
-- optionally hand live reads through to the shared `project-status live` path
-  without owning live derivation
+  while staged shared-status ownership is still being extracted
+- optionally hand live reads through to the shared `status live` path without
+  owning live derivation
 
 The maintained mental model is:
 
@@ -70,7 +76,7 @@ For the live convenience entrypoint, the intended flow is also linear:
 
 1. `OverviewLiveArgs`
 2. `run_project_status_live`
-3. shared project-status text / JSON / TUI
+3. shared live-status text / JSON / TUI
 
 Important design rule:
 - summary fields, `projectStatus`, and section/view projections are derived from staged artifacts
@@ -82,7 +88,7 @@ Current stable artifact families are:
 - datasource export
 - alert export
 - access export bundles
-- sync summary
+- change summary, backed by staged `sync` artifact kinds
 - bundle preflight
 - promotion preflight
 

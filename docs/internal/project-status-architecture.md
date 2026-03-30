@@ -7,6 +7,14 @@ This file defines the architecture above any single command or TUI surface. It
 exists so the project can support a real "whole-project overview" without
 turning `grafana-util overview` into the accidental owner of every status rule.
 
+This is a target shared-status contract document, not a public command spec.
+`overview` is the current shipped owner of staged-artifact aggregation and
+projection; this file describes the broader status model that `overview`
+feeds today and that future surfaces can reuse.
+
+Treat `project-status` as the current internal contract and file name behind
+the public `grafana-util status` surface.
+
 It is not an operator guide. Keep command usage in `README.md` and user guides.
 
 For the latest archived execution map of which domain producers already exist
@@ -39,6 +47,9 @@ Do not treat `overview` as the project-status architecture.
 broader than that so other surfaces can reuse the same status producers and
 contracts.
 
+Do not treat `project-status` as a current public command name. It is the
+target contract name for the broader shared status model.
+
 ## Layers
 
 The intended stack is:
@@ -62,7 +73,7 @@ Current target domains:
 - datasource
 - alert
 - access
-- sync
+- change, currently backed by internal `sync` runtime artifacts
 - promotion
 
 ### Domain Producer Requirements
@@ -95,9 +106,9 @@ The exact field names can evolve, but the semantics should stay consistent.
 - `access`
   - source contracts should build on export bundle summaries first, then later
     drift/import readiness where supported.
-- `sync`
-  - source contracts should build on sync summary, staged plan/audit state, and
-    review/apply blockers.
+- `change`
+  - source contracts should build on the public change workflow and the staged
+    `sync` summary/plan/audit artifacts that currently back it.
 - `promotion`
   - source contracts should build on promotion preflight and later review/apply
     handoff status.
@@ -165,14 +176,17 @@ traced back to domain evidence.
 Consumers must display the project-status contract. They must not own status
 derivation rules.
 
-Initial consumers:
+Current consumer:
 
 - `overview` text output
 - `overview` JSON output
 - `overview` interactive workbench
-- `project-status staged`
-- `project-status live`
-- `project-status` interactive workbench
+
+Planned consumers:
+
+- `status staged`
+- `status live`
+- `status` interactive workbench
 
 Future consumers:
 
@@ -189,7 +203,7 @@ Staged status answers:
 
 - what artifacts exist
 - what preflight or review state is known
-- whether planned promotion or sync workflows are blocked
+- whether planned promotion or change workflows are blocked
 - whether the repository is ready for the next workflow step
 
 ### Live Status

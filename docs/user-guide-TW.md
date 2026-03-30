@@ -87,7 +87,7 @@ grafana-util <domain> <command> [options]
 | --- | --- | --- | --- | --- |
 | `dashboard` | 最深、最完整 | browse、list、export、import、diff、delete、inspect、依賴分析、permission export、screenshot/PDF | text、table/csv/json、report 模式、互動式 TUI | 功能最完整，也是分析與遷移能力最重的模組 |
 | `datasource` | 深且成熟 | browse、list、export、import、diff、add、modify、delete、跨 org replay | text、table/csv/json、互動式 browse | 同時涵蓋 live mutation 與檔案回放 |
-| `alert` | 成熟的遷移面 | list、export、import、diff、dry-run，涵蓋 rule bundle 與 alerting 資源 | table/csv/json | 主要聚焦 alerting inventory 與 replay |
+| `alert` | 成熟的管理與遷移面 | list、export、import、diff、dry-run，涵蓋 rule bundle 與 alerting 資源 | table/csv/json | 同時涵蓋 operator-first 管理流程與 migration / replay |
 | `access` | 成熟的盤點與回放面 | org/user/team/service-account 的 list、add、modify、delete、export、import、diff | table/csv/json | 適合 access state inventory、重建與審查 |
 | `change` | 進階 staged workflow | summary、bundle、preflight、plan、review、apply intent、audit、promotion-preflight | text/json | 重點是 review-first 的變更流程，不是直接盲目套用 |
 | `overview` | 人類優先的專案入口 | staged/live 專案快照、跨模組摘要、handoff 視圖 | text/json/interactive | 當您需要先看整體專案畫面時，先從這裡進來 |
@@ -1877,8 +1877,8 @@ grafana-util access service-account token delete --url http://localhost:3000 --t
 
 ### 7.1 `change`、`overview`、`status` 這三條線怎麼分
 
-- `change`：偏 staged review，負責 summary、bundle、preflight、plan/review/apply、alert-change assessment。
-- `overview`：偏操作員總覽，把 staged artifacts 與 change 輸入整合成一個專案層級快照。
+- `change`：偏 staged change 工作流，負責 summary、bundle、preflight、plan/review/apply intent、alert-change assessment。
+- `overview`：人類優先的專案入口，用來輸出 staged exports 或 live Grafana 的專案快照。
 - `status`：正式的專案層 readiness contract；`staged` 看匯出物，`live` 看目前 Grafana。
 
 ### 7.2 `change summary`
@@ -2038,7 +2038,7 @@ grafana-util change assess-alerts --alerts-file ./alerts-only.json --output json
 
 ### 7.5 `overview`
 
-**用途**：把 staged exports 與 staged change 輸入整合成專案層級總覽。
+**用途**：把 staged exports 與 staged change 輸入整合成一個專案層級、偏操作員使用的快照。
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
@@ -2079,7 +2079,7 @@ Domain status:
 
 ### 7.6 `status staged` 與 `status live`
 
-**用途**：從 staged exports 或目前 Grafana 狀態輸出正式的專案層 readiness contract。
+**用途**：從 staged exports 或目前 Grafana 狀態輸出正式的專案層 readiness contract，作為機器可讀的穩定狀態面。
 
 | 命令 | 關鍵旗標 | 主要用途 |
 | --- | --- | --- |

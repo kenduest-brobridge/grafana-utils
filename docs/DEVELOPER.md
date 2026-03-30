@@ -9,6 +9,41 @@ This document is for maintainers. Keep `README.md` and the user guides operator-
 - When command behavior or parameter shapes change, update both user guides together.
 - When maintainer validation or release behavior changes, update the relevant maintainer docs here instead of surfacing that detail in README unless operators need it.
 
+## Public Surface Map
+
+- `grafana-util overview`
+  - human-first project entrypoint
+  - Rust owner: `rust/src/overview.rs` plus the `overview_*` modules
+- `grafana-util status`
+  - canonical staged/live readiness surface
+  - Rust owner: `rust/src/project_status.rs` and `rust/src/project_status_command.rs`
+- `grafana-util change`
+  - review-first staged change workflow
+  - Rust owner: `rust/src/sync/`
+- `grafana-util dashboard`
+  - Rust owner: `rust/src/dashboard/`
+  - legacy Python reference: `python/grafana_utils/dashboard_cli.py`
+- `grafana-util datasource`
+  - Rust owner: `rust/src/datasource.rs`
+  - legacy Python reference: `python/grafana_utils/datasource_cli.py`
+- `grafana-util alert`
+  - Rust owner: `rust/src/alert.rs` and alert helper modules
+  - legacy Python reference: `python/grafana_utils/alert_cli.py`
+- `grafana-util access`
+  - Rust owner: `rust/src/access/`
+  - legacy Python reference: `python/grafana_utils/access_cli.py`
+
+See [`docs/internal/project-surface-boundaries.md`](/Users/kendlee/work/grafana-utils/docs/internal/project-surface-boundaries.md) for the current public-name versus internal-name map.
+
+## Naming Boundary
+
+- Public names are the command names shown by `rust/src/cli.rs`, README, and the user guides.
+- Internal module names may stay narrower or older than the public names when they describe implementation slices rather than operator-facing behavior.
+- Treat `overview` as the current staged-artifact aggregation surface.
+- Treat `status` as the public surface and `project-status` as the current internal architecture/file name for the shared status model.
+- Treat `change` as the public surface and `sync` as the current internal runtime/document namespace behind it.
+- When current maintainer docs mention `sync` or `project-status`, label them as internal or historical terms rather than current public commands.
+
 ## Repository Scope
 
 ### User-facing runtime
@@ -19,7 +54,7 @@ This document is for maintainers. Keep `README.md` and the user guides operator-
 - `rust/src/alert.rs`: alerting export, import, diff, and shared alert document helpers.
 - `rust/src/alert_list.rs`: alert list rendering and list command orchestration.
 - `rust/src/access/`: access org, user, team, and service-account workflows plus shared renderers and request helpers.
-- `rust/src/sync/`: staged sync bundle, preflight, review, and apply flows.
+- `rust/src/sync/`: internal runtime namespace for the public `change` staged workflow.
 
 ### Legacy maintainer reference runtime
 
@@ -48,6 +83,25 @@ This document is for maintainers. Keep `README.md` and the user guides operator-
 Do not reintroduce standalone `call-hierarchy` or `unit-test-inventory` pages
 unless they become generated artifacts with a clear maintenance owner. Keep
 that routing in the overview and developer guides instead.
+
+## Domain Freeze Policy
+
+- `dashboard`
+  - default state: frozen for new capability work
+  - allowed by default: bug fixes, parity fixes, focused tests, and doc/help corrections
+- `datasource`
+  - default state: frozen for net-new lifecycle work
+  - allowed by default: correctness fixes and minimum viable parity repair
+- `alert`
+  - default state: bounded reopen only for reliability, compatibility, and UX clarity
+  - do not widen feature surface without an explicit maintainer decision
+- `access`
+  - default state: bounded hardening only
+  - focus on correctness, operator safety, and parser/help clarity rather than redesign
+
+Any exception to the default freeze posture should be recorded in this file and
+in the current internal trace files with a concrete workflow, owned files, and
+validation plan.
 
 ## Rust Ownership Cues
 

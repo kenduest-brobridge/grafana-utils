@@ -41,7 +41,7 @@ Grafana 的 UI 很適合做單一物件的日常管理，但一碰到 estate-lev
 | `alert` | 成熟的管理與遷移面 | 列出 rules、contact points、mute timings、templates；建立 reviewable alert plan；套用已審查變更；預覽 explicit delete；建立 managed desired-state scaffold；並支援 export、import、diff、dry-run bundle | text/json、table/csv/json | 同時涵蓋 operator-first 管理流程與舊有遷移 / replay 流程 |
 | `access` | 成熟的盤點與回放面 | 管理 org、user、team、service account；支援 export、import、diff、dry-run；service-account token add/delete | table/csv/json | 適合 access state inventory 與受控重建 |
 | `change` | 進階 staged workflow | 建立 summary、bundle、preflight、plan、review record、apply intent、audit、promotion-preflight 文件 | text/json | 重點是 review-first 的變更流程，不是直接盲目套用 |
-| `overview` | 人類優先的專案入口 | 把 staged exports 或 live Grafana 整理成單一維運總覽 | text/json/interactive | 適合 handoff、triage、人工巡檢時先進來看 |
+| `overview` | 人類優先的專案入口 | 把 staged exports 或 live Grafana 整理成單一專案快照 | text/json/interactive | 適合 handoff、triage、人工巡檢時先進來看 |
 | `status` | 正式 status contract | 輸出專案層的 staged/live readiness contract | text/json/interactive | 適合自動化、交接，或需要同一份穩定跨模組 status 時使用 |
 
 ## 功能快速矩陣
