@@ -18,6 +18,8 @@ pub(crate) struct GovernanceSummary {
     pub(crate) dashboard_datasource_edge_count: usize,
     #[serde(rename = "datasourceRiskCoverageCount")]
     pub(crate) datasource_risk_coverage_count: usize,
+    #[serde(rename = "highBlastRadiusDatasourceCount")]
+    pub(crate) high_blast_radius_datasource_count: usize,
     #[serde(rename = "dashboardRiskCoverageCount")]
     pub(crate) dashboard_risk_coverage_count: usize,
     #[serde(rename = "mixedDatasourceDashboardCount")]
@@ -89,8 +91,18 @@ pub(crate) struct DatasourceGovernanceRow {
     pub(crate) risk_count: usize,
     #[serde(rename = "riskKinds")]
     pub(crate) risk_kinds: Vec<String>,
+    #[serde(rename = "folderCount")]
+    pub(crate) folder_count: usize,
+    #[serde(rename = "highBlastRadius")]
+    pub(crate) high_blast_radius: bool,
+    #[serde(rename = "crossFolder")]
+    pub(crate) cross_folder: bool,
+    #[serde(rename = "folderPaths")]
+    pub(crate) folder_paths: Vec<String>,
     #[serde(rename = "dashboardUids")]
     pub(crate) dashboard_uids: Vec<String>,
+    #[serde(rename = "dashboardTitles")]
+    pub(crate) dashboard_titles: Vec<String>,
     pub(crate) orphaned: bool,
 }
 
@@ -258,6 +270,8 @@ pub(crate) struct DashboardAuditRow {
 }
 
 pub(crate) const GOVERNANCE_RISK_KIND_MIXED_DASHBOARD: &str = "mixed-datasource-dashboard";
+pub(crate) const GOVERNANCE_RISK_KIND_DATASOURCE_HIGH_BLAST_RADIUS: &str =
+    "datasource-high-blast-radius";
 pub(crate) const GOVERNANCE_RISK_KIND_ORPHANED_DATASOURCE: &str = "orphaned-datasource";
 pub(crate) const GOVERNANCE_RISK_KIND_UNKNOWN_DATASOURCE_FAMILY: &str = "unknown-datasource-family";
 pub(crate) const GOVERNANCE_RISK_KIND_EMPTY_QUERY_ANALYSIS: &str = "empty-query-analysis";

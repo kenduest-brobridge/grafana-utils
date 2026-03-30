@@ -4,7 +4,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::common::{
-    load_json_object_file, message, sanitize_path_component, string_field, value_as_object, Result,
+    load_json_object_file, message, sanitize_path_component, string_field, tool_version,
+    value_as_object, Result,
 };
 
 use super::{
@@ -299,6 +300,7 @@ fn build_template_metadata(template: &Map<String, Value>) -> Value {
 fn build_tool_document(kind: &str, spec: Map<String, Value>, metadata: Value) -> Value {
     json!({
         "schemaVersion": TOOL_SCHEMA_VERSION,
+        "toolVersion": tool_version(),
         "apiVersion": TOOL_API_VERSION,
         "kind": kind,
         "metadata": metadata,
@@ -565,6 +567,10 @@ pub fn build_empty_root_index() -> Map<String, Value> {
         (
             "schemaVersion".to_string(),
             Value::Number(TOOL_SCHEMA_VERSION.into()),
+        ),
+        (
+            "toolVersion".to_string(),
+            Value::String(tool_version().to_string()),
         ),
         (
             "apiVersion".to_string(),

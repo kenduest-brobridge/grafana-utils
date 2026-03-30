@@ -4,6 +4,7 @@ use crate::alert_sync::{assess_alert_sync_specs, ALERT_SYNC_KIND};
 use crate::bundle_preflight::{
     build_bundle_preflight_document, render_bundle_preflight_text, BUNDLE_PREFLIGHT_KIND,
 };
+use crate::common::TOOL_VERSION;
 use serde_json::json;
 
 #[test]
@@ -97,6 +98,7 @@ fn build_bundle_preflight_document_aggregates_sync_alert_and_provider_checks() {
     .unwrap();
 
     assert_eq!(document["kind"], json!(BUNDLE_PREFLIGHT_KIND));
+    assert_eq!(document["toolVersion"], json!(TOOL_VERSION));
     assert!(document.get("sourceSummary").is_some());
     assert!(document.get("targetSummary").is_some());
     assert!(document.get("syncPreflight").is_some());

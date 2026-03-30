@@ -25,8 +25,13 @@ pub mod bundle_preflight;
 pub mod cli;
 mod json;
 pub mod live;
+mod live_project_status;
+mod live_project_status_promotion;
+mod live_project_status_sync;
 mod plan_builder;
 pub mod preflight;
+mod project_status;
+mod project_status_promotion;
 pub mod promotion_preflight;
 pub mod review_tui;
 mod staged_documents;
@@ -42,6 +47,8 @@ use self::bundle_preflight::{
     build_sync_bundle_preflight_document, render_sync_bundle_preflight_text,
 };
 use self::preflight::{build_sync_preflight_document, render_sync_preflight_text};
+pub(crate) use self::project_status::{build_sync_domain_status, SyncDomainStatusInputs};
+pub(crate) use self::project_status_promotion::build_promotion_domain_status;
 use self::promotion_preflight::{
     build_sync_promotion_preflight_document, render_sync_promotion_preflight_text,
 };
@@ -585,6 +592,17 @@ pub(crate) use json::{
 };
 pub(crate) use live::{
     execute_live_apply, fetch_live_availability, fetch_live_resource_specs, merge_availability,
+};
+#[allow(unused_imports)]
+pub(crate) use live_project_status::{
+    build_live_promotion_domain_status as build_live_promotion_domain_status_transport,
+    build_live_sync_domain_status as build_live_sync_domain_status_transport,
+};
+pub(crate) use live_project_status_promotion::{
+    build_live_promotion_project_status, LivePromotionProjectStatusInputs,
+};
+pub(crate) use live_project_status_sync::{
+    build_live_sync_domain_status, SyncLiveProjectStatusInputs,
 };
 // Lineage helpers stay separate from staged document mutation helpers so the
 // review/apply flow is easy to trace at the call site.

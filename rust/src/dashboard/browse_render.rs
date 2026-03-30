@@ -23,13 +23,7 @@ pub(crate) fn render_dashboard_browser_frame(frame: &mut ratatui::Frame, state: 
         .constraints([Constraint::Percentage(46), Constraint::Percentage(54)])
         .split(outer[1]);
 
-    let header = tui_shell::build_header(
-        "Dashboard Browser",
-        render_summary_lines(state)
-            .into_iter()
-            .map(Line::from)
-            .collect(),
-    );
+    let header = tui_shell::build_header("Dashboard Browser", render_summary_lines(state));
     frame.render_widget(header, outer[0]);
 
     let list = List::new(build_tree_items(&state.document.nodes))
@@ -369,50 +363,95 @@ fn detail_lines_for_node(
     node.details.clone()
 }
 
-fn render_summary_lines(state: &BrowserState) -> Vec<String> {
+fn render_summary_lines(state: &BrowserState) -> Vec<Line<'static>> {
     let document = &state.document;
     vec![
         if document.summary.org_count > 1 {
-            format!(
-                "Scope {}  orgs={}  folders={}  dashboards={}  root={}",
-                document.summary.scope_label,
-                document.summary.org_count,
-                document.summary.folder_count,
-                document.summary.dashboard_count,
-                document
-                    .summary
-                    .root_path
-                    .as_deref()
-                    .unwrap_or("all folders")
-            )
+            tui_shell::summary_line(&[
+                tui_shell::summary_cell(
+                    "Scope",
+                    document.summary.scope_label.clone(),
+                    Color::LightBlue,
+                ),
+                tui_shell::summary_cell(
+                    "Orgs",
+                    document.summary.org_count.to_string(),
+                    Color::White,
+                ),
+                tui_shell::summary_cell(
+                    "Folders",
+                    document.summary.folder_count.to_string(),
+                    Color::White,
+                ),
+                tui_shell::summary_cell(
+                    "Dashboards",
+                    document.summary.dashboard_count.to_string(),
+                    Color::White,
+                ),
+                tui_shell::summary_cell(
+                    "Root",
+                    document
+                        .summary
+                        .root_path
+                        .as_deref()
+                        .unwrap_or("all folders"),
+                    Color::White,
+                ),
+            ])
         } else {
-            format!(
-                "Folders: {}  Dashboards: {}  Root: {}",
-                document.summary.folder_count,
-                document.summary.dashboard_count,
-                document
-                    .summary
-                    .root_path
-                    .as_deref()
-                    .unwrap_or("all folders")
-            )
+            tui_shell::summary_line(&[
+                tui_shell::summary_cell(
+                    "Folders",
+                    document.summary.folder_count.to_string(),
+                    Color::White,
+                ),
+                tui_shell::summary_cell(
+                    "Dashboards",
+                    document.summary.dashboard_count.to_string(),
+                    Color::White,
+                ),
+                tui_shell::summary_cell(
+                    "Root",
+                    document
+                        .summary
+                        .root_path
+                        .as_deref()
+                        .unwrap_or("all folders"),
+                    Color::White,
+                ),
+            ])
         },
         if state.pending_delete.is_some() {
-            format!(
-                "Mode=confirm-delete   active-pane={}   y confirms delete, Esc/q cancel.",
-                match state.focus {
-                    PaneFocus::Tree => "tree",
-                    PaneFocus::Facts => "facts",
-                }
-            )
+            Line::from(vec![
+                tui_shell::label("Mode "),
+                tui_shell::accent("confirm-delete", Color::LightRed),
+                Span::raw("  "),
+                tui_shell::label("Focus "),
+                tui_shell::key_chip(
+                    match state.focus {
+                        PaneFocus::Tree => "Tree",
+                        PaneFocus::Facts => "Facts",
+                    },
+                    Color::Blue,
+                ),
+                Span::raw("  "),
+                tui_shell::label("Confirm "),
+                tui_shell::accent("y / Esc / q", Color::Yellow),
+            ])
         } else {
-            format!(
-                "Mode=browse   active-pane={}",
-                match state.focus {
-                    PaneFocus::Tree => "tree",
-                    PaneFocus::Facts => "facts",
-                }
-            )
+            Line::from(vec![
+                tui_shell::label("Mode "),
+                tui_shell::accent("browse", Color::Green),
+                Span::raw("  "),
+                tui_shell::label("Focus "),
+                tui_shell::key_chip(
+                    match state.focus {
+                        PaneFocus::Tree => "Tree",
+                        PaneFocus::Facts => "Facts",
+                    },
+                    Color::Blue,
+                ),
+            ])
         },
     ]
 }
@@ -662,12 +701,18 @@ mod tests {
     #[test]
     fn summary_lines_move_status_out_of_the_header() {
         let state = BrowserState::new(empty_document());
-        let lines = render_summary_lines(&state);
+        let lines = render_summary_lines(&state)
+            .into_iter()
+            .map(|line| line.to_string())
+            .collect::<Vec<_>>();
         assert_eq!(lines.len(), 2);
-        assert!(lines[0].contains("Folders: 0"));
-        assert!(lines[0].contains("Dashboards: 0"));
-        assert!(lines[1].contains("Mode=browse"));
-        assert!(lines[1].contains("active-pane=tree"));
+        assert!(lines[0].contains("Folders"));
+        assert!(lines[0].contains('0'));
+        assert!(lines[0].contains("Dashboards"));
+        assert!(lines[1].contains("Mode"));
+        assert!(lines[1].contains("browse"));
+        assert!(lines[1].contains("Pane"));
+        assert!(lines[1].contains("tree"));
         assert!(!lines
             .iter()
             .any(|line| line.contains("Loaded dashboard tree")));
@@ -683,9 +728,14 @@ mod tests {
             dashboards: Vec::new(),
             folders: Vec::new(),
         });
-        let lines = render_summary_lines(&state);
-        assert!(lines[1].contains("Mode=confirm-delete"));
-        assert!(lines[1].contains("active-pane=tree"));
+        let lines = render_summary_lines(&state)
+            .into_iter()
+            .map(|line| line.to_string())
+            .collect::<Vec<_>>();
+        assert!(lines[1].contains("Mode"));
+        assert!(lines[1].contains("confirm-delete"));
+        assert!(lines[1].contains("Pane"));
+        assert!(lines[1].contains("tree"));
     }
 
     #[test]

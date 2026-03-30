@@ -74,6 +74,7 @@ fn evaluate_dashboard_governance_gate_enforces_query_thresholds_and_warning_poli
             "datasourceAllowedUids": [],
             "allowedFolderPrefixes": [],
             "forbidUnknown": false,
+            "forbidHighBlastRadius": false,
             "forbidMixedFamilies": false,
             "forbidSelectStar": false,
             "requireSqlTimeFilter": false,

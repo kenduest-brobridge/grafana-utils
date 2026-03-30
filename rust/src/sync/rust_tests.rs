@@ -8,6 +8,7 @@ use super::workbench::{
     build_sync_apply_intent_document, build_sync_plan_document, build_sync_summary_document,
     normalize_resource_spec, summarize_resource_specs, SYNC_APPLY_INTENT_KIND, SYNC_SUMMARY_KIND,
 };
+use crate::common::TOOL_VERSION;
 use serde_json::json;
 
 #[test]
@@ -63,6 +64,7 @@ fn build_sync_summary_document_counts_normalized_resource_kinds() {
     let document = build_sync_summary_document(&raw_specs).unwrap();
 
     assert_eq!(document["kind"], json!(SYNC_SUMMARY_KIND));
+    assert_eq!(document["toolVersion"], json!(TOOL_VERSION));
     assert_eq!(document["summary"]["resourceCount"], json!(4));
     assert_eq!(document["summary"]["dashboardCount"], json!(1));
     assert_eq!(document["summary"]["datasourceCount"], json!(1));

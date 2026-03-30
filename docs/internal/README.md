@@ -14,9 +14,11 @@ top of the file.
 
 - `ai-status.md`
 - `ai-changes.md`
+- `overview-architecture.md`
 - `rust-tui-improvement-proposal-2026-03-28.md`
 - `maintainer-backlog-2026-03-28.md`
 - `project-roadmap.md`
+- `current-capability-inventory-2026-03-30.md`
 - `project-value-assessment.md`
 - `future-feature-proposals.md`
 - `competitor-analysis.md`

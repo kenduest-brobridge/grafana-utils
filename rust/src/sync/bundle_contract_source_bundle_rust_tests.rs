@@ -3,6 +3,7 @@ use super::super::{
     build_alert_replay_artifact_fixture, load_alert_export_contract_fixture,
     load_sync_source_bundle_contract_fixture,
 };
+use crate::common::TOOL_VERSION;
 use crate::sync::workbench::{build_sync_source_bundle_document, render_sync_source_bundle_text};
 use serde_json::json;
 
@@ -37,6 +38,7 @@ fn build_sync_source_bundle_document_matches_cross_domain_summary_contract() {
     )
     .unwrap();
 
+    assert_eq!(source_bundle["toolVersion"], json!(TOOL_VERSION));
     assert_eq!(
         source_bundle["summary"],
         fixture["crossDomainSummaryCase"]["summary"]

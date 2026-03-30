@@ -46,25 +46,18 @@ pub(crate) fn render_frame(frame: &mut ratatui::Frame, state: &mut InspectWorkbe
         .map(Line::from)
         .collect::<Vec<_>>();
     header_lines.push(Line::from(vec![
-        Span::styled("Active ", Style::default().fg(Color::Gray)),
-        Span::styled(
+        tui_shell::label("Focus "),
+        inspect_workbench_render_helpers::key_chip(
             match state.focus {
-                InspectPane::Groups => "modes",
-                InspectPane::Items => "items",
-                InspectPane::Facts => "facts",
+                InspectPane::Groups => "Modes",
+                InspectPane::Items => "Items",
+                InspectPane::Facts => "Facts",
             },
-            Style::default()
-                .fg(Color::White)
-                .add_modifier(Modifier::BOLD),
+            Color::Blue,
         ),
-        Span::raw("   "),
-        Span::styled("View ", Style::default().fg(Color::Gray)),
-        Span::styled(
-            state.current_view_label(),
-            Style::default()
-                .fg(Color::LightCyan)
-                .add_modifier(Modifier::BOLD),
-        ),
+        Span::raw("  "),
+        tui_shell::label("View "),
+        tui_shell::accent(state.current_view_label(), Color::White),
     ]));
     frame.render_widget(
         tui_shell::build_header(&state.document.title, header_lines),
@@ -177,10 +170,10 @@ pub(crate) fn render_frame(frame: &mut ratatui::Frame, state: &mut InspectWorkbe
             vec![
                 control_line(&[
                     ("Tab", Color::Blue, "next pane"),
-                    ("Shift+Tab", Color::Blue, "prev pane"),
+                    ("Shift+Tab", Color::Blue, "previous pane"),
                     ("g", Color::Magenta, "mode"),
                     ("v", Color::Magenta, "mode view"),
-                    ("/ ?", Color::Yellow, "search"),
+                    ("/?", Color::Yellow, "search"),
                     ("n", Color::Yellow, "next"),
                 ]),
                 control_line(&[
@@ -202,5 +195,64 @@ pub(crate) fn render_frame(frame: &mut ratatui::Frame, state: &mut InspectWorkbe
     }
     if state.modal.full_detail.open {
         render_full_detail_viewer(frame, state);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::dashboard::inspect_workbench_state::InspectWorkbenchState;
+    use crate::dashboard::inspect_workbench_support::{
+        InspectWorkbenchDocument, InspectWorkbenchGroup, InspectWorkbenchView,
+    };
+    use crate::interactive_browser::BrowserItem;
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+
+    fn sample_state() -> InspectWorkbenchState {
+        InspectWorkbenchState::new(InspectWorkbenchDocument {
+            title: "Inspect Workbench".to_string(),
+            source_label: "export artifacts".to_string(),
+            summary_lines: vec![
+                "Source=export artifacts   dashboards=1 panels=1 queries=1".to_string(),
+                "datasource-families=1 datasource-inventory=1 findings=1 query-reviews=1"
+                    .to_string(),
+            ],
+            groups: vec![InspectWorkbenchGroup {
+                kind: "overview".to_string(),
+                label: "Overview".to_string(),
+                subtitle: "High-level dashboard and datasource review".to_string(),
+                views: vec![InspectWorkbenchView {
+                    label: "Dashboard Summaries".to_string(),
+                    items: vec![BrowserItem {
+                        kind: "dashboard-summary".to_string(),
+                        title: "CPU Main".to_string(),
+                        meta: "panels=1 queries=1".to_string(),
+                        details: vec![
+                            "dashboard: CPU Main".to_string(),
+                            "datasource: prom-main".to_string(),
+                        ],
+                    }],
+                }],
+            }],
+        })
+    }
+
+    #[test]
+    fn inspect_workbench_render_surfaces_header_panes_and_footer() {
+        let mut state = sample_state();
+        let mut terminal = Terminal::new(TestBackend::new(180, 40)).unwrap();
+
+        terminal
+            .draw(|frame| render_frame(frame, &mut state))
+            .unwrap();
+
+        let screen = format!("{}", terminal.backend());
+        assert!(screen.contains("Inspect Workbench"));
+        assert!(screen.contains("Focus"));
+        assert!(screen.contains("Modes"));
+        assert!(screen.contains("Items"));
+        assert!(screen.contains("Facts"));
+        assert!(screen.contains("Status & Controls"));
     }
 }

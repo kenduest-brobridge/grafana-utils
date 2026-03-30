@@ -111,7 +111,20 @@ pub(super) fn render_export_inspection_dependency_table_report(
                 item.query_count.to_string(),
                 item.dashboard_count.to_string(),
                 item.panel_count.to_string(),
+                item.folder_count.to_string(),
+                if item.high_blast_radius {
+                    "true".to_string()
+                } else {
+                    "false".to_string()
+                },
+                if item.cross_folder {
+                    "true".to_string()
+                } else {
+                    "false".to_string()
+                },
                 item.reference_count.to_string(),
+                join_or_none(&item.folder_paths, ","),
+                join_or_none(&item.dashboard_titles, ","),
                 join_or_none(&item.query_fields, ","),
             ]
         })
@@ -127,7 +140,12 @@ pub(super) fn render_export_inspection_dependency_table_report(
             "QUERIES",
             "DASHBOARDS",
             "PANELS",
+            "FOLDERS",
+            "HIGH_BLAST_RADIUS",
+            "CROSS_FOLDER",
             "REFS",
+            "FOLDER_PATHS",
+            "DASHBOARD_TITLES",
             "QUERY_FIELDS",
         ],
         &usage_rows,
@@ -257,6 +275,13 @@ mod tests {
         );
         let output = render_export_inspection_dependency_table_report("demo", &document).join("\n");
 
+        assert!(output.contains("# Datasource usage"));
+        assert!(output.contains("FOLDERS"));
+        assert!(output.contains("HIGH_BLAST_RADIUS"));
+        assert!(output.contains("CROSS_FOLDER"));
+        assert!(output.contains("FOLDER_PATHS"));
+        assert!(output.contains("DASHBOARD_TITLES"));
+        assert!(output.contains("General"));
         assert!(output.contains("# Orphaned datasources"));
         assert!(output.contains("Unused Main"));
         assert!(output.contains("(none)"));

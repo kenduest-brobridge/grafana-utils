@@ -20,6 +20,7 @@ from ..dashboard_cli import (
     write_json_document,
 )
 from ..datasource_contract import (
+    DATASOURCE_CONTRACT_FIELDS,
     normalize_datasource_record,
     validate_datasource_contract_record,
 )
@@ -38,6 +39,14 @@ from .live_mutation_safe import (
     delete_datasource as delete_live_datasource,
 )
 from ..dashboards.output_support import sanitize_path_component
+from ..datasource_secret_provider_workbench import (
+    collect_provider_references,
+    iter_provider_names,
+)
+from ..datasource_secret_workbench import (
+    collect_secret_placeholders,
+    iter_secret_placeholder_names,
+)
 from .parser import (
     DATASOURCE_EXPORT_FILENAME,
     EXPORT_METADATA_FILENAME,
@@ -285,6 +294,132 @@ def load_import_bundle(import_dir):
         except ValueError as exc:
             raise GrafanaError(str(exc))
         records.append(normalize_datasource_record(item))
+    index_document = load_json_document(index_path)
+    if not isinstance(index_document, dict):
+        raise GrafanaError(
+            "Datasource import index must be a JSON object: %s" % index_path
+        )
+    return {
+        "metadata": metadata,
+        "records": records,
+        "index": index_document,
+        "datasources_path": datasources_path,
+    }
+
+
+def _summarize_secret_details(record):
+    """Internal helper for summarize secret details."""
+    parts = []
+    secret_fields = [
+        str(field).strip()
+        for field in record.get("secretFields") or []
+        if str(field).strip()
+    ]
+    if secret_fields:
+        parts.append("fields=%s" % ", ".join(secret_fields))
+    placeholder_names = [
+        str(name).strip()
+        for name in record.get("secretPlaceholderNames") or []
+        if str(name).strip()
+    ]
+    if placeholder_names:
+        parts.append("placeholders=%s" % ", ".join(placeholder_names))
+    provider_names = [
+        str(name).strip()
+        for name in record.get("providerNames") or []
+        if str(name).strip()
+    ]
+    if provider_names:
+        parts.append("providers=%s" % ", ".join(provider_names))
+    return "; ".join(parts)
+
+
+def load_import_bundle_preview(import_dir):
+    """Load import bundle preview implementation."""
+    if not import_dir.exists():
+        raise GrafanaError("Import directory does not exist: %s" % import_dir)
+    if not import_dir.is_dir():
+        raise GrafanaError("Import path is not a directory: %s" % import_dir)
+    metadata_path = import_dir / EXPORT_METADATA_FILENAME
+    datasources_path = import_dir / DATASOURCE_EXPORT_FILENAME
+    index_path = import_dir / "index.json"
+    if not metadata_path.is_file():
+        raise GrafanaError("Datasource import metadata is missing: %s" % metadata_path)
+    if not datasources_path.is_file():
+        raise GrafanaError("Datasource import file is missing: %s" % datasources_path)
+    if not index_path.is_file():
+        raise GrafanaError("Datasource import index is missing: %s" % index_path)
+    metadata = load_json_document(metadata_path)
+    if not isinstance(metadata, dict):
+        raise GrafanaError(
+            "Datasource import metadata must be a JSON object: %s" % metadata_path
+        )
+    if metadata.get("kind") != ROOT_INDEX_KIND:
+        raise GrafanaError(
+            "Unexpected datasource export manifest kind in %s: %r"
+            % (metadata_path, metadata.get("kind"))
+        )
+    if metadata.get("schemaVersion") != TOOL_SCHEMA_VERSION:
+        raise GrafanaError(
+            "Unsupported datasource export schemaVersion %r in %s. Expected %s."
+            % (metadata.get("schemaVersion"), metadata_path, TOOL_SCHEMA_VERSION)
+        )
+    if metadata.get("resource") != "datasource":
+        raise GrafanaError(
+            "Datasource import metadata in %s does not describe datasource inventory."
+            % metadata_path
+        )
+    raw_records = load_json_document(datasources_path)
+    if not isinstance(raw_records, list):
+        raise GrafanaError(
+            "Datasource import file must contain a JSON array: %s" % datasources_path
+        )
+    records = []
+    allowed_secret_fields = {
+        "secureJsonDataPlaceholders",
+        "secureJsonDataProviders",
+    }
+    for item in raw_records:
+        if not isinstance(item, dict):
+            raise GrafanaError(
+                "Datasource import entry must be a JSON object: %s" % datasources_path
+            )
+        extra_fields = sorted(
+            key
+            for key in item.keys()
+            if key not in set(DATASOURCE_CONTRACT_FIELDS) | allowed_secret_fields
+        )
+        if extra_fields:
+            raise GrafanaError(
+                "Datasource import entry in %s contains unsupported datasource field(s): %s. Supported fields: %s."
+                % (
+                    datasources_path,
+                    ", ".join(extra_fields),
+                    ", ".join(
+                        list(DATASOURCE_CONTRACT_FIELDS)
+                        + sorted(allowed_secret_fields)
+                    ),
+                )
+            )
+        normalized = normalize_datasource_record(item)
+        placeholders = collect_secret_placeholders(
+            item.get("secureJsonDataPlaceholders")
+        )
+        providers = collect_provider_references(item.get("secureJsonDataProviders"))
+        secret_fields = [placeholder.field_name for placeholder in placeholders]
+        secret_placeholder_names = list(iter_secret_placeholder_names(placeholders))
+        provider_names = list(iter_provider_names(providers))
+        preview_record = dict(normalized)
+        if secret_fields:
+            preview_record["secretFields"] = secret_fields
+        if secret_placeholder_names:
+            preview_record["secretPlaceholderNames"] = secret_placeholder_names
+        if provider_names:
+            preview_record["providerNames"] = provider_names
+        secret_summary = _summarize_secret_details(preview_record)
+        if secret_summary:
+            preview_record["secretSummary"] = secret_summary
+        records.append(preview_record)
     index_document = load_json_document(index_path)
     if not isinstance(index_document, dict):
         raise GrafanaError(
@@ -595,7 +730,16 @@ def render_import_dry_run_table(records, include_header, selected_columns=None):
 
     columns = list(
         selected_columns
-        or ["uid", "name", "type", "destination", "action", "orgId", "file"]
+        or [
+            "uid",
+            "name",
+            "type",
+            "destination",
+            "action",
+            "orgId",
+            "file",
+            "secretSummary",
+        ]
     )
     headers = [IMPORT_DRY_RUN_COLUMN_HEADERS[column] for column in columns]
     rows = [[item.get(column) or "" for column in columns] for item in records]
@@ -1438,8 +1582,9 @@ def _resolve_multi_org_import_targets(args, client):
     orgs_by_id = _resolve_existing_orgs_by_id(client)
     targets = []
     matched_source_org_ids = set()
+    bundle_loader = load_import_bundle_preview if dry_run else load_import_bundle
     for org_dir in _discover_org_export_dirs(import_dir):
-        bundle = load_import_bundle(org_dir)
+        bundle = bundle_loader(org_dir)
         source_org_id = resolve_export_org_id(bundle)
         if not source_org_id:
             raise GrafanaError(
@@ -1712,7 +1857,8 @@ def _run_import_datasources_for_single_org(args):
             "--no-header is only supported with --dry-run --table for datasource import."
         )
     client = build_effective_import_client(args, build_client(args))
-    bundle = load_import_bundle(Path(args.import_dir))
+    bundle_loader = load_import_bundle_preview if args.dry_run else load_import_bundle
+    bundle = bundle_loader(Path(args.import_dir))
     target_org_id = validate_export_org_match(args, client, bundle)
     lookups = build_existing_datasource_lookups(client)
     mode = determine_import_mode(args)
@@ -1734,19 +1880,28 @@ def _run_import_datasources_for_single_org(args):
             "orgId": target_org_id,
             "sourceOrgId": record.get("orgId") or "",
             "file": "%s#%s" % (bundle["datasources_path"], index - 1),
+            "secretSummary": record.get("secretSummary") or "",
+            "secretFields": list(record.get("secretFields") or []),
+            "secretPlaceholderNames": list(record.get("secretPlaceholderNames") or []),
+            "providerNames": list(record.get("providerNames") or []),
         }
         if args.dry_run:
             records.append(dry_run_record)
             if getattr(args, "table", False) or getattr(args, "json", False):
                 continue
             print(
-                "Dry-run datasource uid=%s name=%s dest=%s action=%s file=%s"
+                "Dry-run datasource uid=%s name=%s dest=%s action=%s file=%s%s"
                 % (
                     dry_run_record["uid"] or "-",
                     dry_run_record["name"] or "-",
                     dry_run_record["destination"],
                     dry_run_record["action"],
                     dry_run_record["file"],
+                    (
+                        " secret=%s" % dry_run_record["secretSummary"]
+                        if dry_run_record["secretSummary"]
+                        else ""
+                    ),
                 )
             )
             continue

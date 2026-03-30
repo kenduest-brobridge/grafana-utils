@@ -3,17 +3,19 @@
 //! behavior.
 use super::alert_list::serialize_contact_point_list_rows;
 use super::{
-    build_alert_diff_document, build_alert_import_dry_run_document, build_compare_diff_text,
-    build_contact_point_export_document, build_contact_point_output_path, build_empty_root_index,
-    build_import_operation, build_rule_export_document, build_rule_output_path,
-    detect_document_kind, determine_import_action_with_request, expect_object_list,
-    fetch_live_compare_document_with_request, get_rule_linkage,
+    build_alert_diff_document, build_alert_import_dry_run_document,
+    build_alert_live_project_status_domain, build_alert_project_status_domain,
+    build_compare_diff_text, build_contact_point_export_document, build_contact_point_output_path,
+    build_empty_root_index, build_import_operation, build_rule_export_document,
+    build_rule_output_path, detect_document_kind, determine_import_action_with_request,
+    expect_object_list, fetch_live_compare_document_with_request, get_rule_linkage,
     import_resource_document_with_request, load_panel_id_map, load_string_map, parse_cli_from,
     parse_template_list_response, root_command, serialize_compare_document,
-    serialize_rule_list_rows, AlertCliArgs, CONTACT_POINT_KIND, MUTE_TIMING_KIND, POLICIES_KIND,
-    ROOT_INDEX_KIND, RULE_KIND, TEMPLATE_KIND, TOOL_API_VERSION, TOOL_SCHEMA_VERSION,
+    serialize_rule_list_rows, AlertCliArgs, AlertLiveProjectStatusInputs, CONTACT_POINT_KIND,
+    MUTE_TIMING_KIND, POLICIES_KIND, ROOT_INDEX_KIND, RULE_KIND, TEMPLATE_KIND, TOOL_API_VERSION,
+    TOOL_SCHEMA_VERSION,
 };
-use crate::common::{message, Result};
+use crate::common::{message, Result, TOOL_VERSION};
 use reqwest::Method;
 use serde_json::json;
 use serde_json::Value;
@@ -76,6 +78,103 @@ fn build_rule_output_path_keeps_folder_structure() {
 }
 
 #[test]
+fn build_alert_project_status_domain_is_partial_without_core_counts() {
+    let summary_document = json!({
+        "summary": {
+            "ruleCount": 0,
+            "contactPointCount": 0,
+            "policyCount": 0,
+            "muteTimingCount": 2,
+            "templateCount": 1
+        }
+    });
+    let domain = build_alert_project_status_domain(Some(&summary_document)).unwrap();
+    let value = serde_json::to_value(domain).unwrap();
+
+    assert_eq!(value["id"], json!("alert"));
+    assert_eq!(value["scope"], json!("staged"));
+    assert_eq!(value["mode"], json!("artifact-summary"));
+    assert_eq!(value["status"], json!("partial"));
+    assert_eq!(value["reasonCode"], json!("partial-no-data"));
+    assert_eq!(value["primaryCount"], json!(0));
+    assert_eq!(value["blockerCount"], json!(0));
+    assert_eq!(value["warningCount"], json!(0));
+    assert_eq!(value["sourceKinds"], json!(["alert-export"]));
+    assert_eq!(
+        value["signalKeys"],
+        json!([
+            "summary.ruleCount",
+            "summary.contactPointCount",
+            "summary.policyCount",
+            "summary.muteTimingCount",
+            "summary.templateCount",
+        ])
+    );
+    assert_eq!(value["blockers"], json!([]));
+    assert_eq!(value["warnings"], json!([]));
+    assert_eq!(
+        value["nextActions"],
+        json!(["export at least one alert rule, contact point, or policy"])
+    );
+}
+
+#[test]
+fn build_alert_project_status_domain_is_ready_from_core_counts() {
+    let summary_document = json!({
+        "summary": {
+            "ruleCount": 4,
+            "contactPointCount": 2,
+            "policyCount": 3,
+            "muteTimingCount": 1,
+            "templateCount": 5
+        }
+    });
+    let domain = build_alert_project_status_domain(Some(&summary_document)).unwrap();
+    let value = serde_json::to_value(domain).unwrap();
+
+    assert_eq!(value["status"], json!("ready"));
+    assert_eq!(value["reasonCode"], json!("ready"));
+    assert_eq!(value["primaryCount"], json!(4));
+    assert_eq!(
+        value["nextActions"],
+        json!(["re-run alert export after alerting changes"])
+    );
+}
+
+#[test]
+fn build_alert_live_project_status_domain_is_ready_from_live_counts() {
+    let rules = json!([{"uid": "cpu-high"}]);
+    let contact_points = json!([{"uid": "cp-main"}]);
+    let mute_timings = json!([{"name": "off-hours"}]);
+    let policies = json!({"receiver": "grafana-default-email"});
+    let templates = json!([{"name": "slack.default"}]);
+
+    let domain = build_alert_live_project_status_domain(AlertLiveProjectStatusInputs {
+        rules_document: Some(&rules),
+        contact_points_document: Some(&contact_points),
+        mute_timings_document: Some(&mute_timings),
+        policies_document: Some(&policies),
+        templates_document: Some(&templates),
+    })
+    .unwrap();
+    let value = serde_json::to_value(domain).unwrap();
+
+    assert_eq!(value["scope"], json!("live"));
+    assert_eq!(value["mode"], json!("live-alert-surfaces"));
+    assert_eq!(value["primaryCount"], json!(5));
+    assert_eq!(
+        value["sourceKinds"],
+        json!([
+            "alert",
+            "alert-contact-point",
+            "alert-mute-timing",
+            "alert-policy",
+            "alert-template"
+        ])
+    );
+}
+
+#[test]
 fn build_contact_point_output_path_uses_name_and_uid() {
     let contact_point = json!({
         "name": "Webhook Main",
@@ -109,6 +208,7 @@ fn build_rule_export_document_strips_server_managed_fields() {
         .unwrap(),
     );
     assert_eq!(document["kind"], RULE_KIND);
+    assert_eq!(document["toolVersion"], json!(TOOL_VERSION));
     assert!(document["spec"].get("updated").is_none());
     assert!(document["spec"].get("provenance").is_none());
 }
@@ -455,6 +555,7 @@ fn build_import_operation_rejects_unsupported_schema_version() {
 fn build_empty_root_index_contains_version_markers() {
     let index = build_empty_root_index();
     assert_eq!(index["schemaVersion"], json!(TOOL_SCHEMA_VERSION));
+    assert_eq!(index["toolVersion"], json!(TOOL_VERSION));
     assert_eq!(index["apiVersion"], json!(TOOL_API_VERSION));
     assert_eq!(index["kind"], json!(ROOT_INDEX_KIND));
     assert_eq!(index["rules"], json!([]));

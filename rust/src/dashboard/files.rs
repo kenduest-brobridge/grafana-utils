@@ -5,7 +5,7 @@ use serde_json::{Map, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::common::{message, object_field, string_field, value_as_object, Result};
+use crate::common::{message, object_field, string_field, tool_version, value_as_object, Result};
 
 use super::{
     DashboardIndexItem, DatasourceInventoryItem, ExportMetadata, ExportOrgSummary,
@@ -77,6 +77,7 @@ pub(crate) fn build_export_metadata(
     let org_count = orgs.as_ref().map(|items| items.len() as u64);
     ExportMetadata {
         schema_version: TOOL_SCHEMA_VERSION,
+        tool_version: Some(tool_version().to_string()),
         kind: ROOT_INDEX_KIND.to_string(),
         variant: variant.to_string(),
         dashboard_count: dashboard_count as u64,
@@ -305,6 +306,7 @@ pub(crate) fn build_root_export_index(
 ) -> RootExportIndex {
     RootExportIndex {
         schema_version: TOOL_SCHEMA_VERSION,
+        tool_version: Some(tool_version().to_string()),
         kind: ROOT_INDEX_KIND.to_string(),
         items: items.to_vec(),
         variants: RootExportVariants {

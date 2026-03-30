@@ -31,6 +31,10 @@ mod alert_import_diff;
 mod alert_linkage_support;
 #[path = "alert_list.rs"]
 mod alert_list;
+#[path = "alert_live_project_status.rs"]
+mod alert_live_project_status;
+#[path = "alert_project_status.rs"]
+mod alert_project_status;
 #[path = "alert_runtime_support.rs"]
 mod alert_runtime_support;
 #[path = "alert_support.rs"]
@@ -55,6 +59,10 @@ pub(crate) use alert_compare_support::{
 pub(crate) use alert_linkage_support::get_rule_linkage;
 #[cfg(test)]
 pub(crate) use alert_list::serialize_rule_list_rows;
+pub use alert_live_project_status::{
+    build_alert_live_project_status_domain, AlertLiveProjectStatusInputs,
+};
+pub(crate) use alert_project_status::build_alert_project_status_domain;
 pub use alert_runtime_support::{build_alert_diff_document, build_alert_import_dry_run_document};
 #[cfg(test)]
 pub(crate) use alert_runtime_support::{

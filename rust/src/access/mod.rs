@@ -14,10 +14,14 @@ use crate::http::JsonHttpClient;
 mod browse_terminal;
 #[path = "cli_defs.rs"]
 mod cli_defs;
+#[path = "live_project_status.rs"]
+mod live_project_status;
 #[path = "org.rs"]
 mod org;
 #[path = "pending_delete.rs"]
 mod pending_delete;
+#[path = "project_status.rs"]
+mod project_status;
 #[path = "render.rs"]
 mod render;
 #[path = "service_account.rs"]
@@ -50,9 +54,14 @@ pub use cli_defs::{
     ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME, ACCESS_TEAM_EXPORT_FILENAME,
     ACCESS_USER_EXPORT_FILENAME, DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT, DEFAULT_URL,
 };
+#[allow(unused_imports)]
+pub(crate) use live_project_status::{
+    build_access_live_domain_status, build_access_live_domain_status_with_request,
+};
 pub use pending_delete::{
     GroupCommandStage, ServiceAccountDeleteArgs, ServiceAccountTokenDeleteArgs, TeamDeleteArgs,
 };
+pub(crate) use project_status::{build_access_domain_status, AccessDomainStatusInputs};
 
 #[derive(Clone, Debug)]
 enum BrowseSwitch {

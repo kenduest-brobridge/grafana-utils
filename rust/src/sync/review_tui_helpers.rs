@@ -1,4 +1,6 @@
 use crate::common::Result;
+#[cfg(feature = "tui")]
+use crate::tui_shell;
 use serde_json::Value;
 use std::collections::BTreeSet;
 
@@ -621,12 +623,14 @@ pub(crate) fn build_diff_controls_lines(state: &DiffControlsState) -> Vec<Line<'
     };
     vec![
         Line::from(vec![
-            Span::styled(
-                format!("Item {}/{}", state.selected + 1, state.total),
-                Style::default().add_modifier(Modifier::BOLD),
+            tui_shell::label("Item "),
+            tui_shell::accent(
+                format!("{}/{}", state.selected + 1, state.total),
+                Color::White,
             ),
             Span::raw("  "),
-            Span::styled(format!("Focus {focus}"), Style::default().fg(Color::Cyan)),
+            tui_shell::label("Focus "),
+            tui_shell::key_chip(focus, Color::Blue),
             Span::raw("  "),
             Span::styled(
                 format!(
@@ -672,7 +676,17 @@ pub(crate) fn build_diff_controls_lines(state: &DiffControlsState) -> Vec<Line<'
                 Style::default().fg(Color::Green),
             ),
         ]),
-        Line::from("Tab switch pane  Up/Down scroll  [/] item  PgUp/PgDn jump  Home/End bounds"),
-        Line::from("Space keep/drop  c confirm staged selection  Esc/q return"),
+        tui_shell::control_line(&[
+            ("Tab", Color::Blue, "switch pane"),
+            ("Up/Down", Color::Blue, "scroll"),
+            ("[/]", Color::Blue, "item"),
+            ("PgUp/PgDn", Color::Blue, "jump"),
+        ]),
+        tui_shell::control_line(&[
+            ("Home/End", Color::Blue, "bounds"),
+            ("Space", Color::Yellow, "keep/drop"),
+            ("c", Color::Green, "confirm staged"),
+            ("Esc/q", Color::Gray, "return"),
+        ]),
     ]
 }

@@ -34,6 +34,8 @@ class DatasourceLiveMutationRenderTests(unittest.TestCase):
                 "match": "missing",
                 "action": "would-create",
                 "targetId": "",
+                "secretFields": [],
+                "secretSummary": "",
             },
         )
 
@@ -56,7 +58,7 @@ class DatasourceLiveMutationRenderTests(unittest.TestCase):
 
         self.assertEqual(
             lines[0],
-            "OPERATION  UID        NAME       TYPE  MATCH       ACTION        TARGET_ID",
+            "OPERATION  UID        NAME       TYPE  MATCH       ACTION        TARGET_ID  SECRET",
         )
         self.assertIn("delete", lines[2])
         self.assertIn("would-delete", lines[2])

@@ -2,7 +2,7 @@ use super::json::require_json_object;
 use super::workbench::{
     SyncResourceSpec, SyncSummary, RESOURCE_KINDS, SYNC_SUMMARY_KIND, SYNC_SUMMARY_SCHEMA_VERSION,
 };
-use crate::common::{message, Result};
+use crate::common::{message, tool_version, Result};
 use serde_json::{Map, Value};
 
 pub(super) fn is_alert_sync_kind(kind: &str) -> bool {
@@ -136,6 +136,7 @@ pub fn build_sync_summary_document(raw_specs: &[Value]) -> Result<Value> {
     Ok(serde_json::json!({
         "kind": SYNC_SUMMARY_KIND,
         "schemaVersion": SYNC_SUMMARY_SCHEMA_VERSION,
+        "toolVersion": tool_version(),
         "summary": {
             "resourceCount": summary.resource_count,
             "dashboardCount": summary.dashboard_count,

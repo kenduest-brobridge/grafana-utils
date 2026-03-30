@@ -2,23 +2,21 @@
 
 This file tracks the active backlog only.
 
+Rust mainline work is the priority here; Python entries only cover supporting packaging and tooling.
+
 Completed items that were previously listed here now live in `docs/internal/todo-archive.md`.
 
 ## In Progress
 
-- Python packaging, docs, and syntax-floor tests now target Python 3.9+, but optional formatter/lint/static-check coverage still depends on tool availability in the active environment
+- Python packaging, docs, and syntax-floor tests now target Python 3.9+, but optional formatter/lint/static-check coverage still depends on tool availability in the active environment.
 
 ## Next
 
-- major datasource CRUD/preset/parity/live-smoke work is now in place; the next round should prioritize broader dashboard/import/inspection work rather than more datasource payload fine-tuning
-- refactor query report extraction behind datasource-type-specific analyzers so Prometheus, Loki, Flux/Influx, SQL, and future datasource families can evolve independently without bloating one generic parser path
-- reduce repeated live Grafana lookups during dashboard import and dry-run paths so large imports do not multiply API round-trips per dashboard
-- extend dashboard offline inspection from counts and datasource usage into richer dependency analysis, including per-query extracted metrics/buckets/measurements where the datasource format is understood
-- extend query report extraction for Loki-style log queries so inspection can report stream selectors, label matchers, pipeline stages, filters, and range/aggregation functions instead of leaving Loki queries as empty `metrics`
-- add report modes for datasource usage, orphaned datasource detection, and dashboard-to-datasource dependency summaries that can feed governance and cleanup work
-- extend the Rust export package/bundle workflow beyond normalized alert-rule specs so contact points, mute timings, policies, and templates can also participate in top-level sync/preflight contracts where that is safe
-- gradually replace ad hoc dashboard and alert datasource reference maps with typed structs where the shape is stable enough to justify it
-- extract repeated dashboard and alert fallback strings into shared constants where they still appear in multiple places
+- keep current Rust domain-owned producers stable by default
+- reopen a domain lane only when a concrete consumer proves a missing decision-critical signal
+- keep `overview` and `project-status` as thin consumers instead of adding more derivation logic there
+- if a lane must reopen, prefer owner-module work inside `dashboard`, `datasource`, `alert`, `access`, `sync`, or `promotion`
+- keep advanced analysis and packaging exploratory rather than making them a current execution lane
 - clean repo workflow noise by keeping local scratch files, temp exports, and ad hoc notes out of normal review/commit paths
 - evaluate streaming or lower-memory dashboard listing/export paths only if large-instance validation shows the current full-materialization approach is a real bottleneck
 - evaluate semantic alert diff normalization for equivalent values such as duration aliases after the current structural diff behavior is otherwise stable
@@ -69,10 +67,9 @@ Rules to keep:
 
 ## Priority Order
 
-1. refactor query report extraction behind datasource-type-specific analyzers
-2. reduce repeated dashboard import lookup calls on live Grafana
-3. extend inspection into richer dependency analysis and datasource usage/orphan reports
-4. typed datasource reference structs in the Rust dashboard and alert paths
-5. clean repo workflow noise and local scratch artifacts
-6. extend Rust bundle normalization beyond alert-rule specs
-7. semantic alert diff normalization for equivalent values
+1. keep current domain-owned producers stable
+2. reopen only consumer-proven missing signals
+3. keep `overview` / `project-status` thin and contract-driven
+4. clean repo workflow noise and local scratch artifacts
+5. extend Rust bundle normalization beyond alert-rule specs only if a concrete consumer needs it
+6. semantic alert diff normalization for equivalent values only after the current structural diff behavior is otherwise stable

@@ -5,7 +5,7 @@
 
 use super::summary_builder::{is_alert_sync_kind, normalize_resource_specs};
 use super::workbench::{SyncResourceSpec, SYNC_PLAN_KIND, SYNC_PLAN_SCHEMA_VERSION};
-use crate::common::{message, Result};
+use crate::common::{message, tool_version, Result};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -147,6 +147,7 @@ pub(crate) fn build_sync_alert_assessment_document(operations: &[Value]) -> Valu
     serde_json::json!({
         "kind": "grafana-utils-alert-sync-plan",
         "schemaVersion": 1,
+        "toolVersion": tool_version(),
         "summary": {
             "alertCount": alerts.len(),
             "candidateCount": candidate_count,
@@ -274,6 +275,7 @@ pub fn build_sync_plan_document(
     Ok(serde_json::json!({
         "kind": SYNC_PLAN_KIND,
         "schemaVersion": SYNC_PLAN_SCHEMA_VERSION,
+        "toolVersion": tool_version(),
         "dryRun": true,
         "reviewRequired": true,
         "reviewed": false,

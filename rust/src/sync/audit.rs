@@ -8,7 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::{Map, Value};
 
-use crate::common::{message, Result};
+use crate::common::{message, tool_version, Result};
 
 use super::json::{require_json_array_field, require_json_object, require_json_object_field};
 use super::workbench::{normalize_resource_specs, SyncResourceSpec};
@@ -201,6 +201,7 @@ fn build_sync_lock_document_from_specs(
     Ok(serde_json::json!({
         "kind": SYNC_LOCK_KIND,
         "schemaVersion": SYNC_LOCK_SCHEMA_VERSION,
+        "toolVersion": tool_version(),
         "summary": {
             "resourceCount": resources.len(),
             "presentCount": present_count,
@@ -351,6 +352,7 @@ pub(crate) fn build_sync_audit_document(
     Ok(serde_json::json!({
         "kind": SYNC_AUDIT_KIND,
         "schemaVersion": SYNC_AUDIT_SCHEMA_VERSION,
+        "toolVersion": tool_version(),
         "summary": {
             "managedCount": current_resources.len(),
             "baselineCount": baseline_index.len(),

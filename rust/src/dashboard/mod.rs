@@ -68,7 +68,9 @@ mod inspect_workbench_state;
 mod inspect_workbench_support;
 mod list;
 mod live;
+mod live_project_status;
 mod models;
+mod project_status;
 mod prompt;
 mod prompt_helpers;
 mod screenshot;
@@ -123,8 +125,11 @@ pub(crate) use governance_policy::{
     load_builtin_governance_policy, load_governance_policy, load_governance_policy_file,
     load_governance_policy_source,
 };
+pub(crate) use inspect::build_export_inspection_summary;
 pub(crate) use inspect_report::ExportInspectionQueryRow;
-pub(crate) use inspect_summary::ExportInspectionSummary;
+pub(crate) use inspect_summary::{
+    build_export_inspection_summary_document, ExportInspectionSummary,
+};
 #[allow(unused_imports)]
 pub(crate) use live::{
     build_datasource_inventory_record, build_folder_path, collect_folder_inventory_with_request,
@@ -134,10 +139,13 @@ pub(crate) use live::{
     import_dashboard_request_with_request, list_dashboard_summaries_with_request,
     list_datasources_with_request,
 };
+#[allow(unused_imports)]
+pub(crate) use live_project_status::build_live_dashboard_domain_status;
 pub(crate) use models::{
     DashboardIndexItem, DatasourceInventoryItem, ExportDatasourceUsageSummary, ExportMetadata,
     ExportOrgSummary, FolderInventoryItem, RootExportIndex, RootExportVariants, VariantIndexEntry,
 };
+pub(crate) use project_status::build_dashboard_domain_status;
 pub(crate) use prompt::{
     build_datasource_catalog, collect_datasource_refs, datasource_type_alias,
     is_builtin_datasource_ref, is_placeholder_string, lookup_datasource,

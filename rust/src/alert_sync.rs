@@ -4,7 +4,7 @@
 //! - Stage alert-specific sync ownership and mutation policy before live wiring.
 //! - Keep partial alert ownership explicit and reviewable.
 
-use crate::common::{message, Result};
+use crate::common::{message, tool_version, Result};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 
@@ -170,6 +170,7 @@ pub fn assess_alert_sync_specs(alert_specs: &[Value]) -> Result<Value> {
     Ok(json!({
         "kind": ALERT_SYNC_KIND,
         "schemaVersion": ALERT_SYNC_SCHEMA_VERSION,
+        "toolVersion": tool_version(),
         "summary": {
             "alertCount": assessments.len(),
             "candidateCount": assessments.iter().filter(|item| item.status == "candidate").count(),

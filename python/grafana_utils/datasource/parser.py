@@ -44,6 +44,7 @@ IMPORT_DRY_RUN_COLUMN_HEADERS = OrderedDict(
         ("action", "ACTION"),
         ("orgId", "ORG_ID"),
         ("file", "FILE"),
+        ("secretSummary", "SECRET"),
     ]
 )
 IMPORT_DRY_RUN_COLUMN_ALIASES = {
@@ -54,6 +55,7 @@ IMPORT_DRY_RUN_COLUMN_ALIASES = {
     "action": "action",
     "org_id": "orgId",
     "file": "file",
+    "secret_summary": "secretSummary",
 }
 
 HELP_FULL_EXAMPLES = (
@@ -375,7 +377,7 @@ def add_import_cli_args(parser):
         default=None,
         help=(
             "For --dry-run --table only, render only these comma-separated columns. "
-            "Supported values: uid, name, type, destination, action, org_id, file."
+            "Supported values: uid, name, type, destination, action, org_id, file, secret_summary."
         ),
     )
     parser.add_argument(

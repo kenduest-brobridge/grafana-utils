@@ -1,7 +1,9 @@
 use serde_json::{Map, Value};
 use std::path::{Path, PathBuf};
 
-use crate::common::{message, sanitize_path_component, string_field, write_json_file, Result};
+use crate::common::{
+    message, sanitize_path_component, string_field, tool_version, write_json_file, Result,
+};
 use crate::dashboard::{
     build_auth_context, build_http_client, build_http_client_for_org, list_datasources,
     CommonCliArgs, DEFAULT_ORG_ID,
@@ -75,6 +77,10 @@ pub(crate) fn build_datasource_export_metadata(count: usize) -> Value {
         (
             "schemaVersion".to_string(),
             Value::Number(TOOL_SCHEMA_VERSION.into()),
+        ),
+        (
+            "toolVersion".to_string(),
+            Value::String(tool_version().to_string()),
         ),
         (
             "kind".to_string(),
@@ -256,6 +262,10 @@ pub(crate) fn build_export_index(records: &[Map<String, Value>]) -> Value {
             Value::Number(TOOL_SCHEMA_VERSION.into()),
         ),
         (
+            "toolVersion".to_string(),
+            Value::String(tool_version().to_string()),
+        ),
+        (
             "datasourcesFile".to_string(),
             Value::String(DATASOURCE_EXPORT_FILENAME.to_string()),
         ),
@@ -309,6 +319,10 @@ pub(crate) fn build_all_orgs_export_index(items: &[Map<String, Value>]) -> Value
             Value::Number(TOOL_SCHEMA_VERSION.into()),
         ),
         (
+            "toolVersion".to_string(),
+            Value::String(tool_version().to_string()),
+        ),
+        (
             "variant".to_string(),
             Value::String("all-orgs-root".to_string()),
         ),
@@ -328,6 +342,10 @@ pub(crate) fn build_all_orgs_export_metadata(org_count: usize, datasource_count:
         (
             "schemaVersion".to_string(),
             Value::Number(TOOL_SCHEMA_VERSION.into()),
+        ),
+        (
+            "toolVersion".to_string(),
+            Value::String(tool_version().to_string()),
         ),
         (
             "kind".to_string(),

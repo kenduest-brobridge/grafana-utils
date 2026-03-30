@@ -6,6 +6,7 @@ use regex::Regex;
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
+use std::sync::LazyLock;
 
 use crate::common::{string_field, value_as_object, Result};
 
@@ -47,6 +48,24 @@ struct QueryReportContext<'a> {
     dashboard_file_display: &'a str,
     datasource_inventory: &'a [DatasourceInventoryItem],
 }
+
+static QUERY_VARIABLE_BRACED_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::[^}]*)?\}")
+        .expect("invalid hard-coded variable regex")
+});
+static QUERY_VARIABLE_PLAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\$([A-Za-z_][A-Za-z0-9_]*)").expect("invalid hard-coded variable regex")
+});
+static QUERY_VARIABLE_DOUBLE_BRACKET_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\[\[([A-Za-z_][A-Za-z0-9_]*)(?::[^\]]*)?\]\]")
+        .expect("invalid hard-coded variable regex")
+});
+static TEMPLATE_VARIABLE_NAME_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r#"(?m)(?:^|[^A-Za-z0-9_])\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))"#,
+    )
+    .expect("invalid hard-coded dashboard template variable regex")
+});
 
 fn calculate_folder_level(folder_path: &str) -> String {
     let level = folder_path
@@ -99,14 +118,13 @@ fn extract_dashboard_tags(dashboard: &Map<String, Value>) -> Vec<String> {
 }
 
 fn extract_query_variables(query_text: &str) -> Vec<String> {
-    let patterns = [
-        r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::[^}]*)?\}",
-        r"\$([A-Za-z_][A-Za-z0-9_]*)",
-        r"\[\[([A-Za-z_][A-Za-z0-9_]*)(?::[^\]]*)?\]\]",
+    let regexes = [
+        &*QUERY_VARIABLE_BRACED_REGEX,
+        &*QUERY_VARIABLE_PLAIN_REGEX,
+        &*QUERY_VARIABLE_DOUBLE_BRACKET_REGEX,
     ];
     let mut values = Vec::new();
-    for pattern in patterns {
-        let regex = Regex::new(pattern).expect("invalid hard-coded variable regex");
+    for regex in regexes {
         for capture in regex.captures_iter(query_text) {
             let Some(value) = capture.get(1).map(|item| item.as_str().trim()) else {
                 continue;
@@ -143,12 +161,8 @@ fn target_is_disabled(target: &Map<String, Value>) -> bool {
 }
 
 fn extract_template_variable_names_from_text(text: &str) -> Vec<String> {
-    let regex = Regex::new(
-        r#"(?m)(?:^|[^A-Za-z0-9_])\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))"#,
-    )
-    .expect("invalid hard-coded dashboard template variable regex");
     let mut values = Vec::new();
-    for captures in regex.captures_iter(text) {
+    for captures in TEMPLATE_VARIABLE_NAME_REGEX.captures_iter(text) {
         let value = captures
             .get(1)
             .or_else(|| captures.get(2))

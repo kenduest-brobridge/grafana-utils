@@ -46,6 +46,14 @@ pub enum GrafanaCliError {
 /// Repository-wide result alias using [`GrafanaCliError`].
 pub type Result<T> = std::result::Result<T, GrafanaCliError>;
 
+/// Canonical grafana-util version embedded in emitted JSON documents.
+pub const TOOL_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Return the current grafana-util version for staged/export/status metadata.
+pub fn tool_version() -> &'static str {
+    TOOL_VERSION
+}
+
 /// Build a plain user-facing CLI error message.
 pub fn message(text: impl Into<String>) -> GrafanaCliError {
     GrafanaCliError::Message(text.into())

@@ -17,6 +17,14 @@ use super::inspect_output::{
 use super::inspect_query_report::build_export_inspection_query_report;
 use super::{build_export_inspection_summary, write_inspect_output};
 
+#[cfg(feature = "tui")]
+fn emit_interactive_inspect_progress(step: &str, import_dir: &Path) {
+    eprintln!(
+        "[inspect-export --interactive] {step}: {}",
+        import_dir.display()
+    );
+}
+
 fn map_output_format_to_report(
     output_format: InspectOutputFormat,
 ) -> Option<InspectExportReportFormat> {
@@ -157,9 +165,13 @@ fn analyze_export_dir_at_path(args: &InspectExportArgs, import_dir: &Path) -> Re
 
 #[cfg(feature = "tui")]
 fn run_interactive_export_workbench(import_dir: &Path) -> Result<usize> {
+    emit_interactive_inspect_progress("building summary", import_dir);
     let summary = build_export_inspection_summary(import_dir)?;
+    emit_interactive_inspect_progress("building query report", import_dir);
     let report = build_export_inspection_query_report(import_dir)?;
+    emit_interactive_inspect_progress("building governance review", import_dir);
     let governance = build_export_inspection_governance_document(&summary, &report);
+    emit_interactive_inspect_progress("launching inspect workbench", import_dir);
     let document =
         build_inspect_workbench_document("export artifacts", &summary, &governance, &report);
     run_inspect_workbench(document)?;

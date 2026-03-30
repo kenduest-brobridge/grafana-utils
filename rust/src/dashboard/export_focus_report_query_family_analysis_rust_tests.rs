@@ -356,6 +356,53 @@ fn dispatch_query_analysis_extracts_obvious_tracing_field_hints() {
 }
 
 #[test]
+fn dispatch_query_analysis_extracts_loki_pipeline_field_hints() {
+    let panel_value = json!({
+        "datasource": {
+            "type": "loki"
+        }
+    });
+    let target_value = json!({});
+    let panel = panel_value.as_object().unwrap();
+    let target = target_value.as_object().unwrap();
+    let context = test_support::QueryExtractionContext {
+        panel,
+        target,
+        query_field: "expr",
+        query_text: "sum by (level) (count_over_time({job=\"grafana\"} |= \"timeout\" | json status >= 500 | logfmt level = \"error\" | unwrap duration_ms [5m]))",
+        resolved_datasource_type: "loki",
+    };
+
+    assert_eq!(
+        test_support::resolve_query_analyzer_family(&context),
+        test_support::DATASOURCE_FAMILY_LOKI
+    );
+    assert_eq!(
+        test_support::dispatch_query_analysis(&context),
+        QueryAnalysis {
+            metrics: Vec::new(),
+            functions: vec![
+                "sum".to_string(),
+                "count_over_time".to_string(),
+                "json".to_string(),
+                "logfmt".to_string(),
+                "unwrap".to_string(),
+                "line_filter_contains".to_string(),
+                "line_filter_contains:timeout".to_string(),
+            ],
+            measurements: vec![
+                "{job=\"grafana\"}".to_string(),
+                "job=\"grafana\"".to_string(),
+                "status".to_string(),
+                "level".to_string(),
+                "duration_ms".to_string(),
+            ],
+            buckets: vec!["5m".to_string()],
+        }
+    );
+}
+
+#[test]
 fn dispatch_query_analysis_keeps_tracing_family_conservative_for_plain_text() {
     let panel_value = json!({
         "datasource": {

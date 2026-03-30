@@ -42,6 +42,7 @@ This document is for maintainers. Keep `README.md` and the user guides operator-
 - `scripts/set-version.sh`: shared version bump helper for `VERSION`, `pyproject.toml`, `rust/Cargo.toml`, and `rust/Cargo.lock`.
 - `docs/overview-rust.md`: Rust architecture walkthrough.
 - `docs/overview-python.md`: Python maintainer architecture walkthrough.
+- `docs/internal/overview-architecture.md`: maintainer map for the staged `grafana-util overview` design, data flow, and extension rules.
 - `docs/core-python-call-hierarchy.md`: Python call graph reference for maintainers.
 - `docs/unit-test-inventory.md`: test inventory reference for maintainers.
 - `docs/internal/examples/`: maintainer-only demo scripts for intentionally unwired Python API flows.

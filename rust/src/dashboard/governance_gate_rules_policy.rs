@@ -90,6 +90,7 @@ pub(crate) fn parse_query_threshold_policy(policy: &Value) -> Result<QueryThresh
             .into_iter()
             .collect(),
         forbid_unknown: value_to_bool(datasources.get("forbidUnknown"), false)?,
+        forbid_high_blast_radius: value_to_bool(datasources.get("forbidHighBlastRadius"), false)?,
         forbid_mixed_families: value_to_bool(datasources.get("forbidMixedFamilies"), false)?,
         forbid_select_star: value_to_bool(queries.get("forbidSelectStar"), false)?,
         require_sql_time_filter: value_to_bool(queries.get("requireSqlTimeFilter"), false)?,
@@ -134,6 +135,7 @@ pub(crate) fn build_checked_rules(policy: &QueryThresholdPolicy) -> Value {
         "datasourceAllowedUids": policy.allowed_uids,
         "allowedFolderPrefixes": policy.allowed_folder_prefixes,
         "forbidUnknown": policy.forbid_unknown,
+        "forbidHighBlastRadius": policy.forbid_high_blast_radius,
         "forbidMixedFamilies": policy.forbid_mixed_families,
         "forbidSelectStar": policy.forbid_select_star,
         "requireSqlTimeFilter": policy.require_sql_time_filter,

@@ -17,6 +17,14 @@ use crate::dashboard_reference_models::{
 use serde_json::{json, Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
+const HIGH_BLAST_RADIUS_DASHBOARD_THRESHOLD: usize = 3;
+const HIGH_BLAST_RADIUS_FOLDER_THRESHOLD: usize = 2;
+
+fn has_high_blast_radius(dashboard_count: usize, folder_count: usize) -> bool {
+    dashboard_count >= HIGH_BLAST_RADIUS_DASHBOARD_THRESHOLD
+        || (dashboard_count >= 2 && folder_count >= HIGH_BLAST_RADIUS_FOLDER_THRESHOLD)
+}
+
 /// Struct definition for DependencyUsageSummary.
 #[derive(Debug, Clone)]
 pub struct DependencyUsageSummary {
@@ -29,6 +37,11 @@ pub struct DependencyUsageSummary {
     pub panel_count: usize,
     pub reference_count: usize,
     pub query_fields: Vec<String>,
+    pub folder_count: usize,
+    pub high_blast_radius: bool,
+    pub cross_folder: bool,
+    pub folder_paths: Vec<String>,
+    pub dashboard_titles: Vec<String>,
 }
 
 impl DependencyUsageSummary {
@@ -48,6 +61,11 @@ impl DependencyUsageSummary {
             "panelCount": self.panel_count,
             "referenceCount": self.reference_count,
             "queryFields": self.query_fields,
+            "folderCount": self.folder_count,
+            "highBlastRadius": self.high_blast_radius,
+            "crossFolder": self.cross_folder,
+            "folderPaths": self.folder_paths,
+            "dashboardTitles": self.dashboard_titles,
         })
     }
 }
@@ -265,6 +283,7 @@ fn build_dependency_query_input_from_report_row(
     let reference = DashboardQueryReference {
         dashboard_uid: row.dashboard_uid.clone(),
         dashboard_title: row.dashboard_title.clone(),
+        folder_path: row.folder_path.clone(),
         panel_id: row.panel_id.clone(),
         panel_title: row.panel_title.clone(),
         panel_type: row.panel_type.clone(),
@@ -301,8 +320,16 @@ fn build_offline_dependency_contract_document_from_query_inputs(
     let mut queries = Vec::new();
     let mut query_features = BTreeMap::new();
     let mut dashboard_dependencies = BTreeMap::<String, DashboardDependencyAccumulator>::new();
-    let mut usage =
-        BTreeMap::<String, (DependencyUsageSummary, BTreeSet<String>, BTreeSet<String>)>::new();
+    let mut usage = BTreeMap::<
+        String,
+        (
+            DependencyUsageSummary,
+            BTreeSet<String>,
+            BTreeSet<String>,
+            BTreeSet<String>,
+            BTreeSet<String>,
+        ),
+    >::new();
     let mut query_fields = BTreeMap::<String, BTreeSet<String>>::new();
     let mut dashboard_uids = BTreeSet::new();
     let mut panel_keys = BTreeSet::new();
@@ -379,7 +406,14 @@ fn build_offline_dependency_contract_document_from_query_inputs(
                 panel_count: 0,
                 reference_count: 0,
                 query_fields: Vec::new(),
+                folder_count: 0,
+                high_blast_radius: false,
+                cross_folder: false,
+                folder_paths: Vec::new(),
+                dashboard_titles: Vec::new(),
             },
+            BTreeSet::new(),
+            BTreeSet::new(),
             BTreeSet::new(),
             BTreeSet::new(),
         ));
@@ -401,8 +435,22 @@ fn build_offline_dependency_contract_document_from_query_inputs(
             "{}:{}",
             reference.dashboard_uid, reference.panel_id
         ));
+        if !reference.folder_path.trim().is_empty() {
+            summary_entry.3.insert(reference.folder_path.clone());
+        }
+        if !reference.dashboard_title.trim().is_empty() {
+            summary_entry.4.insert(reference.dashboard_title.clone());
+        }
         summary_entry.0.dashboard_count = summary_entry.1.len();
         summary_entry.0.panel_count = summary_entry.2.len();
+        summary_entry.0.folder_count = summary_entry.3.len();
+        summary_entry.0.high_blast_radius = has_high_blast_radius(
+            summary_entry.0.dashboard_count,
+            summary_entry.0.folder_count,
+        );
+        summary_entry.0.cross_folder = summary_entry.3.len() > 1;
+        summary_entry.0.folder_paths = summary_entry.3.iter().cloned().collect();
+        summary_entry.0.dashboard_titles = summary_entry.4.iter().cloned().collect();
         queries.push(reference);
     }
 
@@ -457,7 +505,7 @@ fn build_offline_dependency_contract_document_from_query_inputs(
 
     let mut usage_rows = usage
         .into_values()
-        .map(|(summary, _, _)| summary)
+        .map(|(summary, _, _, _, _)| summary)
         .collect::<Vec<_>>();
     usage_rows.sort_by(|left, right| {
         left.datasource_identity
@@ -549,6 +597,7 @@ mod tests {
                 json!({
                     "dashboardUid": "dash-a",
                     "dashboardTitle": "Dash A",
+                    "folderPath": "General",
                     "panelId": "1",
                     "panelTitle": "Panel One",
                     "panelType": "timeseries",
@@ -563,6 +612,7 @@ mod tests {
                 json!({
                     "dashboardUid": "dash-a",
                     "dashboardTitle": "Dash A",
+                    "folderPath": "General",
                     "panelId": "1",
                     "panelTitle": "Panel One",
                     "panelType": "timeseries",
@@ -577,6 +627,7 @@ mod tests {
                 json!({
                     "dashboardUid": "dash-b",
                     "dashboardTitle": "Dash B",
+                    "folderPath": "Operations",
                     "panelId": "2",
                     "panelTitle": "Panel Two",
                     "panelType": "timeseries",
@@ -612,6 +663,20 @@ mod tests {
         assert_eq!(document["datasourceUsage"][0]["queryCount"], json!(3));
         assert_eq!(document["datasourceUsage"][0]["dashboardCount"], json!(2));
         assert_eq!(document["datasourceUsage"][0]["panelCount"], json!(2));
+        assert_eq!(document["datasourceUsage"][0]["folderCount"], json!(2));
+        assert_eq!(
+            document["datasourceUsage"][0]["highBlastRadius"],
+            json!(true)
+        );
+        assert_eq!(document["datasourceUsage"][0]["crossFolder"], json!(true));
+        assert_eq!(
+            document["datasourceUsage"][0]["folderPaths"],
+            json!(["General", "Operations"])
+        );
+        assert_eq!(
+            document["datasourceUsage"][0]["dashboardTitles"],
+            json!(["Dash A", "Dash B"])
+        );
         assert_eq!(
             document["datasourceUsage"][0]["queryFields"],
             json!(["expr"])
@@ -760,6 +825,7 @@ mod tests {
             &[json!({
                 "dashboardUid": "dash-a",
                 "dashboardTitle": "Dash A",
+                "folderPath": "General",
                 "panelId": "7",
                 "panelTitle": "Panel",
                 "panelType": "timeseries",
@@ -815,6 +881,20 @@ mod tests {
         assert_eq!(
             document["datasourceUsage"][0]["queryFields"],
             json!(["expr"])
+        );
+        assert_eq!(document["datasourceUsage"][0]["folderCount"], json!(1));
+        assert_eq!(
+            document["datasourceUsage"][0]["highBlastRadius"],
+            json!(false)
+        );
+        assert_eq!(document["datasourceUsage"][0]["crossFolder"], json!(false));
+        assert_eq!(
+            document["datasourceUsage"][0]["folderPaths"],
+            json!(["General"])
+        );
+        assert_eq!(
+            document["datasourceUsage"][0]["dashboardTitles"],
+            json!(["Dash A"])
         );
         assert_eq!(
             document["orphanedDatasources"][0]["uid"],

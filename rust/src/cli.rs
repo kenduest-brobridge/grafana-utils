@@ -3,7 +3,7 @@
 //! Purpose:
 //! - Own only command topology and domain dispatch.
 //! - Keep `grafana-util` command surface in one place.
-//! - Route to domain runners (`dashboard`, `alert`, `access`, `datasource`) without
+//! - Route to domain runners (`dashboard`, `alert`, `access`, `datasource`, `overview`, `project-status`) without
 //!   carrying transport/request behavior.
 //!
 //! Flow:
@@ -23,7 +23,8 @@ use crate::alert::{
 };
 use crate::cli_help_examples::{
     colorize_help_examples, inject_help_full_hint, ACCESS_HELP_FULL_TEXT, ALERT_HELP_FULL_TEXT,
-    DATASOURCE_HELP_FULL_TEXT, SYNC_HELP_FULL_TEXT, UNIFIED_HELP_FULL_TEXT, UNIFIED_HELP_TEXT,
+    DATASOURCE_HELP_FULL_TEXT, OVERVIEW_HELP_FULL_TEXT, PROJECT_STATUS_HELP_FULL_TEXT,
+    SYNC_HELP_FULL_TEXT, UNIFIED_HELP_FULL_TEXT, UNIFIED_HELP_TEXT,
 };
 use crate::common::Result;
 use crate::dashboard::{
@@ -32,6 +33,8 @@ use crate::dashboard::{
     InspectVarsArgs, ListArgs, ScreenshotArgs, TopologyArgs,
 };
 use crate::datasource::{run_datasource_cli, DatasourceCliArgs, DatasourceGroupCommand};
+use crate::overview::{run_overview_cli, OverviewCliArgs};
+use crate::project_status_command::{run_project_status_cli, ProjectStatusCliArgs};
 use crate::sync::{run_sync_cli, SyncCliArgs, SyncGroupCommand};
 
 fn render_long_help_with_color_choice(command: &mut clap::Command, colorize: bool) -> String {
@@ -56,14 +59,16 @@ fn render_long_help_with_color_choice(command: &mut clap::Command, colorize: boo
 pub fn render_unified_help_text(colorize: bool) -> String {
     let mut command = CliArgs::command();
     let help = inject_help_full_hint(render_long_help_with_color_choice(&mut command, colorize));
-    if colorize {
+    let mut help = if colorize {
         help.replace(
             UNIFIED_HELP_TEXT,
             &colorize_help_examples(UNIFIED_HELP_TEXT),
         )
     } else {
         help
-    }
+    };
+    help.push_str(OVERVIEW_HELP_SHAPE_NOTE);
+    help
 }
 
 fn render_domain_help_text(mut command: clap::Command, colorize: bool) -> String {
@@ -81,6 +86,25 @@ fn render_domain_help_full_text(
     } else {
         help.push_str(extended_examples);
     }
+    help
+}
+
+const OVERVIEW_HELP_SHAPE_NOTE: &str =
+    "\nStaged overview is the default. Use `grafana-util overview live` for live Grafana reads.\n";
+
+fn render_overview_help_text(colorize: bool) -> String {
+    let mut help = render_domain_help_text(OverviewCliArgs::command(), colorize);
+    help.push_str(OVERVIEW_HELP_SHAPE_NOTE);
+    help
+}
+
+fn render_overview_help_full_text(colorize: bool) -> String {
+    let mut help = render_domain_help_full_text(
+        OverviewCliArgs::command(),
+        OVERVIEW_HELP_FULL_TEXT,
+        colorize,
+    );
+    help.push_str(OVERVIEW_HELP_SHAPE_NOTE);
     help
 }
 
@@ -127,6 +151,17 @@ where
         [_binary, command, flag] if command == "access" && (flag == "--help" || flag == "-h") => {
             Some(render_domain_help_text(access_root_command(), colorize))
         }
+        [_binary, command, flag] if command == "overview" && (flag == "--help" || flag == "-h") => {
+            Some(render_overview_help_text(colorize))
+        }
+        [_binary, command, flag]
+            if command == "project-status" && (flag == "--help" || flag == "-h") =>
+        {
+            Some(render_domain_help_text(
+                ProjectStatusCliArgs::command(),
+                colorize,
+            ))
+        }
         [_binary, command, flag] if command == "sync" && (flag == "--help" || flag == "-h") => {
             Some(render_domain_help_text(SyncCliArgs::command(), colorize))
         }
@@ -143,6 +178,16 @@ where
         [_binary, command, flag] if command == "access" && flag == "--help-full" => Some(
             render_domain_help_full_text(access_root_command(), ACCESS_HELP_FULL_TEXT, colorize),
         ),
+        [_binary, command, flag] if command == "overview" && flag == "--help-full" => {
+            Some(render_overview_help_full_text(colorize))
+        }
+        [_binary, command, flag] if command == "project-status" && flag == "--help-full" => {
+            Some(render_domain_help_full_text(
+                ProjectStatusCliArgs::command(),
+                PROJECT_STATUS_HELP_FULL_TEXT,
+                colorize,
+            ))
+        }
         [_binary, command, flag] if command == "sync" && flag == "--help-full" => Some(
             render_domain_help_full_text(SyncCliArgs::command(), SYNC_HELP_FULL_TEXT, colorize),
         ),
@@ -214,6 +259,14 @@ pub enum UnifiedCommand {
     Alert(AlertNamespaceArgs),
     #[command(about = "List and manage Grafana users, teams, and service accounts.")]
     Access(AccessCliArgs),
+    #[command(
+        about = "Summarize project artifacts into a project-wide overview. Staged exports are the default; use `overview live` for live Grafana reads."
+    )]
+    Overview(OverviewCliArgs),
+    #[command(
+        about = "Render shared project-wide staged or live status. Staged subcommands use exported artifacts; live subcommands query Grafana."
+    )]
+    ProjectStatus(ProjectStatusCliArgs),
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -274,18 +327,20 @@ fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
 }
 
 // Centralized command fan-out before invoking domain runners.
-// Every unified CLI variant is normalized into one of dashboard/alert/datasource/access runners here.
+// Every unified CLI variant is normalized into one of dashboard/alert/datasource/access/overview/project-status runners here.
 /// Dispatch the normalized root command into exactly one domain handler.
 ///
 /// Handlers are injected as callables so tests can assert routing without
 /// triggering network-heavy domain execution.
-fn dispatch_with_handlers<FD, FS, FY, FA, FX>(
+fn dispatch_with_handlers<FD, FS, FY, FA, FX, FO, FP>(
     args: CliArgs,
     mut run_dashboard: FD,
     mut run_datasource: FS,
     mut run_sync: FY,
     mut run_alert: FA,
     mut run_access: FX,
+    mut run_overview: FO,
+    mut run_project_status: FP,
 ) -> Result<()>
 where
     FD: FnMut(DashboardCliArgs) -> Result<()>,
@@ -293,6 +348,8 @@ where
     FY: FnMut(SyncGroupCommand) -> Result<()>,
     FA: FnMut(AlertCliArgs) -> Result<()>,
     FX: FnMut(AccessCliArgs) -> Result<()>,
+    FO: FnMut(OverviewCliArgs) -> Result<()>,
+    FP: FnMut(ProjectStatusCliArgs) -> Result<()>,
 {
     match args.command {
         UnifiedCommand::Dashboard { command } => run_dashboard(wrap_dashboard_group(command)),
@@ -300,6 +357,8 @@ where
         UnifiedCommand::Sync { command } => run_sync(command),
         UnifiedCommand::Alert(inner) => run_alert(normalize_alert_namespace_args(inner)),
         UnifiedCommand::Access(inner) => run_access(inner),
+        UnifiedCommand::Overview(inner) => run_overview(inner),
+        UnifiedCommand::ProjectStatus(inner) => run_project_status(inner),
     }
 }
 
@@ -316,6 +375,8 @@ pub fn run_cli(args: CliArgs) -> Result<()> {
         run_sync_cli,
         run_alert_cli,
         run_access_cli,
+        run_overview_cli,
+        run_project_status_cli,
     )
 }
 

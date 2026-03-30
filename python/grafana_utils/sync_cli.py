@@ -93,7 +93,12 @@ ASSESS_ALERTS_HELP_EXAMPLES = (
 BUNDLE_PREFLIGHT_HELP_EXAMPLES = (
     "Examples:\n\n"
     "  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n"
-    "  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --availability-file ./availability.json --output json"
+    "  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --availability-file ./availability.json --output json\n\n"
+    "  Example availability file:\n"
+    "    {\n"
+    '      "providerNames": ["vault"],\n'
+    '      "secretPlaceholderNames": ["prom-basic-auth"]\n'
+    "    }"
 )
 BUNDLE_HELP_EXAMPLES = (
     "Examples:\n\n"

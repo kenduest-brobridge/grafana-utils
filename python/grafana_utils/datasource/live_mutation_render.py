@@ -10,6 +10,7 @@ ADD_DELETE_DRY_RUN_COLUMN_HEADERS = {
     "match": "MATCH",
     "action": "ACTION",
     "targetId": "TARGET_ID",
+    "secretSummary": "SECRET",
 }
 
 
@@ -45,6 +46,12 @@ def build_live_mutation_dry_run_record(operation, plan, spec=None, uid=None, nam
 
     spec = dict(spec or {})
     target = plan.get("target") or {}
+    secure_json_data = spec.get("secureJsonData")
+    secret_fields = []
+    if isinstance(secure_json_data, dict):
+        secret_fields = sorted(
+            str(field).strip() for field in secure_json_data if str(field).strip()
+        )
     return {
         "operation": str(operation or "").strip(),
         "uid": str(spec.get("uid") or uid or target.get("uid") or ""),
@@ -53,6 +60,8 @@ def build_live_mutation_dry_run_record(operation, plan, spec=None, uid=None, nam
         "match": str(plan.get("match") or ""),
         "action": str(plan.get("action") or ""),
         "targetId": str(target.get("id") or ""),
+        "secretFields": secret_fields,
+        "secretSummary": "fields=%s" % ", ".join(secret_fields) if secret_fields else "",
     }
 
 
@@ -63,7 +72,17 @@ def render_live_mutation_dry_run_table(records, include_header=True, columns=Non
     #   Downstream callees: 16
 
     selected_columns = list(
-        columns or ["operation", "uid", "name", "type", "match", "action", "targetId"]
+        columns
+        or [
+            "operation",
+            "uid",
+            "name",
+            "type",
+            "match",
+            "action",
+            "targetId",
+            "secretSummary",
+        ]
     )
     lines = _render_rows(records, selected_columns)
     if include_header:

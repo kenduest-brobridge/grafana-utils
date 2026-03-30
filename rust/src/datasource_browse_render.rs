@@ -27,13 +27,7 @@ pub(crate) fn render_datasource_browser_frame(
         .constraints([Constraint::Percentage(44), Constraint::Percentage(56)])
         .split(outer[1]);
 
-    let header = tui_shell::build_header(
-        "Datasource Browser",
-        summary_lines(state)
-            .into_iter()
-            .map(Line::from)
-            .collect::<Vec<_>>(),
-    );
+    let header = tui_shell::build_header("Datasource Browser", summary_lines(state));
     frame.render_widget(header, outer[0]);
 
     let list = List::new(build_list_items(&state.document.items))
@@ -86,37 +80,58 @@ pub(crate) fn render_datasource_browser_frame(
     }
 }
 
-fn summary_lines(state: &BrowserState) -> Vec<String> {
+fn summary_lines(state: &BrowserState) -> Vec<Line<'static>> {
     let document = &state.document;
     vec![
         if document.org_count > 1 {
-            format!(
-                "Scope {}  orgs={}  datasources={}",
-                blank_dash(&document.scope_label),
-                document.org_count,
-                document.datasource_count
-            )
+            tui_shell::summary_line(&[
+                tui_shell::summary_cell(
+                    "Scope",
+                    blank_dash(&document.scope_label),
+                    Color::LightBlue,
+                ),
+                tui_shell::summary_cell("Orgs", document.org_count.to_string(), Color::White),
+                tui_shell::summary_cell(
+                    "Datasources",
+                    document.datasource_count.to_string(),
+                    Color::White,
+                ),
+            ])
         } else {
-            format!(
-                "Org {} (id={})  datasources={}",
-                blank_dash(&document.org),
-                blank_dash(&document.org_id),
-                document.datasource_count
-            )
+            tui_shell::summary_line(&[
+                tui_shell::summary_cell("Org", blank_dash(&document.org), Color::LightBlue),
+                tui_shell::summary_cell("Id", blank_dash(&document.org_id), Color::White),
+                tui_shell::summary_cell(
+                    "Datasources",
+                    document.datasource_count.to_string(),
+                    Color::White,
+                ),
+            ])
         },
-        format!(
-            "Mode={}   active-pane={}",
-            if state.pending_delete.is_some() {
-                "confirm-delete"
-            } else if state.pending_edit.is_some() {
-                "edit"
-            } else if state.pending_search.is_some() {
-                "search"
-            } else {
-                "browse"
-            },
-            state.focus_label()
-        ),
+        Line::from(vec![
+            tui_shell::label("Mode "),
+            tui_shell::accent(
+                if state.pending_delete.is_some() {
+                    "confirm-delete"
+                } else if state.pending_edit.is_some() {
+                    "edit"
+                } else if state.pending_search.is_some() {
+                    "search"
+                } else {
+                    "browse"
+                },
+                if state.pending_delete.is_some() {
+                    Color::LightRed
+                } else if state.pending_edit.is_some() || state.pending_search.is_some() {
+                    Color::Yellow
+                } else {
+                    Color::Green
+                },
+            ),
+            Span::raw("  "),
+            tui_shell::label("Focus "),
+            tui_shell::key_chip(state.focus_label(), Color::Blue),
+        ]),
     ]
 }
 
@@ -610,10 +625,15 @@ mod tests {
     #[test]
     fn summary_lines_surface_focus_and_mode() {
         let state = BrowserState::new(empty_document());
-        let lines = summary_lines(&state);
+        let lines = summary_lines(&state)
+            .into_iter()
+            .map(|line| line.to_string())
+            .collect::<Vec<_>>();
         assert_eq!(lines.len(), 2);
-        assert!(lines[1].contains("Mode=browse"));
-        assert!(lines[1].contains("active-pane=list"));
+        assert!(lines[1].contains("Mode"));
+        assert!(lines[1].contains("browse"));
+        assert!(lines[1].contains("Focus"));
+        assert!(lines[1].contains("list"));
         assert!(!lines.iter().any(|line| line.contains("default datasource")));
     }
 
@@ -625,10 +645,15 @@ mod tests {
             name: "Prom".to_string(),
             id: 7,
         });
-        let lines = summary_lines(&state);
+        let lines = summary_lines(&state)
+            .into_iter()
+            .map(|line| line.to_string())
+            .collect::<Vec<_>>();
         assert_eq!(lines.len(), 2);
-        assert!(lines[1].contains("Mode=confirm-delete"));
-        assert!(lines[1].contains("active-pane=list"));
+        assert!(lines[1].contains("Mode"));
+        assert!(lines[1].contains("confirm-delete"));
+        assert!(lines[1].contains("Focus"));
+        assert!(lines[1].contains("list"));
     }
 
     #[test]

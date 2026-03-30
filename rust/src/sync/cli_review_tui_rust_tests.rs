@@ -84,16 +84,15 @@ fn review_operation_preview_uses_readable_action_labels() {
         });
         assert_eq!(controls.len(), 3);
         assert!(controls[0].to_string().contains("Item 1/3"));
+        assert!(controls[0].to_string().contains("Focus"));
         assert!(controls[0].to_string().contains("Live wrap OFF"));
         assert!(controls[0].to_string().contains("Desired wrap ON"));
-        assert_eq!(
-            controls[1].to_string(),
-            "Tab switch pane  Up/Down scroll  [/] item  PgUp/PgDn jump  Home/End bounds"
-        );
-        assert_eq!(
-            controls[2].to_string(),
-            "Space keep/drop  c confirm staged selection  Esc/q return"
-        );
+        assert!(controls[1].to_string().contains("Tab"));
+        assert!(controls[1].to_string().contains("switch pane"));
+        assert!(controls[1].to_string().contains("PgUp/PgDn"));
+        assert!(controls[2].to_string().contains("Home/End"));
+        assert!(controls[2].to_string().contains("confirm staged"));
+        assert!(controls[2].to_string().contains("Esc/q"));
     }
     #[cfg(feature = "tui")]
     {

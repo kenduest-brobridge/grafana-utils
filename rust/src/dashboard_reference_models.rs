@@ -147,6 +147,8 @@ pub struct PanelReference {
 pub struct DashboardQueryReference {
     pub dashboard_uid: String,
     pub dashboard_title: String,
+    #[serde(default)]
+    pub folder_path: String,
     pub panel_id: String,
     #[serde(default)]
     pub panel_title: String,
@@ -261,6 +263,7 @@ pub fn build_query_reference_payload(row: &Value) -> Option<DashboardQueryRefere
         return None;
     }
     let dashboard_title = normalize_text(object.get("dashboardTitle"));
+    let folder_path = normalize_text(object.get("folderPath"));
     let panel_id = normalize_text(object.get("panelId"));
     let panel_title = normalize_text(object.get("panelTitle"));
     let panel_type = normalize_text(object.get("panelType"));
@@ -276,6 +279,7 @@ pub fn build_query_reference_payload(row: &Value) -> Option<DashboardQueryRefere
         } else {
             dashboard_title
         },
+        folder_path,
         panel_id: if panel_id.is_empty() {
             "unknown".to_string()
         } else {

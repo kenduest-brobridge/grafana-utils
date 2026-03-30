@@ -212,6 +212,53 @@ fn build_export_inspection_query_report_extracts_negative_loki_line_filters() {
 }
 
 #[test]
+fn build_export_inspection_query_report_extracts_loki_pipeline_field_hints() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    write_basic_raw_export(
+        &raw_dir,
+        "1",
+        "Main Org.",
+        "loki-main",
+        "Logs Main",
+        "loki-main",
+        "loki",
+        "logs",
+        "folder-1",
+        "Logs",
+        "expr",
+        "sum by (level) (count_over_time({job=\"grafana\"} |= \"timeout\" | json status >= 500 | logfmt level = \"error\" | unwrap duration_ms [5m]))",
+    );
+
+    let report = test_support::build_export_inspection_query_report(&raw_dir).unwrap();
+
+    assert_eq!(report.queries.len(), 1);
+    assert_eq!(
+        report.queries[0].functions,
+        vec![
+            "sum".to_string(),
+            "count_over_time".to_string(),
+            "json".to_string(),
+            "logfmt".to_string(),
+            "unwrap".to_string(),
+            "line_filter_contains".to_string(),
+            "line_filter_contains:timeout".to_string(),
+        ]
+    );
+    assert_eq!(
+        report.queries[0].measurements,
+        vec![
+            "{job=\"grafana\"}".to_string(),
+            "job=\"grafana\"".to_string(),
+            "status".to_string(),
+            "level".to_string(),
+            "duration_ms".to_string(),
+        ]
+    );
+    assert_eq!(report.queries[0].buckets, vec!["5m".to_string()]);
+}
+
+#[test]
 fn build_export_inspection_query_report_ignores_loki_regex_character_classes_when_extracting_buckets(
 ) {
     let temp = tempdir().unwrap();

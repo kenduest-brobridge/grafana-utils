@@ -8,6 +8,8 @@ pub(crate) struct GovernanceRiskSpec {
 }
 
 pub(crate) const GOVERNANCE_RISK_KIND_MIXED_DASHBOARD: &str = "mixed-datasource-dashboard";
+pub(crate) const GOVERNANCE_RISK_KIND_DATASOURCE_HIGH_BLAST_RADIUS: &str =
+    "datasource-high-blast-radius";
 pub(crate) const GOVERNANCE_RISK_KIND_ORPHANED_DATASOURCE: &str = "orphaned-datasource";
 pub(crate) const GOVERNANCE_RISK_KIND_UNKNOWN_DATASOURCE_FAMILY: &str = "unknown-datasource-family";
 pub(crate) const GOVERNANCE_RISK_KIND_EMPTY_QUERY_ANALYSIS: &str = "empty-query-analysis";
@@ -31,7 +33,7 @@ const GOVERNANCE_RISK_DEFAULT_SPEC: GovernanceRiskSpec = GovernanceRiskSpec {
         "Review this governance finding and assign a follow-up owner if action is needed.",
 };
 
-const GOVERNANCE_RISK_SPECS: [(&str, GovernanceRiskSpec); 13] = [
+const GOVERNANCE_RISK_SPECS: [(&str, GovernanceRiskSpec); 14] = [
     (
         GOVERNANCE_RISK_KIND_MIXED_DASHBOARD,
         GovernanceRiskSpec {
@@ -39,6 +41,15 @@ const GOVERNANCE_RISK_SPECS: [(&str, GovernanceRiskSpec); 13] = [
             severity: "medium",
             recommendation:
                 "Split panel queries by datasource or document why mixed datasource composition is required.",
+        },
+    ),
+    (
+        GOVERNANCE_RISK_KIND_DATASOURCE_HIGH_BLAST_RADIUS,
+        GovernanceRiskSpec {
+            category: "dependency-concentration",
+            severity: "medium",
+            recommendation:
+                "Reduce dashboard fanout on this datasource, split usage by environment or tenant, or document why the shared datasource is allowed to carry a broad blast radius.",
         },
     ),
     (

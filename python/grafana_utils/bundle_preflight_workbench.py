@@ -298,7 +298,8 @@ def render_bundle_preflight_text(document):
         "Alert blocked: %s" % int(summary.get("alertBlockedCount") or 0),
         "Alert plan-only: %s" % int(summary.get("alertPlanOnlyCount") or 0),
         "Provider blocking: %s" % int(summary.get("providerBlockingCount") or 0),
-        "Secret blocking: %s" % int(summary.get("secretBlockingCount") or 0),
+        "Secret placeholders blocking: %s"
+        % int(summary.get("secretBlockingCount") or 0),
     ]
 
 

@@ -6,7 +6,7 @@
 //! - Reuse existing staged Rust contracts without wiring them into any CLI.
 
 use crate::alert_sync::assess_alert_sync_specs;
-use crate::common::{message, Result};
+use crate::common::{message, tool_version, Result};
 use crate::datasource_provider::{
     build_provider_plan, iter_provider_names, summarize_provider_plan,
 };
@@ -200,6 +200,7 @@ pub fn build_bundle_preflight_document(
     Ok(json!({
         "kind": BUNDLE_PREFLIGHT_KIND,
         "schemaVersion": BUNDLE_PREFLIGHT_SCHEMA_VERSION,
+        "toolVersion": tool_version(),
         "summary": {
             "syncBlockingCount": sync_preflight["summary"]["blockingCount"].as_i64().unwrap_or(0),
             "alertBlockedCount": alert_assessment["summary"]["blockedCount"].as_i64().unwrap_or(0),

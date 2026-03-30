@@ -10,6 +10,12 @@ use serde::{Deserialize, Serialize};
 pub(crate) struct ExportMetadata {
     #[serde(rename = "schemaVersion")]
     pub schema_version: i64,
+    #[serde(
+        rename = "toolVersion",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
+    pub tool_version: Option<String>,
     pub kind: String,
     pub variant: String,
     #[serde(rename = "dashboardCount")]
@@ -88,8 +94,10 @@ pub(crate) struct VariantIndexEntry {
     pub title: String,
     pub path: String,
     pub format: String,
+    #[serde(default)]
     pub org: String,
     #[serde(rename = "orgId")]
+    #[serde(default)]
     pub org_id: String,
 }
 
@@ -142,6 +150,12 @@ pub(crate) struct DatasourceInventoryItem {
 pub(crate) struct RootExportIndex {
     #[serde(rename = "schemaVersion")]
     pub schema_version: i64,
+    #[serde(
+        rename = "toolVersion",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
+    pub tool_version: Option<String>,
     pub kind: String,
     pub items: Vec<DashboardIndexItem>,
     pub variants: RootExportVariants,

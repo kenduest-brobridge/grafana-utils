@@ -92,18 +92,32 @@ For external command usage and operator examples, prefer `README.md`, `README.zh
 ## Agent Routing
 
 - Planner tasks should use `gpt-5.4`.
-- General worker tasks should use `gpt-5.4-mini` with `high` reasoning.
+- General worker tasks should default to `gpt-5.4-mini` when the implementation slice is clear, bounded, and local.
+- Use `gpt-5.4-mini` for clear, narrow, execution-heavy tasks where the main risk is implementation throughput, not reasoning depth.
+- Use `gpt-5.4` with `medium` reasoning for bounded tasks that still require meaningful judgment, such as non-trivial coding, targeted debugging, design refinement inside known architecture, or moderate cross-file coordination.
+- Use `gpt-5.4` with `high` reasoning for work that is open-ended, cross-cutting, assumption-heavy, or sensitive to edge cases, correctness, or operational risk.
+- Reserve ultra-high reasoning only for rare, high-impact decisions under heavy ambiguity, deep architectural coupling, or unusually high correctness pressure.
+- Do not force smaller models onto work where the main risk is choosing the wrong approach rather than writing the code itself.
 - Validation tasks should use `gpt-5.4` with `high` reasoning.
 - Bulk or repetitive tasks should prefer `gpt-5.4-mini`.
 
 ## Worker Delegation
 
 - Write a short mini-spec before delegating: goal, owned files, non-goals, acceptance criteria, and focused validation commands.
+- Delegate subagent work only after the spec is concrete enough that ownership, constraints, and success conditions are explicit.
 - Give workers only the minimum context needed for the assigned slice; do not pass full thread history by default.
+- Pass only the minimum context needed for correctness. Do not forward broad background material, large unrelated diffs, or the full conversation by default.
 - Keep architecture, schema/contract changes, risky runtime wiring, migrations, and cross-language parity decisions on the main agent unless a stronger worker is clearly justified.
+- Keep the main agent responsible for architecture, shared invariants, migrations, contract changes, and other high-risk integration points unless delegation is clearly safer or more efficient.
+- Choose worker model and reasoning level by ambiguity, coupling, verification burden, and failure cost, not by task label alone.
 - Prefer one worker per disjoint write scope. Avoid overlapping ownership unless the work is intentionally sequential.
+- Provide explicit ownership so each worker knows exactly which files, modules, or questions it owns.
+- Prefer smaller workers for bounded implementation slices when the spec is complete and the write scope is local.
 - Good worker slices in this repo are local module work, CLI/parser/help updates, renderer or TUI slices, focused tests, and repetitive repo tasks.
 - Poor worker slices in this repo are broad Rust/Python parity efforts, sync/apply semantics across resource kinds, and contract redesign without a settled main-agent plan.
+- Reuse an existing worker only when its current context is still relevant and the ownership boundary remains clear.
+- Close workers promptly when their task is complete, superseded, blocked beyond usefulness, or no longer needed. Do not leave idle workers running.
+- Review worker output before integrating it into the main line of work, especially for changes that affect shared contracts, runtime behavior, or long-term maintainability.
 - The main agent owns final architecture decisions, cross-slice integration, final validation, and commits.
 
 ## Commit & Pull Request Guidelines

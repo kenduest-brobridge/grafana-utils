@@ -4,6 +4,8 @@
 use crate::common::tui;
 #[cfg(any(feature = "tui", test))]
 use crate::common::Result;
+#[cfg(feature = "tui")]
+use crate::tui_shell;
 
 #[cfg(feature = "tui")]
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
@@ -163,7 +165,8 @@ pub(crate) fn run_interactive_browser(
                     }
                 })
                 .unwrap_or_else(|| vec!["No item selected".to_string()]);
-            let detail_selected = (detail_scroll as usize).min(detail_lines.len().saturating_sub(1));
+            let detail_selected =
+                (detail_scroll as usize).min(detail_lines.len().saturating_sub(1));
 
             let summary = Paragraph::new(summary_lines.join("\n"))
                 .wrap(Wrap { trim: false })
@@ -264,48 +267,52 @@ pub(crate) fn run_interactive_browser(
                     );
                 frame.render_stateful_widget(detail, panes[1], &mut detail_state);
             } else {
-                let detail = List::new(detail_items)
-                    .block(
-                        pane_block("Detail", false, Color::LightBlue, Color::Black)
-                            .title(detail_title),
-                    );
+                let detail = List::new(detail_items).block(
+                    pane_block("Detail", false, Color::LightBlue, Color::Black).title(detail_title),
+                );
                 frame.render_widget(detail, panes[1]);
             }
 
-            let footer = Paragraph::new(vec![
-                Line::from(vec![
-                    Span::styled(
-                        format!(
-                            "Selection {}/{}",
-                            state.selected().map(|index| index + 1).unwrap_or(0),
-                            visible_indexes.len()
+            frame.render_widget(
+                tui_shell::build_footer_controls(vec![
+                    Line::from(vec![
+                        tui_shell::label("Selection "),
+                        tui_shell::accent(
+                            format!(
+                                "{}/{}",
+                                state.selected().map(|index| index + 1).unwrap_or(0),
+                                visible_indexes.len()
+                            ),
+                            Color::White,
                         ),
-                        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-                    ),
-                    Span::raw("   "),
-                    Span::styled(
-                        format!("Filter {}", kind_filters[active_filter]),
-                        Style::default().fg(Color::Yellow),
-                    ),
-                    Span::raw("   "),
-                    Span::styled(
-                        format!(
-                            "Focus {}",
+                        Span::raw("  "),
+                        tui_shell::label("Filter "),
+                        tui_shell::accent(kind_filters[active_filter].to_string(), Color::Yellow),
+                        Span::raw("  "),
+                        tui_shell::label("Focus "),
+                        tui_shell::key_chip(
                             match pane_focus {
-                                BrowserPane::Items => "items",
-                                BrowserPane::Detail => "detail",
-                            }
+                                BrowserPane::Items => "Items",
+                                BrowserPane::Detail => "Detail",
+                            },
+                            Color::Blue,
                         ),
-                        Style::default().fg(Color::LightBlue),
-                    ),
+                    ]),
+                    tui_shell::control_line(&[
+                        ("Tab", Color::Blue, "next pane"),
+                        ("Shift+Tab", Color::Blue, "previous pane"),
+                        ("Up/Down", Color::Blue, "move"),
+                        ("PgUp/PgDn", Color::Blue, "scroll detail"),
+                    ]),
+                    tui_shell::control_line(&[
+                        ("f/F", Color::Yellow, "change filter"),
+                        ("Home/End", Color::Blue, "jump"),
+                        ("Enter", Color::Blue, "reset detail"),
+                        ("q/Esc", Color::Gray, "exit"),
+                    ]),
                 ]),
-                Line::from(
-                    "Tab next pane  Shift+Tab prev pane  Up/Down move in focused pane  PgUp/PgDn detail  f next filter  F prev filter".to_string(),
-                ),
-                Line::from("Home/End jump  Enter reset detail  q/Esc exit".to_string()),
-            ])
-            .block(Block::default().borders(Borders::ALL).title("Controls"));
-            frame.render_widget(footer, outer[2]);
+                outer[2],
+            );
         })?;
 
         if !event::poll(Duration::from_millis(250))? {

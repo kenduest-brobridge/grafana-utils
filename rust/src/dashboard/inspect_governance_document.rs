@@ -360,6 +360,10 @@ pub(crate) fn build_export_inspection_governance_document(
                 .iter()
                 .filter(|row| row.risk_count != 0)
                 .count(),
+            high_blast_radius_datasource_count: datasource_governance
+                .iter()
+                .filter(|row| row.high_blast_radius)
+                .count(),
             dashboard_risk_coverage_count: dashboard_governance
                 .iter()
                 .filter(|row| row.risk_count != 0)

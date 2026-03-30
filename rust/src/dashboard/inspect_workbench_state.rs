@@ -427,6 +427,7 @@ mod tests {
                 datasource_coverage_count: 1,
                 dashboard_datasource_edge_count: 1,
                 datasource_risk_coverage_count: 1,
+                high_blast_radius_datasource_count: 0,
                 dashboard_risk_coverage_count: 1,
                 mixed_datasource_dashboard_count: 0,
                 orphaned_datasource_count: 0,

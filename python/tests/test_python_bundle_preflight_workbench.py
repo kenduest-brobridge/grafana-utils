@@ -127,7 +127,19 @@ class BundlePreflightWorkbenchTests(unittest.TestCase):
         self.assertIn("Sync blocking:", output)
         self.assertIn("Alert plan-only: 1", output)
         self.assertIn("Provider blocking: 1", output)
-        self.assertIn("Secret blocking: 1", output)
+        self.assertIn("Secret placeholders blocking: 1", output)
+        self.assertEqual(
+            document["secretAssessment"]["plans"][0]["providerKind"],
+            "inline-placeholder-map",
+        )
+        self.assertEqual(
+            document["secretAssessment"]["plans"][0]["placeholderNames"],
+            ["prom-basic-auth"],
+        )
+        self.assertEqual(
+            document["secretAssessment"]["checks"][0]["placeholderName"],
+            "prom-basic-auth",
+        )
 
     def test_bundle_preflight_render_bundle_preflight_rejects_wrong_kind(self):
         with self.assertRaises(GrafanaError):

@@ -40,20 +40,37 @@ pub(super) fn render_frame(
     frame.render_widget(
         tui_shell::build_header(
             "User Browser",
-            vec![Line::from(format!(
-                "Scope {}  Mode={}  rows={}  active-pane={}  url={}",
-                user_scope_text(&args.scope),
-                match state.display_mode {
-                    DisplayMode::GlobalAccounts => "global-accounts",
-                    DisplayMode::OrgMemberships => "org-memberships",
-                },
-                state.rows.len(),
-                match state.focus {
-                    PaneFocus::List => "list",
-                    PaneFocus::Facts => "facts",
-                },
-                args.common.url
-            ))],
+            vec![
+                tui_shell::summary_line(&[
+                    tui_shell::summary_cell(
+                        "Scope",
+                        user_scope_text(&args.scope),
+                        Color::LightBlue,
+                    ),
+                    tui_shell::summary_cell(
+                        "Mode",
+                        match state.display_mode {
+                            DisplayMode::GlobalAccounts => "global-accounts",
+                            DisplayMode::OrgMemberships => "org-memberships",
+                        },
+                        Color::White,
+                    ),
+                    tui_shell::summary_cell("Rows", state.rows.len().to_string(), Color::White),
+                ]),
+                Line::from(vec![
+                    tui_shell::label("Focus "),
+                    tui_shell::key_chip(
+                        match state.focus {
+                            PaneFocus::List => "List",
+                            PaneFocus::Facts => "Facts",
+                        },
+                        Color::Blue,
+                    ),
+                    Span::raw("  "),
+                    tui_shell::label("URL "),
+                    tui_shell::accent(args.common.url.clone(), Color::White),
+                ]),
+            ],
         ),
         outer[0],
     );

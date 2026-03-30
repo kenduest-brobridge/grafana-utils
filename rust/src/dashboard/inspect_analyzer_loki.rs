@@ -53,9 +53,11 @@ fn extract_loki_label_matchers(query_text: &str) -> Vec<String> {
     let regex = Regex::new(r#"([A-Za-z_][A-Za-z0-9_]*\s*(?:=|!=|=~|!~)\s*"(?:\\.|[^"\\])*")"#)
         .expect("invalid hard-coded loki label matcher regex");
     let mut values = Vec::new();
-    for captures in regex.captures_iter(query_text) {
-        if let Some(value) = captures.get(1) {
-            ordered_unique_push(&mut values, value.as_str());
+    for selector in extract_loki_stream_selectors(query_text) {
+        for captures in regex.captures_iter(&selector) {
+            if let Some(value) = captures.get(1) {
+                ordered_unique_push(&mut values, value.as_str());
+            }
         }
     }
     values
@@ -245,6 +247,101 @@ fn extract_loki_range_windows(query_text: &str) -> Vec<String> {
     values
 }
 
+fn split_loki_pipeline_segments(query_text: &str) -> Vec<String> {
+    let mut segments = Vec::new();
+    let mut in_quotes = false;
+    let mut escaped = false;
+    let mut selector_depth = 0usize;
+    let mut segment_start: Option<usize> = None;
+
+    for (index, character) in query_text.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        match character {
+            '\\' if in_quotes => {
+                escaped = true;
+            }
+            '"' => {
+                in_quotes = !in_quotes;
+            }
+            '{' if !in_quotes => {
+                selector_depth += 1;
+            }
+            '}' if !in_quotes => {
+                selector_depth = selector_depth.saturating_sub(1);
+            }
+            '|' if !in_quotes && selector_depth == 0 => {
+                if let Some(start) = segment_start.take() {
+                    let segment = query_text[start..index].trim();
+                    if !segment.is_empty() {
+                        segments.push(segment.to_string());
+                    }
+                }
+                segment_start = Some(index + character.len_utf8());
+            }
+            _ => {}
+        }
+    }
+
+    if let Some(start) = segment_start {
+        let segment = query_text[start..].trim();
+        if !segment.is_empty() {
+            segments.push(segment.to_string());
+        }
+    }
+
+    segments
+}
+
+fn extract_loki_pipeline_fields(query_text: &str) -> Vec<String> {
+    let quoted_regex =
+        Regex::new(r#""(?:\\.|[^"\\])*""#).expect("invalid hard-coded loki quoted regex");
+    let unwrap_regex = Regex::new(r"(?i)\bunwrap\s+([A-Za-z_][A-Za-z0-9_.]*)\b")
+        .expect("invalid hard-coded loki unwrap regex");
+    let predicate_regex =
+        Regex::new(r"(?i)\b([A-Za-z_][A-Za-z0-9_.]*)\b\s*(?:==|=~|!~|!=|>=|<=|=|>|<)")
+            .expect("invalid hard-coded loki predicate regex");
+    let stage_prefix_regex = Regex::new(
+        r"(?i)^(?:json|logfmt|pattern|regexp|unpack|decolorize|drop|keep|label_format|line_format)\b",
+    )
+    .expect("invalid hard-coded loki stage prefix regex");
+    let reserved = ["and", "or", "true", "false", "bool", "bytes", "duration"];
+
+    let mut values = Vec::new();
+    for segment in split_loki_pipeline_segments(query_text) {
+        let sanitized_segment = quoted_regex.replace_all(&segment, "\"\"");
+        for captures in unwrap_regex.captures_iter(&sanitized_segment) {
+            if let Some(field) = captures.get(1) {
+                ordered_unique_push(&mut values, field.as_str());
+            }
+        }
+
+        let predicate_source = stage_prefix_regex
+            .replace(&sanitized_segment, "")
+            .trim()
+            .to_string();
+        if predicate_source.is_empty() {
+            continue;
+        }
+
+        for captures in predicate_regex.captures_iter(&predicate_source) {
+            let Some(field) = captures.get(1).map(|value| value.as_str()) else {
+                continue;
+            };
+            if reserved
+                .iter()
+                .any(|keyword| keyword.eq_ignore_ascii_case(field))
+            {
+                continue;
+            }
+            ordered_unique_push(&mut values, field);
+        }
+    }
+    values
+}
+
 /// analyze query.
 pub(crate) fn analyze_query(
     _panel: &Map<String, Value>,
@@ -255,6 +352,9 @@ pub(crate) fn analyze_query(
     let mut measurements = extract_loki_stream_selectors(query_text);
     for matcher in extract_loki_label_matchers(query_text) {
         ordered_unique_push(&mut measurements, &matcher);
+    }
+    for field in extract_loki_pipeline_fields(query_text) {
+        ordered_unique_push(&mut measurements, &field);
     }
     QueryAnalysis {
         metrics: Vec::new(),

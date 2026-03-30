@@ -33,6 +33,39 @@ pub(crate) const HELP_COLOR_SYNC: &str = "\x1b[1;34m";
 pub(crate) const HELP_FULL_HINT: &str =
     "Extended Help:\n  --help-full\n          Print help with extended examples\n";
 
+pub(crate) const OVERVIEW_HELP_FULL_TEXT: &str = help_block!(
+    "Extended Examples:",
+    (
+        "[Overview Staged]",
+        "Summarize staged dashboard, alert, and sync exports into one overview:",
+        "grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --desired-file ./desired.json --output json"
+    ),
+    (
+        "[Overview Live]",
+        "Open the live project-home overview through the shared project-status path:",
+        "grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output interactive"
+    ),
+    (
+        "[Overview Bundle]",
+        "Build an overview from staged bundle and promotion inputs:",
+        "grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output text"
+    )
+);
+
+pub(crate) const PROJECT_STATUS_HELP_FULL_TEXT: &str = help_block!(
+    "Extended Examples:",
+    (
+        "[Project Status Staged]",
+        "Inspect staged artifacts with a machine-readable summary:",
+        "grafana-util project-status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output json"
+    ),
+    (
+        "[Project Status Live]",
+        "Check live Grafana status while layering staged sync context:",
+        "grafana-util project-status live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output json"
+    )
+);
+
 pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
     "Examples:",
     (
@@ -113,6 +146,16 @@ pub(crate) const UNIFIED_HELP_FULL_TEXT: &str = help_block!(
         "[Sync Review]",
         "Stamp a plan as reviewed before apply:",
         "grafana-util sync review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output json"
+    ),
+    (
+        "[Overview Staged]",
+        "Summarize staged dashboard, alert, and sync exports into one overview:",
+        "grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --desired-file ./desired.json --output json"
+    ),
+    (
+        "[Project Status Staged]",
+        "Inspect staged artifacts with a machine-readable summary:",
+        "grafana-util project-status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output json"
     )
 );
 
@@ -237,7 +280,7 @@ pub(crate) const SYNC_HELP_FULL_TEXT: &str = help_block!(
     )
 );
 
-pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 22] = [
+pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 26] = [
     ("[Dashboard Export]", HELP_COLOR_DASHBOARD),
     ("[Dashboard Capture]", HELP_COLOR_DASHBOARD),
     ("[Dashboard Inspect Export]", HELP_COLOR_DASHBOARD),
@@ -260,6 +303,10 @@ pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 22] = [
     ("[Sync Plan]", HELP_COLOR_SYNC),
     ("[Sync Review]", HELP_COLOR_SYNC),
     ("[Sync Apply]", HELP_COLOR_SYNC),
+    ("[Overview Staged]", HELP_COLOR_SYNC),
+    ("[Overview Bundle]", HELP_COLOR_SYNC),
+    ("[Project Status Staged]", HELP_COLOR_SYNC),
+    ("[Project Status Live]", HELP_COLOR_SYNC),
 ];
 
 pub(crate) fn colorize_help_examples(text: &str) -> String {

@@ -972,11 +972,13 @@ class DatasourceCliTests(unittest.TestCase):
                 "--dry-run",
                 "--table",
                 "--output-columns",
-                "uid,action,org_id,file",
+                "uid,action,org_id,file,secret_summary",
             ]
         )
 
-        self.assertEqual(args.output_columns, ["uid", "action", "orgId", "file"])
+        self.assertEqual(
+            args.output_columns, ["uid", "action", "orgId", "file", "secretSummary"]
+        )
 
     def test_datasource_parse_args_supports_import_org_and_export_org_guard(self):
         args = datasource_cli.parse_args(
@@ -1162,6 +1164,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIn("--json", help_text)
         self.assertIn("--output-format", help_text)
         self.assertIn("--output-columns", help_text)
+        self.assertIn("secret_summary", help_text)
         self.assertIn("--progress", help_text)
         self.assertIn("--verbose", help_text)
 
@@ -1420,6 +1423,8 @@ class DatasourceCliTests(unittest.TestCase):
                 "--table",
                 "--datasource-url",
                 "http://prometheus:9090",
+                "--secure-json-data",
+                '{"basicAuthPassword":"metrics-pass"}',
             ]
         )
         client = FakeDatasourceClient(datasources=[])
@@ -1433,6 +1438,8 @@ class DatasourceCliTests(unittest.TestCase):
         output = stdout.getvalue()
         self.assertIn("OPERATION", output)
         self.assertIn("would-create", output)
+        self.assertIn("SECRET", output)
+        self.assertIn("fields=basicAuthPassword", output)
         self.assertEqual(client.imported_payloads, [])
 
     def test_datasource_add_datasource_live_posts_payload(self):
@@ -1646,6 +1653,10 @@ class DatasourceCliTests(unittest.TestCase):
                 "http://prometheus-v2:9090",
                 "--dry-run",
                 "--table",
+                "--basic-auth-password",
+                "metrics-pass",
+                "--basic-auth-user",
+                "metrics-user",
             ]
         )
         client = FakeDatasourceClient(
@@ -1669,7 +1680,148 @@ class DatasourceCliTests(unittest.TestCase):
         output = stdout.getvalue()
         self.assertIn("OPERATION", output)
         self.assertIn("would-update", output)
+        self.assertIn("SECRET", output)
+        self.assertIn("fields=basicAuthPassword", output)
         self.assertEqual(client.imported_payloads, [])
+
+    def test_datasource_import_datasources_dry_run_renders_secret_contract_signals(self):
+        args = datasource_cli.parse_args(
+            [
+                "import",
+                "--import-dir",
+                "ignored",
+                "--dry-run",
+                "--json",
+                "--replace-existing",
+            ]
+        )
+        client = FakeDatasourceClient(
+            datasources=[],
+            org={"id": 1, "name": "Main Org."},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args.import_dir = tmpdir
+            (Path(tmpdir) / datasource_cli.EXPORT_METADATA_FILENAME).write_text(
+                json.dumps(
+                    {
+                        "kind": datasource_cli.ROOT_INDEX_KIND,
+                        "schemaVersion": datasource_cli.TOOL_SCHEMA_VERSION,
+                        "variant": "root",
+                        "resource": "datasource",
+                        "datasourceCount": 1,
+                        "datasourcesFile": datasource_cli.DATASOURCE_EXPORT_FILENAME,
+                        "indexFile": "index.json",
+                        "format": "grafana-datasource-inventory-v1",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (Path(tmpdir) / datasource_cli.DATASOURCE_EXPORT_FILENAME).write_text(
+                json.dumps(
+                    [
+                        {
+                            "uid": "loki-main",
+                            "name": "Loki Main",
+                            "type": "loki",
+                            "access": "proxy",
+                            "url": "http://loki:3100",
+                            "isDefault": "false",
+                            "org": "Main Org.",
+                            "orgId": "1",
+                            "secureJsonDataPlaceholders": {
+                                "basicAuthPassword": "${secret:loki-basic-auth}",
+                            },
+                            "secureJsonDataProviders": {
+                                "httpHeaderValue1": "${provider:vault:secret/data/loki/token}",
+                            },
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (Path(tmpdir) / "index.json").write_text("{}", encoding="utf-8")
+
+            with mock.patch.object(datasource_cli, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = datasource_cli.import_datasources(args)
+
+        self.assertEqual(result, 0)
+        document = json.loads(stdout.getvalue())
+        self.assertEqual(document["datasources"][0]["secretFields"], ["basicAuthPassword"])
+        self.assertEqual(
+            document["datasources"][0]["secretPlaceholderNames"],
+            ["loki-basic-auth"],
+        )
+        self.assertEqual(document["datasources"][0]["providerNames"], ["vault"])
+        self.assertIn("fields=basicAuthPassword", document["datasources"][0]["secretSummary"])
+
+    def test_datasource_import_datasources_dry_run_renders_secret_contract_table(self):
+        args = datasource_cli.parse_args(
+            [
+                "import",
+                "--import-dir",
+                "ignored",
+                "--dry-run",
+                "--table",
+                "--replace-existing",
+            ]
+        )
+        client = FakeDatasourceClient(
+            datasources=[],
+            org={"id": 1, "name": "Main Org."},
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args.import_dir = tmpdir
+            (Path(tmpdir) / datasource_cli.EXPORT_METADATA_FILENAME).write_text(
+                json.dumps(
+                    {
+                        "kind": datasource_cli.ROOT_INDEX_KIND,
+                        "schemaVersion": datasource_cli.TOOL_SCHEMA_VERSION,
+                        "variant": "root",
+                        "resource": "datasource",
+                        "datasourceCount": 1,
+                        "datasourcesFile": datasource_cli.DATASOURCE_EXPORT_FILENAME,
+                        "indexFile": "index.json",
+                        "format": "grafana-datasource-inventory-v1",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (Path(tmpdir) / datasource_cli.DATASOURCE_EXPORT_FILENAME).write_text(
+                json.dumps(
+                    [
+                        {
+                            "uid": "loki-main",
+                            "name": "Loki Main",
+                            "type": "loki",
+                            "access": "proxy",
+                            "url": "http://loki:3100",
+                            "isDefault": "false",
+                            "org": "Main Org.",
+                            "orgId": "1",
+                            "secureJsonDataPlaceholders": {
+                                "basicAuthPassword": "${secret:loki-basic-auth}",
+                            },
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (Path(tmpdir) / "index.json").write_text("{}", encoding="utf-8")
+
+            with mock.patch.object(datasource_cli, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = datasource_cli.import_datasources(args)
+
+        self.assertEqual(result, 0)
+        output = stdout.getvalue()
+        self.assertIn("SECRET", output)
+        self.assertIn("fields=basicAuthPassword", output)
+        self.assertIn("placeholders=loki-basic-auth", output)
 
     def test_datasource_modify_datasource_live_puts_merged_payload(self):
         args = datasource_cli.parse_args(

@@ -151,6 +151,58 @@ fn build_export_inspection_summary_includes_zero_dashboard_ancestor_paths() {
 }
 
 #[test]
+fn build_export_inspection_summary_accepts_legacy_index_without_org_identity_fields() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(raw_dir.join("Legacy")).unwrap();
+    fs::write(
+        raw_dir.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("index.json"),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "legacy-main",
+                "title": "Legacy Main",
+                "folder": "Legacy",
+                "path": "dashboards/raw/Legacy/Legacy_Main__legacy-main.json",
+                "format": "grafana-web-import-preserve-uid"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("Legacy").join("Legacy_Main__legacy-main.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "legacy-main",
+                "title": "Legacy Main",
+                "panels": []
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let summary = test_support::build_export_inspection_summary(&raw_dir).unwrap();
+
+    assert_eq!(summary.dashboard_count, 1);
+    assert_eq!(summary.export_org, None);
+    assert_eq!(summary.export_org_id, None);
+}
+
+#[test]
 fn build_export_inspection_query_report_emits_search_family_for_inventory_backed_elasticsearch_and_opensearch_rows(
 ) {
     let temp = tempdir().unwrap();

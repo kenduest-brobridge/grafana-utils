@@ -257,9 +257,20 @@ pub(crate) fn build_datasource_governance_items(
                 fact("Dashboard Count", row.dashboard_count),
                 fact("Panel Count", row.panel_count),
                 fact("Mixed Dashboard Count", row.mixed_dashboard_count),
+                fact("Folder Count", row.folder_count),
+                fact(
+                    "High Blast Radius",
+                    bool_text(row.high_blast_radius, "yes", "no"),
+                ),
+                fact("Cross Folder", bool_text(row.cross_folder, "yes", "no")),
+                fact("Folder Paths", join_or_none(&row.folder_paths, ", ")),
                 fact("Finding Count", row.risk_count),
                 fact("Finding Kinds", join_or_none(&row.risk_kinds, ", ")),
                 fact("Dashboard UIDs", join_or_none(&row.dashboard_uids, ", ")),
+                fact(
+                    "Dashboard Titles",
+                    join_or_none(&row.dashboard_titles, ", "),
+                ),
                 fact("Orphaned", bool_text(row.orphaned, "yes", "no")),
             ],
         })

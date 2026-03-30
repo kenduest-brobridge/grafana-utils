@@ -47,6 +47,10 @@ pub mod dashboard_reference_models;
 pub mod datasource;
 /// Built-in datasource type catalog and related metadata helpers.
 pub mod datasource_catalog;
+/// Datasource-owned live project-status producer derived from live inventory surfaces.
+pub(crate) mod datasource_live_project_status;
+/// Datasource-owned project-status producer derived from staged export documents.
+pub(crate) mod datasource_project_status;
 /// Datasource provider resolution helpers used by sync/bundle validation.
 pub(crate) mod datasource_provider;
 /// Datasource secret placeholder planning helpers used by staged sync review.
@@ -57,6 +61,17 @@ pub(crate) mod help_styles;
 pub mod http;
 /// Internal browser/session helpers for screenshot and interactive flows.
 pub(crate) mod interactive_browser;
+/// Artifact-driven project overview assembly for staged dashboard and sync inputs.
+pub mod overview;
+/// Shared project-status contract shapes reused across overview and future status producers.
+pub(crate) mod project_status;
+/// Top-level project-status command surface for staged/live project-wide status.
+pub mod project_status_command;
+/// Shared freshness helpers for live project-status stamping.
+pub(crate) mod project_status_freshness;
+/// Shared project-status interactive workbench for project-home and handoff flows.
+#[cfg(any(feature = "tui", test))]
+pub(crate) mod project_status_tui;
 /// Declarative sync planning, review, audit, and apply workflows.
 pub mod sync;
 /// Shared terminal-shell helpers for the Rust TUI surfaces.
@@ -77,3 +92,7 @@ mod bundle_preflight_rust_tests;
 mod datasource_provider_rust_tests;
 #[cfg(test)]
 mod datasource_secret_rust_tests;
+#[cfg(test)]
+mod overview_rust_tests;
+#[cfg(test)]
+mod project_status_cli_rust_tests;

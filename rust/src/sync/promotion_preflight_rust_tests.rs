@@ -1,4 +1,5 @@
 //! Sync promotion-preflight contract and render coverage.
+use crate::common::TOOL_VERSION;
 use crate::sync::promotion_preflight::{
     build_sync_promotion_preflight_document, render_sync_promotion_preflight_text,
     SyncPromotionPreflightSummary, SYNC_PROMOTION_MAPPING_KIND,
@@ -86,6 +87,7 @@ fn build_sync_promotion_preflight_document_reports_direct_mapped_and_missing_ref
     .unwrap();
 
     assert_eq!(document["kind"], json!(SYNC_PROMOTION_PREFLIGHT_KIND));
+    assert_eq!(document["toolVersion"], json!(TOOL_VERSION));
     assert_eq!(document["summary"]["mappedCount"], json!(3));
     assert_eq!(document["summary"]["missingMappingCount"], json!(2));
     assert_eq!(document["summary"]["bundleBlockingCount"], json!(5));

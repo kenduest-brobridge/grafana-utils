@@ -4,232 +4,280 @@ Current AI-maintained status only.
 
 - Older trace history moved to [`archive/ai-status-archive-2026-03-24.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-24.md).
 - Detailed 2026-03-27 entries moved to [`archive/ai-status-archive-2026-03-27.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-27.md).
+- Detailed 2026-03-28 task notes were condensed into [`archive/ai-status-archive-2026-03-28.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-28.md).
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 
-## 2026-03-28 - Maintainer comment and ownership pass
+## 2026-03-30 - `overview live` thin alias over shared project-status live
 - State: Done
-- Scope: `rust/src/dashboard/*state.rs`, `rust/src/dashboard/governance_gate_rules_evaluation_apply.rs`, `rust/src/dashboard/import_routed.rs`, `rust/src/sync/cli.rs`, `rust/src/sync/live_apply.rs`, `rust/src/sync/plan_builder.rs`, `rust/src/sync/promotion_preflight.rs`, `rust/src/sync/staged_documents_apply.rs`, `rust/src/datasource_import_export*.rs`, `rust/src/access/*import*.rs`, `rust/src/lib.rs`, `docs/overview-rust.md`, `docs/DEVELOPER.md`
-- Baseline: the Rust mainline had already been split into cleaner subsystem files, but several high-risk modules still lacked maintainer-grade comments explaining ownership boundaries, state invariants, staged-versus-live assumptions, and import sequencing rules.
-- Current Update: added compact `//!` module headers, targeted maintainer notes, and an ownership map in the maintainer docs so dashboard TUI state machines, sync staged/live edges, datasource and access import flows, and crate-level module layering explain their responsibilities and non-obvious cross-module relationships directly in code and docs.
-- Result: the most complex Rust maintenance surfaces now carry explicit architecture and sequencing cues, reducing the amount of reconstruction a maintainer has to do from code alone before making changes.
+- Scope: `rust/src/overview.rs`, `rust/src/cli_help_examples.rs`, `rust/src/overview_rust_tests.rs`, `docs/internal/overview-architecture.md`, `docs/internal/current-capability-inventory-2026-03-30.md`
+- Baseline: `overview` was staged-only and already intentionally thin, but there was no operator-friendly `overview live` entrypoint. Users had to know to switch to `project-status live` for whole-project live status even when they conceptually wanted the top-level overview surface.
+- Current Update: kept the ownership boundary intact and added `overview live` as a thin convenience entry that delegates straight to `project-status live`. The staged path still owns artifact loading and document assembly; the live path reuses the canonical live status contract and renderer family. Help text and maintainer docs now state that `overview` remains staged by default and only exposes live through a delegated entrypoint.
+- Result: operators can use `grafana-util overview live ...` as a practical top-level live entry without creating a second live-status engine or forking the project-status contract.
 
-## 2026-03-28 - Browse TUI interaction wording convergence
+## 2026-03-30 - Faster inspect-export interactive pre-workbench analysis
 - State: Done
-- Scope: `rust/src/dashboard/browse_render.rs`, `rust/src/datasource_browse_render.rs`, `rust/src/access/user_browse_render.rs`, `rust/src/access/team_browse_render.rs`
-- Baseline: the browse TUIs already shared shell helpers, but their mode strings, active-pane wording, confirm/cancel copy, and focus-cycle labels still varied across dashboard, datasource, user, and team browsers.
-- Current Update: aligned browse summaries and footers around `Mode=...`, `active-pane=...`, `next pane`, `previous pane`, `search`, `next match`, and consistent confirm-delete or cancel wording.
-- Result: the browse surfaces now read more like one Rust operator console even though their row models and actions remain domain-specific.
+- Scope: `rust/src/dashboard/inspect_query_report.rs`, `rust/src/dashboard/inspect_extract_query.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `dashboard inspect-export --interactive` now showed progress messages, which confirmed it was not dead, but large legacy export trees could still appear to stall for a long time at `building query report` before the inspect workbench opened.
+- Current Update: kept the interactive workflow the same and optimized the hottest pre-workbench parsing path by moving repeated hard-coded regex compilation in query-variable, Prometheus, Flux, InfluxQL, and SQL query extraction helpers to shared `LazyLock<Regex>` statics. This removes thousands of per-query regex recompiles while preserving the same report/build outputs.
+- Result: large export trees should spend materially less time in the silent analysis phase before the inspect workbench launches, so interactive inspect-export behaves more like a slow build with visible progress than a hung command.
 
-## 2026-03-28 - Interactive dashboard import boundary split
+## 2026-03-30 - Tool-version metadata across staged Rust outputs
 - State: Done
-- Scope: `rust/src/dashboard/import_interactive.rs`, `rust/src/dashboard/import_interactive_render.rs`, `rust/src/dashboard/import_interactive_review.rs`, `rust/src/dashboard/import_interactive_context.rs`, `rust/src/dashboard/mod.rs`
-- Baseline: the interactive dashboard import workbench had already grown into a real review surface with grouping, dry-run review mode, context panes, and diff depth switching, but those concerns still lived in one large module that mixed TUI render, state transitions, live review resolution, import artifact loading, and context-pane assembly.
-- Current Update: kept the public `crate::dashboard::import_interactive` path stable while splitting TUI rendering into `import_interactive_render.rs`, live review/data-loading logic into `import_interactive_review.rs`, and context-pane summary/destination/diff builders into `import_interactive_context.rs`, leaving `import_interactive.rs` focused on state, key handling, and the thin interactive entrypoint.
-- Result: the import review workbench now has clearer ownership boundaries and is less likely to regress into a single oversized dashboard import facade as more review detail is added.
+- Scope: `rust/src/common.rs`, `rust/src/dashboard/files.rs`, `rust/src/datasource_export_support.rs`, `rust/src/alert_support.rs`, `rust/src/sync/*.rs`, `rust/src/overview.rs`, `rust/src/project_status.rs`
+- Baseline: most staged/export/status JSON documents carried `schemaVersion`, and some alert documents also carried `apiVersion`, but there was no consistent field that recorded which `grafana-util` version produced the file.
+- Current Update: added a shared `toolVersion` helper sourced from the Rust crate version and emitted it additively on the main staged/export/status documents: dashboard export metadata/root index, datasource export metadata/indexes, alert export documents/root index, sync summary/source-bundle/preflight/plan/apply/audit/promotion-preflight, alert sync assessment, and top-level `overview` / `project-status` JSON documents.
+- Result: future compatibility handling can distinguish contract version from producer version without breaking older readers or requiring existing artifacts to be rewritten.
 
-## 2026-03-28 - Interactive dashboard import state/model split
+## 2026-03-30 - Shared TUI presentation pass for project-level and browser surfaces
 - State: Done
-- Scope: `rust/src/dashboard/import_interactive.rs`, `rust/src/dashboard/import_interactive_state.rs`, `rust/src/dashboard/mod.rs`
-- Baseline: the interactive import boundary split already separated renderer, review loader, and context-pane builders, but `import_interactive.rs` still mixed shared view-model types, mutable workbench state, key handling, and the top-level entrypoint in one file.
-- Current Update: moved the interactive import item/review types plus `InteractiveImportState` and its state-machine methods into `import_interactive_state.rs`, while keeping `import_interactive.rs` as the thin orchestration entrypoint and re-export surface used by existing renderer and test paths.
-- Result: the dashboard import workbench now has a cleaner state/model seam, so future work can keep refining the import subsystem without growing the entrypoint back into a hub module.
+- Scope: `rust/src/tui_shell.rs`, `rust/src/overview_tui_render.rs`, `rust/src/project_status_tui_render.rs`, `rust/src/dashboard/browse_render.rs`, `rust/src/datasource_browse_render.rs`
+- Baseline: interactive surfaces already worked, but summary/header/footer presentation was inconsistent. Footer controls were visually ragged, `overview` showed redundant top blocks, and summary rows in different TUI surfaces mixed ad hoc spacing with low visual hierarchy.
+- Current Update: kept behavior and ownership the same, but introduced shared summary-cell presentation in `tui_shell`, consolidated `overview` into a single top summary block, aligned footer control cells, and adopted the same brighter label/accent hierarchy for `overview`, `project-status`, dashboard browser, and datasource browser.
+- Result: the TUI surfaces now read more like one shell family: context stays in the top summary block, controls stay in the footer, and key status/action fields are easier to scan without widening any status or workflow contract.
 
-## 2026-03-28 - Interactive dashboard import loader/review split
+## 2026-03-30 - Overview compatibility for legacy dashboard export indexes
 - State: Done
-- Scope: `rust/src/dashboard/import_interactive_loader.rs`, `rust/src/dashboard/import_interactive_review.rs`, `rust/src/dashboard/import_interactive.rs`, `rust/src/dashboard/mod.rs`
-- Baseline: the new interactive import subsystem already had separate state, render, and context helpers, but `import_interactive_review.rs` still bundled two distinct responsibilities: loading local import artifacts and building live review/diff data.
-- Current Update: split local artifact/context loading into `import_interactive_loader.rs` and left `import_interactive_review.rs` focused on live review resolution and diff synthesis, while keeping the existing `import_interactive` re-export path stable for tests and callers.
-- Result: the import workbench now has clearer loader-versus-review ownership, which lowers the risk that local import discovery and live comparison logic grow back into one mixed helper module.
+- Scope: `rust/src/dashboard/models.rs`, `rust/src/dashboard/export_focus_report_query_presentation_summary_inventory_rust_tests.rs`
+- Baseline: `grafana-util overview --dashboard-export-dir ...` rejected older dashboard export roots when their `index.json` rows omitted `org` / `orgId`, even if the rest of the raw export layout matched the staged inspection contract.
+- Current Update: made legacy variant-index org identity fields optional and added a focused regression that exercises a raw export root whose `index.json` carries only uid/title/path/format. The shared dashboard inspection summary path now treats that export as valid staged input with unknown export org identity instead of hard failing.
+- Result: older single-scope dashboard export trees can feed `overview` and other inspect-summary consumers as long as the raw export shape is otherwise intact.
 
-## 2026-03-28 - Interactive dashboard import dry-run review mode
+## 2026-03-30 - Project-status workbench clarity
 - State: Done
-- Scope: `rust/src/dashboard/import_interactive.rs`, `rust/src/dashboard/import_apply.rs`, `rust/src/dashboard/cli_defs_command.rs`, focused dashboard import help/workflow tests
-- Baseline: `dashboard import --interactive` already acted as a review-first TUI, and `--dry-run` technically flowed through the same path, but the interactive wording still said `import selected` and cancellation still printed `Import cancelled.`, which made dry-run interactive use feel unofficial.
-- Current Update: made the interactive import workbench explicitly dry-run aware so the header, status text, footer Enter label, CLI help, and cancellation message all switch to dry-run review wording when `--dry-run` is active.
-- Result: `dashboard import --interactive --dry-run` is now a first-class interactive review mode instead of an implicit side effect of the normal import path.
+- Scope: `rust/src/project_status_tui.rs`, `rust/src/project_status_tui_render.rs`
+- Baseline: the project-status workbench already surfaced the recommended domain/action handoff, but the home/header/footer copy still left the project-home -> domain -> action flow implicit and the top blocker summary was less explicit than the rest of the document.
+- Current Update: tightened the presentation layer only. The workbench copy now explains the handoff path more directly and surfaces the current top blocker plus recommended action using existing `ProjectStatus` data without changing the shared status contract or selection logic.
+- Result: targeted Rust tests passed; the workbench remains a thin consumer over `ProjectStatus`.
 
-## 2026-03-28 - Interactive dashboard import context views
+## 2026-03-30 - Maintenance-mode and consumer-driven reopen guidance
 - State: Done
-- Scope: `rust/src/dashboard/import_interactive.rs`, `rust/src/dashboard/dashboard_browse_workflow_rust_tests.rs`
-- Baseline: the interactive import workbench already had focused review and lightweight summary data, but it still only exposed one review pane. Operators could not stay on the same screen and switch between batch summary, destination-state context, and deeper diff detail.
-- Current Update: added context-view state to the import workbench with `Summary`, `Destination`, and `Diff` panes on the same screen, plus `focused / selected / all` scope switching and `summary / structural / raw` diff-depth switching.
-- Result: interactive import now behaves like a single review workspace instead of a reviewed picker, letting operators choose dashboards, inspect destination state, and inspect diffs without leaving the import TUI. Current ownership of those panes is now tracked by the later `Interactive dashboard import boundary split` entry.
+- Scope: `docs/internal/current-capability-inventory-2026-03-30.md`, `docs/internal/current-execution-review-2026-03-29.md`, `docs/internal/project-roadmap.md`
+- Baseline: the repo already said all domain producers were stop-for-now, but the current docs still benefited from one clearer statement that the default mode is now maintenance, clarity, and consumer-driven reopen decisions rather than implicit next-lane selection.
+- Current Update: added explicit maintenance-mode guidance, a concrete consumer-driven reopen rule, and a narrow list of allowed near-term work that does not reopen a domain lane. The roadmap now also treats docs/help/TUI clarity as the default next work when no domain gap is justified.
+- Result: maintainers now have one cleaner current policy: do not assume another deepening pass; prefer stability, contract protection, and thin-consumer polish unless a real consumer proves a missing decision-critical signal.
 
-## 2026-03-28 - Interactive dashboard import review workbench
+## 2026-03-29 - Sync staged provider and placeholder review evidence
 - State: Done
-- Scope: `rust/src/dashboard/import.rs`, `rust/src/dashboard/import_apply.rs`, `rust/src/dashboard/import_dry_run.rs`, `rust/src/dashboard/import_interactive.rs`, `rust/src/dashboard/cli_defs_command.rs`, focused dashboard import parser/workflow tests
-- Baseline: `dashboard import --interactive` only opened a local file picker. It could choose which raw dashboard files to import, but it could not preview the create/update/skip outcome for the focused item and it had no grouping or review state beyond selected/unselected.
-- Current Update: rewired interactive import through the existing live dry-run/import lookup path, added on-focus review resolution with cached results, introduced folder/action/flat grouping, surfaced per-item `PENDING/CREATE/UPDATE/SKIP/BLOCKED` badges plus detail-pane review context, and updated the CLI help to describe the new review-first behavior.
-- Result: `dashboard import --interactive` is now a review-first import workbench that keeps the same entrypoint and final import boundary while reusing the existing import decision semantics instead of inventing a second engine.
+- Scope: `docs/internal/current-capability-inventory-2026-03-30.md`, `docs/overview-rust.md`, `docs/internal/README.md`
+- Baseline: the repo already had roadmap, execution-review, and architecture notes, but it still lacked one current-only maintainer document that answers what the project can do today, which command surfaces are practically mature, and which areas should not be expanded by default.
+- Current Update: added a current capability inventory that summarizes the Rust-mainline operator toolkit by domain, explains the practical role of `overview` and `project-status`, and makes the current stop-for-now posture explicit without reopening any domain lane. Maintainer doc routing now points to this inventory from the Rust overview and internal docs index.
+- Result: maintainers now have one current snapshot for capability-oriented orientation instead of reconstructing the answer from roadmap, review, and trace documents.
 
-## 2026-03-28 - Interactive dashboard import summary and diff review
+## 2026-03-29 - Sync staged provider and placeholder review evidence
 - State: Done
-- Scope: `rust/src/dashboard/import_interactive.rs`, `rust/src/dashboard/dashboard_browse_workflow_rust_tests.rs`
-- Baseline: the new interactive import workbench already resolved per-item review state and grouping, but it still behaved more like a reviewed picker than a true operator review surface because it lacked overall action summaries, focused group context, and any lightweight comparison against the live dashboard shape.
-- Current Update: added overall review/action counts plus focused group summaries to the import header, and extended focused review state with a compact live diff summary for existing dashboards covering title, folder UID, tags, and panel-count changes.
-- Result: interactive dashboard import now feels more like a real review workspace: operators can see batch state at a glance, understand the current group context, and inspect a focused dashboard's live-vs-import delta without leaving the import flow.
+- Scope: `rust/src/sync/project_status.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the staged sync producer already preserved provider and secret-placeholder blocking evidence, but if those assessments were present and reviewable without blockers, the sync row dropped them entirely and only surfaced alert-artifact review evidence.
+- Current Update: kept the work bounded to the sync-owned staged producer and added conservative `provider-review` and `secret-placeholder-review` warnings based on existing bundle-preflight assessment plans when those assessments are present without blocking findings.
+- Result: sync now keeps more of the existing trust-chain evidence visible for operator review without widening staged inputs or moving more logic into shared consumers.
 
-## 2026-03-28 - Sync review TUI interaction grammar alignment
+## 2026-03-29 - Project-level stop/continue decision refresh
 - State: Done
-- Scope: `rust/src/sync/review_tui.rs`, `rust/src/sync/review_tui_helpers.rs`, `rust/src/sync/cli_review_tui_rust_tests.rs`
-- Baseline: the sync review checklist/diff footer copy still uses older phrasing such as "workspace primary", "toggle operations", and "confirm the reviewed selection", which reads differently from the shared TUI shell grammar used elsewhere in the Rust UI surfaces.
-- Current Update: tightened the checklist, diff, and footer copy to say staged review/selection/confirm instead of the older mixed phrasing, and pinned the new wording with a focused Rust regression test.
-- Result: sync review now uses clearer shared interaction copy while keeping the staged-only selection flow unchanged.
+- Scope: `docs/internal/current-execution-review-2026-03-29.md`, `docs/internal/domain-producer-maturity-review-2026-03-29.md`, `docs/internal/next-phase-execution-plan-2026-03-29.md`, `docs/internal/project-status-producer-gap-list.md`
+- Baseline: after the latest bounded passes, the maintainer docs still treated `dashboard` and `datasource` as active depth lanes even though their staged/live producers now looked much closer to stop-if-good-enough, while `sync` / `promotion` remained the only lane with clearly open trust-chain depth.
+- Current Update: refreshed the project-level review so `dashboard`, `datasource`, `alert`, and `access` are all treated as stop-for-now unless a concrete consumer proves a missing decision-critical signal. The current pass now keeps only `sync` / `promotion` as the remaining active depth lane, and the supporting maturity, gap, and execution-plan notes were aligned to the same decision.
+- Result: maintainers now have one consistent project-level answer: stop reopening mature lanes by default, keep `overview` / `project-status` thin, and treat sync/promotion trust evidence as the only remaining active bounded follow-through path.
 
-## 2026-03-28 - Inspect workbench modal state split
+## 2026-03-29 - Sync/promotion trust-chain evidence follow-through
 - State: Done
-- Scope: `rust/src/dashboard/inspect_workbench_state.rs`, `rust/src/dashboard/inspect_workbench.rs`, `rust/src/dashboard/inspect_workbench_render.rs`, `rust/src/dashboard/inspect_workbench_render_modal*.rs`, new inspect workbench modal state helper
-- Baseline: inspect workbench still keeps search prompt state, repeat-search state, and full-detail viewer state flattened into the main workbench state and accessed directly from the renderer and event loop.
-- Current Update: extracted the search prompt, last-search memory, and full-detail viewer state into `InspectWorkbenchModalState`, then rewired the workbench and renderer to read through the nested modal state.
-- Result: the inspect workbench now has a clearer modal-state boundary while operator behavior and test coverage stayed stable.
+- Scope: `rust/src/sync/project_status.rs`, `rust/src/sync/project_status_promotion.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the staged sync and promotion producers already carried blocker and handoff/apply evidence, but sync still dropped alert-artifact presence when that surface was reviewable but neither blocked nor plan-only, and promotion still flattened resolved continuation evidence down to a count of `1` even when the staged continuation reported a larger resolved inventory.
+- Current Update: kept the work bounded to the sync-owned staged producers. Sync now emits a conservative `alert-artifact-review` warning when staged alert artifacts are present without blocked or plan-only findings, and promotion now keeps `continuationSummary.resolvedCount` as a real evidence count when that field is the chosen apply-continuation source.
+- Result: the staged trust chain now holds onto two more existing evidence signals without widening sync/promotion inputs or moving logic back into shared consumers.
 
-## 2026-03-28 - Dashboard and datasource browse shell grammar convergence
+## 2026-03-29 - Datasource staged import-blocker promotion
 - State: Done
-- Scope: `rust/src/dashboard/browse_render.rs`, `rust/src/datasource_browse_render.rs`
-- Baseline: dashboard browse still hand-built its header/footer shell, datasource browse duplicated key-chip/plain footer styling, and both browse headers still mixed status text into the summary area instead of using the shared footer status path consistently.
-- Current Update: aligned both browse renderers with `crate::tui_shell` for header/footer/control grammar, moved the browse status text into the shared footer path, and kept the destructive delete overlay path unchanged.
-- Result: dashboard and datasource browse now share the shell helpers for their visible terminal chrome, while the delete confirmation overlay behavior and browse state handling stay intact.
+- Scope: `rust/src/datasource_project_status.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the staged datasource producer already surfaced import-preview mutation counts, but `wouldBlock` still showed up only as a warning, which made the datasource row look `ready` even when the staged import preview was explicitly blocked.
+- Current Update: kept the work inside the datasource-owned staged producer and promoted import-preview `wouldBlock` into a real datasource blocker with `blocked-by-blockers` status and a blocker-first next action, while leaving the rest of the diff/drift and import-preview warning signals unchanged.
+- Result: datasource staged status is now closer to the real export/import/sync trust path because explicit import-preview blockers no longer look like just another warning.
 
-## 2026-03-28 - TUI overlay and workbench state cleanup
+## 2026-03-29 - Dashboard staged datasource-coverage readiness follow-through
 - State: Done
-- Scope: `rust/src/tui_shell.rs`, `rust/src/dashboard/browse_render.rs`, `rust/src/datasource_browse_render.rs`, `rust/src/sync/review_tui.rs`, `rust/src/dashboard/inspect_workbench_state.rs`, related inspect/review/browse render paths
-- Baseline: dashboard and datasource destructive confirmations still reused the right-hand detail pane instead of a clear overlay surface, sync review diff mode still spent permanent space on secondary preview content, and inspect workbench kept full-detail viewer state flattened into the main workbench state.
-- Current Update: added a shared overlay helper to the crate-private TUI shell, moved dashboard and datasource delete confirmations into centered danger overlays, removed the extra diff-mode preview panel from sync review so the diff workspace stays primary, and extracted inspect full-detail viewer state into a dedicated `InspectFullDetailState`.
-- Result: terminal destructive actions now use a clearer shared pattern, sync review diff mode is denser and more task-focused, and inspect workbench state ownership is slightly cleaner for future viewer/search work.
+- Scope: `rust/src/dashboard/project_status.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the staged dashboard producer already used `dashboardDependencies` detail rows for bounded import-readiness evidence, but its stricter detail-ready path still treated a row as structurally ready even when datasource names and datasource-family coverage were missing from that same dependency row.
+- Current Update: kept the work inside the dashboard-owned staged producer and tightened the detail-ready predicate so a dependency row now also needs non-empty `datasources` and `datasourceFamilies` arrays before it counts as detail-ready. Focused tests now cover both the earlier panel/query-field gap and the new datasource-coverage gap.
+- Result: dashboard staged status now reads the existing dependency contract a little more honestly for import-readiness without adding new inputs, changing shared consumers, or reopening a broader dashboard depth lane.
 
-## 2026-03-28 - Shared Rust TUI shell pass
+## 2026-03-29 - Alert staged readiness closure and stop review
 - State: Done
-- Scope: `rust/src/tui_shell.rs`, `rust/src/dashboard/inspect_workbench_render.rs`, `rust/src/dashboard/inspect_workbench_render_helpers.rs`, `rust/src/dashboard/inspect_workbench_support.rs`, `rust/src/sync/review_tui.rs`, `rust/src/datasource_browse_render.rs`, focused TUI tests
-- Baseline: dashboard inspect workbench, sync review, and datasource browse each rendered their own header/footer/control shell with different hierarchy, status placement, and active-pane grammar.
-- Current Update: added a shared crate-private `tui_shell` helper, moved inspect workbench, sync review, and datasource browse onto the same header/footer/control vocabulary, surfaced current mode/view/focus more clearly in headers, and compressed sync review status/help so the main workspace stays visually primary.
-- Result: the Rust TUI surfaces still keep domain-specific panes, but now read more like one operator console with a shared shell grammar and clearer active-task framing.
+- Scope: `rust/src/alert_project_status.rs`, `docs/internal/domain-producer-maturity-review-2026-03-29.md`, `docs/internal/next-phase-execution-plan-2026-03-29.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the staged alert producer already exposed export-summary presence and supporting-surface warnings, but its conservative readiness coverage still stopped short of flagging the two most obvious promotion prerequisites from the existing summary contract, and the maintainer docs still treated alert as an active depth lane.
+- Current Update: kept the code bounded to the alert-owned staged producer and reused only the five stable staged summary counts. The producer now warns when staged alert rules exist without any contact points or notification policies, and the maintainer review/execution docs now mark alert as stop-for-now after this bounded pass instead of keeping it in the active deepening lanes.
+- Result: alert staging remains document-driven and conservative, but it now carries clearer promotion-readiness coverage from the existing export summary shape while the project-level docs narrow the active follow-through lanes back down to dashboard, datasource, and sync/promotion.
 
-## 2026-03-28 - Datasource secret resolution aggregation
+## 2026-03-29 - Sync/promotion staged trust-chain evidence follow-through
 - State: Done
-- Scope: `rust/src/datasource_secret.rs`, `rust/src/datasource_import_export.rs`, `rust/src/datasource_secret_rust_tests.rs`
-- Baseline: datasource secret resolution stopped at the first missing or empty placeholder, which could hide other unresolved values from the later-stage import failure path.
-- Current Update: changed secret resolution to accumulate every missing or empty placeholder name and return one fail-closed error before any write attempt, then pinned that behavior in focused datasource secret tests and the import preflight regression.
-- Result: datasource add/modify/import now report the full unresolved secret set more coherently, while the staged review and dry-run placeholder visibility remain unchanged.
+- Scope: `rust/src/sync/project_status.rs`, `rust/src/sync/project_status_promotion.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the sync and promotion staged producers already carried bundle/preflight/handoff evidence, but some real blocker and handoff signals still depended on top-level summary fields even when the nested staged assessments carried the more direct evidence.
+- Current Update: kept the work bounded to the owning modules and taught the sync producer to fall back to nested `secretPlaceholderAssessment.summary.blockingCount` when the top-level placeholder blocker count is absent. The promotion producer now also treats `handoffSummary.nextStage` and `continuationSummary.nextStage` as valid staged evidence when explicit instruction text is missing, instead of dropping back to a more generic readiness source.
+- Result: `sync` and `promotion` stay document-driven and review-first, but their staged trust-chain rows now hold onto the most direct existing evidence instead of collapsing back to weaker summary-only attribution.
 
-## 2026-03-28 - Maintainer backlog phase/status sync
+## 2026-03-29 - Bounded producer follow-through note
 - State: Done
-- Scope: `docs/internal/maintainer-backlog-2026-03-28.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
-- Baseline: the maintainer backlog still described dashboard cleanup as only starting, datasource secret handling as future work, and promotion as a skeleton even though the Rust state had already moved forward.
-- Current Update: synchronized the backlog to call out landed dashboard inspect splits, the now-usable datasource secret operator contract and import dry-run visibility, and promotion as a partially landed staged review handoff.
-- Result: the maintainer docs now match the current Rust architecture and progress language more closely without changing any code-facing docs.
+- Scope: `docs/internal/domain-producer-maturity-review-2026-03-29.md`, `docs/internal/project-status-producer-gap-list.md`, `docs/internal/next-phase-execution-plan-2026-03-29.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the maintainer docs still described dashboard, datasource, sync/promotion, and alert depth as queued next work.
+- Current Update: rewrote the maturity review, gap list, and next-phase note so those lanes are framed as bounded mainline follow-through inside their owning domains, with access explicitly treated as stop-for-now and only the residual depth items left as current follow-up.
+- Result: the internal docs now read as current-only snapshots instead of a stale queue or a new architecture branch.
 
-## 2026-03-28 - Promotion preflight review handoff
+## 2026-03-29 - Domain producer maturity review
 - State: Done
-- Scope: `rust/src/sync/promotion_preflight.rs`, `rust/src/sync/promotion_preflight_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
-- Baseline: promotion preflight already reports remap checks, aggregate blocker counts, and bundle-preflight context, but it did not expose a staged handoff signal that tells operators whether the result was ready to move into review.
-- Current Update: added a structured `handoffSummary` with review readiness and next-stage state, and rendered the same signal in the text output.
-- Result: the promotion preflight contract now carries a small staged handoff step that tells operators when the result is ready for review versus when blockers still need to be resolved.
+- Scope: `docs/internal/domain-producer-maturity-review-2026-03-29.md`, `docs/overview-rust.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the repo already had a gap list and an execution-order note, but it still lacked one explicit maintainer review that says which domain producers are already good enough to stop, which still justify one more bounded round, and what practical boundary `overview` and `project-status` should keep.
+- Current Update: added a dedicated maturity review that classifies dashboard, datasource, alert, access, sync, and promotion into `stop` versus `one-more-round`, records the residual bounded gap for each one, and fixes `overview` / `project-status` as thin practical consumers rather than expanding owners.
+- Result: maintainers now have one current note for deciding where to stop polishing, where one more bounded pass is still justified, and which consumer surfaces should stay thin.
 
-## 2026-03-28 - Dashboard inspect/workbench ownership cleanup
+## 2026-03-29 - Dashboard staged import-readiness detail gaps
 - State: Done
-- Scope: `rust/src/dashboard/inspect_output.rs`, `rust/src/dashboard/inspect_output_report.rs`, `rust/src/dashboard/inspect_orchestration.rs`, `rust/src/dashboard/inspect_workbench_support.rs`, `rust/src/dashboard/inspect_workbench_content.rs`, `rust/src/dashboard/inspect_live_tui.rs`
-- Baseline: dashboard inspect summary rendering still lived beside the broader report renderer, and workbench document assembly still mixed high-level group wiring with all BrowserItem content builders in one support module.
-- Current Update: moved report-format rendering into `inspect_output_report.rs`, kept summary rendering in `inspect_output.rs`, and split workbench content builders into `inspect_workbench_content.rs` so `inspect_workbench_support.rs` stays focused on document/group construction and live-TUI item selection.
-- Result: the dashboard inspect surface now has clearer ownership between orchestration, report rendering, summary rendering, and workbench content assembly without changing CLI behavior.
+- Scope: `rust/src/dashboard/project_status.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the staged dashboard producer already carried blocker rows, governance warning rows, and one aggregate `import-readiness-gaps` signal from `dashboardDependencies`, but the import-readiness path still stopped at count-level evidence while blocker and governance paths already had detail-backed attribution.
+- Current Update: kept the existing summary-backed gap signal, then added a second bounded import-readiness warning that uses richer `dashboardDependencies` rows and flags detail gaps when a dependency row has a file but lacks the structural evidence needed to look import-ready.
+- Result: dashboard status now carries one more document-driven import-readiness layer without expanding the live path, adding a new summary surface, or moving logic back into `overview`.
 
-## 2026-03-28 - Datasource secret dry-run visibility and staged sync wording
+## 2026-03-29 - Domain live-status depth pass
 - State: Done
-- Scope: `rust/src/datasource_import_export.rs`, `rust/src/datasource_mutation_payload.rs`, `rust/src/datasource_secret.rs`, `rust/src/datasource_rust_tests.rs`, `rust/src/sync/bundle_preflight.rs`, `rust/src/sync/staged_documents_render.rs`, focused sync render/preflight tests
-- Baseline: datasource import dry-run did not expose any structured secret-placeholder visibility, mutation failures only said that secret values were missing, and sync staged text used shorter secret-blocking wording that did not match the datasource placeholder vocabulary.
-- Current Update: added import dry-run `secretVisibility` output plus summary counts, improved mutation/import missing-secret errors with compact placeholder-plan detail, and aligned staged sync text and bundle-preflight checks around `secretPlaceholderNames` and `secret-placeholder-blocking`.
-- Result: datasource and sync now speak a more consistent secret placeholder language, and operators can see secret-placeholder review signals earlier in the Rust-only flow.
+- Scope: `rust/src/dashboard/live_project_status.rs`, `rust/src/datasource_live_project_status.rs`, `rust/src/alert_live_project_status.rs`, `rust/src/access/live_project_status.rs`, `rust/src/sync/live_project_status_sync.rs`, `rust/src/sync/live_project_status_promotion.rs`, `rust/src/project_status_freshness.rs`, `rust/src/project_status_tui.rs`, `rust/src/project_status_tui_render.rs`, `rust/tests/project_status_tui_rust_tests.rs`, `docs/internal/project-status-producer-gap-list.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `project-status live` already existed and could aggregate all domains, but most live rows were still shallow first-pass counts, TUI handoff copy was generic, and freshness only had source-count stamping.
+- Current Update: deepened domain-owned live signals without changing the top-level product shape or adding a new project-status branch. Dashboard now surfaces folder-spread and root-scope warnings plus a bounded live import/dry-run readiness follow-up inside the existing project-status live path; datasource adds name/access/org-scope drift signals plus a bounded live provider/placeholder readiness follow-up; alert keeps a bounded live follow-up for import, diff, and promotion readiness behind rule linkage; access groups import-review and drift-severity signals; sync can fall back to generic bundle `blockedCount` and `planOnlyCount`; promotion surfaces staged handoff and apply-continuation evidence; freshness gained an additive timestamp-aware sample path, with broader real-source timestamp freshness left as a bounded follow-up inside the same project-status path; and the project-status TUI now states the recommended domain/action handoff more explicitly.
+- Result: the project still behaves like an inventory/live inspection and analysis-output tool, not a hidden orchestration layer, but the live project-status path is more decision-useful while staying bounded to existing domain-owned live/readiness surfaces.
 
-## 2026-03-28 - Safe crate boundary tightening
+## 2026-03-29 - Current execution arrangement
 - State: Done
-- Scope: `rust/src/lib.rs`
-- Baseline: several helper modules were already internal-only in practice, but the crate root still exposed them more broadly than needed.
-- Current Update: kept the CLI-facing crate surface intact while retaining only the safe internal modules as `pub(crate)` such as `alert_sync`, `cli_help_examples`, `dashboard_inspection_*`, `datasource_provider`, `datasource_secret`, `help_styles`, and `interactive_browser`.
-- Result: the crate boundary is narrower than before without collapsing the public CLI-oriented surface into dead-code errors.
+- Scope: `docs/internal/next-phase-execution-plan-2026-03-29.md`, `docs/overview-rust.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the repo already had the architecture note, gap list, and backlog, but it still lacked one short maintainer-facing arrangement that says what is now considered mainline, what remains bounded follow-up, what not to do next, and how `overview` and `project-status` should stay practical without becoming workflow owners.
+- Current Update: added one current execution-plan note that keeps `dashboard -> datasource -> sync/promotion trust -> alert` as the bounded order, keeps domain-owned status producers as the mainline contract, and explicitly positions `overview` as the staged artifact aggregator while `project-status` remains the project-wide status surface above shared contract consumers.
+- Result: the current pass is easier to execute without drifting into top-level framework work or single-signal polishing, and the practical role of `overview` and `project-status` is explicit for maintainers.
 
-## 2026-03-28 - Sync/promotion secret placeholder UX alignment
+## 2026-03-29 - Project-status live deepening and dedicated project-home TUI
 - State: Done
-- Scope: `rust/src/sync/mod.rs`, `rust/src/sync/cli_help_rust_tests.rs`, `rust/src/sync/promotion_preflight_rust_tests.rs`
-- Baseline: bundle/promotion surfaces already tracked `secretPlaceholderNames`, but the visible help examples and Python bundle-preflight summary wording were not aligned with the datasource secret workflow vocabulary.
-- Current Update: aligned bundle/promotion help examples to show an explicit availability file with `secretPlaceholderNames`, and pinned the placeholder-name expectations in focused Rust sync help and promotion tests.
-- Result: the staged sync/promotion surfaces now make placeholder expectations visible in the same naming style as the datasource secret workflow without changing live semantics.
+- Scope: `rust/src/project_status_command.rs`, `rust/src/project_status_freshness.rs`, `rust/src/project_status_tui.rs`, `rust/src/project_status_tui_render.rs`, `rust/src/dashboard/live_project_status.rs`, `rust/src/datasource_live_project_status.rs`, `rust/src/alert_live_project_status.rs`, `rust/src/access/live_project_status.rs`, `rust/src/sync/live_project_status.rs`, `rust/src/sync/live_project_status_sync.rs`, `rust/src/sync/live_project_status_promotion.rs`, `rust/src/sync/mod.rs`, `rust/src/lib.rs`, `rust/src/cli_rust_tests.rs`, `rust/tests/project_status_tui_rust_tests.rs`, `docs/internal/project-status-architecture.md`, `docs/internal/project-status-producer-gap-list.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the shared `project-status` command and first-pass live path already existed, but sync and promotion still fell back to transport-only `unknown` rows, live freshness stayed implicit, and the dedicated project-home TUI lived only as an unwired worker slice.
+- Current Update: wired deeper live domain producers into the shared command path, added optional staged summary/preflight/mapping/availability inputs so live sync and promotion can emit conservative staged-backed readiness instead of always returning `unknown`, stamped live domain and overall freshness through the shared freshness helper, and connected the dedicated `project-status` interactive workbench as a first-class output surface.
+- Result: project-wide status is now less overview-dependent and more operationally useful. `grafana-util project-status live` can consume deeper cross-domain evidence, sync/promotion live rows can move past transport-only placeholders when staged handoff data exists, and the project-home TUI is now a real consumer of the shared contract instead of a disconnected prototype.
 
-## 2026-03-28 - Dashboard governance/render boundary and crate visibility cleanup
+## 2026-03-29 - Project status staged rollout and project-home TUI
 - State: Done
-- Scope: `rust/src/dashboard/inspect_governance.rs`, `rust/src/dashboard/inspect_governance_render.rs`, `rust/src/lib.rs`
-- Baseline: the dashboard governance facade still mixed document/row exports with the full table renderer, and `lib.rs` still exposed several internal sync/datasource helper modules as effectively public surface.
-- Current Update: moved governance table rendering into a dedicated `inspect_governance_render.rs` helper and narrowed several internal helper modules in `lib.rs` from `pub` to `pub(crate)`.
-- Result: dashboard inspect/governance ownership is more explicit and the crate surface is less likely to grow accidental semi-public modules.
+- Scope: `rust/src/project_status.rs`, `rust/src/dashboard/project_status.rs`, `rust/src/datasource_project_status.rs`, `rust/src/alert_project_status.rs`, `rust/src/access/project_status.rs`, `rust/src/sync/project_status.rs`, `rust/src/sync/project_status_promotion.rs`, `rust/src/overview_document.rs`, `rust/src/overview_tui.rs`, `rust/src/overview_tui_render.rs`, `rust/src/overview_rust_tests.rs`, `docs/internal/project-status-producer-gap-list.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: project-wide staged status support was split across a shared contract plus only a few domain-owned producers, there were no ranked project-level blockers or freshness fields, and the overview interactive flow still began directly in the section browser.
+- Current Update: landed staged domain-owned producers across dashboard, datasource, alert, access, sync, and promotion; extended the shared project-status contract with project/domain freshness plus ranked `topBlockers` and `nextActions`; taught overview aggregation and text rendering to consume that shared status layer; and added a `Project Home` landing plus action handoff flow on top of the existing overview workbench.
+- Result: the Rust mainline now has a real staged project-status surface above any single domain command. Domain status ownership lives with each domain, overview acts as a consumer/aggregator, and the TUI now opens on project-level status and handoff instead of dropping users straight into an artifact browser.
 
-## 2026-03-28 - Datasource secret operator contract follow-through
+## 2026-03-29 - Project-status command and first-pass live path
 - State: Done
-- Scope: `rust/src/datasource_cli_defs.rs`, `rust/src/datasource_cli_mutation_rust_tests.rs`, `docs/internal/datasource-secret-handling-unwired.md`
-- Baseline: Rust datasource import and mutation flows already accepted placeholder-based secret inputs, but the import-side operator help and the maintainer note still described the contract as partly unwired.
-- Current Update: documented `--secret-values` as part of datasource import help with explicit `secureJsonDataPlaceholders` wording, added focused CLI help assertions, and updated the maintainer note to describe the import/mutation contract as wired while calling out remaining provider limitations.
-- Result: datasource secret handling now has a clearer operator-facing contract for import and live mutation, even though provider-backed resolution and richer dry-run visibility are still follow-up work.
+- Scope: `rust/src/project_status.rs`, `rust/src/project_status_command.rs`, `rust/src/dashboard/live_project_status.rs`, `rust/src/datasource_live_project_status.rs`, `rust/src/alert_live_project_status.rs`, `rust/src/access/live_project_status.rs`, `rust/src/sync/live_project_status.rs`, `rust/src/overview_document.rs`, `rust/src/cli.rs`, `rust/src/cli_rust_tests.rs`, `rust/src/project_status_cli_rust_tests.rs`, `docs/internal/project-status-architecture.md`, `docs/internal/project-status-producer-gap-list.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: staged project-status had already landed through shared contract plus domain-owned staged producers, but there was still no dedicated top-level `project-status` command and no live path beyond design notes and gap-list planning.
+- Current Update: added a top-level `grafana-util project-status {staged,live}` command, moved project-level aggregation helpers into the shared `project_status` module so staged and live consumers use the same overall/top-blocker/next-action logic, kept `overview` as a consumer instead of the owner, and landed first-pass live domain producers for dashboard, datasource, alert, access, sync, and promotion. Dashboard/datasource/alert/access now read conservative live surfaces, while sync and promotion stay explicit `unknown` live rows that direct operators back to staged inputs when live-only transport is not enough to judge readiness.
+- Result: the Rust mainline now has an explicit staged/live split at the command layer, not only in architecture docs. `project-status` is now a separate cross-domain consumer, `overview` remains one consumer among several, and the first live project-wide path is available without collapsing staged and live semantics into one undocumented heuristic.
 
-## 2026-03-27 - Datasource secret placeholder preflight
+## 2026-03-29 - Access domain status producer
 - State: Done
-- Scope: `rust/src/datasource_secret.rs`, `rust/src/sync/bundle_preflight.rs`, `rust/src/sync/staged_documents_apply.rs`, `rust/src/sync/staged_documents_render.rs`, focused sync datasource secret tests
-- Baseline: Rust sync source bundles preserved `secureJsonDataPlaceholders`, but bundle-preflight and apply gating only assessed sync checks, provider references, and alert artifacts. Missing datasource secret placeholder availability stayed invisible until a later manual step.
-- Current Update: added a Rust datasource secret placeholder helper, wired a staged `secretPlaceholderAssessment` into bundle-preflight, counted placeholder blockers in the bundle summary, and threaded that count into apply rejection and apply-intent text output.
-- Result: datasource secret handling now has a first fail-closed staged contract on the Rust path, so missing placeholder availability is reviewable and blocks apply before any live mutation path is considered.
+- Scope: `rust/src/access/project_status.rs`, `rust/src/access/mod.rs`, `rust/src/overview_document.rs`, `rust/src/overview_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: access overview status was still assembled inside `overview_document.rs` from a generic staged artifact summary, so access-specific bundle presence and per-bundle attribution were not owned by the access domain itself.
+- Current Update: added an access-owned staged export-bundle status producer that aggregates users, teams, orgs, and service-accounts bundle summaries into one shared `ProjectDomainStatus`, then rewired overview aggregation to call it and added focused coverage for the access domain row.
+- Result: access now has the same domain-owned status pattern as sync and dashboard. Missing bundle kinds are represented as partial status with `missing-bundle-kind` warnings, a bundle-specific next-action string, and source attribution only for the bundles that are actually present.
 
-## 2026-03-27 - Sync staged/live boundary split
+## 2026-03-29 - Dashboard governance warning rows
 - State: Done
-- Scope: `rust/src/sync/cli.rs`, `rust/src/sync/live.rs`, `rust/src/sync/live_apply.rs`, `rust/src/sync/live_intent.rs`, `rust/src/sync/staged_documents.rs`, `rust/src/sync/staged_documents_apply.rs`, `rust/src/sync/staged_documents_render.rs`
-- Baseline: staged review/apply/preflight helpers and live apply-intent parsing were mixed into broader facade modules, which made sync ownership boundaries harder to trace.
-- Current Update: split staged review/apply gating into `staged_documents_apply.rs`, kept `staged_documents_render.rs` focused on rendering and drift display, and moved live apply-intent parsing into `live_intent.rs` so `live_apply.rs` stays request-execution focused.
-- Result: the sync CLI now reads through clearer staged-vs-live boundaries without changing staged document contracts or live apply JSON output.
+- Scope: `rust/src/dashboard/project_status.rs`, `rust/src/overview_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the dashboard domain-status producer only surfaced blocker counts from the staged inspect summary and always emitted empty warning fields, so overview had no dashboard-owned way to report governance-like summary signals.
+- Current Update: added conservative staged warning rows for `riskRecordCount`, `highBlastRadiusDatasourceCount`, `queryAuditCount`, and `dashboardAuditCount`, preserved blocker-first behavior, and added a focused regression covering both summary-only and governance-enriched inputs.
+- Result: the dashboard producer now emits `warningCount`, `warnings`, and conservative `nextActions` from its own summary inputs without pushing that inference into overview.
 
-## 2026-03-27 - Sync explainability upgrade
+## 2026-03-29 - Overview architecture hardening
 - State: Done
-- Scope: `rust/src/sync/blocked_reasons.rs`, `rust/src/sync/staged_documents_apply.rs`, `rust/src/sync/staged_documents_render.rs`, `rust/src/sync/bundle_preflight.rs`, focused sync render/apply tests
-- Baseline: sync preflight and bundle-preflight apply rejections mostly surfaced aggregate blocking counts, while the text renderers gave operators limited context on why a plan stayed review-only or why apply stayed blocked.
-- Current Update: added a small blocked-reason helper that extracts concrete blocking details from staged check arrays, threaded those reasons into apply rejection messages, and added concise reason lines to plan/apply/bundle-preflight text output.
-- Result: operators now see specific blocking causes in sync apply failures and clearer review/apply guidance in the staged text renderers without redesigning the JSON contracts.
+- Scope: `rust/src/overview.rs`, `rust/src/overview_kind.rs`, `rust/src/overview_summary_projection.rs`, `rust/src/overview_document.rs`, `rust/src/overview_sections.rs`, `rust/src/overview_section_rows.rs`, `rust/src/overview_tui.rs`, `rust/src/overview_tui_render.rs`, `rust/src/overview_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the Rust `overview` stack already has clear top-level module boundaries, but text rendering still depends on section projection, artifact-kind rules are repeated across multiple modules, and the project-status / section-row builders are starting to concentrate too much domain-specific branching into single files.
+- Current Update: centralized cross-cutting artifact-kind rules in `overview_kind.rs`, moved summary-fact projection into `overview_summary_projection.rs`, moved overview row builders into `overview_section_rows.rs`, kept `overview_sections.rs` focused on generic section assembly plus summary-item projection, split TUI frame rendering into `overview_tui_render.rs`, and refactored `overview_document.rs` so text rendering now consumes artifact-level summary items while project-status derivation stays in one file through ordered per-domain builder helpers and a small local spec layer for repeated literals.
+- Result: the overview stack is still traceable as `args -> artifacts -> document -> text/json/tui`, but the main drift risks are lower: text output no longer back-references section views, supported artifact-kind logic is less scattered, summary projection no longer competes with kind-registry ownership, section-row mapping is no longer mixed into generic assembly, and the TUI file no longer mixes render/layout code with state/event dispatch.
 
-## 2026-03-27 - Promotion preflight skeleton
+## 2026-03-29 - Shared project-status contract and sync producer
 - State: Done
-- Scope: `rust/src/sync/promotion_preflight.rs`, `rust/src/sync/cli.rs`, `rust/src/sync/mod.rs`, focused sync help/contract tests
-- Baseline: the repo already had source-bundle and bundle-preflight primitives, but there was no first-class staged contract for cross-environment remap visibility before moving into promotion workflows.
-- Current Update: added a `sync promotion-preflight` command plus a staged `grafana-utils-sync-promotion-preflight` document that layers folder and datasource remap checks on top of the existing bundle-preflight assessment and optional mapping input.
-- Result: maintainers now have a concrete promotion entry point that surfaces direct matches, explicit remaps, missing mappings, and inherited bundle blockers without claiming a full promotion/apply workflow yet.
+- Scope: `rust/src/project_status.rs`, `rust/src/sync/project_status.rs`, `rust/src/sync/mod.rs`, `rust/src/overview.rs`, `rust/src/overview_document.rs`, `rust/src/overview_rust_tests.rs`, `rust/src/lib.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the staged `projectStatus` shape still lived under `overview`, and the sync row was only a local `overview_document.rs` summary fallback over `sync-summary` while `bundle-preflight` appeared as a separate pseudo-domain.
+- Current Update: promoted the reusable project-status contract into a crate-level module, then added the first domain-owned producer in `sync/project_status.rs`. The sync domain row now reuses `sync-summary` plus `bundle-preflight` evidence, carries shared `scope` / `mode` / `warningCount` / `warnings` fields, and replaces the earlier `bundle-preflight` pseudo-domain in overview aggregation.
+- Result: project status is now less `overview`-owned, and the first real domain producer lives with its owning workflow. `overview` remains a consumer, while sync status becomes a reusable staged-domain surface instead of a local row builder plus a separate workflow-shaped domain entry.
 
-## 2026-03-27 - Promotion mapping help example
+## 2026-03-29 - Dashboard domain status producer
 - State: Done
-- Scope: `rust/src/sync/mod.rs`, `rust/src/sync/cli_help_rust_tests.rs`
-- Baseline: the promotion mapping contract was enforced in code and focused tests, but operators still had to infer the file shape from source or test fixtures.
-- Current Update: embedded a minimal promotion mapping JSON example directly in `sync promotion-preflight --help` and locked the example strings in focused help tests.
-- Result: operators can discover the mapping file kind, schema version, and environment metadata shape directly from CLI help before reading source or maintainer docs.
+- Scope: `rust/src/dashboard/project_status.rs`, `rust/src/dashboard/mod.rs`, `rust/src/overview_document.rs`, `rust/src/overview_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: after sync moved to a domain-owned producer, the dashboard row was still assembled directly inside `overview_document.rs` from staged inspect summary keys, so the project-status ownership split was only partial.
+- Current Update: added a dashboard-owned status producer in `dashboard/project_status.rs` and rewired overview aggregation to consume it. The first pass stays conservative and reuses the existing inspect summary signals for `dashboardCount`, `queryCount`, `orphanedDatasourceCount`, and `mixedDatasourceDashboardCount` without introducing new governance heuristics yet.
+- Result: dashboard now follows the same architectural pattern as sync: domain-owned staged status first, overview consumer second. The visible status semantics stay stable while ownership moves to the domain boundary that should evolve them later.
 
-## 2026-03-27 - Unified CLI help/example source split
+## 2026-03-29 - Project status architecture mini-spec
 - State: Done
-- Scope: `rust/src/cli.rs`, `rust/src/cli_help_examples.rs`, `rust/src/lib.rs`, focused unified CLI help tests
-- Baseline: the unified CLI help/example strings and color-label table lived as one large block in `rust/src/cli.rs`.
-- Current Update: extracted the help/example data into a dedicated helper module while keeping the rendered CLI help paths and command behavior unchanged.
-- Result: the unified help source is now split across `rust/src/cli.rs` and `rust/src/cli_help_examples.rs`, and focused help rendering tests passed.
+- Scope: `docs/internal/project-status-architecture.md`, `docs/overview-rust.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the repo already had a staged `overview` command and an `overview`-specific architecture note, but there was still no explicit top-level design for project-wide progress visibility that was broader than the `overview` subsystem itself.
+- Current Update: added a dedicated project-status architecture mini-spec above the `overview` layer. It defines domain status producers, a shared project-status contract, staged vs live separation, and the intended TUI navigation model of `project home -> domain drill-down -> action handoff`, then linked the crate-level maintainer guide to that higher-level design note.
+- Result: maintainers now have a clear architectural rule that project-wide status support belongs to a shared cross-domain status model with multiple consumers, not to an ever-growing `overview` command.
 
-## 2026-03-27 - Dashboard dependency report human-readable output
+## 2026-03-29 - Project status producer gap list
 - State: Done
-- Scope: `rust/src/dashboard_inspection_dependency_contract.rs`, `rust/src/dashboard/inspect_output.rs`, `rust/src/dashboard/inspect_dependency_render.rs`, `rust/src/dashboard/inspect_family.rs`, focused dashboard inspect tests
-- Baseline: dependency reporting had richer contract data available, but the dedicated dependency text renderer was still coupled to the broader inspect output module and inspect query reporting still depended on governance-owned family normalization helpers.
-- Current Update: moved dependency table rendering into `inspect_dependency_render.rs`, added focused orphan-cell normalization coverage plus stronger output assertions for dashboard dependency sections, and extracted datasource family normalization into `inspect_family.rs` so the core inspect pipeline no longer reaches into governance internals for that shared helper.
-- Result: the dependency report path is now a clearer inspect-owned subsystem slice with focused tests, the explicit `In Progress` item is closed, and the dashboard inspect path no longer depends on governance for basic family normalization.
+- Scope: `docs/internal/project-status-producer-gap-list.md`, `docs/internal/project-status-architecture.md`, `docs/overview-rust.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the new project-status architecture defined the target layers and TUI model, but it did not yet translate the current Rust codebase into a per-domain execution map of what was already landed versus what was still missing.
+- Current Update: added a maintainer gap list that inventories the current status-like producers for dashboard, datasource, alert, access, sync, and promotion, marks each domain as landed/partial/missing, and records the shortest safe next step for turning each domain into a reusable status producer.
+- Result: maintainers now have a concrete domain-by-domain implementation order for whole-project progress visibility instead of only a high-level architecture note.
 
-## 2026-03-27 - Current Maintainer State
+## 2026-03-28 - Rust project overview command
+- State: Done
+- Scope: `rust/src/overview.rs`, `rust/src/overview_rust_tests.rs`, `rust/src/cli.rs`, `rust/src/cli_rust_tests.rs`, `rust/src/lib.rs`, `rust/src/dashboard/mod.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the Rust CLI had strong dashboard inspect and sync staging surfaces, plus stable datasource, alert, and access export roots, but there was no single top-level entrypoint that could summarize those staged artifacts in one pass.
+- Current Update: expanded `grafana-util overview` into a stable artifact source plus UI projection and wired that projection into an interactive workbench. It still reuses dashboard inspect summary, datasource export inventory, alert export root index, access export bundles, sync summary, sync bundle preflight, and sync promotion preflight builders/contracts, but the overview document now also emits a staged-only `projectStatus` contract with overall status plus per-domain readiness/blocker rows, derivation metadata such as `reasonCode`/`sourceKinds`/`signalKeys`, and deterministic `nextActions`, keeps the minimal section model aligned with the existing workbench/browser vocabulary, lets the CLI browse it through `--output interactive` when built with `tui`, exposes richer secondary item views such as datasource inventory rows, alert asset rows, access roster rows, sync resource rows, promotion check rows, and bundle assessment rows, keeps the internals split across `rust/src/overview.rs`, `rust/src/overview_document.rs`, `rust/src/overview_artifacts.rs`, `rust/src/overview_sections.rs`, and `rust/src/overview_support.rs`, and now anchors that split in `docs/internal/overview-architecture.md` so maintainers can follow one stable entrypoint-to-output path instead of reverse-engineering the module graph.
+- Result: operators can now use `overview` not just as an artifact browser but as a staged project-status surface that summarizes which domains are ready, partial, or blocked, why they landed there, and what the next deterministic action is, while maintainers now have clearer internal boundaries between overview orchestration, document/render logic, artifact assembly, UI projection, and shared support helpers.
+
+## 2026-03-28 - Governance gate high blast radius policy
+- State: Done
+- Scope: `rust/src/dashboard/governance_gate_rules.rs`, `rust/src/dashboard/governance_gate_rules_policy.rs`, `rust/src/dashboard/governance_gate_rules_evaluation_apply.rs`, `rust/src/dashboard/export_focus_governance_rule_datasource_routing_complexity_rust_tests.rs`, `rust/src/dashboard/export_focus_governance_rule_threshold_audit_cost_rust_tests.rs`, `rust/src/dashboard/export_focus_governance_output_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: inspect could already flag `highBlastRadius` datasources, but governance gate policy had no way to reject that concentration during CI or promotion checks.
+- Current Update: added `datasources.forbidHighBlastRadius` to governance gate policy parsing, checked-rules output, and evaluator logic against `datasourceGovernance`.
+- Result: governance gate can now fail when inspect artifacts contain a datasource marked `highBlastRadius`, so dependency concentration is enforceable instead of advisory-only.
+
+## 2026-03-28 - Datasource concentration threshold
+- State: Done
+- Scope: `rust/src/dashboard/inspect_governance_rows.rs`, `rust/src/dashboard/inspect_governance_coverage.rs`, `rust/src/dashboard/inspect_governance_document.rs`, `rust/src/dashboard/inspect_governance_render.rs`, `rust/src/dashboard/inspect_workbench_content.rs`, `rust/src/dashboard_inspection_dependency_contract.rs`, `rust/src/dashboard/inspect_dependency_render.rs`, `rust/src/dashboard/inspect_governance_document_rust_tests.rs`, `rust/src/dashboard/inspect_live_tui_rust_tests.rs`, `rust/src/dashboard/inspect_workbench_state.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: inspect could already show folder and dashboard blast-radius facts per datasource, but operators still had to decide by eye whether that concentration was risky enough to flag.
+- Current Update: added a conservative `highBlastRadius` threshold to datasource governance and dependency usage, then surfaced the count in governance summary and the boolean in governance/dependency/TUI outputs.
+- Result: shared datasources that fan out broadly are now flagged explicitly in inspect output, so governance and cleanup work can focus on concentration hotspots instead of scanning raw counts manually.
+
+## 2026-03-28 - Datasource blast-radius outputs
+- State: Done
+- Scope: `rust/src/dashboard/inspect_governance_rows.rs`, `rust/src/dashboard/inspect_governance_coverage.rs`, `rust/src/dashboard/inspect_governance_render.rs`, `rust/src/dashboard/inspect_workbench_content.rs`, `rust/src/dashboard_reference_models.rs`, `rust/src/dashboard_inspection_dependency_contract.rs`, `rust/src/dashboard/inspect_dependency_render.rs`, `rust/src/dashboard/inspect_governance_document_rust_tests.rs`, `rust/src/dashboard/inspect_live_tui_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: dashboard inspect already counted datasource usage and surfaced some governance risks, but datasource-level blast radius still required reading raw dashboard UID lists and inferring cross-folder concentration by hand.
+- Current Update: promoted folder and dashboard blast-radius signals into the shared datasource governance and dependency usage models, then threaded those fields through JSON, table, and workbench renderers.
+- Result: inspect outputs now show datasource folder count, cross-folder status, folder paths, and dashboard titles directly, so operators can see dependency concentration and likely blast radius without post-processing the raw report rows.
+
+## 2026-03-28 - Loki pipeline field hints
+- State: Done
+- Scope: `rust/src/dashboard/inspect_analyzer_loki.rs`, `rust/src/dashboard/export_focus_report_query_family_analysis_rust_tests.rs`, `rust/src/dashboard/export_focus_report_query_family_extraction_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Loki query inspection already captures stream selectors, label matchers, line-filter hints, and range windows, but parsed pipeline fields such as `status`, `level`, or `duration_ms` are still invisible in the shared query report rows.
+- Current Update: constrained selector label extraction to actual stream selectors, then taught the Loki analyzer to surface obvious pipeline predicate fields and `unwrap` targets as shared inspection measurements.
+- Result: Loki query rows now expose parser-derived field hints such as `status`, `level`, and `duration_ms` through the same shared inspection contract used by dependency and governance outputs, without changing report/render wiring.
+
+## 2026-03-28 - Rust mainline status refresh
 - State: Active
-- Scope: Rust maintainability cleanup across `dashboard/`, `sync/`, `datasource/`, and `access/`.
-- Current Shape:
-  - `rust/src/sync/workbench.rs` is now a facade over builder-oriented helpers in `summary_builder.rs`, `bundle_builder.rs`, `plan_builder.rs`, and `apply_builder.rs`.
-  - `rust/src/dashboard/import.rs` is now an orchestration layer over `import_lookup.rs`, `import_validation.rs`, `import_render.rs`, `import_compare.rs`, and `import_routed.rs`.
-  - Governance rule evaluation lives in `rust/src/dashboard/governance_gate_rules.rs`, with `governance_gate.rs` reduced to command/result orchestration.
-  - Recent maintainer work has focused on splitting large orchestration files into smaller helper modules without changing the public CLI or JSON contracts.
-  - Large dashboard test coverage has started moving out of `rust/src/dashboard/rust_tests.rs` into feature files such as `inspect_live_rust_tests.rs`, `inspect_query_rust_tests.rs`, `inspect_governance_rust_tests.rs`, `inspect_export_rust_tests.rs`, and `screenshot_rust_tests.rs`.
-- Result:
-  - Remaining complexity is primarily feature density and contract surface, not missing core architecture direction.
-  - The current cleanup theme is to keep facades thin, contracts typed, and feature-specific tests close to the owned behavior.
+- Scope: `rust/src/dashboard/*`, `rust/src/sync/*`, `rust/src/datasource*`, `rust/src/access/*`, `docs/internal/project-roadmap.md`, `docs/internal/maintainer-backlog-2026-03-28.md`
+- Baseline: the Rust mainline had already absorbed the operator workflows, but the live status file still carried a rolling task log.
+- Current Update: condensed the live view to the current Rust-only mainline. Dashboard, sync, datasource, and access surfaces are still the active runtime; the TUI shell grammar is shared across the main console surfaces; sync promotion now exposes a staged review handoff; datasource secret handling is fail-closed and placeholder-based; and the maintainer backlog now owns the next Rust-only follow-ups.
+- Result: the live status file now reads as a current maintainer snapshot instead of a detailed activity log.
 
-## 2026-03-27 - Open Follow-Up
+## 2026-03-28 - Current follow-up
 - State: Planned
-- Scope: `rust/src/dashboard/`, `rust/src/datasource.rs`, `rust/src/datasource_import_export.rs`, `rust/src/lib.rs`, related dashboard and datasource tests
-- Next Step: continue dashboard subsystem boundary cleanup beyond the already-landed inspect/report/governance splits, keep narrowing public-vs-internal crate boundaries, and then decide what follows the now-usable datasource secret operator contract and import dry-run secretVisibility.
+- Scope: `docs/internal/project-roadmap.md`, `docs/internal/maintainer-backlog-2026-03-28.md`, `TODO.md`
+- Next Step: keep the next round focused on dashboard boundary cleanup, inspection/governance depth, selective crate-boundary cleanup, sync/promotion trust, and datasource secret handling.
+## 2026-03-29 - Project-level stop/continue closeout
+- State: Done
+- Scope: `docs/internal/current-execution-review-2026-03-29.md`, `docs/internal/domain-producer-maturity-review-2026-03-29.md`, `docs/internal/next-phase-execution-plan-2026-03-29.md`, `docs/internal/project-status-producer-gap-list.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: after the final bounded sync/promotion follow-through, the maintainer docs still treated `sync` / `promotion` as the last active depth lane even though their remaining gaps had narrowed to trust-evidence polish rather than missing operator decisions.
+- Current Update: reran the project-level stop/continue review and closed the pass with no default depth lane remaining. All six domain-owned producers are now treated as stop-for-now unless a concrete consumer proves a missing decision-critical signal, and `overview` / `project-status` stay thin practical consumers.
+- Result: maintainers now have a single current answer for this pass: stop producer deepening by default, protect the existing domain-owned contracts, and only reopen a lane from concrete downstream pressure instead of speculative polishing.
+## 2026-03-29 - Roadmap and backlog alignment after producer closeout
+- State: Done
+- Scope: `docs/internal/project-roadmap.md`, `docs/internal/maintainer-backlog-2026-03-28.md`, `TODO.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the project-level stop/continue review had already closed all domain depth lanes by default, but the roadmap, maintainer backlog, and root TODO still carried older assumptions that dashboard, datasource, and sync/promotion were the active next execution lanes.
+- Current Update: aligned the roadmap, maintainer backlog, and active TODO to the current execution stance. They now emphasize stability, consumer-proven reopen criteria, thin `overview` / `project-status` boundaries, and exploratory-only treatment for broader analysis or packaging ideas.
+- Result: the repo now has one current maintainer answer across the roadmap stack instead of a closed stop/continue review sitting next to older active-lane queues.
+## 2026-03-30 - Shared TUI presentation pass for pane-based interactive surfaces
+- State: Done
+- Scope: `rust/src/tui_shell.rs`, `rust/src/overview_tui_render.rs`, `rust/src/project_status_tui_render.rs`, `rust/src/interactive_browser.rs`, `rust/src/dashboard/topology_tui.rs`, `rust/src/dashboard/impact_tui.rs`, `rust/src/dashboard/governance_gate_tui.rs`, `rust/src/dashboard/inspect_workbench_render.rs`, `rust/src/dashboard/inspect_orchestration.rs`, `rust/src/dashboard/inspect_live.rs`, `rust/src/sync/audit_tui.rs`, `rust/src/sync/review_tui_helpers.rs`, related focused Rust tests
+- Baseline: pane-based interactive screens had drifted apart in presentation. `overview` still rendered a redundant upper block, footer controls were unevenly spaced, and focus state was not consistently highlighted across the tab-driven TUI surfaces.
+- Current Update: collapsed `overview` to a single top summary block, changed shared control rows to fixed-width aligned cells, and standardized focus visibility with blue focus chips across the shared/major pane-based interactive views. Footer copy was also shortened to clearer operator-oriented action labels. `dashboard inspect-export --interactive` now also has a focused render smoke test, the inspect workbench shell follows the same visible header/footer treatment instead of an older ad hoc layout, and interactive export/live inspect now print explicit pre-workbench progress steps while summary/query/governance analysis is still running.
+- Result: `overview`, `project-status`, shared browser-style screens, inspect workbench, and the main dashboard/sync review panes now read as the same TUI family instead of separate hand-built layouts, and long-running inspect interactive launches no longer fail silently before the first frame.

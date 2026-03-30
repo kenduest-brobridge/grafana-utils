@@ -17,6 +17,7 @@ use std::time::Duration;
 
 use crate::common::Result;
 use crate::interactive_browser::BrowserItem;
+use crate::tui_shell;
 
 use super::governance_gate::{build_browser_item, finding_sort_key, DashboardGovernanceGateResult};
 
@@ -282,33 +283,44 @@ pub(crate) fn run_governance_gate_interactive(
                 .block(pane_block(&detail_title, active_pane == FindingsPane::Detail));
             frame.render_widget(detail_widget, panes[2]);
 
-            let footer = Paragraph::new(vec![
-                Line::from(vec![
-                    Span::styled(
-                        match active_pane {
-                            FindingsPane::Groups => "Focus: groups",
-                            FindingsPane::Findings => "Focus: findings",
-                            FindingsPane::Detail => "Focus: detail",
-                        },
-                        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-                    ),
-                    Span::raw("   "),
-                    Span::raw(format!(
-                        "Group {}/{}   Finding {}/{}",
-                        group_state.selected().map(|index| index + 1).unwrap_or(0),
-                        groups.len(),
-                        finding_state.selected().map(|index| index + 1).unwrap_or(0),
-                        items.len()
-                    )),
+            frame.render_widget(
+                tui_shell::build_footer_controls(vec![
+                    Line::from(vec![
+                        tui_shell::label("Focus "),
+                        tui_shell::key_chip(
+                            match active_pane {
+                                FindingsPane::Groups => "Groups",
+                                FindingsPane::Findings => "Findings",
+                                FindingsPane::Detail => "Detail",
+                            },
+                            Color::Blue,
+                        ),
+                        Span::raw("  "),
+                        tui_shell::label("Selection "),
+                        tui_shell::accent(
+                            format!(
+                                "group {}/{}  finding {}/{}",
+                                group_state.selected().map(|index| index + 1).unwrap_or(0),
+                                groups.len(),
+                                finding_state.selected().map(|index| index + 1).unwrap_or(0),
+                                items.len()
+                            ),
+                            Color::White,
+                        ),
+                    ]),
+                    tui_shell::control_line(&[
+                        ("Tab", Color::Blue, "next pane"),
+                        ("Up/Down", Color::Blue, "move"),
+                        ("PgUp/PgDn", Color::Blue, "scroll detail"),
+                        ("Home/End", Color::Blue, "jump"),
+                    ]),
+                    tui_shell::control_line(&[
+                        ("Enter", Color::Blue, "reset detail"),
+                        ("q/Esc", Color::Gray, "exit"),
+                    ]),
                 ]),
-                Line::from(
-                    "Tab next pane  Up/Down move active pane  PgUp/PgDn detail jump  Home/End bounds"
-                        .to_string(),
-                ),
-                Line::from("Enter reset detail  q/Esc exit".to_string()),
-            ])
-            .block(Block::default().borders(Borders::ALL).title("Controls"));
-            frame.render_widget(footer, outer[2]);
+                outer[2],
+            );
         })?;
 
         if !event::poll(Duration::from_millis(250))? {

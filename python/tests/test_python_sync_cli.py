@@ -163,6 +163,19 @@ class SyncCliTests(unittest.TestCase):
         self.assertIn("Examples:", help_text)
         self.assertIn("--output", help_text)
 
+    def test_sync_bundle_preflight_help_includes_secret_placeholder_example(self):
+        help_text = (
+            sync_cli.build_parser()
+            ._subparsers._group_actions[0]
+            .choices["bundle-preflight"]
+            .format_help()
+        )
+
+        self.assertIn("Examples:", help_text)
+        self.assertIn("--availability-file", help_text)
+        self.assertIn("secretPlaceholderNames", help_text)
+        self.assertIn('"providerNames": ["vault"]', help_text)
+
     def test_sync_summary_renders_text_counts(self):
         desired = [
             {
@@ -691,6 +704,18 @@ class SyncCliTests(unittest.TestCase):
             self.assertIn("syncPreflight", document)
             self.assertEqual(document["summary"]["providerBlockingCount"], 0)
             self.assertEqual(document["summary"]["secretBlockingCount"], 0)
+            self.assertEqual(
+                document["secretAssessment"]["plans"][0]["providerKind"],
+                "inline-placeholder-map",
+            )
+            self.assertEqual(
+                document["secretAssessment"]["plans"][0]["placeholderNames"],
+                ["prom-basic-auth"],
+            )
+            self.assertEqual(
+                document["secretAssessment"]["checks"][0]["placeholderName"],
+                "prom-basic-auth",
+            )
             checks = {
                 (item["kind"], item["identity"]): item
                 for item in document["syncPreflight"]["checks"]
@@ -852,6 +877,14 @@ class SyncCliTests(unittest.TestCase):
             document = json.loads(stdout.getvalue())
             self.assertEqual(document["summary"]["providerBlockingCount"], 1)
             self.assertEqual(document["summary"]["secretBlockingCount"], 1)
+            self.assertEqual(
+                document["secretAssessment"]["plans"][0]["providerKind"],
+                "inline-placeholder-map",
+            )
+            self.assertEqual(
+                document["secretAssessment"]["checks"][0]["placeholderName"],
+                "loki-basic-auth",
+            )
             self.assertEqual(
                 document["providerAssessment"]["checks"][0]["status"],
                 "missing",

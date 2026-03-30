@@ -31,16 +31,33 @@ pub(super) fn render_frame(
     frame.render_widget(
         tui_shell::build_header(
             "Team Browser",
-            vec![Line::from(format!(
-                "Teams={}  expanded={}  active-pane={}  url={}",
-                state.team_rows.len(),
-                state.expanded_team_ids.len(),
-                match state.focus {
-                    PaneFocus::List => "list",
-                    PaneFocus::Facts => "facts",
-                },
-                args.common.url
-            ))],
+            vec![
+                tui_shell::summary_line(&[
+                    tui_shell::summary_cell(
+                        "Teams",
+                        state.team_rows.len().to_string(),
+                        Color::White,
+                    ),
+                    tui_shell::summary_cell(
+                        "Expanded",
+                        state.expanded_team_ids.len().to_string(),
+                        Color::White,
+                    ),
+                ]),
+                Line::from(vec![
+                    tui_shell::label("Focus "),
+                    tui_shell::key_chip(
+                        match state.focus {
+                            PaneFocus::List => "List",
+                            PaneFocus::Facts => "Facts",
+                        },
+                        Color::Blue,
+                    ),
+                    Span::raw("  "),
+                    tui_shell::label("URL "),
+                    tui_shell::accent(args.common.url.clone(), Color::White),
+                ]),
+            ],
         ),
         outer[0],
     );

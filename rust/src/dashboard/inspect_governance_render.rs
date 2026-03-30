@@ -21,6 +21,7 @@ pub(crate) fn render_governance_table_report(
             "DATASOURCES",
             "DASHBOARD_DATASOURCE_EDGES",
             "DATASOURCES_WITH_RISKS",
+            "HIGH_BLAST_RADIUS_DATASOURCES",
             "DASHBOARDS_WITH_RISKS",
             "MIXED_DASHBOARDS",
             "ORPHANED_DATASOURCES",
@@ -33,6 +34,10 @@ pub(crate) fn render_governance_table_report(
             document.summary.datasource_coverage_count.to_string(),
             document.summary.dashboard_datasource_edge_count.to_string(),
             document.summary.datasource_risk_coverage_count.to_string(),
+            document
+                .summary
+                .high_blast_radius_datasource_count
+                .to_string(),
             document.summary.dashboard_risk_coverage_count.to_string(),
             document
                 .summary
@@ -238,9 +243,14 @@ pub(crate) fn render_governance_table_report(
                 row.dashboard_count.to_string(),
                 row.panel_count.to_string(),
                 row.mixed_dashboard_count.to_string(),
+                row.folder_count.to_string(),
+                bool_text(row.high_blast_radius, "true", "false").to_string(),
+                bool_text(row.cross_folder, "true", "false").to_string(),
+                join_or_none(&row.folder_paths, ","),
                 row.risk_count.to_string(),
                 join_or_none(&row.risk_kinds, ","),
                 join_or_none(&row.dashboard_uids, ","),
+                join_or_none(&row.dashboard_titles, ","),
                 bool_text(row.orphaned, "true", "false").to_string(),
             ]
         })
@@ -257,9 +267,14 @@ pub(crate) fn render_governance_table_report(
                 "DASHBOARDS",
                 "PANELS",
                 "MIXED_DASHBOARDS",
+                "FOLDERS",
+                "HIGH_BLAST_RADIUS",
+                "CROSS_FOLDER",
+                "FOLDER_PATHS",
                 "RISKS",
                 "RISK_KINDS",
                 "DASHBOARD_UIDS",
+                "DASHBOARD_TITLES",
                 "ORPHANED",
             ],
             &datasource_governance_rows,

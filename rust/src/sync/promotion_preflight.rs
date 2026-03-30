@@ -9,7 +9,7 @@ use super::bundle_preflight::{
     require_sync_bundle_preflight_summary,
 };
 use super::json::{require_json_object, require_json_object_field};
-use crate::common::{message, Result};
+use crate::common::{message, tool_version, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
@@ -573,6 +573,7 @@ pub fn build_sync_promotion_preflight_document(
     Ok(serde_json::json!({
         "kind": SYNC_PROMOTION_PREFLIGHT_KIND,
         "schemaVersion": SYNC_PROMOTION_PREFLIGHT_SCHEMA_VERSION,
+        "toolVersion": tool_version(),
         "summary": SyncPromotionPreflightSummary {
             resource_count,
             direct_match_count,

@@ -18,6 +18,7 @@ pub(crate) struct QueryThresholdPolicy {
     allowed_uids: BTreeSet<String>,
     allowed_folder_prefixes: Vec<String>,
     forbid_unknown: bool,
+    forbid_high_blast_radius: bool,
     forbid_mixed_families: bool,
     forbid_select_star: bool,
     require_sql_time_filter: bool,

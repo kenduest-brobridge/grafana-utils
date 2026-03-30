@@ -30,12 +30,19 @@ class DatasourceLiveMutationRenderSafeTests(unittest.TestCase):
 
     def test_datasource_live_mutation_render_render_table_uses_selected_columns(self):
         lines = render_safe.render_live_mutation_dry_run_table(
-            [{"uid": "prom-main", "action": "would-create"}],
-            columns=["uid", "action"],
+            [
+                {
+                    "uid": "prom-main",
+                    "action": "would-create",
+                    "secretSummary": "fields=basicAuthPassword",
+                }
+            ],
+            columns=["uid", "secretSummary", "action"],
         )
 
-        self.assertEqual(lines[0], "UID        ACTION      ")
+        self.assertIn("UID        SECRET", lines[0])
         self.assertIn("would-create", lines[2])
+        self.assertIn("fields=basicAuthPassword", lines[2])
 
     def test_datasource_live_mutation_render_render_json_counts_any_would_fail_action_as_blocked(
         self,

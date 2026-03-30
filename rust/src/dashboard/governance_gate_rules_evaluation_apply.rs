@@ -320,6 +320,68 @@ pub(crate) fn evaluate_dashboard_governance_gate_violations(
             }
         }
     }
+    if policy.forbid_high_blast_radius {
+        let datasources = array_of_objects(governance_document, "datasourceGovernance")?;
+        for datasource in datasources {
+            let high_blast_radius = datasource
+                .get("highBlastRadius")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            if !high_blast_radius {
+                continue;
+            }
+            let datasource_name = string_field(datasource, "datasource");
+            let datasource_uid = string_field(datasource, "datasourceUid");
+            let dashboard_count = datasource
+                .get("dashboardCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
+            let folder_count = datasource
+                .get("folderCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
+            let dashboard_titles = datasource
+                .get("dashboardTitles")
+                .and_then(Value::as_array)
+                .map(|values| {
+                    values
+                        .iter()
+                        .filter_map(Value::as_str)
+                        .filter(|value| !value.trim().is_empty())
+                        .collect::<Vec<&str>>()
+                        .join(", ")
+                })
+                .unwrap_or_default();
+            let mut finding = build_dashboard_violation_from_fields(
+                "datasource-high-blast-radius-not-allowed",
+                format!(
+                    "Datasource {} exceeds the allowed blast radius with {dashboard_count} dashboards across {folder_count} folders{}{}.",
+                    if datasource_name.is_empty() {
+                        if datasource_uid.is_empty() {
+                            "unknown".to_string()
+                        } else {
+                            datasource_uid.clone()
+                        }
+                    } else {
+                        datasource_name.clone()
+                    },
+                    if dashboard_titles.is_empty() {
+                        "".to_string()
+                    } else {
+                        ": ".to_string()
+                    },
+                    dashboard_titles
+                ),
+                String::new(),
+                String::new(),
+            );
+            finding.datasource = datasource_name;
+            finding.datasource_uid = datasource_uid;
+            finding.datasource_family = string_field(datasource, "family");
+            finding.risk_kind = "datasource-high-blast-radius".to_string();
+            violations.push(finding);
+        }
+    }
     if policy.max_panels_per_dashboard.is_some() || policy.min_refresh_interval_seconds.is_some() {
         let dashboards = array_of_objects(governance_document, "dashboardGovernance")?;
         if let Some(limit) = policy.max_panels_per_dashboard {

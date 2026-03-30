@@ -332,6 +332,98 @@ fn parse_cli_supports_access_group() {
 }
 
 #[test]
+fn parse_cli_supports_overview_command() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "overview",
+        "--dashboard-export-dir",
+        "./dashboards/raw",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Overview(inner) => {
+            assert!(inner.command.is_none());
+            assert_eq!(
+                inner.staged.dashboard_export_dir.as_deref(),
+                Some(Path::new("./dashboards/raw"))
+            );
+        }
+        _ => panic!("expected overview group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_overview_live_command() {
+    let args: CliArgs = parse_cli_from(["grafana-util", "overview", "live"]);
+
+    match args.command {
+        UnifiedCommand::Overview(inner) => match inner.command {
+            Some(crate::overview::OverviewCommand::Live(_)) => {}
+            _ => panic!("expected overview live"),
+        },
+        _ => panic!("expected overview group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_project_status_command() {
+    let args: CliArgs = parse_cli_from(["grafana-util", "project-status", "staged"]);
+
+    match args.command {
+        UnifiedCommand::ProjectStatus(_) => {}
+        _ => panic!("expected project-status group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_project_status_live_staged_inputs() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "project-status",
+        "live",
+        "--sync-summary-file",
+        "./sync-summary.json",
+        "--bundle-preflight-file",
+        "./bundle-preflight.json",
+        "--promotion-summary-file",
+        "./promotion-summary.json",
+        "--mapping-file",
+        "./mapping.json",
+        "--availability-file",
+        "./availability.json",
+    ]);
+
+    match args.command {
+        UnifiedCommand::ProjectStatus(inner) => match inner.command {
+            crate::project_status_command::ProjectStatusSubcommand::Live(live) => {
+                assert_eq!(
+                    live.sync_summary_file.as_deref(),
+                    Some(Path::new("./sync-summary.json"))
+                );
+                assert_eq!(
+                    live.bundle_preflight_file.as_deref(),
+                    Some(Path::new("./bundle-preflight.json"))
+                );
+                assert_eq!(
+                    live.promotion_summary_file.as_deref(),
+                    Some(Path::new("./promotion-summary.json"))
+                );
+                assert_eq!(
+                    live.mapping_file.as_deref(),
+                    Some(Path::new("./mapping.json"))
+                );
+                assert_eq!(
+                    live.availability_file.as_deref(),
+                    Some(Path::new("./availability.json"))
+                );
+            }
+            _ => panic!("expected project-status live"),
+        },
+        _ => panic!("expected project-status group"),
+    }
+}
+
+#[test]
 fn unified_help_mentions_alert_access_and_shims() {
     let help = render_unified_help();
     assert!(help.contains("grafana-util access user list"));
@@ -349,6 +441,12 @@ fn unified_help_mentions_alert_access_and_shims() {
     assert!(help.contains(
         "Run staged sync planning workflows with optional live Grafana fetch/apply paths."
     ));
+    assert!(help.contains("overview"));
+    assert!(help.contains("Summarize project artifacts into a project-wide overview."));
+    assert!(help.contains("overview live"));
+    assert!(help.contains("Staged overview is the default"));
+    assert!(help.contains("project-status"));
+    assert!(help.contains("Render shared project-wide staged or live status."));
     assert!(help.contains("dashboard"));
     assert!(help.contains("[aliases: db]"));
     assert!(help.contains("[aliases: ds]"));
@@ -456,6 +554,26 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
     let access_short_help =
         maybe_render_unified_help_from_os_args(["grafana-util", "access", "-h"], false).unwrap();
     assert!(access_short_help.contains("--help-full"));
+
+    let overview_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "overview", "--help-full"], false)
+            .unwrap();
+    assert!(overview_help.contains("overview"));
+    assert!(overview_help.contains("project-wide overview"));
+    assert!(overview_help.contains("overview live"));
+    assert!(overview_help.contains("shared live project status"));
+
+    let project_status_help = maybe_render_unified_help_from_os_args(
+        ["grafana-util", "project-status", "--help-full"],
+        false,
+    )
+    .unwrap();
+    assert!(project_status_help.contains("project-status"));
+    assert!(project_status_help.contains(
+        "Render project-wide staged or live status through the shared project-status contract."
+    ));
+    assert!(project_status_help.contains("staged"));
+    assert!(project_status_help.contains("live"));
 
     let sync_short_help =
         maybe_render_unified_help_from_os_args(["grafana-util", "sync", "-h"], false).unwrap();
@@ -743,6 +861,14 @@ fn dispatch_routes_dashboard_group_to_dashboard_handler() {
             routed.borrow_mut().push("access".to_string());
             Ok(())
         },
+        |_overview_args| {
+            routed.borrow_mut().push("overview".to_string());
+            Ok(())
+        },
+        |_project_status_args| {
+            routed.borrow_mut().push("project-status".to_string());
+            Ok(())
+        },
     );
 
     assert!(result.is_ok());
@@ -784,10 +910,59 @@ fn dispatch_routes_access_group_to_access_handler() {
             routed.borrow_mut().push("access".to_string());
             Ok(())
         },
+        |_overview_args| {
+            routed.borrow_mut().push("overview".to_string());
+            Ok(())
+        },
+        |_project_status_args| {
+            routed.borrow_mut().push("project-status".to_string());
+            Ok(())
+        },
     );
 
     assert!(result.is_ok());
     assert_eq!(*routed.borrow(), vec!["access".to_string()]);
+}
+
+#[test]
+fn dispatch_routes_overview_group_to_overview_handler() {
+    let args: CliArgs = parse_cli_from(["grafana-util", "overview"]);
+    let routed = RefCell::new(Vec::new());
+
+    let result = dispatch_with_handlers(
+        args,
+        |_dashboard_args| {
+            routed.borrow_mut().push("dashboard".to_string());
+            Ok(())
+        },
+        |_datasource_args| {
+            routed.borrow_mut().push("datasource".to_string());
+            Ok(())
+        },
+        |_sync_args| {
+            routed.borrow_mut().push("sync".to_string());
+            Ok(())
+        },
+        |_alert_args| {
+            routed.borrow_mut().push("alert".to_string());
+            Ok(())
+        },
+        |_access_args| {
+            routed.borrow_mut().push("access".to_string());
+            Ok(())
+        },
+        |_overview_args| {
+            routed.borrow_mut().push("overview".to_string());
+            Ok(())
+        },
+        |_project_status_args| {
+            routed.borrow_mut().push("project-status".to_string());
+            Ok(())
+        },
+    );
+
+    assert!(result.is_ok());
+    assert_eq!(*routed.borrow(), vec!["overview".to_string()]);
 }
 
 #[test]
@@ -821,6 +996,14 @@ fn dispatch_routes_sync_group_to_sync_handler() {
         },
         |_access_args| {
             routed.borrow_mut().push("access".to_string());
+            Ok(())
+        },
+        |_overview_args| {
+            routed.borrow_mut().push("overview".to_string());
+            Ok(())
+        },
+        |_project_status_args| {
+            routed.borrow_mut().push("project-status".to_string());
             Ok(())
         },
     );
@@ -863,8 +1046,57 @@ fn dispatch_routes_datasource_group_to_datasource_handler() {
             routed.borrow_mut().push("access".to_string());
             Ok(())
         },
+        |_overview_args| {
+            routed.borrow_mut().push("overview".to_string());
+            Ok(())
+        },
+        |_project_status_args| {
+            routed.borrow_mut().push("project-status".to_string());
+            Ok(())
+        },
     );
 
     assert!(result.is_ok());
     assert_eq!(*routed.borrow(), vec!["datasource".to_string()]);
+}
+
+#[test]
+fn dispatch_routes_project_status_group_to_project_status_handler() {
+    let args: CliArgs = parse_cli_from(["grafana-util", "project-status", "staged"]);
+    let routed = RefCell::new(Vec::new());
+
+    let result = dispatch_with_handlers(
+        args,
+        |_dashboard_args| {
+            routed.borrow_mut().push("dashboard".to_string());
+            Ok(())
+        },
+        |_datasource_args| {
+            routed.borrow_mut().push("datasource".to_string());
+            Ok(())
+        },
+        |_sync_args| {
+            routed.borrow_mut().push("sync".to_string());
+            Ok(())
+        },
+        |_alert_args| {
+            routed.borrow_mut().push("alert".to_string());
+            Ok(())
+        },
+        |_access_args| {
+            routed.borrow_mut().push("access".to_string());
+            Ok(())
+        },
+        |_overview_args| {
+            routed.borrow_mut().push("overview".to_string());
+            Ok(())
+        },
+        |_project_status_args| {
+            routed.borrow_mut().push("project-status".to_string());
+            Ok(())
+        },
+    );
+
+    assert!(result.is_ok());
+    assert_eq!(*routed.borrow(), vec!["project-status".to_string()]);
 }

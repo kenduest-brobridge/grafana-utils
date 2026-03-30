@@ -1,6 +1,6 @@
 use super::json::{require_json_array_field, require_json_object};
 use super::workbench::{SYNC_APPLY_INTENT_KIND, SYNC_APPLY_INTENT_SCHEMA_VERSION, SYNC_PLAN_KIND};
-use crate::common::{message, Result};
+use crate::common::{message, tool_version, Result};
 use serde_json::Value;
 
 pub fn build_sync_apply_intent_document(plan_document: &Value, approve: bool) -> Result<Value> {
@@ -39,6 +39,7 @@ pub fn build_sync_apply_intent_document(plan_document: &Value, approve: bool) ->
     Ok(serde_json::json!({
         "kind": SYNC_APPLY_INTENT_KIND,
         "schemaVersion": SYNC_APPLY_INTENT_SCHEMA_VERSION,
+        "toolVersion": tool_version(),
         "mode": "apply",
         "reviewed": plan.get("reviewed").cloned().unwrap_or(Value::Bool(false)),
         "reviewRequired": plan.get("reviewRequired").cloned().unwrap_or(Value::Bool(true)),

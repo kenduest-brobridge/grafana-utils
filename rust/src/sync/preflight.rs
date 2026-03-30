@@ -8,7 +8,7 @@
 
 use super::json::{require_json_object, require_json_object_field};
 use super::workbench::{normalize_resource_specs, SyncResourceSpec};
-use crate::common::{message, Result};
+use crate::common::{message, tool_version, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
@@ -438,6 +438,7 @@ pub fn build_sync_preflight_document(
     Ok(serde_json::json!({
         "kind": SYNC_PREFLIGHT_KIND,
         "schemaVersion": SYNC_PREFLIGHT_SCHEMA_VERSION,
+        "toolVersion": tool_version(),
         "summary": serde_json::to_value(SyncPreflightSummary {
             check_count: checks.len() as i64,
             ok_count: checks.iter().filter(|item| item.status == "ok").count() as i64,

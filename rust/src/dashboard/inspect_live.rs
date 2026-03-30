@@ -162,9 +162,25 @@ pub(crate) fn load_variant_index_entries(
 
 #[cfg(feature = "tui")]
 fn run_interactive_inspect_live_tui_from_dir(import_dir: &Path) -> Result<usize> {
+    eprintln!(
+        "[inspect-live --interactive] building summary: {}",
+        import_dir.display()
+    );
     let summary = build_export_inspection_summary(import_dir)?;
+    eprintln!(
+        "[inspect-live --interactive] building query report: {}",
+        import_dir.display()
+    );
     let report = build_export_inspection_query_report(import_dir)?;
+    eprintln!(
+        "[inspect-live --interactive] building governance review: {}",
+        import_dir.display()
+    );
     let governance = build_export_inspection_governance_document(&summary, &report);
+    eprintln!(
+        "[inspect-live --interactive] launching inspect workbench: {}",
+        import_dir.display()
+    );
     run_inspect_live_tui(&summary, &governance, &report)?;
     Ok(summary.dashboard_count)
 }
