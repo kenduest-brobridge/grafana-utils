@@ -60,18 +60,18 @@ use crate::alert_sync::assess_alert_sync_specs;
 use crate::common::{message, Result};
 use crate::dashboard::CommonCliArgs;
 /// Constant for default review token.
-pub const DEFAULT_REVIEW_TOKEN: &str = "reviewed-sync-plan";
-const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Summarize desired resources:\n    grafana-util sync summary --desired-file ./desired.json\n\n  Audit managed resources against a staged checksum lock:\n    grafana-util sync audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --fail-on-drift --output json\n\n  Package local exports into one source bundle:\n    grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n\n  Compare a source bundle against target inventory before apply:\n    grafana-util sync bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output json\n\n  Assess staged promotion review handoff:\n    grafana-util sync promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --output json\n\n  Build a live-backed sync plan:\n    grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n\n  Apply a reviewed plan back to Grafana:\n    grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
-const SYNC_SUMMARY_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync summary --desired-file ./desired.json\n  grafana-util sync summary --desired-file ./desired.json --output json";
-const SYNC_PLAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync plan --desired-file ./desired.json --live-file ./live.json\n  grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --allow-prune --output json";
-const SYNC_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync review --plan-file ./sync-plan.json\n  grafana-util sync review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output json";
-const SYNC_APPLY_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve\n  grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --allow-folder-delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n  grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --allow-policy-reset --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
-const SYNC_AUDIT_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync audit --managed-file ./desired.json --live-file ./live.json --write-lock ./sync-lock.json\n  grafana-util sync audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --fail-on-drift --output json";
-const SYNC_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync preflight --desired-file ./desired.json --availability-file ./availability.json\n  grafana-util sync preflight --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output json";
-const SYNC_ASSESS_ALERTS_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync assess-alerts --alerts-file ./alerts.json\n  grafana-util sync assess-alerts --alerts-file ./alerts.json --output json";
-const SYNC_BUNDLE_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util sync bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --availability-file ./availability.json --output json\n\n  Example availability file:\n    {\n      \"providerNames\": [\"vault\"],\n      \"secretPlaceholderNames\": [\"prom-basic-auth\"]\n    }";
-const SYNC_PROMOTION_PREFLIGHT_HELP_TEXT: &str = "This command is a staged review handoff for promotion; it stays read-only and does not apply live changes.\n\nExamples:\n\n  grafana-util sync promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util sync promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json --mapping-file ./promotion-mapping.json --availability-file ./availability.json --output json\n\n  Minimal promotion mapping file:\n    {\n      \"kind\": \"grafana-utils-sync-promotion-mapping\",\n      \"schemaVersion\": 1,\n      \"metadata\": {\n        \"sourceEnvironment\": \"staging\",\n        \"targetEnvironment\": \"prod\"\n      },\n      \"folders\": {\n        \"ops-src\": \"ops-prod\"\n      },\n      \"datasources\": {\n        \"uids\": {\n          \"prom-src\": \"prom-prod\"\n        },\n        \"names\": {\n          \"Prometheus Source\": \"Prometheus Prod\"\n        }\n      }\n    }\n\n  Example availability file:\n    {\n      \"providerNames\": [\"vault\"],\n      \"secretPlaceholderNames\": [\"prom-basic-auth\"]\n    }";
-const SYNC_BUNDLE_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n  grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --datasource-export-file ./datasources/datasources.json --output json";
+pub const DEFAULT_REVIEW_TOKEN: &str = "reviewed-change-plan";
+const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Summarize desired resources:\n    grafana-util change summary --desired-file ./desired.json\n\n  Audit managed resources against a staged checksum lock:\n    grafana-util change audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --fail-on-drift --output json\n\n  Package local exports into one source bundle:\n    grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n\n  Compare a source bundle against target inventory before apply:\n    grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output json\n\n  Assess staged promotion review handoff:\n    grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --output json\n\n  Build a live-backed change plan:\n    grafana-util change plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n\n  Apply a reviewed plan back to Grafana:\n    grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
+const SYNC_SUMMARY_HELP_TEXT: &str = "Examples:\n\n  grafana-util change summary --desired-file ./desired.json\n  grafana-util change summary --desired-file ./desired.json --output json";
+const SYNC_PLAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util change plan --desired-file ./desired.json --live-file ./live.json\n  grafana-util change plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --allow-prune --output json";
+const SYNC_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util change review --plan-file ./sync-plan.json\n  grafana-util change review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output json";
+const SYNC_APPLY_HELP_TEXT: &str = "Examples:\n\n  grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve\n  grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --allow-folder-delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n  grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --allow-policy-reset --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
+const SYNC_AUDIT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change audit --managed-file ./desired.json --live-file ./live.json --write-lock ./sync-lock.json\n  grafana-util change audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --fail-on-drift --output json";
+const SYNC_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change preflight --desired-file ./desired.json --availability-file ./availability.json\n  grafana-util change preflight --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output json";
+const SYNC_ASSESS_ALERTS_HELP_TEXT: &str = "Examples:\n\n  grafana-util change assess-alerts --alerts-file ./alerts.json\n  grafana-util change assess-alerts --alerts-file ./alerts.json --output json";
+const SYNC_BUNDLE_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util change bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --availability-file ./availability.json --output json\n\n  Example availability file:\n    {\n      \"providerNames\": [\"vault\"],\n      \"secretPlaceholderNames\": [\"prom-basic-auth\"]\n    }";
+const SYNC_PROMOTION_PREFLIGHT_HELP_TEXT: &str = "This command is a staged review handoff for promotion; it stays read-only and does not apply live changes.\n\nExamples:\n\n  grafana-util change promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util change promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json --mapping-file ./promotion-mapping.json --availability-file ./availability.json --output json\n\n  Minimal promotion mapping file:\n    {\n      \"kind\": \"grafana-utils-sync-promotion-mapping\",\n      \"schemaVersion\": 1,\n      \"metadata\": {\n        \"sourceEnvironment\": \"staging\",\n        \"targetEnvironment\": \"prod\"\n      },\n      \"folders\": {\n        \"ops-src\": \"ops-prod\"\n      },\n      \"datasources\": {\n        \"uids\": {\n          \"prom-src\": \"prom-prod\"\n        },\n        \"names\": {\n          \"Prometheus Source\": \"Prometheus Prod\"\n        }\n      }\n    }\n\n  Example availability file:\n    {\n      \"providerNames\": [\"vault\"],\n      \"secretPlaceholderNames\": [\"prom-basic-auth\"]\n    }";
+const SYNC_BUNDLE_HELP_TEXT: &str = "Examples:\n\n  grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n  grafana-util change bundle --dashboard-export-dir ./dashboards/raw --datasource-export-file ./datasources/datasources.json --output json";
 
 /// Output formats shared by staged sync document commands.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
@@ -89,12 +89,12 @@ pub struct SyncCommandOutput {
 
 #[derive(Debug, Clone, Parser)]
 #[command(
-    name = "grafana-util sync",
+    name = "grafana-util change",
     about = "Reviewable sync workflows with optional live Grafana fetch/apply paths.",
     after_help = SYNC_ROOT_HELP_TEXT,
     styles = crate::help_styles::CLI_HELP_STYLES
 )]
-/// Root `grafana-util sync` parser wrapper.
+/// Root `grafana-util change` parser wrapper.
 pub struct SyncCliArgs {
     #[command(subcommand)]
     pub command: SyncGroupCommand,
@@ -419,7 +419,7 @@ pub struct SyncPreflightArgs {
 pub struct SyncAssessAlertsArgs {
     #[arg(
         long,
-        help = "JSON file containing the alert sync resource list.",
+        help = "JSON file containing the alert change resource list.",
         help_heading = "Input Options"
     )]
     pub alerts_file: PathBuf,
@@ -560,7 +560,7 @@ pub struct SyncBundleArgs {
     pub output: SyncOutputFormat,
 }
 
-/// Top-level sync subcommands exposed under `grafana-util sync`.
+/// Top-level sync subcommands exposed under `grafana-util change`.
 #[derive(Debug, Clone, Subcommand)]
 pub enum SyncGroupCommand {
     #[command(about = "Build a staged sync plan from local desired and live JSON files.", after_help = SYNC_PLAN_HELP_TEXT)]

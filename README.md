@@ -2,7 +2,7 @@
 
 Language: **English** | [繁體中文版](README.zh-TW.md)
 
-`grafana-util` is a Rust-first operator CLI for Grafana inventory, migration, review-first import/export, dashboard analysis, and staged sync workflows.
+`grafana-util` is a Rust-first operator CLI for Grafana inventory, migration, review-first import/export, dashboard analysis, project-wide overview/status reads, and staged change workflows.
 
 ## Why This Exists
 
@@ -25,9 +25,9 @@ Many commands are intentionally available through more than one surface so the s
 
 | Mode | What it is for | Examples |
 | --- | --- | --- |
-| Interactive TUI | Guided browsing, review, and in-terminal workbenches | `dashboard browse`, `dashboard inspect-export --interactive`, `dashboard inspect-live --interactive`, `datasource browse`, `overview --output interactive`, `project-status ... --output interactive` |
-| Plain text | Default operator-facing summaries and dry-run previews | `sync`, `overview`, `project-status`, dry-run summaries |
-| JSON | CI, scripting, structured review artifacts, handoff between commands | import dry-runs, sync documents, staged/live project status |
+| Interactive TUI | Guided browsing, review, and in-terminal workflows | `dashboard browse`, `dashboard inspect-export --interactive`, `dashboard inspect-live --interactive`, `datasource browse`, `overview --output interactive`, `status ... --output interactive` |
+| Plain text | Default operator-facing summaries and dry-run previews | `change`, `overview`, `status`, dry-run summaries |
+| JSON | CI, scripting, structured review artifacts, handoff between commands | import dry-runs, change documents, staged/live status contracts |
 | Table / CSV / report outputs | Inventory listings and dashboard analysis reports | list commands, `dashboard inspect-*`, review tables |
 
 ## Support Levels By Area
@@ -36,12 +36,13 @@ Use this as the quick "how far does this project actually go?" view.
 
 | Area | Support level | What you can do today | Output and interaction surfaces | Notes |
 | --- | --- | --- | --- | --- |
-| `dashboard` | Deepest surface | list, export, import, diff, delete, inspect live/exported dashboards, query inventory, datasource dependency review, permission export | text, table/csv/json, report modes, interactive workbenches, screenshot/PDF | most complete and analysis-heavy area |
+| `dashboard` | Deepest surface | list, export, import, diff, delete, inspect live/exported dashboards, query inventory, datasource dependency review, permission export | text, table/csv/json, report modes, interactive TUI, screenshot/PDF | most complete and analysis-heavy area |
 | `datasource` | Deep and mature | list, export, import, diff, add, modify, delete, browse live datasources, replay across orgs | text, table/csv/json, interactive browse | supports both live mutation and file-based replay |
 | `alert` | Mature management and migration surface | list rules plus contact points, mute timings, templates; build reviewable alert plans; apply reviewed changes; preview explicit deletes; scaffold managed desired-state files; export, import, diff, dry-run bundles | text/json, table/csv/json | supports both operator-first management and older migration/replay flows |
 | `access` | Mature inventory and replay surface | manage orgs, users, teams, service accounts; export, import, diff, dry-run; service-account token add/delete | table/csv/json | good for access-state inventory and controlled rebuilds |
-| `sync` | Advanced staged workflow | build summaries, bundles, preflight checks, plans, review records, apply intents, audits, promotion-preflight documents | text/json | review-first project workflow rather than blind direct sync |
-| `overview` / `project-status` | Project-wide aggregator | summarize staged exports or live Grafana into one readiness/status view | text/json/interactive | cross-domain read model for handoff, triage, and release readiness |
+| `change` | Advanced staged workflow | build summaries, bundles, preflight checks, plans, review records, apply intents, audits, promotion-preflight documents | text/json | review-first project change lane rather than blind direct mutation |
+| `overview` | Human project entrypoint | summarize staged exports or live Grafana into one operator-facing project snapshot | text/json/interactive | best first stop for handoff, triage, and human review |
+| `status` | Canonical status contract | render the project-wide staged/live readiness contract for people or automation | text/json/interactive | use when you need one stable cross-domain status surface |
 
 ## Quick Capability Matrix
 
@@ -60,9 +61,9 @@ Project-level workflows:
 
 | Surface | Staged review | Live read | Interactive view |
 | --- | --- | --- | --- |
-| `sync` | ✓ | ✓ | - |
+| `change` | ✓ | ✓ | - |
 | `overview` | ✓ | ✓ | ✓ |
-| `project-status` | ✓ | ✓ | ✓ |
+| `status` | ✓ | ✓ | ✓ |
 
 ## Quick Start
 
@@ -74,9 +75,9 @@ grafana-util dashboard -h
 grafana-util datasource -h
 grafana-util alert -h
 grafana-util access -h
-grafana-util sync -h
+grafana-util change -h
 grafana-util overview -h
-grafana-util project-status -h
+grafana-util status -h
 ```
 
 Live-tested examples for this README were validated against local Docker Grafana `12.4.1` with seeded sample orgs, dashboards, datasources, alerting resources, users, teams, and service accounts.

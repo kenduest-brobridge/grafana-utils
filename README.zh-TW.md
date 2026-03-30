@@ -2,7 +2,7 @@
 
 [English Version](README.md) | **繁體中文版**
 
-`grafana-util` 是一套以 Rust 為主的 Grafana 維運 CLI，重點放在盤點、遷移、review-first 的匯出/匯入流程、dashboard 分析，以及 staged sync 工作流。
+`grafana-util` 是一套以 Rust 為主的 Grafana 維運 CLI，重點放在盤點、遷移、review-first 的匯出/匯入流程、dashboard 分析、專案層 overview/status 讀取，以及 staged change 工作流。
 
 ## 為什麼會有這個工具
 
@@ -25,9 +25,9 @@ Grafana 的 UI 很適合做單一物件的日常管理，但一碰到 estate-lev
 
 | 面相 | 適合用途 | 代表命令 |
 | --- | --- | --- |
-| 互動式 TUI | 導覽、審查、在終端機內逐步操作 | `dashboard browse`、`dashboard inspect-export --interactive`、`dashboard inspect-live --interactive`、`datasource browse`、`overview --output interactive`、`project-status ... --output interactive` |
-| 純文字 | 預設維運摘要、dry-run 預覽、人工閱讀 | `sync`、`overview`、`project-status`、各種 dry-run 摘要 |
-| JSON | CI、自動化、結構化審查結果、命令間資料接力 | import dry-run、sync 文件、staged/live project status |
+| 互動式 TUI | 導覽、審查、在終端機內逐步操作 | `dashboard browse`、`dashboard inspect-export --interactive`、`dashboard inspect-live --interactive`、`datasource browse`、`overview --output interactive`、`status ... --output interactive` |
+| 純文字 | 預設維運摘要、dry-run 預覽、人工閱讀 | `change`、`overview`、`status`、各種 dry-run 摘要 |
+| JSON | CI、自動化、結構化審查結果、命令間資料接力 | import dry-run、change 文件、staged/live status contract |
 | Table / CSV / report | 清單盤點、分析報表、治理檢查 | list 系列命令、`dashboard inspect-*`、review tables |
 
 ## 功能支援層級
@@ -36,12 +36,13 @@ Grafana 的 UI 很適合做單一物件的日常管理，但一碰到 estate-lev
 
 | 模組 | 支援層級 | 目前可做的事 | 輸出與操作面 | 備註 |
 | --- | --- | --- | --- | --- |
-| `dashboard` | 最完整、最深入 | list、export、import、diff、delete、live/export inspect、query inventory、datasource dependency review、permission export | text、table/csv/json、report 模式、互動式 workbench、screenshot/PDF | 功能最完整，也是分析能力最重的模組 |
+| `dashboard` | 最完整、最深入 | list、export、import、diff、delete、live/export inspect、query inventory、datasource dependency review、permission export | text、table/csv/json、report 模式、互動式 TUI、screenshot/PDF | 功能最完整，也是分析能力最重的模組 |
 | `datasource` | 深且成熟 | list、export、import、diff、add、modify、delete、live browse、跨 org replay | text、table/csv/json、互動式 browse | 同時支援 live mutation 與檔案回放 |
 | `alert` | 成熟的管理與遷移面 | 列出 rules、contact points、mute timings、templates；建立 reviewable alert plan；套用已審查變更；預覽 explicit delete；建立 managed desired-state scaffold；並支援 export、import、diff、dry-run bundle | text/json、table/csv/json | 同時涵蓋 operator-first 管理流程與舊有遷移 / replay 流程 |
 | `access` | 成熟的盤點與回放面 | 管理 org、user、team、service account；支援 export、import、diff、dry-run；service-account token add/delete | table/csv/json | 適合 access state inventory 與受控重建 |
-| `sync` | 進階 staged workflow | 建立 summary、bundle、preflight、plan、review record、apply intent、audit、promotion-preflight 文件 | text/json | 重點是 review-first，不是直接盲目同步 |
-| `overview` / `project-status` | 專案級彙總面 | 把 staged exports 或 live Grafana 整理成單一 readiness/status 視圖 | text/json/interactive | 適合 handoff、triage、release readiness 判讀 |
+| `change` | 進階 staged workflow | 建立 summary、bundle、preflight、plan、review record、apply intent、audit、promotion-preflight 文件 | text/json | 重點是 review-first 的變更流程，不是直接盲目套用 |
+| `overview` | 人類優先的專案入口 | 把 staged exports 或 live Grafana 整理成單一維運總覽 | text/json/interactive | 適合 handoff、triage、人工巡檢時先進來看 |
+| `status` | 正式 status contract | 輸出專案層的 staged/live readiness contract | text/json/interactive | 適合自動化、交接，或需要同一份穩定跨模組 status 時使用 |
 
 ## 功能快速矩陣
 
@@ -60,9 +61,9 @@ Grafana 的 UI 很適合做單一物件的日常管理，但一碰到 estate-lev
 
 | 入口 | Staged review | Live read | Interactive view |
 | --- | --- | --- | --- |
-| `sync` | ✓ | ✓ | - |
+| `change` | ✓ | ✓ | - |
 | `overview` | ✓ | ✓ | ✓ |
-| `project-status` | ✓ | ✓ | ✓ |
+| `status` | ✓ | ✓ | ✓ |
 
 ## 快速開始
 
@@ -74,9 +75,9 @@ grafana-util dashboard -h
 grafana-util datasource -h
 grafana-util alert -h
 grafana-util access -h
-grafana-util sync -h
+grafana-util change -h
 grafana-util overview -h
-grafana-util project-status -h
+grafana-util status -h
 ```
 
 本 README 的範例已在本地 Docker Grafana `12.4.1` 驗證，並另外灌入 sample org、dashboard、datasource、alerting resource、user、team、service account。

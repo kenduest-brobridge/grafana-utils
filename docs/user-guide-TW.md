@@ -17,7 +17,7 @@ Grafana Utilities 維運指南 (繁體中文)
 - [4) alert 指令模組](#tw-alert-commands)
 - [5) datasource 指令模組](#tw-datasource-commands)
 - [6) Access 指令模組](#tw-access-commands)
-- [7) 共通輸出規則、`sync`、`overview`、`project-status`](#tw-shared-output-rules)
+- [7) 共通輸出規則、`change`、`overview`、`status`](#tw-shared-output-rules)
 - [8) 常見情境快速對照](#tw-common-scenarios)
 - [9) 每命令 SOP（最短可跑版本）](#tw-minimal-sop)
 - [10) 參數互斥與差異矩陣（Rust）](#tw-matrix)
@@ -28,9 +28,9 @@ Grafana Utilities 維運指南 (繁體中文)
 - [alert](#tw-alert-commands): `plan/apply/delete/init/new-rule/new-contact-point/new-template/export/import/diff/list-rules/list-contact-points/list-mute-timings/list-templates`
 - [datasource](#tw-datasource-commands): `browse/list/export/import/diff/add`
 - [access](#tw-access-commands): `org/user/team/service-account`
-- [sync](#tw-shared-output-rules): `summary/bundle/bundle-preflight/plan/review/apply/assess-alerts`
+- [change](#tw-shared-output-rules): `summary/bundle/bundle-preflight/plan/review/apply/assess-alerts`
 - [overview](#tw-shared-output-rules)
-- [project-status](#tw-shared-output-rules)
+- [status](#tw-shared-output-rules)
 
 <a id="tw-before-you-start"></a>
 1) 全域前置說明
@@ -44,9 +44,9 @@ grafana-util dashboard -h
 grafana-util alert -h
 grafana-util datasource -h
 grafana-util access -h
-grafana-util sync -h
+grafana-util change -h
 grafana-util overview -h
-grafana-util project-status -h
+grafana-util status -h
 ```
 
 安裝後可直接使用：
@@ -56,10 +56,10 @@ grafana-util <domain> <command> [options]
 ```
 
 ### 入口點說明：
-- **`grafana-util`**：統一入口，支援 `dashboard/alert/datasource/access/sync/overview/project-status`。
+- **`grafana-util`**：統一入口，支援 `dashboard/alert/datasource/access/change/overview/status`。
 - 統一 CLI 請使用命名空間形式：`grafana-util <domain> <command>`。
 - `dashboard list-data-sources` 仍可使用，但新的資料來源盤點流程應優先改用 `datasource list`。
-- `overview` 與 `project-status` 是目前維護中的正式專案層入口，不是附屬別名。
+- `overview` 是人類優先的專案入口，`status` 是正式 status contract，`change` 則承接 staged change workflow。
 
 ### 1.1 這份手冊怎麼用
 
@@ -74,9 +74,9 @@ grafana-util <domain> <command> [options]
 
 | 面相 | 最適合的用途 | 代表命令 | 補充說明 |
 | --- | --- | --- | --- |
-| 互動式 TUI | 導覽、審查、在終端機內逐步操作 | `dashboard browse`、`dashboard inspect-export --interactive`、`dashboard inspect-live --interactive`、`datasource browse`、`overview --output interactive`、`project-status ... --output interactive` | 只有部分工作流支援；`interactive` 需要 TUI-capable build |
-| 純文字 | 預設維運摘要、dry-run 預覽、人工閱讀 | `sync`、`overview`、`project-status`、多數 dry-run 摘要 | 最適合終端機人工巡檢 |
-| JSON | CI、自動化、機器可讀交接資料 | import dry-run、sync 文件、staged/live project status | 有其他工具要接結果時優先選這個 |
+| 互動式 TUI | 導覽、審查、在終端機內逐步操作 | `dashboard browse`、`dashboard inspect-export --interactive`、`dashboard inspect-live --interactive`、`datasource browse`、`overview --output interactive`、`status ... --output interactive` | 只有部分工作流支援；`interactive` 需要 TUI-capable build |
+| 純文字 | 預設維運摘要、dry-run 預覽、人工閱讀 | `change`、`overview`、`status`、多數 dry-run 摘要 | 最適合終端機人工巡檢 |
+| JSON | CI、自動化、機器可讀交接資料 | import dry-run、change 文件、staged/live status contract | 有其他工具要接結果時優先選這個 |
 | Table / CSV / report | 清單盤點、差異審查、dashboard 分析報表 | list 系列命令、`dashboard inspect-*`、review tables | 最適合審計、治理與報表整理 |
 
 ### 1.3 支援層級總覽
@@ -85,12 +85,13 @@ grafana-util <domain> <command> [options]
 
 | 模組 | 支援深度 | 主要工作流 | 主要輸出面 | 備註 |
 | --- | --- | --- | --- | --- |
-| `dashboard` | 最深、最完整 | browse、list、export、import、diff、delete、inspect、依賴分析、permission export、screenshot/PDF | text、table/csv/json、report 模式、互動式 workbench | 功能最完整，也是分析與遷移能力最重的模組 |
+| `dashboard` | 最深、最完整 | browse、list、export、import、diff、delete、inspect、依賴分析、permission export、screenshot/PDF | text、table/csv/json、report 模式、互動式 TUI | 功能最完整，也是分析與遷移能力最重的模組 |
 | `datasource` | 深且成熟 | browse、list、export、import、diff、add、modify、delete、跨 org replay | text、table/csv/json、互動式 browse | 同時涵蓋 live mutation 與檔案回放 |
 | `alert` | 成熟的遷移面 | list、export、import、diff、dry-run，涵蓋 rule bundle 與 alerting 資源 | table/csv/json | 主要聚焦 alerting inventory 與 replay |
 | `access` | 成熟的盤點與回放面 | org/user/team/service-account 的 list、add、modify、delete、export、import、diff | table/csv/json | 適合 access state inventory、重建與審查 |
-| `sync` | 進階 staged workflow | summary、bundle、preflight、plan、review、apply intent、audit、promotion-preflight | text/json | 重點是 review-first，不是直接盲目同步 |
-| `overview` / `project-status` | 專案級聚合面 | staged/live readiness、跨模組摘要、handoff 視圖 | text/json/interactive | 當您需要整體專案 read model 時最適合先看這裡 |
+| `change` | 進階 staged workflow | summary、bundle、preflight、plan、review、apply intent、audit、promotion-preflight | text/json | 重點是 review-first 的變更流程，不是直接盲目套用 |
+| `overview` | 人類優先的專案入口 | staged/live 專案快照、跨模組摘要、handoff 視圖 | text/json/interactive | 當您需要先看整體專案畫面時，先從這裡進來 |
+| `status` | 正式 status contract | staged/live readiness、跨模組摘要、機器可讀交接 | text/json/interactive | 當您需要穩定的跨模組 readiness contract 時使用 |
 
 <a id="tw-global-options"></a>
 2) 全域通用參數
@@ -146,8 +147,8 @@ grafana-util <domain> <command> [options]
 | User 類 access 管理 | `access user` | `list`、`add`、`modify`、`delete`、`export`、`import`、`diff` |
 | Team 類 access 管理 | `access team` | `list`、`add`、`modify`、`delete`、`export`、`import`、`diff` |
 | Service account 類 access 管理 | `access service-account` | `list`、`add`、`delete`、`export`、`import`、`diff`、`token add`、`token delete` |
-| Staged sync 與 promotion 工作流 | `sync` | `summary`、`bundle`、`bundle-preflight`、`preflight`、`assess-alerts`、`plan`、`review`、`apply`、`audit`、`promotion-preflight` |
-| 專案層 staged/live 狀態檢視 | `overview`、`project-status` | `overview`、`overview live`、`project-status staged`、`project-status live` |
+| Staged change 與 promotion 工作流 | `change` | `summary`、`bundle`、`bundle-preflight`、`preflight`、`assess-alerts`、`plan`、`review`、`apply`、`audit`、`promotion-preflight` |
+| 專案層 staged/live 狀態檢視 | `overview`、`status` | `overview`、`overview live`、`status staged`、`status live` |
 
 ### 指令功能總覽
 
@@ -160,7 +161,7 @@ grafana-util <domain> <command> [options]
 | **Alerting** | Yes | Yes | Yes | Yes | No | No | No | No | 管理 lane：`plan/apply/delete/init/new-*`；遷移 lane：`export/import/diff` |
 | **Organization** | Yes | Yes | Yes | No | No | Yes | Yes | Yes | 支援 org 盤點與成員關係重建 |
 | **User** | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes | 支援全域或組織範圍的使用者盤點 |
-| **Team / Group** | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes | 包含成員關係（Membership）同步 |
+| **Team** | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes | 包含成員關係（Membership）同步 |
 | **Service Account** | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes | 生命週期管理與 Token 簽發 |
 | **SA Token** | Yes | No | No | No | No | Yes | No | Yes | Token 建立與撤銷 |
 
@@ -168,9 +169,9 @@ grafana-util <domain> <command> [options]
 
 | 入口 | 輸入 | 會讀 live Grafana 嗎 | 輸出模式 | 主要用途 |
 | --- | --- | --- | --- | --- |
-| `sync` | desired JSON、bundle、lock、availability/mapping 檔 | 視子命令而定 | text/json | staged review、preflight、plan、review、apply intent |
-| `overview` | staged exports 與選用的 sync/promotion 輸入 | 只有 `overview live` 會 | text/json/interactive | 專案層級 staged/live 快照 |
-| `project-status` | staged exports 或 live Grafana | 會 | text/json/interactive | 正式的專案層級 staged/live readiness surface |
+| `change` | desired JSON、bundle、lock、availability/mapping 檔 | 視子命令而定 | text/json | staged review、preflight、plan、review、apply intent |
+| `overview` | staged exports 與選用的 change/promotion 輸入 | 只有 `overview live` 會 | text/json/interactive | 專案層級 staged/live 快照 |
+| `status` | staged exports 或 live Grafana | 會 | text/json/interactive | 正式的專案層級 staged/live readiness surface |
 
 認證互斥規則（由 CLI parser 強制執行）：
 
@@ -1869,18 +1870,18 @@ grafana-util access service-account token delete --url http://localhost:3000 --t
 | 規則 | 說明 |
 | --- | --- |
 | 輸出格式互斥 | 多數命令以 `Mutually exclusive` 控制 `--table`、`--csv`、`--json`、`--output-format`（不應同時出現）。 |
-| legacy 命令 | `dashboard`/`alert` 大多有 legacy 入口，建議新腳本改用正式子命令 |
+| 頂層名稱各有角色 | `overview` 是人讀總覽，`status` 是正式 readiness contract，`change` 是 staged change 工作流 |
 | dry-run 優先 | 含 `--dry-run` 的流程先跑模擬執行再實際變更 |
 | 認證策略 | `org-id`、`all-orgs` 等多數 dashboard/datasource 命令偏向 basic auth；token 更常用於 alert/access 快速操作 |
-| 團隊別名 | `access group` 為 `access team` alias |
+| 團隊命令 | 本指南統一使用 `access team` |
 
-### 7.1 `sync`、`overview`、`project-status` 這三條線怎麼分
+### 7.1 `change`、`overview`、`status` 這三條線怎麼分
 
-- `sync`：偏 staged review，負責 summary、bundle、preflight、plan/review/apply、alert-sync assessment。
-- `overview`：偏操作員總覽，把 staged artifacts 整合成一個專案層級快照。
-- `project-status`：正式的專案層 readiness contract；`staged` 看匯出物，`live` 看目前 Grafana。
+- `change`：偏 staged review，負責 summary、bundle、preflight、plan/review/apply、alert-change assessment。
+- `overview`：偏操作員總覽，把 staged artifacts 與 change 輸入整合成一個專案層級快照。
+- `status`：正式的專案層 readiness contract；`staged` 看匯出物，`live` 看目前 Grafana。
 
-### 7.2 `sync summary`
+### 7.2 `change summary`
 
 **用途**：把 desired resource JSON 正規化成穩定的 staged summary。
 
@@ -1891,7 +1892,7 @@ grafana-util access service-account token delete --url http://localhost:3000 --t
 
 範例指令：
 ```bash
-grafana-util sync summary --desired-file ./desired.json --output json
+grafana-util change summary --desired-file ./desired.json --output json
 ```
 
 範例輸出：
@@ -1908,22 +1909,22 @@ grafana-util sync summary --desired-file ./desired.json --output json
 }
 ```
 
-### 7.3 `sync bundle` 與 `sync bundle-preflight`
+### 7.3 `change bundle` 與 `change bundle-preflight`
 
 **用途**：先把 dashboard / alert / datasource 匯出物包成單一 source bundle，再檢查哪些項目可以走 staged review、哪些仍是 plan-only 或 blocked。
 
 | 命令 | 關鍵旗標 | 主要用途 |
 | --- | --- | --- |
-| `sync bundle` | `--dashboard-export-dir`、`--alert-export-dir`、`--datasource-export-file`、`--output-file` | 把 staged exports 打包成可攜 bundle |
-| `sync bundle-preflight` | `--source-bundle`、`--target-inventory`、`--availability-file` | 做 plugin / datasource / alert artifact / secret-provider 的預檢 |
+| `change bundle` | `--dashboard-export-dir`、`--alert-export-dir`、`--datasource-export-file`、`--output-file` | 把 staged exports 打包成可攜 bundle |
+| `change bundle-preflight` | `--source-bundle`、`--target-inventory`、`--availability-file` | 做 plugin / datasource / alert artifact / secret-provider 的預檢 |
 
 範例指令：
 ```bash
-grafana-util sync bundle \
+grafana-util change bundle \
   --dashboard-export-dir ./dashboards/raw \
   --alert-export-dir ./alerts/raw \
   --datasource-export-file ./datasources/datasources.json \
-  --output-file ./sync-source-bundle.json \
+  --output-file ./change-source-bundle.json \
   --output json
 ```
 
@@ -1946,8 +1947,8 @@ grafana-util sync bundle \
 
 範例指令：
 ```bash
-grafana-util sync bundle-preflight \
-  --source-bundle ./sync-source-bundle.json \
+grafana-util change bundle-preflight \
+  --source-bundle ./change-source-bundle.json \
   --target-inventory ./target-inventory.json \
   --output json
 ```
@@ -1966,20 +1967,20 @@ grafana-util sync bundle-preflight \
 }
 ```
 
-### 7.4 `sync plan`、`sync review`、`sync apply`、`sync assess-alerts`
+### 7.4 `change plan`、`change review`、`change apply`、`change assess-alerts`
 
-**用途**：把 staged desired 轉成 reviewable plan，標記已審查，再輸出 gated apply intent；若只想看 alert sync 評估，就用 `assess-alerts`。
+**用途**：把 staged desired 轉成 reviewable plan，標記已審查，再輸出 gated apply intent；若只想看 alert change 評估，就用 `assess-alerts`。
 
 | 命令 | 關鍵旗標 | 主要用途 |
 | --- | --- | --- |
-| `sync plan` | `--desired-file`、`--live-file` 或 `--fetch-live`、`--allow-prune`、`--output json` | 建立 staged plan 文件 |
-| `sync review` | `--plan-file`、`--review-note`、`--reviewed-by` | 對 plan 蓋章，不直接套用 |
-| `sync apply` | `--plan-file`、`--approve`、`--execute-live` | 先輸出 apply intent；只有明確指定才做 live execute |
-| `sync assess-alerts` | `--alerts-file`、`--output json` | 單看 alert candidate / plan-only / blocked 分類 |
+| `change plan` | `--desired-file`、`--live-file` 或 `--fetch-live`、`--allow-prune`、`--output json` | 建立 staged plan 文件 |
+| `change review` | `--plan-file`、`--review-note`、`--reviewed-by` | 對 plan 蓋章，不直接套用 |
+| `change apply` | `--plan-file`、`--approve`、`--execute-live` | 先輸出 apply intent；只有明確指定才做 live execute |
+| `change assess-alerts` | `--alerts-file`、`--output json` | 單看 alert candidate / plan-only / blocked 分類 |
 
 範例指令：
 ```bash
-grafana-util sync plan --desired-file ./desired-plan.json --live-file ./live.json --output json
+grafana-util change plan --desired-file ./desired-plan.json --live-file ./live.json --output json
 ```
 
 範例輸出摘錄：
@@ -1998,8 +1999,8 @@ grafana-util sync plan --desired-file ./desired-plan.json --live-file ./live.jso
 
 範例指令：
 ```bash
-grafana-util sync review --plan-file ./sync-plan.json --review-note "docs-reviewed" --reviewed-by docs-user --output json
-grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --output json
+grafana-util change review --plan-file ./change-plan.json --review-note "docs-reviewed" --reviewed-by docs-user --output json
+grafana-util change apply --plan-file ./change-plan-reviewed.json --approve --output json
 ```
 
 範例輸出摘錄：
@@ -2019,7 +2020,7 @@ grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --output
 
 範例指令：
 ```bash
-grafana-util sync assess-alerts --alerts-file ./alerts-only.json --output json
+grafana-util change assess-alerts --alerts-file ./alerts-only.json --output json
 ```
 
 範例輸出摘錄：
@@ -2037,7 +2038,7 @@ grafana-util sync assess-alerts --alerts-file ./alerts-only.json --output json
 
 ### 7.5 `overview`
 
-**用途**：把 staged exports 與 staged sync 輸入整合成專案層級總覽。
+**用途**：把 staged exports 與 staged change 輸入整合成專案層級總覽。
 
 | 參數 | 用途 | 差異 / 情境 |
 | --- | --- | --- |
@@ -2045,7 +2046,7 @@ grafana-util sync assess-alerts --alerts-file ./alerts-only.json --output json
 | `--datasource-export-dir` | staged datasource 匯出目錄 | 通常是含 `datasources.json` 的 org 匯出目錄 |
 | `--alert-export-dir` | staged alert 匯出目錄 | 指到 alert export root，不是只指 `raw/` |
 | `--access-*-export-dir` | staged access bundles | 只帶你要納入總覽的 bundle |
-| `--desired-file` | 選填 sync summary 輸入 | 會加上 staged sync 狀態 |
+| `--desired-file` | 選填 change summary 輸入 | 會加上 staged change 狀態 |
 | `--source-bundle`、`--target-inventory`、`--mapping-file` | 選填 bundle/promotion 輸入 | 專案層級視角會更完整 |
 | `--output text\|json\|interactive` | 輸出模式 | `interactive` 需要 TUI build |
 
@@ -2067,28 +2068,28 @@ grafana-util overview \
 ```text
 Project overview
 Status: blocked domains=6 present=5 blocked=1 blockers=3 warnings=0 freshness=current oldestAge=222s
-Artifacts: 8 total, 1 dashboard export, 1 datasource export, 1 alert export, 1 access user export, 1 access team export, 1 access org export, 1 access service-account export, 1 sync summary, 0 bundle preflight, 0 promotion preflight
+Artifacts: 8 total, 1 dashboard export, 1 datasource export, 1 alert export, 1 access user export, 1 access team export, 1 access org export, 1 access service-account export, 1 change summary, 0 bundle preflight, 0 promotion preflight
 Domain status:
 - dashboard status=blocked reason=blocked-by-blockers primary=10 blockers=3 warnings=0 freshness=current next=resolve orphaned datasources, then mixed dashboards
 - datasource status=ready reason=ready primary=3 blockers=0 warnings=0 freshness=current
 - alert status=ready reason=ready primary=1 blockers=0 warnings=0 freshness=current next=re-run alert export after alerting changes
 - access status=ready reason=ready primary=13 blockers=0 warnings=0 freshness=current next=re-run access export after membership changes
-- sync status=ready reason=ready primary=4 blockers=0 warnings=0 freshness=current next=re-run sync summary after staged changes
+- change status=ready reason=ready primary=4 blockers=0 warnings=0 freshness=current next=re-run change summary after staged changes
 ```
 
-### 7.6 `project-status staged` 與 `project-status live`
+### 7.6 `status staged` 與 `status live`
 
 **用途**：從 staged exports 或目前 Grafana 狀態輸出正式的專案層 readiness contract。
 
 | 命令 | 關鍵旗標 | 主要用途 |
 | --- | --- | --- |
-| `project-status staged` | staged export dirs + 選填 desired/bundle 輸入 | 機器可讀的 staged readiness |
-| `project-status live` | `--url`、認證、選填 staged context 檔案 | 機器可讀的 live readiness |
-| `overview live` | 與 live auth 相同 | convenience alias，內部委派給 `project-status live` |
+| `status staged` | staged export dirs + 選填 desired/bundle 輸入 | 機器可讀的 staged readiness |
+| `status live` | `--url`、認證、選填 staged context 檔案 | 機器可讀的 live readiness |
+| `overview live` | 與 live auth 相同 | 人類優先的 live 專案入口，實作上走共享的 `status live` 路徑 |
 
 範例指令：
 ```bash
-grafana-util project-status staged \
+grafana-util status staged \
   --dashboard-export-dir ./dashboards/raw \
   --datasource-export-dir ./datasources \
   --alert-export-dir ./alerts \
@@ -2115,7 +2116,7 @@ grafana-util project-status staged \
 
 範例指令：
 ```bash
-grafana-util project-status live --url http://localhost:3000 --basic-user admin --basic-password admin --output json
+grafana-util status live --url http://localhost:3000 --basic-user admin --basic-password admin --output json
 ```
 
 範例輸出摘錄：
@@ -2256,18 +2257,18 @@ grafana-util access service-account delete --url <URL> --token <TOKEN> --name <N
 grafana-util access service-account token add --url <URL> --token <TOKEN> --name <SA_NAME> --token-name <TOKEN_NAME> [--seconds-to-live <SECONDS>]
 grafana-util access service-account token delete --url <URL> --token <TOKEN> --name <SA_NAME> --token-name <TOKEN_NAME> --yes
 
-# sync / project
-grafana-util sync summary --desired-file ./desired.json --output json
-grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --datasource-export-file ./datasources/datasources.json --output-file ./sync-source-bundle.json --output json
-grafana-util sync bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output json
-grafana-util sync plan --desired-file ./desired.json --live-file ./live.json --output json
-grafana-util sync review --plan-file ./sync-plan.json --review-note "peer-reviewed" --reviewed-by ops-user --output json
-grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --output json
-grafana-util sync assess-alerts --alerts-file ./alerts-only.json --output json
+# change / project
+grafana-util change summary --desired-file ./desired.json --output json
+grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --datasource-export-file ./datasources/datasources.json --output-file ./change-source-bundle.json --output json
+grafana-util change bundle-preflight --source-bundle ./change-source-bundle.json --target-inventory ./target-inventory.json --output json
+grafana-util change plan --desired-file ./desired.json --live-file ./live.json --output json
+grafana-util change review --plan-file ./change-plan.json --review-note "peer-reviewed" --reviewed-by ops-user --output json
+grafana-util change apply --plan-file ./change-plan-reviewed.json --approve --output json
+grafana-util change assess-alerts --alerts-file ./alerts-only.json --output json
 grafana-util overview --dashboard-export-dir ./dashboards/raw --datasource-export-dir ./datasources --alert-export-dir ./alerts --output text
 grafana-util overview live --url <URL> --basic-user <USER> --basic-password <PASS> --output json
-grafana-util project-status staged --dashboard-export-dir ./dashboards/raw --datasource-export-dir ./datasources --alert-export-dir ./alerts --output json
-grafana-util project-status live --url <URL> --basic-user <USER> --basic-password <PASS> --output json
+grafana-util status staged --dashboard-export-dir ./dashboards/raw --datasource-export-dir ./datasources --alert-export-dir ./alerts --output json
+grafana-util status live --url <URL> --basic-user <USER> --basic-password <PASS> --output json
 ```
 
 <a id="tw-matrix"></a>
@@ -2295,15 +2296,15 @@ grafana-util project-status live --url <URL> --basic-user <USER> --basic-passwor
 | access service-account import | text/table/json | 不可（僅 text/table/json） | text 為 dry-run 摘要 |
 | access service-account diff | text | 否 | 僅摘要 |
 | access service-account list | table/csv/json | 不可 | 同上 |
-| sync summary | text/json | 不可（僅 text/json） | desired-resource 摘要 |
-| sync bundle | text/json | 不可（僅 text/json） | source bundle 文件 |
-| sync bundle-preflight | text/json | 不可（僅 text/json） | bundle review 文件 |
-| sync plan | text/json | 不可（僅 text/json） | 可審查的 sync plan |
-| sync review | text/json | 不可（僅 text/json） | reviewed stamp |
-| sync apply | text/json | 不可（僅 text/json） | apply intent 或 live execute 摘要 |
-| sync assess-alerts | text/json | 不可（僅 text/json） | alert sync 分類 |
+| change summary | text/json | 不可（僅 text/json） | desired-resource 摘要 |
+| change bundle | text/json | 不可（僅 text/json） | source bundle 文件 |
+| change bundle-preflight | text/json | 不可（僅 text/json） | bundle review 文件 |
+| change plan | text/json | 不可（僅 text/json） | 可審查的 change plan |
+| change review | text/json | 不可（僅 text/json） | reviewed stamp |
+| change apply | text/json | 不可（僅 text/json） | apply intent 或 live execute 摘要 |
+| change assess-alerts | text/json | 不可（僅 text/json） | alert change 分類 |
 | overview | text/json/interactive | 不可（僅 text/json/interactive） | 專案層 staged/live 總覽 |
-| project-status staged/live | text/json/interactive | 不可（僅 text/json/interactive） | 正式的專案層 readiness |
+| status staged/live | text/json/interactive | 不可（僅 text/json/interactive） | 正式的專案層 readiness |
 
 `DRY-RUN` 類（模擬執行）：
 

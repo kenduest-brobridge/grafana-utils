@@ -12,7 +12,7 @@ Contents
 - [4) Alert Commands](#alert-commands)
 - [5) Datasource Commands](#datasource-commands)
 - [6) Access Commands](#access-commands)
-- [7) Shared Output Rules, `sync`, `overview`, and `project-status`](#shared-output-rules)
+- [7) Shared Output Rules, `change`, `overview`, and `status`](#shared-output-rules)
 - [8) Common Operator Scenarios](#common-operator-scenarios)
 - [9) Minimal SOP Commands](#minimal-sop-commands)
 - [10) Output and Org Control Matrix](#output-and-org-control-matrix)
@@ -23,9 +23,9 @@ Quick jump sections:
 - [alert](#alert-commands): `plan/apply/delete/init/new-rule/new-contact-point/new-template/export/import/diff/list-rules/list-contact-points/list-mute-timings/list-templates`
 - [datasource](#datasource-commands): `browse/list/export/import/diff/add`
 - [access](#access-commands): `org/user/team/service-account`
-- [sync](#shared-output-rules): `summary/bundle/bundle-preflight/plan/review/apply/assess-alerts`
+- [change](#shared-output-rules): `summary/bundle/bundle-preflight/plan/review/apply/assess-alerts`
 - [overview](#shared-output-rules)
-- [project-status](#shared-output-rules)
+- [status](#shared-output-rules)
 
 <a id="before-you-start"></a>
 1) Before You Start
@@ -39,9 +39,9 @@ grafana-util dashboard -h
 grafana-util alert -h
 grafana-util datasource -h
 grafana-util access -h
-grafana-util sync -h
+grafana-util change -h
 grafana-util overview -h
-grafana-util project-status -h
+grafana-util status -h
 ```
 
 Installed entrypoints:
@@ -55,7 +55,7 @@ CLI notes:
 - `grafana-util` is the primary unified CLI.
 - Use the namespaced `grafana-util <domain> <command>` layout throughout this guide.
 - `dashboard list-data-sources` remains available under the dashboard command surface, but new datasource inventory workflows should prefer `datasource list`.
-- `overview` and `project-status` are maintained top-level project surfaces, not side notes or experimental aliases.
+- `overview` is the human project entrypoint, `status` is the canonical status contract, and `change` owns the staged change workflow.
 
 ### 1.1 How To Use This Manual
 
@@ -70,9 +70,9 @@ The same Grafana workflow may be available through more than one surface dependi
 
 | Surface | Best for | Representative commands | Notes |
 | --- | --- | --- | --- |
-| Interactive TUI | Guided review, browsing, in-terminal workbenches | `dashboard browse`, `dashboard inspect-export --interactive`, `dashboard inspect-live --interactive`, `datasource browse`, `overview --output interactive`, `project-status ... --output interactive` | Only selected workflows provide TUI support; interactive output requires the TUI-capable build |
-| Plain text | Human-readable summaries and default dry-run previews | `sync`, `overview`, `project-status`, many dry-run summaries | Best for operator review in terminal logs |
-| JSON | CI, scripting, stable machine-readable handoff | import dry-runs, sync documents, staged/live project status | Prefer this when another tool will parse the result |
+| Interactive TUI | Guided review, browsing, in-terminal workflows | `dashboard browse`, `dashboard inspect-export --interactive`, `dashboard inspect-live --interactive`, `datasource browse`, `overview --output interactive`, `status ... --output interactive` | Only selected workflows provide TUI support; interactive output requires the TUI-capable build |
+| Plain text | Human-readable summaries and default dry-run previews | `change`, `overview`, `status`, many dry-run summaries | Best for operator review in terminal logs |
+| JSON | CI, scripting, stable machine-readable handoff | import dry-runs, change documents, staged/live status contracts | Prefer this when another tool will parse the result |
 | Table / CSV / report outputs | Inventory listing, diff review, dashboard analysis | list commands, `dashboard inspect-*`, review tables | Usually the best fit for audits and spreadsheets |
 
 ### 1.3 Support Depth By Area
@@ -81,12 +81,13 @@ Use this table before reading per-command details if you want to know how mature
 
 | Area | Support depth | Primary workflows | Main surfaces | Notes |
 | --- | --- | --- | --- | --- |
-| `dashboard` | Deepest and broadest | browse, list, export, import, diff, delete, inspect, dependency analysis, permission export, screenshot/PDF | text, table/csv/json, report modes, interactive workbenches | The most feature-complete analysis and migration surface |
+| `dashboard` | Deepest and broadest | browse, list, export, import, diff, delete, inspect, dependency analysis, permission export, screenshot/PDF | text, table/csv/json, report modes, interactive TUI | The most feature-complete analysis and migration surface |
 | `datasource` | Deep and mature | browse, list, export, import, diff, add, modify, delete, org-aware replay | text, table/csv/json, interactive browse | Covers both live mutation and file-based replay |
 | `alert` | Mature management and migration surface | plan, apply, delete, init, scaffold, list, export, import, diff for alerting resources | text/json, table/csv/json | Review-first alert management lane plus the older inventory and replay lane |
 | `access` | Mature inventory and replay surface | list, add, modify, delete, export, import, diff for org/user/team/service-account flows | table/csv/json | Strongest for access-state inventory, rebuild, and review |
-| `sync` | Advanced staged workflow | summary, bundle, preflight, plan, review, apply intent, audit, promotion-preflight | text/json | Review-first project workflow, not blind direct sync |
-| `overview` / `project-status` | Project-wide aggregation surface | staged/live readiness, cross-domain summaries, handoff views | text/json/interactive | Best entrypoint when you need one whole-project read model |
+| `change` | Advanced staged workflow | summary, bundle, preflight, plan, review, apply intent, audit, promotion-preflight | text/json | Review-first project change workflow, not blind direct mutation |
+| `overview` | Human project entrypoint | staged/live project snapshots, cross-domain summaries, handoff views | text/json/interactive | Start here when an operator wants one whole-project picture |
+| `status` | Canonical status contract | staged/live readiness, cross-domain summaries, machine-readable handoff | text/json/interactive | Use when you need the stable cross-domain readiness contract |
 
 <a id="global-options"></a>
 2) Global Options
@@ -145,8 +146,8 @@ Use this routing table when you know the task but not yet the exact command.
 | Access management for users | `access user` | `list`, `add`, `modify`, `delete`, `export`, `import`, `diff` |
 | Access management for teams | `access team` | `list`, `add`, `modify`, `delete`, `export`, `import`, `diff` |
 | Access management for service accounts | `access service-account` | `list`, `add`, `delete`, `export`, `import`, `diff`, `token add`, `token delete` |
-| Staged sync and promotion workflows | `sync` | `summary`, `bundle`, `bundle-preflight`, `preflight`, `assess-alerts`, `plan`, `review`, `apply`, `audit`, `promotion-preflight` |
-| Project-wide staged or live status | `overview`, `project-status` | `overview`, `overview live`, `project-status staged`, `project-status live` |
+| Staged change and promotion workflows | `change` | `summary`, `bundle`, `bundle-preflight`, `preflight`, `assess-alerts`, `plan`, `review`, `apply`, `audit`, `promotion-preflight` |
+| Project-wide staged or live reads | `overview`, `status` | `overview`, `overview live`, `status staged`, `status live` |
 
 ### Command capability summary
 
@@ -159,7 +160,7 @@ Use this table first when you need to confirm whether a resource supports invent
 | Alert rules & alerting resources | Yes | Yes | Yes | Yes | No | No | No | No | management lane: `plan/apply/delete/init/new-*`; migration lane: `export/import/diff` |
 | Organizations | Yes | Yes | Yes | No | No | Yes | Yes | Yes | Org inventory plus membership replay on import |
 | Users | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes | User inventory, migration, and drift comparison |
-| Teams (`group` alias) | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes | Team inventory, migration, and drift comparison |
+| Teams | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes | Team inventory, migration, and drift comparison |
 | Service accounts | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes | Service account lifecycle, snapshot replay, and drift review |
 | Service account tokens | Yes | No | No | No | No | Yes | No | Yes | token add/delete workflows |
 
@@ -167,9 +168,9 @@ Project-level surfaces:
 
 | Surface | Inputs | Live reads | Output modes | Main use |
 | --- | --- | --- | --- | --- |
-| `sync` | desired JSON, bundle files, lock files, availability/mapping metadata | Optional, command-dependent | text/json | staged review, preflight, plan, review, apply intent |
-| `overview` | staged exports plus optional sync/promotion inputs | `overview live` only | text/json/interactive | one project-wide staged or live snapshot |
-| `project-status` | staged exports or live Grafana | Yes | text/json/interactive | canonical project-wide staged/live readiness surface |
+| `change` | desired JSON, bundle files, lock files, availability/mapping metadata | Optional, command-dependent | text/json | staged review, preflight, plan, review, apply intent |
+| `overview` | staged exports plus optional change/promotion inputs | `overview live` only | text/json/interactive | one operator-facing staged or live project snapshot |
+| `status` | staged exports or live Grafana | Yes | text/json/interactive | canonical project-wide staged/live readiness surface |
 
 Authentication exclusivity rules:
 
@@ -274,9 +275,9 @@ grafana-util dashboard list --url http://localhost:3000 --token <TOKEN> --json
 ]
 ```
 
-### 3.3 `dashboard list-data-sources` (compatibility shim; prefer `datasource list`)
+### 3.3 `dashboard list-data-sources`
 
-Purpose: preserve the older dashboard-scoped datasource inventory path while steering new scripts and runbooks to `datasource list`.
+Purpose: use the dashboard-scoped datasource inventory path when you want datasource output while already working from the dashboard surface. New runbooks should prefer `datasource list`.
 
 | Option | Purpose | Difference / scenario |
 | --- | --- | --- |
@@ -298,9 +299,6 @@ prom-main          prometheus-main    prometheus   true
 loki-prod          loki-prod          loki         false
 tempo-prod         tempo-prod         tempo        false
 ```
-
-Preferred path:
-- Use section `5.1 datasource list` for new automation, saved examples, and operator documentation.
 
 Preferred path:
 - Use section `5.1 datasource list` for new automation, saved examples, and operator documentation.
@@ -1319,7 +1317,7 @@ Live note:
 6) Access Commands
 ------------------
 
-`group` is an alias for `team`.
+Use `access team` as the canonical team command path in this guide.
 
 ### 6.1 `access user list`
 
@@ -1493,7 +1491,7 @@ Purpose: import users from exported snapshot files.
 | --- | --- | --- |
 | `--import-dir` | Directory that contains `users.json` and `export-metadata.json` | Must match export layout |
 | `--scope` | `org` or `global` | Resolve duplicate matching rules |
-| `--replace-existing` | Update existing user records | Required for repeated sync |
+| `--replace-existing` | Update existing user records | Required for repeat reconcile runs |
 | `--dry-run` | Plan actions only, no API mutation | Safer first pass |
 | `--yes` | Skip confirmation for destructive membership removals | Required when team removals are detected |
 | `--table`, `--json`, `--output-format table/json` | Dry-run output mode selector | Available only with `--dry-run`; mutually exclusive |
@@ -1692,7 +1690,7 @@ Purpose: import teams and synchronize memberships from exported snapshots.
 | Option | Purpose | Difference / scenario |
 | --- | --- | --- |
 | `--import-dir` | Directory that contains `teams.json` and `export-metadata.json` | Must match export layout |
-| `--replace-existing` | Update existing teams rather than skip | Required for cross-instance sync |
+| `--replace-existing` | Update existing teams rather than skip | Required for cross-instance replay |
 | `--dry-run` | Plan actions only, no API mutation | Recommended before replay |
 | `--yes` | Skip confirmation for destructive removals | Required when members would be removed |
 | `--table`, `--json`, `--output-format table/json` | Dry-run output mode selector | Available only with `--dry-run`; mutually exclusive |
@@ -1919,16 +1917,16 @@ Example output:
 | Output flags are mutually exclusive | Most commands do not allow `--table`, `--csv`, `--json`, and `--output-format` together |
 | Prefer dry-run first | Especially for import-like workflows |
 | Org control is explicit | `--org-id` and `--all-orgs` should be used deliberately |
-| Legacy commands still exist | Prefer the modern subcommand layout for new automation |
-| `access group` is an alias | It maps to `access team` |
+| Top-level names are distinct by role | Use `overview` for human entry, `status` for the canonical readiness contract, and `change` for staged change workflows |
+| Prefer canonical team commands | Use `access team` throughout this guide |
 
-### 7.1 Sync, overview, and project-status surfaces
+### 7.1 Change, overview, and status surfaces
 
-- `sync` is the staged review lane: build desired summaries, source bundles, preflight checks, review/apply intent documents, and alert-sync assessment.
-- `overview` is the broad project snapshot: staged artifact aggregation by default, or `overview live` when you want the shared live status path.
-- `project-status` is the canonical readiness surface: use `staged` for exported artifacts and `live` for current Grafana reads.
+- `change` is the staged change lane: build desired summaries, source bundles, preflight checks, review/apply intent documents, and alert-change assessment.
+- `overview` is the human project entrypoint: use it for operator-facing staged or live snapshots when you want one readable project home.
+- `status` is the canonical readiness surface: use `staged` for exported artifacts and `live` for current Grafana reads.
 
-### 7.2 `sync summary`
+### 7.2 `change summary`
 
 Purpose: normalize a desired resource list into one stable staged summary document.
 
@@ -1939,7 +1937,7 @@ Purpose: normalize a desired resource list into one stable staged summary docume
 
 Example command:
 ```bash
-grafana-util sync summary --desired-file ./desired.json --output json
+grafana-util change summary --desired-file ./desired.json --output json
 ```
 
 Example output:
@@ -1956,22 +1954,22 @@ Example output:
 }
 ```
 
-### 7.3 `sync bundle` and `sync bundle-preflight`
+### 7.3 `change bundle` and `change bundle-preflight`
 
 Purpose: turn exported dashboard/alert/datasource artifacts into one source bundle, then evaluate what blocks or stays plan-only before apply.
 
 | Command | Key flags | Main use |
 | --- | --- | --- |
-| `sync bundle` | `--dashboard-export-dir`, `--alert-export-dir`, `--datasource-export-file`, `--output-file` | package staged exports into one portable source bundle |
-| `sync bundle-preflight` | `--source-bundle`, `--target-inventory`, `--availability-file` | review blocking plugin, datasource, alert-artifact, and secret/provider checks |
+| `change bundle` | `--dashboard-export-dir`, `--alert-export-dir`, `--datasource-export-file`, `--output-file` | package staged exports into one portable source bundle |
+| `change bundle-preflight` | `--source-bundle`, `--target-inventory`, `--availability-file` | review blocking plugin, datasource, alert-artifact, and secret/provider checks |
 
 Example command:
 ```bash
-grafana-util sync bundle \
+grafana-util change bundle \
   --dashboard-export-dir ./dashboards/raw \
   --alert-export-dir ./alerts/raw \
   --datasource-export-file ./datasources/datasources.json \
-  --output-file ./sync-source-bundle.json \
+  --output-file ./change-source-bundle.json \
   --output json
 ```
 
@@ -1994,8 +1992,8 @@ Example output excerpt:
 
 Example command:
 ```bash
-grafana-util sync bundle-preflight \
-  --source-bundle ./sync-source-bundle.json \
+grafana-util change bundle-preflight \
+  --source-bundle ./change-source-bundle.json \
   --target-inventory ./target-inventory.json \
   --output json
 ```
@@ -2015,23 +2013,23 @@ Example output excerpt:
 ```
 
 How to read it:
-- `sync bundle` is the packaging step.
-- `sync bundle-preflight` is the review step that surfaces what is ready, plan-only, or blocked before any live apply path is considered.
+- `change bundle` is the packaging step.
+- `change bundle-preflight` is the review step that surfaces what is ready, plan-only, or blocked before any live apply path is considered.
 
-### 7.4 `sync plan`, `sync review`, `sync apply`, and `sync assess-alerts`
+### 7.4 `change plan`, `change review`, `change apply`, and `change assess-alerts`
 
-Purpose: convert staged desired resources into a reviewable plan, stamp that plan reviewed, then emit a gated apply intent. Use `assess-alerts` when you need only the alert-sync review signal.
+Purpose: convert staged desired resources into a reviewable plan, stamp that plan reviewed, then emit a gated apply intent. Use `assess-alerts` when you need only the alert-change review signal.
 
 | Command | Key flags | Main use |
 | --- | --- | --- |
-| `sync plan` | `--desired-file`, `--live-file` or `--fetch-live`, `--allow-prune`, `--output json` | build the staged plan document |
-| `sync review` | `--plan-file`, `--review-note`, `--reviewed-by` | mark a plan reviewed without applying it |
-| `sync apply` | `--plan-file`, `--approve`, `--execute-live` | emit a local apply intent, or execute live when explicitly enabled |
-| `sync assess-alerts` | `--alerts-file`, `--output json` | isolate alert candidate/plan-only/blocked classification |
+| `change plan` | `--desired-file`, `--live-file` or `--fetch-live`, `--allow-prune`, `--output json` | build the staged plan document |
+| `change review` | `--plan-file`, `--review-note`, `--reviewed-by` | mark a plan reviewed without applying it |
+| `change apply` | `--plan-file`, `--approve`, `--execute-live` | emit a local apply intent, or execute live when explicitly enabled |
+| `change assess-alerts` | `--alerts-file`, `--output json` | isolate alert candidate/plan-only/blocked classification |
 
 Example command:
 ```bash
-grafana-util sync plan --desired-file ./desired-plan.json --live-file ./live.json --output json
+grafana-util change plan --desired-file ./desired-plan.json --live-file ./live.json --output json
 ```
 
 Example output excerpt:
@@ -2050,8 +2048,8 @@ Example output excerpt:
 
 Example command:
 ```bash
-grafana-util sync review --plan-file ./sync-plan.json --review-note "docs-reviewed" --reviewed-by docs-user --output json
-grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --output json
+grafana-util change review --plan-file ./change-plan.json --review-note "docs-reviewed" --reviewed-by docs-user --output json
+grafana-util change apply --plan-file ./change-plan-reviewed.json --approve --output json
 ```
 
 Example output excerpt:
@@ -2071,7 +2069,7 @@ Example output excerpt:
 
 Example command:
 ```bash
-grafana-util sync assess-alerts --alerts-file ./alerts-only.json --output json
+grafana-util change assess-alerts --alerts-file ./alerts-only.json --output json
 ```
 
 Example output excerpt:
@@ -2089,7 +2087,7 @@ Example output excerpt:
 
 ### 7.5 `overview`
 
-Purpose: summarize staged exports and staged sync inputs into one project-wide operator snapshot.
+Purpose: summarize staged exports and staged change inputs into one project-wide operator snapshot.
 
 | Option | Purpose | Difference / scenario |
 | --- | --- | --- |
@@ -2097,7 +2095,7 @@ Purpose: summarize staged exports and staged sync inputs into one project-wide o
 | `--datasource-export-dir` | Staged datasource export directory | Usually the org export directory containing `datasources.json` |
 | `--alert-export-dir` | Staged alert export directory | Point at the export root, not just `raw/` |
 | `--access-*-export-dir` | Staged access bundles | Add only the bundles you want summarized |
-| `--desired-file` | Optional sync summary input | Adds staged sync rows |
+| `--desired-file` | Optional change summary input | Adds staged change rows |
 | `--source-bundle`, `--target-inventory`, `--mapping-file` | Optional bundle/promotion context | Broadens the project-level staged picture |
 | `--output text\|json\|interactive` | Render format | `interactive` requires the TUI-capable build |
 
@@ -2119,28 +2117,28 @@ Example output:
 ```text
 Project overview
 Status: blocked domains=6 present=5 blocked=1 blockers=3 warnings=0 freshness=current oldestAge=222s
-Artifacts: 8 total, 1 dashboard export, 1 datasource export, 1 alert export, 1 access user export, 1 access team export, 1 access org export, 1 access service-account export, 1 sync summary, 0 bundle preflight, 0 promotion preflight
+Artifacts: 8 total, 1 dashboard export, 1 datasource export, 1 alert export, 1 access user export, 1 access team export, 1 access org export, 1 access service-account export, 1 change summary, 0 bundle preflight, 0 promotion preflight
 Domain status:
 - dashboard status=blocked reason=blocked-by-blockers primary=10 blockers=3 warnings=0 freshness=current next=resolve orphaned datasources, then mixed dashboards
 - datasource status=ready reason=ready primary=3 blockers=0 warnings=0 freshness=current
 - alert status=ready reason=ready primary=1 blockers=0 warnings=0 freshness=current next=re-run alert export after alerting changes
 - access status=ready reason=ready primary=13 blockers=0 warnings=0 freshness=current next=re-run access export after membership changes
-- sync status=ready reason=ready primary=4 blockers=0 warnings=0 freshness=current next=re-run sync summary after staged changes
+- change status=ready reason=ready primary=4 blockers=0 warnings=0 freshness=current next=re-run change summary after staged changes
 ```
 
-### 7.6 `project-status staged` and `project-status live`
+### 7.6 `status staged` and `status live`
 
 Purpose: render the canonical project-wide readiness contract from either staged exports or current Grafana state.
 
 | Command | Key flags | Main use |
 | --- | --- | --- |
-| `project-status staged` | staged export dirs plus optional desired/bundle inputs | machine-readable staged readiness |
-| `project-status live` | `--url`, auth, optional staged context files | machine-readable current Grafana status |
-| `overview live` | same live auth flags | convenience alias that delegates to `project-status live` |
+| `status staged` | staged export dirs plus optional desired/bundle inputs | machine-readable staged readiness |
+| `status live` | `--url`, auth, optional staged context files | machine-readable current Grafana status |
+| `overview live` | same live auth flags | human-facing live project read that routes through the shared `status live` path |
 
 Example command:
 ```bash
-grafana-util project-status staged \
+grafana-util status staged \
   --dashboard-export-dir ./dashboards/raw \
   --datasource-export-dir ./datasources \
   --alert-export-dir ./alerts \
@@ -2167,7 +2165,7 @@ Example output excerpt:
 
 Example command:
 ```bash
-grafana-util project-status live --url http://localhost:3000 --basic-user admin --basic-password admin --output json
+grafana-util status live --url http://localhost:3000 --basic-user admin --basic-password admin --output json
 ```
 
 Example output excerpt:
@@ -2280,18 +2278,18 @@ grafana-util access service-account import --url <URL> --token <TOKEN> --import-
 grafana-util access service-account diff --url <URL> --token <TOKEN> --diff-dir ./access-service-accounts
 grafana-util access service-account list --url <URL> --token <TOKEN> --table
 
-grafana-util sync summary --desired-file ./desired.json --output json
-grafana-util sync bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --datasource-export-file ./datasources/datasources.json --output-file ./sync-source-bundle.json --output json
-grafana-util sync bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output json
-grafana-util sync plan --desired-file ./desired.json --live-file ./live.json --output json
-grafana-util sync review --plan-file ./sync-plan.json --review-note "peer-reviewed" --reviewed-by ops-user --output json
-grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --output json
-grafana-util sync assess-alerts --alerts-file ./alerts-only.json --output json
+grafana-util change summary --desired-file ./desired.json --output json
+grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --datasource-export-file ./datasources/datasources.json --output-file ./change-source-bundle.json --output json
+grafana-util change bundle-preflight --source-bundle ./change-source-bundle.json --target-inventory ./target-inventory.json --output json
+grafana-util change plan --desired-file ./desired.json --live-file ./live.json --output json
+grafana-util change review --plan-file ./change-plan.json --review-note "peer-reviewed" --reviewed-by ops-user --output json
+grafana-util change apply --plan-file ./change-plan-reviewed.json --approve --output json
+grafana-util change assess-alerts --alerts-file ./alerts-only.json --output json
 
 grafana-util overview --dashboard-export-dir ./dashboards/raw --datasource-export-dir ./datasources --alert-export-dir ./alerts --output text
 grafana-util overview live --url <URL> --basic-user <USER> --basic-password <PASS> --output json
-grafana-util project-status staged --dashboard-export-dir ./dashboards/raw --datasource-export-dir ./datasources --alert-export-dir ./alerts --output json
-grafana-util project-status live --url <URL> --basic-user <USER> --basic-password <PASS> --output json
+grafana-util status staged --dashboard-export-dir ./dashboards/raw --datasource-export-dir ./datasources --alert-export-dir ./alerts --output json
+grafana-util status live --url <URL> --basic-user <USER> --basic-password <PASS> --output json
 ```
 
 <a id="output-and-org-control-matrix"></a>
@@ -2314,15 +2312,15 @@ grafana-util project-status live --url <URL> --basic-user <USER> --basic-passwor
 | `access team diff` | text | Summary output |
 | `access service-account import` | `text/table/json` | Dry-run table/json/text summary |
 | `access service-account diff` | text | Summary output |
-| `sync summary` | `text/json` | Desired-resource summary |
-| `sync bundle` | `text/json` | Source bundle document |
-| `sync bundle-preflight` | `text/json` | Bundle review document |
-| `sync plan` | `text/json` | Reviewable sync plan |
-| `sync review` | `text/json` | Reviewed plan stamp |
-| `sync apply` | `text/json` | Apply intent or live execution summary |
-| `sync assess-alerts` | `text/json` | Alert-sync classification |
+| `change summary` | `text/json` | Desired-resource summary |
+| `change bundle` | `text/json` | Source bundle document |
+| `change bundle-preflight` | `text/json` | Bundle review document |
+| `change plan` | `text/json` | Reviewable change plan |
+| `change review` | `text/json` | Reviewed plan stamp |
+| `change apply` | `text/json` | Apply intent or live execution summary |
+| `change assess-alerts` | `text/json` | Alert-change classification |
 | `overview` | `text/json/interactive` | Project-wide staged overview |
-| `project-status staged/live` | `text/json/interactive` | Canonical project-wide readiness |
+| `status staged/live` | `text/json/interactive` | Canonical project-wide readiness |
 
 Common dry-run status hints:
 - `missing`: no live target exists yet.

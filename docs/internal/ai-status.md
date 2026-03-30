@@ -8,6 +8,13 @@ Current AI-maintained status only.
 - Some older entries below still cite pre-cleanup `docs/internal/...` paths for files that now live under `docs/internal/archive/`.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 
+## 2026-03-30 - Rename project surfaces and remove the local web workbench
+- State: Done
+- Scope: `README.md`, `README.zh-TW.md`, `docs/user-guide.md`, `docs/user-guide-TW.md`, `rust/Cargo.toml`, `rust/Cargo.lock`, `rust/src/cli.rs`, `rust/src/cli_help_examples.rs`, `rust/src/cli_rust_tests.rs`, `rust/src/lib.rs`, `rust/src/overview.rs`, `rust/src/overview_rust_tests.rs`, `rust/src/project_status.rs`, `rust/src/project_status_command.rs`, `rust/src/sync/mod.rs`, `rust/src/sync/cli_help_rust_tests.rs`, `rust/src/bin/grafana-util-web.rs`, `rust/src/web/*`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the repo still exposed three overlapping top-level names in the operator surface: `overview`, `project-status`, and `sync`. Public docs had already started moving toward `overview / status / change`, but the Rust CLI and help text still carried the older names. Separately, the optional `grafana-util-web` Axum workbench had become another current surface even though it was no longer wanted.
+- Current Update: renamed the active CLI and doc surfaces to `overview`, `status`, and `change` with no compatibility aliases. Updated root parser/help routing, overview live wording, status/change command examples, default review token, and focused Rust parser/help tests to match the new operator model. Then removed the entire local web workbench stack: Cargo `web` feature, the `grafana-util-web` binary, optional web-only deps, and the whole `rust/src/web/` module tree.
+- Result: the project now presents two clearer operator entry lanes plus one advanced status surface: `overview` for human-first project understanding, `change` for review/apply workflows, and `status` for canonical readiness. The repo no longer carries an unused localhost web/API stack.
+
 ## 2026-03-30 - Alert authoring round-trip normalization and live smoke
 - State: Done
 - Scope: `rust/src/alert.rs`, `rust/src/alert_support.rs`, `rust/src/alert_runtime_support.rs`, `rust/src/alert_import_diff.rs`, `rust/src/alert_rust_tests.rs`, `scripts/test-rust-live-grafana.sh`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

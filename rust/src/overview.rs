@@ -1,7 +1,7 @@
 //! Artifact-driven project overview assembly.
 //!
 //! This module stays pure and local: it loads staged artifacts, reuses existing
-//! dashboard, access, and sync summary builders, and renders a single overview
+//! dashboard, access, and change summary builders, and renders a single overview
 //! document for text, JSON, or interactive output.
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
@@ -72,7 +72,7 @@ const DATASOURCE_EXPORT_FILENAME: &str = "datasources.json";
 const DATASOURCE_EXPORT_METADATA_FILENAME: &str = "export-metadata.json";
 const DATASOURCE_ROOT_KIND: &str = "grafana-utils-datasource-export-index";
 const DATASOURCE_ROOT_SCHEMA_VERSION: i64 = 1;
-const OVERVIEW_HELP_TEXT: &str = "Examples:\n\n  Summarize staged exports as JSON:\n    grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output json\n\n  Summarize bundle and promotion context as text:\n    grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output text\n\n  Open the live overview through the shared project-status path:\n    grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output interactive";
+const OVERVIEW_HELP_TEXT: &str = "Examples:\n\n  Summarize staged exports as JSON:\n    grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output json\n\n  Summarize bundle and promotion context as text:\n    grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output text\n\n  Open the live overview through the shared status live path:\n    grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output interactive";
 const OVERVIEW_LIVE_HELP_TEXT: &str = "Examples:\n\n  Render the live overview as JSON:\n    grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output json\n\n  Open the live overview in the interactive workbench:\n    grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output interactive";
 
 /// Output formats for the overview renderer.
@@ -126,7 +126,7 @@ pub struct OverviewArgs {
     pub access_service_account_export_dir: Option<PathBuf>,
     #[arg(
         long,
-        help = "Desired sync file to summarize with the existing sync summary builder.",
+        help = "Desired change file to summarize with the existing change summary builder.",
         help_heading = "Input Options"
     )]
     pub desired_file: Option<PathBuf>,
@@ -174,7 +174,7 @@ pub struct OverviewArgs {
 #[derive(Debug, Clone, Parser)]
 #[command(
     name = "grafana-util overview",
-    about = "Render a project-wide overview from staged artifacts, or use `live` as a thin entrypoint into shared live project status.",
+    about = "Render a project-wide overview from staged artifacts, or use `live` as a thin entrypoint into shared live status.",
     args_conflicts_with_subcommands = true,
     after_help = OVERVIEW_HELP_TEXT
 )]
@@ -189,7 +189,7 @@ pub struct OverviewCliArgs {
 #[derive(Debug, Clone, Subcommand)]
 pub enum OverviewCommand {
     #[command(
-        about = "Render a live overview by delegating to the shared project-status live path.",
+        about = "Render a live overview by delegating to the shared status live path.",
         after_help = OVERVIEW_LIVE_HELP_TEXT
     )]
     Live(OverviewLiveArgs),
@@ -348,7 +348,7 @@ fn overview_live_runner() -> OverviewLiveRunner {
     run_project_status_live
 }
 
-/// Run the overview live alias by delegating to the shared project-status live path.
+/// Run the overview live alias by delegating to the shared status live path.
 pub fn run_overview_live(args: OverviewLiveArgs) -> Result<()> {
     overview_live_runner()(args)
 }

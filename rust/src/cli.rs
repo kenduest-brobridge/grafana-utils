@@ -3,7 +3,7 @@
 //! Purpose:
 //! - Own only command topology and domain dispatch.
 //! - Keep `grafana-util` command surface in one place.
-//! - Route to domain runners (`dashboard`, `alert`, `access`, `datasource`, `overview`, `project-status`) without
+//! - Route to domain runners (`dashboard`, `alert`, `access`, `datasource`, `overview`, `status`) without
 //!   carrying transport/request behavior.
 //!
 //! Flow:
@@ -39,7 +39,7 @@ use crate::sync::{run_sync_cli, SyncCliArgs, SyncGroupCommand};
 
 const UNIFIED_DASHBOARD_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard browse --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n  grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite\n  grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw";
 const UNIFIED_DATASOURCE_HELP_TEXT: &str = "Examples:\n\n  grafana-util datasource browse --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n  grafana-util datasource list --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --json\n  grafana-util datasource import --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --import-dir ./datasources --dry-run --json";
-const UNIFIED_SYNC_HELP_TEXT: &str = "Examples:\n\n  grafana-util sync summary --desired-file ./desired.json\n  grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n  grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
+const UNIFIED_SYNC_HELP_TEXT: &str = "Examples:\n\n  grafana-util change summary --desired-file ./desired.json\n  grafana-util change plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n  grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
 const UNIFIED_ALERT_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n  grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dry-run --json\n  grafana-util alert list-rules --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json";
 const UNIFIED_ACCESS_HELP_TEXT: &str = "Examples:\n\n  grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n  grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --yes\n  grafana-util access service-account token add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly";
 const DASHBOARD_BROWSE_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard browse --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n  grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --basic-password admin --path 'Platform / Infra'\n  grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs";
@@ -108,7 +108,7 @@ fn render_domain_help_full_text(
 }
 
 const OVERVIEW_HELP_SHAPE_NOTE: &str =
-    "\nStaged overview is the default. Use `grafana-util overview live` for live Grafana reads.\n";
+    "\nStaged overview is the default. Use `grafana-util overview live` to route into shared live status.\n";
 
 fn render_overview_help_text(colorize: bool) -> String {
     let mut help = render_domain_help_text(OverviewCliArgs::command(), colorize);
@@ -173,14 +173,14 @@ where
             Some(render_overview_help_text(colorize))
         }
         [_binary, command, flag]
-            if command == "project-status" && (flag == "--help" || flag == "-h") =>
+            if command == "status" && (flag == "--help" || flag == "-h") =>
         {
             Some(render_domain_help_text(
                 ProjectStatusCliArgs::command(),
                 colorize,
             ))
         }
-        [_binary, command, flag] if command == "sync" && (flag == "--help" || flag == "-h") => {
+        [_binary, command, flag] if command == "change" && (flag == "--help" || flag == "-h") => {
             Some(render_domain_help_text(SyncCliArgs::command(), colorize))
         }
         [_binary, command, flag] if command == "alert" && flag == "--help-full" => Some(
@@ -199,14 +199,14 @@ where
         [_binary, command, flag] if command == "overview" && flag == "--help-full" => {
             Some(render_overview_help_full_text(colorize))
         }
-        [_binary, command, flag] if command == "project-status" && flag == "--help-full" => {
+        [_binary, command, flag] if command == "status" && flag == "--help-full" => {
             Some(render_domain_help_full_text(
                 ProjectStatusCliArgs::command(),
                 PROJECT_STATUS_HELP_FULL_TEXT,
                 colorize,
             ))
         }
-        [_binary, command, flag] if command == "sync" && flag == "--help-full" => Some(
+        [_binary, command, flag] if command == "change" && flag == "--help-full" => Some(
             render_domain_help_full_text(SyncCliArgs::command(), SYNC_HELP_FULL_TEXT, colorize),
         ),
         _ => None,
@@ -302,11 +302,11 @@ pub enum UnifiedCommand {
         command: DatasourceGroupCommand,
     },
     #[command(
-        about = "Run staged sync planning workflows with optional live Grafana fetch/apply paths.",
-        visible_alias = "sy",
+        name = "change",
+        about = "Run review-first change workflows with optional live Grafana fetch/apply paths.",
         after_help = UNIFIED_SYNC_HELP_TEXT
     )]
-    Sync {
+    Change {
         #[command(subcommand)]
         command: SyncGroupCommand,
     },
@@ -321,13 +321,14 @@ pub enum UnifiedCommand {
     )]
     Access(AccessCliArgs),
     #[command(
-        about = "Summarize project artifacts into a project-wide overview. Staged exports are the default; use `overview live` for live Grafana reads."
+        about = "Summarize project artifacts into a project-wide overview. Staged exports are the default; use `overview live` to route into shared live status."
     )]
     Overview(OverviewCliArgs),
     #[command(
+        name = "status",
         about = "Render shared project-wide staged or live status. Staged subcommands use exported artifacts; live subcommands query Grafana."
     )]
-    ProjectStatus(ProjectStatusCliArgs),
+    Status(ProjectStatusCliArgs),
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -388,7 +389,7 @@ fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
 }
 
 // Centralized command fan-out before invoking domain runners.
-// Every unified CLI variant is normalized into one of dashboard/alert/datasource/access/overview/project-status runners here.
+// Every unified CLI variant is normalized into one of dashboard/alert/datasource/access/overview/status runners here.
 /// Dispatch the normalized root command into exactly one domain handler.
 ///
 /// Handlers are injected as callables so tests can assert routing without
@@ -415,11 +416,11 @@ where
     match args.command {
         UnifiedCommand::Dashboard { command } => run_dashboard(wrap_dashboard_group(command)),
         UnifiedCommand::Datasource { command } => run_datasource(command),
-        UnifiedCommand::Sync { command } => run_sync(command),
+        UnifiedCommand::Change { command } => run_sync(command),
         UnifiedCommand::Alert(inner) => run_alert(normalize_alert_namespace_args(inner)),
         UnifiedCommand::Access(inner) => run_access(inner),
         UnifiedCommand::Overview(inner) => run_overview(inner),
-        UnifiedCommand::ProjectStatus(inner) => run_project_status(inner),
+        UnifiedCommand::Status(inner) => run_project_status(inner),
     }
 }
 

@@ -153,7 +153,7 @@ fn write_access_export_fixture(
     .unwrap();
 }
 
-fn write_sync_desired_fixture(path: &Path) {
+fn write_change_desired_fixture(path: &Path) {
     fs::write(
         path,
         serde_json::to_string_pretty(&json!([
@@ -292,7 +292,7 @@ fn overview_args_parse_and_help_expose_output_mode() {
 #[test]
 fn overview_cli_help_exposes_staged_and_live_shapes() {
     let overview_help = OverviewCliArgs::command().render_long_help().to_string();
-    assert!(overview_help.contains("thin entrypoint into shared live project status"));
+    assert!(overview_help.contains("thin entrypoint into shared live status"));
     assert!(overview_help.contains("live"));
 }
 
@@ -928,10 +928,10 @@ fn build_overview_document_and_render_overview_text_for_all_sections() {
 }
 
 #[test]
-fn build_overview_document_and_render_overview_text_for_sync_summary_domain_status() {
+fn build_overview_document_and_render_overview_text_for_change_summary_domain_status() {
     let temp = tempdir().unwrap();
     let desired_file = temp.path().join("desired.json");
-    write_sync_desired_fixture(&desired_file);
+    write_change_desired_fixture(&desired_file);
 
     let args = OverviewArgs {
         dashboard_export_dir: None,
@@ -1015,7 +1015,7 @@ fn build_overview_document_and_render_overview_text_for_sync_summary_domain_stat
 fn build_overview_document_preserves_the_shared_project_status_render_contract() {
     let temp = tempdir().unwrap();
     let desired_file = temp.path().join("desired.json");
-    write_sync_desired_fixture(&desired_file);
+    write_change_desired_fixture(&desired_file);
 
     let args = OverviewArgs {
         dashboard_export_dir: None,

@@ -1,4 +1,4 @@
-//! Shared project-status contract types.
+//! Shared status contract types.
 //!
 //! Maintainer note:
 //! - Keep this module limited to reusable status document shapes and small

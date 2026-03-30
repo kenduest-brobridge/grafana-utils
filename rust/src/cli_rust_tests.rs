@@ -979,20 +979,20 @@ fn parse_cli_supports_overview_live_org_scope_flags() {
 }
 
 #[test]
-fn parse_cli_supports_project_status_command() {
-    let args: CliArgs = parse_cli_from(["grafana-util", "project-status", "staged"]);
+fn parse_cli_supports_status_command() {
+    let args: CliArgs = parse_cli_from(["grafana-util", "status", "staged"]);
 
     match args.command {
-        UnifiedCommand::ProjectStatus(_) => {}
-        _ => panic!("expected project-status group"),
+        UnifiedCommand::Status(_) => {}
+        _ => panic!("expected status group"),
     }
 }
 
 #[test]
-fn parse_cli_supports_project_status_live_staged_inputs() {
+fn parse_cli_supports_status_live_staged_inputs() {
     let args: CliArgs = parse_cli_from([
         "grafana-util",
-        "project-status",
+        "status",
         "live",
         "--sync-summary-file",
         "./sync-summary.json",
@@ -1007,7 +1007,7 @@ fn parse_cli_supports_project_status_live_staged_inputs() {
     ]);
 
     match args.command {
-        UnifiedCommand::ProjectStatus(inner) => match inner.command {
+        UnifiedCommand::Status(inner) => match inner.command {
             crate::project_status_command::ProjectStatusSubcommand::Live(live) => {
                 assert_eq!(
                     live.sync_summary_file.as_deref(),
@@ -1030,25 +1030,25 @@ fn parse_cli_supports_project_status_live_staged_inputs() {
                     Some(Path::new("./availability.json"))
                 );
             }
-            _ => panic!("expected project-status live"),
+            _ => panic!("expected status live"),
         },
-        _ => panic!("expected project-status group"),
+        _ => panic!("expected status group"),
     }
 }
 
 #[test]
-fn parse_cli_supports_project_status_live_org_scope_flags() {
-    let args: CliArgs = parse_cli_from(["grafana-util", "project-status", "live", "--all-orgs"]);
+fn parse_cli_supports_status_live_org_scope_flags() {
+    let args: CliArgs = parse_cli_from(["grafana-util", "status", "live", "--all-orgs"]);
 
     match args.command {
-        UnifiedCommand::ProjectStatus(inner) => match inner.command {
+        UnifiedCommand::Status(inner) => match inner.command {
             crate::project_status_command::ProjectStatusSubcommand::Live(live) => {
                 assert!(live.all_orgs);
                 assert_eq!(live.org_id, None);
             }
-            _ => panic!("expected project-status live"),
+            _ => panic!("expected status live"),
         },
-        _ => panic!("expected project-status group"),
+        _ => panic!("expected status group"),
     }
 }
 
@@ -1060,26 +1060,25 @@ fn unified_help_mentions_alert_access_and_shims() {
     assert!(help.contains("[Datasource Inventory]"));
     assert!(help.contains("Run datasource browse, list, export, import, and diff workflows."));
     assert!(help.contains("[Access Inventory]"));
-    assert!(help.contains("[Sync Planning]"));
-    assert!(help.contains("[Sync Apply]"));
+    assert!(help.contains("[Change Planning]"));
+    assert!(help.contains("[Change Apply]"));
     assert!(help.contains("datasource"));
-    assert!(help.contains("grafana-util sync plan --desired-file ./desired.json --fetch-live"));
+    assert!(help.contains("grafana-util change plan --desired-file ./desired.json --fetch-live"));
     assert!(help.contains(
-        "grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live"
+        "grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live"
     ));
     assert!(help.contains(
-        "Run staged sync planning workflows with optional live Grafana fetch/apply paths."
+        "Run review-first change workflows with optional live Grafana fetch/apply paths."
     ));
     assert!(help.contains("overview"));
     assert!(help.contains("Summarize project artifacts into a project-wide overview."));
     assert!(help.contains("overview live"));
     assert!(help.contains("Staged overview is the default"));
-    assert!(help.contains("project-status"));
+    assert!(help.contains("status"));
     assert!(help.contains("Render shared project-wide staged or live status."));
     assert!(help.contains("dashboard"));
     assert!(help.contains("[aliases: db]"));
     assert!(help.contains("[aliases: ds]"));
-    assert!(help.contains("[aliases: sy]"));
     assert!(!help.contains("Compatibility direct form"));
 }
 
@@ -1090,7 +1089,7 @@ fn render_unified_help_text_colorizes_example_labels_when_requested() {
     assert!(help.contains("\u{1b}[1;31m[Alert Export]\u{1b}[0m"));
     assert!(help.contains("\u{1b}[1;32m[Datasource Inventory]\u{1b}[0m"));
     assert!(help.contains("\u{1b}[1;33m[Access Inventory]\u{1b}[0m"));
-    assert!(help.contains("\u{1b}[1;34m[Sync Planning]\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[1;34m[Change Planning]\u{1b}[0m"));
 }
 
 #[test]
@@ -1106,7 +1105,7 @@ fn unified_help_full_appends_extended_examples() {
     let help = render_unified_help_full();
     assert!(help.contains("Extended Examples:"));
     assert!(help.contains("[Dashboard Inspect Export]"));
-    assert!(help.contains("grafana-util sync review --plan-file ./sync-plan.json"));
+    assert!(help.contains("grafana-util change review --plan-file ./sync-plan.json"));
 }
 
 #[test]
@@ -1116,7 +1115,7 @@ fn unified_help_full_colorizes_extended_example_labels_when_requested() {
     assert!(help.contains("\u{1b}[1;31m[Alert Import]\u{1b}[0m"));
     assert!(help.contains("\u{1b}[1;32m[Datasource Import]\u{1b}[0m"));
     assert!(help.contains("\u{1b}[1;33m[Access Team Import]\u{1b}[0m"));
-    assert!(help.contains("\u{1b}[1;34m[Sync Review]\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[1;34m[Change Review]\u{1b}[0m"));
 }
 
 #[test]
@@ -1135,7 +1134,7 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
     assert!(root_help.contains("--help-full"));
 
     let short_help = maybe_render_unified_help_from_os_args(["grafana-util", "-h"], false).unwrap();
-    assert!(short_help.contains("[Sync Apply]"));
+    assert!(short_help.contains("[Change Apply]"));
     assert!(short_help.contains("Print help with extended examples"));
 
     let full_help =
@@ -1181,12 +1180,12 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
             .unwrap();
     assert!(access_help.contains("[Access Token Add]"));
 
-    let sync_help =
-        maybe_render_unified_help_from_os_args(["grafana-util", "sync", "--help-full"], false)
+    let change_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "change", "--help-full"], false)
             .unwrap();
-    assert!(sync_help.contains("[Sync Apply]"));
-    assert!(sync_help.contains("[Sync Bundle]"));
-    assert!(sync_help.contains("[Sync Bundle Preflight]"));
+    assert!(change_help.contains("[Change Apply]"));
+    assert!(change_help.contains("[Change Bundle]"));
+    assert!(change_help.contains("[Change Bundle Preflight]"));
 
     let alert_short_help =
         maybe_render_unified_help_from_os_args(["grafana-util", "alert", "-h"], false).unwrap();
@@ -1219,23 +1218,23 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
     assert!(overview_help.contains("overview"));
     assert!(overview_help.contains("project-wide overview"));
     assert!(overview_help.contains("overview live"));
-    assert!(overview_help.contains("shared live project status"));
+    assert!(overview_help.contains("shared live status"));
 
     let project_status_help = maybe_render_unified_help_from_os_args(
-        ["grafana-util", "project-status", "--help-full"],
+        ["grafana-util", "status", "--help-full"],
         false,
     )
     .unwrap();
-    assert!(project_status_help.contains("project-status"));
+    assert!(project_status_help.contains("status"));
     assert!(project_status_help.contains(
-        "Render project-wide staged or live status through the shared project-status contract."
+        "Render project-wide staged or live status through the shared status contract."
     ));
     assert!(project_status_help.contains("staged"));
     assert!(project_status_help.contains("live"));
 
-    let sync_short_help =
-        maybe_render_unified_help_from_os_args(["grafana-util", "sync", "-h"], false).unwrap();
-    assert!(sync_short_help.contains("--help-full"));
+    let change_short_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "change", "-h"], false).unwrap();
+    assert!(change_short_help.contains("--help-full"));
 
     assert!(
         maybe_render_unified_help_from_os_args(["grafana-util", "dashboard", "--help"], false)
@@ -1351,10 +1350,10 @@ fn parse_cli_rejects_legacy_alert_direct_command() {
 }
 
 #[test]
-fn parse_cli_supports_sync_group_alias() {
+fn parse_cli_supports_change_group_command() {
     let args: CliArgs = parse_cli_from([
         "grafana-util",
-        "sy",
+        "change",
         "summary",
         "--desired-file",
         "./desired.json",
@@ -1363,22 +1362,22 @@ fn parse_cli_supports_sync_group_alias() {
     ]);
 
     match args.command {
-        UnifiedCommand::Sync { command } => match command {
+        UnifiedCommand::Change { command } => match command {
             SyncGroupCommand::Summary(inner) => {
                 assert_eq!(inner.desired_file, Path::new("./desired.json"));
                 assert_eq!(inner.output, SyncOutputFormat::Json);
             }
-            _ => panic!("expected sync summary"),
+            _ => panic!("expected change summary"),
         },
-        _ => panic!("expected sync group"),
+        _ => panic!("expected change group"),
     }
 }
 
 #[test]
-fn parse_cli_supports_sync_assess_alerts_group_command() {
+fn parse_cli_supports_change_assess_alerts_group_command() {
     let args: CliArgs = parse_cli_from([
         "grafana-util",
-        "sync",
+        "change",
         "assess-alerts",
         "--alerts-file",
         "./alerts.json",
@@ -1387,22 +1386,22 @@ fn parse_cli_supports_sync_assess_alerts_group_command() {
     ]);
 
     match args.command {
-        UnifiedCommand::Sync { command } => match command {
+        UnifiedCommand::Change { command } => match command {
             SyncGroupCommand::AssessAlerts(inner) => {
                 assert_eq!(inner.alerts_file, Path::new("./alerts.json"));
                 assert_eq!(inner.output, SyncOutputFormat::Json);
             }
-            _ => panic!("expected sync assess-alerts"),
+            _ => panic!("expected change assess-alerts"),
         },
-        _ => panic!("expected sync group"),
+        _ => panic!("expected change group"),
     }
 }
 
 #[test]
-fn parse_cli_supports_sync_plan_group_command() {
+fn parse_cli_supports_change_plan_group_command() {
     let args: CliArgs = parse_cli_from([
         "grafana-util",
-        "sync",
+        "change",
         "plan",
         "--desired-file",
         "./desired.json",
@@ -1415,7 +1414,7 @@ fn parse_cli_supports_sync_plan_group_command() {
     ]);
 
     match args.command {
-        UnifiedCommand::Sync { command } => match command {
+        UnifiedCommand::Change { command } => match command {
             SyncGroupCommand::Plan(inner) => {
                 assert_eq!(inner.desired_file, Path::new("./desired.json"));
                 assert_eq!(
@@ -1425,17 +1424,17 @@ fn parse_cli_supports_sync_plan_group_command() {
                 assert_eq!(inner.trace_id, Some("trace-explicit".to_string()));
                 assert_eq!(inner.output, SyncOutputFormat::Json);
             }
-            _ => panic!("expected sync plan"),
+            _ => panic!("expected change plan"),
         },
-        _ => panic!("expected sync group"),
+        _ => panic!("expected change group"),
     }
 }
 
 #[test]
-fn parse_cli_supports_sync_plan_fetch_live_group_command() {
+fn parse_cli_supports_change_plan_fetch_live_group_command() {
     let args: CliArgs = parse_cli_from([
         "grafana-util",
-        "sync",
+        "change",
         "plan",
         "--desired-file",
         "./desired.json",
@@ -1451,7 +1450,7 @@ fn parse_cli_supports_sync_plan_fetch_live_group_command() {
     ]);
 
     match args.command {
-        UnifiedCommand::Sync { command } => match command {
+        UnifiedCommand::Change { command } => match command {
             SyncGroupCommand::Plan(inner) => {
                 assert_eq!(inner.desired_file, Path::new("./desired.json"));
                 assert!(inner.fetch_live);
@@ -1460,17 +1459,17 @@ fn parse_cli_supports_sync_plan_fetch_live_group_command() {
                 assert_eq!(inner.common.url, "http://localhost:3000");
                 assert_eq!(inner.common.api_token, Some("token-value".to_string()));
             }
-            _ => panic!("expected sync plan"),
+            _ => panic!("expected change plan"),
         },
-        _ => panic!("expected sync group"),
+        _ => panic!("expected change group"),
     }
 }
 
 #[test]
-fn parse_cli_supports_sync_apply_group_command_with_reason_and_note() {
+fn parse_cli_supports_change_apply_group_command_with_reason_and_note() {
     let args: CliArgs = parse_cli_from([
         "grafana-util",
-        "sync",
+        "change",
         "apply",
         "--plan-file",
         "./plan.json",
@@ -1482,7 +1481,7 @@ fn parse_cli_supports_sync_apply_group_command_with_reason_and_note() {
     ]);
 
     match args.command {
-        UnifiedCommand::Sync { command } => match command {
+        UnifiedCommand::Change { command } => match command {
             SyncGroupCommand::Apply(inner) => {
                 assert_eq!(inner.approval_reason, Some("change-approved".to_string()));
                 assert_eq!(
@@ -1490,17 +1489,17 @@ fn parse_cli_supports_sync_apply_group_command_with_reason_and_note() {
                     Some("local apply intent only".to_string())
                 );
             }
-            _ => panic!("expected sync apply"),
+            _ => panic!("expected change apply"),
         },
-        _ => panic!("expected sync group"),
+        _ => panic!("expected change group"),
     }
 }
 
 #[test]
-fn parse_cli_supports_sync_apply_execute_live_group_command() {
+fn parse_cli_supports_change_apply_execute_live_group_command() {
     let args: CliArgs = parse_cli_from([
         "grafana-util",
-        "sync",
+        "change",
         "apply",
         "--plan-file",
         "./plan.json",
@@ -1516,7 +1515,7 @@ fn parse_cli_supports_sync_apply_execute_live_group_command() {
     ]);
 
     match args.command {
-        UnifiedCommand::Sync { command } => match command {
+        UnifiedCommand::Change { command } => match command {
             SyncGroupCommand::Apply(inner) => {
                 assert_eq!(inner.plan_file, Path::new("./plan.json"));
                 assert!(inner.approve);
@@ -1526,28 +1525,28 @@ fn parse_cli_supports_sync_apply_execute_live_group_command() {
                 assert_eq!(inner.common.url, "http://localhost:3000");
                 assert_eq!(inner.common.api_token, Some("token-value".to_string()));
             }
-            _ => panic!("expected sync apply"),
+            _ => panic!("expected change apply"),
         },
-        _ => panic!("expected sync group"),
+        _ => panic!("expected change group"),
     }
 }
 
 #[test]
-fn parse_cli_supports_sync_review_group_command() {
+fn parse_cli_supports_change_review_group_command() {
     let args: CliArgs = parse_cli_from([
         "grafana-util",
-        "sync",
+        "change",
         "review",
         "--plan-file",
         "./plan.json",
         "--review-token",
-        "reviewed-sync-plan",
+        "reviewed-change-plan",
         "--output",
         "json",
     ]);
 
     match args.command {
-        UnifiedCommand::Sync { command } => match command {
+        UnifiedCommand::Change { command } => match command {
             SyncGroupCommand::Review(inner) => {
                 assert_eq!(inner.plan_file, Path::new("./plan.json"));
                 assert_eq!(inner.review_token, DEFAULT_REVIEW_TOKEN);
@@ -1556,9 +1555,9 @@ fn parse_cli_supports_sync_review_group_command() {
                 assert_eq!(inner.reviewed_at, None);
                 assert_eq!(inner.review_note, None);
             }
-            _ => panic!("expected sync review"),
+            _ => panic!("expected change review"),
         },
-        _ => panic!("expected sync group"),
+        _ => panic!("expected change group"),
     }
 }
 
@@ -1586,8 +1585,8 @@ fn dispatch_routes_dashboard_group_to_dashboard_handler() {
             routed.borrow_mut().push("datasource".to_string());
             Ok(())
         },
-        |_sync_args| {
-            routed.borrow_mut().push("sync".to_string());
+        |_change_args| {
+            routed.borrow_mut().push("change".to_string());
             Ok(())
         },
         |_alert_args| {
@@ -1603,7 +1602,7 @@ fn dispatch_routes_dashboard_group_to_dashboard_handler() {
             Ok(())
         },
         |_project_status_args| {
-            routed.borrow_mut().push("project-status".to_string());
+            routed.borrow_mut().push("status".to_string());
             Ok(())
         },
     );
@@ -1635,8 +1634,8 @@ fn dispatch_routes_access_group_to_access_handler() {
             routed.borrow_mut().push("datasource".to_string());
             Ok(())
         },
-        |_sync_args| {
-            routed.borrow_mut().push("sync".to_string());
+        |_change_args| {
+            routed.borrow_mut().push("change".to_string());
             Ok(())
         },
         |_alert_args| {
@@ -1652,7 +1651,7 @@ fn dispatch_routes_access_group_to_access_handler() {
             Ok(())
         },
         |_project_status_args| {
-            routed.borrow_mut().push("project-status".to_string());
+            routed.borrow_mut().push("status".to_string());
             Ok(())
         },
     );
@@ -1676,8 +1675,8 @@ fn dispatch_routes_overview_group_to_overview_handler() {
             routed.borrow_mut().push("datasource".to_string());
             Ok(())
         },
-        |_sync_args| {
-            routed.borrow_mut().push("sync".to_string());
+        |_change_args| {
+            routed.borrow_mut().push("change".to_string());
             Ok(())
         },
         |_alert_args| {
@@ -1693,7 +1692,7 @@ fn dispatch_routes_overview_group_to_overview_handler() {
             Ok(())
         },
         |_project_status_args| {
-            routed.borrow_mut().push("project-status".to_string());
+            routed.borrow_mut().push("status".to_string());
             Ok(())
         },
     );
@@ -1703,10 +1702,10 @@ fn dispatch_routes_overview_group_to_overview_handler() {
 }
 
 #[test]
-fn dispatch_routes_sync_group_to_sync_handler() {
+fn dispatch_routes_change_group_to_change_handler() {
     let args: CliArgs = parse_cli_from([
         "grafana-util",
-        "sync",
+        "change",
         "preflight",
         "--desired-file",
         "./desired.json",
@@ -1723,8 +1722,8 @@ fn dispatch_routes_sync_group_to_sync_handler() {
             routed.borrow_mut().push("datasource".to_string());
             Ok(())
         },
-        |_sync_args| {
-            routed.borrow_mut().push("sync".to_string());
+        |_change_args| {
+            routed.borrow_mut().push("change".to_string());
             Ok(())
         },
         |_alert_args| {
@@ -1740,13 +1739,13 @@ fn dispatch_routes_sync_group_to_sync_handler() {
             Ok(())
         },
         |_project_status_args| {
-            routed.borrow_mut().push("project-status".to_string());
+            routed.borrow_mut().push("status".to_string());
             Ok(())
         },
     );
 
     assert!(result.is_ok());
-    assert_eq!(*routed.borrow(), vec!["sync".to_string()]);
+    assert_eq!(*routed.borrow(), vec!["change".to_string()]);
 }
 
 #[test]
@@ -1771,8 +1770,8 @@ fn dispatch_routes_datasource_group_to_datasource_handler() {
             routed.borrow_mut().push("datasource".to_string());
             Ok(())
         },
-        |_sync_args| {
-            routed.borrow_mut().push("sync".to_string());
+        |_change_args| {
+            routed.borrow_mut().push("change".to_string());
             Ok(())
         },
         |_alert_args| {
@@ -1788,7 +1787,7 @@ fn dispatch_routes_datasource_group_to_datasource_handler() {
             Ok(())
         },
         |_project_status_args| {
-            routed.borrow_mut().push("project-status".to_string());
+            routed.borrow_mut().push("status".to_string());
             Ok(())
         },
     );
@@ -1798,8 +1797,8 @@ fn dispatch_routes_datasource_group_to_datasource_handler() {
 }
 
 #[test]
-fn dispatch_routes_project_status_group_to_project_status_handler() {
-    let args: CliArgs = parse_cli_from(["grafana-util", "project-status", "staged"]);
+fn dispatch_routes_status_group_to_status_handler() {
+    let args: CliArgs = parse_cli_from(["grafana-util", "status", "staged"]);
     let routed = RefCell::new(Vec::new());
 
     let result = dispatch_with_handlers(
@@ -1812,8 +1811,8 @@ fn dispatch_routes_project_status_group_to_project_status_handler() {
             routed.borrow_mut().push("datasource".to_string());
             Ok(())
         },
-        |_sync_args| {
-            routed.borrow_mut().push("sync".to_string());
+        |_change_args| {
+            routed.borrow_mut().push("change".to_string());
             Ok(())
         },
         |_alert_args| {
@@ -1829,17 +1828,17 @@ fn dispatch_routes_project_status_group_to_project_status_handler() {
             Ok(())
         },
         |_project_status_args| {
-            routed.borrow_mut().push("project-status".to_string());
+            routed.borrow_mut().push("status".to_string());
             Ok(())
         },
     );
 
     assert!(result.is_ok());
-    assert_eq!(*routed.borrow(), vec!["project-status".to_string()]);
+    assert_eq!(*routed.borrow(), vec!["status".to_string()]);
 }
 
 #[test]
-fn overview_live_help_exposes_project_status_live_contract() {
+fn overview_live_help_exposes_shared_live_status_contract() {
     let mut command = crate::overview::OverviewCliArgs::command();
     let live_command = command
         .find_subcommand_mut("live")
@@ -1852,14 +1851,14 @@ fn overview_live_help_exposes_project_status_live_contract() {
 }
 
 #[test]
-fn project_status_live_help_exposes_live_org_scope_contract() {
+fn status_live_help_exposes_live_org_scope_contract() {
     let mut command = crate::project_status_command::ProjectStatusCliArgs::command();
     let live_command = command
         .find_subcommand_mut("live")
-        .expect("project-status live subcommand should exist");
+        .expect("status live subcommand should exist");
     let help = live_command.render_long_help().to_string();
 
     assert!(help.contains("--org-id"));
     assert!(help.contains("--all-orgs"));
-    assert!(help.contains("grafana-util project-status live"));
+    assert!(help.contains("grafana-util status live"));
 }

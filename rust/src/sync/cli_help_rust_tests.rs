@@ -1,29 +1,29 @@
-//! Sync CLI parser/help test suite.
-//! Verifies sync argument parsing and rendered help contracts.
+//! Change CLI parser/help test suite.
+//! Verifies change argument parsing and rendered help contracts.
 use super::{SyncCliArgs, SyncGroupCommand, SyncOutputFormat, DEFAULT_REVIEW_TOKEN};
 use clap::{CommandFactory, Parser};
 use std::path::Path;
 
-fn render_sync_subcommand_help(name: &str) -> String {
+fn render_change_subcommand_help(name: &str) -> String {
     let mut command = SyncCliArgs::command();
     let subcommand = command
         .find_subcommand_mut(name)
-        .unwrap_or_else(|| panic!("missing sync subcommand help for {name}"));
+        .unwrap_or_else(|| panic!("missing change subcommand help for {name}"));
     let mut output = Vec::new();
     subcommand.write_long_help(&mut output).unwrap();
     String::from_utf8(output).unwrap()
 }
 
 #[test]
-fn sync_summary_help_includes_examples_and_output_heading() {
-    let help = render_sync_subcommand_help("summary");
+fn change_summary_help_includes_examples_and_output_heading() {
+    let help = render_change_subcommand_help("summary");
     assert!(help.contains("Examples:"));
     assert!(help.contains("Output Options"));
 }
 
 #[test]
-fn sync_plan_help_includes_examples_and_live_heading() {
-    let help = render_sync_subcommand_help("plan");
+fn change_plan_help_includes_examples_and_live_heading() {
+    let help = render_change_subcommand_help("plan");
     assert!(help.contains("Examples:"));
     assert!(help.contains("Input Options"));
     assert!(help.contains("Live Options"));
@@ -31,8 +31,8 @@ fn sync_plan_help_includes_examples_and_live_heading() {
 }
 
 #[test]
-fn sync_apply_help_includes_examples_and_approval_flags() {
-    let help = render_sync_subcommand_help("apply");
+fn change_apply_help_includes_examples_and_approval_flags() {
+    let help = render_change_subcommand_help("apply");
     assert!(help.contains("Examples:"));
     assert!(help.contains("Approval Options"));
     assert!(help.contains("Live Options"));
@@ -43,8 +43,8 @@ fn sync_apply_help_includes_examples_and_approval_flags() {
 }
 
 #[test]
-fn sync_audit_help_mentions_lock_and_drift_controls() {
-    let help = render_sync_subcommand_help("audit");
+fn change_audit_help_mentions_lock_and_drift_controls() {
+    let help = render_change_subcommand_help("audit");
     assert!(help.contains("--managed-file"));
     assert!(help.contains("--lock-file"));
     assert!(help.contains("--write-lock"));
@@ -53,14 +53,14 @@ fn sync_audit_help_mentions_lock_and_drift_controls() {
 }
 
 #[test]
-fn sync_review_help_mentions_interactive_review() {
-    let help = render_sync_subcommand_help("review");
+fn change_review_help_mentions_interactive_review() {
+    let help = render_change_subcommand_help("review");
     assert!(help.contains("--interactive"));
 }
 
 #[test]
-fn sync_bundle_preflight_help_includes_examples_and_grouped_headings() {
-    let help = render_sync_subcommand_help("bundle-preflight");
+fn change_bundle_preflight_help_includes_examples_and_grouped_headings() {
+    let help = render_change_subcommand_help("bundle-preflight");
     assert!(help.contains("Examples:"));
     assert!(help.contains("Input Options"));
     assert!(help.contains("Live Options"));
@@ -70,8 +70,8 @@ fn sync_bundle_preflight_help_includes_examples_and_grouped_headings() {
 }
 
 #[test]
-fn sync_promotion_preflight_help_includes_mapping_input() {
-    let help = render_sync_subcommand_help("promotion-preflight");
+fn change_promotion_preflight_help_includes_mapping_input() {
+    let help = render_change_subcommand_help("promotion-preflight");
     assert!(help.contains("Examples:"));
     assert!(help.contains("Input Options"));
     assert!(help.contains("staged review handoff"));
@@ -84,33 +84,33 @@ fn sync_promotion_preflight_help_includes_mapping_input() {
 }
 
 #[test]
-fn sync_bundle_help_includes_examples_and_output_heading() {
-    let help = render_sync_subcommand_help("bundle");
+fn change_bundle_help_includes_examples_and_output_heading() {
+    let help = render_change_subcommand_help("bundle");
     assert!(help.contains("Examples:"));
     assert!(help.contains("--dashboard-export-dir"));
     assert!(help.contains("--output-file"));
 }
 
 #[test]
-fn sync_root_help_includes_examples() {
+fn change_root_help_includes_examples() {
     let mut command = SyncCliArgs::command();
     let mut output = Vec::new();
     command.write_long_help(&mut output).unwrap();
     let help = String::from_utf8(output).unwrap();
 
     assert!(help.contains("Examples:"));
-    assert!(help.contains("grafana-util sync summary"));
-    assert!(help.contains("grafana-util sync plan"));
-    assert!(help.contains("grafana-util sync apply"));
-    assert!(help.contains("grafana-util sync audit"));
-    assert!(help.contains("grafana-util sync bundle"));
-    assert!(help.contains("grafana-util sync bundle-preflight"));
+    assert!(help.contains("grafana-util change summary"));
+    assert!(help.contains("grafana-util change plan"));
+    assert!(help.contains("grafana-util change apply"));
+    assert!(help.contains("grafana-util change audit"));
+    assert!(help.contains("grafana-util change bundle"));
+    assert!(help.contains("grafana-util change bundle-preflight"));
     assert!(help.contains("Assess staged promotion review handoff"));
     assert!(help.contains("promotion-preflight"));
 }
 
 #[test]
-fn parse_sync_cli_supports_summary_command() {
+fn parse_change_cli_supports_summary_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "summary",
@@ -130,7 +130,7 @@ fn parse_sync_cli_supports_summary_command() {
 }
 
 #[test]
-fn parse_sync_cli_supports_assess_alerts_command() {
+fn parse_change_cli_supports_assess_alerts_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "assess-alerts",
@@ -150,7 +150,7 @@ fn parse_sync_cli_supports_assess_alerts_command() {
 }
 
 #[test]
-fn parse_sync_cli_supports_promotion_preflight_command() {
+fn parse_change_cli_supports_promotion_preflight_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "promotion-preflight",
@@ -179,7 +179,7 @@ fn parse_sync_cli_supports_promotion_preflight_command() {
 }
 
 #[test]
-fn parse_sync_cli_supports_audit_command() {
+fn parse_change_cli_supports_audit_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "audit",
@@ -212,7 +212,7 @@ fn parse_sync_cli_supports_audit_command() {
 }
 
 #[test]
-fn parse_sync_cli_supports_plan_command() {
+fn parse_change_cli_supports_plan_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "plan",
@@ -243,7 +243,7 @@ fn parse_sync_cli_supports_plan_command() {
 }
 
 #[test]
-fn parse_sync_cli_supports_plan_fetch_live_mode() {
+fn parse_change_cli_supports_plan_fetch_live_mode() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "plan",
@@ -271,7 +271,7 @@ fn parse_sync_cli_supports_plan_fetch_live_mode() {
 }
 
 #[test]
-fn parse_sync_cli_supports_review_command() {
+fn parse_change_cli_supports_review_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "review",
@@ -295,7 +295,7 @@ fn parse_sync_cli_supports_review_command() {
 }
 
 #[test]
-fn parse_sync_cli_supports_review_command_with_note() {
+fn parse_change_cli_supports_review_command_with_note() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "review",
@@ -317,7 +317,7 @@ fn parse_sync_cli_supports_review_command_with_note() {
 }
 
 #[test]
-fn parse_sync_cli_supports_apply_command() {
+fn parse_change_cli_supports_apply_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "apply",
@@ -358,7 +358,7 @@ fn parse_sync_cli_supports_apply_command() {
 }
 
 #[test]
-fn parse_sync_cli_supports_apply_execute_live_flags() {
+fn parse_change_cli_supports_apply_execute_live_flags() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "apply",
@@ -386,7 +386,7 @@ fn parse_sync_cli_supports_apply_execute_live_flags() {
 }
 
 #[test]
-fn parse_sync_cli_supports_preflight_fetch_live_mode() {
+fn parse_change_cli_supports_preflight_fetch_live_mode() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "preflight",
@@ -409,7 +409,7 @@ fn parse_sync_cli_supports_preflight_fetch_live_mode() {
 }
 
 #[test]
-fn parse_sync_cli_supports_bundle_preflight_fetch_live_mode() {
+fn parse_change_cli_supports_bundle_preflight_fetch_live_mode() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "bundle-preflight",
@@ -434,7 +434,7 @@ fn parse_sync_cli_supports_bundle_preflight_fetch_live_mode() {
 }
 
 #[test]
-fn parse_sync_cli_supports_apply_command_with_reason_and_note() {
+fn parse_change_cli_supports_apply_command_with_reason_and_note() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "apply",
@@ -460,7 +460,7 @@ fn parse_sync_cli_supports_apply_command_with_reason_and_note() {
 }
 
 #[test]
-fn parse_sync_cli_supports_bundle_command() {
+fn parse_change_cli_supports_bundle_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "bundle",

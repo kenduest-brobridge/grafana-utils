@@ -1,7 +1,7 @@
-//! Shared project-status command surface.
+//! Shared status command surface.
 //!
 //! Maintainer note:
-//! - This module owns the top-level `grafana-util project-status ...` command.
+//! - This module owns the top-level `grafana-util status ...` command.
 //! - It should stay focused on command args, shared rendering, and high-level
 //!   staged/live aggregation handoff.
 //! - Domain-specific staged/live producer logic belongs in the owning domain
@@ -49,9 +49,9 @@ const PROJECT_STATUS_LIVE_READ_FAILED: &str = "live-read-failed";
 const PROJECT_STATUS_LIVE_ALL_ORGS_AGGREGATE: &str = "multi-org-aggregate";
 const PROJECT_STATUS_TIMESTAMP_FIELDS: &[&str] =
     &["updated", "updatedAt", "modified", "createdAt", "created"];
-const PROJECT_STATUS_HELP_TEXT: &str = "Examples:\n\n  Render staged project status as JSON:\n    grafana-util project-status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output json\n\n  Render live project status with staged sync context:\n    grafana-util project-status live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output json";
-const PROJECT_STATUS_STAGED_HELP_TEXT: &str = "Examples:\n\n  Render staged project status as JSON:\n    grafana-util project-status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output json\n\n  Render staged project status in the interactive workbench:\n    grafana-util project-status staged --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --output interactive";
-const PROJECT_STATUS_LIVE_HELP_TEXT: &str = "Examples:\n\n  Render live project status as JSON:\n    grafana-util project-status live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output json\n\n  Render live status across visible orgs while layering staged sync context:\n    grafana-util project-status live --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --sync-summary-file ./sync-summary.json --output interactive";
+const PROJECT_STATUS_HELP_TEXT: &str = "Examples:\n\n  Render staged project status as JSON:\n    grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output json\n\n  Render live project status with staged sync context:\n    grafana-util status live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output json";
+const PROJECT_STATUS_STAGED_HELP_TEXT: &str = "Examples:\n\n  Render staged project status as JSON:\n    grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output json\n\n  Render staged project status in the interactive workbench:\n    grafana-util status staged --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --output interactive";
+const PROJECT_STATUS_LIVE_HELP_TEXT: &str = "Examples:\n\n  Render live project status as JSON:\n    grafana-util status live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output json\n\n  Render live status across visible orgs while layering staged sync context:\n    grafana-util status live --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --sync-summary-file ./sync-summary.json --output interactive";
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum ProjectStatusOutputFormat {
@@ -93,7 +93,7 @@ pub struct ProjectStatusStagedArgs {
         help = "Access service-account export directory to summarize from staged artifacts."
     )]
     pub access_service_account_export_dir: Option<PathBuf>,
-    #[arg(long, help = "Desired sync file to summarize from staged artifacts.")]
+    #[arg(long, help = "Desired change file to summarize from staged artifacts.")]
     pub desired_file: Option<PathBuf>,
     #[arg(
         long,
@@ -195,12 +195,12 @@ pub struct ProjectStatusLiveArgs {
     pub org_id: Option<i64>,
     #[arg(
         long,
-        help = "Optional staged sync-summary JSON used to deepen live sync status."
+        help = "Optional staged change-summary JSON used to deepen live change status."
     )]
     pub sync_summary_file: Option<PathBuf>,
     #[arg(
         long,
-        help = "Optional staged bundle-preflight JSON used to deepen live sync status."
+        help = "Optional staged bundle-preflight JSON used to deepen live change status."
     )]
     pub bundle_preflight_file: Option<PathBuf>,
     #[arg(
@@ -238,8 +238,8 @@ pub enum ProjectStatusSubcommand {
 
 #[derive(Debug, Clone, Parser)]
 #[command(
-    name = "grafana-util project-status",
-    about = "Render project-wide staged or live status through the shared project-status contract. Staged subcommands read exports; live subcommands query Grafana.",
+    name = "grafana-util status",
+    about = "Render project-wide staged or live status through the shared status contract. Staged subcommands read exports; live subcommands query Grafana.",
     after_help = PROJECT_STATUS_HELP_TEXT
 )]
 pub struct ProjectStatusCliArgs {
@@ -492,7 +492,7 @@ where
                 "live-dashboard-read",
                 "live-datasource-list",
                 "live.datasourceCount",
-                "restore datasource read access, then re-run live project-status",
+                "restore datasource read access, then re-run live status",
             ),
         },
         Err(_) => build_live_read_failed_domain_status(
@@ -500,7 +500,7 @@ where
             "live-dashboard-read",
             "live-dashboard-search",
             "live.dashboardCount",
-            "restore dashboard search access, then re-run live project-status",
+            "restore dashboard search access, then re-run live status",
         ),
     }
 }
@@ -539,7 +539,7 @@ fn build_live_datasource_status(client: &JsonHttpClient) -> ProjectDomainStatus 
                     "live-inventory",
                     "live-datasource-list",
                     "live.datasourceCount",
-                    "restore datasource inventory access, then re-run live project-status",
+                    "restore datasource inventory access, then re-run live status",
                 )
             })
         }
@@ -548,7 +548,7 @@ fn build_live_datasource_status(client: &JsonHttpClient) -> ProjectDomainStatus 
             "live-inventory",
             "live-datasource-list",
             "live.datasourceCount",
-            "restore datasource inventory access, then re-run live project-status",
+            "restore datasource inventory access, then re-run live status",
         ),
     };
     stamp_live_domain_freshness(status, &[])
@@ -576,7 +576,7 @@ fn build_live_alert_status(client: &JsonHttpClient) -> ProjectDomainStatus {
             "live-alert-surfaces",
             "alert",
             "live.alertRuleCount",
-            "restore alert read access, then re-run live project-status",
+            "restore alert read access, then re-run live status",
         )
     });
     let mut freshness_samples = Vec::new();
@@ -774,7 +774,7 @@ fn build_live_access_status(client: &JsonHttpClient) -> ProjectDomainStatus {
             "live-list-surfaces",
             "grafana-utils-access-live-org-users",
             "live.users.count",
-            "restore access read scopes, then re-run live project-status",
+            "restore access read scopes, then re-run live status",
         )
     });
     stamp_live_domain_freshness(status, &[])
@@ -880,7 +880,7 @@ fn build_live_project_status(args: &ProjectStatusLiveArgs) -> Result<ProjectStat
                     "live-dashboard-read",
                     "live-dashboard-search",
                     "live.dashboardCount",
-                    "restore dashboard/org read access, then re-run live project-status --all-orgs",
+                    "restore dashboard/org read access, then re-run live status --all-orgs",
                 )
                     })
             }
@@ -890,7 +890,7 @@ fn build_live_project_status(args: &ProjectStatusLiveArgs) -> Result<ProjectStat
                 "live-dashboard-read",
                 "live-org-list",
                 "live.dashboardCount",
-                "restore org list access, then re-run live project-status --all-orgs",
+                "restore org list access, then re-run live status --all-orgs",
             ),
         }
     } else {
@@ -909,7 +909,7 @@ fn build_live_project_status(args: &ProjectStatusLiveArgs) -> Result<ProjectStat
                     "live-inventory",
                     "live-datasource-list",
                     "live.datasourceCount",
-                    "restore datasource/org read access, then re-run live project-status --all-orgs",
+                    "restore datasource/org read access, then re-run live status --all-orgs",
                 )
             }),
             Ok(_) => build_live_datasource_status(&client),
@@ -918,7 +918,7 @@ fn build_live_project_status(args: &ProjectStatusLiveArgs) -> Result<ProjectStat
                 "live-inventory",
                 "live-org-list",
                 "live.datasourceCount",
-                "restore org list access, then re-run live project-status --all-orgs",
+                "restore org list access, then re-run live status --all-orgs",
             ),
         }
     } else {
@@ -934,7 +934,7 @@ fn build_live_project_status(args: &ProjectStatusLiveArgs) -> Result<ProjectStat
                     "live-alert-surfaces",
                     "alert",
                     "live.alertRuleCount",
-                    "restore alert/org read access, then re-run live project-status --all-orgs",
+                    "restore alert/org read access, then re-run live status --all-orgs",
                 )
                     })
             }
@@ -944,7 +944,7 @@ fn build_live_project_status(args: &ProjectStatusLiveArgs) -> Result<ProjectStat
                 "live-alert-surfaces",
                 "live-org-list",
                 "live.alertRuleCount",
-                "restore org list access, then re-run live project-status --all-orgs",
+                "restore org list access, then re-run live status --all-orgs",
             ),
         }
     } else {
@@ -960,7 +960,7 @@ fn build_live_project_status(args: &ProjectStatusLiveArgs) -> Result<ProjectStat
                     "live-list-surfaces",
                     "grafana-utils-access-live-org-users",
                     "live.users.count",
-                    "restore access/org read access, then re-run live project-status --all-orgs",
+                    "restore access/org read access, then re-run live status --all-orgs",
                 )
                     })
             }
@@ -970,7 +970,7 @@ fn build_live_project_status(args: &ProjectStatusLiveArgs) -> Result<ProjectStat
                 "live-list-surfaces",
                 "live-org-list",
                 "live.users.count",
-                "restore org list access, then re-run live project-status --all-orgs",
+                "restore org list access, then re-run live status --all-orgs",
             ),
         }
     } else {
@@ -1123,7 +1123,7 @@ fn build_live_project_status_client_for_org(
     )
 }
 
-/// Build the staged project-status document without rendering it.
+/// Build the staged status document without rendering it.
 pub fn execute_project_status_staged(args: &ProjectStatusStagedArgs) -> Result<ProjectStatus> {
     let overview_args = staged_args_to_overview_args(args);
     let artifacts = overview::build_overview_artifacts(&overview_args)?;
@@ -1131,7 +1131,7 @@ pub fn execute_project_status_staged(args: &ProjectStatusStagedArgs) -> Result<P
     Ok(document.project_status)
 }
 
-/// Build the live project-status document without rendering it.
+/// Build the live status document without rendering it.
 pub fn execute_project_status_live(args: &ProjectStatusLiveArgs) -> Result<ProjectStatus> {
     build_live_project_status(args)
 }
