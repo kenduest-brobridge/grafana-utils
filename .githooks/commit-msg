@@ -2,9 +2,20 @@
 set -euo pipefail
 
 msg_file="${1:?missing commit message file}"
+comment_char="$(git config --get core.commentChar 2>/dev/null || true)"
+
+# Respect the repo's configured Git comment prefix so template/help lines
+# from the editor do not count as commit content during validation.
+if [ -z "$comment_char" ] || [ "$comment_char" = "auto" ]; then
+  comment_char="#"
+fi
 
 lines=()
 while IFS= read -r line || [ -n "$line" ]; do
+  # Ignore Git-generated comment lines before enforcing the message shape.
+  if [[ "$line" =~ ^[[:space:]]*"$comment_char" ]]; then
+    continue
+  fi
   lines+=("$line")
 done < "$msg_file"
 
@@ -15,6 +26,7 @@ fi
 
 title="${lines[0]}"
 
+# Enforce the repository's typed commit-title convention.
 if [[ ! "$title" =~ ^(feature|bugfix|refactor|docs|test|chore|build|ci|release):[[:space:]].+ ]]; then
   echo "commit title must start with a supported type prefix like 'refactor: short summary'" >&2
   exit 1
@@ -29,6 +41,8 @@ seen_bullet=0
 for ((i = 2; i < ${#lines[@]}; i++)); do
   line="${lines[i]}"
 
+  # Allow leading empty lines before the first detail bullet, but once bullet
+  # parsing starts the list must stay contiguous with no gaps.
   if [ -z "$line" ]; then
     if [ "$seen_bullet" -eq 1 ]; then
       echo "detail bullets must be contiguous with no empty lines between them" >&2

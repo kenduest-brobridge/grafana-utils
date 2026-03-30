@@ -56,7 +56,8 @@ The intended stack is:
 
 1. domain status producers
 2. shared project-status contract
-3. presentation consumers
+3. shared runtime/support helpers
+4. presentation consumers
 
 The maintained mental model is:
 
@@ -171,7 +172,28 @@ Every project-level status decision must remain source-attributable through:
 Project-level aggregation must not invent opaque conclusions that cannot be
 traced back to domain evidence.
 
-## Layer 3: Presentation Consumers
+## Layer 3: Shared Runtime And Support Helpers
+
+The shared status model still needs thin runtime layers that load inputs and
+route requests without re-owning the domain semantics.
+
+Current internal runtime/support modules:
+
+- `rust/src/project_status_staged.rs`
+  - owns shared staged status assembly
+- `rust/src/project_status_live_runtime.rs`
+  - owns shared live status assembly and per-domain fan-out
+- `rust/src/project_status_support.rs`
+  - owns shared live client/header construction
+- `rust/src/project_status_command.rs`
+  - owns command args, dispatch, and shared rendering
+
+Design rule:
+
+- keep status semantics in the shared status/runtime layers
+- keep command-surface and client-support code thin and reusable
+
+## Layer 4: Presentation Consumers
 
 Consumers must display the project-status contract. They must not own status
 derivation rules.
@@ -181,11 +203,11 @@ Current consumer:
 - `overview` text output
 - `overview` JSON output
 - `overview` interactive workbench
+- `status staged`
+- `status live`
 
 Planned consumers:
 
-- `status staged`
-- `status live`
 - `status` interactive workbench
 
 Future consumers:

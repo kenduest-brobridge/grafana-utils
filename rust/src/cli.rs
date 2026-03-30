@@ -172,9 +172,7 @@ where
         [_binary, command, flag] if command == "overview" && (flag == "--help" || flag == "-h") => {
             Some(render_overview_help_text(colorize))
         }
-        [_binary, command, flag]
-            if command == "status" && (flag == "--help" || flag == "-h") =>
-        {
+        [_binary, command, flag] if command == "status" && (flag == "--help" || flag == "-h") => {
             Some(render_domain_help_text(
                 ProjectStatusCliArgs::command(),
                 colorize,

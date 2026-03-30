@@ -8,6 +8,20 @@ Current AI-maintained status only.
 - Some older entries below still cite pre-cleanup `docs/internal/...` paths for files that now live under `docs/internal/archive/`.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 
+## 2026-03-30 - Extract shared status live support helpers
+- State: Done
+- Scope: `rust/src/lib.rs`, `rust/src/project_status_command.rs`, `rust/src/project_status_live_runtime.rs`, `rust/src/project_status_support.rs`, `docs/DEVELOPER.md`, `docs/internal/project-surface-boundaries.md`, `docs/internal/project-status-architecture.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: after the live-runtime extraction, `project_status_command.rs` still owned the shared Grafana auth/header and client construction helpers used by `status live`. That left the command facade thinner than before, but it was still mixing command-surface responsibilities with reusable support logic.
+- Current Update: moved live client/header construction into a new internal `project_status_support.rs` module and rewired the live runtime to consume it directly. `project_status_command.rs` now stays focused on args, dispatch, and shared rendering, while the support module owns auth header assembly, org-scoped header injection, and `JsonHttpClient` construction for the shared live status path.
+- Result: the `status` implementation now has a cleaner four-part split: command surface, staged runtime, live runtime, and shared live support. That matches the intended ownership model more closely and leaves less command-only glue behind.
+
+## 2026-03-30 - Extract shared live status runtime out of the command module
+- State: Done
+- Scope: `rust/src/lib.rs`, `rust/src/project_status_command.rs`, `rust/src/project_status_live_runtime.rs`, `rust/src/project_status_cli_rust_tests.rs`, `docs/DEVELOPER.md`, `docs/internal/project-surface-boundaries.md`, `docs/internal/project-status-architecture.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: after the staged-status extraction, `grafana-util status live` still concentrated most live assembly logic inside `rust/src/project_status_command.rs`: multi-org fan-out, per-domain live producers, freshness sampling, staged sync/promotion metadata loading, and final `ProjectStatus` assembly all lived in the command module alongside args, renderers, and client/header setup.
+- Current Update: moved the shared live aggregation logic into a new internal `rust/src/project_status_live_runtime.rs` module and rewired `project_status_command.rs` to call it as a thin command surface. The command module now keeps args, shared rendering, dispatch, and Grafana client/header helpers, while the new runtime owns multi-org aggregation, live domain builders, freshness helpers, staged sync/promotion live overlays, and the focused live-only unit tests. Added text-renderer regressions that lock empty-section elision and the five-item limit for top blockers and next actions.
+- Result: `status` now owns both shared staged and shared live project-status assembly outside the command facade, and `project_status_command.rs` is much closer to a stable parser/dispatch/render seam instead of the long-term owner of live status semantics.
+
 ## 2026-03-30 - Rename project surfaces and remove the local web workbench
 - State: Done
 - Scope: `README.md`, `README.zh-TW.md`, `docs/user-guide.md`, `docs/user-guide-TW.md`, `rust/Cargo.toml`, `rust/Cargo.lock`, `rust/src/cli.rs`, `rust/src/cli_help_examples.rs`, `rust/src/cli_rust_tests.rs`, `rust/src/lib.rs`, `rust/src/overview.rs`, `rust/src/overview_rust_tests.rs`, `rust/src/project_status.rs`, `rust/src/project_status_command.rs`, `rust/src/sync/mod.rs`, `rust/src/sync/cli_help_rust_tests.rs`, `rust/src/bin/grafana-util-web.rs`, `rust/src/web/*`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

@@ -69,8 +69,12 @@ pub(crate) mod project_status;
 pub mod project_status_command;
 /// Shared freshness helpers for live status stamping.
 pub(crate) mod project_status_freshness;
+/// Internal runtime for live project-status aggregation and per-domain fanout.
+pub(crate) mod project_status_live_runtime;
 /// Shared staged status builder reused by overview and status staged entrypoints.
 pub(crate) mod project_status_staged;
+/// Shared support helpers for live project-status client/header construction.
+pub(crate) mod project_status_support;
 /// Shared status interactive workbench for project-home and handoff flows.
 #[cfg(any(feature = "tui", test))]
 pub(crate) mod project_status_tui;

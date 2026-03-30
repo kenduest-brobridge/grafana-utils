@@ -108,6 +108,31 @@ fn sample_live_project_status() -> ProjectStatus {
     }
 }
 
+fn empty_live_project_status() -> ProjectStatus {
+    ProjectStatus {
+        schema_version: 1,
+        tool_version: TOOL_VERSION.to_string(),
+        scope: "live".to_string(),
+        overall: ProjectStatusOverall {
+            status: PROJECT_STATUS_READY.to_string(),
+            domain_count: 0,
+            present_count: 0,
+            blocked_count: 0,
+            blocker_count: 0,
+            warning_count: 0,
+            freshness: ProjectStatusFreshness {
+                status: "unknown".to_string(),
+                source_count: 0,
+                newest_age_seconds: None,
+                oldest_age_seconds: None,
+            },
+        },
+        domains: Vec::new(),
+        top_blockers: Vec::new(),
+        next_actions: Vec::new(),
+    }
+}
+
 fn assert_project_status_document_shape(document: &Value) {
     assert!(document["schemaVersion"].is_i64());
     assert!(document["toolVersion"].is_string());
@@ -269,6 +294,67 @@ fn project_status_live_text_renderer_surfaces_overall_domain_and_action_sections
                 .to_string(),
         ]
     );
+}
+
+#[test]
+fn project_status_live_text_renderer_skips_empty_blocker_and_action_sections() {
+    let lines = render_project_status_text(&empty_live_project_status());
+
+    assert_eq!(
+        lines,
+        vec![
+            "Project status".to_string(),
+            "Overall: status=ready scope=live domains=0 present=0 blocked=0 blockers=0 warnings=0 freshness=unknown"
+                .to_string(),
+        ]
+    );
+}
+
+#[test]
+fn project_status_live_text_renderer_limits_top_sections_to_five_items() {
+    let mut status = empty_live_project_status();
+    status.top_blockers = (0..6)
+        .map(|index| ProjectStatusRankedFinding {
+            domain: format!("domain-{index}"),
+            kind: format!("kind-{index}"),
+            count: 6 - index,
+            source: format!("source-{index}"),
+        })
+        .collect();
+    status.next_actions = (0..6)
+        .map(|index| ProjectStatusAction {
+            domain: format!("domain-{index}"),
+            reason_code: format!("reason-{index}"),
+            action: format!("action-{index}"),
+        })
+        .collect();
+
+    let lines = render_project_status_text(&status);
+
+    assert_eq!(lines[2], "Top blockers:");
+    assert_eq!(
+        &lines[3..8],
+        [
+            "- domain-0 kind-0 count=6 source=source-0",
+            "- domain-1 kind-1 count=5 source=source-1",
+            "- domain-2 kind-2 count=4 source=source-2",
+            "- domain-3 kind-3 count=3 source=source-3",
+            "- domain-4 kind-4 count=2 source=source-4",
+        ]
+    );
+    assert!(!lines.iter().any(|line| line.contains("domain-5")));
+    assert_eq!(lines[8], "Next actions:");
+    assert_eq!(
+        &lines[9..14],
+        [
+            "- domain-0 reason=reason-0 action=action-0",
+            "- domain-1 reason=reason-1 action=action-1",
+            "- domain-2 reason=reason-2 action=action-2",
+            "- domain-3 reason=reason-3 action=action-3",
+            "- domain-4 reason=reason-4 action=action-4",
+        ]
+    );
+    assert!(!lines.iter().any(|line| line.contains("action-5")));
 }
 
 #[test]

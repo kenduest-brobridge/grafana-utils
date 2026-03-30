@@ -16,7 +16,7 @@ This document is for maintainers. Keep `README.md` and the user guides operator-
   - Rust owner: `rust/src/overview.rs` plus the `overview_*` modules
 - `grafana-util status`
   - canonical staged/live readiness surface
-  - Rust owner: `rust/src/project_status.rs` and `rust/src/project_status_command.rs`
+  - Rust owner: `rust/src/project_status.rs`, `rust/src/project_status_staged.rs`, `rust/src/project_status_live_runtime.rs`, `rust/src/project_status_support.rs`, and `rust/src/project_status_command.rs`
 - `grafana-util change`
   - review-first staged change workflow
   - Rust owner: `rust/src/sync/`

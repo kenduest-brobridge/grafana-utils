@@ -1220,15 +1220,12 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
     assert!(overview_help.contains("overview live"));
     assert!(overview_help.contains("shared live status"));
 
-    let project_status_help = maybe_render_unified_help_from_os_args(
-        ["grafana-util", "status", "--help-full"],
-        false,
-    )
-    .unwrap();
+    let project_status_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "status", "--help-full"], false)
+            .unwrap();
     assert!(project_status_help.contains("status"));
-    assert!(project_status_help.contains(
-        "Render project-wide staged or live status through the shared status contract."
-    ));
+    assert!(project_status_help
+        .contains("Render project-wide staged or live status through the shared status contract."));
     assert!(project_status_help.contains("staged"));
     assert!(project_status_help.contains("live"));
 

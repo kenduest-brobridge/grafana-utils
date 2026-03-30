@@ -58,5 +58,9 @@ The maintained operator model is:
 - Keep public docs on `overview` / `status` / `change` vocabulary only.
 - Make any remaining `sync` or `project-status` mentions in current docs
   clearly internal or historical.
-- Continue shrinking `project_status_command.rs` now that staged ownership is
-  out of `overview`.
+- Keep `project_status_command.rs` focused on args, dispatch, shared rendering,
+  and client/header helpers now that shared staged and live status assembly
+  both live outside the command module.
+- Keep `project_status_support.rs` limited to shared client/header support for
+  the `status` live path instead of letting command-surface concerns drift into
+  it.
