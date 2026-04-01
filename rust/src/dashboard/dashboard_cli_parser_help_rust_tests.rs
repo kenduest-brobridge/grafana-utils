@@ -1,5 +1,5 @@
 //! Dashboard CLI parser/help regressions kept separate from runtime-heavy tests.
-use super::super::{parse_cli_from, DashboardCliArgs, DashboardCommand};
+use super::super::{parse_cli_from, DashboardCliArgs, DashboardCommand, SimpleOutputFormat};
 use crate::dashboard::DashboardImportInputFormat;
 use clap::{CommandFactory, Parser};
 use std::path::PathBuf;
@@ -589,15 +589,43 @@ fn parse_cli_supports_review_command() {
         "review",
         "--input",
         "./drafts/cpu-main.json",
-        "--json",
+        "--output-format",
+        "yaml",
     ]);
 
     match args.command {
         DashboardCommand::Review(review_args) => {
             assert_eq!(review_args.input, PathBuf::from("./drafts/cpu-main.json"));
-            assert!(review_args.json);
+            assert_eq!(review_args.output_format, Some(SimpleOutputFormat::Yaml));
         }
         _ => panic!("expected review command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_review_output_format_variants() {
+    for (flag, expected) in [
+        ("text", SimpleOutputFormat::Text),
+        ("table", SimpleOutputFormat::Table),
+        ("csv", SimpleOutputFormat::Csv),
+        ("json", SimpleOutputFormat::Json),
+        ("yaml", SimpleOutputFormat::Yaml),
+    ] {
+        let args = parse_cli_from([
+            "grafana-util",
+            "review",
+            "--input",
+            "./drafts/cpu-main.json",
+            "--output-format",
+            flag,
+        ]);
+
+        match args.command {
+            DashboardCommand::Review(review_args) => {
+                assert_eq!(review_args.output_format, Some(expected));
+            }
+            _ => panic!("expected review command"),
+        }
     }
 }
 
@@ -605,7 +633,12 @@ fn parse_cli_supports_review_command() {
 fn review_help_mentions_local_file_only_output_modes() {
     let help = render_dashboard_subcommand_help("review");
     assert!(help.contains("--input"));
-    assert!(help.contains("--json"));
+    assert!(help.contains("--output-format"));
+    assert!(help.contains("text"));
+    assert!(help.contains("table"));
+    assert!(help.contains("csv"));
+    assert!(help.contains("json"));
+    assert!(help.contains("yaml"));
     assert!(help.contains("Review one local dashboard JSON file without touching Grafana."));
     assert!(help.contains("grafana-util dashboard review"));
 }

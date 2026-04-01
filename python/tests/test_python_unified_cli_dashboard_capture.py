@@ -26,6 +26,7 @@ class UnifiedDashboardCaptureCliTests(unittest.TestCase):
         help_text = stdout.getvalue()
         self.assertIn("inspect-vars", help_text)
         self.assertIn("screenshot", help_text)
+        self.assertIn("inspect-export --input-format provisioning", help_text)
 
     def test_unified_cli_dashboard_capture_parse_args_supports_dashboard_inspect_vars_namespace(
         self,

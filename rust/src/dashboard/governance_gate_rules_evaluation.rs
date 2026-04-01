@@ -1,3 +1,5 @@
+//! Governance rule evaluation and risk scoring helpers for dashboard-level controls.
+
 #[path = "governance_gate_rules_evaluation_apply.rs"]
 mod governance_gate_rules_evaluation_apply;
 #[path = "governance_gate_rules_evaluation_findings.rs"]

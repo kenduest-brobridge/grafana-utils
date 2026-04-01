@@ -9,7 +9,7 @@ use super::super::super::super::test_support::{
 };
 use super::super::super::{
     make_basic_common_args, make_common_args, make_import_args,
-    with_dashboard_import_live_preflight, write_basic_raw_export,
+    with_dashboard_import_live_preflight, write_basic_provisioning_export, write_basic_raw_export,
     write_combined_export_root_metadata,
 };
 use crate::common::api_response;
@@ -25,3 +25,7 @@ mod import_edge_routed_org_scope_selection_rust_tests;
 #[cfg(test)]
 #[path = "import_edge_routed_org_scope_identity_rust_tests.rs"]
 mod import_edge_routed_org_scope_identity_rust_tests;
+
+#[cfg(test)]
+#[path = "import_edge_routed_org_scope_provisioning_rust_tests.rs"]
+mod import_edge_routed_org_scope_provisioning_rust_tests;

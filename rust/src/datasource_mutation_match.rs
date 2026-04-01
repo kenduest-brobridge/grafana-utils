@@ -1,3 +1,5 @@
+//! Mutation builders and payload plumbing for Core updates.
+
 use serde_json::{Map, Value};
 
 use crate::common::string_field;

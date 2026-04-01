@@ -8,6 +8,14 @@ Current AI change log only.
 - Some older entries below still cite pre-cleanup `docs/internal/...` paths for files that now live under `docs/internal/archive/`.
 - Keep this file limited to the latest active architecture and maintenance changes.
 
+## 2026-04-01 - Add repo-owned install script for release binaries
+- Summary: added a POSIX `scripts/install.sh` installer so operators can fetch the published Rust release binary with one command instead of manually opening release assets or compiling from source. The installer resolves the current platform, supports `linux-amd64` and `macos-arm64`, installs to `/usr/local/bin` when writable or `~/.local/bin` otherwise, and accepts explicit `BIN_DIR`, `VERSION`, `REPO`, and `ASSET_URL` overrides for pinned or test installs. Public English and Traditional Chinese docs now advertise the `curl ... | sh` path plus the local-checkout fallback.
+- Tests: added a focused Python packaging-style test that verifies the release download contract in the script and exercises an offline install using a local `file://` tarball override.
+- Test Run: `PYTHONPATH=python python3 -m unittest -v python/tests/test_python_packaging.py python/tests/test_python_install_script.py`
+- Impact: `scripts/install.sh`, `python/tests/test_python_install_script.py`, `README.md`, `README.zh-TW.md`, `docs/user-guide.md`, `docs/user-guide-TW.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. The installer is additive and doc-driven, but release asset naming in CI and the installer script must stay aligned or the one-line install path will drift.
+- Follow-up: if maintainers add more published release targets later, extend the platform map in `scripts/install.sh` and keep the docs examples unchanged.
+
 ## 2026-03-31 - Add explicit dashboard provisioning export provider overrides
 - Summary: added export CLI knobs for the dashboard provisioning provider block so operators can override the provider name, org ID, path, deletion/update policy, and update interval while keeping the current default `grafana-utils-dashboards` YAML shape intact. The generated provider file still lands at `provisioning/provisioning/dashboards.yaml`, but its content is now explicitly operator-controlled instead of hardcoded.
 - Tests: added focused parser/help coverage for the new provisioning-provider flags and a runtime regression that asserts the generated YAML contains the override values and the resolved provider path.
@@ -15,6 +23,38 @@ Current AI change log only.
 - Impact: `rust/src/dashboard/cli_defs_command.rs`, `rust/src/dashboard/export.rs`, `rust/src/dashboard/dashboard_cli_parser_help_rust_tests.rs`, `rust/src/dashboard/export_focus_report_path_top_rust_tests.rs`, `rust/src/dashboard/inspect_live.rs`, `rust/src/dashboard/mod.rs`, `rust/src/dashboard/inspect_live_export_parity_all_orgs_rust_tests.rs`, `docs/user-guide.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
 - Rollback/Risk: low. The change is additive and preserves current defaults, but future export help should keep the provider override flags explicit so the generated provisioning YAML does not drift back into a hardcoded stub.
 - Follow-up: none.
+
+## 2026-04-01 - Record baseline-five live defaults and dashboard review output inventory
+- Summary: recorded the current Rust CLI split after the profile and dashboard-authoring waves. The shared live connection baseline now covers `dashboard`, `datasource`, `access`, `alert`, and `status live`, while dashboard `get`, `clone-live`, `patch-file`, `publish`, and `review` stay intentionally specialized. The dashboard review output contract is now explicit across text, table, CSV, JSON, and YAML, with text remaining the default.
+- Tests: Not run. Documentation-only update.
+- Impact: `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. This records the current contract split without changing runtime behavior, but future CLI help/docs should keep the baseline-five list and the dashboard-only lane names aligned with implementation.
+- Follow-up: none.
+
+## 2026-04-01 - Extend alert list output formats
+- Summary: widened the four Rust alert list surfaces so they now normalize and render `text`, `table`, `csv`, `json`, and `yaml` output modes consistently. The list help examples now advertise text and YAML alongside the existing table/CSV/JSON paths, and the runtime renderer now emits YAML through the shared YAML helper while keeping table semantics intact.
+- Tests: added focused parser coverage for all four list subcommands plus output-format normalization, and added a rendering regression that exercises text, CSV, JSON, and YAML output paths.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet alert -- --test-threads=1` failed during crate compilation before the alert list tests could run.
+- Reason: the repository currently has unrelated compile failures in `src/dashboard/authoring.rs`, `src/dashboard/mod.rs`, and `src/datasource.rs`, so the focused alert test slice cannot complete cleanly in the current worktree.
+- Impact: `rust/src/alert_cli_defs.rs`, `rust/src/alert_list.rs`, `rust/src/alert_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. The change is additive and scoped to list-only surfaces, but future alert CLI help should keep the output-mode examples aligned with the parser so text/YAML do not drift out of the advertised contract.
+- Follow-up: none.
+
+## 2026-03-31 - Reword snapshot review as inventory review
+- Summary: updated the snapshot CLI help, example blocks, and user-guide section so `snapshot review` is presented as a local inventory review over the exported dashboard and datasource root rather than as an overview/workbench alias. The runtime path itself stays thin; only the operator-facing contract text changed.
+- Tests: added focused Rust help regressions for the snapshot subcommand help text and unified help examples.
+- Test Run: pending local rerun in this task; record the exact `cli_rust_tests` command in the final validation report.
+- Impact: `rust/src/snapshot.rs`, `rust/src/cli.rs`, `rust/src/cli_help_examples.rs`, `rust/src/cli_rust_tests.rs`, `docs/user-guide.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. This is a wording-only contract cleanup, but future snapshot help should keep the inventory-review terminology aligned across CLI and docs instead of drifting back to overview/workbench language.
+- Follow-up: none.
+
+## 2026-03-31 - Add snapshot export/review wrappers
+- Summary: added a new top-level `snapshot` namespace so the common all-org inventory flow no longer requires two export commands plus manually restating both staged input directories. `snapshot export` now fans into dashboard and datasource all-org exports under one `--export-dir`, and `snapshot review` renders a local inventory review against the derived `dashboards/` and `datasources/` children from `--input-dir`.
+- Tests: added focused CLI parser/dispatch coverage for the new namespace and snapshot-specific runtime tests for path derivation, export wrapper fan-out, inventory review wiring, and `--overwrite` propagation.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet snapshot`, `cargo test --manifest-path rust/Cargo.toml --quiet cli_rust_tests`, `cargo test --manifest-path rust/Cargo.toml --quiet overview_rust_tests`, `cargo test --manifest-path rust/Cargo.toml --quiet datasource`, `cargo test --manifest-path rust/Cargo.toml dashboard`, `cargo fmt --manifest-path rust/Cargo.toml --all`, `cargo fmt --manifest-path rust/Cargo.toml --all --check`
+- Impact: `rust/src/snapshot.rs`, `rust/src/snapshot_rust_tests.rs`, `rust/src/cli.rs`, `rust/src/cli_help_examples.rs`, `rust/src/cli_rust_tests.rs`, `rust/src/lib.rs`, `docs/user-guide.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. The wrapper is intentionally thin over existing dashboard, datasource, and overview contracts, but future snapshot scope growth should stay explicit rather than silently adding access/user/team exports to v1.
+- Follow-up: if operators later want access resources in the same flow, add them as explicit opt-in flags with clear scope semantics instead of silently broadening the default snapshot contract.
 
 ## 2026-03-31 - Make dashboard provisioning export provider path concrete
 - Summary: changed the Rust dashboard provisioning export helper so the generated `provisioning/provisioning/dashboards.yaml` points at the exported dashboards directory instead of a generic placeholder. The path is resolved from the current export tree, with canonicalization when possible, so the emitted provider config is immediately usable on the export host.

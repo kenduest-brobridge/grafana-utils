@@ -1,3 +1,5 @@
+//! Interactive browse workflows and terminal-driven state flow for Access entities.
+
 use ratatui::layout::{Constraint, Direction, Layout, Position, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};

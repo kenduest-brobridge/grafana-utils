@@ -1,3 +1,5 @@
+//! Import orchestration for Dashboard resources, including input normalization and apply contract handling.
+
 use reqwest::Method;
 use serde_json::Value;
 
@@ -6,7 +8,7 @@ use crate::dashboard::{
     build_http_client_for_org, build_import_payload, extract_dashboard_object,
     import_dashboard_request_with_request, load_export_metadata, load_folder_inventory,
     load_json_file, validate, DiffArgs, FolderInventoryItem, FolderInventoryStatusKind, ImportArgs,
-    DEFAULT_UNKNOWN_UID, FOLDER_INVENTORY_FILENAME, RAW_EXPORT_SUBDIR,
+    DEFAULT_UNKNOWN_UID, FOLDER_INVENTORY_FILENAME,
 };
 use crate::http::{JsonHttpClient, JsonHttpClientConfig};
 
@@ -81,17 +83,21 @@ where
             "--ensure-folders cannot be combined with --import-folder-uid.",
         ));
     }
-    let metadata = load_export_metadata(&args.import_dir, Some(RAW_EXPORT_SUBDIR))?;
+    let resolved_import = super::resolve_import_source(args)?;
+    let metadata = load_export_metadata(
+        &resolved_import.metadata_dir,
+        Some(super::import_metadata_variant(args)),
+    )?;
     validate_matching_export_org_with_request(
         &mut request_json,
         &mut lookup_cache,
         args,
-        &args.import_dir,
+        &resolved_import.metadata_dir,
         metadata.as_ref(),
         None,
     )?;
     let folder_inventory = if args.ensure_folders || args.dry_run {
-        load_folder_inventory(&args.import_dir, metadata.as_ref())?
+        load_folder_inventory(&resolved_import.metadata_dir, metadata.as_ref())?
     } else {
         Vec::new()
     };
@@ -102,7 +108,7 @@ where
             .unwrap_or(FOLDER_INVENTORY_FILENAME);
         return Err(message(format!(
             "Folder inventory file not found for --ensure-folders: {}. Re-export dashboards with raw folder inventory or omit --ensure-folders.",
-            args.import_dir.join(folders_file).display()
+            resolved_import.metadata_dir.join(folders_file).display()
         )));
     }
     let folder_statuses = if args.dry_run && args.ensure_folders {
@@ -121,12 +127,13 @@ where
     if !args.dry_run {
         validate_dashboard_import_dependencies_with_request(
             &mut request_json,
-            &args.import_dir,
+            &resolved_import.dashboard_dir,
             args.strict_schema,
             args.target_schema_version,
         )?;
     }
-    let discovered_dashboard_files = super::dashboard_files_for_import(&args.import_dir)?;
+    let discovered_dashboard_files =
+        super::dashboard_files_for_import(&resolved_import.dashboard_dir)?;
     let dashboard_files = match super::selected_dashboard_files(
         &mut request_json,
         &mut lookup_cache,
@@ -208,7 +215,7 @@ where
                 super::super::import_lookup::resolve_source_dashboard_folder_path(
                     &document,
                     dashboard_file,
-                    &args.import_dir,
+                    &resolved_import.metadata_dir,
                     &folders_by_uid,
                 )?,
             )
@@ -526,11 +533,6 @@ pub fn import_dashboards_with_client(client: &JsonHttpClient, args: &ImportArgs)
 
 /// Purpose: implementation note.
 pub(crate) fn import_dashboards_with_org_clients(args: &ImportArgs) -> Result<usize> {
-    if args.interactive && args.use_export_org {
-        return Err(message(
-            "Dashboard import --interactive does not support --use-export-org yet.",
-        ));
-    }
     let context = super::build_import_auth_context(args)?;
     let client = JsonHttpClient::new(JsonHttpClientConfig {
         base_url: context.url.clone(),

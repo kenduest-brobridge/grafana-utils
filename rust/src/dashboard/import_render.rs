@@ -1,3 +1,5 @@
+//! Import orchestration for Dashboard resources, including input normalization and apply contract handling.
+
 use serde::Serialize;
 use serde_json::Value;
 use std::fmt::Write as _;

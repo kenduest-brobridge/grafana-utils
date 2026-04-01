@@ -1,3 +1,5 @@
+//! Inspection path for Dashboard resources: analysis, extraction, and report shaping.
+
 use std::path::Path;
 
 use crate::common::Result;
@@ -273,8 +275,12 @@ mod tests {
 
         let args = InspectExportArgs {
             import_dir: import_dir.to_path_buf(),
+            input_format: crate::dashboard::DashboardImportInputFormat::Raw,
+            text: false,
+            csv: false,
             json: false,
             table: false,
+            yaml: false,
             report: Some(InspectExportReportFormat::Dependency),
             output_format: None,
             report_columns: Vec::new(),

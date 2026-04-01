@@ -1,3 +1,8 @@
+//! Read and render Grafana users for org and global admin scopes.
+//! This module fetches users from the org or admin endpoints, paginates global user
+//! listings, and turns the results into table, CSV, YAML, JSON, or text output.
+//! It owns user filtering and summary rendering, but not mutation commands.
+
 use reqwest::Method;
 use serde_json::{Map, Value};
 
@@ -5,8 +10,8 @@ use crate::common::{message, string_field, Result};
 
 use super::render::{
     format_table, map_get_text, normalize_user_row, paginate_rows, render_csv, render_objects_json,
-    scalar_text, user_account_scope_text, user_matches, user_scope_text, user_summary_line,
-    user_table_rows,
+    render_yaml, scalar_text, user_account_scope_text, user_matches, user_scope_text,
+    user_summary_line, user_table_rows,
 };
 use super::{build_auth_context, request_array, Scope, UserListArgs, DEFAULT_PAGE_SIZE};
 
@@ -172,6 +177,8 @@ where
     let rows = paginate_rows(&rows, args.page, args.per_page);
     if args.json {
         println!("{}", render_objects_json(&rows)?);
+    } else if args.yaml {
+        println!("{}", render_yaml(&rows)?);
     } else if args.csv {
         for line in render_csv(
             &[

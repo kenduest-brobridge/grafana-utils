@@ -1,3 +1,9 @@
+//! Datasource mutation orchestration support.
+//!
+//! Responsibilities:
+//! - Re-export matcher/payload/render modules used by mutation commands.
+//! - Normalize mutation plans before applying live or dry-run operations.
+
 #[path = "datasource_mutation_match.rs"]
 mod datasource_mutation_match;
 #[path = "datasource_mutation_payload.rs"]

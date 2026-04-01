@@ -1,11 +1,13 @@
+//! Inspection path for Dashboard resources: analysis, extraction, and report shaping.
+
 use clap::{Args, ValueEnum};
 use std::path::PathBuf;
 
 use super::super::DEFAULT_PAGE_SIZE;
 use super::dashboard_runtime::parse_inspect_report_column;
 use super::{
-    CommonCliArgs, GovernanceGateOutputFormat, GovernancePolicySource, ImpactOutputFormat,
-    SimpleOutputFormat, TopologyOutputFormat, ValidationOutputFormat,
+    CommonCliArgs, DashboardImportInputFormat, GovernanceGateOutputFormat, GovernancePolicySource,
+    ImpactOutputFormat, SimpleOutputFormat, TopologyOutputFormat, ValidationOutputFormat,
 };
 
 /// Enum definition for InspectExportReportFormat.
@@ -27,7 +29,9 @@ pub enum InspectExportReportFormat {
 pub enum InspectOutputFormat {
     Text,
     Table,
+    Csv,
     Json,
+    Yaml,
     ReportTable,
     ReportCsv,
     ReportJson,
@@ -266,7 +270,7 @@ pub struct InspectVarsArgs {
     #[arg(
         long,
         value_enum,
-        help = "Render dashboard variables as table, csv, or json. Defaults to table."
+        help = "Render dashboard variables as table, csv, text, json, or yaml. Defaults to table."
     )]
     pub output_format: Option<SimpleOutputFormat>,
     #[arg(
@@ -287,39 +291,65 @@ pub struct InspectVarsArgs {
 pub struct InspectExportArgs {
     #[arg(
         long,
-        help = "Analyze dashboards from this raw export directory. Point this to the raw/ export directory explicitly."
+        help = "Analyze dashboards from this directory. Use --input-format provisioning to point at a provisioning/ root or its dashboards/ subdirectory."
     )]
     pub import_dir: PathBuf,
     #[arg(
         long,
+        value_enum,
+        default_value_t = DashboardImportInputFormat::Raw,
+        help = "Interpret --import-dir as raw export files or Grafana file-provisioning artifacts. Use provisioning to accept either the provisioning/ root or its dashboards/ subdirectory."
+    )]
+    pub input_format: DashboardImportInputFormat,
+    #[arg(
+        long,
         default_value_t = false,
-        conflicts_with = "report",
-        conflicts_with = "table",
+        conflicts_with_all = ["table", "csv", "json", "yaml", "report", "output_format"],
+        help = "Render the export analysis as plain text."
+    )]
+    pub text: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["text", "csv", "json", "yaml", "report", "output_format"],
+        help = "Render the export analysis as a table-oriented summary."
+    )]
+    pub table: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["text", "table", "json", "yaml", "report", "output_format"],
+        help = "Render the export analysis as CSV."
+    )]
+    pub csv: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["text", "table", "csv", "yaml", "report", "output_format"],
         help = "Render the export analysis as JSON."
     )]
     pub json: bool,
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with = "report",
-        conflicts_with = "json",
-        help = "Render the export analysis as a table-oriented summary."
+        conflicts_with_all = ["text", "table", "csv", "json", "report", "output_format"],
+        help = "Render the export analysis as YAML."
     )]
-    pub table: bool,
+    pub yaml: bool,
     #[arg(
         long,
         value_enum,
         num_args = 0..=1,
         default_missing_value = "table",
-        conflicts_with_all = ["json", "table"],
+        conflicts_with_all = ["text", "table", "csv", "json", "yaml"],
         help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for machine-readable output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report dependency for dependency contracts, --report dependency-json for dependency contract JSON, --report governance for datasource governance tables, or --report governance-json for governance JSON."
     )]
     pub report: Option<InspectExportReportFormat>,
     #[arg(
         long,
         value_enum,
-        conflicts_with_all = ["json", "table", "report"],
-        help = "Alternative single-flag output selector for inspect output. Use text, table, json, report-table, report-csv, report-json, report-tree, report-tree-table, report-dependency, report-dependency-json, governance, or governance-json."
+        conflicts_with_all = ["text", "table", "csv", "json", "yaml", "report"],
+        help = "Alternative single-flag output selector for inspect output. Use text, table, csv, json, yaml, report-table, report-csv, report-json, report-tree, report-tree-table, report-dependency, report-dependency-json, governance, or governance-json."
     )]
     pub output_format: Option<InspectOutputFormat>,
     #[arg(
@@ -393,33 +423,52 @@ pub struct InspectLiveArgs {
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with = "report",
-        conflicts_with = "table",
+        conflicts_with_all = ["table", "csv", "json", "yaml", "report", "output_format"],
+        help = "Render the live inspection analysis as plain text."
+    )]
+    pub text: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["text", "csv", "json", "yaml", "report", "output_format"],
+        help = "Render the live inspection analysis as a table-oriented summary."
+    )]
+    pub table: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["text", "table", "json", "yaml", "report", "output_format"],
+        help = "Render the live inspection analysis as CSV."
+    )]
+    pub csv: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["text", "table", "csv", "yaml", "report", "output_format"],
         help = "Render the live inspection analysis as JSON."
     )]
     pub json: bool,
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with = "report",
-        conflicts_with = "json",
-        help = "Render the live inspection analysis as a table-oriented summary."
+        conflicts_with_all = ["text", "table", "csv", "json", "report", "output_format"],
+        help = "Render the live inspection analysis as YAML."
     )]
-    pub table: bool,
+    pub yaml: bool,
     #[arg(
         long,
         value_enum,
         num_args = 0..=1,
         default_missing_value = "table",
-        conflicts_with_all = ["json", "table"],
+        conflicts_with_all = ["text", "table", "csv", "json", "yaml"],
         help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for alternate output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report dependency for dependency contracts, --report dependency-json for dependency contract JSON, --report governance for datasource governance tables, or --report governance-json for governance JSON."
     )]
     pub report: Option<InspectExportReportFormat>,
     #[arg(
         long,
         value_enum,
-        conflicts_with_all = ["json", "table", "report"],
-        help = "Alternative single-flag output selector for inspect output. Use text, table, json, report-table, report-csv, report-json, report-tree, report-tree-table, report-dependency, report-dependency-json, governance, or governance-json."
+        conflicts_with_all = ["text", "table", "csv", "json", "yaml", "report"],
+        help = "Alternative single-flag output selector for inspect output. Use text, table, csv, json, yaml, report-table, report-csv, report-json, report-tree, report-tree-table, report-dependency, report-dependency-json, governance, or governance-json."
     )]
     pub output_format: Option<InspectOutputFormat>,
     #[arg(
@@ -590,9 +639,16 @@ pub struct ImpactArgs {
 pub struct ValidateExportArgs {
     #[arg(
         long,
-        help = "Validate dashboards from this raw export directory. Point this to the raw/ export directory explicitly."
+        help = "Validate dashboards from this export directory. Use raw/ by default, or use provisioning/ or its dashboards/ subdirectory with --input-format provisioning."
     )]
     pub import_dir: PathBuf,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = DashboardImportInputFormat::Raw,
+        help = "Interpret --import-dir as raw export files or Grafana file-provisioning artifacts. Use provisioning to accept either the provisioning/ root or its dashboards/ subdirectory."
+    )]
+    pub input_format: DashboardImportInputFormat,
     #[arg(
         long,
         default_value_t = false,

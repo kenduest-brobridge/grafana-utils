@@ -1,3 +1,5 @@
+//! Interactive browse workflows and terminal-driven state flow for Core entities.
+
 #[cfg(not(feature = "tui"))]
 use crate::common::message;
 use crate::common::Result;

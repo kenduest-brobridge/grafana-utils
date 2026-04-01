@@ -1,3 +1,5 @@
+//! CLI definitions for Dashboard command surface and option compatibility behavior.
+
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
@@ -155,17 +157,21 @@ pub struct ListArgs {
         help = "Render only these comma-separated list columns. Supported values: uid, name, folder, folder_uid, path, org, org_id, sources, source_uids. JSON-style aliases like folderUid, orgId, and sourceUids are also accepted. Selecting sources or source_uids also enables datasource resolution."
     )]
     pub output_columns: Vec<String>,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render dashboard summaries as a table.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv", "json", "yaml", "output_format"], help = "Render dashboard summaries as plain text.")]
+    pub text: bool,
+    #[arg(long, default_value_t = false, conflicts_with_all = ["text", "csv", "json", "yaml", "output_format"], help = "Render dashboard summaries as a table.")]
     pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render dashboard summaries as CSV.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["text", "table", "json", "yaml", "output_format"], help = "Render dashboard summaries as CSV.")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render dashboard summaries as JSON.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["text", "table", "csv", "yaml", "output_format"], help = "Render dashboard summaries as JSON.")]
     pub json: bool,
+    #[arg(long, default_value_t = false, conflicts_with_all = ["text", "table", "csv", "json", "output_format"], help = "Render dashboard summaries as YAML.")]
+    pub yaml: bool,
     #[arg(
         long,
         value_enum,
-        conflicts_with_all = ["table", "csv", "json"],
-        help = "Alternative single-flag output selector. Use table, csv, or json."
+        conflicts_with_all = ["text", "table", "csv", "json", "yaml"],
+        help = "Alternative single-flag output selector. Use text, table, csv, json, or yaml."
     )]
     pub output_format: Option<SimpleOutputFormat>,
     #[arg(
@@ -381,9 +387,23 @@ pub struct ReviewArgs {
     #[arg(
         long,
         default_value_t = false,
+        conflicts_with_all = ["table", "csv", "yaml", "output_format"],
         help = "Render the review as JSON instead of text."
     )]
     pub json: bool,
+    #[arg(long, default_value_t = false, conflicts_with_all = ["json", "csv", "yaml", "output_format"], help = "Render the review as a table.")]
+    pub table: bool,
+    #[arg(long, default_value_t = false, conflicts_with_all = ["json", "table", "yaml", "output_format"], help = "Render the review as CSV.")]
+    pub csv: bool,
+    #[arg(long, default_value_t = false, conflicts_with_all = ["json", "table", "csv", "output_format"], help = "Render the review as YAML.")]
+    pub yaml: bool,
+    #[arg(
+        long,
+        value_enum,
+        conflicts_with_all = ["json", "table", "csv", "yaml"],
+        help = "Alternative single-flag output selector. Use text, table, csv, json, or yaml."
+    )]
+    pub output_format: Option<SimpleOutputFormat>,
 }
 
 /// Arguments for publishing one local dashboard JSON file through the live import pipeline.
@@ -677,7 +697,7 @@ pub enum DashboardCommand {
     #[command(
         name = "review",
         about = "Review one local dashboard JSON file without touching Grafana.",
-        after_help = "Examples:\n\n  Review one local dashboard file in text mode:\n    grafana-util dashboard review --input ./drafts/cpu-main.json\n\n  Review one local dashboard file as JSON:\n    grafana-util dashboard review --input ./drafts/cpu-main.json --json"
+        after_help = "Examples:\n\n  Review one local dashboard file in text mode:\n    grafana-util dashboard review --input ./drafts/cpu-main.json\n\n  Review one local dashboard file as YAML:\n    grafana-util dashboard review --input ./drafts/cpu-main.json --output-format yaml"
     )]
     Review(ReviewArgs),
     #[command(
@@ -701,7 +721,7 @@ pub enum DashboardCommand {
     #[command(
         name = "inspect-vars",
         about = "List dashboard templating variables and datasource-like choices from live Grafana.",
-        after_help = "Examples:\n\n  Inspect variables from a browser URL directly:\n    grafana-util dashboard inspect-vars --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --token \"$GRAFANA_API_TOKEN\" --output-format table\n\n  Inspect one dashboard UID with a vars-query fragment:\n    grafana-util dashboard inspect-vars --url https://grafana.example.com --dashboard-uid cpu-main --vars-query 'var-cluster=prod-a&var-instance=node01' --token \"$GRAFANA_API_TOKEN\" --output-format json"
+        after_help = "Examples:\n\n  Inspect variables from a browser URL directly:\n    grafana-util dashboard inspect-vars --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --token \"$GRAFANA_API_TOKEN\" --output-format table\n\n  Inspect one dashboard UID with a vars-query fragment:\n    grafana-util dashboard inspect-vars --url https://grafana.example.com --dashboard-uid cpu-main --vars-query 'var-cluster=prod-a&var-instance=node01' --token \"$GRAFANA_API_TOKEN\" --output-format json\n\n  Render the same variable inventory as YAML:\n    grafana-util dashboard inspect-vars --url https://grafana.example.com --dashboard-uid cpu-main --token \"$GRAFANA_API_TOKEN\" --output-format yaml"
     )]
     InspectVars(InspectVarsArgs),
     #[command(

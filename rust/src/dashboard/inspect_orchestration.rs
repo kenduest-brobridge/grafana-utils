@@ -1,16 +1,22 @@
+//! Inspection path for Dashboard resources: analysis, extraction, and report shaping.
+
 use std::path::Path;
+use std::path::PathBuf;
 
 use crate::common::{message, Result};
 
-use super::super::cli_defs::{InspectExportArgs, InspectExportReportFormat, InspectOutputFormat};
+use super::super::cli_defs::{
+    DashboardImportInputFormat, InspectExportArgs, InspectExportReportFormat, InspectOutputFormat,
+};
 use super::super::inspect_governance::build_export_inspection_governance_document;
-use super::super::inspect_live::{prepare_inspect_export_import_dir, TempInspectDir};
+use super::super::inspect_live::TempInspectDir;
 use super::super::inspect_report::{
     refresh_filtered_query_report_summary, report_format_supports_columns,
     resolve_report_column_ids_for_format, ExportInspectionQueryReport,
 };
 use super::super::inspect_workbench::run_inspect_workbench;
 use super::super::inspect_workbench_support::build_inspect_workbench_document;
+use super::super::resolve_dashboard_import_source;
 use super::inspect_output::{
     render_export_inspection_report_output, render_export_inspection_summary_output,
 };
@@ -29,7 +35,11 @@ fn map_output_format_to_report(
     output_format: InspectOutputFormat,
 ) -> Option<InspectExportReportFormat> {
     match output_format {
-        InspectOutputFormat::Text | InspectOutputFormat::Table | InspectOutputFormat::Json => None,
+        InspectOutputFormat::Text
+        | InspectOutputFormat::Table
+        | InspectOutputFormat::Csv
+        | InspectOutputFormat::Json
+        | InspectOutputFormat::Yaml => None,
         InspectOutputFormat::ReportTable => Some(InspectExportReportFormat::Table),
         InspectOutputFormat::ReportCsv => Some(InspectExportReportFormat::Csv),
         InspectOutputFormat::ReportJson => Some(InspectExportReportFormat::Json),
@@ -51,12 +61,41 @@ pub(crate) fn effective_inspect_report_format(
         .or_else(|| args.output_format.and_then(map_output_format_to_report))
 }
 
-pub(crate) fn effective_inspect_json(args: &InspectExportArgs) -> bool {
-    args.json || matches!(args.output_format, Some(InspectOutputFormat::Json))
+pub(crate) fn effective_inspect_output_format(args: &InspectExportArgs) -> InspectOutputFormat {
+    args.output_format.unwrap_or_else(|| {
+        if args.text {
+            InspectOutputFormat::Text
+        } else if args.table {
+            InspectOutputFormat::Table
+        } else if args.csv {
+            InspectOutputFormat::Csv
+        } else if args.json {
+            InspectOutputFormat::Json
+        } else if args.yaml {
+            InspectOutputFormat::Yaml
+        } else {
+            InspectOutputFormat::Text
+        }
+    })
 }
 
-pub(crate) fn effective_inspect_table(args: &InspectExportArgs) -> bool {
-    args.table || matches!(args.output_format, Some(InspectOutputFormat::Table))
+pub(crate) fn resolve_inspect_export_import_dir(
+    temp_root: &Path,
+    import_dir: &Path,
+    input_format: DashboardImportInputFormat,
+) -> Result<PathBuf> {
+    match input_format {
+        DashboardImportInputFormat::Raw => {
+            super::super::inspect_live::prepare_inspect_export_import_dir(temp_root, import_dir)
+        }
+        DashboardImportInputFormat::Provisioning => {
+            let resolved = resolve_dashboard_import_source(
+                import_dir,
+                DashboardImportInputFormat::Provisioning,
+            )?;
+            Ok(resolved.dashboard_dir)
+        }
+    }
 }
 
 pub(crate) fn apply_query_report_filters(
@@ -186,6 +225,7 @@ fn run_interactive_export_workbench(_import_dir: &Path) -> Result<usize> {
 pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
     validate_inspect_export_report_args(args)?;
     let temp_dir = TempInspectDir::new("inspect-export")?;
-    let import_dir = prepare_inspect_export_import_dir(&temp_dir.path, &args.import_dir)?;
+    let import_dir =
+        resolve_inspect_export_import_dir(&temp_dir.path, &args.import_dir, args.input_format)?;
     analyze_export_dir_at_path(args, &import_dir)
 }

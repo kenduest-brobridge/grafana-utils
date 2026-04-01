@@ -1,3 +1,5 @@
+//! Mutation builders and payload plumbing for Access updates.
+
 use reqwest::Method;
 use rpassword::prompt_password;
 use serde_json::{Map, Value};

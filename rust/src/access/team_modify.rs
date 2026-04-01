@@ -1,3 +1,8 @@
+//! Apply team membership changes using Grafana's team APIs.
+//! This module validates team-modify arguments, locates the target team, resolves
+//! member identities, and sends the add/remove updates needed to reach the requested
+//! membership state. It does not own command parsing or generic team listing logic.
+
 use reqwest::Method;
 use serde_json::{Map, Value};
 

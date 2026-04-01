@@ -15,16 +15,28 @@ use crate::overview::{self, OverviewArgs, OverviewOutputFormat};
 use crate::project_status::ProjectStatus;
 use crate::project_status_live_runtime::build_live_project_status;
 use crate::project_status_staged::build_staged_project_status;
+use crate::tabular_output::{print_lines, render_summary_csv, render_summary_table, render_yaml};
 
 pub(crate) const PROJECT_STATUS_DOMAIN_COUNT: usize = 6;
-const PROJECT_STATUS_HELP_TEXT: &str = "Examples:\n\n  Render staged project status as JSON from raw dashboard artifacts:\n    grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output json\n\n  Render staged project status from dashboard provisioning artifacts:\n    grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisioning --output json\n\n  Render staged project status from datasource provisioning YAML:\n    grafana-util status staged --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output json\n\n  Render live project status with staged sync context:\n    grafana-util status live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output json";
-const PROJECT_STATUS_STAGED_HELP_TEXT: &str = "Examples:\n\n  Render staged project status as JSON from raw dashboard artifacts:\n    grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output json\n\n  Render staged project status from dashboard provisioning artifacts in the interactive workbench:\n    grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output interactive\n\n  Render staged project status from datasource provisioning YAML:\n    grafana-util status staged --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output json";
-const PROJECT_STATUS_LIVE_HELP_TEXT: &str = "Examples:\n\n  Render live project status as JSON:\n    grafana-util status live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output json\n\n  Render live status across visible orgs while layering staged sync context:\n    grafana-util status live --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --sync-summary-file ./sync-summary.json --output interactive";
+const PROJECT_STATUS_HELP_TEXT: &str = "Examples:\n\n  Render staged project status as a summary table from raw dashboard artifacts:\n    grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output table\n\n  Render staged project status from dashboard provisioning artifacts:\n    grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisioning --output csv\n\n  Render staged project status from datasource provisioning YAML:\n    grafana-util status staged --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output yaml\n\n  Render live project status with staged sync context:\n    grafana-util status live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output json";
+const PROJECT_STATUS_STAGED_HELP_TEXT: &str = "Examples:\n\n  Render staged project status as a summary table from raw dashboard artifacts:\n    grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output table\n\n  Render staged project status from dashboard provisioning artifacts in the interactive workbench:\n    grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output interactive\n\n  Render staged project status from datasource provisioning YAML:\n    grafana-util status staged --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output yaml";
+const PROJECT_STATUS_LIVE_HELP_TEXT: &str = "Examples:\n\n  Render live project status as YAML:\n    grafana-util status live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output yaml\n\n  Render live status across visible orgs while layering staged sync context:\n    grafana-util status live --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --sync-summary-file ./sync-summary.json --output interactive";
+
+#[cfg(feature = "tui")]
+const PROJECT_STATUS_OUTPUT_HELP: &str =
+    "Render project status as table, csv, text, json, yaml, or interactive output.";
+
+#[cfg(not(feature = "tui"))]
+const PROJECT_STATUS_OUTPUT_HELP: &str =
+    "Render project status as table, csv, text, json, or yaml output.";
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum ProjectStatusOutputFormat {
+    Table,
+    Csv,
     Text,
     Json,
+    Yaml,
     #[cfg(feature = "tui")]
     Interactive,
 }
@@ -103,7 +115,12 @@ pub struct ProjectStatusStagedArgs {
         help = "Optional mapping JSON reused by staged promotion builders."
     )]
     pub mapping_file: Option<PathBuf>,
-    #[arg(long, value_enum, default_value_t = ProjectStatusOutputFormat::Text)]
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = ProjectStatusOutputFormat::Text,
+        help = PROJECT_STATUS_OUTPUT_HELP
+    )]
     pub output: ProjectStatusOutputFormat,
 }
 
@@ -206,7 +223,12 @@ pub struct ProjectStatusLiveArgs {
         help = "Optional staged availability JSON used to deepen live promotion status."
     )]
     pub availability_file: Option<PathBuf>,
-    #[arg(long, value_enum, default_value_t = ProjectStatusOutputFormat::Text)]
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = ProjectStatusOutputFormat::Text,
+        help = PROJECT_STATUS_OUTPUT_HELP
+    )]
     pub output: ProjectStatusOutputFormat,
 }
 
@@ -322,6 +344,45 @@ pub(crate) fn render_project_status_text(status: &ProjectStatus) -> Vec<String> 
     lines
 }
 
+pub(crate) fn build_project_status_summary_rows(
+    status: &ProjectStatus,
+) -> Vec<(&'static str, String)> {
+    vec![
+        ("status", status.overall.status.clone()),
+        ("scope", status.scope.clone()),
+        ("domainCount", status.overall.domain_count.to_string()),
+        ("presentCount", status.overall.present_count.to_string()),
+        ("blockedCount", status.overall.blocked_count.to_string()),
+        ("blockerCount", status.overall.blocker_count.to_string()),
+        ("warningCount", status.overall.warning_count.to_string()),
+        ("freshnessStatus", status.overall.freshness.status.clone()),
+        (
+            "freshnessSourceCount",
+            status.overall.freshness.source_count.to_string(),
+        ),
+        (
+            "freshnessNewestAgeSeconds",
+            status
+                .overall
+                .freshness
+                .newest_age_seconds
+                .map(|value| value.to_string())
+                .unwrap_or_default(),
+        ),
+        (
+            "freshnessOldestAgeSeconds",
+            status
+                .overall
+                .freshness
+                .oldest_age_seconds
+                .map(|value| value.to_string())
+                .unwrap_or_default(),
+        ),
+        ("topBlockerCount", status.top_blockers.len().to_string()),
+        ("nextActionCount", status.next_actions.len().to_string()),
+    ]
+}
+
 /// Build the staged status document without rendering it.
 pub fn execute_project_status_staged(
     args: &ProjectStatusStagedArgs,
@@ -339,6 +400,18 @@ pub fn execute_project_status_live(args: &ProjectStatusLiveArgs) -> CommonResult
 pub fn run_project_status_staged(args: ProjectStatusStagedArgs) -> CommonResult<()> {
     let status = execute_project_status_staged(&args)?;
     match args.output {
+        ProjectStatusOutputFormat::Table => {
+            print_lines(&render_summary_table(&build_project_status_summary_rows(
+                &status,
+            )));
+            Ok(())
+        }
+        ProjectStatusOutputFormat::Csv => {
+            print_lines(&render_summary_csv(&build_project_status_summary_rows(
+                &status,
+            )));
+            Ok(())
+        }
         ProjectStatusOutputFormat::Text => {
             for line in render_project_status_text(&status) {
                 println!("{line}");
@@ -347,6 +420,10 @@ pub fn run_project_status_staged(args: ProjectStatusStagedArgs) -> CommonResult<
         }
         ProjectStatusOutputFormat::Json => {
             println!("{}", serde_json::to_string_pretty(&status)?);
+            Ok(())
+        }
+        ProjectStatusOutputFormat::Yaml => {
+            println!("{}", render_yaml(&status)?);
             Ok(())
         }
         #[cfg(feature = "tui")]
@@ -357,6 +434,18 @@ pub fn run_project_status_staged(args: ProjectStatusStagedArgs) -> CommonResult<
 pub fn run_project_status_live(args: ProjectStatusLiveArgs) -> CommonResult<()> {
     let status = execute_project_status_live(&args)?;
     match args.output {
+        ProjectStatusOutputFormat::Table => {
+            print_lines(&render_summary_table(&build_project_status_summary_rows(
+                &status,
+            )));
+            Ok(())
+        }
+        ProjectStatusOutputFormat::Csv => {
+            print_lines(&render_summary_csv(&build_project_status_summary_rows(
+                &status,
+            )));
+            Ok(())
+        }
         ProjectStatusOutputFormat::Text => {
             for line in render_project_status_text(&status) {
                 println!("{line}");
@@ -365,6 +454,10 @@ pub fn run_project_status_live(args: ProjectStatusLiveArgs) -> CommonResult<()> 
         }
         ProjectStatusOutputFormat::Json => {
             println!("{}", serde_json::to_string_pretty(&status)?);
+            Ok(())
+        }
+        ProjectStatusOutputFormat::Yaml => {
+            println!("{}", render_yaml(&status)?);
             Ok(())
         }
         #[cfg(feature = "tui")]

@@ -10,6 +10,7 @@ use std::path::PathBuf;
 
 use crate::common::{message, object_field, string_field, value_as_object, Result};
 use crate::http::JsonHttpClient;
+use crate::tabular_output::render_yaml;
 
 use super::inspect_render::{render_csv, render_simple_table};
 use super::screenshot::parse_vars_query;
@@ -62,7 +63,9 @@ pub(crate) fn render_dashboard_variable_output(
     document: &DashboardVariableDocument,
 ) -> Result<String> {
     match args.output_format.unwrap_or(SimpleOutputFormat::Table) {
+        SimpleOutputFormat::Text => Ok(format!("{}\n", render_dashboard_variable_text(document))),
         SimpleOutputFormat::Json => Ok(format!("{}\n", serde_json::to_string_pretty(document)?)),
+        SimpleOutputFormat::Yaml => Ok(format!("{}\n", render_yaml(document)?)),
         SimpleOutputFormat::Csv => {
             let mut rendered = String::new();
             for line in render_csv(
@@ -110,6 +113,35 @@ pub(crate) fn render_dashboard_variable_output(
             Ok(rendered)
         }
     }
+}
+
+fn render_dashboard_variable_text(document: &DashboardVariableDocument) -> String {
+    let mut rendered = String::new();
+    rendered.push_str(&format!(
+        "Dashboard variables: {} ({})\n",
+        document.dashboard_title, document.dashboard_uid
+    ));
+    rendered.push_str(&format!("Variable count: {}\n", document.variable_count));
+    if document.variables.is_empty() {
+        return rendered;
+    }
+    rendered.push('\n');
+    rendered.push_str("# Variables\n");
+    for row in &document.variables {
+        rendered.push_str(&format!(
+            "- name={} type={} label={} current={} datasource={} query={} multi={} include_all={} options={}\n",
+            row.name,
+            row.variable_type,
+            row.label,
+            row.current,
+            row.datasource,
+            row.query,
+            row.multi,
+            row.include_all,
+            summarize_options(row)
+        ));
+    }
+    rendered
 }
 
 pub(crate) fn execute_dashboard_variable_inspection(

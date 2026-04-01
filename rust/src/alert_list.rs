@@ -1,11 +1,12 @@
 //! Alert list commands and rendering.
-//! Converts alerting resources (rules, contact points, templates, timings) into compact table/JSON output.
+//! Converts alerting resources (rules, contact points, templates, timings) into compact text/table/CSV/JSON/YAML output.
 use reqwest::header::AUTHORIZATION;
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
 use crate::common::{message, string_field, Result};
+use crate::tabular_output::render_yaml;
 
 use super::{
     build_auth_context, AlertAuthContext, AlertCliArgs, AlertListKind, GrafanaAlertClient,
@@ -115,6 +116,38 @@ fn render_alert_csv(rows: &[BTreeMap<&str, String>], fields: &[&str]) -> String 
         let _ = writeln!(&mut output, "{line}");
     }
     output
+}
+
+fn render_alert_text(
+    rows: &[BTreeMap<&str, String>],
+    fields: &[&str],
+    headers: &[(&str, &str)],
+    include_header: bool,
+) -> String {
+    render_alert_table(rows, fields, headers, include_header)
+}
+
+fn render_alert_rows_for_output(
+    rows: &[BTreeMap<&str, String>],
+    fields: &[&str],
+    headers: &[(&str, &str)],
+    include_header: bool,
+    text: bool,
+    csv: bool,
+    json: bool,
+    yaml: bool,
+) -> Result<String> {
+    if json {
+        Ok(serde_json::to_string_pretty(rows)?)
+    } else if yaml {
+        render_yaml(&rows)
+    } else if csv {
+        Ok(render_alert_csv(rows, fields))
+    } else if text {
+        Ok(render_alert_text(rows, fields, headers, false))
+    } else {
+        Ok(render_alert_table(rows, fields, headers, include_header))
+    }
 }
 
 /// serialize rule list rows.
@@ -311,15 +344,20 @@ pub fn list_alert_resources(args: &AlertCliArgs) -> Result<()> {
                 ],
                 include_org_scope,
             );
-            if args.json {
-                println!("{}", serde_json::to_string_pretty(&rows)?);
-            } else if args.csv {
-                print!("{}", render_alert_csv(&rows, &fields));
+            let output = render_alert_rows_for_output(
+                &rows,
+                &fields,
+                &headers,
+                !args.no_header,
+                args.text,
+                args.csv,
+                args.json,
+                args.yaml,
+            )?;
+            if args.csv || args.yaml {
+                print!("{output}");
             } else {
-                println!(
-                    "{}",
-                    render_alert_table(&rows, &fields, &headers, !args.no_header,)
-                );
+                println!("{output}");
             }
         }
         AlertListKind::ContactPoints => {
@@ -330,15 +368,20 @@ pub fn list_alert_resources(args: &AlertCliArgs) -> Result<()> {
                 &[("uid", "UID"), ("name", "NAME"), ("type", "TYPE")],
                 include_org_scope,
             );
-            if args.json {
-                println!("{}", serde_json::to_string_pretty(&rows)?);
-            } else if args.csv {
-                print!("{}", render_alert_csv(&rows, &fields));
+            let output = render_alert_rows_for_output(
+                &rows,
+                &fields,
+                &headers,
+                !args.no_header,
+                args.text,
+                args.csv,
+                args.json,
+                args.yaml,
+            )?;
+            if args.csv || args.yaml {
+                print!("{output}");
             } else {
-                println!(
-                    "{}",
-                    render_alert_table(&rows, &fields, &headers, !args.no_header,)
-                );
+                println!("{output}");
             }
         }
         AlertListKind::MuteTimings => {
@@ -349,15 +392,20 @@ pub fn list_alert_resources(args: &AlertCliArgs) -> Result<()> {
                 &[("name", "NAME"), ("intervals", "INTERVALS")],
                 include_org_scope,
             );
-            if args.json {
-                println!("{}", serde_json::to_string_pretty(&rows)?);
-            } else if args.csv {
-                print!("{}", render_alert_csv(&rows, &fields));
+            let output = render_alert_rows_for_output(
+                &rows,
+                &fields,
+                &headers,
+                !args.no_header,
+                args.text,
+                args.csv,
+                args.json,
+                args.yaml,
+            )?;
+            if args.csv || args.yaml {
+                print!("{output}");
             } else {
-                println!(
-                    "{}",
-                    render_alert_table(&rows, &fields, &headers, !args.no_header,)
-                );
+                println!("{output}");
             }
         }
         AlertListKind::Templates => {
@@ -365,17 +413,74 @@ pub fn list_alert_resources(args: &AlertCliArgs) -> Result<()> {
             let include_org_scope = rows_include_org_scope(&rows);
             let fields = fields_with_org_scope(&TEMPLATE_LIST_FIELDS, include_org_scope);
             let headers = headers_with_org_scope(&[("name", "NAME")], include_org_scope);
-            if args.json {
-                println!("{}", serde_json::to_string_pretty(&rows)?);
-            } else if args.csv {
-                print!("{}", render_alert_csv(&rows, &fields));
+            let output = render_alert_rows_for_output(
+                &rows,
+                &fields,
+                &headers,
+                !args.no_header,
+                args.text,
+                args.csv,
+                args.json,
+                args.yaml,
+            )?;
+            if args.csv || args.yaml {
+                print!("{output}");
             } else {
-                println!(
-                    "{}",
-                    render_alert_table(&rows, &fields, &headers, !args.no_header,)
-                );
+                println!("{output}");
             }
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn render_alert_rows_for_output_supports_text_csv_json_and_yaml() {
+        let rows = serialize_rule_list_rows(&[json!({
+            "uid": "rule-uid",
+            "title": "CPU High",
+            "folderUID": "infra-folder",
+            "ruleGroup": "cpu",
+        })
+        .as_object()
+        .unwrap()
+        .clone()]);
+        let fields = fields_with_org_scope(&ALERT_RULE_LIST_FIELDS, false);
+        let headers = headers_with_org_scope(
+            &[
+                ("uid", "UID"),
+                ("title", "TITLE"),
+                ("folderUID", "FOLDER_UID"),
+                ("ruleGroup", "RULE_GROUP"),
+            ],
+            false,
+        );
+
+        let text_output =
+            render_alert_rows_for_output(&rows, &fields, &headers, true, true, false, false, false)
+                .unwrap();
+        let csv_output =
+            render_alert_rows_for_output(&rows, &fields, &headers, true, false, true, false, false)
+                .unwrap();
+        let json_output =
+            render_alert_rows_for_output(&rows, &fields, &headers, true, false, false, true, false)
+                .unwrap();
+        let yaml_output =
+            render_alert_rows_for_output(&rows, &fields, &headers, true, false, false, false, true)
+                .unwrap();
+
+        assert!(text_output.contains("rule-uid"));
+        assert!(text_output.contains("CPU High"));
+        assert!(csv_output.contains("uid,title,folderUID,ruleGroup"));
+        assert!(json_output.contains("\"rule-uid\""));
+        assert!(yaml_output.contains("uid: rule-uid"));
+        assert!(
+            yaml_output.contains("folderUID: infra-folder")
+                || yaml_output.contains("folder_uid: infra-folder")
+        );
+    }
 }

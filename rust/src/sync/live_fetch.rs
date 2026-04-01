@@ -1,3 +1,8 @@
+//! Merge live sync state fetched from Grafana into local sync documents.
+//! This module normalizes alert resources, merges availability and metadata records,
+//! and preserves the live fields needed by the sync bundle and apply builders. It is
+//! the read-side translation layer, not the final plan or write executor.
+
 use super::super::{
     append_unique_strings, normalize_alert_managed_fields,
     normalize_alert_resource_identity_and_title, require_json_object,

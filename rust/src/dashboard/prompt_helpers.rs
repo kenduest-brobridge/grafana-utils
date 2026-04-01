@@ -1,3 +1,8 @@
+//! Resolve dashboard authoring prompts into datasource and target metadata.
+//! This module normalizes datasource aliases, infers plugin names, and prepares the
+//! prompt-driven lookup values used by dashboard authoring and review commands. It is
+//! purely a text-to-metadata helper layer, not a network client.
+
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 

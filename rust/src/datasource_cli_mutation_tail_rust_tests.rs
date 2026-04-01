@@ -1,4 +1,7 @@
+//! CLI definitions for Core command surface and option compatibility behavior.
+
 use super::*;
+use crate::dashboard::SimpleOutputFormat;
 use crate::datasource::DatasourceGroupCommand;
 
 #[test]
@@ -70,17 +73,74 @@ fn parse_datasource_list_supports_output_format_json() {
 }
 
 #[test]
-fn parse_datasource_types_supports_output_format_json() {
-    let args = DatasourceCliArgs::parse_normalized_from([
+fn parse_datasource_list_supports_output_format_text_and_yaml() {
+    let text_args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
-        "types",
+        "list",
         "--output-format",
-        "json",
+        "text",
     ]);
+    let yaml_args = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util",
+        "list",
+        "--output-format",
+        "yaml",
+    ]);
+
+    match text_args.command {
+        DatasourceGroupCommand::List(inner) => {
+            assert!(inner.text);
+            assert!(!inner.table);
+            assert!(!inner.csv);
+            assert!(!inner.json);
+            assert!(!inner.yaml);
+        }
+        _ => panic!("expected datasource list"),
+    }
+
+    match yaml_args.command {
+        DatasourceGroupCommand::List(inner) => {
+            assert!(inner.yaml);
+            assert!(!inner.text);
+            assert!(!inner.table);
+            assert!(!inner.csv);
+            assert!(!inner.json);
+        }
+        _ => panic!("expected datasource list"),
+    }
+}
+
+#[test]
+fn parse_datasource_types_supports_output_format_json() {
+    for (flag, expected) in [
+        ("json", SimpleOutputFormat::Json),
+        ("table", SimpleOutputFormat::Table),
+        ("csv", SimpleOutputFormat::Csv),
+        ("yaml", SimpleOutputFormat::Yaml),
+    ] {
+        let args = DatasourceCliArgs::parse_normalized_from([
+            "grafana-util",
+            "types",
+            "--output-format",
+            flag,
+        ]);
+
+        match args.command {
+            DatasourceGroupCommand::Types(inner) => {
+                assert_eq!(inner.output_format, expected);
+            }
+            _ => panic!("expected datasource types"),
+        }
+    }
+}
+
+#[test]
+fn parse_datasource_types_defaults_to_text_output() {
+    let args = DatasourceCliArgs::parse_normalized_from(["grafana-util", "types"]);
 
     match args.command {
         DatasourceGroupCommand::Types(inner) => {
-            assert!(inner.json);
+            assert_eq!(inner.output_format, SimpleOutputFormat::Text);
         }
         _ => panic!("expected datasource types"),
     }
@@ -363,6 +423,7 @@ fn resolve_match_marks_multiple_name_matches_as_ambiguous() {
         access: "proxy".to_string(),
         url: "http://prometheus:9090".to_string(),
         is_default: true,
+        org_name: String::new(),
         org_id: "1".to_string(),
         secure_json_data_placeholders: None,
     };
@@ -420,6 +481,7 @@ fn resolve_match_allows_update_when_uid_exists_and_replace_existing_is_enabled()
         access: "proxy".to_string(),
         url: "http://prometheus:9090".to_string(),
         is_default: true,
+        org_name: String::new(),
         org_id: "1".to_string(),
         secure_json_data_placeholders: None,
     };
@@ -447,6 +509,7 @@ fn resolve_match_blocks_name_match_when_uid_differs() {
         access: "proxy".to_string(),
         url: "http://prometheus:9090".to_string(),
         is_default: true,
+        org_name: String::new(),
         org_id: "1".to_string(),
         secure_json_data_placeholders: None,
     };

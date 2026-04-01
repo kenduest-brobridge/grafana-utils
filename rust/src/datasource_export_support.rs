@@ -1,4 +1,13 @@
+//! Shared helpers for datasource list/export/import orchestration.
+//!
+//! Responsibilities:
+//! - Build typed records and export indexes from API payloads.
+//! - Resolve target output directories and per-org export scopes.
+//! - Serialize provisioning artifacts and metadata in supported output formats.
+
+use serde::Serialize;
 use serde_json::{Map, Value};
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::common::{
@@ -17,6 +26,31 @@ use super::{
     },
     fetch_current_org, DatasourceExportMetadata,
 };
+
+pub(crate) const DATASOURCE_PROVISIONING_SUBDIR: &str = "provisioning";
+pub(crate) const DATASOURCE_PROVISIONING_FILENAME: &str = "datasources.yaml";
+
+#[derive(Serialize)]
+pub(crate) struct ProvisioningDatasource {
+    name: String,
+    #[serde(rename = "type")]
+    datasource_type: String,
+    access: String,
+    #[serde(rename = "orgId")]
+    org_id: i64,
+    uid: String,
+    url: String,
+    #[serde(rename = "isDefault")]
+    is_default: bool,
+    editable: bool,
+}
+
+#[derive(Serialize)]
+pub(crate) struct ProvisioningDocument {
+    #[serde(rename = "apiVersion")]
+    api_version: i64,
+    datasources: Vec<ProvisioningDatasource>,
+}
 
 pub(crate) fn build_all_orgs_output_dir(output_dir: &Path, org: &Map<String, Value>) -> PathBuf {
     let org_id = org
@@ -106,6 +140,15 @@ pub(crate) fn build_datasource_export_metadata(count: usize) -> Value {
         (
             "format".to_string(),
             Value::String("grafana-datasource-inventory-v1".to_string()),
+        ),
+        (
+            "provisioningFile".to_string(),
+            Value::String(
+                Path::new(DATASOURCE_PROVISIONING_SUBDIR)
+                    .join(DATASOURCE_PROVISIONING_FILENAME)
+                    .display()
+                    .to_string(),
+            ),
         ),
     ]))
 }
@@ -270,6 +313,18 @@ pub(crate) fn build_export_index(records: &[Map<String, Value>]) -> Value {
             Value::String(DATASOURCE_EXPORT_FILENAME.to_string()),
         ),
         (
+            "variants".to_string(),
+            Value::Object(Map::from_iter(vec![(
+                "provisioning".to_string(),
+                Value::String(
+                    Path::new(DATASOURCE_PROVISIONING_SUBDIR)
+                        .join(DATASOURCE_PROVISIONING_FILENAME)
+                        .display()
+                        .to_string(),
+                ),
+            )])),
+        ),
+        (
             "count".to_string(),
             Value::Number((records.len() as i64).into()),
         ),
@@ -327,6 +382,18 @@ pub(crate) fn build_all_orgs_export_index(items: &[Map<String, Value>]) -> Value
             Value::String("all-orgs-root".to_string()),
         ),
         (
+            "variants".to_string(),
+            Value::Object(Map::from_iter(vec![(
+                "provisioning".to_string(),
+                Value::String(
+                    Path::new(DATASOURCE_PROVISIONING_SUBDIR)
+                        .join(DATASOURCE_PROVISIONING_FILENAME)
+                        .display()
+                        .to_string(),
+                ),
+            )])),
+        ),
+        (
             "count".to_string(),
             Value::Number((items.len() as i64).into()),
         ),
@@ -374,6 +441,15 @@ pub(crate) fn build_all_orgs_export_metadata(org_count: usize, datasource_count:
         (
             "format".to_string(),
             Value::String("grafana-datasource-inventory-v1".to_string()),
+        ),
+        (
+            "provisioningFile".to_string(),
+            Value::String(
+                Path::new(DATASOURCE_PROVISIONING_SUBDIR)
+                    .join(DATASOURCE_PROVISIONING_FILENAME)
+                    .display()
+                    .to_string(),
+            ),
         ),
     ]))
 }
@@ -432,16 +508,67 @@ pub(crate) fn build_export_records(client: &JsonHttpClient) -> Result<Vec<Map<St
         .collect())
 }
 
+pub(crate) fn build_datasource_provisioning_document(
+    records: &[Map<String, Value>],
+) -> ProvisioningDocument {
+    ProvisioningDocument {
+        api_version: 1,
+        datasources: records
+            .iter()
+            .map(|record| ProvisioningDatasource {
+                name: string_field(record, "name", ""),
+                datasource_type: string_field(record, "type", ""),
+                access: string_field(record, "access", ""),
+                org_id: string_field(record, "orgId", DEFAULT_ORG_ID)
+                    .parse::<i64>()
+                    .unwrap_or(1),
+                uid: string_field(record, "uid", ""),
+                url: string_field(record, "url", ""),
+                is_default: string_field(record, "isDefault", "false") == "true",
+                editable: false,
+            })
+            .collect(),
+    }
+}
+
+pub(crate) fn write_yaml_file<T: Serialize>(
+    output_path: &Path,
+    payload: &T,
+    overwrite: bool,
+) -> Result<()> {
+    if output_path.exists() && !overwrite {
+        return Err(message(format!(
+            "Refusing to overwrite existing file: {}",
+            output_path.display()
+        )));
+    }
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let rendered = serde_yaml::to_string(payload).map_err(|error| {
+        message(format!(
+            "Failed to serialize YAML document for {}: {error}",
+            output_path.display()
+        ))
+    })?;
+    fs::write(output_path, rendered)?;
+    Ok(())
+}
+
 pub(crate) fn export_datasource_scope(
     client: &JsonHttpClient,
     output_dir: &Path,
     overwrite: bool,
     dry_run: bool,
+    write_provisioning: bool,
 ) -> Result<usize> {
     let records = build_export_records(client)?;
     let datasources_path = output_dir.join(DATASOURCE_EXPORT_FILENAME);
     let index_path = output_dir.join("index.json");
     let metadata_path = output_dir.join(EXPORT_METADATA_FILENAME);
+    let provisioning_path = output_dir
+        .join(DATASOURCE_PROVISIONING_SUBDIR)
+        .join(DATASOURCE_PROVISIONING_FILENAME);
     if !dry_run {
         write_json_file(
             &datasources_path,
@@ -454,14 +581,26 @@ pub(crate) fn export_datasource_scope(
             &build_datasource_export_metadata(records.len()),
             overwrite,
         )?;
+        if write_provisioning {
+            write_yaml_file(
+                &provisioning_path,
+                &build_datasource_provisioning_document(&records),
+                overwrite,
+            )?;
+        }
     }
     let summary_verb = if dry_run { "Would export" } else { "Exported" };
     println!(
-        "{summary_verb} {} datasource(s). Datasources: {} Index: {} Manifest: {}",
+        "{summary_verb} {} datasource(s). Datasources: {} Index: {} Manifest: {}{}",
         records.len(),
         datasources_path.display(),
         index_path.display(),
-        metadata_path.display()
+        metadata_path.display(),
+        if write_provisioning {
+            format!(" Provisioning: {}", provisioning_path.display())
+        } else {
+            String::new()
+        }
     );
     Ok(records.len())
 }
@@ -485,7 +624,6 @@ pub(crate) fn parse_export_metadata(path: &Path) -> Result<DatasourceExportMetad
         variant: string_field(object, "variant", ""),
         resource: string_field(object, "resource", ""),
         datasources_file: string_field(object, "datasourcesFile", DATASOURCE_EXPORT_FILENAME),
-        index_file: string_field(object, "indexFile", "index.json"),
     })
 }
 
@@ -507,4 +645,66 @@ pub(crate) fn validate_datasource_contract_record(
         extra_fields.join(", "),
         DATASOURCE_CONTRACT_FIELDS.join(", ")
     )))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn build_datasource_provisioning_document_projects_expected_shape() {
+        let records = vec![json!({
+            "uid": "prom-main",
+            "name": "Prometheus Main",
+            "type": "prometheus",
+            "access": "proxy",
+            "url": "http://prometheus:9090",
+            "isDefault": "true",
+            "orgId": "7"
+        })
+        .as_object()
+        .unwrap()
+        .clone()];
+
+        let value = serde_json::to_value(build_datasource_provisioning_document(&records)).unwrap();
+
+        assert_eq!(
+            value,
+            json!({
+                "apiVersion": 1,
+                "datasources": [{
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                    "access": "proxy",
+                    "orgId": 7,
+                    "uid": "prom-main",
+                    "url": "http://prometheus:9090",
+                    "isDefault": true,
+                    "editable": false
+                }]
+            })
+        );
+    }
+
+    #[test]
+    fn build_export_index_includes_provisioning_variant_pointer() {
+        let records = vec![json!({
+            "uid": "prom-main",
+            "name": "Prometheus Main",
+            "type": "prometheus",
+            "org": "Main Org",
+            "orgId": "1"
+        })
+        .as_object()
+        .unwrap()
+        .clone()];
+
+        let value = build_export_index(&records);
+
+        assert_eq!(
+            value["variants"]["provisioning"],
+            Value::String("provisioning/datasources.yaml".to_string())
+        );
+    }
 }

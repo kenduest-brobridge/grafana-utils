@@ -1,10 +1,12 @@
+//! Listing and summary surface for Access resources.
+
 use reqwest::Method;
 use serde_json::{Map, Value};
 
 use crate::common::Result;
 
 use crate::access::render::{
-    format_table, map_get_text, normalize_team_row, render_csv, render_objects_json,
+    format_table, map_get_text, normalize_team_row, render_csv, render_objects_json, render_yaml,
     team_summary_line, team_table_rows,
 };
 use crate::access::team_import_export_diff::{
@@ -122,6 +124,8 @@ where
     }
     if args.json {
         println!("{}", render_objects_json(&rows)?);
+    } else if args.yaml {
+        println!("{}", render_yaml(&rows)?);
     } else if args.csv {
         for line in render_csv(
             &["id", "name", "email", "memberCount", "members"],

@@ -1,3 +1,11 @@
+//! Build alert compare/import/delete plan documents from live Grafana payloads.
+//!
+//! Responsibilities:
+//! - Gather and normalize alert resources through shared request helpers.
+//! - Produce plan and delete-preview documents used by diff/import execution flows.
+//! - Preserve request semantics so CLI/runtime callers receive a stable sync-ready
+//!   shape across execution paths.
+
 use crate::common::{message, tool_version, value_as_object, Result};
 use reqwest::Method;
 use serde_json::{json, Map, Value};

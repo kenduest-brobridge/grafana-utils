@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::common::{message, string_field, value_as_object, Result};
 use crate::http::JsonHttpClient;
+use crate::tabular_output::render_yaml;
 
 use super::{
     build_datasource_catalog, build_folder_path, build_http_client, build_http_client_for_org,
@@ -23,7 +24,7 @@ mod list_render;
 #[allow(unused_imports)]
 pub(crate) use list_render::{
     format_dashboard_summary_line, render_dashboard_summary_csv, render_dashboard_summary_json,
-    render_dashboard_summary_table,
+    render_dashboard_summary_table, render_dashboard_summary_text,
 };
 
 /// attach dashboard folder paths with request.
@@ -271,7 +272,9 @@ pub(crate) fn collect_dashboard_source_metadata(
 
 fn dashboard_list_needs_sources(args: &ListArgs) -> bool {
     args.with_sources
+        || args.text
         || args.json
+        || args.yaml
         || args
             .output_columns
             .iter()
@@ -363,8 +366,20 @@ fn render_dashboard_list_output(
                 &args.output_columns,
             ))?
         );
+    } else if args.yaml {
+        print!(
+            "{}",
+            render_yaml(&render_dashboard_summary_json(
+                summaries,
+                &args.output_columns
+            ))?
+        );
     } else if args.csv {
         for line in render_dashboard_summary_csv(summaries, &args.output_columns) {
+            println!("{line}");
+        }
+    } else if args.text {
+        for line in render_dashboard_summary_text(summaries) {
             println!("{line}");
         }
     } else {
@@ -373,7 +388,7 @@ fn render_dashboard_list_output(
             println!("{line}");
         }
     }
-    if !args.csv && !args.json {
+    if !args.csv && !args.json && !args.yaml {
         println!();
         println!("Listed {} dashboard(s).", summaries.len());
     }

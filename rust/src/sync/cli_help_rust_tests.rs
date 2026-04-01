@@ -88,7 +88,9 @@ fn change_bundle_help_includes_examples_and_output_heading() {
     let help = render_change_subcommand_help("bundle");
     assert!(help.contains("Examples:"));
     assert!(help.contains("--dashboard-export-dir"));
+    assert!(help.contains("--dashboard-provisioning-dir"));
     assert!(help.contains("--output-file"));
+    assert!(help.contains("--datasource-provisioning-file"));
 }
 
 #[test]
@@ -492,6 +494,7 @@ fn parse_change_cli_supports_bundle_command() {
                 inner.datasource_export_file,
                 Some(Path::new("./datasources.json").to_path_buf())
             );
+            assert_eq!(inner.datasource_provisioning_file, None);
             assert_eq!(
                 inner.metadata_file,
                 Some(Path::new("./metadata.json").to_path_buf())
@@ -504,4 +507,67 @@ fn parse_change_cli_supports_bundle_command() {
         }
         _ => panic!("expected bundle"),
     }
+}
+
+#[test]
+fn parse_change_cli_supports_bundle_provisioning_file() {
+    let args = SyncCliArgs::parse_from([
+        "grafana-util",
+        "bundle",
+        "--dashboard-export-dir",
+        "./dashboards/raw",
+        "--datasource-provisioning-file",
+        "./dashboards/provisioning/datasources.yaml",
+        "--output",
+        "json",
+    ]);
+
+    match args.command {
+        SyncGroupCommand::Bundle(inner) => {
+            assert_eq!(
+                inner.datasource_provisioning_file,
+                Some(Path::new("./dashboards/provisioning/datasources.yaml").to_path_buf())
+            );
+            assert_eq!(inner.datasource_export_file, None);
+        }
+        _ => panic!("expected bundle"),
+    }
+}
+
+#[test]
+fn parse_change_cli_supports_bundle_provisioning_dir() {
+    let args = SyncCliArgs::parse_from([
+        "grafana-util",
+        "bundle",
+        "--dashboard-provisioning-dir",
+        "./dashboards/provisioning",
+        "--output",
+        "json",
+    ]);
+
+    match args.command {
+        SyncGroupCommand::Bundle(inner) => {
+            assert_eq!(
+                inner.dashboard_provisioning_dir,
+                Some(Path::new("./dashboards/provisioning").to_path_buf())
+            );
+            assert_eq!(inner.dashboard_export_dir, None);
+        }
+        _ => panic!("expected bundle"),
+    }
+}
+
+#[test]
+fn parse_change_cli_rejects_conflicting_dashboard_bundle_inputs() {
+    let error = SyncCliArgs::try_parse_from([
+        "grafana-util",
+        "bundle",
+        "--dashboard-export-dir",
+        "./dashboards/raw",
+        "--dashboard-provisioning-dir",
+        "./dashboards/provisioning",
+    ])
+    .unwrap_err();
+
+    assert!(error.to_string().contains("cannot be used with"));
 }

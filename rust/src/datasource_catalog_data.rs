@@ -1,3 +1,5 @@
+//! Catalog lookup/modeling logic for Core data sources and metadata.
+
 use clap::ValueEnum;
 use serde_json::Value;
 

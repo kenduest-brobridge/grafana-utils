@@ -3,6 +3,7 @@
 use serde_json::{Map, Value};
 
 use crate::common::string_field;
+pub(crate) use crate::tabular_output::render_yaml;
 
 use super::Scope;
 

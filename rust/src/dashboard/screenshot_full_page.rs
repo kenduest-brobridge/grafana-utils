@@ -1,3 +1,8 @@
+//! Capture full-page dashboard screenshots from a browser session.
+//! This module computes the viewport clip, stitches page segments, and applies the
+//! optional header overlay for screenshot exports. It handles browser-side capture
+//! details only, so call sites can stay focused on CLI arguments and output format.
+
 use headless_chrome::protocol::cdp::Page;
 use image::{DynamicImage, GenericImage, ImageFormat, RgbaImage};
 use serde_json::{json, Value};

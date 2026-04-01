@@ -1,3 +1,5 @@
+//! Rust regression coverage for Dashboard behavior at this module boundary.
+
 use super::test_support::{
     build_impact_document, build_topology_document, render_impact_text, render_topology_dot,
     render_topology_mermaid,

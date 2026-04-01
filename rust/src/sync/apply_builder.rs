@@ -1,3 +1,8 @@
+//! Build an executable sync apply intent from a reviewed plan document.
+//! This module checks plan kind, enforces review and approval gates, and extracts the
+//! runnable operations that are safe to hand to the apply executor. It rejects plans
+//! that are unreviewed, unsupported, or missing explicit approval.
+
 use super::json::{require_json_array_field, require_json_object};
 use super::workbench::{SYNC_APPLY_INTENT_KIND, SYNC_APPLY_INTENT_SCHEMA_VERSION, SYNC_PLAN_KIND};
 use crate::common::{message, tool_version, Result};

@@ -1,3 +1,5 @@
+//! Interactive browse workflows and terminal-driven state flow for Access entities.
+
 use crate::tui_shell;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};

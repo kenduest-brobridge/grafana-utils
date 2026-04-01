@@ -1,3 +1,5 @@
+//! Inspection path for Dashboard resources: analysis, extraction, and report shaping.
+
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;

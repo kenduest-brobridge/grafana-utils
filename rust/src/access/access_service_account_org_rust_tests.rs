@@ -1,3 +1,5 @@
+//! Rust regression coverage for Access behavior at this module boundary.
+
 use super::*;
 
 #[test]
@@ -9,7 +11,8 @@ fn service_account_list_with_request_reads_search() {
         per_page: 100,
         table: false,
         csv: false,
-        json: true,
+        json: false,
+        yaml: true,
         output_format: None,
     };
     let mut calls = Vec::new();
@@ -694,7 +697,8 @@ fn list_orgs_with_request_reads_orgs_and_memberships() {
         with_users: true,
         table: false,
         csv: false,
-        json: true,
+        json: false,
+        yaml: true,
         output_format: None,
     };
     let mut calls = Vec::new();

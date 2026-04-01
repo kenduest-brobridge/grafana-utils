@@ -131,6 +131,7 @@ fn diff_dashboards_with_client_returns_zero_for_matching_dashboard() {
     let args = DiffArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         import_dir: raw_dir,
+        input_format: test_support::DashboardImportInputFormat::Raw,
         import_folder_uid: Some("old-folder".to_string()),
         context_lines: 3,
     };
@@ -179,6 +180,7 @@ fn diff_dashboards_with_client_detects_dashboard_difference() {
     let args = DiffArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         import_dir: raw_dir,
+        input_format: test_support::DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         context_lines: 3,
     };
@@ -195,4 +197,78 @@ fn diff_dashboards_with_client_detects_dashboard_difference() {
     .unwrap();
 
     assert_eq!(count, 1);
+}
+
+#[test]
+fn diff_dashboards_with_client_supports_provisioning_root() {
+    let temp = tempdir().unwrap();
+    let provisioning_root = temp.path().join("provisioning");
+    let dashboards_dir = provisioning_root.join("dashboards");
+    fs::create_dir_all(&dashboards_dir).unwrap();
+    fs::write(
+        dashboards_dir.join("cpu.json"),
+        serde_json::to_string_pretty(&json!({
+            "uid": "abc",
+            "title": "CPU"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let args = DiffArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        import_dir: provisioning_root,
+        input_format: test_support::DashboardImportInputFormat::Provisioning,
+        import_folder_uid: None,
+        context_lines: 3,
+    };
+
+    let count = diff_dashboards_with_request(
+        |_method, path, _params, _payload| match path {
+            "/api/dashboards/uid/abc" => Ok(Some(json!({
+                "dashboard": {"uid": "abc", "title": "CPU"}
+            }))),
+            _ => Err(test_support::message(format!("unexpected path {path}"))),
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 0);
+}
+
+#[test]
+fn diff_dashboards_with_client_supports_provisioning_dashboards_dir() {
+    let temp = tempdir().unwrap();
+    let provisioning_root = temp.path().join("provisioning");
+    let dashboards_dir = provisioning_root.join("dashboards");
+    fs::create_dir_all(dashboards_dir.join("nested")).unwrap();
+    fs::write(
+        dashboards_dir.join("nested/cpu.json"),
+        serde_json::to_string_pretty(&json!({
+            "uid": "abc",
+            "title": "CPU"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let args = DiffArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        import_dir: dashboards_dir,
+        input_format: test_support::DashboardImportInputFormat::Provisioning,
+        import_folder_uid: None,
+        context_lines: 3,
+    };
+
+    let count = diff_dashboards_with_request(
+        |_method, path, _params, _payload| match path {
+            "/api/dashboards/uid/abc" => Ok(Some(json!({
+                "dashboard": {"uid": "abc", "title": "CPU"}
+            }))),
+            _ => Err(test_support::message(format!("unexpected path {path}"))),
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 0);
 }

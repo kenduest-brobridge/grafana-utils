@@ -8,6 +8,7 @@ use super::{
     with_dashboard_import_live_preflight, write_basic_raw_export,
     write_combined_export_root_metadata, ImportArgs, EXPORT_METADATA_FILENAME, TOOL_SCHEMA_VERSION,
 };
+use crate::dashboard::DashboardImportInputFormat;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::Path;

@@ -1,3 +1,5 @@
+//! Interactive browse workflows and terminal-driven state flow for Access entities.
+
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use reqwest::Method;
 use serde_json::{Map, Value};

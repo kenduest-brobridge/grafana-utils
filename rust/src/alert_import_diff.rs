@@ -1,3 +1,5 @@
+//! Import orchestration for Core resources, including input normalization and apply contract handling.
+
 use serde_json::{json, Map, Value};
 
 use crate::common::{message, string_field, Result};

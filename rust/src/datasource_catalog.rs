@@ -22,5 +22,7 @@ pub use datasource_catalog_lookup::{
     supported_datasource_catalog,
 };
 pub use datasource_catalog_render::{
-    render_supported_datasource_catalog_json, render_supported_datasource_catalog_text,
+    render_supported_datasource_catalog_csv, render_supported_datasource_catalog_json,
+    render_supported_datasource_catalog_table, render_supported_datasource_catalog_text,
+    render_supported_datasource_catalog_yaml,
 };

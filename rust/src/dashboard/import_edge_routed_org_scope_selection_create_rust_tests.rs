@@ -412,6 +412,7 @@ fn import_dashboards_with_use_export_org_round_trips_combined_export_root_into_s
         let diff_args = DiffArgs {
             common: make_common_args("http://127.0.0.1:3000".to_string()),
             import_dir: import_dir.clone(),
+            input_format: crate::dashboard::DashboardImportInputFormat::Raw,
             import_folder_uid: Some(folder_uid.to_string()),
             context_lines: 3,
         };

@@ -1,3 +1,5 @@
+//! Mutation builders and payload plumbing for Access updates.
+
 use reqwest::Method;
 use serde_json::{Map, Value};
 
@@ -5,7 +7,8 @@ use crate::common::Result;
 
 use super::super::super::render::{
     format_table, map_get_text, normalize_service_account_row, render_csv, render_objects_json,
-    service_account_role_to_api, service_account_summary_line, service_account_table_rows,
+    render_yaml, service_account_role_to_api, service_account_summary_line,
+    service_account_table_rows,
 };
 use super::super::super::{
     ServiceAccountAddArgs, ServiceAccountListArgs, ServiceAccountTokenAddArgs,
@@ -46,6 +49,8 @@ where
     }
     if args.json {
         println!("{}", render_objects_json(&rows)?);
+    } else if args.yaml {
+        println!("{}", render_yaml(&rows)?);
     } else if args.csv {
         for line in render_csv(
             &["id", "name", "login", "role", "disabled", "tokens", "orgId"],

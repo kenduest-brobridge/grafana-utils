@@ -1,7 +1,11 @@
-//! Export orchestration for dashboards.
-//! Collects org/catalog context, resolves metadata, writes raw and prompt variants, and emits
-//! progress/formatting output for CLI-facing export modes.
+//! Export dashboards into staged artifact trees.
+//!
+//! Responsibilities:
+//! - Resolve dashboards from live/org metadata and normalize folder hierarchy.
+//! - Render staged export variants (`raw`, `prompt`, `provisioning`) using shared helpers.
+//! - Build dashboard export metadata/index artifacts and stream operator-facing progress/output.
 use reqwest::Method;
+use serde::Serialize;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 use std::fs;
@@ -23,7 +27,7 @@ use super::{
     ExportArgs, ExportOrgSummary, FolderInventoryItem, RootExportIndex,
     DASHBOARD_PERMISSION_BUNDLE_FILENAME, DATASOURCE_INVENTORY_FILENAME, DEFAULT_DASHBOARD_TITLE,
     DEFAULT_FOLDER_TITLE, DEFAULT_UNKNOWN_UID, EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME,
-    PROMPT_EXPORT_SUBDIR, RAW_EXPORT_SUBDIR,
+    PROMPT_EXPORT_SUBDIR, PROVISIONING_EXPORT_SUBDIR, RAW_EXPORT_SUBDIR,
 };
 #[path = "export_support.rs"]
 mod export_support;
@@ -66,11 +70,96 @@ pub fn build_output_path(output_dir: &Path, summary: &Map<String, Value>, flat: 
 ///
 /// Args: see function signature.
 /// Returns: see implementation.
-pub fn build_export_variant_dirs(output_dir: &Path) -> (PathBuf, PathBuf) {
+pub fn build_export_variant_dirs(output_dir: &Path) -> (PathBuf, PathBuf, PathBuf) {
     (
         output_dir.join(RAW_EXPORT_SUBDIR),
         output_dir.join(PROMPT_EXPORT_SUBDIR),
+        output_dir.join(PROVISIONING_EXPORT_SUBDIR),
     )
+}
+
+#[derive(Serialize)]
+struct ProvisioningOptions {
+    path: String,
+    #[serde(rename = "foldersFromFilesStructure")]
+    folders_from_files_structure: bool,
+}
+
+#[derive(Serialize)]
+struct ProvisioningProvider {
+    name: String,
+    #[serde(rename = "orgId")]
+    org_id: i64,
+    #[serde(rename = "type")]
+    provider_type: String,
+    #[serde(rename = "disableDeletion")]
+    disable_deletion: bool,
+    #[serde(rename = "allowUiUpdates")]
+    allow_ui_updates: bool,
+    #[serde(rename = "updateIntervalSeconds")]
+    update_interval_seconds: i64,
+    options: ProvisioningOptions,
+}
+
+#[derive(Serialize)]
+struct ProvisioningConfig {
+    #[serde(rename = "apiVersion")]
+    api_version: i64,
+    providers: Vec<ProvisioningProvider>,
+}
+
+fn build_provisioning_config(
+    org_id: i64,
+    provider_name: &str,
+    dashboard_path: &Path,
+    disable_deletion: bool,
+    allow_ui_updates: bool,
+    update_interval_seconds: i64,
+) -> ProvisioningConfig {
+    let path = dashboard_path
+        .canonicalize()
+        .unwrap_or_else(|_| dashboard_path.to_path_buf())
+        .display()
+        .to_string();
+    ProvisioningConfig {
+        api_version: 1,
+        providers: vec![ProvisioningProvider {
+            name: provider_name.to_string(),
+            org_id,
+            provider_type: "file".to_string(),
+            disable_deletion,
+            allow_ui_updates,
+            update_interval_seconds,
+            options: ProvisioningOptions {
+                path,
+                folders_from_files_structure: true,
+            },
+        }],
+    }
+}
+
+fn write_yaml_document<T: Serialize>(
+    payload: &T,
+    output_path: &Path,
+    overwrite: bool,
+) -> Result<()> {
+    if output_path.exists() && !overwrite {
+        return Err(message(format!(
+            "Refusing to overwrite existing file: {}. Use --overwrite.",
+            output_path.display()
+        )));
+    }
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let rendered = serde_yaml::to_string(payload).map_err(|error| {
+        message(format!(
+            "Failed to serialize YAML document for {}: {error}",
+            output_path.display()
+        ))
+    })?;
+    fs::write(output_path, rendered)?;
+    Ok(())
 }
 
 /// format export progress line.
@@ -110,9 +199,12 @@ pub(crate) fn export_dashboards_in_scope_with_request<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    if args.without_dashboard_raw && args.without_dashboard_prompt {
+    if args.without_dashboard_raw
+        && args.without_dashboard_prompt
+        && args.without_dashboard_provisioning
+    {
         return Err(message(
-            "Nothing to export. Remove one of --without-dashboard-raw or --without-dashboard-prompt.",
+            "Nothing to export. Remove one of --without-dashboard-raw, --without-dashboard-prompt, or --without-dashboard-provisioning.",
         ));
     }
     let mut scoped_request = |method: Method,
@@ -140,12 +232,18 @@ where
     } else {
         args.export_dir.clone()
     };
-    let (raw_dir, prompt_dir) = build_export_variant_dirs(&scope_output_dir);
+    let (raw_dir, prompt_dir, provisioning_dir) = build_export_variant_dirs(&scope_output_dir);
+    let provisioning_dashboards_dir = provisioning_dir.join("dashboards");
+    let provisioning_config_dir = provisioning_dir.join("provisioning");
     if !args.dry_run && !args.without_dashboard_raw {
         fs::create_dir_all(&raw_dir)?;
     }
     if !args.dry_run && !args.without_dashboard_prompt {
         fs::create_dir_all(&prompt_dir)?;
+    }
+    if !args.dry_run && !args.without_dashboard_provisioning {
+        fs::create_dir_all(&provisioning_dashboards_dir)?;
+        fs::create_dir_all(&provisioning_config_dir)?;
     }
     let datasource_list = list_datasources_with_request(&mut scoped_request)?;
     let datasource_inventory = datasource_list
@@ -224,6 +322,26 @@ where
                 );
             }
             item.prompt_path = Some(prompt_path.display().to_string());
+        }
+        if !args.without_dashboard_provisioning {
+            let provisioning_document = build_preserved_web_import_document(&payload)?;
+            let provisioning_path =
+                build_output_path(&provisioning_dashboards_dir, &summary, false);
+            if !args.dry_run {
+                write_dashboard(&provisioning_document, &provisioning_path, args.overwrite)?;
+            }
+            if args.verbose {
+                println!(
+                    "{}",
+                    format_export_verbose_line(
+                        "provisioning",
+                        &uid,
+                        &provisioning_path,
+                        args.dry_run
+                    )
+                );
+            }
+            item.provisioning_path = Some(provisioning_path.display().to_string());
         }
         exported_count += 1;
         index_items.push(item);
@@ -304,10 +422,64 @@ where
         }
         prompt_index_path = Some(index_path);
     }
+    let mut provisioning_index_path = None;
+    if !args.without_dashboard_provisioning {
+        let index_path = provisioning_dir.join("index.json");
+        let metadata_path = provisioning_dir.join(EXPORT_METADATA_FILENAME);
+        let config_path = provisioning_config_dir.join("dashboards.yaml");
+        let provisioning_provider_org_id = args
+            .provisioning_provider_org_id
+            .unwrap_or_else(|| current_org_id.parse::<i64>().unwrap_or(1));
+        let provisioning_provider_path = args
+            .provisioning_provider_path
+            .as_deref()
+            .unwrap_or(&provisioning_dashboards_dir);
+        if !args.dry_run {
+            write_json_document(
+                &build_variant_index(
+                    &index_items,
+                    |item| item.provisioning_path.as_deref(),
+                    "grafana-file-provisioning-dashboard",
+                ),
+                &index_path,
+            )?;
+            write_json_document(
+                &build_export_metadata(
+                    PROVISIONING_EXPORT_SUBDIR,
+                    index_items
+                        .iter()
+                        .filter(|item| item.provisioning_path.is_some())
+                        .count(),
+                    Some("grafana-file-provisioning-dashboard"),
+                    None,
+                    None,
+                    None,
+                    Some(&current_org_name),
+                    Some(&current_org_id),
+                    None,
+                ),
+                &metadata_path,
+            )?;
+            write_yaml_document(
+                &build_provisioning_config(
+                    provisioning_provider_org_id,
+                    &args.provisioning_provider_name,
+                    provisioning_provider_path,
+                    args.provisioning_provider_disable_deletion,
+                    args.provisioning_provider_allow_ui_updates,
+                    args.provisioning_provider_update_interval_seconds,
+                ),
+                &config_path,
+                args.overwrite,
+            )?;
+        }
+        provisioning_index_path = Some(index_path);
+    }
     let root_index = build_root_export_index(
         &index_items,
         raw_index_path.as_deref(),
         prompt_index_path.as_deref(),
+        provisioning_index_path.as_deref(),
         &folder_inventory,
     );
     let used_datasources = build_used_datasource_summaries(
@@ -359,7 +531,7 @@ fn write_all_orgs_root_export_bundle(
     org_summaries: Vec<ExportOrgSummary>,
 ) -> Result<()> {
     write_json_document(
-        &build_root_export_index(root_items, None, None, root_folders),
+        &build_root_export_index(root_items, None, None, None, root_folders),
         &export_dir.join("index.json"),
     )?;
     write_json_document(

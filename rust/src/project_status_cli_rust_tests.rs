@@ -187,6 +187,119 @@ fn write_change_desired_fixture(path: &Path) {
     .unwrap();
 }
 
+fn write_dashboard_export_fixture(dir: &Path) {
+    fs::create_dir_all(dir.join("General")).unwrap();
+    fs::write(
+        dir.join("export-metadata.json"),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": 1,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid",
+            "foldersFile": "folders.json"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        dir.join("folders.json"),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "general",
+                "title": "General",
+                "parentUid": null,
+                "path": "General",
+                "org": "Main Org.",
+                "orgId": "1"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        dir.join("General").join("cpu.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "panels": []
+            },
+            "meta": {"folderUid": "general"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+}
+
+fn write_datasource_export_fixture(dir: &Path, variant: &str) {
+    fs::create_dir_all(dir).unwrap();
+    fs::write(
+        dir.join("export-metadata.json"),
+        serde_json::to_string_pretty(&json!({
+            "schemaVersion": 1,
+            "kind": "grafana-utils-datasource-export-index",
+            "variant": variant,
+            "resource": "datasource",
+            "datasourcesFile": "datasources.json",
+            "indexFile": "index.json",
+            "datasourceCount": 2,
+            "format": "grafana-datasource-inventory-v1"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        dir.join("datasources.json"),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "prom-main",
+                "name": "Prometheus Main",
+                "type": "prometheus",
+                "access": "proxy",
+                "url": "http://prometheus:9090",
+                "isDefault": "true",
+                "org": "Main Org.",
+                "orgId": "1"
+            },
+            {
+                "uid": "loki-main",
+                "name": "Loki Main",
+                "type": "loki",
+                "access": "proxy",
+                "url": "http://loki:3100",
+                "isDefault": "false",
+                "org": "Ops Org.",
+                "orgId": "2"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+}
+
+fn write_datasource_scope_fixture(dir: &Path, org_id: &str, org_name: &str) {
+    fs::create_dir_all(dir).unwrap();
+    fs::write(
+        dir.join("datasources.json"),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": format!("prom-{}", org_id),
+                "name": "Prometheus Main",
+                "type": "prometheus",
+                "access": "proxy",
+                "url": "http://prometheus:9090",
+                "isDefault": "true",
+                "org": org_name,
+                "orgId": org_id
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+}
+
 fn staged_args(desired_file: PathBuf) -> ProjectStatusStagedArgs {
     ProjectStatusStagedArgs {
         dashboard_export_dir: None,
@@ -439,6 +552,7 @@ fn project_status_cli_help_and_parse_support_datasource_provisioning_file() {
     let help = subcommand.render_long_help().to_string();
     assert!(help.contains("--dashboard-provisioning-dir"));
     assert!(help.contains("--datasource-provisioning-file"));
+    assert!(help.contains("Render project status as table, csv, text, json, yaml"));
 
     let args = ProjectStatusCliArgs::parse_from([
         "grafana-util",
@@ -461,6 +575,82 @@ fn project_status_cli_help_and_parse_support_datasource_provisioning_file() {
 }
 
 #[test]
+fn project_status_cli_supports_all_output_modes_for_staged_and_live_commands() {
+    for (output, expected) in [
+        ("table", ProjectStatusOutputFormat::Table),
+        ("csv", ProjectStatusOutputFormat::Csv),
+        ("text", ProjectStatusOutputFormat::Text),
+        ("json", ProjectStatusOutputFormat::Json),
+        ("yaml", ProjectStatusOutputFormat::Yaml),
+    ] {
+        let staged_args = ProjectStatusCliArgs::parse_from([
+            "grafana-util",
+            "staged",
+            "--desired-file",
+            "./desired.json",
+            "--output",
+            output,
+        ]);
+        let live_args = ProjectStatusCliArgs::parse_from([
+            "grafana-util",
+            "live",
+            "--url",
+            "http://127.0.0.1:3000",
+            "--output",
+            output,
+        ]);
+
+        match staged_args.command {
+            ProjectStatusSubcommand::Staged(inner) => {
+                assert_eq!(inner.output, expected);
+            }
+            _ => panic!("expected staged"),
+        }
+
+        match live_args.command {
+            ProjectStatusSubcommand::Live(inner) => {
+                assert_eq!(inner.output, expected);
+            }
+            _ => panic!("expected live"),
+        }
+    }
+
+    #[cfg(feature = "tui")]
+    {
+        let staged_args = ProjectStatusCliArgs::parse_from([
+            "grafana-util",
+            "staged",
+            "--desired-file",
+            "./desired.json",
+            "--output",
+            "interactive",
+        ]);
+        let live_args = ProjectStatusCliArgs::parse_from([
+            "grafana-util",
+            "live",
+            "--url",
+            "http://127.0.0.1:3000",
+            "--output",
+            "interactive",
+        ]);
+
+        match staged_args.command {
+            ProjectStatusSubcommand::Staged(inner) => {
+                assert_eq!(inner.output, ProjectStatusOutputFormat::Interactive);
+            }
+            _ => panic!("expected staged"),
+        }
+
+        match live_args.command {
+            ProjectStatusSubcommand::Live(inner) => {
+                assert_eq!(inner.output, ProjectStatusOutputFormat::Interactive);
+            }
+            _ => panic!("expected live"),
+        }
+    }
+}
+
+#[test]
 fn project_status_cli_supports_dashboard_provisioning_dir() {
     let args = ProjectStatusCliArgs::parse_from([
         "grafana-util",
@@ -476,6 +666,71 @@ fn project_status_cli_supports_dashboard_provisioning_dir() {
             assert_eq!(
                 inner.dashboard_provisioning_dir,
                 Some(Path::new("./dashboards/provisioning").to_path_buf())
+            );
+        }
+        _ => panic!("expected staged"),
+    }
+}
+
+#[test]
+fn project_status_cli_supports_combined_dashboard_and_datasource_export_roots() {
+    let temp = tempdir().unwrap();
+    let dashboard_export_dir = temp.path().join("dashboards");
+    let datasource_export_dir = temp.path().join("datasources");
+    write_dashboard_export_fixture(&dashboard_export_dir);
+    write_datasource_export_fixture(&datasource_export_dir, "all-orgs-root");
+    write_datasource_scope_fixture(
+        &datasource_export_dir.join("org_1_Main_Org"),
+        "1",
+        "Main Org.",
+    );
+    write_datasource_scope_fixture(
+        &datasource_export_dir.join("org_2_Ops_Org"),
+        "2",
+        "Ops Org.",
+    );
+
+    let args = ProjectStatusCliArgs::parse_from([
+        "grafana-util",
+        "staged",
+        "--dashboard-export-dir",
+        dashboard_export_dir.to_str().unwrap(),
+        "--datasource-export-dir",
+        datasource_export_dir.to_str().unwrap(),
+        "--output",
+        "json",
+    ]);
+
+    match args.command {
+        ProjectStatusSubcommand::Staged(inner) => {
+            assert_eq!(inner.dashboard_export_dir, Some(dashboard_export_dir));
+            assert_eq!(inner.datasource_export_dir, Some(datasource_export_dir));
+
+            let status = execute_project_status_staged(&inner).unwrap();
+            let dashboard_domain = status
+                .domains
+                .iter()
+                .find(|domain| domain.id == "dashboard")
+                .expect("dashboard domain");
+            let datasource_domain = status
+                .domains
+                .iter()
+                .find(|domain| domain.id == "datasource")
+                .expect("datasource domain");
+
+            assert_eq!(status.scope, "staged-only");
+            assert_eq!(status.overall.present_count, 2);
+            assert_eq!(dashboard_domain.status, PROJECT_STATUS_READY);
+            assert_eq!(dashboard_domain.reason_code, PROJECT_STATUS_READY);
+            assert_eq!(
+                dashboard_domain.source_kinds,
+                vec!["dashboard-export".to_string()]
+            );
+            assert_eq!(datasource_domain.status, PROJECT_STATUS_READY);
+            assert_eq!(datasource_domain.reason_code, PROJECT_STATUS_READY);
+            assert_eq!(
+                datasource_domain.source_kinds,
+                vec!["datasource-export".to_string()]
             );
         }
         _ => panic!("expected staged"),

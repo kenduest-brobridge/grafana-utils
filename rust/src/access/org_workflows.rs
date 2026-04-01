@@ -11,7 +11,9 @@ use serde_json::{Map, Value};
 
 use crate::common::{message, string_field, value_as_object, write_json_file, Result};
 
-use super::super::render::{format_table, render_csv, render_objects_json, scalar_text};
+use super::super::render::{
+    format_table, render_csv, render_objects_json, render_yaml, scalar_text,
+};
 use super::super::{
     OrgAddArgs, OrgDeleteArgs, OrgDiffArgs, OrgExportArgs, OrgImportArgs, OrgListArgs,
     OrgModifyArgs, ACCESS_EXPORT_KIND_ORGS, ACCESS_EXPORT_METADATA_FILENAME, ACCESS_EXPORT_VERSION,
@@ -56,6 +58,8 @@ where
     }
     if args.json {
         println!("{}", render_objects_json(&rows)?);
+    } else if args.yaml {
+        println!("{}", render_yaml(&rows)?);
     } else if args.table {
         for line in format_table(&["ID", "NAME", "USER_COUNT"], &org_table_rows(&rows)) {
             println!("{line}");

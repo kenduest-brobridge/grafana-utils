@@ -1,3 +1,5 @@
+//! Terminal interaction layer for Sync operations and command-driven review flows.
+
 use crate::common::Result;
 #[cfg(feature = "tui")]
 use crate::tui_shell;

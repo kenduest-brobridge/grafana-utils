@@ -33,7 +33,10 @@ DASHBOARD_COMMAND_HELP = {
     "list": "List live dashboard summaries from Grafana.",
     "import": "Import dashboards from exported raw JSON files.",
     "delete": "Delete live dashboards by UID or folder path.",
-    "diff": "Compare exported raw dashboards with the current Grafana state.",
+    "diff": (
+        "Compare exported raw dashboards with the current Grafana state; "
+        "inspect provisioning trees separately with dashboard inspect-export --input-format provisioning."
+    ),
     "inspect-export": "Analyze a raw dashboard export directory offline.",
     "inspect-live": "Analyze live Grafana dashboards without writing a persistent export.",
     "inspect-vars": "List dashboard templating variables from live Grafana.",
@@ -77,10 +80,11 @@ def _print_dashboard_group_help() -> None:
         "Usage: grafana-util dashboard <COMMAND> [OPTIONS]\n\n"
         "Commands:\n"
         "  export             Export dashboards into raw/ and prompt/ variants.\n"
-            "  list               List live dashboard summaries from Grafana.\n"
-            "  import             Import dashboards from exported raw JSON files.\n"
-            "  delete             Delete live dashboards by UID or folder path.\n"
-            "  diff               Compare exported raw dashboards with the current Grafana state.\n"
+        "  list               List live dashboard summaries from Grafana.\n"
+        "  import             Import dashboards from exported raw JSON files.\n"
+        "  delete             Delete live dashboards by UID or folder path.\n"
+        "  diff               Compare exported raw dashboards with the current Grafana state; "
+        "inspect provisioning trees separately with dashboard inspect-export --input-format provisioning.\n"
         "  inspect-export     Analyze a raw dashboard export directory offline.\n"
         "  inspect-live       Analyze live Grafana dashboards without writing a persistent export.\n"
         "  inspect-vars       List dashboard templating variables from live Grafana.\n"

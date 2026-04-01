@@ -1,3 +1,10 @@
+//! Profile configuration loading, merge, and persistence contracts.
+//!
+//! Responsibilities:
+//! - Resolve active profile selection from CLI/profile/env inputs.
+//! - Merge profile data with inline arguments and defaults.
+//! - Read/write profile configuration files used by Rust/CLI entrypoints.
+
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;

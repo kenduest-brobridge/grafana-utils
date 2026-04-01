@@ -38,7 +38,9 @@ use super::files::{
     discover_dashboard_files, extract_dashboard_object, load_datasource_inventory,
     load_export_metadata, load_folder_inventory, load_json_file,
 };
-pub(crate) use super::inspect_live::{prepare_inspect_export_import_dir, TempInspectDir};
+#[cfg(test)]
+pub(crate) use super::inspect_live::prepare_inspect_export_import_dir;
+pub(crate) use super::inspect_live::TempInspectDir;
 #[cfg(test)]
 pub(crate) use super::inspect_query::QueryAnalysis;
 #[allow(unused_imports)]
@@ -71,7 +73,7 @@ pub(crate) use inspect_extract::{
 pub(crate) use inspect_orchestration::analyze_export_dir;
 #[allow(unused_imports)]
 pub(crate) use inspect_orchestration::{
-    apply_query_report_filters, effective_inspect_report_format,
+    apply_query_report_filters, effective_inspect_report_format, resolve_inspect_export_import_dir,
     validate_inspect_export_report_args,
 };
 pub(crate) use inspect_output::{
@@ -143,12 +145,13 @@ fn summarize_datasource_inventory_usage(
     (reference_count, dashboards.len())
 }
 
-pub(crate) fn build_export_inspection_summary(
+fn build_export_inspection_summary_with_variant(
     import_dir: &Path,
+    expected_variant: Option<&str>,
 ) -> Result<ExportInspectionSummary> {
     // Summary aggregation must stay file-system driven and deterministic so export and
     // live inspection can converge on the same coverage counts after staging.
-    let metadata = load_export_metadata(import_dir, Some(RAW_EXPORT_SUBDIR))?;
+    let metadata = load_export_metadata(import_dir, expected_variant)?;
     let source_root = load_inspect_source_root(import_dir);
     let export_org = resolve_export_identity_field(import_dir, metadata.as_ref(), "org")?;
     let export_org_id = resolve_export_identity_field(import_dir, metadata.as_ref(), "orgId")?;
@@ -310,4 +313,17 @@ pub(crate) fn build_export_inspection_summary(
         orphaned_datasources: orphaned_datasource_summary,
         mixed_dashboards,
     })
+}
+
+pub(crate) fn build_export_inspection_summary(
+    import_dir: &Path,
+) -> Result<ExportInspectionSummary> {
+    build_export_inspection_summary_with_variant(import_dir, Some(RAW_EXPORT_SUBDIR))
+}
+
+pub(crate) fn build_export_inspection_summary_for_variant(
+    import_dir: &Path,
+    expected_variant: &str,
+) -> Result<ExportInspectionSummary> {
+    build_export_inspection_summary_with_variant(import_dir, Some(expected_variant))
 }

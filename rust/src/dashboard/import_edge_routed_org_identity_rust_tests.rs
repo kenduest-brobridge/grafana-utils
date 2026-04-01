@@ -13,6 +13,7 @@ use super::super::super::{
     write_combined_export_root_metadata,
 };
 use crate::common::api_response;
+use crate::dashboard::DashboardImportInputFormat;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::PathBuf;
@@ -66,6 +67,7 @@ fn import_dashboards_rejects_mismatched_export_org_with_explicit_org_id() {
         only_org_id: Vec::new(),
         create_missing_orgs: false,
         import_dir: raw_dir,
+        input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         ensure_folders: false,
         replace_existing: false,
@@ -91,7 +93,7 @@ fn import_dashboards_rejects_mismatched_export_org_with_explicit_org_id() {
 
     assert!(error
         .to_string()
-        .contains("raw export orgId 1 does not match target org 2"));
+        .contains("export orgId 1 does not match target org 2"));
 }
 
 #[test]
@@ -142,6 +144,7 @@ fn import_dashboards_rejects_mismatched_export_org_with_current_token_org() {
         only_org_id: Vec::new(),
         create_missing_orgs: false,
         import_dir: raw_dir,
+        input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         ensure_folders: false,
         replace_existing: false,
@@ -173,7 +176,7 @@ fn import_dashboards_rejects_mismatched_export_org_with_current_token_org() {
 
     assert!(error
         .to_string()
-        .contains("raw export orgId 1 does not match target org 2"));
+        .contains("export orgId 1 does not match target org 2"));
 }
 
 #[test]
@@ -224,6 +227,7 @@ fn import_dashboards_allows_matching_export_org_with_current_org_lookup() {
         only_org_id: Vec::new(),
         create_missing_orgs: false,
         import_dir: raw_dir,
+        input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         ensure_folders: false,
         replace_existing: false,

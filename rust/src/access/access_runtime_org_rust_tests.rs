@@ -1,3 +1,9 @@
+//! Access runtime tests for CLI command routing and argument normalization.
+//!
+//! Focus:
+//! - Ensure `access` commands are parsed into expected dispatch paths.
+//! - Assert org-scoped exports/imports keep route selection and options stable.
+
 use super::*;
 
 #[test]

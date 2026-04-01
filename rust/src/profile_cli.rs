@@ -2,18 +2,20 @@
 //!
 //! Owns the first usable `grafana-util profile` surface for listing, showing,
 //! and initializing `grafana-util.yaml`.
-use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
+use clap::{Args, CommandFactory, Parser, Subcommand};
 use serde::Serialize;
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::common::{message, validation, Result};
+use crate::dashboard::SimpleOutputFormat;
 use crate::profile_config::{
     default_profile_config_path, load_profile_config_file, render_profile_init_template,
     resolve_profile_config_path, select_profile, ConnectionProfile, ProfileConfigFile,
     SelectedProfile,
 };
+use crate::tabular_output::{render_summary_csv, render_summary_table, render_yaml};
 
 const PROFILE_HELP_TEXT: &str = "Examples:\n\n  grafana-util profile list\n  grafana-util profile show --profile prod --output-format yaml\n  grafana-util profile init --overwrite";
 
@@ -51,12 +53,6 @@ pub enum ProfileCommand {
 #[derive(Debug, Clone, Args, Default)]
 pub struct ProfileListArgs {}
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, ValueEnum)]
-pub enum ProfileShowOutputFormat {
-    Text,
-    Yaml,
-}
-
 #[derive(Debug, Clone, Args)]
 pub struct ProfileShowArgs {
     #[arg(
@@ -67,10 +63,10 @@ pub struct ProfileShowArgs {
     #[arg(
         long,
         value_enum,
-        default_value_t = ProfileShowOutputFormat::Text,
-        help = "Render the selected profile as text or YAML."
+        default_value_t = SimpleOutputFormat::Text,
+        help = "Render the selected profile as text, table, csv, json, or yaml."
     )]
-    pub output_format: ProfileShowOutputFormat,
+    pub output_format: SimpleOutputFormat,
 }
 
 #[derive(Debug, Clone, Args)]
@@ -134,6 +130,51 @@ fn render_profile_text(selected: &SelectedProfile) -> String {
     output.trim_end().to_string()
 }
 
+fn render_profile_summary_rows(selected: &SelectedProfile) -> Vec<(&'static str, String)> {
+    let profile = &selected.profile;
+    let mut rows = vec![
+        ("name", selected.name.clone()),
+        ("source_path", selected.source_path.display().to_string()),
+    ];
+    if let Some(value) = profile.url.as_deref() {
+        rows.push(("url", value.to_string()));
+    }
+    if let Some(value) = profile.token.as_deref() {
+        rows.push(("token", value.to_string()));
+    }
+    if let Some(value) = profile.token_env.as_deref() {
+        rows.push(("token_env", value.to_string()));
+    }
+    if let Some(value) = profile.username.as_deref() {
+        rows.push(("username", value.to_string()));
+    }
+    if let Some(value) = profile.username_env.as_deref() {
+        rows.push(("username_env", value.to_string()));
+    }
+    if let Some(value) = profile.password.as_deref() {
+        rows.push(("password", value.to_string()));
+    }
+    if let Some(value) = profile.password_env.as_deref() {
+        rows.push(("password_env", value.to_string()));
+    }
+    if let Some(value) = profile.org_id {
+        rows.push(("org_id", value.to_string()));
+    }
+    if let Some(value) = profile.timeout {
+        rows.push(("timeout", value.to_string()));
+    }
+    if let Some(value) = profile.verify_ssl {
+        rows.push(("verify_ssl", value.to_string()));
+    }
+    if let Some(value) = profile.insecure {
+        rows.push(("insecure", value.to_string()));
+    }
+    if let Some(value) = profile.ca_cert.as_ref() {
+        rows.push(("ca_cert", value.display().to_string()));
+    }
+    rows
+}
+
 fn append_profile_fields_text(output: &mut String, profile: &ConnectionProfile) {
     if let Some(value) = profile.url.as_deref() {
         let _ = writeln!(output, "url: {value}");
@@ -174,16 +215,22 @@ fn append_profile_fields_text(output: &mut String, profile: &ConnectionProfile) 
 }
 
 fn render_profile_yaml(selected: &SelectedProfile) -> Result<String> {
-    serde_yaml::to_string(&ProfileShowDocument {
-        name: selected.name.clone(),
-        source_path: selected.source_path.clone(),
-        profile: selected.profile.clone(),
-    })
-    .map_err(|error| {
-        message(format!(
-            "Failed to serialize selected profile as YAML: {error}"
-        ))
-    })
+    Ok(format!(
+        "{}\n",
+        render_yaml(&ProfileShowDocument {
+            name: selected.name.clone(),
+            source_path: selected.source_path.clone(),
+            profile: selected.profile.clone(),
+        })?
+    ))
+}
+
+fn render_profile_table(selected: &SelectedProfile) -> Vec<String> {
+    render_summary_table(&render_profile_summary_rows(selected))
+}
+
+fn render_profile_csv(selected: &SelectedProfile) -> Vec<String> {
+    render_summary_csv(&render_profile_summary_rows(selected))
 }
 
 fn run_profile_list() -> Result<()> {
@@ -201,11 +248,34 @@ fn run_profile_show(args: ProfileShowArgs) -> Result<()> {
     let (path, config) = load_profile_config_at_resolved_path()?;
     let selected = select_profile_or_error(&config, args.profile.as_deref(), &path)?;
     match args.output_format {
-        ProfileShowOutputFormat::Text => {
+        SimpleOutputFormat::Text => {
             println!("{}", render_profile_text(&selected));
             Ok(())
         }
-        ProfileShowOutputFormat::Yaml => {
+        SimpleOutputFormat::Table => {
+            for line in render_profile_table(&selected) {
+                println!("{line}");
+            }
+            Ok(())
+        }
+        SimpleOutputFormat::Csv => {
+            for line in render_profile_csv(&selected) {
+                println!("{line}");
+            }
+            Ok(())
+        }
+        SimpleOutputFormat::Json => {
+            println!(
+                "{}",
+                serde_json::to_string_pretty(&ProfileShowDocument {
+                    name: selected.name.clone(),
+                    source_path: selected.source_path.clone(),
+                    profile: selected.profile.clone(),
+                })?
+            );
+            Ok(())
+        }
+        SimpleOutputFormat::Yaml => {
             println!("{}", render_profile_yaml(&selected)?);
             Ok(())
         }

@@ -1,3 +1,5 @@
+//! Rust regression coverage for Dashboard behavior at this module boundary.
+
 use super::test_support::{
     build_governance_gate_tui_groups, build_governance_gate_tui_items, build_impact_tui_groups,
     filter_impact_tui_items, parse_cli_from, DashboardCliArgs, DashboardCommand,

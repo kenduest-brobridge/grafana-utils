@@ -22,6 +22,13 @@ fn export_dashboards_with_request_all_orgs_aggregates_results() {
         overwrite: true,
         without_dashboard_raw: false,
         without_dashboard_prompt: true,
+        without_dashboard_provisioning: true,
+        provisioning_provider_name: "grafana-utils-dashboards".to_string(),
+        provisioning_provider_org_id: None,
+        provisioning_provider_path: None,
+        provisioning_provider_disable_deletion: false,
+        provisioning_provider_allow_ui_updates: false,
+        provisioning_provider_update_interval_seconds: 30,
         dry_run: false,
         progress: false,
         verbose: false,
@@ -162,6 +169,7 @@ fn export_dashboards_with_request_all_orgs_aggregates_results() {
     );
     assert_eq!(aggregate_root_index["items"].as_array().unwrap().len(), 2);
     assert!(aggregate_root_index["variants"]["raw"].is_null());
+    assert!(aggregate_root_index["variants"]["provisioning"].is_null());
     assert_eq!(
         aggregate_root_index["items"][0]["raw_path"],
         Value::String(
@@ -265,6 +273,13 @@ fn export_dashboards_with_dry_run_keeps_output_dir_empty() {
         overwrite: true,
         without_dashboard_raw: false,
         without_dashboard_prompt: true,
+        without_dashboard_provisioning: true,
+        provisioning_provider_name: "grafana-utils-dashboards".to_string(),
+        provisioning_provider_org_id: None,
+        provisioning_provider_path: None,
+        provisioning_provider_disable_deletion: false,
+        provisioning_provider_allow_ui_updates: false,
+        provisioning_provider_update_interval_seconds: 30,
         dry_run: true,
         progress: false,
         verbose: false,
@@ -290,4 +305,179 @@ fn export_dashboards_with_dry_run_keeps_output_dir_empty() {
 
     assert_eq!(count, 1);
     assert!(!args.export_dir.exists());
+}
+
+#[test]
+fn export_dashboards_writes_provisioning_artifacts_in_separate_lane() {
+    let temp = tempdir().unwrap();
+    let args = ExportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        export_dir: temp.path().join("dashboards"),
+        page_size: 500,
+        org_id: None,
+        all_orgs: false,
+        flat: true,
+        overwrite: true,
+        without_dashboard_raw: true,
+        without_dashboard_prompt: true,
+        without_dashboard_provisioning: false,
+        provisioning_provider_name: "grafana-utils-dashboards".to_string(),
+        provisioning_provider_org_id: None,
+        provisioning_provider_path: None,
+        provisioning_provider_disable_deletion: false,
+        provisioning_provider_allow_ui_updates: false,
+        provisioning_provider_update_interval_seconds: 30,
+        dry_run: false,
+        progress: false,
+        verbose: false,
+    };
+
+    let count = export_dashboards_with_request(
+        |_method, path, _params, _payload| match path {
+            "/api/org" => Ok(Some(json!({"id": 7, "name": "Platform Org"}))),
+            "/api/search" => Ok(Some(
+                json!([{ "uid": "cpu-main", "title": "CPU", "folderTitle": "Infra" }]),
+            )),
+            "/api/datasources" => Ok(Some(json!([
+                {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus", "url": "http://prometheus:9090", "access": "proxy", "isDefault": true}
+            ]))),
+            "/api/dashboards/uid/cpu-main" => Ok(Some(
+                json!({"dashboard": {"id": 7, "uid": "cpu-main", "title": "CPU", "panels": []}}),
+            )),
+            _ => Err(test_support::message(format!("unexpected path {path}"))),
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 1);
+    assert!(args
+        .export_dir
+        .join("provisioning/dashboards/Infra/CPU__cpu-main.json")
+        .is_file());
+    assert!(args.export_dir.join("provisioning/index.json").is_file());
+    assert!(args
+        .export_dir
+        .join("provisioning/export-metadata.json")
+        .is_file());
+    assert!(args
+        .export_dir
+        .join("provisioning/provisioning/dashboards.yaml")
+        .is_file());
+
+    let root_index: Value =
+        serde_json::from_str(&fs::read_to_string(args.export_dir.join("index.json")).unwrap())
+            .unwrap();
+    assert_eq!(
+        root_index["variants"]["provisioning"],
+        Value::String(
+            args.export_dir
+                .join("provisioning/index.json")
+                .display()
+                .to_string()
+        )
+    );
+    assert_eq!(
+        root_index["items"][0]["provisioning_path"],
+        Value::String(
+            args.export_dir
+                .join("provisioning/dashboards/Infra/CPU__cpu-main.json")
+                .display()
+                .to_string()
+        )
+    );
+
+    let metadata: Value = serde_json::from_str(
+        &fs::read_to_string(args.export_dir.join("provisioning/export-metadata.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        metadata["variant"],
+        Value::String("provisioning".to_string())
+    );
+    assert_eq!(
+        metadata["format"],
+        Value::String("grafana-file-provisioning-dashboard".to_string())
+    );
+
+    let provider_yaml = fs::read_to_string(
+        args.export_dir
+            .join("provisioning/provisioning/dashboards.yaml"),
+    )
+    .unwrap();
+    assert!(provider_yaml.contains("apiVersion: 1"));
+    assert!(provider_yaml.contains("providers:"));
+    assert!(provider_yaml.contains("orgId: 7"));
+    assert!(provider_yaml.contains("type: file"));
+    assert!(provider_yaml.contains("foldersFromFilesStructure: true"));
+    let expected_dashboard_path = fs::canonicalize(args.export_dir.join("provisioning/dashboards"))
+        .unwrap()
+        .display()
+        .to_string();
+    assert!(provider_yaml.contains(&format!("path: {expected_dashboard_path}")));
+    assert!(!provider_yaml.contains("REPLACE_WITH_PROVISIONING_DASHBOARD_PATH"));
+}
+
+#[test]
+fn export_dashboards_writes_custom_provisioning_provider_settings() {
+    let temp = tempdir().unwrap();
+    let custom_provider_path = temp.path().join("provider-target");
+    fs::create_dir_all(&custom_provider_path).unwrap();
+    let args = ExportArgs {
+        common: make_common_args("http://127.0.0.1:3000".to_string()),
+        export_dir: temp.path().join("dashboards"),
+        page_size: 500,
+        org_id: None,
+        all_orgs: false,
+        flat: true,
+        overwrite: true,
+        without_dashboard_raw: true,
+        without_dashboard_prompt: true,
+        without_dashboard_provisioning: false,
+        provisioning_provider_name: "grafana-utils-prod".to_string(),
+        provisioning_provider_org_id: Some(42),
+        provisioning_provider_path: Some(custom_provider_path.clone()),
+        provisioning_provider_disable_deletion: true,
+        provisioning_provider_allow_ui_updates: true,
+        provisioning_provider_update_interval_seconds: 120,
+        dry_run: false,
+        progress: false,
+        verbose: false,
+    };
+
+    let count = export_dashboards_with_request(
+        |_method, path, _params, _payload| match path {
+            "/api/org" => Ok(Some(json!({"id": 7, "name": "Platform Org"}))),
+            "/api/search" => Ok(Some(
+                json!([{ "uid": "cpu-main", "title": "CPU", "folderTitle": "Infra" }]),
+            )),
+            "/api/datasources" => Ok(Some(json!([
+                {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus", "url": "http://prometheus:9090", "access": "proxy", "isDefault": true}
+            ]))),
+            "/api/dashboards/uid/cpu-main" => Ok(Some(
+                json!({"dashboard": {"id": 7, "uid": "cpu-main", "title": "CPU", "panels": []}}),
+            )),
+            _ => Err(test_support::message(format!("unexpected path {path}"))),
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 1);
+    let provider_yaml = fs::read_to_string(
+        args.export_dir
+            .join("provisioning/provisioning/dashboards.yaml"),
+    )
+    .unwrap();
+    assert!(provider_yaml.contains("name: grafana-utils-prod"));
+    assert!(provider_yaml.contains("orgId: 42"));
+    assert!(provider_yaml.contains("disableDeletion: true"));
+    assert!(provider_yaml.contains("allowUiUpdates: true"));
+    assert!(provider_yaml.contains("updateIntervalSeconds: 120"));
+    assert!(provider_yaml.contains("foldersFromFilesStructure: true"));
+    let expected_provider_path = fs::canonicalize(&custom_provider_path)
+        .unwrap()
+        .display()
+        .to_string();
+    assert!(provider_yaml.contains(&format!("path: {expected_provider_path}")));
 }

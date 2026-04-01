@@ -28,11 +28,6 @@ where
     if !args.interactive {
         return Ok(None);
     }
-    if args.use_export_org {
-        return Err(message(
-            "Dashboard import --interactive does not support --use-export-org yet.",
-        ));
-    }
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
         return Err(message("Dashboard import interactive mode requires a TTY."));
     }

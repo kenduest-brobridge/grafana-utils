@@ -1,3 +1,9 @@
+//! Sync service-account export, import, and diff workflows against Grafana.
+//! This module turns live Grafana service-account state into export bundles, loads
+//! saved bundle records for import or diff, and validates dry-run output before any
+//! write path proceeds. It is the coordination layer between HTTP fetches, local
+//! bundle files, and the operator-facing CLI commands.
+
 use reqwest::Method;
 use serde_json::{Map, Value};
 

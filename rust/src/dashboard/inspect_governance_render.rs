@@ -1,3 +1,5 @@
+//! Inspection path for Dashboard resources: analysis, extraction, and report shaping.
+
 use super::super::inspect_render::{bool_text, join_or_none, render_simple_table};
 use super::ExportInspectionGovernanceDocument;
 

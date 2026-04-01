@@ -11,6 +11,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::common::{message, string_field, value_as_object, Result};
 use crate::http::JsonHttpClient;
+use crate::tabular_output::{render_summary_csv, render_summary_table, render_yaml};
 
 #[cfg(test)]
 use super::fetch_dashboard_with_request;
@@ -268,12 +269,77 @@ pub(crate) fn render_dashboard_review_text(result: &DashboardAuthoringReviewResu
     lines
 }
 
+fn review_result_summary_rows(
+    result: &DashboardAuthoringReviewResult,
+) -> Vec<(&'static str, String)> {
+    let mut rows = vec![
+        ("file", result.input_file.clone()),
+        ("kind", result.document_kind.clone()),
+        ("title", display_text(&result.title)),
+        ("uid", display_text(&result.uid)),
+        (
+            "folder_uid",
+            result.folder_uid.clone().unwrap_or_else(|| "-".to_string()),
+        ),
+        (
+            "tags",
+            if result.tags.is_empty() {
+                "-".to_string()
+            } else {
+                result.tags.join(", ")
+            },
+        ),
+        (
+            "dashboard_id",
+            if result.dashboard_id_is_null {
+                "null".to_string()
+            } else {
+                "non-null".to_string()
+            },
+        ),
+        (
+            "meta_message",
+            if result.meta_message_present {
+                "present".to_string()
+            } else {
+                "absent".to_string()
+            },
+        ),
+    ];
+    if result.blocking_issues.is_empty() {
+        rows.push(("blocking_issues", "none".to_string()));
+    } else {
+        rows.push(("blocking_issues", result.blocking_issues.join(" | ")));
+    }
+    rows.push(("next_action", result.suggested_next_action.clone()));
+    rows
+}
+
+pub(crate) fn render_dashboard_review_table(
+    result: &DashboardAuthoringReviewResult,
+) -> Vec<String> {
+    render_summary_table(&review_result_summary_rows(result))
+}
+
+pub(crate) fn render_dashboard_review_csv(result: &DashboardAuthoringReviewResult) -> Vec<String> {
+    render_summary_csv(&review_result_summary_rows(result))
+}
+
 pub(crate) fn render_dashboard_review_json(
     result: &DashboardAuthoringReviewResult,
 ) -> Result<String> {
     Ok(format!(
         "{}\n",
         serde_json::to_string_pretty(&review_result_document(result))?
+    ))
+}
+
+pub(crate) fn render_dashboard_review_yaml(
+    result: &DashboardAuthoringReviewResult,
+) -> Result<String> {
+    Ok(format!(
+        "{}\n",
+        render_yaml(&review_result_document(result))?
     ))
 }
 

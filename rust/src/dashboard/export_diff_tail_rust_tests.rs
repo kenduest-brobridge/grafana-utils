@@ -14,8 +14,12 @@ use tempfile::tempdir;
 fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
     let args = InspectExportArgs {
         import_dir: PathBuf::from("./dashboards/raw"),
+        input_format: test_support::DashboardImportInputFormat::Raw,
+        text: false,
+        csv: false,
         json: false,
         table: false,
+        yaml: false,
         report: None,
         output_format: None,
         report_columns: Vec::new(),
@@ -116,6 +120,7 @@ fn diff_dashboards_with_client_returns_zero_for_matching_dashboard() {
     let args = DiffArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         import_dir: raw_dir,
+        input_format: test_support::DashboardImportInputFormat::Raw,
         import_folder_uid: Some("old-folder".to_string()),
         context_lines: 3,
     };
@@ -164,6 +169,7 @@ fn diff_dashboards_with_client_detects_dashboard_difference() {
     let args = DiffArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         import_dir: raw_dir,
+        input_format: test_support::DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         context_lines: 3,
     };

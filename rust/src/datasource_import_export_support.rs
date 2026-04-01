@@ -8,6 +8,7 @@
 //!   stable org fields.
 
 use reqwest::Method;
+use serde::Deserialize;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 use std::fs;
@@ -18,9 +19,10 @@ use crate::dashboard::DEFAULT_ORG_ID;
 use crate::http::JsonHttpClient;
 
 use super::datasource_export_support::{
-    parse_export_metadata, validate_datasource_contract_record,
+    parse_export_metadata, validate_datasource_contract_record, DATASOURCE_PROVISIONING_FILENAME,
+    DATASOURCE_PROVISIONING_SUBDIR,
 };
-use super::DatasourceImportArgs;
+use super::{DatasourceImportArgs, DatasourceImportInputFormat};
 
 pub(crate) const DATASOURCE_EXPORT_FILENAME: &str = "datasources.json";
 pub(crate) const EXPORT_METADATA_FILENAME: &str = "export-metadata.json";
@@ -45,10 +47,9 @@ pub(crate) struct DatasourceExportMetadata {
     pub(crate) variant: String,
     pub(crate) resource: String,
     pub(crate) datasources_file: String,
-    pub(crate) index_file: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DatasourceImportRecord {
     pub uid: String,
     pub name: String,
@@ -56,6 +57,7 @@ pub(crate) struct DatasourceImportRecord {
     pub access: String,
     pub url: String,
     pub is_default: bool,
+    pub org_name: String,
     pub org_id: String,
     pub secure_json_data_placeholders: Option<Map<String, Value>>,
 }
@@ -80,6 +82,7 @@ pub(crate) struct DatasourceExportOrgTargetPlan {
 pub(crate) struct DatasourceImportDryRunReport {
     pub(crate) mode: String,
     pub(crate) import_dir: PathBuf,
+    pub(crate) input_format: DatasourceImportInputFormat,
     pub(crate) source_org_id: String,
     pub(crate) target_org_id: String,
     pub(crate) rows: Vec<Vec<String>>,
@@ -88,6 +91,34 @@ pub(crate) struct DatasourceImportDryRunReport {
     pub(crate) would_update: usize,
     pub(crate) would_skip: usize,
     pub(crate) would_block: usize,
+}
+
+#[derive(Debug, Deserialize)]
+struct ProvisioningImportDocument {
+    #[serde(rename = "apiVersion")]
+    _api_version: Option<i64>,
+    #[serde(default)]
+    datasources: Vec<ProvisioningImportDatasource>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ProvisioningImportDatasource {
+    #[serde(default)]
+    uid: String,
+    #[serde(default)]
+    name: String,
+    #[serde(default, rename = "type")]
+    datasource_type: String,
+    #[serde(default)]
+    access: String,
+    #[serde(default)]
+    url: String,
+    #[serde(default, rename = "isDefault")]
+    is_default: bool,
+    #[serde(default, rename = "orgId")]
+    org_id: Option<i64>,
+    #[serde(default, rename = "secureJsonDataPlaceholders")]
+    secure_json_data_placeholders: Option<Map<String, Value>>,
 }
 
 pub(crate) fn fetch_current_org(client: &JsonHttpClient) -> Result<Map<String, Value>> {
@@ -135,7 +166,7 @@ pub(crate) fn org_id_string_from_value(value: Option<&Value>) -> String {
     }
 }
 
-pub(crate) fn load_import_records(
+fn load_inventory_import_records(
     import_dir: &Path,
 ) -> Result<(DatasourceExportMetadata, Vec<DatasourceImportRecord>)> {
     let metadata_path = import_dir.join(EXPORT_METADATA_FILENAME);
@@ -198,6 +229,7 @@ pub(crate) fn load_import_records(
             access: string_field(object, "access", ""),
             url: string_field(object, "url", ""),
             is_default: string_field(object, "isDefault", "false") == "true",
+            org_name: string_field(object, "org", ""),
             org_id: string_field(object, "orgId", ""),
             secure_json_data_placeholders: object
                 .get("secureJsonDataPlaceholders")
@@ -208,143 +240,234 @@ pub(crate) fn load_import_records(
     Ok((metadata, records))
 }
 
-pub(crate) fn load_diff_record_values(diff_dir: &Path) -> Result<Vec<Value>> {
-    let metadata_path = diff_dir.join(EXPORT_METADATA_FILENAME);
-    if !metadata_path.is_file() {
+fn relative_import_source_label(import_path: &Path, resolved_path: &Path) -> String {
+    if import_path.is_file() {
+        return import_path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| resolved_path.to_string_lossy().into_owned());
+    }
+    resolved_path
+        .strip_prefix(import_path)
+        .ok()
+        .filter(|path| !path.as_os_str().is_empty())
+        .map(|path| path.display().to_string())
+        .unwrap_or_else(|| {
+            resolved_path
+                .file_name()
+                .and_then(|value| value.to_str())
+                .map(|value| value.to_string())
+                .unwrap_or_else(|| resolved_path.to_string_lossy().into_owned())
+        })
+}
+
+fn resolve_provisioning_import_source_path(import_path: &Path) -> Result<PathBuf> {
+    if !import_path.exists() {
         return Err(message(format!(
-            "Datasource diff directory is missing {}: {}",
-            EXPORT_METADATA_FILENAME,
-            metadata_path.display()
+            "Datasource provisioning import path does not exist: {}",
+            import_path.display()
         )));
     }
-    let metadata = parse_export_metadata(&metadata_path)?;
-    if metadata.kind != ROOT_INDEX_KIND {
+    if import_path.is_file() {
+        let extension = import_path
+            .extension()
+            .and_then(|value| value.to_str())
+            .unwrap_or_default();
+        if matches!(extension, "yaml" | "yml") {
+            return Ok(import_path.to_path_buf());
+        }
         return Err(message(format!(
-            "Unexpected datasource export manifest kind in {}: {:?}",
-            metadata_path.display(),
-            metadata.kind
+            "Datasource provisioning import file must be YAML (.yaml or .yml): {}",
+            import_path.display()
         )));
     }
-    if metadata.schema_version != TOOL_SCHEMA_VERSION {
-        return Err(message(format!(
-            "Unsupported datasource export schemaVersion {:?} in {}. Expected {}.",
-            metadata.schema_version,
-            metadata_path.display(),
-            TOOL_SCHEMA_VERSION
-        )));
+    let candidates = [
+        import_path.join(DATASOURCE_PROVISIONING_FILENAME),
+        import_path.join("datasources.yml"),
+        import_path
+            .join(DATASOURCE_PROVISIONING_SUBDIR)
+            .join(DATASOURCE_PROVISIONING_FILENAME),
+        import_path
+            .join(DATASOURCE_PROVISIONING_SUBDIR)
+            .join("datasources.yml"),
+    ];
+    for candidate in candidates {
+        if candidate.is_file() {
+            return Ok(candidate);
+        }
     }
-    if metadata.variant != "root" || metadata.resource != "datasource" {
-        return Err(message(format!(
-            "Datasource export manifest {} is not a datasource export root.",
-            metadata_path.display()
-        )));
-    }
-    let datasources_path = diff_dir.join(&metadata.datasources_file);
-    let raw = fs::read_to_string(&datasources_path)?;
-    let value: Value = serde_json::from_str(&raw)?;
-    let items = value.as_array().ok_or_else(|| {
+    Err(message(format!(
+        "Datasource provisioning import did not find datasources.yaml under {}. Point --import-dir at the export root, provisioning directory, or concrete YAML file.",
+        import_path.display()
+    )))
+}
+
+fn load_provisioning_import_records(
+    import_path: &Path,
+) -> Result<(DatasourceExportMetadata, Vec<DatasourceImportRecord>)> {
+    let provisioning_path = resolve_provisioning_import_source_path(import_path)?;
+    let raw = fs::read_to_string(&provisioning_path)?;
+    let document: ProvisioningImportDocument = serde_yaml::from_str(&raw).map_err(|error| {
         message(format!(
-            "Datasource inventory file must contain a JSON array: {}",
-            datasources_path.display()
+            "Failed to parse datasource provisioning YAML {}: {error}",
+            provisioning_path.display()
         ))
     })?;
-    for item in items {
-        let object = item.as_object().ok_or_else(|| {
-            message(format!(
-                "Datasource inventory entry must be a JSON object: {}",
-                datasources_path.display()
-            ))
-        })?;
-        validate_datasource_contract_record(
-            object,
-            &format!("Datasource diff entry in {}", datasources_path.display()),
-        )?;
-    }
-    Ok(items.clone())
+    let records = document
+        .datasources
+        .into_iter()
+        .map(|datasource| DatasourceImportRecord {
+            uid: datasource.uid,
+            name: datasource.name,
+            datasource_type: datasource.datasource_type,
+            access: datasource.access,
+            url: datasource.url,
+            is_default: datasource.is_default,
+            org_name: String::new(),
+            org_id: datasource
+                .org_id
+                .map(|value| value.to_string())
+                .unwrap_or_default(),
+            secure_json_data_placeholders: datasource.secure_json_data_placeholders,
+        })
+        .collect::<Vec<DatasourceImportRecord>>();
+    Ok((
+        DatasourceExportMetadata {
+            schema_version: TOOL_SCHEMA_VERSION,
+            kind: ROOT_INDEX_KIND.to_string(),
+            variant: "provisioning".to_string(),
+            resource: "datasource".to_string(),
+            datasources_file: relative_import_source_label(import_path, &provisioning_path),
+        },
+        records,
+    ))
 }
 
-fn collect_source_org_ids(
-    import_dir: &Path,
-    metadata: &DatasourceExportMetadata,
-) -> Result<BTreeSet<String>> {
-    let mut org_ids = BTreeSet::new();
-    let datasources_path = import_dir.join(&metadata.datasources_file);
-    if datasources_path.is_file() {
-        let raw = fs::read_to_string(&datasources_path)?;
-        let value: Value = serde_json::from_str(&raw)?;
-        if let Some(items) = value.as_array() {
-            for item in items {
-                if let Some(object) = item.as_object() {
-                    let org_id = string_field(object, "orgId", "");
-                    if !org_id.is_empty() {
-                        org_ids.insert(org_id);
-                    }
-                }
-            }
-        }
+pub(crate) fn load_import_records(
+    import_path: &Path,
+    input_format: DatasourceImportInputFormat,
+) -> Result<(DatasourceExportMetadata, Vec<DatasourceImportRecord>)> {
+    match input_format {
+        DatasourceImportInputFormat::Inventory => load_inventory_import_records(import_path),
+        DatasourceImportInputFormat::Provisioning => load_provisioning_import_records(import_path),
     }
-    let index_path = import_dir.join(&metadata.index_file);
-    if index_path.is_file() {
-        let raw = fs::read_to_string(&index_path)?;
-        let value: Value = serde_json::from_str(&raw)?;
-        if let Some(items) = value.get("items").and_then(Value::as_array) {
-            for item in items {
-                if let Some(object) = item.as_object() {
-                    let org_id = string_field(object, "orgId", "");
-                    if !org_id.is_empty() {
-                        org_ids.insert(org_id);
-                    }
-                }
-            }
-        }
-    }
-    Ok(org_ids)
 }
 
-fn collect_source_org_names(
-    import_dir: &Path,
-    metadata: &DatasourceExportMetadata,
-) -> Result<BTreeSet<String>> {
-    let mut org_names = BTreeSet::new();
-    let datasources_path = import_dir.join(&metadata.datasources_file);
-    if datasources_path.is_file() {
-        let raw = fs::read_to_string(&datasources_path)?;
-        let value: Value = serde_json::from_str(&raw)?;
-        if let Some(items) = value.as_array() {
-            for item in items {
-                if let Some(object) = item.as_object() {
-                    let org_name = string_field(object, "org", "");
-                    if !org_name.is_empty() {
-                        org_names.insert(org_name);
-                    }
-                }
+fn datasource_import_record_to_diff_value(record: &DatasourceImportRecord) -> Value {
+    let mut object = Map::from_iter(vec![
+        ("uid".to_string(), Value::String(record.uid.clone())),
+        ("name".to_string(), Value::String(record.name.clone())),
+        (
+            "type".to_string(),
+            Value::String(record.datasource_type.clone()),
+        ),
+        ("access".to_string(), Value::String(record.access.clone())),
+        ("url".to_string(), Value::String(record.url.clone())),
+        ("isDefault".to_string(), Value::Bool(record.is_default)),
+        ("org".to_string(), Value::String(record.org_name.clone())),
+        ("orgId".to_string(), Value::String(record.org_id.clone())),
+    ]);
+    if let Some(placeholders) = &record.secure_json_data_placeholders {
+        object.insert(
+            "secureJsonDataPlaceholders".to_string(),
+            Value::Object(placeholders.clone()),
+        );
+    }
+    Value::Object(object)
+}
+
+pub(crate) fn load_diff_record_values(
+    diff_dir: &Path,
+    input_format: DatasourceImportInputFormat,
+) -> Result<Vec<Value>> {
+    match input_format {
+        DatasourceImportInputFormat::Inventory => {
+            let metadata_path = diff_dir.join(EXPORT_METADATA_FILENAME);
+            if !metadata_path.is_file() {
+                return Err(message(format!(
+                    "Datasource diff directory is missing {}: {}",
+                    EXPORT_METADATA_FILENAME,
+                    metadata_path.display()
+                )));
             }
+            let metadata = parse_export_metadata(&metadata_path)?;
+            if metadata.kind != ROOT_INDEX_KIND {
+                return Err(message(format!(
+                    "Unexpected datasource export manifest kind in {}: {:?}",
+                    metadata_path.display(),
+                    metadata.kind
+                )));
+            }
+            if metadata.schema_version != TOOL_SCHEMA_VERSION {
+                return Err(message(format!(
+                    "Unsupported datasource export schemaVersion {:?} in {}. Expected {}.",
+                    metadata.schema_version,
+                    metadata_path.display(),
+                    TOOL_SCHEMA_VERSION
+                )));
+            }
+            if metadata.variant != "root" || metadata.resource != "datasource" {
+                return Err(message(format!(
+                    "Datasource export manifest {} is not a datasource export root.",
+                    metadata_path.display()
+                )));
+            }
+            let datasources_path = diff_dir.join(&metadata.datasources_file);
+            let raw = fs::read_to_string(&datasources_path)?;
+            let value: Value = serde_json::from_str(&raw)?;
+            let items = value.as_array().ok_or_else(|| {
+                message(format!(
+                    "Datasource inventory file must contain a JSON array: {}",
+                    datasources_path.display()
+                ))
+            })?;
+            for item in items {
+                let object = item.as_object().ok_or_else(|| {
+                    message(format!(
+                        "Datasource inventory entry must be a JSON object: {}",
+                        datasources_path.display()
+                    ))
+                })?;
+                validate_datasource_contract_record(
+                    object,
+                    &format!("Datasource diff entry in {}", datasources_path.display()),
+                )?;
+            }
+            Ok(items.clone())
+        }
+        DatasourceImportInputFormat::Provisioning => {
+            let (_, records) = load_import_records(diff_dir, input_format)?;
+            Ok(records
+                .iter()
+                .map(datasource_import_record_to_diff_value)
+                .collect())
         }
     }
-    let index_path = import_dir.join(&metadata.index_file);
-    if index_path.is_file() {
-        let raw = fs::read_to_string(&index_path)?;
-        let value: Value = serde_json::from_str(&raw)?;
-        if let Some(items) = value.get("items").and_then(Value::as_array) {
-            for item in items {
-                if let Some(object) = item.as_object() {
-                    let org_name = string_field(object, "org", "");
-                    if !org_name.is_empty() {
-                        org_names.insert(org_name);
-                    }
-                }
-            }
-        }
-    }
-    Ok(org_names)
+}
+
+fn collect_source_org_ids(records: &[DatasourceImportRecord]) -> BTreeSet<String> {
+    records
+        .iter()
+        .filter(|record| !record.org_id.is_empty())
+        .map(|record| record.org_id.clone())
+        .collect()
+}
+
+fn collect_source_org_names(records: &[DatasourceImportRecord]) -> BTreeSet<String> {
+    records
+        .iter()
+        .filter(|record| !record.org_name.is_empty())
+        .map(|record| record.org_name.clone())
+        .collect()
 }
 
 fn parse_export_org_scope(
-    import_root: &Path,
     scope_dir: &Path,
+    input_format: DatasourceImportInputFormat,
 ) -> Result<DatasourceExportOrgScope> {
-    let metadata = parse_export_metadata(&scope_dir.join(EXPORT_METADATA_FILENAME))?;
-    let export_org_ids = collect_source_org_ids(scope_dir, &metadata)?;
+    let (_, records) = load_import_records(scope_dir, input_format)?;
+    let export_org_ids = collect_source_org_ids(&records);
     let (source_org_id, source_org_name_from_dir) = if export_org_ids.is_empty() {
         // Older or minimized exports may omit org metadata inside the payloads.
         // In that case the directory name is the last fallback for routed import.
@@ -393,7 +516,7 @@ fn parse_export_org_scope(
         })?;
         (source_org_id, String::new())
     };
-    let org_names = collect_source_org_names(scope_dir, &metadata)?;
+    let org_names = collect_source_org_names(&records);
     if org_names.len() > 1 {
         return Err(message(format!(
             "Cannot route datasource import by export org for {}: found multiple export org names ({}).",
@@ -409,7 +532,7 @@ fn parse_export_org_scope(
             if !source_org_name_from_dir.is_empty() {
                 source_org_name_from_dir
             } else {
-                import_root
+                scope_dir
                     .file_name()
                     .and_then(|name| name.to_str())
                     .unwrap_or("org")
@@ -444,12 +567,18 @@ pub(crate) fn discover_export_org_import_scopes(
         if !name.starts_with("org_") {
             continue;
         }
-        if !path.join(EXPORT_METADATA_FILENAME).is_file() {
+        let is_scope_dir = match args.input_format {
+            DatasourceImportInputFormat::Inventory => path.join(EXPORT_METADATA_FILENAME).is_file(),
+            DatasourceImportInputFormat::Provisioning => {
+                resolve_provisioning_import_source_path(&path).is_ok()
+            }
+        };
+        if !is_scope_dir {
             continue;
         }
         // Each child scope must be self-contained; do not infer org routing from
-        // partial directories or siblings without an export manifest.
-        let scope = parse_export_org_scope(&path, &path)?;
+        // partial directories or siblings without an importable datasource bundle.
+        let scope = parse_export_org_scope(&path, args.input_format)?;
         if !selected_org_ids.is_empty() && !selected_org_ids.contains(&scope.source_org_id) {
             continue;
         }
@@ -471,10 +600,21 @@ pub(crate) fn discover_export_org_import_scopes(
         }
     }
     if scopes.is_empty() {
-        if args.import_dir.join(EXPORT_METADATA_FILENAME).is_file() {
-            return Err(message(
-                "Datasource import with --use-export-org expects the combined export root, not one org export directory.",
-            ));
+        match args.input_format {
+            DatasourceImportInputFormat::Inventory => {
+                if args.import_dir.join(EXPORT_METADATA_FILENAME).is_file() {
+                    return Err(message(
+                        "Datasource import with --use-export-org expects the combined export root, not one org export directory.",
+                    ));
+                }
+            }
+            DatasourceImportInputFormat::Provisioning => {
+                if resolve_provisioning_import_source_path(&args.import_dir).is_ok() {
+                    return Err(message(
+                        "Datasource import with --use-export-org expects the combined export root, not one org provisioning directory or YAML file.",
+                    ));
+                }
+            }
         }
         if !selected_org_ids.is_empty() {
             return Err(message(format!(
@@ -509,8 +649,7 @@ pub(crate) fn discover_export_org_import_scopes(
 pub(crate) fn validate_matching_export_org(
     client: &JsonHttpClient,
     args: &DatasourceImportArgs,
-    import_dir: &Path,
-    metadata: &DatasourceExportMetadata,
+    records: &[DatasourceImportRecord],
 ) -> Result<()> {
     if !args.require_matching_export_org {
         return Ok(());
@@ -518,10 +657,10 @@ pub(crate) fn validate_matching_export_org(
     // This guardrail is intentionally strict: one import bundle must map to one
     // target org, otherwise a mismatched client/org selection can mutate the
     // wrong Grafana org with valid-looking datasource records.
-    let source_org_ids = collect_source_org_ids(import_dir, metadata)?;
+    let source_org_ids = collect_source_org_ids(records);
     if source_org_ids.is_empty() {
         return Err(message(
-            "Cannot verify datasource export org: no stable orgId metadata found in datasources.json or index.json.",
+            "Cannot verify datasource export org: no stable orgId metadata found in the selected datasource import input.",
         ));
     }
     if source_org_ids.len() > 1 {

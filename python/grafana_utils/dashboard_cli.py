@@ -9,7 +9,9 @@ Purpose:
 Maintainer overview:
 - The tool has two separate export targets with different consumers.
 - `raw/` keeps dashboard JSON close to Grafana's API shape so it can round-trip
-  back through `POST /api/dashboards/db`.
+  back through `POST /api/dashboards/db` and stay on the diff/import replay lane.
+- `provisioning/` keeps Grafana file-provisioning dashboards separate from the
+  replay lane so provisioning semantics do not get mixed into raw diff/import.
 - `prompt/` rewrites datasource references into Grafana web-import `__inputs`
   placeholders so a human can choose datasources during UI import.
 
@@ -31,7 +33,8 @@ Datasource rewrite pipeline for `prompt/` exports:
 
 Keep in mind:
 - `prompt/` exports are for Grafana web import, not API re-import
-- `raw/` exports are the safe input for this script's import mode
+- `raw/` exports are the safe input for this script's import and diff modes
+- `provisioning/` exports are for Grafana file-provisioning review, not the raw replay lane
 
 Caveats:
 - Keep `--output-format` normalization and dry-run column parsing in this facade.
@@ -715,8 +718,9 @@ def add_diff_cli_args(parser: argparse.ArgumentParser) -> None:
         "--import-dir",
         required=True,
         help=(
-            "Compare dashboards from this directory against Grafana. "
-            f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly."
+            "Compare dashboards from this raw export directory against Grafana. "
+            f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly; "
+            "use inspect-export --input-format provisioning for Grafana file-provisioning trees."
         ),
     )
     target_group.add_argument(
@@ -1132,7 +1136,10 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
             '--token "$GRAFANA_API_TOKEN" --export-dir ./dashboards --overwrite\n\n'
             "  Compare raw dashboard exports against local Grafana:\n"
             "    grafana-util dashboard diff --url http://localhost:3000 "
-            "--basic-user admin --basic-password admin --import-dir ./dashboards/raw"
+            "--basic-user admin --basic-password admin --import-dir ./dashboards/raw\n\n"
+            "  Inspect a Grafana file-provisioning tree separately:\n"
+            "    grafana-util dashboard inspect-export --import-dir ./dashboards/provisioning "
+            "--input-format provisioning --report tree-table"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -1292,7 +1299,9 @@ DIFF_HELP_EXAMPLES = (
     "  Compare raw dashboard exports against Grafana:\n"
     "    grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw\n\n"
     "  Compare the same export against one destination folder:\n"
-    "    grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw --import-folder-uid infra-folder"
+    "    grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw --import-folder-uid infra-folder\n\n"
+    "  Inspect a Grafana file-provisioning tree separately:\n"
+    "    grafana-util dashboard inspect-export --import-dir ./dashboards/provisioning --input-format provisioning --report tree-table"
 )
 
 INSPECT_VARS_HELP_EXAMPLES = (

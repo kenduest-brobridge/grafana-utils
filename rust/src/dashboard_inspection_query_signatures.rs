@@ -1,3 +1,5 @@
+//! Inspection path for Core resources: analysis, extraction, and report shaping.
+
 use crate::dashboard_reference_models::{
     dedupe_strings, normalize_family_name, DashboardQueryReference,
 };

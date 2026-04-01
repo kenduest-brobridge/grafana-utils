@@ -1,3 +1,8 @@
+//! Prompt operators for interactive dashboard delete resolution.
+//! This module checks for a usable TTY, asks whether deletion should target a UID or
+//! a folder path, and requests the extra confirmation needed before running a live
+//! delete. It only gathers and validates inputs; the delete request happens elsewhere.
+
 use std::io::{self, IsTerminal, Write};
 
 use crate::common::{message, Result};

@@ -1,3 +1,9 @@
+//! Shared project-status helpers used by live status workflows.
+//!
+//! Responsibilities:
+//! - Build authenticated HTTP clients and auth header sets for status checks.
+//! - Resolve per-org connection settings and default behavior for live runs.
+
 use crate::common::{resolve_auth_headers, Result as CommonResult};
 use crate::http::{JsonHttpClient, JsonHttpClientConfig};
 use crate::profile_config::{

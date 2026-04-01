@@ -1,3 +1,8 @@
+//! Build normalized sync summaries and resource specs for review output.
+//! This module reduces raw sync documents into the compact summary shape used by the
+//! bundle and plan renderers, while preserving resource identity, counts, and alert
+//! kind classification. It is presentation-oriented data shaping, not API transport.
+
 use super::json::require_json_object;
 use super::workbench::{
     SyncResourceSpec, SyncSummary, RESOURCE_KINDS, SYNC_SUMMARY_KIND, SYNC_SUMMARY_SCHEMA_VERSION,

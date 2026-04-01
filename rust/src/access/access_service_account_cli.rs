@@ -1,3 +1,8 @@
+//! CLI definitions for Grafana service-account access workflows.
+//! This module owns the service-account list, add, modify, delete, import/export,
+//! and token subcommand wiring. It converts clap arguments into shared access
+//! workflow helpers and keeps the command help text aligned with operator usage.
+
 use clap::{Args, Subcommand};
 use std::path::PathBuf;
 
@@ -8,7 +13,7 @@ use super::access_cli_shared::{
 };
 
 pub(crate) const ACCESS_SERVICE_ACCOUNT_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n  grafana-util access service-account token add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly";
-pub(crate) const ACCESS_SERVICE_ACCOUNT_LIST_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n  grafana-util access service-account list --url http://localhost:3000 --basic-user admin --basic-password admin --table";
+pub(crate) const ACCESS_SERVICE_ACCOUNT_LIST_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format text\n  grafana-util access service-account list --url http://localhost:3000 --basic-user admin --basic-password admin --output-format yaml";
 pub(crate) const ACCESS_SERVICE_ACCOUNT_ADD_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --role Editor --json";
 pub(crate) const ACCESS_SERVICE_ACCOUNT_EXPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./access-service-accounts --overwrite";
 pub(crate) const ACCESS_SERVICE_ACCOUNT_IMPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account import --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --import-dir ./access-service-accounts --dry-run --output-format table\n  grafana-util access service-account import --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --import-dir ./access-service-accounts --replace-existing --yes";
@@ -33,17 +38,19 @@ pub struct ServiceAccountListArgs {
     pub page: usize,
     #[arg(long, default_value_t = DEFAULT_PAGE_SIZE, help = "Number of service accounts to request per page.")]
     pub per_page: usize,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render service-account summaries as a table.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json", "yaml"], help = "Render service-account summaries as a table.")]
     pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render service-account summaries as CSV.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json", "yaml"], help = "Render service-account summaries as CSV.")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render service-account summaries as JSON.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv", "yaml"], help = "Render service-account summaries as JSON.")]
     pub json: bool,
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv", "json"], help = "Render service-account summaries as YAML.")]
+    pub yaml: bool,
     #[arg(
         long,
         value_enum,
-        conflicts_with_all = ["table", "csv", "json"],
-        help = "Alternative single-flag output selector. Use text, table, csv, or json."
+        conflicts_with_all = ["table", "csv", "json", "yaml"],
+        help = "Alternative single-flag output selector. Use text, table, csv, json, or yaml."
     )]
     pub output_format: Option<ListOutputFormat>,
 }

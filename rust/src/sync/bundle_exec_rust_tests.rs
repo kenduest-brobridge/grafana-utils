@@ -10,6 +10,61 @@ use serde_json::json;
 use std::fs;
 use tempfile::tempdir;
 
+fn write_datasource_provisioning_fixture(path: &std::path::Path) {
+    fs::write(
+        path,
+        r#"apiVersion: 1
+datasources:
+  - uid: prom-main
+    name: Prometheus Main
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    orgId: 1
+    isDefault: true
+"#,
+    )
+    .unwrap();
+}
+
+fn write_dashboard_provisioning_fixture(root: &std::path::Path) {
+    let dashboards_dir = root.join("dashboards").join("team");
+    fs::create_dir_all(&dashboards_dir).unwrap();
+    fs::write(
+        dashboards_dir.join("cpu-main.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "panels": []
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        root.join("folders.json"),
+        serde_json::to_string_pretty(&json!([
+            {"uid": "team", "title": "Team", "path": "Team"}
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        root.join("export-metadata.json"),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": 1,
+            "variant": "provisioning",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-file-provisioning-dashboard"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+}
+
 #[test]
 fn run_sync_cli_bundle_writes_source_bundle_artifact() {
     let temp = tempdir().unwrap();
@@ -92,8 +147,10 @@ fn run_sync_cli_bundle_writes_source_bundle_artifact() {
 
     let result = run_sync_cli(SyncGroupCommand::Bundle(SyncBundleArgs {
         dashboard_export_dir: Some(dashboard_export_dir.clone()),
+        dashboard_provisioning_dir: None,
         alert_export_dir: Some(alert_export_dir.clone()),
         datasource_export_file: None,
+        datasource_provisioning_file: None,
         metadata_file: Some(metadata_file.clone()),
         output_file: Some(output_file.clone()),
         output: SyncOutputFormat::Json,
@@ -260,8 +317,10 @@ fn run_sync_cli_bundle_preserves_alert_export_artifact_metadata() {
 
     let result = run_sync_cli(SyncGroupCommand::Bundle(SyncBundleArgs {
         dashboard_export_dir: None,
+        dashboard_provisioning_dir: None,
         alert_export_dir: Some(alert_export_dir.clone()),
         datasource_export_file: None,
+        datasource_provisioning_file: None,
         metadata_file: None,
         output_file: Some(output_file.clone()),
         output: SyncOutputFormat::Json,
@@ -350,8 +409,10 @@ fn run_sync_cli_bundle_ignores_dashboard_permissions_bundle() {
 
     let result = run_sync_cli(SyncGroupCommand::Bundle(SyncBundleArgs {
         dashboard_export_dir: Some(dashboard_export_dir.clone()),
+        dashboard_provisioning_dir: None,
         alert_export_dir: None,
         datasource_export_file: None,
+        datasource_provisioning_file: None,
         metadata_file: None,
         output_file: Some(output_file.clone()),
         output: SyncOutputFormat::Json,
@@ -363,6 +424,69 @@ fn run_sync_cli_bundle_ignores_dashboard_permissions_bundle() {
     assert_eq!(bundle["summary"]["dashboardCount"], json!(1));
     assert_eq!(bundle["dashboards"].as_array().unwrap().len(), 1);
     assert_eq!(bundle["dashboards"][0]["uid"], json!("cpu-main"));
+}
+
+#[test]
+fn run_sync_cli_bundle_supports_dashboard_provisioning_root() {
+    let temp = tempdir().unwrap();
+    let provisioning_root = temp.path().join("dashboards").join("provisioning");
+    write_dashboard_provisioning_fixture(&provisioning_root);
+    let output_file = temp.path().join("bundle.json");
+
+    let result = run_sync_cli(SyncGroupCommand::Bundle(SyncBundleArgs {
+        dashboard_export_dir: None,
+        dashboard_provisioning_dir: Some(provisioning_root.clone()),
+        alert_export_dir: None,
+        datasource_export_file: None,
+        datasource_provisioning_file: None,
+        metadata_file: None,
+        output_file: Some(output_file.clone()),
+        output: SyncOutputFormat::Json,
+    }));
+
+    assert!(result.is_ok(), "{result:?}");
+    let bundle: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&output_file).unwrap()).unwrap();
+    assert_eq!(bundle["summary"]["dashboardCount"], json!(1));
+    assert_eq!(
+        bundle["dashboards"][0]["sourcePath"],
+        json!("team/cpu-main.json")
+    );
+    assert_eq!(bundle["folders"][0]["uid"], json!("team"));
+    assert_eq!(
+        bundle["metadata"]["dashboardProvisioningDir"],
+        json!(provisioning_root.display().to_string())
+    );
+    assert_eq!(
+        bundle["metadata"]["dashboardExport"]["variant"],
+        json!("provisioning")
+    );
+}
+
+#[test]
+fn run_sync_cli_bundle_rejects_conflicting_dashboard_inputs() {
+    let temp = tempdir().unwrap();
+    let dashboard_export_dir = temp.path().join("dashboards").join("raw");
+    let dashboard_provisioning_dir = temp.path().join("dashboards").join("provisioning");
+    fs::create_dir_all(&dashboard_export_dir).unwrap();
+    fs::create_dir_all(&dashboard_provisioning_dir).unwrap();
+
+    let result = run_sync_cli(SyncGroupCommand::Bundle(SyncBundleArgs {
+        dashboard_export_dir: Some(dashboard_export_dir),
+        dashboard_provisioning_dir: Some(dashboard_provisioning_dir),
+        alert_export_dir: None,
+        datasource_export_file: None,
+        datasource_provisioning_file: None,
+        metadata_file: None,
+        output_file: None,
+        output: SyncOutputFormat::Json,
+    }));
+
+    assert!(result.is_err());
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("only one dashboard input"));
 }
 
 #[test]
@@ -391,8 +515,10 @@ fn run_sync_cli_bundle_preserves_datasource_provider_metadata_from_inventory_fil
 
     let result = run_sync_cli(SyncGroupCommand::Bundle(SyncBundleArgs {
         dashboard_export_dir: None,
+        dashboard_provisioning_dir: None,
         alert_export_dir: None,
         datasource_export_file: Some(datasource_export_file.clone()),
+        datasource_provisioning_file: None,
         metadata_file: None,
         output_file: Some(output_file.clone()),
         output: SyncOutputFormat::Json,
@@ -413,6 +539,39 @@ fn run_sync_cli_bundle_preserves_datasource_provider_metadata_from_inventory_fil
     assert_eq!(
         bundle["datasources"][0]["secureJsonDataPlaceholders"]["basicAuthPassword"],
         json!("${secret:loki-basic-auth}")
+    );
+}
+
+#[test]
+fn run_sync_cli_bundle_preserves_datasource_metadata_from_provisioning_file() {
+    let temp = tempdir().unwrap();
+    let datasource_provisioning_file = temp.path().join("datasources.yaml");
+    write_datasource_provisioning_fixture(&datasource_provisioning_file);
+    let output_file = temp.path().join("bundle.json");
+
+    let result = run_sync_cli(SyncGroupCommand::Bundle(SyncBundleArgs {
+        dashboard_export_dir: None,
+        dashboard_provisioning_dir: None,
+        alert_export_dir: None,
+        datasource_export_file: None,
+        datasource_provisioning_file: Some(datasource_provisioning_file.clone()),
+        metadata_file: None,
+        output_file: Some(output_file.clone()),
+        output: SyncOutputFormat::Json,
+    }));
+
+    assert!(result.is_ok());
+    let bundle: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&output_file).unwrap()).unwrap();
+    assert_eq!(bundle["summary"]["datasourceCount"], json!(1));
+    assert_eq!(
+        bundle["metadata"]["datasourceProvisioningFile"],
+        json!(datasource_provisioning_file.display().to_string())
+    );
+    assert_eq!(bundle["datasources"][0]["uid"], json!("prom-main"));
+    assert_eq!(
+        bundle["datasources"][0]["body"]["name"],
+        json!("Prometheus Main")
     );
 }
 
@@ -464,8 +623,10 @@ fn run_sync_cli_bundle_normalizes_tool_rule_export_into_top_level_alert_spec() {
 
     let result = run_sync_cli(SyncGroupCommand::Bundle(SyncBundleArgs {
         dashboard_export_dir: None,
+        dashboard_provisioning_dir: None,
         alert_export_dir: Some(alert_export_dir.clone()),
         datasource_export_file: None,
+        datasource_provisioning_file: None,
         metadata_file: None,
         output_file: Some(output_file.clone()),
         output: SyncOutputFormat::Json,

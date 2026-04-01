@@ -1,6 +1,9 @@
-//! Shared primitives for CLI execution.
-//! Contains canonical error/result types, auth/header resolution rules, and
-//! reusable JSON/FS helpers that are consumed by all Rust command domains.
+//! Shared foundation for all Rust CLI domains.
+//!
+//! Responsibilities:
+//! - Provide one canonical `Result` and `GrafanaCliError` API shared by all modules.
+//! - Centralize auth/header derivation, interactive credential prompting, and input parsing.
+//! - Own generic JSON helpers, FS helpers, and output serializers that keep command behavior uniform.
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use regex::Regex;
 use rpassword::prompt_password;

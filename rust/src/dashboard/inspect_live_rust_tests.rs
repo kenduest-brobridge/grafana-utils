@@ -1,7 +1,8 @@
 //! Feature-oriented live inspect regressions.
 //! Keeps shared helpers here while splitting output/governance and parity tests into modules.
-use super::test_support;
-use super::test_support::CommonCliArgs;
+use super::test_support::{
+    self, parse_cli_from, CommonCliArgs, DashboardCommand, InspectOutputFormat,
+};
 use crate::common::GrafanaCliError;
 use crate::dashboard::inspect_live::load_variant_index_entries;
 use serde_json::Value;
@@ -78,6 +79,37 @@ fn load_variant_index_entries_reports_json_error_for_invalid_index_file() {
 
     let error = load_variant_index_entries(temp.path(), None).unwrap_err();
     assert!(matches!(error, GrafanaCliError::Json(_)));
+}
+
+#[test]
+fn parse_cli_supports_inspect_live_baseline_output_formats() {
+    for (output_format, expected) in [
+        ("text", InspectOutputFormat::Text),
+        ("table", InspectOutputFormat::Table),
+        ("csv", InspectOutputFormat::Csv),
+        ("json", InspectOutputFormat::Json),
+        ("yaml", InspectOutputFormat::Yaml),
+    ] {
+        let args = parse_cli_from([
+            "grafana-util",
+            "inspect-live",
+            "--url",
+            "https://grafana.example.com",
+            "--output-format",
+            output_format,
+        ]);
+
+        match args.command {
+            DashboardCommand::InspectLive(inspect_args) => {
+                assert_eq!(inspect_args.common.url, "https://grafana.example.com");
+                assert_eq!(inspect_args.output_format, Some(expected));
+                assert_eq!(inspect_args.report, None);
+                assert!(!inspect_args.json);
+                assert!(!inspect_args.table);
+            }
+            _ => panic!("expected inspect-live command"),
+        }
+    }
 }
 
 fn assert_governance_documents_match(export_document: &Value, live_document: &Value) {

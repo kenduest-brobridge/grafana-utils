@@ -92,7 +92,12 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
     (
         "[Dashboard Review]",
         "Review a local dashboard file before publish:",
-        "grafana-util dashboard review --input ./drafts/cpu-main.json --json"
+        "grafana-util dashboard review --input ./drafts/cpu-main.json --output-format yaml"
+    ),
+    (
+        "[Snapshot Export]",
+        "Capture a live snapshot into a local export root:",
+        r#"grafana-util snapshot export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --export-dir ./snapshot"#
     ),
     (
         "[Alert Export]",
@@ -105,6 +110,11 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
         r#"grafana-util datasource list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --json"#
     ),
     (
+        "[Datasource Inspect Export]",
+        "Inspect a local datasource export root without Grafana access:",
+        r#"grafana-util datasource inspect-export --input-dir ./datasources --json"#
+    ),
+    (
         "[Access Inventory]",
         "List org users through the unified binary:",
         r#"grafana-util access user list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --json"#
@@ -113,6 +123,11 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
         "[Profile Show]",
         "Inspect a selected profile from the repo-local config file:",
         "grafana-util profile show --profile prod --output-format yaml"
+    ),
+    (
+        "[Snapshot Review]",
+        "Review a local snapshot inventory as JSON:",
+        "grafana-util snapshot review --input-dir ./snapshot --output json"
     ),
     (
         "[Change Planning]",
@@ -169,6 +184,11 @@ pub(crate) const UNIFIED_HELP_FULL_TEXT: &str = help_block!(
         "grafana-util profile init --overwrite"
     ),
     (
+        "[Snapshot Export]",
+        "Capture a live snapshot into a local export root:",
+        r#"grafana-util snapshot export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --export-dir ./snapshot"#
+    ),
+    (
         "[Alert Import]",
         "Re-map linked alert dashboards during import:",
         "grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json"
@@ -187,6 +207,11 @@ pub(crate) const UNIFIED_HELP_FULL_TEXT: &str = help_block!(
         "[Status Staged]",
         "Inspect staged artifacts with a machine-readable summary:",
         "grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output json"
+    ),
+    (
+        "[Snapshot Review]",
+        "Open a local snapshot inventory in the interactive browser with `--interactive`:",
+        "grafana-util snapshot review --input-dir ./snapshot --interactive"
     )
 );
 
@@ -371,7 +396,7 @@ pub(crate) const SYNC_HELP_FULL_TEXT: &str = help_block!(
     )
 );
 
-pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 28] = [
+pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 29] = [
     ("[Dashboard Export]", HELP_COLOR_DASHBOARD),
     ("[Dashboard Capture]", HELP_COLOR_DASHBOARD),
     ("[Dashboard Inspect Export]", HELP_COLOR_DASHBOARD),
@@ -383,6 +408,7 @@ pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 28] = [
     ("[Datasource List]", HELP_COLOR_DATASOURCE),
     ("[Datasource Add]", HELP_COLOR_DATASOURCE),
     ("[Datasource Import]", HELP_COLOR_DATASOURCE),
+    ("[Datasource Inspect Export]", HELP_COLOR_DATASOURCE),
     ("[Datasource Diff]", HELP_COLOR_DATASOURCE),
     ("[Access Inventory]", HELP_COLOR_ACCESS),
     ("[Access User Diff]", HELP_COLOR_ACCESS),

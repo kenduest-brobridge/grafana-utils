@@ -1,7 +1,13 @@
-//! Runtime tests for dashboard live authoring commands.
+//! Regression coverage for dashboard authoring and review helper behavior.
+//!
+//! Focus:
+//! - Cover live fetch + file clone paths for local draft generation.
+//! - Verify review output rendering for text/csv/table/json/yaml contract stability.
+//! - Keep behavior checks close to command-facing rendering without invoking live API.
 use super::authoring::{
     clone_live_dashboard_to_file_with_request, get_live_dashboard_to_file_with_request,
-    render_dashboard_review_json, render_dashboard_review_text, review_dashboard_file,
+    render_dashboard_review_csv, render_dashboard_review_json, render_dashboard_review_table,
+    render_dashboard_review_text, render_dashboard_review_yaml, review_dashboard_file,
 };
 use crate::common::GrafanaCliError;
 use serde_json::{json, Value};
@@ -144,9 +150,15 @@ fn review_dashboard_file_reports_wrapped_metadata_and_patch_file_next_action() {
     let text = render_dashboard_review_text(&review);
     assert!(text.iter().any(|line| line == "Kind: wrapped"));
     assert!(text.iter().any(|line| line == "dashboard.id: non-null"));
+    let table = render_dashboard_review_table(&review);
+    assert!(table.iter().any(|line| line.contains("patch-file")));
+    let csv = render_dashboard_review_csv(&review);
+    assert!(csv.iter().any(|line| line.contains("blocking_issues")));
     let json_output = render_dashboard_review_json(&review).unwrap();
     assert!(json_output.contains("\"kind\": \"grafana-utils-dashboard-authoring-review\""));
     assert!(json_output.contains("\"suggestedNextAction\": \"patch-file\""));
+    let yaml_output = render_dashboard_review_yaml(&review).unwrap();
+    assert!(yaml_output.contains("suggestedNextAction: patch-file"));
 }
 
 #[test]

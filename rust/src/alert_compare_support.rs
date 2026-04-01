@@ -1,3 +1,10 @@
+//! Alert compare helpers for deterministic diff and export-index documents.
+//!
+//! Responsibilities:
+//! - Normalize compare payloads into stable object ordering.
+//! - Build and serialize compare payload envelopes consumed by import snapshots.
+//! - Maintain ordered index and summary rendering for predictable diff output.
+
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 use std::fmt::Write as _;

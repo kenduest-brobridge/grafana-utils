@@ -126,15 +126,19 @@ pub(super) fn parse_inspect_report_column(value: &str) -> std::result::Result<St
 }
 
 fn normalize_simple_output_format(
+    text: &mut bool,
     table: &mut bool,
     csv: &mut bool,
     json: &mut bool,
+    yaml: &mut bool,
     output_format: Option<SimpleOutputFormat>,
 ) {
     match output_format {
+        Some(SimpleOutputFormat::Text) => *text = true,
         Some(SimpleOutputFormat::Table) => *table = true,
         Some(SimpleOutputFormat::Csv) => *csv = true,
         Some(SimpleOutputFormat::Json) => *json = true,
+        Some(SimpleOutputFormat::Yaml) => *yaml = true,
         None => {}
     }
 }
@@ -156,9 +160,11 @@ fn normalize_dry_run_output_format(
 pub fn normalize_dashboard_cli_args(mut args: DashboardCliArgs) -> DashboardCliArgs {
     match &mut args.command {
         DashboardCommand::List(list_args) => normalize_simple_output_format(
+            &mut list_args.text,
             &mut list_args.table,
             &mut list_args.csv,
             &mut list_args.json,
+            &mut list_args.yaml,
             list_args.output_format,
         ),
         DashboardCommand::Import(import_args) => normalize_dry_run_output_format(

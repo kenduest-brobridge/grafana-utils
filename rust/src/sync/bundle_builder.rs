@@ -1,3 +1,8 @@
+//! Build the local sync source bundle document from fetched resources.
+//! This module assembles dashboards, datasources, folders, alerts, alerting state,
+//! and metadata into the bundle schema consumed by sync export and review flows. It
+//! only shapes the document; validation and live fetching happen in adjacent layers.
+
 use super::bundle_alert_contracts::build_alert_bundle_contract_document;
 use super::workbench::{SYNC_SOURCE_BUNDLE_KIND, SYNC_SOURCE_BUNDLE_SCHEMA_VERSION};
 use crate::common::{message, tool_version, Result};

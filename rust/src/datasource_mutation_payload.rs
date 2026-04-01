@@ -1,3 +1,5 @@
+//! Mutation builders and payload plumbing for Core updates.
+
 use reqwest::Method;
 use serde_json::{Map, Value};
 

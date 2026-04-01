@@ -1,3 +1,5 @@
+//! Inspection path for Dashboard resources: analysis, extraction, and report shaping.
+
 use serde_json::Value;
 
 use crate::dashboard::inspect_query::{

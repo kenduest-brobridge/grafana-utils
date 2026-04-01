@@ -27,10 +27,10 @@ const ALERT_NEW_RULE_HELP_TEXT: &str =
     "Examples:\n\n  grafana-util alert new-rule --desired-dir ./alerts/desired --name cpu-main\n  grafana-util alert add-rule --desired-dir ./alerts/desired --name cpu-main --folder platform-alerts --rule-group cpu --receiver pagerduty-primary";
 const ALERT_NEW_CONTACT_POINT_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert new-contact-point --desired-dir ./alerts/desired --name pagerduty-primary\n  grafana-util alert add-contact-point --desired-dir ./alerts/desired --name pagerduty-primary";
 const ALERT_NEW_TEMPLATE_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert new-template --desired-dir ./alerts/desired --name sev1-notification";
-const ALERT_LIST_RULES_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert list-rules --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --table\n  grafana-util alert list-rules --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --json";
-const ALERT_LIST_CONTACT_POINTS_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert list-contact-points --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --table\n  grafana-util alert list-contact-points --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --json";
-const ALERT_LIST_MUTE_TIMINGS_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert list-mute-timings --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --table\n  grafana-util alert list-mute-timings --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --json";
-const ALERT_LIST_TEMPLATES_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert list-templates --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --table\n  grafana-util alert list-templates --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --json";
+const ALERT_LIST_RULES_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert list-rules --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --table\n  grafana-util alert list-rules --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format text\n  grafana-util alert list-rules --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-format yaml";
+const ALERT_LIST_CONTACT_POINTS_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert list-contact-points --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --table\n  grafana-util alert list-contact-points --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format text\n  grafana-util alert list-contact-points --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-format yaml";
+const ALERT_LIST_MUTE_TIMINGS_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert list-mute-timings --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --table\n  grafana-util alert list-mute-timings --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format text\n  grafana-util alert list-mute-timings --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-format yaml";
+const ALERT_LIST_TEMPLATES_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert list-templates --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --table\n  grafana-util alert list-templates --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format text\n  grafana-util alert list-templates --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-format yaml";
 
 #[derive(Debug, Clone, Parser)]
 #[command(
@@ -256,9 +256,11 @@ pub enum AlertListKind {
 /// Enum definition for AlertListOutputFormat.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum AlertListOutputFormat {
+    Text,
     Table,
     Csv,
     Json,
+    Yaml,
 }
 
 /// Single-flag output selector for plan-oriented alert commands.
@@ -328,21 +330,57 @@ pub struct AlertListArgs {
     #[arg(
         long,
         default_value_t = false,
-        help = "Render list output as a table. This is the default."
+        conflicts_with_all = ["table", "csv", "json", "yaml", "output_format"],
+        help = "Render list output as plain text.",
+        help_heading = "Output Options"
+    )]
+    pub text: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["text", "csv", "json", "yaml", "output_format"],
+        help = "Render list output as a table. This is the default.",
+        help_heading = "Output Options"
     )]
     pub table: bool,
-    #[arg(long, default_value_t = false, help = "Render list output as CSV.")]
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["text", "table", "json", "yaml", "output_format"],
+        help = "Render list output as CSV.",
+        help_heading = "Output Options"
+    )]
     pub csv: bool,
-    #[arg(long, default_value_t = false, help = "Render list output as JSON.")]
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["text", "table", "csv", "yaml", "output_format"],
+        help = "Render list output as JSON.",
+        help_heading = "Output Options"
+    )]
     pub json: bool,
     #[arg(
         long,
+        default_value_t = false,
+        conflicts_with_all = ["text", "table", "csv", "json", "output_format"],
+        help = "Render list output as YAML.",
+        help_heading = "Output Options"
+    )]
+    pub yaml: bool,
+    #[arg(
+        long,
         value_enum,
-        conflicts_with_all = ["table", "csv", "json"],
-        help = "Alternative single-flag output selector. Use table, csv, or json."
+        conflicts_with_all = ["text", "table", "csv", "json", "yaml"],
+        help = "Alternative single-flag output selector. Use text, table, csv, json, or yaml.",
+        help_heading = "Output Options"
     )]
     pub output_format: Option<AlertListOutputFormat>,
-    #[arg(long, default_value_t = false, help = "Omit the table header row.")]
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Omit the table header row.",
+        help_heading = "Output Options"
+    )]
     pub no_header: bool,
 }
 
@@ -765,9 +803,11 @@ pub struct AlertCliArgs {
     pub org_id: Option<i64>,
     pub all_orgs: bool,
     pub list_kind: Option<AlertListKind>,
+    pub text: bool,
     pub table: bool,
     pub csv: bool,
     pub json: bool,
+    pub yaml: bool,
     pub no_header: bool,
     pub desired_dir: Option<PathBuf>,
     pub prune: bool,
@@ -819,9 +859,11 @@ pub fn cli_args_from_common(common: AlertCommonArgs) -> AlertCliArgs {
         org_id: None,
         all_orgs: false,
         list_kind: None,
+        text: false,
         table: false,
         csv: false,
         json: false,
+        yaml: false,
         no_header: false,
         desired_dir: None,
         prune: false,
@@ -924,9 +966,11 @@ pub fn root_command() -> Command {
 pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs {
     fn apply_output_format(args: &mut AlertCliArgs, output_format: Option<AlertListOutputFormat>) {
         match output_format {
+            Some(AlertListOutputFormat::Text) => args.text = true,
             Some(AlertListOutputFormat::Table) => args.table = true,
             Some(AlertListOutputFormat::Csv) => args.csv = true,
             Some(AlertListOutputFormat::Json) => args.json = true,
+            Some(AlertListOutputFormat::Yaml) => args.yaml = true,
             None => {}
         }
     }
@@ -1082,9 +1126,11 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
             args.list_kind = Some(AlertListKind::Rules);
             args.org_id = inner.org_id;
             args.all_orgs = inner.all_orgs;
+            args.text = inner.text;
             args.table = inner.table;
             args.csv = inner.csv;
             args.json = inner.json;
+            args.yaml = inner.yaml;
             apply_output_format(&mut args, inner.output_format);
             args.no_header = inner.no_header;
             args
@@ -1095,9 +1141,11 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
             args.list_kind = Some(AlertListKind::ContactPoints);
             args.org_id = inner.org_id;
             args.all_orgs = inner.all_orgs;
+            args.text = inner.text;
             args.table = inner.table;
             args.csv = inner.csv;
             args.json = inner.json;
+            args.yaml = inner.yaml;
             apply_output_format(&mut args, inner.output_format);
             args.no_header = inner.no_header;
             args
@@ -1108,9 +1156,11 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
             args.list_kind = Some(AlertListKind::MuteTimings);
             args.org_id = inner.org_id;
             args.all_orgs = inner.all_orgs;
+            args.text = inner.text;
             args.table = inner.table;
             args.csv = inner.csv;
             args.json = inner.json;
+            args.yaml = inner.yaml;
             apply_output_format(&mut args, inner.output_format);
             args.no_header = inner.no_header;
             args
@@ -1121,9 +1171,11 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
             args.list_kind = Some(AlertListKind::Templates);
             args.org_id = inner.org_id;
             args.all_orgs = inner.all_orgs;
+            args.text = inner.text;
             args.table = inner.table;
             args.csv = inner.csv;
             args.json = inner.json;
+            args.yaml = inner.yaml;
             apply_output_format(&mut args, inner.output_format);
             args.no_header = inner.no_header;
             args
@@ -1154,9 +1206,11 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
                 org_id: None,
                 all_orgs: false,
                 list_kind: None,
+                text: false,
                 table: false,
                 csv: false,
                 json: false,
+                yaml: false,
                 no_header: false,
                 desired_dir: None,
                 prune: false,

@@ -354,13 +354,20 @@ fn execute_sync_promotion_preflight(
 }
 
 fn execute_sync_bundle(args: &SyncBundleArgs) -> Result<SyncCommandOutput> {
+    if args.dashboard_export_dir.is_some() && args.dashboard_provisioning_dir.is_some() {
+        return Err(message(
+            "Sync bundle accepts only one dashboard input: --dashboard-export-dir or --dashboard-provisioning-dir.",
+        ));
+    }
     if args.dashboard_export_dir.is_none()
+        && args.dashboard_provisioning_dir.is_none()
         && args.alert_export_dir.is_none()
         && args.datasource_export_file.is_none()
+        && args.datasource_provisioning_file.is_none()
         && args.metadata_file.is_none()
     {
         return Err(message(
-            "Sync bundle requires at least one export input such as --dashboard-export-dir, --alert-export-dir, --datasource-export-file, or --metadata-file.",
+            "Sync bundle requires at least one export input such as --dashboard-export-dir, --dashboard-provisioning-dir, --alert-export-dir, --datasource-export-file, --datasource-provisioning-file, or --metadata-file.",
         ));
     }
     let mut dashboards = Vec::new();
@@ -369,13 +376,44 @@ fn execute_sync_bundle(args: &SyncBundleArgs) -> Result<SyncCommandOutput> {
     let mut metadata = Map::new();
     if let Some(export_dir) = args.dashboard_export_dir.as_ref() {
         let (dashboard_items, dashboard_datasources, folder_items, dashboard_metadata) =
-            load_dashboard_bundle_sections(export_dir)?;
+            load_dashboard_bundle_sections(
+                export_dir,
+                export_dir,
+                args.datasource_provisioning_file.as_deref(),
+            )?;
         dashboards = dashboard_items;
         datasources.extend(dashboard_datasources);
         folders = folder_items;
         metadata.extend(dashboard_metadata);
+        metadata.insert(
+            "dashboardExportDir".to_string(),
+            Value::String(export_dir.display().to_string()),
+        );
+    } else if let Some(provisioning_dir) = args.dashboard_provisioning_dir.as_ref() {
+        let (dashboard_items, dashboard_datasources, folder_items, dashboard_metadata) =
+            load_dashboard_provisioning_bundle_sections(
+                provisioning_dir,
+                args.datasource_provisioning_file.as_deref(),
+            )?;
+        dashboards = dashboard_items;
+        datasources.extend(dashboard_datasources);
+        folders = folder_items;
+        metadata.extend(dashboard_metadata);
+        metadata.insert(
+            "dashboardProvisioningDir".to_string(),
+            Value::String(provisioning_dir.display().to_string()),
+        );
     }
-    if let Some(datasource_export_file) = args.datasource_export_file.as_ref() {
+    if let Some(datasource_provisioning_file) = args.datasource_provisioning_file.as_ref() {
+        datasources = load_datasource_provisioning_records(datasource_provisioning_file)?
+            .into_iter()
+            .map(|item| normalize_datasource_bundle_item(&item))
+            .collect::<Result<Vec<_>>>()?;
+        metadata.insert(
+            "datasourceProvisioningFile".to_string(),
+            Value::String(datasource_provisioning_file.display().to_string()),
+        );
+    } else if let Some(datasource_export_file) = args.datasource_export_file.as_ref() {
         datasources = load_json_array_file(datasource_export_file, "Datasource export inventory")?
             .into_iter()
             .map(|item| normalize_datasource_bundle_item(&item))

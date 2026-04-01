@@ -5,6 +5,7 @@ use crate::datasource::datasource_diff::{
     build_datasource_diff_report, normalize_export_records, normalize_live_records,
     DatasourceDiffStatus,
 };
+use crate::datasource::DatasourceImportInputFormat;
 use serde_json::{json, Value};
 
 fn load_contract_cases() -> Vec<Value> {
@@ -120,7 +121,11 @@ fn diff_report_rejects_extra_contract_fields_in_fixture_file() {
     )
     .unwrap();
 
-    let result = crate::datasource::diff_datasources_with_live(&dir, &[]);
+    let result = crate::datasource::diff_datasources_with_live(
+        &dir,
+        DatasourceImportInputFormat::Inventory,
+        &[],
+    );
     let error = result.unwrap_err().to_string();
     assert!(error.contains("unsupported datasource field(s): password"));
     std::fs::remove_dir_all(dir).unwrap();

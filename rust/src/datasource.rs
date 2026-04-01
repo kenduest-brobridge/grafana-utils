@@ -3,7 +3,7 @@
 //! Purpose:
 //! - Own datasource command flows (`list`, `add`, `delete`, `export`, `import`, `diff`).
 //! - Normalize datasource contract shape across live API payloads and exported metadata.
-//! - Keep output serialization (`table`/`csv`/`json`) selection centralized.
+//! - Keep output serialization (`table`/`csv`/`json`/`yaml`) selection centralized.
 //!
 //! Flow:
 //! - Parse args from `dashboard`-shared auth/common CLI types where possible.
@@ -17,18 +17,23 @@ use reqwest::Method;
 use serde_json::{Map, Value};
 use std::path::Path;
 
-use crate::common::{message, string_field, write_json_file, Result};
+use crate::common::{load_json_object_file, message, string_field, write_json_file, Result};
 use crate::dashboard::{
     build_auth_context, build_http_client, build_http_client_for_org, list_datasources,
-    CommonCliArgs,
+    CommonCliArgs, SimpleOutputFormat,
 };
 use crate::datasource::datasource_diff::{
     build_datasource_diff_report, normalize_export_records, normalize_live_records,
     DatasourceDiffEntry, DatasourceDiffReport, DatasourceDiffStatus,
 };
 use crate::datasource_catalog::{
-    render_supported_datasource_catalog_json, render_supported_datasource_catalog_text,
+    render_supported_datasource_catalog_csv, render_supported_datasource_catalog_json,
+    render_supported_datasource_catalog_table, render_supported_datasource_catalog_text,
+    render_supported_datasource_catalog_yaml,
 };
+#[cfg(any(feature = "tui", test))]
+use crate::interactive_browser::{run_interactive_browser, BrowserItem};
+use crate::tabular_output::render_yaml;
 
 #[path = "datasource_browse.rs"]
 mod datasource_browse;
@@ -65,17 +70,19 @@ pub(crate) use datasource_cli_defs::normalize_datasource_group_command;
 pub use datasource_cli_defs::{
     DatasourceAddArgs, DatasourceBrowseArgs, DatasourceCliArgs, DatasourceDeleteArgs,
     DatasourceDiffArgs, DatasourceExportArgs, DatasourceGroupCommand, DatasourceImportArgs,
+    DatasourceImportInputFormat, DatasourceInspectExportArgs, DatasourceInspectExportOutputFormat,
     DatasourceListArgs, DatasourceModifyArgs, DatasourceTypesArgs, DryRunOutputFormat,
-    ListOutputFormat, SupportOutputFormat,
+    ListOutputFormat,
 };
 pub(crate) use datasource_import_export::{
     build_all_orgs_export_index, build_all_orgs_export_metadata, build_all_orgs_output_dir,
-    build_datasource_export_metadata, build_export_index, build_export_records, build_list_records,
-    export_datasource_scope, fetch_current_org, import_datasources_by_export_org,
-    import_datasources_with_client, list_orgs, load_diff_record_values, render_data_source_csv,
-    render_data_source_json, render_data_source_table, resolve_target_client,
-    validate_import_org_auth, DatasourceImportRecord, DATASOURCE_EXPORT_FILENAME,
-    EXPORT_METADATA_FILENAME,
+    build_datasource_export_metadata, build_datasource_provisioning_document, build_export_index,
+    build_export_records, build_list_records, export_datasource_scope, fetch_current_org,
+    import_datasources_by_export_org, import_datasources_with_client, list_orgs,
+    load_diff_record_values, load_import_records, render_data_source_csv, render_data_source_json,
+    render_data_source_table, resolve_target_client, validate_import_org_auth, write_yaml_file,
+    DatasourceImportRecord, DATASOURCE_EXPORT_FILENAME, DATASOURCE_PROVISIONING_FILENAME,
+    DATASOURCE_PROVISIONING_SUBDIR, EXPORT_METADATA_FILENAME,
 };
 #[cfg(test)]
 #[allow(unused_imports)]
@@ -83,7 +90,7 @@ pub(crate) use datasource_import_export::{
     build_import_payload, build_import_payload_with_secret_values,
     collect_datasource_import_dry_run_report, discover_export_org_import_scopes,
     format_routed_datasource_scope_summary_fields, format_routed_datasource_target_org_label,
-    load_import_records, render_routed_datasource_import_org_table, resolve_export_org_target_plan,
+    render_routed_datasource_import_org_table, resolve_export_org_target_plan,
     DatasourceExportMetadata, DatasourceExportOrgScope, DatasourceExportOrgTargetPlan,
     DatasourceImportDryRunReport,
 };
@@ -96,6 +103,317 @@ use datasource_mutation_support::{
     render_live_mutation_table, resolve_delete_match, resolve_live_mutation_match,
     validate_live_mutation_dry_run_args,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DatasourceInspectExportRenderFormat {
+    Text,
+    Table,
+    Csv,
+    Json,
+    Yaml,
+}
+
+pub(crate) struct DatasourceInspectExportSource {
+    input_mode: &'static str,
+    input_path: String,
+    metadata: Option<Value>,
+    records: Vec<Map<String, Value>>,
+}
+
+fn render_datasource_text(records: &[Map<String, Value>]) -> Vec<String> {
+    let mut lines = Vec::new();
+    for record in records {
+        let mut line = format!(
+            "- name={} type={} uid={}",
+            string_field(record, "name", ""),
+            string_field(record, "type", ""),
+            string_field(record, "uid", "")
+        );
+        let url = string_field(record, "url", "");
+        if !url.is_empty() {
+            line.push_str(&format!(" url={url}"));
+        }
+        let is_default = string_field(record, "isDefault", "");
+        if !is_default.is_empty() {
+            line.push_str(&format!(" default={is_default}"));
+        }
+        let org = string_field(record, "org", "");
+        let org_id = string_field(record, "orgId", "");
+        if !org.is_empty() || !org_id.is_empty() {
+            line.push_str(&format!(" org={} ({})", org, org_id));
+        }
+        lines.push(line);
+    }
+    lines
+}
+
+#[cfg(any(feature = "tui", test))]
+fn build_datasource_inspect_export_browser_items(
+    source: &DatasourceInspectExportSource,
+) -> Vec<BrowserItem> {
+    source
+        .records
+        .iter()
+        .map(|record| {
+            let name = string_field(record, "name", "");
+            let datasource_type = string_field(record, "type", "");
+            let uid = string_field(record, "uid", "");
+            let url = string_field(record, "url", "");
+            let org = string_field(record, "org", "");
+            let org_id = string_field(record, "orgId", "");
+            let is_default = string_field(record, "isDefault", "");
+            BrowserItem {
+                kind: "datasource".to_string(),
+                title: name.clone(),
+                meta: format!(
+                    "type={} uid={} org={} ({}) default={}",
+                    datasource_type, uid, org, org_id, is_default
+                ),
+                details: vec![
+                    format!("Name: {name}"),
+                    format!("Type: {datasource_type}"),
+                    format!("UID: {uid}"),
+                    format!("URL: {url}"),
+                    format!("Default: {is_default}"),
+                    format!("Org: {org} ({org_id})"),
+                    format!("Input mode: {}", source.input_mode),
+                    format!("Input path: {}", source.input_path),
+                ],
+            }
+        })
+        .collect()
+}
+
+fn datasource_inspect_export_record(record: &DatasourceImportRecord) -> Map<String, Value> {
+    Map::from_iter(vec![
+        ("uid".to_string(), Value::String(record.uid.clone())),
+        ("name".to_string(), Value::String(record.name.clone())),
+        (
+            "type".to_string(),
+            Value::String(record.datasource_type.clone()),
+        ),
+        ("access".to_string(), Value::String(record.access.clone())),
+        ("url".to_string(), Value::String(record.url.clone())),
+        (
+            "isDefault".to_string(),
+            Value::String(record.is_default.to_string()),
+        ),
+        ("org".to_string(), Value::String(record.org_name.clone())),
+        ("orgId".to_string(), Value::String(record.org_id.clone())),
+    ])
+}
+
+pub(crate) fn resolve_datasource_inspect_export_format(
+    args: &DatasourceInspectExportArgs,
+) -> DatasourceInspectExportRenderFormat {
+    if args.table {
+        DatasourceInspectExportRenderFormat::Table
+    } else if args.csv {
+        DatasourceInspectExportRenderFormat::Csv
+    } else if args.json {
+        DatasourceInspectExportRenderFormat::Json
+    } else if args.yaml {
+        DatasourceInspectExportRenderFormat::Yaml
+    } else {
+        DatasourceInspectExportRenderFormat::Text
+    }
+}
+
+pub(crate) fn load_datasource_inspect_export_source(
+    input_dir: &Path,
+) -> Result<DatasourceInspectExportSource> {
+    if input_dir.is_file() {
+        let extension = input_dir
+            .extension()
+            .and_then(|value| value.to_str())
+            .unwrap_or_default();
+        if !matches!(extension, "yaml" | "yml") {
+            return Err(message(format!(
+                "Datasource inspect-export input file must be YAML (.yaml or .yml): {}",
+                input_dir.display()
+            )));
+        }
+        let (metadata, records) =
+            load_import_records(input_dir, DatasourceImportInputFormat::Provisioning)?;
+        return Ok(DatasourceInspectExportSource {
+            input_mode: "provisioning",
+            input_path: input_dir.display().to_string(),
+            metadata: Some(Value::Object(Map::from_iter(vec![
+                (
+                    "inputFile".to_string(),
+                    Value::String(input_dir.display().to_string()),
+                ),
+                (
+                    "datasourcesFile".to_string(),
+                    Value::String(input_dir.display().to_string()),
+                ),
+                (
+                    "schemaVersion".to_string(),
+                    Value::Number(metadata.schema_version.into()),
+                ),
+                ("kind".to_string(), Value::String(metadata.kind)),
+                ("variant".to_string(), Value::String(metadata.variant)),
+                ("resource".to_string(), Value::String(metadata.resource)),
+            ]))),
+            records: records
+                .into_iter()
+                .map(|record| datasource_inspect_export_record(&record))
+                .collect(),
+        });
+    }
+
+    let metadata_path = input_dir.join(EXPORT_METADATA_FILENAME);
+    if metadata_path.is_file() {
+        let metadata = load_json_object_file(&metadata_path, "Datasource export metadata")?;
+        let (_metadata, records) =
+            load_import_records(input_dir, DatasourceImportInputFormat::Inventory)?;
+        return Ok(DatasourceInspectExportSource {
+            input_mode: "inventory",
+            input_path: input_dir.display().to_string(),
+            metadata: Some(metadata),
+            records: records
+                .into_iter()
+                .map(|record| datasource_inspect_export_record(&record))
+                .collect(),
+        });
+    }
+
+    let provisioning_candidates = [
+        input_dir.join(DATASOURCE_PROVISIONING_FILENAME),
+        input_dir.join("datasources.yml"),
+        input_dir
+            .join(DATASOURCE_PROVISIONING_SUBDIR)
+            .join(DATASOURCE_PROVISIONING_FILENAME),
+        input_dir
+            .join(DATASOURCE_PROVISIONING_SUBDIR)
+            .join("datasources.yml"),
+    ];
+    if provisioning_candidates
+        .iter()
+        .any(|candidate| candidate.is_file())
+    {
+        let (metadata, records) =
+            load_import_records(input_dir, DatasourceImportInputFormat::Provisioning)?;
+        return Ok(DatasourceInspectExportSource {
+            input_mode: "provisioning",
+            input_path: input_dir.display().to_string(),
+            metadata: Some(Value::Object(Map::from_iter(vec![
+                (
+                    "inputDir".to_string(),
+                    Value::String(input_dir.display().to_string()),
+                ),
+                (
+                    "datasourcesFile".to_string(),
+                    Value::String(metadata.datasources_file),
+                ),
+                (
+                    "schemaVersion".to_string(),
+                    Value::Number(metadata.schema_version.into()),
+                ),
+                ("kind".to_string(), Value::String(metadata.kind)),
+                ("variant".to_string(), Value::String(metadata.variant)),
+                ("resource".to_string(), Value::String(metadata.resource)),
+            ]))),
+            records: records
+                .into_iter()
+                .map(|record| datasource_inspect_export_record(&record))
+                .collect(),
+        });
+    }
+
+    Err(message(format!(
+        "Datasource inspect-export could not find export-metadata.json or provisioning/datasources.yaml under {}.",
+        input_dir.display()
+    )))
+}
+
+fn build_datasource_inspect_export_document(source: &DatasourceInspectExportSource) -> Value {
+    let mut document = Map::from_iter(vec![
+        (
+            "inputPath".to_string(),
+            Value::String(source.input_path.clone()),
+        ),
+        (
+            "inputMode".to_string(),
+            Value::String(source.input_mode.to_string()),
+        ),
+        (
+            "datasourceCount".to_string(),
+            Value::Number((source.records.len() as i64).into()),
+        ),
+        (
+            "datasources".to_string(),
+            Value::Array(source.records.iter().cloned().map(Value::Object).collect()),
+        ),
+    ]);
+    if let Some(metadata) = &source.metadata {
+        document.insert("metadata".to_string(), metadata.clone());
+    }
+    Value::Object(document)
+}
+
+pub(crate) fn render_datasource_inspect_export_output(
+    source: &DatasourceInspectExportSource,
+    format: DatasourceInspectExportRenderFormat,
+) -> Result<String> {
+    let mut output = String::new();
+    let document = build_datasource_inspect_export_document(source);
+    match format {
+        DatasourceInspectExportRenderFormat::Text => {
+            output.push_str(&format!(
+                "Datasource inspect-export: {}\n",
+                source.input_path
+            ));
+            output.push_str(&format!("Mode: {}\n", source.input_mode));
+            output.push_str(&format!("Datasource count: {}\n", source.records.len()));
+            if let Some(metadata) = source.metadata.as_ref().and_then(Value::as_object) {
+                if let Some(kind) = metadata.get("kind").and_then(Value::as_str) {
+                    output.push_str(&format!("Kind: {kind}\n"));
+                }
+                if let Some(variant) = metadata.get("variant").and_then(Value::as_str) {
+                    output.push_str(&format!("Variant: {variant}\n"));
+                }
+                if let Some(resource) = metadata.get("resource").and_then(Value::as_str) {
+                    output.push_str(&format!("Resource: {resource}\n"));
+                }
+                if let Some(datasources_file) =
+                    metadata.get("datasourcesFile").and_then(Value::as_str)
+                {
+                    output.push_str(&format!("Datasources file: {datasources_file}\n"));
+                }
+            }
+            output.push('\n');
+            for line in render_data_source_table(&source.records, true) {
+                output.push_str(&line);
+                output.push('\n');
+            }
+        }
+        DatasourceInspectExportRenderFormat::Table => {
+            for line in render_data_source_table(&source.records, true) {
+                output.push_str(&line);
+                output.push('\n');
+            }
+        }
+        DatasourceInspectExportRenderFormat::Csv => {
+            for line in render_data_source_csv(&source.records) {
+                output.push_str(&line);
+                output.push('\n');
+            }
+        }
+        DatasourceInspectExportRenderFormat::Json => {
+            output.push_str(&serde_json::to_string_pretty(&document)?);
+            output.push('\n');
+        }
+        DatasourceInspectExportRenderFormat::Yaml => {
+            output.push_str(&serde_yaml::to_string(&document).map_err(|error| {
+                message(format!(
+                    "Failed to serialize datasource inspect-export as YAML: {error}"
+                ))
+            })?);
+        }
+    }
+    Ok(output)
+}
 
 fn render_diff_identity(entry: &DatasourceDiffEntry) -> String {
     if let Some(record) = &entry.export_record {
@@ -145,9 +463,10 @@ fn print_datasource_diff_report(report: &DatasourceDiffReport) {
 /// Purpose: implementation note.
 pub(crate) fn diff_datasources_with_live(
     diff_dir: &Path,
+    input_format: DatasourceImportInputFormat,
     live: &[Map<String, Value>],
 ) -> Result<(usize, usize)> {
-    let export_values = load_diff_record_values(diff_dir)?;
+    let export_values = load_diff_record_values(diff_dir, input_format)?;
     let live_values = live
         .iter()
         .cloned()
@@ -178,14 +497,30 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
     let command = normalize_datasource_group_command(command);
     match command {
         DatasourceGroupCommand::Types(args) => {
-            if args.json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&render_supported_datasource_catalog_json())?
-                );
-            } else {
-                for line in render_supported_datasource_catalog_text() {
-                    println!("{line}");
+            match args.output_format {
+                SimpleOutputFormat::Text => {
+                    for line in render_supported_datasource_catalog_text() {
+                        println!("{line}");
+                    }
+                }
+                SimpleOutputFormat::Table => {
+                    for line in render_supported_datasource_catalog_table() {
+                        println!("{line}");
+                    }
+                }
+                SimpleOutputFormat::Csv => {
+                    for line in render_supported_datasource_catalog_csv() {
+                        println!("{line}");
+                    }
+                }
+                SimpleOutputFormat::Json => {
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&render_supported_datasource_catalog_json())?
+                    );
+                }
+                SimpleOutputFormat::Yaml => {
+                    print!("{}", render_supported_datasource_catalog_yaml()?);
                 }
             }
             Ok(())
@@ -233,10 +568,18 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                     "{}",
                     serde_json::to_string_pretty(&render_data_source_json(&datasources))?
                 );
+            } else if args.yaml {
+                print!("{}", render_yaml(&render_data_source_json(&datasources))?);
             } else if args.csv {
                 for line in render_data_source_csv(&datasources) {
                     println!("{line}");
                 }
+            } else if args.text {
+                for line in render_datasource_text(&datasources) {
+                    println!("{line}");
+                }
+                println!();
+                println!("Listed {} data source(s).", datasources.len());
             } else {
                 for line in render_data_source_table(&datasources, !args.no_header) {
                     println!("{line}");
@@ -248,6 +591,37 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
         }
         DatasourceGroupCommand::Browse(args) => {
             let _ = datasource_browse::browse_datasources(&args)?;
+            Ok(())
+        }
+        DatasourceGroupCommand::InspectExport(args) => {
+            if args.interactive {
+                #[cfg(feature = "tui")]
+                {
+                    let source = load_datasource_inspect_export_source(&args.input_dir)?;
+                    let summary_lines = vec![
+                        "Datasource inspect-export".to_string(),
+                        format!("Input: {}", source.input_path),
+                        format!("Mode: {}", source.input_mode),
+                        format!("Datasources: {}", source.records.len()),
+                    ];
+                    let items = build_datasource_inspect_export_browser_items(&source);
+                    return run_interactive_browser(
+                        "Datasource inspect-export",
+                        &summary_lines,
+                        &items,
+                    );
+                }
+                #[cfg(not(feature = "tui"))]
+                {
+                    return Err(crate::common::tui(
+                        "Datasource inspect-export interactive mode requires the `tui` feature.",
+                    ));
+                }
+            }
+            let source = load_datasource_inspect_export_source(&args.input_dir)?;
+            let format = resolve_datasource_inspect_export_format(&args);
+            let rendered = render_datasource_inspect_export_output(&source, format)?;
+            print!("{rendered}");
             Ok(())
         }
         DatasourceGroupCommand::Add(args) => {
@@ -506,6 +880,7 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                 let mut total = 0usize;
                 let mut org_count = 0usize;
                 let mut root_items = Vec::new();
+                let mut root_records = Vec::new();
                 for org in list_orgs(&admin_client)? {
                     let org_id = org
                         .get("id")
@@ -517,6 +892,9 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                     let datasources_path = scoped_output_dir.join(DATASOURCE_EXPORT_FILENAME);
                     let index_path = scoped_output_dir.join("index.json");
                     let metadata_path = scoped_output_dir.join(EXPORT_METADATA_FILENAME);
+                    let provisioning_path = scoped_output_dir
+                        .join(DATASOURCE_PROVISIONING_SUBDIR)
+                        .join(DATASOURCE_PROVISIONING_FILENAME);
                     if !args.dry_run {
                         write_json_file(
                             &datasources_path,
@@ -533,6 +911,13 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                             &build_datasource_export_metadata(records.len()),
                             args.overwrite,
                         )?;
+                        if !args.without_datasource_provisioning {
+                            write_yaml_file(
+                                &provisioning_path,
+                                &build_datasource_provisioning_document(&records),
+                                args.overwrite,
+                            )?;
+                        }
                     }
                     let summary_verb = if args.dry_run {
                         "Would export"
@@ -540,11 +925,16 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                         "Exported"
                     };
                     println!(
-                        "{summary_verb} {} datasource(s). Datasources: {} Index: {} Manifest: {}",
+                        "{summary_verb} {} datasource(s). Datasources: {} Index: {} Manifest: {}{}",
                         records.len(),
                         datasources_path.display(),
                         index_path.display(),
-                        metadata_path.display()
+                        metadata_path.display(),
+                        if args.without_datasource_provisioning {
+                            String::new()
+                        } else {
+                            format!(" Provisioning: {}", provisioning_path.display())
+                        }
                     );
                     for item in build_export_index(&records)
                         .get("items")
@@ -561,6 +951,7 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                             root_items.push(entry);
                         }
                     }
+                    root_records.extend(records.iter().cloned());
                     total += records.len();
                     org_count += 1;
                 }
@@ -575,6 +966,16 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                         &build_all_orgs_export_metadata(org_count, total),
                         args.overwrite,
                     )?;
+                    if !args.without_datasource_provisioning {
+                        write_yaml_file(
+                            &args
+                                .export_dir
+                                .join(DATASOURCE_PROVISIONING_SUBDIR)
+                                .join(DATASOURCE_PROVISIONING_FILENAME),
+                            &build_datasource_provisioning_document(&root_records),
+                            args.overwrite,
+                        )?;
+                    }
                 }
                 println!(
                     "{} datasource(s) across {} exported org(s) under {}",
@@ -585,7 +986,13 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                 return Ok(());
             }
             let client = resolve_target_client(&args.common, args.org_id)?;
-            export_datasource_scope(&client, &args.export_dir, args.overwrite, args.dry_run)?;
+            export_datasource_scope(
+                &client,
+                &args.export_dir,
+                args.overwrite,
+                args.dry_run,
+                !args.without_datasource_provisioning,
+            )?;
             Ok(())
         }
         DatasourceGroupCommand::Import(args) => {
@@ -631,7 +1038,8 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
         DatasourceGroupCommand::Diff(args) => {
             let client = build_http_client(&args.common)?;
             let live = list_datasources(&client)?;
-            let (compared_count, differences) = diff_datasources_with_live(&args.diff_dir, &live)?;
+            let (compared_count, differences) =
+                diff_datasources_with_live(&args.diff_dir, args.input_format, &live)?;
             if differences > 0 {
                 return Err(message(format!(
                     "Found {} datasource difference(s) across {} exported datasource(s).",

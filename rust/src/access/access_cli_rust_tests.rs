@@ -1,3 +1,5 @@
+//! CLI definitions for Access command surface and option compatibility behavior.
+
 use super::*;
 use crate::access::{
     build_auth_context, ACCESS_EXPORT_KIND_ORGS, ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS,
@@ -25,6 +27,7 @@ fn parse_cli_supports_user_list() {
             assert!(list_args.table);
             assert!(!list_args.csv);
             assert!(!list_args.json);
+            assert!(!list_args.yaml);
         }
         _ => panic!("expected user list"),
     }
@@ -248,7 +251,8 @@ fn user_help_mentions_filter_and_output_flags() {
     assert!(help.contains("current org scope"));
     assert!(help.contains("--with-teams"));
     assert!(help.contains("Include each user's current team memberships"));
-    assert!(help.contains("--output-format"));
+    assert!(help.contains("--output-format text"));
+    assert!(help.contains("--output-format yaml"));
 }
 
 #[test]
@@ -281,6 +285,8 @@ fn team_and_service_account_help_mentions_membership_and_token_flags() {
     let org_help = render_access_subcommand_help(&["org", "list"]);
     assert!(org_help.contains("--with-users"));
     assert!(org_help.contains("Include org users and org roles"));
+    assert!(org_help.contains("--output-format text"));
+    assert!(org_help.contains("--output-format yaml"));
 
     let team_add_help = render_access_subcommand_help(&["team", "add"]);
     assert!(team_add_help.contains("--member"));
@@ -295,6 +301,10 @@ fn team_and_service_account_help_mentions_membership_and_token_flags() {
     let service_account_help = render_access_subcommand_help(&["service-account", "add"]);
     assert!(service_account_help.contains("--role"));
     assert!(service_account_help.contains("Initial org role for the service account"));
+
+    let service_account_list_help = render_access_subcommand_help(&["service-account", "list"]);
+    assert!(service_account_list_help.contains("--output-format text"));
+    assert!(service_account_list_help.contains("--output-format yaml"));
 
     let token_help = render_access_subcommand_help(&["service-account", "token", "add"]);
     assert!(token_help.contains("--token-name"));
@@ -321,6 +331,7 @@ fn parse_cli_supports_org_commands() {
             assert_eq!(list_args.query.as_deref(), Some("main"));
             assert!(list_args.with_users);
             assert!(list_args.json);
+            assert!(!list_args.yaml);
         }
         _ => panic!("expected org list"),
     }
@@ -418,6 +429,75 @@ fn parse_cli_supports_org_commands() {
 }
 
 #[test]
+fn parse_cli_supports_team_list_output_format_yaml() {
+    let args = parse_cli_from([
+        "grafana-util access",
+        "team",
+        "list",
+        "--output-format",
+        "yaml",
+    ]);
+
+    match args.command {
+        AccessCommand::Team {
+            command: TeamCommand::List(list_args),
+        } => {
+            assert!(list_args.yaml);
+            assert!(!list_args.json);
+            assert!(!list_args.table);
+            assert!(!list_args.csv);
+        }
+        _ => panic!("expected team list"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_org_list_output_format_yaml() {
+    let args = parse_cli_from([
+        "grafana-util access",
+        "org",
+        "list",
+        "--output-format",
+        "yaml",
+    ]);
+
+    match args.command {
+        AccessCommand::Org {
+            command: OrgCommand::List(list_args),
+        } => {
+            assert!(list_args.yaml);
+            assert!(!list_args.json);
+            assert!(!list_args.table);
+            assert!(!list_args.csv);
+        }
+        _ => panic!("expected org list"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_service_account_list_output_format_yaml() {
+    let args = parse_cli_from([
+        "grafana-util access",
+        "service-account",
+        "list",
+        "--output-format",
+        "yaml",
+    ]);
+
+    match args.command {
+        AccessCommand::ServiceAccount {
+            command: ServiceAccountCommand::List(list_args),
+        } => {
+            assert!(list_args.yaml);
+            assert!(!list_args.json);
+            assert!(!list_args.table);
+            assert!(!list_args.csv);
+        }
+        _ => panic!("expected service-account list"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_user_list_output_format_json() {
     let args = parse_cli_from([
         "grafana-util access",
@@ -434,6 +514,7 @@ fn parse_cli_supports_user_list_output_format_json() {
             assert!(list_args.json);
             assert!(!list_args.table);
             assert!(!list_args.csv);
+            assert!(!list_args.yaml);
         }
         _ => panic!("expected user list"),
     }
@@ -453,6 +534,30 @@ fn parse_cli_supports_user_list_output_format_text() {
         AccessCommand::User {
             command: UserCommand::List(list_args),
         } => {
+            assert!(!list_args.json);
+            assert!(!list_args.table);
+            assert!(!list_args.csv);
+            assert!(!list_args.yaml);
+        }
+        _ => panic!("expected user list"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_user_list_output_format_yaml() {
+    let args = parse_cli_from([
+        "grafana-util access",
+        "user",
+        "list",
+        "--output-format",
+        "yaml",
+    ]);
+
+    match args.command {
+        AccessCommand::User {
+            command: UserCommand::List(list_args),
+        } => {
+            assert!(list_args.yaml);
             assert!(!list_args.json);
             assert!(!list_args.table);
             assert!(!list_args.csv);
@@ -823,7 +928,8 @@ fn user_list_with_request_reads_org_users() {
         per_page: 100,
         table: false,
         csv: false,
-        json: true,
+        json: false,
+        yaml: true,
         output_format: None,
     };
     let mut calls = Vec::new();

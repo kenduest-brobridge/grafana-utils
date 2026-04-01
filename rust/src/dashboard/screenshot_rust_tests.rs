@@ -1,3 +1,5 @@
+//! Rust regression coverage for Dashboard behavior at this module boundary.
+
 use super::test_support::{
     build_dashboard_capture_url, infer_screenshot_output_format, parse_cli_from,
     resolve_manifest_title, validate_screenshot_args, DashboardCliArgs, DashboardCommand,

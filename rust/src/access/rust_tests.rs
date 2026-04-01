@@ -1102,7 +1102,8 @@ fn team_list_with_request_reads_search_and_members() {
         per_page: 100,
         table: false,
         csv: false,
-        json: true,
+        json: false,
+        yaml: true,
         output_format: None,
     };
     let mut calls = Vec::new();

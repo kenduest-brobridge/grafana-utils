@@ -448,9 +448,109 @@ fn parse_cli_supports_list_rules_subcommand() {
     let args: AlertCliArgs = parse_cli_from(["grafana-util alert", "list-rules", "--json"]);
     assert_eq!(args.list_kind, Some(super::AlertListKind::Rules));
     assert!(args.json);
+    assert!(!args.text);
     assert!(!args.csv);
+    assert!(!args.yaml);
     assert_eq!(args.org_id, None);
     assert!(!args.all_orgs);
+}
+
+#[test]
+fn parse_cli_supports_list_alert_output_formats() {
+    fn assert_output_mode(args: &AlertCliArgs, mode: &str) {
+        match mode {
+            "text" => {
+                assert!(args.text);
+                assert!(!args.table);
+                assert!(!args.csv);
+                assert!(!args.json);
+                assert!(!args.yaml);
+            }
+            "table" => {
+                assert!(args.table);
+                assert!(!args.text);
+                assert!(!args.csv);
+                assert!(!args.json);
+                assert!(!args.yaml);
+            }
+            "csv" => {
+                assert!(args.csv);
+                assert!(!args.text);
+                assert!(!args.table);
+                assert!(!args.json);
+                assert!(!args.yaml);
+            }
+            "json" => {
+                assert!(args.json);
+                assert!(!args.text);
+                assert!(!args.table);
+                assert!(!args.csv);
+                assert!(!args.yaml);
+            }
+            "yaml" => {
+                assert!(args.yaml);
+                assert!(!args.text);
+                assert!(!args.table);
+                assert!(!args.csv);
+                assert!(!args.json);
+            }
+            other => panic!("unexpected output mode {other}"),
+        }
+    }
+
+    let cases = vec![
+        (
+            vec![
+                "grafana-util alert",
+                "list-rules",
+                "--output-format",
+                "text",
+            ],
+            super::AlertListKind::Rules,
+            "text",
+        ),
+        (
+            vec![
+                "grafana-util alert",
+                "list-contact-points",
+                "--output-format",
+                "yaml",
+            ],
+            super::AlertListKind::ContactPoints,
+            "yaml",
+        ),
+        (
+            vec!["grafana-util alert", "list-mute-timings", "--csv"],
+            super::AlertListKind::MuteTimings,
+            "csv",
+        ),
+        (
+            vec!["grafana-util alert", "list-templates", "--json"],
+            super::AlertListKind::Templates,
+            "json",
+        ),
+    ];
+
+    for (argv, kind, mode) in cases {
+        let args: AlertCliArgs = parse_cli_from(argv);
+        assert_eq!(args.list_kind, Some(kind));
+        assert_output_mode(&args, mode);
+    }
+}
+
+#[test]
+fn parse_cli_supports_list_rules_output_format_yaml() {
+    let args: AlertCliArgs = parse_cli_from([
+        "grafana-util alert",
+        "list-rules",
+        "--output-format",
+        "yaml",
+    ]);
+    assert_eq!(args.list_kind, Some(super::AlertListKind::Rules));
+    assert!(args.yaml);
+    assert!(!args.table);
+    assert!(!args.csv);
+    assert!(!args.json);
 }
 
 #[test]
@@ -461,6 +561,8 @@ fn parse_cli_supports_list_rules_output_format_csv() {
     assert!(args.csv);
     assert!(!args.table);
     assert!(!args.json);
+    assert!(!args.text);
+    assert!(!args.yaml);
 }
 
 #[test]
@@ -502,6 +604,17 @@ fn help_mentions_list_org_routing_flags() {
     assert!(help.contains("--org-id"));
     assert!(help.contains("--all-orgs"));
     assert!(help.contains("This requires Basic auth."));
+}
+
+#[test]
+fn help_mentions_list_output_formats() {
+    let help = render_alert_subcommand_help(&["list-rules"]);
+    assert!(help.contains("--text"));
+    assert!(help.contains("--table"));
+    assert!(help.contains("--csv"));
+    assert!(help.contains("--json"));
+    assert!(help.contains("--yaml"));
+    assert!(help.contains("Use text, table, csv, json, or yaml."));
 }
 
 #[test]

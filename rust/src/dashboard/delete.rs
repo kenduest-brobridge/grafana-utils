@@ -1,3 +1,8 @@
+//! Delete dashboards and folders through Grafana's live API.
+//! This module builds the delete plan, resolves interactive arguments, confirms the
+//! final destructive action, and dispatches the actual delete requests. It is the
+//! execution layer for dashboard deletion, not the CLI parser or render helpers.
+
 use reqwest::Method;
 use serde_json::Value;
 

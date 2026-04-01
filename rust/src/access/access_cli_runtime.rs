@@ -1,3 +1,11 @@
+//! Access CLI runtime glue layer.
+//!
+//! Responsibilities:
+//! - Build parser entrypoints for `access` subcommands and normalize shared
+//!   auth options.
+//! - Resolve execution settings (including output format + dry-run intent).
+//! - Route to Access domain handlers with a prepared HTTP client and auth headers.
+
 use clap::{Command, CommandFactory, Parser};
 use std::path::PathBuf;
 
@@ -23,6 +31,7 @@ fn apply_list_output_format(
     table: &mut bool,
     csv: &mut bool,
     json: &mut bool,
+    yaml: &mut bool,
     output_format: &Option<ListOutputFormat>,
 ) {
     match output_format {
@@ -30,6 +39,7 @@ fn apply_list_output_format(
         Some(ListOutputFormat::Table) => *table = true,
         Some(ListOutputFormat::Csv) => *csv = true,
         Some(ListOutputFormat::Json) => *json = true,
+        Some(ListOutputFormat::Yaml) => *yaml = true,
         None => {}
     }
 }
@@ -57,6 +67,7 @@ pub fn normalize_access_cli_args(mut args: AccessCliArgs) -> AccessCliArgs {
                     &mut list_args.table,
                     &mut list_args.csv,
                     &mut list_args.json,
+                    &mut list_args.yaml,
                     &list_args.output_format,
                 );
             }
@@ -82,6 +93,7 @@ pub fn normalize_access_cli_args(mut args: AccessCliArgs) -> AccessCliArgs {
                     &mut list_args.table,
                     &mut list_args.csv,
                     &mut list_args.json,
+                    &mut list_args.yaml,
                     &list_args.output_format,
                 );
             }
@@ -92,6 +104,7 @@ pub fn normalize_access_cli_args(mut args: AccessCliArgs) -> AccessCliArgs {
                     &mut list_args.table,
                     &mut list_args.csv,
                     &mut list_args.json,
+                    &mut list_args.yaml,
                     &list_args.output_format,
                 );
             }
@@ -109,6 +122,7 @@ pub fn normalize_access_cli_args(mut args: AccessCliArgs) -> AccessCliArgs {
                     &mut list_args.table,
                     &mut list_args.csv,
                     &mut list_args.json,
+                    &mut list_args.yaml,
                     &list_args.output_format,
                 );
             }

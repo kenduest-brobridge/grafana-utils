@@ -13,6 +13,7 @@ use super::{
     write_combined_export_root_metadata,
 };
 use crate::common::api_response;
+use crate::dashboard::DashboardImportInputFormat;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::PathBuf;

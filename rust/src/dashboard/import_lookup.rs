@@ -1,3 +1,5 @@
+//! Import orchestration for Dashboard resources, including input normalization and apply contract handling.
+
 use reqwest::Method;
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};

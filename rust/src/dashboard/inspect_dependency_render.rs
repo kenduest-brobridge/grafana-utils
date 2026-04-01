@@ -1,3 +1,5 @@
+//! Inspection path for Dashboard resources: analysis, extraction, and report shaping.
+
 use crate::dashboard_inspection_dependency_contract::OfflineDependencyReportDocument;
 
 use super::inspect_render::{join_or_none, render_simple_table};

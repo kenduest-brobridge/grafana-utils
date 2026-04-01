@@ -1,3 +1,10 @@
+//! Renderers for datasource mutation dry-run and import result payloads.
+//!
+//! Responsibilities:
+//! - Convert mutation rows into structured table/json output.
+//! - Validate dry-run arguments for command-line consistency.
+//! - Provide shared formatting between `mutation` and `import` workflows.
+
 use serde_json::{Map, Value};
 
 use crate::common::{message, Result};

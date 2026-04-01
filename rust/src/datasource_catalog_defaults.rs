@@ -1,3 +1,5 @@
+//! Catalog lookup/modeling logic for Core data sources and metadata.
+
 use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 

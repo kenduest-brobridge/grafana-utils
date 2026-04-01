@@ -61,7 +61,7 @@ use crate::common::{message, Result};
 use crate::dashboard::CommonCliArgs;
 /// Constant for default review token.
 pub const DEFAULT_REVIEW_TOKEN: &str = "reviewed-change-plan";
-const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Summarize desired resources:\n    grafana-util change summary --desired-file ./desired.json\n\n  Audit managed resources against a staged checksum lock:\n    grafana-util change audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --fail-on-drift --output json\n\n  Package local exports into one source bundle:\n    grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n\n  Compare a source bundle against target inventory before apply:\n    grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output json\n\n  Assess staged promotion review handoff:\n    grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --output json\n\n  Build a live-backed change plan:\n    grafana-util change plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n\n  Apply a reviewed plan back to Grafana:\n    grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
+const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Summarize desired resources:\n    grafana-util change summary --desired-file ./desired.json\n\n  Audit managed resources against a staged checksum lock:\n    grafana-util change audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --fail-on-drift --output json\n\n  Package local exports into one source bundle:\n    grafana-util change bundle --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n\n  Compare a source bundle against target inventory before apply:\n    grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output json\n\n  Assess staged promotion review handoff:\n    grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --output json\n\n  Build a live-backed change plan:\n    grafana-util change plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n\n  Apply a reviewed plan back to Grafana:\n    grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
 const SYNC_SUMMARY_HELP_TEXT: &str = "Examples:\n\n  grafana-util change summary --desired-file ./desired.json\n  grafana-util change summary --desired-file ./desired.json --output json";
 const SYNC_PLAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util change plan --desired-file ./desired.json --live-file ./live.json\n  grafana-util change plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --allow-prune --output json";
 const SYNC_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util change review --plan-file ./sync-plan.json\n  grafana-util change review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output json";
@@ -71,7 +71,7 @@ const SYNC_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change prefl
 const SYNC_ASSESS_ALERTS_HELP_TEXT: &str = "Examples:\n\n  grafana-util change assess-alerts --alerts-file ./alerts.json\n  grafana-util change assess-alerts --alerts-file ./alerts.json --output json";
 const SYNC_BUNDLE_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util change bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --availability-file ./availability.json --output json\n\n  Example availability file:\n    {\n      \"providerNames\": [\"vault\"],\n      \"secretPlaceholderNames\": [\"prom-basic-auth\"]\n    }";
 const SYNC_PROMOTION_PREFLIGHT_HELP_TEXT: &str = "This command is a staged review handoff for promotion; it stays read-only and does not apply live changes.\n\nExamples:\n\n  grafana-util change promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util change promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json --mapping-file ./promotion-mapping.json --availability-file ./availability.json --output json\n\n  Minimal promotion mapping file:\n    {\n      \"kind\": \"grafana-utils-sync-promotion-mapping\",\n      \"schemaVersion\": 1,\n      \"metadata\": {\n        \"sourceEnvironment\": \"staging\",\n        \"targetEnvironment\": \"prod\"\n      },\n      \"folders\": {\n        \"ops-src\": \"ops-prod\"\n      },\n      \"datasources\": {\n        \"uids\": {\n          \"prom-src\": \"prom-prod\"\n        },\n        \"names\": {\n          \"Prometheus Source\": \"Prometheus Prod\"\n        }\n      }\n    }\n\n  Example availability file:\n    {\n      \"providerNames\": [\"vault\"],\n      \"secretPlaceholderNames\": [\"prom-basic-auth\"]\n    }";
-const SYNC_BUNDLE_HELP_TEXT: &str = "Examples:\n\n  grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n  grafana-util change bundle --dashboard-export-dir ./dashboards/raw --datasource-export-file ./datasources/datasources.json --output json";
+const SYNC_BUNDLE_HELP_TEXT: &str = "Examples:\n\n  grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n  grafana-util change bundle --dashboard-export-dir ./dashboards/raw --datasource-export-file ./datasources/datasources.json --output json\n  grafana-util change bundle --dashboard-export-dir ./dashboards/raw --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output json\n  grafana-util change bundle --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json";
 
 /// Output formats shared by staged sync document commands.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
@@ -533,14 +533,27 @@ pub struct SyncBundleArgs {
     pub dashboard_export_dir: Option<PathBuf>,
     #[arg(
         long,
+        conflicts_with = "dashboard_export_dir",
+        help = "Path to one existing dashboard provisioning root or dashboards/ directory such as ./dashboards/provisioning."
+    )]
+    pub dashboard_provisioning_dir: Option<PathBuf>,
+    #[arg(
+        long,
         help = "Path to one existing alert raw export directory such as ./alerts/raw."
     )]
     pub alert_export_dir: Option<PathBuf>,
     #[arg(
         long,
+        conflicts_with = "datasource_provisioning_file",
         help = "Optional standalone datasource inventory JSON file to include or prefer over dashboards/raw/datasources.json."
     )]
     pub datasource_export_file: Option<PathBuf>,
+    #[arg(
+        long,
+        conflicts_with = "datasource_export_file",
+        help = "Optional datasource provisioning YAML file to include instead of dashboards/raw/datasources.json."
+    )]
+    pub datasource_provisioning_file: Option<PathBuf>,
     #[arg(
         long,
         help = "Optional JSON object file containing extra bundle metadata."
@@ -590,6 +603,7 @@ pub enum SyncGroupCommand {
 
 pub(crate) use bundle_inputs::{
     build_alert_sync_specs, load_alerting_bundle_section, load_dashboard_bundle_sections,
+    load_dashboard_provisioning_bundle_sections, load_datasource_provisioning_records,
     normalize_alert_managed_fields, normalize_alert_resource_identity_and_title,
     normalize_datasource_bundle_item,
 };

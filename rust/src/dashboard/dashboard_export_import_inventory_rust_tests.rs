@@ -5,10 +5,12 @@ use super::*;
 
 #[test]
 fn build_export_variant_dirs_returns_raw_and_prompt_dirs() {
-    let (raw_dir, prompt_dir) = build_export_variant_dirs(Path::new("dashboards"));
+    let (raw_dir, prompt_dir, provisioning_dir) =
+        build_export_variant_dirs(Path::new("dashboards"));
 
     assert_eq!(raw_dir, Path::new("dashboards/raw"));
     assert_eq!(prompt_dir, Path::new("dashboards/prompt"));
+    assert_eq!(provisioning_dir, Path::new("dashboards/provisioning"));
 }
 
 #[test]
@@ -97,6 +99,90 @@ fn discover_dashboard_files_ignores_permission_bundle() {
 
     let files = discover_dashboard_files(&temp.path().join("raw")).unwrap();
     assert_eq!(files, vec![temp.path().join("raw/subdir/dashboard.json")]);
+}
+
+#[test]
+fn resolve_dashboard_import_source_accepts_provisioning_root() {
+    let temp = tempdir().unwrap();
+    let provisioning_root = temp.path().join("provisioning");
+    fs::create_dir_all(provisioning_root.join("dashboards/subdir")).unwrap();
+
+    let resolved = resolve_dashboard_import_source(
+        &provisioning_root,
+        DashboardImportInputFormat::Provisioning,
+    )
+    .unwrap();
+
+    assert_eq!(resolved.metadata_dir, provisioning_root);
+    assert_eq!(
+        resolved.dashboard_dir,
+        temp.path().join("provisioning/dashboards")
+    );
+}
+
+#[test]
+fn resolve_dashboard_import_source_accepts_provisioning_dashboards_dir() {
+    let temp = tempdir().unwrap();
+    let provisioning_root = temp.path().join("provisioning");
+    let dashboards_dir = provisioning_root.join("dashboards");
+    fs::create_dir_all(dashboards_dir.join("subdir")).unwrap();
+
+    let resolved =
+        resolve_dashboard_import_source(&dashboards_dir, DashboardImportInputFormat::Provisioning)
+            .unwrap();
+
+    assert_eq!(resolved.metadata_dir, provisioning_root);
+    assert_eq!(resolved.dashboard_dir, dashboards_dir);
+}
+
+#[test]
+fn import_dashboards_accepts_provisioning_root_with_explicit_format() {
+    let temp = tempdir().unwrap();
+    let provisioning_root = temp.path().join("provisioning");
+    let dashboards_dir = provisioning_root.join("dashboards");
+    fs::create_dir_all(&dashboards_dir).unwrap();
+    fs::write(
+        provisioning_root.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "provisioning",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-file-provisioning-dashboard",
+            "org": "Main Org.",
+            "orgId": "1"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        dashboards_dir.join("cpu.json"),
+        serde_json::to_string_pretty(&json!({
+            "uid": "cpu-main",
+            "title": "CPU",
+            "schemaVersion": 38
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let mut args = make_import_args(provisioning_root);
+    args.input_format = DashboardImportInputFormat::Provisioning;
+    args.dry_run = false;
+
+    let count = import_dashboards_with_request(
+        |_method, path, _params, payload| match path {
+            "/api/dashboards/db" => {
+                assert_eq!(payload.unwrap()["dashboard"]["uid"], "cpu-main");
+                Ok(Some(json!({"status": "success"})))
+            }
+            _ => Err(test_support::message(format!("unexpected path {path}"))),
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 1);
 }
 
 #[test]

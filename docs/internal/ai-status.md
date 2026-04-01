@@ -8,12 +8,54 @@ Current AI-maintained status only.
 - Some older entries below still cite pre-cleanup `docs/internal/...` paths for files that now live under `docs/internal/archive/`.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 
+## 2026-04-01 - Add repo-owned install script for release binaries
+- State: Done
+- Scope: `scripts/install.sh`, `python/tests/test_python_install_script.py`, `README.md`, `README.zh-TW.md`, `docs/user-guide.md`, `docs/user-guide-TW.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: operators could build from source or download release assets manually, but there was no supported one-line install path that fetched the right Rust binary and placed it into a common executable directory.
+- Current Update: added a repo-owned POSIX install script that detects `linux-amd64` and `macos-arm64`, downloads the matching GitHub release archive, installs `grafana-util` into `/usr/local/bin` when writable or falls back to `~/.local/bin`, and supports explicit `BIN_DIR`, `VERSION`, `REPO`, and `ASSET_URL` overrides. Public English and Traditional Chinese docs now show the one-line `curl ... | sh` path plus the direct local-checkout fallback.
+- Result: users now have a documented one-line installer for the maintained Rust binary without needing to compile from source or hand-place the executable.
+
+## 2026-04-01 - Extend alert list output formats
+- State: Blocked
+- Scope: `rust/src/alert_cli_defs.rs`, `rust/src/alert_list.rs`, `rust/src/alert_rust_tests.rs`
+- Baseline: alert list commands (`list-rules`, `list-contact-points`, `list-mute-timings`, `list-templates`) only normalized `table`, `csv`, and `json` flags, with table as the default. The runtime list renderer also only handled table/csv/json.
+- Current Update: widened the list parser/output normalization to include `text` and `yaml`, updated the list help text examples, and added focused parser/rendering tests for the expanded output set. Focused `cargo test` validation is blocked by unrelated compile errors elsewhere in the crate.
+- Result: code changes are in place, but the focused Rust test slice does not complete because the repository currently fails to compile in unrelated dashboard/datasource files.
+
+## 2026-04-01 - Record baseline-five live defaults and dashboard review output inventory
+- State: Done
+- Scope: `rust/src/profile_config.rs`, `rust/src/profile_cli.rs`, `rust/src/cli.rs`, `rust/src/cli_help_examples.rs`, `rust/src/dashboard/cli_defs_shared.rs`, `rust/src/dashboard/dashboard_runtime.rs`, `rust/src/access/access_cli_shared.rs`, `rust/src/access/access_cli_runtime.rs`, `rust/src/alert_cli_defs.rs`, `rust/src/project_status_command.rs`, `rust/src/project_status_support.rs`, `rust/src/dashboard/authoring.rs`, `rust/src/dashboard/cli_defs_command.rs`, `rust/src/dashboard/dashboard_cli_parser_help_rust_tests.rs`, `rust/src/dashboard/authoring_rust_tests.rs`, `rust/src/dashboard/mod.rs`, `rust/src/cli_rust_tests.rs`, `docs/user-guide.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the shared live connection baseline still required repeating URL/auth/TLS flags by hand, and the dashboard authoring lane had not yet been documented as a local-only specialization with an explicit output-mode inventory.
+- Current Update: expanded the repo-local profile baseline across the five live surfaces on the baseline-five rule (`dashboard`, `datasource`, `access`, `alert`, and `status live`) so they now inherit named live defaults from `grafana-util.yaml` while preserving explicit CLI overrides and environment fallbacks. In the same wave, documented the dashboard-only authoring/review lane as intentionally specialized: `get` and `clone-live` create local drafts, `patch-file` and `publish` reuse the import pipeline, and `review` now makes its output coverage explicit across text, table, CSV, JSON, and YAML.
+- Result: the Rust CLI now has a five-surface shared live baseline, while the dashboard authoring/review surfaces stay deliberately specialized instead of being folded into the shared live connection layer.
+
+## 2026-03-31 - Add table/csv/yaml output to overview and project status
+- State: Planned
+- Scope: `rust/src/overview.rs`, `rust/src/project_status_command.rs`, `rust/src/tabular_output.rs`, `rust/src/snapshot.rs`, `rust/src/overview_rust_tests.rs`, `rust/src/project_status_cli_rust_tests.rs`, `rust/src/cli_rust_tests.rs`
+- Baseline: overview and project-status staged/live commands currently render text or JSON only, while the shared output enum is still wired into snapshot review. Table/csv/yaml handling does not exist yet on the overview/status paths.
+- Current Update: scoped the current render/output paths and confirmed the existing shared tabular helpers are available for a minimal summary renderer.
+- Result: pending implementation.
+
 ## 2026-03-31 - Add explicit dashboard provisioning export provider overrides
 - State: Done
 - Scope: `rust/src/dashboard/cli_defs_command.rs`, `rust/src/dashboard/export.rs`, `rust/src/dashboard/dashboard_cli_parser_help_rust_tests.rs`, `rust/src/dashboard/export_focus_report_path_top_rust_tests.rs`, `rust/src/dashboard/inspect_live.rs`, `rust/src/dashboard/mod.rs`, `rust/src/dashboard/inspect_live_export_parity_all_orgs_rust_tests.rs`, `docs/user-guide.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
 - Baseline: the dashboard provisioning export lane already wrote a usable default `provisioning/provisioning/dashboards.yaml`, but the provider block itself was still fixed to the default name, org ID, path, and lifecycle booleans.
 - Current Update: added explicit export CLI knobs for provisioning provider name, org ID override, path override, `disableDeletion`, `allowUiUpdates`, and `updateIntervalSeconds`, while keeping the existing defaults intact. The help text and user guide now call out the provider file and its override surface directly, and focused tests cover both parser/help output and the generated YAML shape.
 - Result: dashboard provisioning export now has an operator-controlled provider config surface instead of a hardcoded provider stub, while the export layout and import/diff behavior remain unchanged.
+
+## 2026-03-31 - Reword snapshot review as inventory review
+- State: Done
+- Scope: `rust/src/snapshot.rs`, `rust/src/cli.rs`, `rust/src/cli_help_examples.rs`, `rust/src/cli_rust_tests.rs`, `docs/user-guide.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: snapshot review help and docs still described the command as a staged `overview`-style workbench wrapper, which blurred the intended local inventory review semantics.
+- Current Update: rewired the snapshot help/examples and user-guide copy to describe `snapshot review` as a local inventory review over the exported dashboard and datasource snapshot root, with text/json/interactive examples that no longer imply overview/workbench ownership.
+- Result: the snapshot namespace now presents a clearer operator contract, while the runtime remains a thin wrapper over the existing review path.
+
+## 2026-03-31 - Add snapshot export/review wrappers
+- State: Done
+- Scope: `rust/src/snapshot.rs`, `rust/src/snapshot_rust_tests.rs`, `rust/src/cli.rs`, `rust/src/cli_help_examples.rs`, `rust/src/cli_rust_tests.rs`, `rust/src/lib.rs`, `docs/user-guide.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: operators could already export dashboards and datasources across all orgs and could already review staged exports, but they still had to run two separate export commands and then restate both staged input directories to `overview` or `status staged`.
+- Current Update: added a new top-level `snapshot` namespace with `snapshot export` and `snapshot review`. `snapshot export` is a thin wrapper over dashboard and datasource all-org exports rooted under one `--export-dir`, while `snapshot review` renders a local inventory review from the given `--input-dir` with automatic `dashboards/` and `datasources/` wiring. Added an explicit `--overwrite` knob so repeat snapshot runs can replace an existing root cleanly.
+- Result: the common "capture all org dashboards + datasources, then inspect locally" flow now has one export command and one review command, without changing the underlying per-domain export or local review contracts.
 
 ## 2026-03-31 - Make dashboard provisioning export provider path concrete
 - State: Done

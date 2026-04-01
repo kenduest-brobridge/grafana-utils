@@ -35,6 +35,14 @@ This document is for maintainers. Keep `README.md` and the user guides operator-
 
 See [`docs/internal/project-surface-boundaries.md`](/Users/kendlee/work/grafana-utils/docs/internal/project-surface-boundaries.md) for the current public-name versus internal-name map.
 
+## Output Coverage Inventory
+
+- Baseline-five output family: `table`, `csv`, `text`, `json`, `yaml`.
+- Use the full family for ordinary inventory, list, and review commands when the output is a plain report or row-oriented result.
+- Treat specialized surfaces as intentional exceptions, not omissions. Common examples are `text/json/interactive` review flows, named report modes such as `report-json` or `governance-json`, and command-specific artifacts like screenshots or prompt-export bundles.
+- Keep future command design aligned with the same rule: default to baseline-five unless the command is clearly contract-shaped or workflow-shaped, and then document the narrower surface in the command help and user guides.
+- Preserve mutual exclusion between baseline-five flags and any command-specific output mode so parser behavior stays explicit and predictable.
+
 ## Naming Boundary
 
 - Public names are the command names shown by `rust/src/cli.rs`, README, and the user guides.

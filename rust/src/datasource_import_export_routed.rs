@@ -1,3 +1,5 @@
+//! Import orchestration for Core resources, including input normalization and apply contract handling.
+
 use serde_json::{json, Value};
 use std::path::Path;
 
@@ -160,7 +162,9 @@ pub(crate) fn build_routed_datasource_import_dry_run_json(
     let mut imports = Vec::new();
     for scope in scopes {
         let plan = resolve_export_org_target_plan(&admin_client, args, &scope)?;
-        let datasource_count = load_import_records(&plan.import_dir)?.1.len();
+        let datasource_count = load_import_records(&plan.import_dir, args.input_format)?
+            .1
+            .len();
         orgs.push(json!({
             "sourceOrgId": plan.source_org_id,
             "sourceOrgName": plan.source_org_name,

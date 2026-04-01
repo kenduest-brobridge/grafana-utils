@@ -1,3 +1,5 @@
+//! Catalog lookup/modeling logic for Core data sources and metadata.
+
 use super::datasource_catalog_data::{DatasourceCatalogEntry, DATASOURCE_CATALOG};
 
 pub fn supported_datasource_catalog() -> &'static [DatasourceCatalogEntry] {

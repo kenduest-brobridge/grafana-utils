@@ -9,6 +9,7 @@ use super::{
     with_dashboard_import_live_preflight, write_basic_raw_export,
     write_combined_export_root_metadata, ImportArgs, EXPORT_METADATA_FILENAME, TOOL_SCHEMA_VERSION,
 };
+use crate::dashboard::DashboardImportInputFormat;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::Path;
@@ -58,6 +59,7 @@ fn import_dashboards_with_client_imports_discovered_files() {
         only_org_id: Vec::new(),
         create_missing_orgs: false,
         import_dir: raw_dir,
+        input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: Some("new-folder".to_string()),
         ensure_folders: false,
         replace_existing: true,
@@ -108,6 +110,7 @@ fn import_dashboards_with_org_id_requires_basic_auth() {
         only_org_id: Vec::new(),
         create_missing_orgs: false,
         import_dir: temp.path().join("raw"),
+        input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         ensure_folders: false,
         replace_existing: false,
@@ -231,6 +234,63 @@ fn import_dashboards_with_create_missing_orgs_during_dry_run_previews_org_creati
         vec![("GET".to_string(), "/api/orgs".to_string())]
     );
     assert!(import_calls.is_empty());
+}
+
+#[test]
+fn routed_interactive_import_rebinds_scoped_args_per_org() {
+    let temp = tempdir().unwrap();
+    let export_root = temp.path().join("exports");
+    let org_nine_raw = export_root.join("org_9_Ops_Org").join("raw");
+    write_combined_export_root_metadata(&export_root, &[("9", "Ops Org", "org_9_Ops_Org")]);
+    write_basic_raw_export(
+        &org_nine_raw,
+        "9",
+        "Ops Org",
+        "ops-main",
+        "Ops Main",
+        "loki-nine",
+        "loki",
+        "logs",
+        "ops",
+        "Ops",
+        "expr",
+        "{job=\"grafana\"}",
+    );
+
+    let mut args = make_import_args(export_root);
+    args.common = make_basic_common_args("http://127.0.0.1:3000".to_string());
+    args.use_export_org = true;
+    args.interactive = true;
+    args.dry_run = false;
+
+    let mut import_calls = Vec::new();
+    let count = test_support::import::import_dashboards_by_export_org_with_request(
+        |method, path, _params, _payload| match (method, path) {
+            (reqwest::Method::GET, "/api/orgs") => Ok(Some(json!([
+                {"id": 9, "name": "Ops Org"}
+            ]))),
+            _ => Err(test_support::message(format!("unexpected request {path}"))),
+        },
+        |target_org_id, scoped_args| {
+            import_calls.push((
+                target_org_id,
+                scoped_args.import_dir.clone(),
+                scoped_args.org_id,
+                scoped_args.use_export_org,
+                scoped_args.interactive,
+            ));
+            Ok(1)
+        },
+        |_target_org_id, _scoped_args| unreachable!("dry-run collector should not be used"),
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 1);
+    assert_eq!(
+        import_calls,
+        vec![(9, org_nine_raw.clone(), Some(9), false, true)]
+    );
 }
 
 #[test]
@@ -388,6 +448,7 @@ fn build_import_auth_context_adds_org_header_for_basic_auth_imports() {
         only_org_id: Vec::new(),
         create_missing_orgs: false,
         import_dir: temp.path().join("raw"),
+        input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         ensure_folders: false,
         replace_existing: false,

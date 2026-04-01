@@ -4,8 +4,10 @@ use super::*;
 use crate::datasource::{
     diff_datasources_with_live, discover_export_org_import_scopes,
     format_routed_datasource_scope_summary_fields, format_routed_datasource_target_org_label,
-    load_import_records, render_routed_datasource_import_org_table, run_datasource_cli,
-    DatasourceGroupCommand, DatasourceImportArgs,
+    load_datasource_inspect_export_source, load_import_records,
+    render_datasource_inspect_export_output, render_routed_datasource_import_org_table,
+    run_datasource_cli, DatasourceGroupCommand, DatasourceImportArgs, DatasourceImportInputFormat,
+    DatasourceInspectExportRenderFormat,
 };
 use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -302,11 +304,148 @@ fn datasource_import_rejects_extra_secret_or_server_managed_fields() {
     )
     .unwrap();
 
-    let error = load_import_records(&import_dir).unwrap_err();
+    let error =
+        load_import_records(&import_dir, DatasourceImportInputFormat::Inventory).unwrap_err();
 
     assert!(error
         .to_string()
         .contains("unsupported datasource field(s): id, secureJsonData"));
+}
+
+#[test]
+fn datasource_import_loads_provisioning_from_export_root_without_metadata() {
+    let temp = tempdir().unwrap();
+    let export_root = temp.path().join("datasources");
+    let provisioning_dir = export_root.join("provisioning");
+    fs::create_dir_all(&provisioning_dir).unwrap();
+    fs::write(
+        provisioning_dir.join("datasources.yaml"),
+        r#"apiVersion: 1
+datasources:
+  - uid: prom-main
+    name: Prometheus Main
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    orgId: 7
+"#,
+    )
+    .unwrap();
+
+    let (metadata, records) =
+        load_import_records(&export_root, DatasourceImportInputFormat::Provisioning).unwrap();
+
+    assert_eq!(metadata.variant, "provisioning");
+    assert_eq!(metadata.datasources_file, "provisioning/datasources.yaml");
+    assert_eq!(records.len(), 1);
+    assert_eq!(records[0].uid, "prom-main");
+    assert_eq!(records[0].name, "Prometheus Main");
+    assert_eq!(records[0].datasource_type, "prometheus");
+    assert_eq!(records[0].access, "proxy");
+    assert_eq!(records[0].url, "http://prometheus:9090");
+    assert!(records[0].is_default);
+    assert_eq!(records[0].org_id, "7");
+}
+
+#[test]
+fn datasource_import_loads_provisioning_from_directory_or_yaml_file() {
+    let temp = tempdir().unwrap();
+    let provisioning_dir = temp.path().join("provisioning");
+    fs::create_dir_all(&provisioning_dir).unwrap();
+    let provisioning_file = provisioning_dir.join("datasources.yaml");
+    fs::write(
+        &provisioning_file,
+        r#"apiVersion: 1
+datasources:
+  - uid: loki-main
+    name: Loki Main
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    orgId: 9
+"#,
+    )
+    .unwrap();
+
+    let (dir_metadata, dir_records) =
+        load_import_records(&provisioning_dir, DatasourceImportInputFormat::Provisioning).unwrap();
+    let (file_metadata, file_records) = load_import_records(
+        &provisioning_file,
+        DatasourceImportInputFormat::Provisioning,
+    )
+    .unwrap();
+
+    assert_eq!(dir_metadata.datasources_file, "datasources.yaml");
+    assert_eq!(file_metadata.datasources_file, "datasources.yaml");
+    assert_eq!(dir_records.len(), 1);
+    assert_eq!(dir_records[0].uid, "loki-main");
+    assert_eq!(file_records, dir_records);
+}
+
+#[test]
+fn datasource_inspect_export_renders_inventory_root_in_multiple_output_modes() {
+    let root = write_diff_fixture(&[json!({
+        "uid": "prom-main",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "access": "proxy",
+        "url": "http://prometheus:9090",
+        "isDefault": true,
+        "org": "Main Org",
+        "orgId": "1"
+    })]);
+
+    let source = load_datasource_inspect_export_source(&root).unwrap();
+    let table = render_datasource_inspect_export_output(
+        &source,
+        DatasourceInspectExportRenderFormat::Table,
+    )
+    .unwrap();
+    let text =
+        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Text)
+            .unwrap();
+    let json_output =
+        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Json)
+            .unwrap();
+    let yaml_output =
+        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Yaml)
+            .unwrap();
+
+    assert!(table.contains("UID"));
+    assert!(table.contains("Prometheus Main"));
+    assert!(text.contains("Datasource inspect-export:"));
+    assert!(text.contains("Mode: inventory"));
+    assert!(text.contains("Datasource count: 1"));
+    assert!(text.contains("Prometheus Main"));
+    assert!(json_output.contains("\"inputMode\": \"inventory\""));
+    assert!(json_output.contains("\"datasourceCount\": 1"));
+    assert!(yaml_output.contains("inputMode: inventory"));
+    assert!(yaml_output.contains("datasourceCount: 1"));
+
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn datasource_inspect_export_renders_provisioning_yaml_file_as_csv_and_yaml() {
+    let root = write_provisioning_diff_fixture();
+    let provisioning_file = root.join("provisioning/datasources.yaml");
+
+    let source = load_datasource_inspect_export_source(&provisioning_file).unwrap();
+    let csv_output =
+        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Csv)
+            .unwrap();
+    let yaml_output =
+        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Yaml)
+            .unwrap();
+
+    assert!(csv_output.contains("uid,name,type,url,isDefault"));
+    assert!(csv_output.contains("Prometheus Main"));
+    assert!(yaml_output.contains("inputMode: provisioning"));
+    assert!(yaml_output.contains("Prometheus Main"));
+
+    fs::remove_dir_all(root).unwrap();
 }
 
 #[test]
@@ -334,6 +473,7 @@ fn discover_export_org_import_scopes_reads_selected_multi_org_root() {
     let args = DatasourceImportArgs {
         common: test_datasource_common_args(),
         import_dir: import_root,
+        input_format: DatasourceImportInputFormat::Inventory,
         org_id: None,
         use_export_org: true,
         only_org_id: vec![2],
@@ -375,6 +515,7 @@ fn discover_export_org_import_scopes_errors_when_selected_org_missing() {
     let args = DatasourceImportArgs {
         common: test_datasource_common_args(),
         import_dir: import_root,
+        input_format: DatasourceImportInputFormat::Inventory,
         org_id: None,
         use_export_org: true,
         only_org_id: vec![9],
@@ -437,7 +578,7 @@ fn datasource_import_with_use_export_org_requires_basic_auth() {
 }
 
 #[test]
-fn diff_help_explains_diff_dir_flag() {
+fn diff_help_explains_input_format_and_provisioning_lane() {
     let mut command = DatasourceCliArgs::command();
     let subcommand = command
         .find_subcommand_mut("diff")
@@ -447,6 +588,8 @@ fn diff_help_explains_diff_dir_flag() {
     let help = String::from_utf8(output).unwrap();
 
     assert!(help.contains("--diff-dir"));
+    assert!(help.contains("--input-format"));
+    assert!(help.contains("provisioning"));
     assert!(help.contains("Compare datasource inventory"));
 }
 
@@ -458,6 +601,30 @@ fn parse_datasource_diff_preserves_requested_path() {
     match args.command {
         DatasourceGroupCommand::Diff(inner) => {
             assert_eq!(inner.diff_dir, Path::new("./datasources"));
+            assert_eq!(inner.input_format, DatasourceImportInputFormat::Inventory);
+        }
+        _ => panic!("expected datasource diff"),
+    }
+}
+
+#[test]
+fn parse_datasource_diff_supports_provisioning_input_format() {
+    let args = DatasourceCliArgs::parse_from([
+        "grafana-util",
+        "diff",
+        "--diff-dir",
+        "./datasources/provisioning",
+        "--input-format",
+        "provisioning",
+    ]);
+
+    match args.command {
+        DatasourceGroupCommand::Diff(inner) => {
+            assert_eq!(inner.diff_dir, Path::new("./datasources/provisioning"));
+            assert_eq!(
+                inner.input_format,
+                DatasourceImportInputFormat::Provisioning
+            );
         }
         _ => panic!("expected datasource diff"),
     }
@@ -488,7 +655,9 @@ fn diff_datasources_with_live_returns_zero_for_matching_inventory() {
     .unwrap()
     .clone()];
 
-    let (compared_count, differences) = diff_datasources_with_live(&diff_dir, &live).unwrap();
+    let (compared_count, differences) =
+        diff_datasources_with_live(&diff_dir, DatasourceImportInputFormat::Inventory, &live)
+            .unwrap();
 
     assert_eq!(compared_count, 1);
     assert_eq!(differences, 0);
@@ -520,11 +689,55 @@ fn diff_datasources_with_live_detects_changed_inventory() {
     .unwrap()
     .clone()];
 
-    let (compared_count, differences) = diff_datasources_with_live(&diff_dir, &live).unwrap();
+    let (compared_count, differences) =
+        diff_datasources_with_live(&diff_dir, DatasourceImportInputFormat::Inventory, &live)
+            .unwrap();
 
     assert_eq!(compared_count, 1);
     assert_eq!(differences, 1);
     fs::remove_dir_all(diff_dir).unwrap();
+}
+
+#[test]
+fn diff_datasources_with_live_supports_provisioning_root_directory_and_file() {
+    let diff_root = write_provisioning_diff_fixture();
+    let live = vec![json!({
+        "id": 7,
+        "uid": "prom-main",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "access": "proxy",
+        "url": "http://prometheus:9090",
+        "isDefault": true,
+        "orgId": "1"
+    })
+    .as_object()
+    .unwrap()
+    .clone()];
+
+    let provisioning_dir = diff_root.join("provisioning");
+    let provisioning_file = provisioning_dir.join("datasources.yaml");
+
+    let (root_count, root_differences) =
+        diff_datasources_with_live(&diff_root, DatasourceImportInputFormat::Provisioning, &live)
+            .unwrap();
+    let (dir_count, dir_differences) = diff_datasources_with_live(
+        &provisioning_dir,
+        DatasourceImportInputFormat::Provisioning,
+        &live,
+    )
+    .unwrap();
+    let (file_count, file_differences) = diff_datasources_with_live(
+        &provisioning_file,
+        DatasourceImportInputFormat::Provisioning,
+        &live,
+    )
+    .unwrap();
+
+    assert_eq!((root_count, root_differences), (1, 0));
+    assert_eq!((dir_count, dir_differences), (1, 0));
+    assert_eq!((file_count, file_differences), (1, 0));
+    fs::remove_dir_all(diff_root).unwrap();
 }
 
 fn write_diff_fixture(records: &[Value]) -> std::path::PathBuf {
@@ -560,6 +773,35 @@ fn write_diff_fixture(records: &[Value]) -> std::path::PathBuf {
     )
     .unwrap();
     dir
+}
+
+fn write_provisioning_diff_fixture() -> std::path::PathBuf {
+    let root = write_diff_fixture(&[json!({
+        "uid": "prom-main",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "access": "proxy",
+        "url": "http://prometheus:9090",
+        "isDefault": true,
+        "orgId": "1"
+    })]);
+    let provisioning_dir = root.join("provisioning");
+    fs::create_dir_all(&provisioning_dir).unwrap();
+    fs::write(
+        provisioning_dir.join("datasources.yaml"),
+        r#"apiVersion: 1
+datasources:
+  - uid: prom-main
+    name: Prometheus Main
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    orgId: 1
+"#,
+    )
+    .unwrap();
+    root
 }
 
 fn write_multi_org_import_fixture(

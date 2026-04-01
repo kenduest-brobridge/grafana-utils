@@ -1,3 +1,5 @@
+//! CLI definitions for Dashboard command surface and option compatibility behavior.
+
 use clap::{Args, ValueEnum};
 
 use super::super::{DEFAULT_TIMEOUT, DEFAULT_URL};
@@ -5,9 +7,11 @@ use super::super::{DEFAULT_TIMEOUT, DEFAULT_URL};
 /// Shared tabular/list output selectors for dashboard commands.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum SimpleOutputFormat {
+    Text,
     Table,
     Csv,
     Json,
+    Yaml,
 }
 
 /// Output selectors for dashboard dry-run style commands.

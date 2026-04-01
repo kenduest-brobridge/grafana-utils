@@ -1,3 +1,5 @@
+//! Interactive browse workflows and terminal-driven state flow for Dashboard entities.
+
 #[cfg(feature = "tui")]
 use std::io::{stdin, stdout, IsTerminal};
 

@@ -6,9 +6,11 @@ use super::{
     render_unified_help_full_text, render_unified_help_text, CliArgs, UnifiedCommand,
 };
 use crate::alert::{parse_cli_from as parse_alert_cli_from, root_command as alert_root_command};
-use crate::dashboard::DashboardCommand;
+use crate::dashboard::{DashboardCommand, SimpleOutputFormat};
 use crate::datasource::DatasourceGroupCommand;
+use crate::overview::OverviewOutputFormat;
 use crate::profile_cli::{root_command as profile_root_command, ProfileCommand};
+use crate::snapshot::root_command as snapshot_root_command;
 use crate::sync::{SyncGroupCommand, SyncOutputFormat, DEFAULT_REVIEW_TOKEN};
 use clap::{CommandFactory, Parser};
 use std::cell::RefCell;
@@ -48,6 +50,19 @@ fn render_profile_subcommand_help(path: &[&str]) -> String {
     String::from_utf8(output).unwrap()
 }
 
+fn render_snapshot_subcommand_help(path: &[&str]) -> String {
+    let mut command = snapshot_root_command();
+    let mut current = &mut command;
+    for segment in path {
+        current = current
+            .find_subcommand_mut(segment)
+            .unwrap_or_else(|| panic!("missing snapshot subcommand help for {segment}"));
+    }
+    let mut output = Vec::new();
+    current.write_long_help(&mut output).unwrap();
+    String::from_utf8(output).unwrap()
+}
+
 #[test]
 fn unified_help_mentions_screenshot_and_inspect_vars_examples() {
     let help = render_unified_help();
@@ -59,8 +74,12 @@ fn unified_help_mentions_screenshot_and_inspect_vars_examples() {
     assert!(help.contains("--all-orgs"));
     assert!(help.contains("dashboard screenshot"));
     assert!(help.contains("dashboard inspect-vars"));
+    assert!(help.contains("datasource inspect-export"));
     assert!(help.contains("--dashboard-url"));
     assert!(help.contains("dashboard review"));
+    assert!(help.contains("snapshot export"));
+    assert!(help.contains("snapshot review"));
+    assert!(help.contains("Review a local snapshot inventory as JSON"));
     assert!(help.contains("Run profile list, show, and init workflows."));
     assert!(help.contains("[Profile Show]"));
 }
@@ -200,11 +219,89 @@ fn parse_cli_supports_dashboard_group_review_command() {
         UnifiedCommand::Dashboard { command } => match command {
             super::DashboardGroupCommand::Review(inner) => {
                 assert_eq!(inner.input, Path::new("./drafts/cpu-main.json"));
+                assert_eq!(inner.output_format, None);
                 assert!(!inner.json);
+                assert!(!inner.table);
+                assert!(!inner.csv);
+                assert!(!inner.yaml);
             }
             _ => panic!("expected dashboard review"),
         },
         _ => panic!("expected dashboard group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_snapshot_group_export_and_review_commands() {
+    let export_args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "snapshot",
+        "export",
+        "--url",
+        "https://grafana.example.com",
+        "--token",
+        "abc",
+        "--export-dir",
+        "./snapshot",
+        "--overwrite",
+    ]);
+    let review_args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "snapshot",
+        "review",
+        "--input-dir",
+        "./snapshot",
+        "--output",
+        "json",
+    ]);
+
+    match export_args.command {
+        UnifiedCommand::Snapshot { command } => match command {
+            super::SnapshotCommand::Export(inner) => {
+                assert_eq!(inner.export_dir, Path::new("./snapshot"));
+                assert_eq!(inner.common.url, "https://grafana.example.com");
+                assert_eq!(inner.common.api_token.as_deref(), Some("abc"));
+                assert!(inner.overwrite);
+            }
+            _ => panic!("expected snapshot export"),
+        },
+        _ => panic!("expected snapshot group"),
+    }
+
+    match review_args.command {
+        UnifiedCommand::Snapshot { command } => match command {
+            super::SnapshotCommand::Review(inner) => {
+                assert_eq!(inner.input_dir, Path::new("./snapshot"));
+                assert_eq!(inner.output, OverviewOutputFormat::Json);
+                assert!(!inner.interactive);
+            }
+            _ => panic!("expected snapshot review"),
+        },
+        _ => panic!("expected snapshot group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_snapshot_review_interactive_shortcut() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "snapshot",
+        "review",
+        "--input-dir",
+        "./snapshot",
+        "--interactive",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Snapshot { command } => match command {
+            super::SnapshotCommand::Review(inner) => {
+                assert_eq!(inner.input_dir, Path::new("./snapshot"));
+                assert_eq!(inner.output, OverviewOutputFormat::Text);
+                assert!(inner.interactive);
+            }
+            _ => panic!("expected snapshot review"),
+        },
+        _ => panic!("expected snapshot group"),
     }
 }
 
@@ -263,10 +360,7 @@ fn parse_cli_supports_profile_group_show_command() {
         UnifiedCommand::Profile(profile_args) => match profile_args.command {
             ProfileCommand::Show(show_args) => {
                 assert_eq!(show_args.profile.as_deref(), Some("prod"));
-                assert_eq!(
-                    show_args.output_format,
-                    crate::profile_cli::ProfileShowOutputFormat::Yaml
-                );
+                assert_eq!(show_args.output_format, SimpleOutputFormat::Yaml);
             }
             _ => panic!("expected profile show"),
         },
@@ -460,6 +554,51 @@ fn parse_cli_supports_datasource_list_command() {
         UnifiedCommand::Datasource { command } => match command {
             DatasourceGroupCommand::List(inner) => assert!(inner.json),
             _ => panic!("expected datasource list"),
+        },
+        _ => panic!("expected datasource group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_datasource_types_command() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "datasource",
+        "types",
+        "--output-format",
+        "csv",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Datasource { command } => match command {
+            DatasourceGroupCommand::Types(inner) => {
+                assert_eq!(inner.output_format, SimpleOutputFormat::Csv);
+            }
+            _ => panic!("expected datasource types"),
+        },
+        _ => panic!("expected datasource group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_datasource_group_inspect_export_command() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "datasource",
+        "inspect-export",
+        "--input-dir",
+        "./datasources",
+        "--json",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Datasource { command } => match command {
+            DatasourceGroupCommand::InspectExport(inner) => {
+                assert_eq!(inner.input_dir, Path::new("./datasources"));
+                assert!(inner.json);
+                assert!(!inner.interactive);
+            }
+            _ => panic!("expected datasource inspect-export"),
         },
         _ => panic!("expected datasource group"),
     }
@@ -1260,7 +1399,13 @@ fn unified_help_mentions_alert_access_and_shims() {
     assert!(help.contains("grafana-util access user list"));
     assert!(help.contains("[Alert Export]"));
     assert!(help.contains("[Datasource Inventory]"));
-    assert!(help.contains("Run datasource browse, list, export, import, and diff workflows."));
+    assert!(help.contains("[Datasource Inspect Export]"));
+    assert!(
+        help.contains("grafana-util datasource inspect-export --input-dir ./datasources --json")
+    );
+    assert!(help.contains(
+        "Run datasource browse-live, inspect-export, list, export, import, and diff workflows."
+    ));
     assert!(help.contains("[Access Inventory]"));
     assert!(help.contains("[Change Planning]"));
     assert!(help.contains("[Change Apply]"));
@@ -1290,6 +1435,7 @@ fn render_unified_help_text_colorizes_example_labels_when_requested() {
     assert!(help.contains("\u{1b}[1;36m[Dashboard Export]\u{1b}[0m"));
     assert!(help.contains("\u{1b}[1;31m[Alert Export]\u{1b}[0m"));
     assert!(help.contains("\u{1b}[1;32m[Datasource Inventory]\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[1;32m[Datasource Inspect Export]\u{1b}[0m"));
     assert!(help.contains("\u{1b}[1;33m[Access Inventory]\u{1b}[0m"));
     assert!(help.contains("\u{1b}[1;34m[Change Planning]\u{1b}[0m"));
 }
@@ -1345,6 +1491,10 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
         maybe_render_unified_help_from_os_args(["grafana-util", "--help-full"], false).unwrap();
     assert!(full_help.contains("Extended Examples:"));
     assert!(full_help.contains("[Alert Import]"));
+    assert!(full_help.contains(
+        "Open a local snapshot inventory in the interactive browser with `--interactive`:"
+    ));
+    assert!(full_help.contains("grafana-util snapshot review --input-dir ./snapshot --interactive"));
 
     let alert_help =
         maybe_render_unified_help_from_os_args(["grafana-util", "alert", "--help-full"], false)
@@ -1415,6 +1565,36 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
     let access_short_help =
         maybe_render_unified_help_from_os_args(["grafana-util", "access", "-h"], false).unwrap();
     assert!(access_short_help.contains("--help-full"));
+
+    let snapshot_help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "snapshot", "--help"], false)
+            .unwrap();
+    assert!(snapshot_help.contains("Export and review Grafana snapshot inventory bundles."));
+    assert!(snapshot_help.contains("Review a local snapshot inventory without touching Grafana."));
+    assert!(snapshot_help
+        .contains("grafana-util snapshot review --input-dir ./snapshot --output table"));
+    assert!(
+        snapshot_help.contains("grafana-util snapshot review --input-dir ./snapshot --interactive")
+    );
+    assert!(!snapshot_help.contains("overview"));
+
+    let snapshot_review_help = render_snapshot_subcommand_help(&["review"]);
+    assert!(snapshot_review_help.contains(
+        "Render the snapshot inventory review as table, csv, text, json, yaml, or interactive browser output."
+    ));
+    assert!(snapshot_review_help.contains("Shortcut for --output interactive."));
+    assert!(snapshot_review_help
+        .contains("grafana-util snapshot review --input-dir ./snapshot --output table"));
+    assert!(snapshot_review_help
+        .contains("grafana-util snapshot review --input-dir ./snapshot --output csv"));
+    assert!(snapshot_review_help
+        .contains("grafana-util snapshot review --input-dir ./snapshot --output text"));
+    assert!(snapshot_review_help
+        .contains("grafana-util snapshot review --input-dir ./snapshot --output json"));
+    assert!(snapshot_review_help
+        .contains("grafana-util snapshot review --input-dir ./snapshot --output yaml"));
+    assert!(snapshot_review_help
+        .contains("grafana-util snapshot review --input-dir ./snapshot --interactive"));
 
     let overview_help =
         maybe_render_unified_help_from_os_args(["grafana-util", "overview", "--help-full"], false)
@@ -1802,6 +1982,10 @@ fn dispatch_routes_dashboard_group_to_dashboard_handler() {
             routed.borrow_mut().push("profile".to_string());
             Ok(())
         },
+        |_snapshot_args| {
+            routed.borrow_mut().push("snapshot".to_string());
+            Ok(())
+        },
         |_overview_args| {
             routed.borrow_mut().push("overview".to_string());
             Ok(())
@@ -1856,6 +2040,10 @@ fn dispatch_routes_dashboard_review_group_to_dashboard_handler() {
             routed.borrow_mut().push("profile".to_string());
             Ok(())
         },
+        |_snapshot_args| {
+            routed.borrow_mut().push("snapshot".to_string());
+            Ok(())
+        },
         |_overview_args| {
             routed.borrow_mut().push("overview".to_string());
             Ok(())
@@ -1868,6 +2056,61 @@ fn dispatch_routes_dashboard_review_group_to_dashboard_handler() {
 
     assert!(result.is_ok());
     assert_eq!(*routed.borrow(), vec!["dashboard-review".to_string()]);
+}
+
+#[test]
+fn dispatch_routes_snapshot_group_to_snapshot_handler() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "snapshot",
+        "export",
+        "--export-dir",
+        "./snapshot",
+    ]);
+    let routed = RefCell::new(Vec::new());
+
+    let result = dispatch_with_handlers(
+        args,
+        |_dashboard_args| {
+            routed.borrow_mut().push("dashboard".to_string());
+            Ok(())
+        },
+        |_datasource_args| {
+            routed.borrow_mut().push("datasource".to_string());
+            Ok(())
+        },
+        |_change_args| {
+            routed.borrow_mut().push("change".to_string());
+            Ok(())
+        },
+        |_alert_args| {
+            routed.borrow_mut().push("alert".to_string());
+            Ok(())
+        },
+        |_access_args| {
+            routed.borrow_mut().push("access".to_string());
+            Ok(())
+        },
+        |_profile_args| {
+            routed.borrow_mut().push("profile".to_string());
+            Ok(())
+        },
+        |_snapshot_args| {
+            routed.borrow_mut().push("snapshot".to_string());
+            Ok(())
+        },
+        |_overview_args| {
+            routed.borrow_mut().push("overview".to_string());
+            Ok(())
+        },
+        |_project_status_args| {
+            routed.borrow_mut().push("status".to_string());
+            Ok(())
+        },
+    );
+
+    assert!(result.is_ok());
+    assert_eq!(*routed.borrow(), vec!["snapshot".to_string()]);
 }
 
 #[test]
@@ -1907,6 +2150,10 @@ fn dispatch_routes_access_group_to_access_handler() {
         },
         |_profile_args| {
             routed.borrow_mut().push("profile".to_string());
+            Ok(())
+        },
+        |_snapshot_args| {
+            routed.borrow_mut().push("snapshot".to_string());
             Ok(())
         },
         |_overview_args| {
@@ -1952,6 +2199,10 @@ fn dispatch_routes_overview_group_to_overview_handler() {
         },
         |_profile_args| {
             routed.borrow_mut().push("profile".to_string());
+            Ok(())
+        },
+        |_snapshot_args| {
+            routed.borrow_mut().push("snapshot".to_string());
             Ok(())
         },
         |_overview_args| {
@@ -2003,6 +2254,10 @@ fn dispatch_routes_change_group_to_change_handler() {
         },
         |_profile_args| {
             routed.borrow_mut().push("profile".to_string());
+            Ok(())
+        },
+        |_snapshot_args| {
+            routed.borrow_mut().push("snapshot".to_string());
             Ok(())
         },
         |_overview_args| {
@@ -2057,6 +2312,10 @@ fn dispatch_routes_datasource_group_to_datasource_handler() {
             routed.borrow_mut().push("profile".to_string());
             Ok(())
         },
+        |_snapshot_args| {
+            routed.borrow_mut().push("snapshot".to_string());
+            Ok(())
+        },
         |_overview_args| {
             routed.borrow_mut().push("overview".to_string());
             Ok(())
@@ -2100,6 +2359,10 @@ fn dispatch_routes_status_group_to_status_handler() {
         },
         |_profile_args| {
             routed.borrow_mut().push("profile".to_string());
+            Ok(())
+        },
+        |_snapshot_args| {
+            routed.borrow_mut().push("snapshot".to_string());
             Ok(())
         },
         |_overview_args| {

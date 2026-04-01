@@ -37,8 +37,13 @@ where
             args.target_schema_version,
         )?;
     }
-    let metadata = super::load_export_metadata(&args.import_dir, Some(super::RAW_EXPORT_SUBDIR))?;
-    let folder_inventory = super::load_folder_inventory(&args.import_dir, metadata.as_ref())?;
+    let resolved_import = super::import::resolve_import_source(args)?;
+    let metadata = super::load_export_metadata(
+        &resolved_import.metadata_dir,
+        Some(super::import::import_metadata_variant(args)),
+    )?;
+    let folder_inventory =
+        super::load_folder_inventory(&resolved_import.metadata_dir, metadata.as_ref())?;
     let folders_by_uid: BTreeMap<String, super::FolderInventoryItem> = folder_inventory
         .into_iter()
         .map(|item| (item.uid.clone(), item))

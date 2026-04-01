@@ -3,6 +3,27 @@ Grafana Utilities User Guide
 
 This guide documents the maintained Rust command surface used by the repository. Use `grafana-util ...` as the primary command shape throughout this manual.
 
+Install
+-------
+
+Use the repo-owned install script for the one-line path:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+```
+
+Override the install location or pinned version when needed:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | BIN_DIR=/usr/local/bin VERSION=v0.5.0 sh
+```
+
+If you already have a local checkout, run the script from the repository root instead:
+
+```bash
+sh ./scripts/install.sh
+```
+
 Contents
 --------
 
@@ -278,6 +299,68 @@ How to read it:
 - `dashboard patch-file --tag` replaces the tag list with the repeated `--tag` values you provide.
 - `dashboard publish` is intentionally a single-file wrapper over the current import lane; it does not create a second apply engine.
 - `dashboard publish --folder-uid` and `dashboard publish --message` override the staged import payload without requiring you to hand-edit JSON first.
+
+### 3.0a Snapshot wrappers (`snapshot export`, `snapshot review`)
+
+Purpose: capture one all-org dashboard + datasource snapshot under one export root, then review that local inventory snapshot without retyping both staged input directories.
+
+Typical flow:
+1. `snapshot export` writes dashboard exports under `./snapshot/dashboards` and datasource exports under `./snapshot/datasources`.
+2. `snapshot review` reads that same root back through the snapshot inventory review path.
+
+Examples:
+
+Capture one all-org snapshot into a single root:
+```bash
+grafana-util snapshot export --url http://localhost:3000 --token <TOKEN> --export-dir ./snapshot
+```
+
+Replace an existing snapshot root on repeat runs:
+```bash
+grafana-util snapshot export --url http://localhost:3000 --token <TOKEN> --export-dir ./snapshot --overwrite
+```
+
+Review that local snapshot as text:
+```bash
+grafana-util snapshot review --input-dir ./snapshot --output text
+```
+
+Review that local snapshot as JSON:
+```bash
+grafana-util snapshot review --input-dir ./snapshot --output json
+```
+
+Review that local snapshot interactively:
+```bash
+grafana-util snapshot review --input-dir ./snapshot --interactive
+```
+
+`--interactive` is a shortcut for `--output interactive`.
+
+Snapshot layout:
+```text
+snapshot/
+  dashboards/
+    export-metadata.json
+    org_<id>_<name>/
+      raw/
+      prompt/
+      provisioning/
+  datasources/
+    export-metadata.json
+    org_<id>_<name>/
+      datasources.json
+      export-metadata.json
+      provisioning/
+        datasources.yaml
+```
+
+How to read it:
+- `snapshot export` is a thin wrapper over `dashboard export --all-orgs` plus `datasource export --all-orgs`.
+- `snapshot review` is a local snapshot inventory review; it does not call Grafana APIs.
+- `snapshot review` summarizes combined org coverage, per-org dashboard and datasource counts, and warning conditions before it opens the browser view.
+- v1 intentionally includes dashboards and datasources only. Access users, teams, orgs, and service accounts remain separate workflows.
+- `snapshot review` uses `./snapshot/dashboards` and `./snapshot/datasources` automatically, so you do not need to repeat both staged input flags manually.
 
 ### 3.1 `dashboard export`
 

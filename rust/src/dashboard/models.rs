@@ -85,6 +85,8 @@ pub(crate) struct DashboardIndexItem {
     pub raw_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provisioning_path: Option<String>,
 }
 
 /// Struct definition for VariantIndexEntry.
@@ -106,6 +108,7 @@ pub(crate) struct VariantIndexEntry {
 pub(crate) struct RootExportVariants {
     pub raw: Option<String>,
     pub prompt: Option<String>,
+    pub provisioning: Option<String>,
 }
 
 /// Struct definition for FolderInventoryItem.

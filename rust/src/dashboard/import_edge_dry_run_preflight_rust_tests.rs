@@ -12,6 +12,7 @@ use super::{
     write_combined_export_root_metadata,
 };
 use crate::common::api_response;
+use crate::dashboard::DashboardImportInputFormat;
 use serde_json::{json, Value};
 use std::fs;
 use std::path::PathBuf;
@@ -50,6 +51,7 @@ fn import_dashboards_with_dry_run_skips_post_requests() {
         only_org_id: Vec::new(),
         create_missing_orgs: false,
         import_dir: raw_dir,
+        input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         ensure_folders: false,
         replace_existing: true,
@@ -145,6 +147,7 @@ fn import_dashboards_rejects_missing_dependencies_before_dashboard_lookup() {
         only_org_id: Vec::new(),
         create_missing_orgs: false,
         import_dir: raw_dir,
+        input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         ensure_folders: false,
         replace_existing: false,
@@ -238,6 +241,7 @@ fn import_dashboards_skips_dependency_preflight_for_dependency_free_dashboards()
         only_org_id: Vec::new(),
         create_missing_orgs: false,
         import_dir: raw_dir,
+        input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         ensure_folders: false,
         replace_existing: false,

@@ -1,3 +1,10 @@
+//! Shared alert resource utilities and filesystem payload handling.
+//!
+//! Responsibilities:
+//! - Resolve alert resource directories and output paths for each alert kind.
+//! - Load, sanitize, and persist alert payloads used by import/export.
+//! - Centralize common constants and helper transforms used by alert command modules.
+
 use serde_json::{json, Map, Value};
 use std::collections::BTreeMap;
 use std::fs;

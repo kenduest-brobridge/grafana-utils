@@ -8,6 +8,27 @@ Grafana Utilities 維運指南 (繁體中文)
 - **情境導向設計**：每個參數 (Flag) 皆標註了用途、差異與適用情境。
 - **安全第一**：內建互斥規則與標準作業程序 (SOP) 建議。
 
+安裝
+----
+
+使用 repo 內建安裝腳本，一行完成安裝：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+```
+
+需要指定安裝位置或固定版本時：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | BIN_DIR=/usr/local/bin VERSION=v0.5.0 sh
+```
+
+如果您已經有本地 checkout，也可以直接在 repo 根目錄執行：
+
+```bash
+sh ./scripts/install.sh
+```
+
 目錄索引
 --------
 

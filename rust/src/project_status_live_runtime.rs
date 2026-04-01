@@ -1,3 +1,10 @@
+//! Live project status runtime orchestration.
+//!
+//! Responsibilities:
+//! - Build per-domain collectors for dashboard, datasource, alert, access, and sync status.
+//! - Aggregate live findings across orgs and score combined freshness/severity.
+//! - Emit a stable status document for `project-status` reporting.
+
 use reqwest::Method;
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};

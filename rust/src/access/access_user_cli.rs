@@ -1,3 +1,8 @@
+//! CLI definitions for Grafana user access workflows.
+//! This module owns the user-list, user-read, user-modify, user-delete, import/export,
+//! and browse command wiring. It translates clap arguments into the shared access
+//! workflow helpers and carries the user-facing help text for those commands.
+
 use clap::{Args, Subcommand};
 use std::path::PathBuf;
 
@@ -52,17 +57,19 @@ pub struct UserListArgs {
     pub page: usize,
     #[arg(long, default_value_t = DEFAULT_PAGE_SIZE, help = "Number of users to request per page.")]
     pub per_page: usize,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render user summaries as a table.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json", "yaml"], help = "Render user summaries as a table.")]
     pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render user summaries as CSV.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json", "yaml"], help = "Render user summaries as CSV.")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render user summaries as JSON.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv", "yaml"], help = "Render user summaries as JSON.")]
     pub json: bool,
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv", "json"], help = "Render user summaries as YAML.")]
+    pub yaml: bool,
     #[arg(
         long,
         value_enum,
-        conflicts_with_all = ["table", "csv", "json"],
-        help = "Alternative single-flag output selector. Use text, table, csv, or json."
+        conflicts_with_all = ["table", "csv", "json", "yaml"],
+        help = "Alternative single-flag output selector. Use text, table, csv, json, or yaml."
     )]
     pub output_format: Option<ListOutputFormat>,
 }

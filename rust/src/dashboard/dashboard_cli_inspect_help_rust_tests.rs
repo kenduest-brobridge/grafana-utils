@@ -1,8 +1,8 @@
 //! Dashboard CLI parser/help regressions kept separate from runtime-heavy tests.
 use super::super::test_support;
 use super::super::{
-    parse_cli_from, DashboardCliArgs, DashboardCommand, InspectExportReportFormat,
-    InspectOutputFormat, ValidationOutputFormat,
+    parse_cli_from, DashboardCliArgs, DashboardCommand, DashboardImportInputFormat,
+    InspectExportReportFormat, InspectOutputFormat, ValidationOutputFormat,
 };
 use super::dashboard_cli_parser_help_rust_tests::render_dashboard_subcommand_help;
 use clap::{CommandFactory, Parser};
@@ -23,6 +23,7 @@ fn parse_cli_supports_inspect_live_report_json_flag() {
         DashboardCommand::InspectLive(inspect_args) => {
             assert_eq!(inspect_args.common.url, "https://grafana.example.com");
             assert_eq!(inspect_args.report, Some(InspectExportReportFormat::Json));
+            assert_eq!(inspect_args.output_format, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -128,6 +129,7 @@ fn parse_cli_supports_inspect_live_report_tree_table_flag() {
                 inspect_args.report,
                 Some(InspectExportReportFormat::TreeTable)
             );
+            assert_eq!(inspect_args.output_format, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -153,6 +155,7 @@ fn parse_cli_supports_inspect_live_report_dependency_flag() {
                 inspect_args.report,
                 Some(InspectExportReportFormat::Dependency)
             );
+            assert_eq!(inspect_args.output_format, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -178,6 +181,7 @@ fn parse_cli_supports_inspect_live_report_governance_json_flag() {
                 inspect_args.report,
                 Some(InspectExportReportFormat::GovernanceJson)
             );
+            assert_eq!(inspect_args.output_format, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -244,6 +248,7 @@ fn parse_cli_supports_dashboard_validate_export_command() {
     match args.command {
         DashboardCommand::ValidateExport(validate_args) => {
             assert_eq!(validate_args.import_dir, Path::new("./dashboards/raw"));
+            assert_eq!(validate_args.input_format, DashboardImportInputFormat::Raw);
             assert!(validate_args.reject_custom_plugins);
             assert!(validate_args.reject_legacy_properties);
             assert_eq!(validate_args.target_schema_version, Some(39));
@@ -258,11 +263,48 @@ fn parse_cli_supports_dashboard_validate_export_command() {
 }
 
 #[test]
+fn parse_cli_supports_dashboard_validate_export_provisioning_input_format() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "validate-export",
+        "--import-dir",
+        "./dashboards/provisioning",
+        "--input-format",
+        "provisioning",
+    ]);
+
+    match args.command {
+        DashboardCommand::ValidateExport(validate_args) => {
+            assert_eq!(
+                validate_args.import_dir,
+                Path::new("./dashboards/provisioning")
+            );
+            assert_eq!(
+                validate_args.input_format,
+                DashboardImportInputFormat::Provisioning
+            );
+        }
+        _ => panic!("expected validate-export command"),
+    }
+}
+
+#[test]
+fn validate_export_help_mentions_provisioning_input_format() {
+    let help = render_dashboard_subcommand_help("validate-export");
+
+    assert!(help.contains("--input-format"));
+    assert!(help.contains("Grafana file-provisioning artifacts"));
+    assert!(help.contains("provisioning/ root or its dashboards/ subdirectory"));
+    assert!(help.contains("Validate a provisioning export root explicitly"));
+}
+
+#[test]
 fn inspect_live_help_mentions_report_and_panel_filter_flags() {
     let help = render_dashboard_subcommand_help("inspect-live");
 
     assert!(help.contains("--report"));
     assert!(help.contains("--output-format"));
+    assert!(help.contains("text, table, csv, json, yaml"));
     assert!(help.contains("--report-filter-panel-id"));
     assert!(help.contains("--all-orgs"));
     assert!(help.contains("--concurrency"));
@@ -301,8 +343,45 @@ fn inspect_export_help_lists_datasource_uid_report_column() {
     assert!(help.contains("file"));
     assert!(help.contains("dashboardUid"));
     assert!(help.contains("datasource label, uid, type, or family"));
+    assert!(help.contains("--input-format"));
+    assert!(help.contains("provisioning"));
     assert!(help.contains("--output-format"));
+    assert!(help.contains("text, table, csv, json, yaml"));
     assert!(help.contains("--interactive"));
+}
+
+#[test]
+fn inspect_vars_help_mentions_all_baseline_output_formats() {
+    let help = render_dashboard_subcommand_help("inspect-vars");
+
+    assert!(help.contains("Render dashboard variables as table, csv, text, json, or yaml."));
+    assert!(help.contains("output-format yaml"));
+}
+
+#[test]
+fn parse_cli_supports_inspect_export_provisioning_input_format() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/provisioning",
+        "--input-format",
+        "provisioning",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(
+                inspect_args.input_format,
+                DashboardImportInputFormat::Provisioning
+            );
+            assert_eq!(
+                inspect_args.import_dir,
+                Path::new("./dashboards/provisioning")
+            );
+        }
+        _ => panic!("expected inspect-export command"),
+    }
 }
 
 #[test]
@@ -312,6 +391,9 @@ fn inspect_export_help_full_includes_extended_examples() {
     assert!(help.contains("--help-full"));
     assert!(help.contains("Extended Examples:"));
     assert!(help.contains("--interactive"));
+    assert!(help.contains("--input-format raw"));
+    assert!(help.contains("--input-format provisioning"));
+    assert!(help.contains("provisioning root"));
     assert!(help.contains("--report tree-table"));
     assert!(help.contains("--report-filter-datasource"));
     assert!(help.contains("--report-filter-panel-id 7"));

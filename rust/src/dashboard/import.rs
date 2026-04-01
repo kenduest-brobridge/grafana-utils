@@ -36,9 +36,10 @@ pub(crate) use super::import_validation::build_import_auth_context;
 use super::{
     build_http_client_for_org, build_import_payload, discover_dashboard_files,
     extract_dashboard_object, import_dashboard_request_with_request, load_export_metadata,
-    load_folder_inventory, load_json_file, validate, DiffArgs, FolderInventoryItem,
-    FolderInventoryStatus, FolderInventoryStatusKind, ImportArgs, DEFAULT_UNKNOWN_UID,
-    FOLDER_INVENTORY_FILENAME, RAW_EXPORT_SUBDIR,
+    load_folder_inventory, load_json_file, resolve_dashboard_import_source, validate, DiffArgs,
+    FolderInventoryItem, FolderInventoryStatus, FolderInventoryStatusKind, ImportArgs,
+    ResolvedDashboardImportSource, DEFAULT_UNKNOWN_UID, FOLDER_INVENTORY_FILENAME,
+    PROVISIONING_EXPORT_SUBDIR, RAW_EXPORT_SUBDIR,
 };
 #[allow(unused_imports)]
 use super::{
@@ -50,6 +51,23 @@ pub use import_apply::{diff_dashboards_with_client, import_dashboards_with_clien
 pub(crate) use import_apply::{import_dashboards_with_org_clients, import_dashboards_with_request};
 #[allow(unused_imports)]
 pub(crate) use import_dry_run::collect_import_dry_run_report_with_request;
+
+pub(crate) fn resolve_import_source(
+    args: &super::ImportArgs,
+) -> Result<ResolvedDashboardImportSource> {
+    resolve_dashboard_import_source(&args.import_dir, args.input_format)
+}
+
+pub(crate) fn resolve_diff_source(args: &super::DiffArgs) -> Result<ResolvedDashboardImportSource> {
+    resolve_dashboard_import_source(&args.import_dir, args.input_format)
+}
+
+pub(crate) fn import_metadata_variant(args: &super::ImportArgs) -> &'static str {
+    match args.input_format {
+        super::DashboardImportInputFormat::Raw => RAW_EXPORT_SUBDIR,
+        super::DashboardImportInputFormat::Provisioning => PROVISIONING_EXPORT_SUBDIR,
+    }
+}
 
 pub(crate) fn dashboard_files_for_import(import_dir: &Path) -> Result<Vec<PathBuf>> {
     let mut dashboard_files = super::discover_dashboard_files(import_dir)?;

@@ -2,7 +2,7 @@
 //!
 //! This module stays pure and local: it loads staged artifacts, reuses existing
 //! dashboard, access, and change summary builders, and renders a single overview
-//! document for text, JSON, or interactive output.
+//! document for table, csv, text, JSON, YAML, or interactive output.
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde::Serialize;
@@ -24,6 +24,7 @@ use crate::access::{
 };
 use crate::common::Result;
 use crate::project_status_command::run_project_status_live;
+use crate::tabular_output::{print_lines, render_summary_csv, render_summary_table, render_yaml};
 
 pub use crate::project_status_command::{
     ProjectStatusLiveArgs as OverviewLiveArgs,
@@ -72,14 +73,17 @@ const DATASOURCE_EXPORT_FILENAME: &str = "datasources.json";
 const DATASOURCE_EXPORT_METADATA_FILENAME: &str = "export-metadata.json";
 const DATASOURCE_ROOT_KIND: &str = "grafana-utils-datasource-export-index";
 const DATASOURCE_ROOT_SCHEMA_VERSION: i64 = 1;
-const OVERVIEW_HELP_TEXT: &str = "Examples:\n\n  Summarize staged exports as JSON:\n    grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output json\n\n  Summarize bundle and promotion context as text:\n    grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output text\n\n  Open the live overview through the shared status live path:\n    grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output interactive";
-const OVERVIEW_LIVE_HELP_TEXT: &str = "Examples:\n\n  Render the live overview as JSON:\n    grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output json\n\n  Open the live overview in the interactive workbench:\n    grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output interactive";
+const OVERVIEW_HELP_TEXT: &str = "Examples:\n\n  Summarize staged exports as a summary table from raw dashboard artifacts:\n    grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output table\n\n  Summarize staged exports from dashboard provisioning artifacts:\n    grafana-util overview --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output csv\n\n  Summarize datasource provisioning YAML instead of datasources.json:\n    grafana-util overview --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output yaml\n\n  Summarize bundle and promotion context as text:\n    grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output text\n\n  Open the live overview through the shared status live path:\n    grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output interactive";
+const OVERVIEW_LIVE_HELP_TEXT: &str = "Examples:\n\n  Render the live overview as YAML:\n    grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output yaml\n\n  Open the live overview in the interactive workbench:\n    grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output interactive";
 
 /// Output formats for the overview renderer.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum OverviewOutputFormat {
+    Table,
+    Csv,
     Text,
     Json,
+    Yaml,
     #[cfg(feature = "tui")]
     Interactive,
 }
@@ -90,16 +94,32 @@ pub enum OverviewOutputFormat {
 pub struct OverviewArgs {
     #[arg(
         long,
+        conflicts_with = "dashboard_provisioning_dir",
         help = "Dashboard export directory to summarize with the existing inspect contract.",
         help_heading = "Input Options"
     )]
     pub dashboard_export_dir: Option<PathBuf>,
     #[arg(
         long,
+        conflicts_with = "dashboard_export_dir",
+        help = "Dashboard provisioning directory to summarize with the existing inspect contract.",
+        help_heading = "Input Options"
+    )]
+    pub dashboard_provisioning_dir: Option<PathBuf>,
+    #[arg(
+        long,
+        conflicts_with = "datasource_provisioning_file",
         help = "Datasource export directory to summarize with the stable inventory contract.",
         help_heading = "Input Options"
     )]
     pub datasource_export_dir: Option<PathBuf>,
+    #[arg(
+        long,
+        conflicts_with = "datasource_export_dir",
+        help = "Datasource provisioning YAML file to summarize instead of the stable inventory contract.",
+        help_heading = "Input Options"
+    )]
+    pub datasource_provisioning_file: Option<PathBuf>,
     #[arg(
         long,
         help = "Access user export directory to summarize with the stable export bundle contract.",
@@ -164,7 +184,7 @@ pub struct OverviewArgs {
         long,
         value_enum,
         default_value_t = OverviewOutputFormat::Text,
-        help = "Render the overview document as text, json, or interactive output.",
+        help = "Render the overview document as table, csv, text, json, yaml, or interactive output.",
         help_heading = "Output Options"
     )]
     pub output: OverviewOutputFormat,
@@ -297,6 +317,112 @@ pub fn render_overview_text(document: &OverviewDocument) -> Result<Vec<String>> 
     overview_document::render_overview_text(document)
 }
 
+pub(crate) fn build_overview_summary_rows(
+    document: &OverviewDocument,
+) -> Vec<(&'static str, String)> {
+    vec![
+        ("status", document.project_status.overall.status.clone()),
+        ("scope", document.project_status.scope.clone()),
+        (
+            "domainCount",
+            document.project_status.overall.domain_count.to_string(),
+        ),
+        (
+            "presentCount",
+            document.project_status.overall.present_count.to_string(),
+        ),
+        (
+            "blockedCount",
+            document.project_status.overall.blocked_count.to_string(),
+        ),
+        (
+            "blockerCount",
+            document.project_status.overall.blocker_count.to_string(),
+        ),
+        (
+            "warningCount",
+            document.project_status.overall.warning_count.to_string(),
+        ),
+        (
+            "freshnessStatus",
+            document.project_status.overall.freshness.status.clone(),
+        ),
+        (
+            "freshnessSourceCount",
+            document
+                .project_status
+                .overall
+                .freshness
+                .source_count
+                .to_string(),
+        ),
+        (
+            "freshnessNewestAgeSeconds",
+            document
+                .project_status
+                .overall
+                .freshness
+                .newest_age_seconds
+                .map(|value| value.to_string())
+                .unwrap_or_default(),
+        ),
+        (
+            "freshnessOldestAgeSeconds",
+            document
+                .project_status
+                .overall
+                .freshness
+                .oldest_age_seconds
+                .map(|value| value.to_string())
+                .unwrap_or_default(),
+        ),
+        ("artifactCount", document.summary.artifact_count.to_string()),
+        (
+            "dashboardExportCount",
+            document.summary.dashboard_export_count.to_string(),
+        ),
+        (
+            "datasourceExportCount",
+            document.summary.datasource_export_count.to_string(),
+        ),
+        (
+            "alertExportCount",
+            document.summary.alert_export_count.to_string(),
+        ),
+        (
+            "accessUserExportCount",
+            document.summary.access_user_export_count.to_string(),
+        ),
+        (
+            "accessTeamExportCount",
+            document.summary.access_team_export_count.to_string(),
+        ),
+        (
+            "accessOrgExportCount",
+            document.summary.access_org_export_count.to_string(),
+        ),
+        (
+            "accessServiceAccountExportCount",
+            document
+                .summary
+                .access_service_account_export_count
+                .to_string(),
+        ),
+        (
+            "syncSummaryCount",
+            document.summary.sync_summary_count.to_string(),
+        ),
+        (
+            "bundlePreflightCount",
+            document.summary.bundle_preflight_count.to_string(),
+        ),
+        (
+            "promotionPreflightCount",
+            document.summary.promotion_preflight_count.to_string(),
+        ),
+    ]
+}
+
 /// Build the stable overview document without rendering it.
 pub fn execute_overview(args: &OverviewArgs) -> Result<OverviewDocument> {
     let artifacts = overview_artifacts::build_overview_artifacts(args)?;
@@ -319,6 +445,16 @@ pub(crate) fn run_overview_interactive(_document: OverviewDocument) -> Result<()
 pub fn run_overview(args: OverviewArgs) -> Result<()> {
     let document = execute_overview(&args)?;
     match args.output {
+        OverviewOutputFormat::Table => {
+            print_lines(&render_summary_table(&build_overview_summary_rows(
+                &document,
+            )));
+            Ok(())
+        }
+        OverviewOutputFormat::Csv => {
+            print_lines(&render_summary_csv(&build_overview_summary_rows(&document)));
+            Ok(())
+        }
         OverviewOutputFormat::Text => {
             for line in render_overview_text(&document)? {
                 println!("{line}");
@@ -327,6 +463,10 @@ pub fn run_overview(args: OverviewArgs) -> Result<()> {
         }
         OverviewOutputFormat::Json => {
             println!("{}", serde_json::to_string_pretty(&document)?);
+            Ok(())
+        }
+        OverviewOutputFormat::Yaml => {
+            println!("{}", render_yaml(&document)?);
             Ok(())
         }
         #[cfg(feature = "tui")]

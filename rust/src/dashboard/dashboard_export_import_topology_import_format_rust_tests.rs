@@ -2,6 +2,7 @@
 #![allow(unused_imports)]
 
 use super::*;
+use crate::dashboard::{resolve_dashboard_import_source, DashboardImportInputFormat};
 
 #[test]
 fn build_export_metadata_serializes_expected_shape() {
@@ -54,6 +55,7 @@ fn build_root_export_index_serializes_expected_shape() {
         &[item],
         Some(Path::new("/tmp/raw/index.json")),
         None,
+        None,
         &[],
     ))
     .unwrap();
@@ -76,7 +78,8 @@ fn build_root_export_index_serializes_expected_shape() {
             ],
             "variants": {
                 "raw": "/tmp/raw/index.json",
-                "prompt": null
+                "prompt": null,
+                "provisioning": null
             },
             "folders": []
         })

@@ -1,5 +1,8 @@
+//! CLI definitions for Core command surface and option compatibility behavior.
+
 use super::*;
 use crate::datasource::DatasourceGroupCommand;
+use std::path::PathBuf;
 
 #[test]
 fn datasource_root_help_includes_examples() {
@@ -10,6 +13,7 @@ fn datasource_root_help_includes_examples() {
 
     assert!(help.contains("Examples:"));
     assert!(help.contains("grafana-util datasource browse"));
+    assert!(help.contains("grafana-util datasource inspect-export"));
     assert!(help.contains("grafana-util datasource types"));
     assert!(help.contains("grafana-util datasource list"));
     assert!(help.contains("--all-orgs"));
@@ -27,8 +31,8 @@ fn types_help_includes_examples() {
     subcommand.write_long_help(&mut output).unwrap();
     let help = String::from_utf8(output).unwrap();
 
-    assert!(help.contains("--json"));
     assert!(help.contains("--output-format"));
+    assert!(help.contains("yaml"));
     assert!(help.contains("grafana-util datasource types"));
 }
 
@@ -46,6 +50,11 @@ fn list_help_explains_org_scope_flags() {
     assert!(help.contains("--all-orgs"));
     assert!(help.contains("Requires Basic auth"));
     assert!(help.contains("Examples:"));
+    assert!(help.contains("--text"));
+    assert!(help.contains("--table"));
+    assert!(help.contains("--csv"));
+    assert!(help.contains("--json"));
+    assert!(help.contains("--yaml"));
 }
 
 #[test]
@@ -58,11 +67,35 @@ fn browse_help_mentions_edit_delete_and_examples() {
     subcommand.write_long_help(&mut output).unwrap();
     let help = String::from_utf8(output).unwrap();
 
+    assert!(help.contains("Live-only browse against Grafana"));
     assert!(help.contains("--org-id"));
     assert!(help.contains("--all-orgs"));
     assert!(help.contains("grafana-util datasource browse"));
     assert!(help.contains("edit"));
     assert!(help.contains("delete"));
+}
+
+#[test]
+fn inspect_export_help_mentions_local_export_inspection_and_examples() {
+    let mut command = DatasourceCliArgs::command();
+    let subcommand = command
+        .find_subcommand_mut("inspect-export")
+        .unwrap_or_else(|| panic!("missing datasource inspect-export help"));
+    let mut output = Vec::new();
+    subcommand.write_long_help(&mut output).unwrap();
+    let help = String::from_utf8(output).unwrap();
+
+    assert!(help.contains("Local export inspection only"));
+    assert!(help.contains("--input-dir"));
+    assert!(help.contains("--text"));
+    assert!(help.contains("--table"));
+    assert!(help.contains("--csv"));
+    assert!(help.contains("--yaml"));
+    assert!(help.contains("--interactive"));
+    assert!(help.contains("--json"));
+    assert!(help.contains("--output-format"));
+    assert!(help.contains("grafana-util datasource inspect-export"));
+    assert!(help.contains("Examples:"));
 }
 
 #[test]
@@ -133,6 +166,256 @@ fn parse_datasource_browse_rejects_conflicting_org_scope_flags() {
         "--org-id",
         "7",
         "--all-orgs",
+    ]);
+
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_datasource_inspect_export_supports_input_dir_and_json() {
+    let args: DatasourceCliArgs = DatasourceCliArgs::parse_from([
+        "grafana-util datasource",
+        "inspect-export",
+        "--input-dir",
+        "./datasources",
+        "--json",
+    ]);
+
+    match args.command {
+        DatasourceGroupCommand::InspectExport(inner) => {
+            assert_eq!(inner.input_dir, PathBuf::from("./datasources"));
+            assert!(inner.json);
+            assert!(!inner.interactive);
+        }
+        _ => panic!("expected datasource inspect-export"),
+    }
+}
+
+#[test]
+fn parse_datasource_inspect_export_supports_all_output_flags_and_aliases() {
+    let table_args: DatasourceCliArgs = DatasourceCliArgs::parse_from([
+        "grafana-util datasource",
+        "inspect-export",
+        "--input-dir",
+        "./datasources",
+        "--table",
+    ]);
+    let csv_args: DatasourceCliArgs = DatasourceCliArgs::parse_from([
+        "grafana-util datasource",
+        "inspect-export",
+        "--input-dir",
+        "./datasources",
+        "--csv",
+    ]);
+    let text_args: DatasourceCliArgs = DatasourceCliArgs::parse_from([
+        "grafana-util datasource",
+        "inspect-export",
+        "--input-dir",
+        "./datasources",
+        "--text",
+    ]);
+    let json_args: DatasourceCliArgs = DatasourceCliArgs::parse_from([
+        "grafana-util datasource",
+        "inspect-export",
+        "--input-dir",
+        "./datasources",
+        "--json",
+    ]);
+    let yaml_args: DatasourceCliArgs = DatasourceCliArgs::parse_from([
+        "grafana-util datasource",
+        "inspect-export",
+        "--input-dir",
+        "./datasources",
+        "--yaml",
+    ]);
+    let table_alias_args: DatasourceCliArgs = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util datasource",
+        "inspect-export",
+        "--input-dir",
+        "./datasources",
+        "--output-format",
+        "table",
+    ]);
+    let csv_alias_args: DatasourceCliArgs = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util datasource",
+        "inspect-export",
+        "--input-dir",
+        "./datasources",
+        "--output-format",
+        "csv",
+    ]);
+    let text_alias_args: DatasourceCliArgs = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util datasource",
+        "inspect-export",
+        "--input-dir",
+        "./datasources",
+        "--output-format",
+        "text",
+    ]);
+    let json_alias_args: DatasourceCliArgs = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util datasource",
+        "inspect-export",
+        "--input-dir",
+        "./datasources",
+        "--output-format",
+        "json",
+    ]);
+    let yaml_alias_args: DatasourceCliArgs = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util datasource",
+        "inspect-export",
+        "--input-dir",
+        "./datasources",
+        "--output-format",
+        "yaml",
+    ]);
+
+    match table_args.command {
+        DatasourceGroupCommand::InspectExport(inner) => {
+            assert!(inner.table);
+            assert!(!inner.csv);
+            assert!(!inner.text);
+            assert!(!inner.json);
+            assert!(!inner.yaml);
+        }
+        _ => panic!("expected datasource inspect-export"),
+    }
+
+    match csv_args.command {
+        DatasourceGroupCommand::InspectExport(inner) => {
+            assert!(!inner.table);
+            assert!(inner.csv);
+            assert!(!inner.text);
+            assert!(!inner.json);
+            assert!(!inner.yaml);
+        }
+        _ => panic!("expected datasource inspect-export"),
+    }
+
+    match text_args.command {
+        DatasourceGroupCommand::InspectExport(inner) => {
+            assert!(!inner.table);
+            assert!(!inner.csv);
+            assert!(inner.text);
+            assert!(!inner.json);
+            assert!(!inner.yaml);
+        }
+        _ => panic!("expected datasource inspect-export"),
+    }
+
+    match json_args.command {
+        DatasourceGroupCommand::InspectExport(inner) => {
+            assert!(!inner.table);
+            assert!(!inner.csv);
+            assert!(!inner.text);
+            assert!(inner.json);
+            assert!(!inner.yaml);
+        }
+        _ => panic!("expected datasource inspect-export"),
+    }
+
+    match yaml_args.command {
+        DatasourceGroupCommand::InspectExport(inner) => {
+            assert!(!inner.table);
+            assert!(!inner.csv);
+            assert!(!inner.text);
+            assert!(!inner.json);
+            assert!(inner.yaml);
+        }
+        _ => panic!("expected datasource inspect-export"),
+    }
+
+    match table_alias_args.command {
+        DatasourceGroupCommand::InspectExport(inner) => {
+            assert!(inner.table);
+            assert_eq!(
+                inner.output_format,
+                Some(crate::datasource::DatasourceInspectExportOutputFormat::Table)
+            );
+        }
+        _ => panic!("expected datasource inspect-export"),
+    }
+
+    match csv_alias_args.command {
+        DatasourceGroupCommand::InspectExport(inner) => {
+            assert!(inner.csv);
+            assert_eq!(
+                inner.output_format,
+                Some(crate::datasource::DatasourceInspectExportOutputFormat::Csv)
+            );
+        }
+        _ => panic!("expected datasource inspect-export"),
+    }
+
+    match text_alias_args.command {
+        DatasourceGroupCommand::InspectExport(inner) => {
+            assert!(inner.text);
+            assert_eq!(
+                inner.output_format,
+                Some(crate::datasource::DatasourceInspectExportOutputFormat::Text)
+            );
+        }
+        _ => panic!("expected datasource inspect-export"),
+    }
+
+    match json_alias_args.command {
+        DatasourceGroupCommand::InspectExport(inner) => {
+            assert!(inner.json);
+            assert_eq!(
+                inner.output_format,
+                Some(crate::datasource::DatasourceInspectExportOutputFormat::Json)
+            );
+        }
+        _ => panic!("expected datasource inspect-export"),
+    }
+
+    match yaml_alias_args.command {
+        DatasourceGroupCommand::InspectExport(inner) => {
+            assert!(inner.yaml);
+            assert_eq!(
+                inner.output_format,
+                Some(crate::datasource::DatasourceInspectExportOutputFormat::Yaml)
+            );
+        }
+        _ => panic!("expected datasource inspect-export"),
+    }
+}
+
+#[test]
+fn parse_datasource_inspect_export_supports_output_format_aliases() {
+    let args: DatasourceCliArgs = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util datasource",
+        "inspect-export",
+        "--input-dir",
+        "./datasources",
+        "--output-format",
+        "yaml",
+    ]);
+
+    match args.command {
+        DatasourceGroupCommand::InspectExport(inner) => {
+            assert!(inner.yaml);
+            assert!(!inner.table);
+            assert!(!inner.csv);
+            assert!(!inner.text);
+            assert!(!inner.json);
+            assert_eq!(
+                inner.output_format,
+                Some(crate::datasource::DatasourceInspectExportOutputFormat::Yaml)
+            );
+        }
+        _ => panic!("expected datasource inspect-export"),
+    }
+}
+
+#[test]
+fn parse_datasource_inspect_export_rejects_conflicting_output_flags() {
+    let result = DatasourceCliArgs::try_parse_from([
+        "grafana-util datasource",
+        "inspect-export",
+        "--input-dir",
+        "./datasources",
+        "--interactive",
+        "--json",
     ]);
 
     assert!(result.is_err());
@@ -840,4 +1123,31 @@ fn supported_catalog_text_mentions_family_level_defaults() {
         .unwrap();
     assert!(postgresql_line.contains("jsonData.database=grafana"));
     assert!(postgresql_line.contains("jsonData.sslmode=disable"));
+}
+
+#[test]
+fn supported_catalog_table_mentions_category_and_aliases() {
+    let lines = crate::datasource_catalog::render_supported_datasource_catalog_table();
+    assert!(lines[0].contains("category"));
+    assert!(lines[0].contains("display_name"));
+    assert!(lines.iter().any(|line| line.contains("Prometheus")));
+    assert!(lines
+        .iter()
+        .any(|line| line.contains("grafana-loki-datasource")));
+}
+
+#[test]
+fn supported_catalog_csv_mentions_headers_and_defaults() {
+    let lines = crate::datasource_catalog::render_supported_datasource_catalog_csv();
+    assert!(lines[0].contains("category,display_name,type"));
+    assert!(lines.iter().any(|line| line.contains("Prometheus")));
+    assert!(lines.iter().any(|line| line.contains("required")));
+}
+
+#[test]
+fn supported_catalog_yaml_serializes_supported_types_document() {
+    let yaml = crate::datasource_catalog::render_supported_datasource_catalog_yaml().unwrap();
+    assert!(yaml.contains("kind: grafana-utils-datasource-supported-types"));
+    assert!(yaml.contains("category:"));
+    assert!(yaml.contains("displayName: Prometheus"));
 }

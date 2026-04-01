@@ -207,6 +207,15 @@ pub(crate) fn format_dashboard_summary_line(summary: &Map<String, Value>) -> Str
 }
 
 /// Purpose: implementation note.
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) fn render_dashboard_summary_text(summaries: &[Map<String, Value>]) -> Vec<String> {
+    summaries
+        .iter()
+        .map(format_dashboard_summary_line)
+        .collect()
+}
+
+/// Purpose: implementation note.
 pub(crate) fn render_dashboard_summary_table(
     summaries: &[Map<String, Value>],
     output_columns: &[String],

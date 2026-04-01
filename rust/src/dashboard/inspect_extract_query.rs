@@ -1,3 +1,5 @@
+//! Inspection path for Dashboard resources: analysis, extraction, and report shaping.
+
 use regex::Regex;
 use serde_json::{Map, Value};
 use std::sync::LazyLock;

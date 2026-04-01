@@ -1,3 +1,10 @@
+//! Alert linkage helpers for rule-to-dashboard/panel references.
+//!
+//! Responsibilities:
+//! - Resolve rule linkage metadata from alert payloads.
+//! - Derive stable dashboard/panel identifiers for rewrite-safe lookups.
+//! - Rewrite linkage targets with fallback and filtering behavior for import/export.
+
 use serde_json::{Map, Value};
 
 use crate::common::{message, string_field, Result};

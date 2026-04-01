@@ -1,3 +1,5 @@
+//! Interactive browse workflows and terminal-driven state flow for Access entities.
+
 #[cfg(feature = "tui")]
 use std::io::{self, Stdout};
 

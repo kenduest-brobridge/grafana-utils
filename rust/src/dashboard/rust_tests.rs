@@ -927,9 +927,11 @@ fn list_dashboards_with_request_all_orgs_aggregates_results() {
         all_orgs: true,
         with_sources: false,
         output_columns: Vec::new(),
+        text: false,
         table: false,
         csv: false,
         json: true,
+        yaml: false,
         output_format: None,
         no_header: false,
     };

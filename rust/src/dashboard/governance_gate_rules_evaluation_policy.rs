@@ -1,3 +1,5 @@
+//! Governance rule evaluation and risk scoring helpers for dashboard-level controls.
+
 use regex::Regex;
 use serde_json::Value;
 

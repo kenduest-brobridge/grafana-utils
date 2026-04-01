@@ -19,8 +19,13 @@ use crate::access::{
     ACCESS_TEAM_EXPORT_FILENAME, ACCESS_USER_EXPORT_FILENAME,
 };
 use crate::common::{message, Result};
-use crate::dashboard::{build_export_inspection_summary, build_export_inspection_summary_document};
+use crate::dashboard::{
+    build_export_inspection_summary, build_export_inspection_summary_document,
+    build_export_inspection_summary_for_variant, PROVISIONING_EXPORT_SUBDIR,
+};
+use crate::staged_export_scopes::resolve_datasource_export_scope_dirs;
 use crate::sync::bundle_preflight::build_sync_bundle_preflight_document;
+use crate::sync::load_datasource_provisioning_records;
 use crate::sync::promotion_preflight::build_sync_promotion_preflight_document;
 use crate::sync::workbench::build_sync_summary_document;
 use serde_json::{Map, Value};
@@ -46,13 +51,21 @@ fn validate_bundle_context(args: &OverviewArgs) -> Result<()> {
     Ok(())
 }
 
-fn build_dashboard_export_artifact(path: &Path) -> Result<OverviewArtifact> {
-    let summary = build_export_inspection_summary(path)?;
+fn build_dashboard_artifact(
+    path: &Path,
+    input_name: &str,
+    title: &str,
+    expected_variant: Option<&str>,
+) -> Result<OverviewArtifact> {
+    let summary = match expected_variant {
+        Some(variant) => build_export_inspection_summary_for_variant(path, variant)?,
+        None => build_export_inspection_summary(path)?,
+    };
     let document = serde_json::to_value(build_export_inspection_summary_document(&summary))?;
     Ok(OverviewArtifact {
         kind: OVERVIEW_ARTIFACT_DASHBOARD_EXPORT_KIND.to_string(),
-        title: "Dashboard export".to_string(),
-        inputs: overview_inputs(&[("exportDir", path.display().to_string())]),
+        title: title.to_string(),
+        inputs: overview_inputs(&[(input_name, path.display().to_string())]),
         document,
     })
 }
@@ -95,27 +108,12 @@ fn build_access_export_artifact(
     })
 }
 
-fn build_datasource_export_artifact(path: &Path) -> Result<OverviewArtifact> {
-    let metadata_path = path.join(DATASOURCE_EXPORT_METADATA_FILENAME);
-    let metadata = load_object_from_value(&metadata_path, "Overview datasource export metadata")?;
-    if metadata.get("schemaVersion").and_then(Value::as_i64) != Some(DATASOURCE_ROOT_SCHEMA_VERSION)
-        || metadata.get("kind").and_then(Value::as_str) != Some(DATASOURCE_ROOT_KIND)
-        || metadata.get("variant").and_then(Value::as_str) != Some("root")
-        || metadata.get("resource").and_then(Value::as_str) != Some("datasource")
-    {
-        return Err(message(format!(
-            "Overview datasource export root is not supported: {}",
-            metadata_path.display()
-        )));
-    }
-
-    let datasources_file = metadata
-        .get("datasourcesFile")
-        .and_then(Value::as_str)
-        .unwrap_or(DATASOURCE_EXPORT_FILENAME);
-    let datasources_path = path.join(datasources_file);
-    let raw_datasources =
-        load_json_array_value(&datasources_path, "Overview datasource inventory")?;
+fn build_datasource_artifact(
+    title: &str,
+    input_name: &str,
+    input_value: &Path,
+    raw_datasources: Vec<Value>,
+) -> Result<OverviewArtifact> {
     let datasource_count = raw_datasources.len();
     let mut org_ids = BTreeSet::new();
     let mut types = BTreeSet::new();
@@ -124,7 +122,7 @@ fn build_datasource_export_artifact(path: &Path) -> Result<OverviewArtifact> {
         let datasource = item.as_object().cloned().ok_or_else(|| {
             message(format!(
                 "Overview datasource inventory entry must be a JSON object: {}",
-                datasources_path.display()
+                input_value.display()
             ))
         })?;
         let org_id = datasource
@@ -192,10 +190,60 @@ fn build_datasource_export_artifact(path: &Path) -> Result<OverviewArtifact> {
 
     Ok(OverviewArtifact {
         kind: OVERVIEW_ARTIFACT_DATASOURCE_EXPORT_KIND.to_string(),
-        title: "Datasource export".to_string(),
-        inputs: overview_inputs(&[("exportDir", path.display().to_string())]),
+        title: title.to_string(),
+        inputs: overview_inputs(&[(input_name, input_value.display().to_string())]),
         document,
     })
+}
+
+fn build_datasource_export_artifact(path: &Path) -> Result<OverviewArtifact> {
+    let metadata_path = path.join(DATASOURCE_EXPORT_METADATA_FILENAME);
+    let metadata = load_object_from_value(&metadata_path, "Overview datasource export metadata")?;
+    let schema_version = metadata.get("schemaVersion").and_then(Value::as_i64);
+    let kind = metadata.get("kind").and_then(Value::as_str);
+    let variant = metadata
+        .get("variant")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let resource = metadata.get("resource").and_then(Value::as_str);
+    if schema_version != Some(DATASOURCE_ROOT_SCHEMA_VERSION)
+        || kind != Some(DATASOURCE_ROOT_KIND)
+        || resource != Some("datasource")
+    {
+        return Err(message(format!(
+            "Overview datasource export root is not supported: {}",
+            metadata_path.display()
+        )));
+    }
+
+    if !matches!(variant, "root" | "all-orgs-root")
+        && resolve_datasource_export_scope_dirs(path)
+            .iter()
+            .all(|scope| scope != path)
+    {
+        return Err(message(format!(
+            "Overview datasource export root is not supported: {}",
+            metadata_path.display()
+        )));
+    }
+
+    let datasources_file = metadata
+        .get("datasourcesFile")
+        .and_then(Value::as_str)
+        .unwrap_or(DATASOURCE_EXPORT_FILENAME);
+    let datasources_path = path.join(datasources_file);
+    let raw_datasources =
+        load_json_array_value(&datasources_path, "Overview datasource inventory")?;
+    build_datasource_artifact("Datasource export", "exportDir", path, raw_datasources)
+}
+
+fn build_datasource_provisioning_artifact(path: &Path) -> Result<OverviewArtifact> {
+    build_datasource_artifact(
+        "Datasource provisioning",
+        "datasourceProvisioningFile",
+        path,
+        load_datasource_provisioning_records(path)?,
+    )
 }
 
 fn build_sync_summary_artifact(path: &Path) -> Result<OverviewArtifact> {
@@ -242,6 +290,19 @@ fn build_access_service_account_export_artifact(path: &Path) -> Result<OverviewA
         ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME,
         OVERVIEW_ARTIFACT_ACCESS_SERVICE_ACCOUNT_EXPORT_KIND,
         "Access service-account export",
+    )
+}
+
+fn build_dashboard_export_artifact(path: &Path) -> Result<OverviewArtifact> {
+    build_dashboard_artifact(path, "exportDir", "Dashboard export", None)
+}
+
+fn build_dashboard_provisioning_artifact(path: &Path) -> Result<OverviewArtifact> {
+    build_dashboard_artifact(
+        path,
+        "dashboardProvisioningDir",
+        "Dashboard provisioning",
+        Some(PROVISIONING_EXPORT_SUBDIR),
     )
 }
 
@@ -457,7 +518,9 @@ fn build_promotion_preflight_artifact(
 
 fn has_any_inputs(args: &OverviewArgs) -> bool {
     args.dashboard_export_dir.is_some()
+        || args.dashboard_provisioning_dir.is_some()
         || args.datasource_export_dir.is_some()
+        || args.datasource_provisioning_file.is_some()
         || args.access_user_export_dir.is_some()
         || args.access_team_export_dir.is_some()
         || args.access_org_export_dir.is_some()
@@ -480,7 +543,12 @@ pub(crate) fn build_overview_artifacts(args: &OverviewArgs) -> Result<Vec<Overvi
     if let Some(path) = args.dashboard_export_dir.as_deref() {
         artifacts.push(build_dashboard_export_artifact(path)?);
     }
-    if let Some(path) = args.datasource_export_dir.as_deref() {
+    if let Some(path) = args.dashboard_provisioning_dir.as_deref() {
+        artifacts.push(build_dashboard_provisioning_artifact(path)?);
+    }
+    if let Some(path) = args.datasource_provisioning_file.as_deref() {
+        artifacts.push(build_datasource_provisioning_artifact(path)?);
+    } else if let Some(path) = args.datasource_export_dir.as_deref() {
         artifacts.push(build_datasource_export_artifact(path)?);
     }
     if let Some(path) = args.access_user_export_dir.as_deref() {

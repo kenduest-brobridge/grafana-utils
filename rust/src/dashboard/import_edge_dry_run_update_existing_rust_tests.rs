@@ -12,6 +12,7 @@ use super::{
     write_combined_export_root_metadata,
 };
 use crate::common::api_response;
+use crate::dashboard::DashboardImportInputFormat;
 use serde_json::{json, Value};
 use std::fs;
 use tempfile::tempdir;
@@ -133,6 +134,7 @@ fn import_dashboards_with_matching_dependencies_posts_after_preflight() {
         only_org_id: Vec::new(),
         create_missing_orgs: false,
         import_dir: raw_dir,
+        input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         ensure_folders: false,
         replace_existing: false,
@@ -213,6 +215,7 @@ fn import_dashboards_rejects_unsupported_export_schema_version() {
         only_org_id: Vec::new(),
         create_missing_orgs: false,
         import_dir: raw_dir,
+        input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         ensure_folders: false,
         replace_existing: false,
@@ -282,6 +285,7 @@ fn import_dashboards_with_update_existing_only_skips_missing_dashboards() {
         only_org_id: Vec::new(),
         create_missing_orgs: false,
         import_dir: raw_dir,
+        input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         ensure_folders: false,
         replace_existing: false,
@@ -374,6 +378,7 @@ fn import_dashboards_with_update_existing_only_table_marks_missing_dashboards_as
         only_org_id: Vec::new(),
         create_missing_orgs: false,
         import_dir: raw_dir,
+        input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         ensure_folders: false,
         replace_existing: false,

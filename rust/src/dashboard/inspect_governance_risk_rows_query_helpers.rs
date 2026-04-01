@@ -1,3 +1,5 @@
+//! Inspection path for Dashboard resources: analysis, extraction, and report shaping.
+
 use crate::dashboard::inspect_report::ExportInspectionQueryRow;
 
 use super::super::inspect_governance_risk_spec::parse_duration_seconds;

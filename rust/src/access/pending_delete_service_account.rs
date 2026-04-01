@@ -1,3 +1,9 @@
+//! Resolve and validate pending service-account deletes before destructive API calls.
+//! This module resolves service-account and token identities, confirms the caller's
+//! delete intent, and prepares the target data consumed by the final delete flow.
+//! It stops short of sending the delete request, so the dangerous part stays in the
+//! dedicated live delete handlers.
+
 use reqwest::Method;
 use serde_json::{Map, Value};
 

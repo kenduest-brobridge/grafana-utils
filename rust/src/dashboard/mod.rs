@@ -4,6 +4,7 @@
 //! dashboard modules that implement export/import/live/inspect/screenshot logic.
 use crate::common::{message, Result};
 use crate::http::JsonHttpClient;
+use crate::tabular_output::render_yaml;
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 use std::path::Path;
@@ -84,8 +85,9 @@ mod vars;
 
 pub(crate) use authoring::{
     clone_live_dashboard_to_file_with_client, get_live_dashboard_to_file_with_client,
-    patch_dashboard_file, publish_dashboard_with_client, render_dashboard_review_json,
-    render_dashboard_review_text, review_dashboard_file as build_dashboard_review,
+    patch_dashboard_file, publish_dashboard_with_client, render_dashboard_review_csv,
+    render_dashboard_review_json, render_dashboard_review_table, render_dashboard_review_text,
+    render_dashboard_review_yaml, review_dashboard_file as build_dashboard_review,
 };
 pub use cli_defs::{
     build_auth_context, build_http_client, build_http_client_for_org, normalize_dashboard_cli_args,
@@ -137,6 +139,7 @@ pub(crate) use governance_policy::{
 pub(crate) use inspect::{
     build_export_inspection_summary, build_export_inspection_summary_for_variant,
 };
+pub(crate) use inspect_live::TempInspectDir;
 pub(crate) use inspect_report::ExportInspectionQueryRow;
 pub(crate) use inspect_summary::{
     build_export_inspection_summary_document, ExportInspectionSummary,
@@ -281,8 +284,18 @@ pub fn execute_dashboard_list(args: &ListArgs) -> Result<DashboardWebRunOutput> 
     let rows = list::render_dashboard_summary_json(&summaries, &args.output_columns);
     let text_lines = if args.json {
         rendered_output_to_lines(format!("{}\n", serde_json::to_string_pretty(&rows)?))
+    } else if args.yaml {
+        rendered_output_to_lines(render_yaml(&rows)?)
     } else if args.csv {
         list::render_dashboard_summary_csv(&summaries, &args.output_columns)
+    } else if args.text {
+        let mut lines = summaries
+            .iter()
+            .map(list::format_dashboard_summary_line)
+            .collect::<Vec<String>>();
+        lines.push(String::new());
+        lines.push(format!("Listed {} dashboard(s).", summaries.len()));
+        lines
     } else {
         let mut lines =
             list::render_dashboard_summary_table(&summaries, &args.output_columns, !args.no_header);
@@ -395,8 +408,11 @@ pub fn execute_dashboard_inspect_live(args: &InspectLiveArgs) -> Result<Dashboar
     let inspect_args = InspectExportArgs {
         import_dir: inspect_import_dir,
         input_format: DashboardImportInputFormat::Raw,
+        text: args.text,
+        csv: args.csv,
         json: args.json,
         table: args.table,
+        yaml: args.yaml,
         report: args.report,
         output_format: args.output_format,
         report_columns: args.report_columns.clone(),
@@ -421,10 +437,39 @@ pub fn execute_dashboard_inspect_vars(args: &InspectVarsArgs) -> Result<Dashboar
 
 pub(crate) fn review_dashboard_file(args: &ReviewArgs) -> Result<()> {
     let review = build_dashboard_review(&args.input)?;
-    if args.json {
-        print!("{}", render_dashboard_review_json(&review)?);
-    } else {
-        println!("{}", render_dashboard_review_text(&review).join("\n"));
+    let output_format = args.output_format.unwrap_or_else(|| {
+        if args.json {
+            SimpleOutputFormat::Json
+        } else if args.table {
+            SimpleOutputFormat::Table
+        } else if args.csv {
+            SimpleOutputFormat::Csv
+        } else if args.yaml {
+            SimpleOutputFormat::Yaml
+        } else {
+            SimpleOutputFormat::Text
+        }
+    });
+    match output_format {
+        SimpleOutputFormat::Text => {
+            println!("{}", render_dashboard_review_text(&review).join("\n"));
+        }
+        SimpleOutputFormat::Table => {
+            for line in render_dashboard_review_table(&review) {
+                println!("{line}");
+            }
+        }
+        SimpleOutputFormat::Csv => {
+            for line in render_dashboard_review_csv(&review) {
+                println!("{line}");
+            }
+        }
+        SimpleOutputFormat::Json => {
+            print!("{}", render_dashboard_review_json(&review)?);
+        }
+        SimpleOutputFormat::Yaml => {
+            print!("{}", render_dashboard_review_yaml(&review)?);
+        }
     }
     Ok(())
 }

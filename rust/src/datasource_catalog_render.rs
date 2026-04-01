@@ -1,3 +1,9 @@
+//! Renderers for supported datasource catalog outputs.
+//!
+//! Responsibilities:
+//! - Format catalog rows for table/csv/json/yaml report commands.
+//! - Bridge catalog lookup/defaults data into CLI-facing render functions.
+
 use serde_json::{json, Value};
 
 use super::datasource_catalog_data::DatasourceCatalogEntry;
@@ -5,6 +11,8 @@ use super::datasource_catalog_defaults::{
     build_add_defaults_document, build_full_add_defaults_document,
 };
 use super::datasource_catalog_lookup::supported_datasource_catalog;
+use crate::common::Result;
+use crate::tabular_output::{render_csv, render_table, render_yaml};
 
 fn supported_preset_profiles(entry: &DatasourceCatalogEntry) -> Vec<&'static str> {
     if build_full_add_defaults_document(entry) == build_add_defaults_document(entry) {
@@ -12,6 +20,55 @@ fn supported_preset_profiles(entry: &DatasourceCatalogEntry) -> Vec<&'static str
     } else {
         vec!["starter", "full"]
     }
+}
+
+fn supported_catalog_rows() -> Vec<Vec<String>> {
+    supported_datasource_catalog()
+        .iter()
+        .map(|entry| {
+            let mut defaults = Vec::new();
+            if let Some(access) = entry.add_defaults_access {
+                defaults.push(format!("access={access}"));
+            }
+            if let Some(http_method) = entry.add_defaults_http_method {
+                defaults.push(format!("jsonData.httpMethod={http_method}"));
+            }
+            if let Some(time_field) = entry.add_defaults_time_field {
+                defaults.push(format!("jsonData.timeField={time_field}"));
+            }
+            for (key, value) in entry.add_defaults_json_data {
+                defaults.push(format!("jsonData.{key}={}", value.to_display_value()));
+            }
+            vec![
+                entry.category.to_string(),
+                entry.display_name.to_string(),
+                entry.type_id.to_string(),
+                entry.profile.to_string(),
+                entry.query_language.to_string(),
+                if entry.requires_url {
+                    "required".to_string()
+                } else {
+                    "optional".to_string()
+                },
+                if entry.aliases.is_empty() {
+                    "-".to_string()
+                } else {
+                    entry.aliases.join(", ")
+                },
+                if entry.suggested_flags.is_empty() {
+                    "-".to_string()
+                } else {
+                    entry.suggested_flags.join(", ")
+                },
+                if defaults.is_empty() {
+                    "-".to_string()
+                } else {
+                    defaults.join(", ")
+                },
+                supported_preset_profiles(entry).join(", "),
+            ]
+        })
+        .collect()
 }
 
 pub fn render_supported_datasource_catalog_text() -> Vec<String> {
@@ -60,6 +117,42 @@ pub fn render_supported_datasource_catalog_text() -> Vec<String> {
         lines.push(line);
     }
     lines
+}
+
+pub fn render_supported_datasource_catalog_table() -> Vec<String> {
+    render_table(
+        &[
+            "category",
+            "display_name",
+            "type",
+            "profile",
+            "query_language",
+            "requires_url",
+            "aliases",
+            "flags",
+            "defaults",
+            "preset_profiles",
+        ],
+        &supported_catalog_rows(),
+    )
+}
+
+pub fn render_supported_datasource_catalog_csv() -> Vec<String> {
+    render_csv(
+        &[
+            "category",
+            "display_name",
+            "type",
+            "profile",
+            "query_language",
+            "requires_url",
+            "aliases",
+            "flags",
+            "defaults",
+            "preset_profiles",
+        ],
+        &supported_catalog_rows(),
+    )
 }
 
 pub fn render_supported_datasource_catalog_json() -> Value {
@@ -113,4 +206,8 @@ pub fn render_supported_datasource_catalog_json() -> Value {
         "kind": "grafana-utils-datasource-supported-types",
         "categories": categories,
     })
+}
+
+pub fn render_supported_datasource_catalog_yaml() -> Result<String> {
+    render_yaml(&render_supported_datasource_catalog_json())
 }

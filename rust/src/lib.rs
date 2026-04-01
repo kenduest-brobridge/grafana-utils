@@ -5,7 +5,7 @@
 //!
 //! Crate shape:
 //! - `cli` owns only unified command topology, parsing, and dispatch.
-//! - Domain facades (`dashboard`, `alert`, `access`, `datasource`, `sync`) own
+//! - Domain facades (`dashboard`, `alert`, `access`, `datasource`, `sync`, `snapshot`) own
 //!   command normalization, client/request wiring, and top-level routing.
 //! - Shared infrastructure (`common`, `http`) owns errors, JSON/filesystem
 //!   helpers, auth/client setup primitives, and live transport behavior.
@@ -82,8 +82,13 @@ pub(crate) mod project_status_support;
 /// Shared status interactive workbench for project-home and handoff flows.
 #[cfg(any(feature = "tui", test))]
 pub(crate) mod project_status_tui;
+/// Snapshot export/review wrappers for staged dashboard and datasource bundles.
+pub mod snapshot;
+/// Shared staged export scope resolution helpers for dashboard and datasource artifacts.
+pub(crate) mod staged_export_scopes;
 /// Declarative change planning, review, audit, and apply workflows.
 pub mod sync;
+pub(crate) mod tabular_output;
 /// Shared terminal-shell helpers for the Rust TUI surfaces.
 #[cfg(feature = "tui")]
 pub(crate) mod tui_shell;
@@ -106,3 +111,5 @@ mod datasource_secret_rust_tests;
 mod overview_rust_tests;
 #[cfg(test)]
 mod project_status_cli_rust_tests;
+#[cfg(test)]
+mod snapshot_rust_tests;

@@ -1,10 +1,13 @@
+//! Inspection path for Dashboard resources: analysis, extraction, and report shaping.
+
 use crate::common::Result;
-use crate::dashboard::cli_defs::InspectExportArgs;
-use crate::dashboard::inspect_render::render_simple_table;
+use crate::dashboard::cli_defs::{InspectExportArgs, InspectOutputFormat};
+use crate::dashboard::inspect_render::{render_csv, render_simple_table};
 use crate::dashboard::inspect_summary::{
     build_export_inspection_summary_document, build_export_inspection_summary_rows,
     DatasourceInventorySummary, ExportInspectionSummary, MixedDashboardSummary,
 };
+use crate::tabular_output::render_yaml;
 
 #[path = "inspect_output_report.rs"]
 mod inspect_output_report;
@@ -30,54 +33,75 @@ pub(crate) fn render_export_inspection_summary_output(
     summary: &ExportInspectionSummary,
 ) -> Result<String> {
     let mut output = String::new();
-    if super::inspect_orchestration::effective_inspect_json(args) {
-        output.push_str(&format!(
-            "{}\n",
-            serde_json::to_string_pretty(&build_export_inspection_summary_document(summary))?
-        ));
-        return Ok(output);
-    }
+    let requested_output_format =
+        super::inspect_orchestration::effective_inspect_output_format(args);
 
-    if super::inspect_orchestration::effective_inspect_table(args) {
-        if !summary.import_dir.is_empty() {
+    match requested_output_format {
+        InspectOutputFormat::Json => {
+            output.push_str(&format!(
+                "{}\n",
+                serde_json::to_string_pretty(&build_export_inspection_summary_document(summary))?
+            ));
+            return Ok(output);
+        }
+        InspectOutputFormat::Csv => {
+            let summary_rows = build_export_inspection_summary_rows(summary);
+            for line in render_csv(&["NAME", "VALUE"], &summary_rows) {
+                output.push_str(&line);
+                output.push('\n');
+            }
+            return Ok(output);
+        }
+        InspectOutputFormat::Yaml => {
+            output.push_str(&format!(
+                "{}\n",
+                render_yaml(&build_export_inspection_summary_document(summary))?
+            ));
+            return Ok(output);
+        }
+        InspectOutputFormat::Table => {
+            if !summary.import_dir.is_empty() {
+                output.push_str(&format!(
+                    "Export inspection report: {}\n\n",
+                    summary.import_dir
+                ));
+            }
+            output.push_str("# Overview\n");
+            let summary_rows = build_export_inspection_summary_rows(summary);
+            for line in render_simple_table(&["NAME", "VALUE"], &summary_rows, !args.no_header) {
+                output.push_str(&line);
+                output.push('\n');
+            }
+        }
+        InspectOutputFormat::Text => {
             output.push_str(&format!(
                 "Export inspection report: {}\n\n",
                 summary.import_dir
             ));
+            if let Some(export_org) = &summary.export_org {
+                output.push_str(&format!("Export org: {}\n", export_org));
+            }
+            if let Some(export_org_id) = &summary.export_org_id {
+                output.push_str(&format!("Export orgId: {}\n", export_org_id));
+            }
+            output.push_str(&format!("Dashboards: {}\n", summary.dashboard_count));
+            output.push_str(&format!("Folders: {}\n", summary.folder_count));
+            output.push_str(&format!("Panels: {}\n", summary.panel_count));
+            output.push_str(&format!("Queries: {}\n", summary.query_count));
+            output.push_str(&format!(
+                "Datasource inventory: {}\n",
+                summary.datasource_inventory_count
+            ));
+            output.push_str(&format!(
+                "Orphaned datasources: {}\n",
+                summary.orphaned_datasource_count
+            ));
+            output.push_str(&format!(
+                "Mixed datasource dashboards: {}\n",
+                summary.mixed_dashboard_count
+            ));
         }
-        output.push_str("# Overview\n");
-        let summary_rows = build_export_inspection_summary_rows(summary);
-        for line in render_simple_table(&["NAME", "VALUE"], &summary_rows, !args.no_header) {
-            output.push_str(&line);
-            output.push('\n');
-        }
-    } else {
-        output.push_str(&format!(
-            "Export inspection report: {}\n\n",
-            summary.import_dir
-        ));
-        if let Some(export_org) = &summary.export_org {
-            output.push_str(&format!("Export org: {}\n", export_org));
-        }
-        if let Some(export_org_id) = &summary.export_org_id {
-            output.push_str(&format!("Export orgId: {}\n", export_org_id));
-        }
-        output.push_str(&format!("Dashboards: {}\n", summary.dashboard_count));
-        output.push_str(&format!("Folders: {}\n", summary.folder_count));
-        output.push_str(&format!("Panels: {}\n", summary.panel_count));
-        output.push_str(&format!("Queries: {}\n", summary.query_count));
-        output.push_str(&format!(
-            "Datasource inventory: {}\n",
-            summary.datasource_inventory_count
-        ));
-        output.push_str(&format!(
-            "Orphaned datasources: {}\n",
-            summary.orphaned_datasource_count
-        ));
-        output.push_str(&format!(
-            "Mixed datasource dashboards: {}\n",
-            summary.mixed_dashboard_count
-        ));
+        _ => unreachable!("report formats are handled earlier"),
     }
 
     output.push('\n');
@@ -293,8 +317,12 @@ mod tests {
     fn render_export_inspection_summary_output_renders_inventory_orphans_and_mixed_dashboards() {
         let args = InspectExportArgs {
             import_dir: PathBuf::from("/tmp/demo"),
+            input_format: crate::dashboard::DashboardImportInputFormat::Raw,
+            text: false,
+            csv: false,
             json: false,
             table: false,
+            yaml: false,
             report: None,
             output_format: None,
             report_columns: Vec::new(),
@@ -320,8 +348,12 @@ mod tests {
     fn render_export_inspection_summary_output_honors_table_mode() {
         let args = InspectExportArgs {
             import_dir: PathBuf::from("/tmp/demo"),
+            input_format: crate::dashboard::DashboardImportInputFormat::Raw,
+            text: false,
+            csv: false,
             json: false,
             table: false,
+            yaml: false,
             report: None,
             output_format: Some(InspectOutputFormat::Table),
             report_columns: Vec::new(),
@@ -339,5 +371,51 @@ mod tests {
         assert!(!output.contains("Dashboards: 2\n"));
         assert!(output.contains("NAME"));
         assert!(output.contains("VALUE"));
+    }
+
+    #[test]
+    fn render_export_inspection_summary_output_honors_csv_and_yaml_modes() {
+        let csv_args = InspectExportArgs {
+            import_dir: PathBuf::from("/tmp/demo"),
+            input_format: crate::dashboard::DashboardImportInputFormat::Raw,
+            text: false,
+            csv: false,
+            json: false,
+            table: false,
+            yaml: false,
+            report: None,
+            output_format: Some(InspectOutputFormat::Csv),
+            report_columns: Vec::new(),
+            report_filter_datasource: None,
+            report_filter_panel_id: None,
+            help_full: false,
+            no_header: false,
+            output_file: None,
+            interactive: false,
+        };
+        let yaml_args = InspectExportArgs {
+            output_format: Some(InspectOutputFormat::Yaml),
+            ..csv_args.clone()
+        };
+
+        let csv_output =
+            render_export_inspection_summary_output(&csv_args, &make_summary()).unwrap();
+        assert!(csv_output.starts_with("NAME,VALUE"));
+        assert!(csv_output.contains("dashboard_count,2"));
+        assert!(csv_output.contains("mixed_datasource_dashboard_count,1"));
+
+        let yaml_output =
+            render_export_inspection_summary_output(&yaml_args, &make_summary()).unwrap();
+        assert!(
+            yaml_output.contains("dashboardCount: 2") || yaml_output.contains("dashboard_count: 2")
+        );
+        assert!(
+            yaml_output.contains("mixedDatasourceDashboardCount: 1")
+                || yaml_output.contains("mixed_datasource_dashboard_count: 1")
+        );
+        assert!(
+            yaml_output.contains("datasourceInventory:")
+                || yaml_output.contains("datasource_inventory:")
+        );
     }
 }

@@ -102,6 +102,8 @@ grafana-util dashboard inspect-export \
   --output-format report-table
 ```
 
+`dashboard export` now writes three distinct lanes by default: `raw/` for grafana-util API replay, `prompt/` for Grafana UI import, and `provisioning/` for Grafana file-provisioning artifacts.
+
 Preview a dashboard import before changing Grafana:
 
 ```bash
@@ -190,14 +192,32 @@ The full alert authoring, review/apply, migration, and prune-delete guide is in 
 
 ## Install Or Build
 
-- [Latest release](https://github.com/kenduest-brobridge/grafana-utils/releases/latest)
-- [All releases](https://github.com/kenduest-brobridge/grafana-utils/releases)
+Install from the repo-owned script:
 
-Build locally when you need the current checkout:
+```bash
+curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+```
+
+Override the install directory or pinned version when needed:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | BIN_DIR=/usr/local/bin VERSION=v0.5.0 sh
+```
+
+If you already have a local checkout, run the script directly from the repo:
+
+```bash
+sh ./scripts/install.sh
+```
+
+Build locally when you need the current checkout or want to compile from source:
 
 ```bash
 cd rust && cargo build --release
 ```
+
+- [Latest release](https://github.com/kenduest-brobridge/grafana-utils/releases/latest)
+- [All releases](https://github.com/kenduest-brobridge/grafana-utils/releases)
 
 ## Docs
 

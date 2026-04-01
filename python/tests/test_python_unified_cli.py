@@ -69,6 +69,7 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertIn("grafana-util dashboard", help_text)
         self.assertIn("list", help_text)
         self.assertIn("inspect-export", help_text)
+        self.assertIn("inspect-export --input-format provisioning", help_text)
 
     def test_unified_parse_args_alert_without_subcommand_prints_alert_help(self):
         stdout = io.StringIO()

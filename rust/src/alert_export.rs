@@ -1,3 +1,11 @@
+//! Build staged alert export artifacts from live Grafana data.
+//!
+//! Responsibilities:
+//! - Resolve alert resource trees from Grafana APIs and serialize each resource kind
+//!   into a stable on-disk layout.
+//! - Build and write root and per-kind manifest indexes used by import/diff/review.
+//! - Keep alert export output deterministic for downstream snapshot and sync consumers.
+
 use serde_json::{json, Value};
 use std::fs;
 

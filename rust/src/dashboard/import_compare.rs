@@ -1,3 +1,5 @@
+//! Import orchestration for Dashboard resources, including input normalization and apply contract handling.
+
 use serde_json::{Map, Value};
 use std::fmt::Write as _;
 use std::path::Path;
@@ -81,8 +83,13 @@ pub(crate) fn diff_dashboards_with_request<F>(
 where
     F: FnMut(reqwest::Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    let _ = super::load_export_metadata(&args.import_dir, Some(super::RAW_EXPORT_SUBDIR))?;
-    let dashboard_files = super::discover_dashboard_files(&args.import_dir)?;
+    let resolved = super::import::resolve_diff_source(args)?;
+    let expected_variant = match args.input_format {
+        super::DashboardImportInputFormat::Raw => super::RAW_EXPORT_SUBDIR,
+        super::DashboardImportInputFormat::Provisioning => super::PROVISIONING_EXPORT_SUBDIR,
+    };
+    let _ = super::load_export_metadata(&resolved.metadata_dir, Some(expected_variant))?;
+    let dashboard_files = super::import::dashboard_files_for_import(&resolved.dashboard_dir)?;
     let mut differences = 0;
     for dashboard_file in &dashboard_files {
         let document = super::load_json_file(dashboard_file)?;

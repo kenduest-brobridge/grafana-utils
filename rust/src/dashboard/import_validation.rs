@@ -1,3 +1,5 @@
+//! Import orchestration for Dashboard resources, including input normalization and apply contract handling.
+
 use reqwest::Method;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
@@ -143,18 +145,33 @@ fn org_id_string_from_value(value: Option<&Value>) -> String {
 }
 
 fn parse_export_org_scope(import_root: &Path, raw_dir: &Path) -> Result<ExportOrgImportScope> {
-    let metadata = load_export_metadata(raw_dir, Some(RAW_EXPORT_SUBDIR))?;
-    let export_org_ids = load_export_org_ids(raw_dir, metadata.as_ref())?;
+    parse_export_org_scope_for_variant(import_root, raw_dir, RAW_EXPORT_SUBDIR)
+}
+
+fn use_export_org_variant_dir(input_format: super::DashboardImportInputFormat) -> &'static str {
+    match input_format {
+        super::DashboardImportInputFormat::Raw => RAW_EXPORT_SUBDIR,
+        super::DashboardImportInputFormat::Provisioning => super::PROVISIONING_EXPORT_SUBDIR,
+    }
+}
+
+fn parse_export_org_scope_for_variant(
+    import_root: &Path,
+    variant_dir: &Path,
+    expected_variant: &'static str,
+) -> Result<ExportOrgImportScope> {
+    let metadata = load_export_metadata(variant_dir, Some(expected_variant))?;
+    let export_org_ids = load_export_org_ids(variant_dir, metadata.as_ref())?;
     if export_org_ids.is_empty() {
         return Err(message(format!(
-            "Cannot route import by export org for {}: raw export orgId metadata was not found in index.json, folders.json, or datasources.json.",
-            raw_dir.display()
+            "Cannot route import by export org for {}: {expected_variant} export orgId metadata was not found in index.json, folders.json, or datasources.json.",
+            variant_dir.display()
         )));
     }
     if export_org_ids.len() > 1 {
         return Err(message(format!(
             "Cannot route import by export org for {}: found multiple export orgIds ({}).",
-            raw_dir.display(),
+            variant_dir.display(),
             export_org_ids
                 .into_iter()
                 .collect::<Vec<String>>()
@@ -165,15 +182,15 @@ fn parse_export_org_scope(import_root: &Path, raw_dir: &Path) -> Result<ExportOr
     let source_org_id = source_org_id_text.parse::<i64>().map_err(|_| {
         message(format!(
             "Cannot route import by export org for {}: export orgId '{}' is not a valid integer.",
-            raw_dir.display(),
+            variant_dir.display(),
             source_org_id_text
         ))
     })?;
-    let org_names = load_export_org_names(raw_dir, metadata.as_ref())?;
+    let org_names = load_export_org_names(variant_dir, metadata.as_ref())?;
     if org_names.len() > 1 {
         return Err(message(format!(
             "Cannot route import by export org for {}: found multiple export org names ({}).",
-            raw_dir.display(),
+            variant_dir.display(),
             org_names.into_iter().collect::<Vec<String>>().join(", ")
         )));
     }
@@ -187,7 +204,7 @@ fn parse_export_org_scope(import_root: &Path, raw_dir: &Path) -> Result<ExportOr
     Ok(ExportOrgImportScope {
         source_org_id,
         source_org_name,
-        import_dir: raw_dir.to_path_buf(),
+        import_dir: variant_dir.to_path_buf(),
     })
 }
 
@@ -197,6 +214,7 @@ pub(crate) fn discover_export_org_import_scopes(
     if !args.use_export_org {
         return Ok(Vec::new());
     }
+    let variant_dir_name = use_export_org_variant_dir(args.input_format);
     let selected_org_ids: BTreeSet<i64> = args.only_org_id.iter().copied().collect();
     let mut scopes = Vec::new();
     for entry in fs::read_dir(&args.import_dir)? {
@@ -211,11 +229,15 @@ pub(crate) fn discover_export_org_import_scopes(
         if !name.starts_with("org_") {
             continue;
         }
-        let raw_dir = path.join(RAW_EXPORT_SUBDIR);
-        if !raw_dir.is_dir() {
+        let variant_dir = path.join(variant_dir_name);
+        if !variant_dir.is_dir() {
             continue;
         }
-        let scope = parse_export_org_scope(&path, &raw_dir)?;
+        let scope = if variant_dir_name == RAW_EXPORT_SUBDIR {
+            parse_export_org_scope(&path, &variant_dir)?
+        } else {
+            parse_export_org_scope_for_variant(&path, &variant_dir, variant_dir_name)?
+        };
         if !selected_org_ids.is_empty() && !selected_org_ids.contains(&scope.source_org_id) {
             continue;
         }
@@ -223,19 +245,17 @@ pub(crate) fn discover_export_org_import_scopes(
     }
     scopes.sort_by(|left, right| left.source_org_id.cmp(&right.source_org_id));
     if scopes.is_empty() {
-        if args
-            .import_dir
-            .join(super::EXPORT_METADATA_FILENAME)
-            .is_file()
-        {
-            return Err(message(
-                "Dashboard import with --use-export-org expects the combined export root, not one raw/ export directory.",
-            ));
+        if let Some(metadata) = load_export_metadata(&args.import_dir, None)? {
+            if metadata.variant != "root" {
+                return Err(message(format!(
+                    "Dashboard import with --use-export-org expects the combined export root, not one {variant_dir_name}/ export directory."
+                )));
+            }
         }
         if selected_org_ids.is_empty() {
             return Err(message(format!(
-                "Dashboard import with --use-export-org did not find any org-specific raw exports under {}.",
-                args.import_dir.display()
+                "Dashboard import with --use-export-org did not find any org-specific {variant_dir_name} exports under {}.",
+                args.import_dir.display(),
             )));
         }
         return Err(message(format!(
@@ -279,7 +299,7 @@ where
     let export_org_ids = load_export_org_ids(import_dir, metadata)?;
     if export_org_ids.is_empty() {
         return Err(message(
-            "Cannot verify exported org for import: raw export orgId metadata was not found in index.json, folders.json, or datasources.json.",
+            "Cannot verify exported org for import: export orgId metadata was not found in index.json, folders.json, or datasources.json.",
         ));
     }
     if export_org_ids.len() > 1 {
@@ -298,7 +318,7 @@ where
     };
     if export_org_id != target_org_id {
         return Err(message(format!(
-            "Dashboard import export org mismatch: raw export orgId {export_org_id} does not match target org {target_org_id}. Use matching credentials/org selection or omit --require-matching-export-org."
+            "Dashboard import export org mismatch: export orgId {export_org_id} does not match target org {target_org_id}. Use matching credentials/org selection or omit --require-matching-export-org."
         )));
     }
     Ok(())

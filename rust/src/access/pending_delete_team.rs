@@ -1,3 +1,9 @@
+//! Resolve and validate pending team deletes before destructive API calls.
+//! This module looks up teams from search results, checks the caller's confirmation
+//! flags, and prepares the delete target used by the final delete workflow. It is
+//! intentionally narrow: it only handles resolution and validation, not the delete
+//! request itself.
+
 use reqwest::Method;
 use serde_json::{Map, Value};
 

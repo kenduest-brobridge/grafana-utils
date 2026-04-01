@@ -749,6 +749,7 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("Export dashboards from local Grafana with Basic auth", help_text)
         self.assertIn("Export dashboards with an API token", help_text)
         self.assertIn("http://localhost:3000", help_text)
+        self.assertIn("--input-format provisioning --report tree-table", help_text)
 
     def test_dashboard_export_help_includes_basic_and_token_examples(self):
         stream = io.StringIO()
@@ -1208,6 +1209,22 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(args.import_dir, "dashboards/raw")
         self.assertEqual(args.command, "diff")
         self.assertEqual(args.context_lines, 3)
+
+    def test_dashboard_diff_help_mentions_raw_and_provisioning_lanes(self):
+        stream = io.StringIO()
+
+        with redirect_stdout(stream):
+            with self.assertRaises(SystemExit):
+                exporter.parse_args(["diff", "-h"])
+
+        help_text = stream.getvalue()
+        self.assertIn("raw export directory", help_text)
+        self.assertIn("Compare dashboards from this raw export directory", help_text)
+        self.assertIn("use inspect-export", help_text)
+        self.assertIn("./dashboards/provisioning", help_text)
+        self.assertIn("--input-format provisioning", help_text)
+        self.assertIn("Compare raw dashboard exports against Grafana", help_text)
+        self.assertIn("Inspect a Grafana file-provisioning tree separately", help_text)
 
     def test_dashboard_parse_args_defaults_export_dir_to_dashboards(self):
         args = exporter.parse_args(["export-dashboard"])

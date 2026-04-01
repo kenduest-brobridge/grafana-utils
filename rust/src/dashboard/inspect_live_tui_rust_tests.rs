@@ -1,3 +1,5 @@
+//! Inspection path for Dashboard resources: analysis, extraction, and report shaping.
+
 use super::test_support::make_core_family_report_row;
 use super::*;
 

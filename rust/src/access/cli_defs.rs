@@ -74,17 +74,19 @@ pub struct TeamListArgs {
     pub page: usize,
     #[arg(long, default_value_t = DEFAULT_PAGE_SIZE, help = "Number of teams to request per page.")]
     pub per_page: usize,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render team summaries as a table.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json", "yaml"], help = "Render team summaries as a table.")]
     pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render team summaries as CSV.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json", "yaml"], help = "Render team summaries as CSV.")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render team summaries as JSON.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv", "yaml"], help = "Render team summaries as JSON.")]
     pub json: bool,
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv", "json"], help = "Render team summaries as YAML.")]
+    pub yaml: bool,
     #[arg(
         long,
         value_enum,
-        conflicts_with_all = ["table", "csv", "json"],
-        help = "Alternative single-flag output selector. Use text, table, csv, or json."
+        conflicts_with_all = ["table", "csv", "json", "yaml"],
+        help = "Alternative single-flag output selector. Use text, table, csv, json, or yaml."
     )]
     pub output_format: Option<ListOutputFormat>,
 }
@@ -299,17 +301,19 @@ pub struct OrgListArgs {
         help = "Include org users and org roles in the rendered output."
     )]
     pub with_users: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json"], help = "Render org summaries as a table.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["csv", "json", "yaml"], help = "Render org summaries as a table.")]
     pub table: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json"], help = "Render org summaries as CSV.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "json", "yaml"], help = "Render org summaries as CSV.")]
     pub csv: bool,
-    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv"], help = "Render org summaries as JSON.")]
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv", "yaml"], help = "Render org summaries as JSON.")]
     pub json: bool,
+    #[arg(long, default_value_t = false, conflicts_with_all = ["table", "csv", "json"], help = "Render org summaries as YAML.")]
+    pub yaml: bool,
     #[arg(
         long,
         value_enum,
-        conflicts_with_all = ["table", "csv", "json"],
-        help = "Alternative single-flag output selector. Use text, table, csv, or json."
+        conflicts_with_all = ["table", "csv", "json", "yaml"],
+        help = "Alternative single-flag output selector. Use text, table, csv, json, or yaml."
     )]
     pub output_format: Option<ListOutputFormat>,
 }

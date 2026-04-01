@@ -1,3 +1,5 @@
+//! Shared Access helpers for internal state transitions and reusable orchestration logic.
+
 use clap::{Args, Subcommand};
 use serde_json::{Map, Value};
 

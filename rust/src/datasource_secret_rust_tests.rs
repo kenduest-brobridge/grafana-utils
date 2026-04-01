@@ -1,3 +1,5 @@
+//! Rust regression coverage for Core behavior at this module boundary.
+
 use crate::datasource_secret::{
     build_secret_placeholder_plan, collect_secret_placeholders, iter_secret_placeholder_names,
     resolve_secret_placeholders,

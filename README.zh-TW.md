@@ -190,14 +190,32 @@ grafana-util alert apply --url http://localhost:3000 --basic-user admin --basic-
 
 ## 安裝與建置
 
-- [最新版 release](https://github.com/kenduest-brobridge/grafana-utils/releases/latest)
-- [所有 releases](https://github.com/kenduest-brobridge/grafana-utils/releases)
+使用 repo 內建安裝腳本，一行完成安裝：
 
-若要使用目前 checkout 的版本，請直接本地建置：
+```bash
+curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+```
+
+需要指定安裝位置或版本時：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | BIN_DIR=/usr/local/bin VERSION=v0.5.0 sh
+```
+
+如果您已經有本地 checkout，也可以直接在 repo 根目錄執行：
+
+```bash
+sh ./scripts/install.sh
+```
+
+若要使用目前 checkout 的版本或自行從原始碼建置：
 
 ```bash
 cd rust && cargo build --release
 ```
+
+- [最新版 release](https://github.com/kenduest-brobridge/grafana-utils/releases/latest)
+- [所有 releases](https://github.com/kenduest-brobridge/grafana-utils/releases)
 
 ## 文件
 

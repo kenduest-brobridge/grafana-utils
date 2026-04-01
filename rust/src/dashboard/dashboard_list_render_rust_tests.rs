@@ -1,4 +1,11 @@
+//! Regression tests for dashboard list rendering contracts.
+//!
+//! Focus:
+//! - Verify folder and dashboard summary renderers stay stable across output formats.
+//! - Lock expected fields for text/JSON paths that power human and machine users.
+
 use super::*;
+use crate::dashboard::list::render_dashboard_summary_text;
 
 #[test]
 fn format_dashboard_summary_line_uses_uid_name_and_folder_details() {
@@ -37,6 +44,25 @@ fn format_dashboard_summary_line_appends_sources_when_present() {
         line,
         "uid=abc name=CPU folder=Infra folderUid=infra path=Platform / Infra org=Main Org orgId=1 sources=Loki Logs,Prom Main"
     );
+}
+
+#[test]
+fn render_dashboard_summary_text_uses_line_format() {
+    let summaries = vec![json!({
+        "uid": "abc",
+        "folderUid": "infra",
+        "folderPath": "Platform / Infra",
+        "folderTitle": "Infra",
+        "orgId": 1,
+        "orgName": "Main Org",
+        "title": "CPU"
+    })
+    .as_object()
+    .unwrap()
+    .clone()];
+
+    let lines = render_dashboard_summary_text(&summaries);
+    assert_eq!(lines, vec![format_dashboard_summary_line(&summaries[0])]);
 }
 
 #[test]
@@ -239,6 +265,29 @@ fn render_dashboard_summary_json_returns_objects() {
 }
 
 #[test]
+fn render_dashboard_summary_json_can_be_rendered_as_yaml() {
+    let summaries = vec![json!({
+        "uid": "abc",
+        "folderUid": "infra",
+        "folderPath": "Platform / Infra",
+        "folderTitle": "Infra",
+        "orgId": 1,
+        "orgName": "Main Org",
+        "title": "CPU"
+    })
+    .as_object()
+    .unwrap()
+    .clone()];
+
+    let value = render_dashboard_summary_json(&summaries, &[]);
+    let yaml = crate::tabular_output::render_yaml(&value).unwrap();
+    assert!(yaml.contains("uid: abc"));
+    assert!(
+        yaml.contains("orgId: \"1\"") || yaml.contains("orgId: '1'") || yaml.contains("orgId: 1")
+    );
+}
+
+#[test]
 fn render_dashboard_summary_json_includes_sources_when_present() {
     let summaries = vec![json!({
         "uid": "abc",
@@ -396,9 +445,11 @@ fn list_dashboards_with_request_returns_dashboard_count() {
         all_orgs: false,
         with_sources: false,
         output_columns: Vec::new(),
+        text: false,
         table: false,
         csv: false,
         json: false,
+        yaml: false,
         output_format: None,
         no_header: false,
     };
@@ -535,9 +586,11 @@ fn list_dashboards_with_request_json_fetches_dashboards_and_datasources_by_defau
         all_orgs: false,
         with_sources: false,
         output_columns: Vec::new(),
+        text: false,
         table: false,
         csv: false,
         json: true,
+        yaml: false,
         output_format: None,
         no_header: false,
     };
@@ -597,9 +650,11 @@ fn list_dashboards_with_request_output_columns_sources_fetches_dashboard_sources
         all_orgs: false,
         with_sources: false,
         output_columns: vec!["uid".to_string(), "sources".to_string()],
+        text: false,
         table: true,
         csv: false,
         json: false,
+        yaml: false,
         output_format: None,
         no_header: false,
     };
@@ -655,9 +710,11 @@ fn list_dashboards_with_request_with_org_id_scopes_requests() {
         all_orgs: false,
         with_sources: false,
         output_columns: Vec::new(),
+        text: false,
         table: false,
         csv: false,
         json: true,
+        yaml: false,
         output_format: None,
         no_header: false,
     };

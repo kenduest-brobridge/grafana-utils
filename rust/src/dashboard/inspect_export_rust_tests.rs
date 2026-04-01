@@ -2,9 +2,13 @@
 //! Keeps the export-inspection parser coverage separate from the large dashboard test file.
 
 use super::test_support::{
-    parse_cli_from, DashboardCommand, InspectExportReportFormat, InspectOutputFormat,
+    parse_cli_from, DashboardCommand, DashboardImportInputFormat, InspectExportReportFormat,
+    InspectOutputFormat,
 };
+use serde_json::json;
+use std::fs;
 use std::path::{Path, PathBuf};
+use tempfile::tempdir;
 
 #[test]
 fn parse_cli_supports_inspect_export_json_flag() {
@@ -49,6 +53,37 @@ fn parse_cli_supports_inspect_export_output_format_flag() {
             assert!(!inspect_args.table);
         }
         _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_inspect_export_baseline_output_formats() {
+    for (output_format, expected) in [
+        ("text", InspectOutputFormat::Text),
+        ("table", InspectOutputFormat::Table),
+        ("csv", InspectOutputFormat::Csv),
+        ("json", InspectOutputFormat::Json),
+        ("yaml", InspectOutputFormat::Yaml),
+    ] {
+        let args = parse_cli_from([
+            "grafana-util",
+            "inspect-export",
+            "--import-dir",
+            "./dashboards/raw",
+            "--output-format",
+            output_format,
+        ]);
+
+        match args.command {
+            DashboardCommand::InspectExport(inspect_args) => {
+                assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
+                assert_eq!(inspect_args.output_format, Some(expected));
+                assert_eq!(inspect_args.report, None);
+                assert!(!inspect_args.json);
+                assert!(!inspect_args.table);
+            }
+            _ => panic!("expected inspect-export command"),
+        }
     }
 }
 
@@ -140,6 +175,7 @@ fn parse_cli_supports_inspect_export_report_json_flag() {
         DashboardCommand::InspectExport(inspect_args) => {
             assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
             assert_eq!(inspect_args.report, Some(InspectExportReportFormat::Json));
+            assert_eq!(inspect_args.output_format, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -162,6 +198,7 @@ fn parse_cli_supports_inspect_export_report_csv_flag() {
         DashboardCommand::InspectExport(inspect_args) => {
             assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
             assert_eq!(inspect_args.report, Some(InspectExportReportFormat::Csv));
+            assert_eq!(inspect_args.output_format, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -184,6 +221,7 @@ fn parse_cli_supports_inspect_export_report_tree_flag() {
         DashboardCommand::InspectExport(inspect_args) => {
             assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
             assert_eq!(inspect_args.report, Some(InspectExportReportFormat::Tree));
+            assert_eq!(inspect_args.output_format, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -209,6 +247,7 @@ fn parse_cli_supports_inspect_export_report_tree_table_flag() {
                 inspect_args.report,
                 Some(InspectExportReportFormat::TreeTable)
             );
+            assert_eq!(inspect_args.output_format, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -234,6 +273,7 @@ fn parse_cli_supports_inspect_export_report_dependency_flag() {
                 inspect_args.report,
                 Some(InspectExportReportFormat::Dependency)
             );
+            assert_eq!(inspect_args.output_format, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -259,6 +299,7 @@ fn parse_cli_supports_inspect_export_report_dependency_json_flag() {
                 inspect_args.report,
                 Some(InspectExportReportFormat::DependencyJson)
             );
+            assert_eq!(inspect_args.output_format, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -284,11 +325,52 @@ fn parse_cli_supports_inspect_export_report_governance_flag() {
                 inspect_args.report,
                 Some(InspectExportReportFormat::Governance)
             );
+            assert_eq!(inspect_args.output_format, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
         _ => panic!("expected inspect-export command"),
     }
+}
+
+#[test]
+fn analyze_export_dir_supports_explicit_provisioning_input_format() {
+    let temp = tempdir().unwrap();
+    let provisioning_root = temp.path().join("provisioning");
+    let dashboards_dir = provisioning_root.join("dashboards").join("team");
+    fs::create_dir_all(&dashboards_dir).unwrap();
+    fs::write(
+        dashboards_dir.join("cpu.json"),
+        serde_json::to_string_pretty(&json!({
+            "uid": "cpu-main",
+            "title": "CPU Main",
+            "panels": []
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let args = super::test_support::InspectExportArgs {
+        import_dir: provisioning_root,
+        input_format: DashboardImportInputFormat::Provisioning,
+        text: false,
+        csv: false,
+        json: false,
+        table: false,
+        yaml: false,
+        report: None,
+        output_format: None,
+        report_columns: Vec::new(),
+        report_filter_datasource: None,
+        report_filter_panel_id: None,
+        help_full: false,
+        no_header: false,
+        output_file: None,
+        interactive: false,
+    };
+
+    let dashboard_count = super::test_support::analyze_export_dir(&args).unwrap();
+    assert_eq!(dashboard_count, 1);
 }
 
 #[test]

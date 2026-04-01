@@ -1,14 +1,17 @@
 //! Overview contract and text-rendering regressions.
 
 use super::overview::{
-    build_overview_artifacts, build_overview_document, render_overview_text, OverviewArgs,
-    OverviewCliArgs, OverviewOutputFormat, OVERVIEW_KIND,
+    build_overview_artifacts, build_overview_document, build_overview_summary_rows,
+    render_overview_text, OverviewArgs, OverviewCliArgs, OverviewDocument, OverviewOutputFormat,
+    OverviewProjectStatus, OverviewProjectStatusFreshness, OverviewProjectStatusOverall,
+    OverviewSummary, OVERVIEW_KIND,
 };
 use crate::common::TOOL_VERSION;
 use crate::dashboard::build_dashboard_domain_status;
 use crate::overview::run_overview_live;
 use crate::project_status_command::render_project_status_text;
 use crate::project_status_command::{execute_project_status_live, ProjectStatusLiveArgs};
+use crate::tabular_output::{render_summary_csv, render_summary_table};
 use clap::{CommandFactory, Parser};
 use serde_json::{json, Value};
 use std::fs;
@@ -20,14 +23,14 @@ use std::thread;
 use std::time::Duration;
 use tempfile::tempdir;
 
-fn write_datasource_export_fixture(dir: &Path) {
+fn write_datasource_export_fixture(dir: &Path, variant: &str) {
     fs::create_dir_all(dir).unwrap();
     fs::write(
         dir.join("export-metadata.json"),
         serde_json::to_string_pretty(&json!({
             "schemaVersion": 1,
             "kind": "grafana-utils-datasource-export-index",
-            "variant": "root",
+            "variant": variant,
             "resource": "datasource",
             "datasourcesFile": "datasources.json",
             "indexFile": "index.json",
@@ -66,6 +69,27 @@ fn write_datasource_export_fixture(dir: &Path) {
     .unwrap();
 }
 
+fn write_datasource_scope_fixture(dir: &Path, org_id: &str, org_name: &str) {
+    fs::create_dir_all(dir).unwrap();
+    fs::write(
+        dir.join("datasources.json"),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": format!("prom-{}", org_id),
+                "name": "Prometheus Main",
+                "type": "prometheus",
+                "access": "proxy",
+                "url": "http://prometheus:9090",
+                "isDefault": "true",
+                "org": org_name,
+                "orgId": org_id
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+}
+
 fn write_datasource_provisioning_fixture(path: &Path) {
     fs::write(
         path,
@@ -86,6 +110,52 @@ datasources:
     orgId: 2
     isDefault: false
 "#,
+    )
+    .unwrap();
+}
+
+fn write_dashboard_export_fixture(dir: &Path) {
+    fs::create_dir_all(dir.join("General")).unwrap();
+    fs::write(
+        dir.join("export-metadata.json"),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": 1,
+            "variant": "raw",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "format": "grafana-web-import-preserve-uid",
+            "foldersFile": "folders.json"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        dir.join("folders.json"),
+        serde_json::to_string_pretty(&json!([
+            {
+                "uid": "general",
+                "title": "General",
+                "parentUid": null,
+                "path": "General",
+                "org": "Main Org.",
+                "orgId": "1"
+            }
+        ]))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        dir.join("General").join("cpu.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "panels": []
+            },
+            "meta": {"folderUid": "general"}
+        }))
+        .unwrap(),
     )
     .unwrap();
 }
@@ -284,9 +354,19 @@ fn overview_args_parse_and_help_expose_output_mode() {
     assert!(default_args.command.is_none());
     assert_eq!(default_args.staged.output, OverviewOutputFormat::Text);
 
+    let table_args = OverviewCliArgs::parse_from(["grafana-util", "--output", "table"]);
+    assert_eq!(table_args.staged.output, OverviewOutputFormat::Table);
+
+    let csv_args = OverviewCliArgs::parse_from(["grafana-util", "--output", "csv"]);
+    assert_eq!(csv_args.staged.output, OverviewOutputFormat::Csv);
+
     let json_args = OverviewCliArgs::parse_from(["grafana-util", "--output", "json"]);
     assert!(json_args.command.is_none());
     assert_eq!(json_args.staged.output, OverviewOutputFormat::Json);
+
+    let yaml_args = OverviewCliArgs::parse_from(["grafana-util", "--output", "yaml"]);
+    assert!(yaml_args.command.is_none());
+    assert_eq!(yaml_args.staged.output, OverviewOutputFormat::Yaml);
 
     #[cfg(feature = "tui")]
     {
@@ -307,7 +387,9 @@ fn overview_args_parse_and_help_expose_output_mode() {
 
     let help = OverviewCliArgs::command().render_long_help().to_string();
     assert!(help.contains("--output <OUTPUT>"));
-    assert!(help.contains("Render the overview document as text, json, or interactive output."));
+    assert!(help.contains(
+        "Render the overview document as table, csv, text, json, yaml, or interactive output."
+    ));
     assert!(help.contains("--dashboard-provisioning-dir"));
     assert!(help.contains("--datasource-provisioning-file"));
     assert!(help.contains("live"));
@@ -315,6 +397,72 @@ fn overview_args_parse_and_help_expose_output_mode() {
     assert!(help.contains("interactive"));
     #[cfg(not(feature = "tui"))]
     assert!(!help.contains("interactive"));
+}
+
+fn sample_overview_document() -> OverviewDocument {
+    OverviewDocument {
+        kind: OVERVIEW_KIND.to_string(),
+        schema_version: 1,
+        tool_version: TOOL_VERSION.to_string(),
+        summary: OverviewSummary {
+            artifact_count: 3,
+            dashboard_export_count: 1,
+            datasource_export_count: 1,
+            alert_export_count: 1,
+            access_user_export_count: 0,
+            access_team_export_count: 0,
+            access_org_export_count: 0,
+            access_service_account_export_count: 0,
+            sync_summary_count: 0,
+            bundle_preflight_count: 0,
+            promotion_preflight_count: 0,
+        },
+        project_status: OverviewProjectStatus {
+            schema_version: 1,
+            tool_version: TOOL_VERSION.to_string(),
+            scope: "staged-only".to_string(),
+            overall: OverviewProjectStatusOverall {
+                status: "partial".to_string(),
+                domain_count: 6,
+                present_count: 1,
+                blocked_count: 0,
+                blocker_count: 0,
+                warning_count: 0,
+                freshness: OverviewProjectStatusFreshness {
+                    status: "current".to_string(),
+                    source_count: 1,
+                    newest_age_seconds: Some(15),
+                    oldest_age_seconds: Some(15),
+                },
+            },
+            domains: Vec::new(),
+            top_blockers: Vec::new(),
+            next_actions: Vec::new(),
+        },
+        artifacts: Vec::new(),
+        selected_section_index: 0,
+        sections: Vec::new(),
+    }
+}
+
+#[test]
+fn overview_summary_rows_feed_the_shared_tabular_renderer() {
+    let document = sample_overview_document();
+    let rows = build_overview_summary_rows(&document);
+
+    assert_eq!(rows[0], ("status", "partial".to_string()));
+    assert_eq!(rows[1], ("scope", "staged-only".to_string()));
+    assert_eq!(rows[11], ("artifactCount", "3".to_string()));
+
+    let table = render_summary_table(&rows);
+    assert_eq!(table.len(), rows.len() + 2);
+    assert!(table[0].contains("field"));
+    assert!(table[2].contains("status"));
+    assert!(table[2].contains("partial"));
+
+    let csv = render_summary_csv(&rows);
+    assert_eq!(csv[0], "field,value");
+    assert_eq!(csv[1], "status,partial");
 }
 
 #[test]
@@ -1413,7 +1561,7 @@ fn build_overview_document_and_render_overview_text_for_bundle_preflight_assessm
 fn build_overview_document_and_render_overview_text_for_datasource_export_section() {
     let temp = tempdir().unwrap();
     let datasource_export_dir = temp.path().join("datasources");
-    write_datasource_export_fixture(&datasource_export_dir);
+    write_datasource_export_fixture(&datasource_export_dir, "root");
 
     let args = OverviewArgs {
         dashboard_export_dir: None,
@@ -1557,6 +1705,86 @@ fn build_overview_document_and_render_overview_text_for_datasource_provisioning_
     assert!(lines
         .iter()
         .any(|line| line.contains("datasourceProvisioningFile=")));
+}
+
+#[test]
+fn build_overview_document_and_render_overview_text_accepts_combined_dashboard_and_datasource_export_roots(
+) {
+    let temp = tempdir().unwrap();
+    let dashboard_export_dir = temp.path().join("dashboards");
+    let datasource_export_dir = temp.path().join("datasources");
+    write_dashboard_export_fixture(&dashboard_export_dir);
+    write_datasource_export_fixture(&datasource_export_dir, "all-orgs-root");
+    write_datasource_scope_fixture(
+        &datasource_export_dir.join("org_1_Main_Org"),
+        "1",
+        "Main Org.",
+    );
+    write_datasource_scope_fixture(
+        &datasource_export_dir.join("org_2_Ops_Org"),
+        "2",
+        "Ops Org.",
+    );
+
+    let args = OverviewArgs {
+        dashboard_export_dir: Some(dashboard_export_dir),
+        dashboard_provisioning_dir: None,
+        datasource_export_dir: Some(datasource_export_dir),
+        datasource_provisioning_file: None,
+        access_user_export_dir: None,
+        access_team_export_dir: None,
+        access_org_export_dir: None,
+        access_service_account_export_dir: None,
+        desired_file: None,
+        source_bundle: None,
+        target_inventory: None,
+        alert_export_dir: None,
+        availability_file: None,
+        mapping_file: None,
+        output: OverviewOutputFormat::Json,
+    };
+
+    let artifacts = build_overview_artifacts(&args).unwrap();
+    let document = build_overview_document(artifacts).unwrap();
+    let json_document = serde_json::to_value(&document).unwrap();
+    let lines = render_overview_text(&document).unwrap();
+    let dashboard_domain = json_document["projectStatus"]["domains"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|domain| domain["id"] == json!("dashboard"))
+        .unwrap();
+    let datasource_domain = json_document["projectStatus"]["domains"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|domain| domain["id"] == json!("datasource"))
+        .unwrap();
+
+    assert_eq!(document.summary.artifact_count, 2);
+    assert_eq!(document.summary.dashboard_export_count, 1);
+    assert_eq!(document.summary.datasource_export_count, 1);
+    assert_eq!(
+        json_document["projectStatus"]["scope"],
+        json!("staged-only")
+    );
+    assert_dashboard_domain_contract(dashboard_domain);
+    assert_eq!(dashboard_domain["status"], json!("ready"));
+    assert_eq!(dashboard_domain["reasonCode"], json!("ready"));
+    assert_eq!(dashboard_domain["sourceKinds"], json!(["dashboard-export"]));
+    assert_eq!(dashboard_domain["nextActions"], json!([]));
+    assert_project_status_domain_contract(datasource_domain, "datasource");
+    assert_eq!(datasource_domain["status"], json!("ready"));
+    assert_eq!(datasource_domain["reasonCode"], json!("ready"));
+    assert_eq!(
+        datasource_domain["sourceKinds"],
+        json!(["datasource-export"])
+    );
+    assert_eq!(datasource_domain["nextActions"], json!([]));
+    assert!(lines.iter().any(|line| line.contains("# Dashboard export")));
+    assert!(lines
+        .iter()
+        .any(|line| line.contains("# Datasource export")));
 }
 
 #[test]
