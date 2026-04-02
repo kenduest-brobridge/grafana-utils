@@ -29,10 +29,12 @@ pub(crate) fn resolve_datasource_identity(
     inventory_by_name: &BTreeMap<String, (String, String, String)>,
 ) -> ResolvedDatasourceIdentity {
     let normalized_family = normalize_family_name(&row.datasource_type);
-    let datasource_type = if matches!(normalized_family.as_str(), "search" | "tracing") {
+    let datasource_type = if normalized_family == "unknown" {
+        "unknown".to_string()
+    } else if matches!(normalized_family.as_str(), "search" | "tracing") {
         row.datasource_type.clone()
     } else {
-        "unknown".to_string()
+        normalized_family
     };
     if !row.datasource_uid.trim().is_empty() {
         if let Some((uid, name, datasource_type)) = inventory_by_uid.get(&row.datasource_uid) {

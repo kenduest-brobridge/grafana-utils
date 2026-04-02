@@ -125,7 +125,7 @@ where
     // Dry-run JSON is the most structured preview, so emit it before any
     // table rendering or live import work.
     if args.dry_run && args.json {
-        println!(
+        print!(
             "{}",
             build_routed_import_dry_run_json_with_request(
                 request_json,

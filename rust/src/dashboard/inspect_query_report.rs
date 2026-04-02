@@ -30,10 +30,10 @@ use super::summarize_datasource_type;
 use super::summarize_datasource_uid;
 use super::summarize_panel_datasource_key;
 use super::{
-    build_export_inspection_summary, load_dashboard_org_scope_by_file, load_inspect_source_root,
-    resolve_dashboard_source_file_path, resolve_export_folder_inventory_item,
-    resolve_export_folder_path, DEFAULT_DASHBOARD_TITLE, DEFAULT_FOLDER_TITLE, DEFAULT_UNKNOWN_UID,
-    RAW_EXPORT_SUBDIR,
+    build_export_inspection_summary_for_variant, load_dashboard_org_scope_by_file,
+    load_inspect_source_root, resolve_dashboard_source_file_path,
+    resolve_export_folder_inventory_item, resolve_export_folder_path, DEFAULT_DASHBOARD_TITLE,
+    DEFAULT_FOLDER_TITLE, DEFAULT_UNKNOWN_UID, RAW_EXPORT_SUBDIR,
 };
 
 struct QueryReportContext<'a> {
@@ -389,10 +389,17 @@ fn collect_query_report_rows(
 pub(crate) fn build_export_inspection_query_report(
     import_dir: &Path,
 ) -> Result<ExportInspectionQueryReport> {
+    build_export_inspection_query_report_for_variant(import_dir, RAW_EXPORT_SUBDIR)
+}
+
+pub(crate) fn build_export_inspection_query_report_for_variant(
+    import_dir: &Path,
+    expected_variant: &str,
+) -> Result<ExportInspectionQueryReport> {
     // Build the normalized row set once; every downstream output format should derive
     // from this report instead of re-reading dashboard files or re-running analysis.
-    let summary = build_export_inspection_summary(import_dir)?;
-    let metadata = load_export_metadata(import_dir, Some(RAW_EXPORT_SUBDIR))?;
+    let summary = build_export_inspection_summary_for_variant(import_dir, expected_variant)?;
+    let metadata = load_export_metadata(import_dir, Some(expected_variant))?;
     let dashboard_org_scope = load_dashboard_org_scope_by_file(import_dir, metadata.as_ref())?;
     let source_root = load_inspect_source_root(import_dir);
     let dashboard_files = discover_dashboard_files(import_dir)?;

@@ -24,6 +24,14 @@ use std::time::Duration;
 use tempfile::tempdir;
 
 fn write_datasource_export_fixture(dir: &Path, variant: &str) {
+    write_datasource_export_fixture_with_scope_kind(dir, variant, None);
+}
+
+fn write_datasource_export_fixture_with_scope_kind(
+    dir: &Path,
+    variant: &str,
+    scope_kind: Option<&str>,
+) {
     fs::create_dir_all(dir).unwrap();
     fs::write(
         dir.join("export-metadata.json"),
@@ -31,6 +39,7 @@ fn write_datasource_export_fixture(dir: &Path, variant: &str) {
             "schemaVersion": 1,
             "kind": "grafana-utils-datasource-export-index",
             "variant": variant,
+            "scopeKind": scope_kind,
             "resource": "datasource",
             "datasourcesFile": "datasources.json",
             "indexFile": "index.json",
@@ -158,6 +167,26 @@ fn write_dashboard_export_fixture(dir: &Path) {
         .unwrap(),
     )
     .unwrap();
+}
+
+fn write_dashboard_root_fixture(dir: &Path) {
+    fs::create_dir_all(dir.join("raw")).unwrap();
+    fs::write(
+        dir.join("export-metadata.json"),
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": 1,
+            "variant": "root",
+            "scopeKind": "org-root",
+            "dashboardCount": 1,
+            "indexFile": "index.json",
+            "org": "Main Org.",
+            "orgId": "1"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    write_dashboard_export_fixture(&dir.join("raw"));
 }
 
 fn write_alert_export_fixture(dir: &Path) {
@@ -1785,6 +1814,107 @@ fn build_overview_document_and_render_overview_text_accepts_combined_dashboard_a
     assert!(lines
         .iter()
         .any(|line| line.contains("# Datasource export")));
+}
+
+#[test]
+fn build_overview_artifacts_rejects_dashboard_root_for_dashboard_export_input() {
+    let temp = tempdir().unwrap();
+    let dashboard_root = temp.path().join("dashboards");
+    write_dashboard_root_fixture(&dashboard_root);
+
+    let args = OverviewArgs {
+        dashboard_export_dir: Some(dashboard_root),
+        dashboard_provisioning_dir: None,
+        datasource_export_dir: None,
+        datasource_provisioning_file: None,
+        access_user_export_dir: None,
+        access_team_export_dir: None,
+        access_org_export_dir: None,
+        access_service_account_export_dir: None,
+        desired_file: None,
+        source_bundle: None,
+        target_inventory: None,
+        alert_export_dir: None,
+        availability_file: None,
+        mapping_file: None,
+        output: OverviewOutputFormat::Text,
+    };
+
+    let error = build_overview_artifacts(&args).unwrap_err().to_string();
+
+    assert!(error.contains("Point this command at the raw/ directory"));
+}
+
+#[test]
+fn build_overview_artifacts_accepts_workspace_root_datasource_manifest() {
+    let temp = tempdir().unwrap();
+    let datasource_export_dir = temp.path().join("datasources");
+    write_datasource_export_fixture_with_scope_kind(
+        &datasource_export_dir,
+        "all-orgs-root",
+        Some("workspace-root"),
+    );
+    write_datasource_scope_fixture(
+        &datasource_export_dir.join("org_1_Main_Org"),
+        "1",
+        "Main Org.",
+    );
+
+    let args = OverviewArgs {
+        dashboard_export_dir: None,
+        dashboard_provisioning_dir: None,
+        datasource_export_dir: Some(datasource_export_dir),
+        datasource_provisioning_file: None,
+        access_user_export_dir: None,
+        access_team_export_dir: None,
+        access_org_export_dir: None,
+        access_service_account_export_dir: None,
+        desired_file: None,
+        source_bundle: None,
+        target_inventory: None,
+        alert_export_dir: None,
+        availability_file: None,
+        mapping_file: None,
+        output: OverviewOutputFormat::Json,
+    };
+
+    let artifacts = build_overview_artifacts(&args).unwrap();
+
+    assert_eq!(artifacts.len(), 1);
+    assert_eq!(artifacts[0].title, "Datasource export");
+}
+
+#[test]
+fn build_overview_artifacts_rejects_datasource_unknown_root_scope_kind() {
+    let temp = tempdir().unwrap();
+    let datasource_export_dir = temp.path().join("datasources");
+    write_datasource_export_fixture_with_scope_kind(
+        &datasource_export_dir,
+        "all-orgs-root",
+        Some("unexpected-root"),
+    );
+
+    let args = OverviewArgs {
+        dashboard_export_dir: None,
+        dashboard_provisioning_dir: None,
+        datasource_export_dir: Some(datasource_export_dir),
+        datasource_provisioning_file: None,
+        access_user_export_dir: None,
+        access_team_export_dir: None,
+        access_org_export_dir: None,
+        access_service_account_export_dir: None,
+        desired_file: None,
+        source_bundle: None,
+        target_inventory: None,
+        alert_export_dir: None,
+        availability_file: None,
+        mapping_file: None,
+        output: OverviewOutputFormat::Text,
+    };
+
+    let error = build_overview_artifacts(&args).unwrap_err().to_string();
+
+    assert!(error.contains("Overview datasource export root is not supported"));
 }
 
 #[test]

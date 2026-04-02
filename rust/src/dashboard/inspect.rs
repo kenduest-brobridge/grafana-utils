@@ -85,6 +85,7 @@ pub(crate) use inspect_paths::{
     resolve_export_identity_field, write_inspect_output,
 };
 pub(crate) use inspect_query_report::build_export_inspection_query_report;
+pub(crate) use inspect_query_report::build_export_inspection_query_report_for_variant;
 
 fn collect_panel_stats(panel: &Map<String, Value>) -> (usize, usize) {
     let mut panel_count = 1usize;

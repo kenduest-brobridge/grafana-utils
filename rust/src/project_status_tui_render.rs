@@ -311,7 +311,8 @@ fn pane_block(title: &str, focused: bool, accent: Color) -> Block<'static> {
         .border_style(Style::default().fg(if focused { accent } else { Color::Gray }))
         .title_style(
             Style::default()
-                .fg(Color::White)
+                .fg(if focused { Color::Black } else { Color::White })
+                .bg(if focused { accent } else { Color::Reset })
                 .add_modifier(Modifier::BOLD),
         )
 }

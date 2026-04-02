@@ -5,8 +5,7 @@ use super::overview_support::{
     load_object_from_value, object_field_count, overview_inputs, value_is_truthy,
 };
 use super::{
-    OverviewArgs, OverviewArtifact, OverviewInputField, DATASOURCE_EXPORT_FILENAME,
-    DATASOURCE_EXPORT_METADATA_FILENAME, DATASOURCE_ROOT_KIND, DATASOURCE_ROOT_SCHEMA_VERSION,
+    OverviewArgs, OverviewArtifact, OverviewInputField, DATASOURCE_EXPORT_METADATA_FILENAME,
     OVERVIEW_ARTIFACT_ACCESS_ORG_EXPORT_KIND, OVERVIEW_ARTIFACT_ACCESS_SERVICE_ACCOUNT_EXPORT_KIND,
     OVERVIEW_ARTIFACT_ACCESS_TEAM_EXPORT_KIND, OVERVIEW_ARTIFACT_ACCESS_USER_EXPORT_KIND,
     OVERVIEW_ARTIFACT_ALERT_EXPORT_KIND, OVERVIEW_ARTIFACT_BUNDLE_PREFLIGHT_KIND,
@@ -20,10 +19,10 @@ use crate::access::{
 };
 use crate::common::{message, Result};
 use crate::dashboard::{
-    build_export_inspection_summary, build_export_inspection_summary_document,
-    build_export_inspection_summary_for_variant, PROVISIONING_EXPORT_SUBDIR,
+    build_export_inspection_summary_document, build_export_inspection_summary_for_variant,
+    PROVISIONING_EXPORT_SUBDIR, RAW_EXPORT_SUBDIR,
 };
-use crate::staged_export_scopes::resolve_datasource_export_scope_dirs;
+use crate::datasource::{load_datasource_export_root_manifest, DatasourceExportRootScopeKind};
 use crate::sync::bundle_preflight::build_sync_bundle_preflight_document;
 use crate::sync::load_datasource_provisioning_records;
 use crate::sync::promotion_preflight::build_sync_promotion_preflight_document;
@@ -55,12 +54,9 @@ fn build_dashboard_artifact(
     path: &Path,
     input_name: &str,
     title: &str,
-    expected_variant: Option<&str>,
+    expected_variant: &str,
 ) -> Result<OverviewArtifact> {
-    let summary = match expected_variant {
-        Some(variant) => build_export_inspection_summary_for_variant(path, variant)?,
-        None => build_export_inspection_summary(path)?,
-    };
+    let summary = build_export_inspection_summary_for_variant(path, expected_variant)?;
     let document = serde_json::to_value(build_export_inspection_summary_document(&summary))?;
     Ok(OverviewArtifact {
         kind: OVERVIEW_ARTIFACT_DASHBOARD_EXPORT_KIND.to_string(),
@@ -198,39 +194,25 @@ fn build_datasource_artifact(
 
 fn build_datasource_export_artifact(path: &Path) -> Result<OverviewArtifact> {
     let metadata_path = path.join(DATASOURCE_EXPORT_METADATA_FILENAME);
-    let metadata = load_object_from_value(&metadata_path, "Overview datasource export metadata")?;
-    let schema_version = metadata.get("schemaVersion").and_then(Value::as_i64);
-    let kind = metadata.get("kind").and_then(Value::as_str);
-    let variant = metadata
-        .get("variant")
-        .and_then(Value::as_str)
-        .unwrap_or_default();
-    let resource = metadata.get("resource").and_then(Value::as_str);
-    if schema_version != Some(DATASOURCE_ROOT_SCHEMA_VERSION)
-        || kind != Some(DATASOURCE_ROOT_KIND)
-        || resource != Some("datasource")
-    {
+    let manifest = load_datasource_export_root_manifest(&metadata_path).map_err(|_| {
+        message(format!(
+            "Overview datasource export root is not supported: {}",
+            metadata_path.display()
+        ))
+    })?;
+    if !matches!(
+        manifest.scope_kind,
+        DatasourceExportRootScopeKind::OrgRoot
+            | DatasourceExportRootScopeKind::AllOrgsRoot
+            | DatasourceExportRootScopeKind::WorkspaceRoot
+    ) {
         return Err(message(format!(
             "Overview datasource export root is not supported: {}",
             metadata_path.display()
         )));
     }
 
-    if !matches!(variant, "root" | "all-orgs-root")
-        && resolve_datasource_export_scope_dirs(path)
-            .iter()
-            .all(|scope| scope != path)
-    {
-        return Err(message(format!(
-            "Overview datasource export root is not supported: {}",
-            metadata_path.display()
-        )));
-    }
-
-    let datasources_file = metadata
-        .get("datasourcesFile")
-        .and_then(Value::as_str)
-        .unwrap_or(DATASOURCE_EXPORT_FILENAME);
+    let datasources_file = manifest.metadata.datasources_file.as_str();
     let datasources_path = path.join(datasources_file);
     let raw_datasources =
         load_json_array_value(&datasources_path, "Overview datasource inventory")?;
@@ -294,7 +276,7 @@ fn build_access_service_account_export_artifact(path: &Path) -> Result<OverviewA
 }
 
 fn build_dashboard_export_artifact(path: &Path) -> Result<OverviewArtifact> {
-    build_dashboard_artifact(path, "exportDir", "Dashboard export", None)
+    build_dashboard_artifact(path, "exportDir", "Dashboard export", RAW_EXPORT_SUBDIR)
 }
 
 fn build_dashboard_provisioning_artifact(path: &Path) -> Result<OverviewArtifact> {
@@ -302,7 +284,7 @@ fn build_dashboard_provisioning_artifact(path: &Path) -> Result<OverviewArtifact
         path,
         "dashboardProvisioningDir",
         "Dashboard provisioning",
-        Some(PROVISIONING_EXPORT_SUBDIR),
+        PROVISIONING_EXPORT_SUBDIR,
     )
 }
 

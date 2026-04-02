@@ -1,5 +1,6 @@
 //! CLI definitions for Dashboard command surface and option compatibility behavior.
 
+use crate::common::CliColorChoice;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
@@ -187,6 +188,12 @@ pub struct ListArgs {
 pub enum DashboardImportInputFormat {
     Raw,
     Provisioning,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum InspectExportInputType {
+    Raw,
+    Source,
 }
 
 /// Arguments for importing dashboards from a local export directory.
@@ -708,8 +715,8 @@ pub enum DashboardCommand {
     Publish(PublishArgs),
     #[command(
         name = "inspect-export",
-        about = "Analyze dashboard export directories and summarize their structure.",
-        after_help = "Examples:\n\n  Render a dashboard summary table from raw exports:\n    grafana-util dashboard inspect-export --import-dir ./dashboards/raw --input-format raw --table\n\n  Open the interactive inspect workbench over raw exports:\n    grafana-util dashboard inspect-export --import-dir ./dashboards/raw --input-format raw --interactive\n\n  Render governance JSON from raw exports:\n    grafana-util dashboard inspect-export --import-dir ./dashboards/raw --input-format raw --report governance-json\n\n  Inspect a file-provisioning tree from the provisioning root:\n    grafana-util dashboard inspect-export --import-dir ./dashboards/provisioning --input-format provisioning --report tree-table"
+        about = "Analyze dashboard export directories with operator-summary and report-contract views.",
+        after_help = "Examples:\n\n  Render an operator-summary table from raw exports:\n    grafana-util dashboard inspect-export --import-dir ./dashboards/raw --input-format raw --table\n\n  Open the interactive inspect workbench over raw exports:\n    grafana-util dashboard inspect-export --import-dir ./dashboards/raw --input-format raw --interactive\n\n  Render the machine-readable governance contract from raw exports:\n    grafana-util dashboard inspect-export --import-dir ./dashboards/raw --input-format raw --report governance-json\n\n  Inspect a file-provisioning tree from the provisioning root:\n    grafana-util dashboard inspect-export --import-dir ./dashboards/provisioning --input-format provisioning --report tree-table"
     )]
     InspectExport(InspectExportArgs),
     #[command(
@@ -765,6 +772,13 @@ pub enum DashboardCommand {
 )]
 /// Struct definition for DashboardCliArgs.
 pub struct DashboardCliArgs {
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = CliColorChoice::Auto,
+        help = "Colorize JSON output. Use auto, always, or never."
+    )]
+    pub color: CliColorChoice,
     #[command(subcommand)]
     pub command: DashboardCommand,
 }

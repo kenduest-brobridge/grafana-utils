@@ -30,6 +30,7 @@ use tempfile::tempdir;
 
 fn sample_common_args() -> CommonCliArgs {
     CommonCliArgs {
+        color: crate::common::CliColorChoice::Auto,
         profile: Some("prod".to_string()),
         url: "http://grafana.example.com".to_string(),
         api_token: Some("token".to_string()),

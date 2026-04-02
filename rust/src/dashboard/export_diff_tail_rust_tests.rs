@@ -14,6 +14,7 @@ use tempfile::tempdir;
 fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
     let args = InspectExportArgs {
         import_dir: PathBuf::from("./dashboards/raw"),
+        input_type: None,
         input_format: test_support::DashboardImportInputFormat::Raw,
         text: false,
         csv: false,

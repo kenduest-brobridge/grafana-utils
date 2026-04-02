@@ -7,7 +7,8 @@ use super::super::DEFAULT_PAGE_SIZE;
 use super::dashboard_runtime::parse_inspect_report_column;
 use super::{
     CommonCliArgs, DashboardImportInputFormat, GovernanceGateOutputFormat, GovernancePolicySource,
-    ImpactOutputFormat, SimpleOutputFormat, TopologyOutputFormat, ValidationOutputFormat,
+    ImpactOutputFormat, InspectExportInputType, SimpleOutputFormat, TopologyOutputFormat,
+    ValidationOutputFormat,
 };
 
 /// Enum definition for InspectExportReportFormat.
@@ -297,6 +298,12 @@ pub struct InspectExportArgs {
     #[arg(
         long,
         value_enum,
+        help = "When --import-dir points at a dashboard export root that contains multiple variants, select which dashboard tree to inspect. Use raw for raw/ and source for prompt/."
+    )]
+    pub input_type: Option<InspectExportInputType>,
+    #[arg(
+        long,
+        value_enum,
         default_value_t = DashboardImportInputFormat::Raw,
         help = "Interpret --import-dir as raw export files or Grafana file-provisioning artifacts. Use provisioning to accept either the provisioning/ root or its dashboards/ subdirectory."
     )]
@@ -305,35 +312,35 @@ pub struct InspectExportArgs {
         long,
         default_value_t = false,
         conflicts_with_all = ["table", "csv", "json", "yaml", "report", "output_format"],
-        help = "Render the export analysis as plain text."
+        help = "Render the export analysis as an operator-summary plain-text view."
     )]
     pub text: bool,
     #[arg(
         long,
         default_value_t = false,
         conflicts_with_all = ["text", "csv", "json", "yaml", "report", "output_format"],
-        help = "Render the export analysis as a table-oriented summary."
+        help = "Render the export analysis as an operator-summary table."
     )]
     pub table: bool,
     #[arg(
         long,
         default_value_t = false,
         conflicts_with_all = ["text", "table", "json", "yaml", "report", "output_format"],
-        help = "Render the export analysis as CSV."
+        help = "Render the export analysis as operator-summary CSV."
     )]
     pub csv: bool,
     #[arg(
         long,
         default_value_t = false,
         conflicts_with_all = ["text", "table", "csv", "yaml", "report", "output_format"],
-        help = "Render the export analysis as JSON."
+        help = "Render the export analysis as the full machine-readable summary contract in JSON."
     )]
     pub json: bool,
     #[arg(
         long,
         default_value_t = false,
         conflicts_with_all = ["text", "table", "csv", "json", "report", "output_format"],
-        help = "Render the export analysis as YAML."
+        help = "Render the export analysis as the full machine-readable summary contract in YAML."
     )]
     pub yaml: bool,
     #[arg(
@@ -342,14 +349,14 @@ pub struct InspectExportArgs {
         num_args = 0..=1,
         default_missing_value = "table",
         conflicts_with_all = ["text", "table", "csv", "json", "yaml"],
-        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for machine-readable output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report dependency for dependency contracts, --report dependency-json for dependency contract JSON, --report governance for datasource governance tables, or --report governance-json for governance JSON."
+        help = "Render a full inspection report. Defaults to the operator-summary table view; use --report csv or --report tree-table for query-report tables, --report json for the machine-readable query report, --report tree for dashboard-first grouped text, --report dependency for the dependency contract, --report dependency-json for the machine-readable dependency contract, --report governance for datasource governance tables, or --report governance-json for the machine-readable governance contract."
     )]
     pub report: Option<InspectExportReportFormat>,
     #[arg(
         long,
         value_enum,
         conflicts_with_all = ["text", "table", "csv", "json", "yaml", "report"],
-        help = "Alternative single-flag output selector for inspect output. Use text, table, csv, json, yaml, report-table, report-csv, report-json, report-tree, report-tree-table, report-dependency, report-dependency-json, governance, or governance-json."
+        help = "Alternative single-flag output selector for inspect output. Use text, table, or csv for operator-summary views; use json or yaml for the full machine-readable summary contract; use report-table, report-csv, report-json, report-tree, report-tree-table, report-dependency, report-dependency-json, governance, or governance-json for report and contract views."
     )]
     pub output_format: Option<InspectOutputFormat>,
     #[arg(

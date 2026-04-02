@@ -50,7 +50,7 @@ where
 
     if effective_args.dry_run {
         if effective_args.json {
-            println!("{}", render_delete_dry_run_json(&plan)?);
+            print!("{}", render_delete_dry_run_json(&plan)?);
         } else if effective_args.table {
             for line in render_delete_dry_run_table(&plan, !effective_args.no_header) {
                 println!("{line}");

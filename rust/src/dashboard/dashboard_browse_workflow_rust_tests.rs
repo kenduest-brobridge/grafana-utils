@@ -6,6 +6,7 @@ use super::*;
 fn dashboard_delete_validate_args_requires_yes_without_dry_run() {
     let args = DeleteArgs {
         common: CommonCliArgs {
+            color: crate::common::CliColorChoice::Auto,
             profile: None,
             url: "https://grafana.example.com".to_string(),
             api_token: Some("token".to_string()),
@@ -38,6 +39,7 @@ fn dashboard_delete_validate_args_requires_yes_without_dry_run() {
 fn dashboard_delete_build_plan_matches_path_subtree() {
     let args = DeleteArgs {
         common: CommonCliArgs {
+            color: crate::common::CliColorChoice::Auto,
             profile: None,
             url: "https://grafana.example.com".to_string(),
             api_token: Some("token".to_string()),
@@ -116,6 +118,7 @@ fn dashboard_delete_build_plan_matches_path_subtree() {
 fn dashboard_delete_with_request_deletes_dashboards_then_folders() {
     let args = DeleteArgs {
         common: CommonCliArgs {
+            color: crate::common::CliColorChoice::Auto,
             profile: None,
             url: "https://grafana.example.com".to_string(),
             api_token: Some("token".to_string()),

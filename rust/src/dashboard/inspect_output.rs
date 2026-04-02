@@ -1,6 +1,6 @@
 //! Inspection path for Dashboard resources: analysis, extraction, and report shaping.
 
-use crate::common::Result;
+use crate::common::{render_json_value, Result};
 use crate::dashboard::cli_defs::{InspectExportArgs, InspectOutputFormat};
 use crate::dashboard::inspect_render::{render_csv, render_simple_table};
 use crate::dashboard::inspect_summary::{
@@ -17,6 +17,16 @@ pub(crate) use inspect_output_report::render_export_inspection_report_output;
 pub(crate) struct ExportInspectionRenderedOutput {
     pub(crate) output: String,
     pub(crate) dashboard_count: usize,
+}
+
+fn dashboard_inspect_export_summary_layer(format: InspectOutputFormat) -> &'static str {
+    match format {
+        InspectOutputFormat::Text | InspectOutputFormat::Table | InspectOutputFormat::Csv => {
+            "operator-summary"
+        }
+        InspectOutputFormat::Json | InspectOutputFormat::Yaml => "full-contract",
+        _ => unreachable!("summary output only uses baseline output formats"),
+    }
 }
 
 pub(crate) fn render_lines_to_string(lines: Vec<String>) -> String {
@@ -40,7 +50,7 @@ pub(crate) fn render_export_inspection_summary_output(
         InspectOutputFormat::Json => {
             output.push_str(&format!(
                 "{}\n",
-                serde_json::to_string_pretty(&build_export_inspection_summary_document(summary))?
+                render_json_value(&build_export_inspection_summary_document(summary))?
             ));
             return Ok(output);
         }
@@ -62,10 +72,16 @@ pub(crate) fn render_export_inspection_summary_output(
         InspectOutputFormat::Table => {
             if !summary.import_dir.is_empty() {
                 output.push_str(&format!(
-                    "Export inspection report: {}\n\n",
+                    "Dashboard inspect-export {}: {}\n\n",
+                    dashboard_inspect_export_summary_layer(requested_output_format),
                     summary.import_dir
                 ));
             }
+            output.push_str(&format!(
+                "Layer: {}\n",
+                dashboard_inspect_export_summary_layer(requested_output_format)
+            ));
+            output.push('\n');
             output.push_str("# Overview\n");
             let summary_rows = build_export_inspection_summary_rows(summary);
             for line in render_simple_table(&["NAME", "VALUE"], &summary_rows, !args.no_header) {
@@ -75,8 +91,13 @@ pub(crate) fn render_export_inspection_summary_output(
         }
         InspectOutputFormat::Text => {
             output.push_str(&format!(
-                "Export inspection report: {}\n\n",
+                "Dashboard inspect-export {}: {}\n",
+                dashboard_inspect_export_summary_layer(requested_output_format),
                 summary.import_dir
+            ));
+            output.push_str(&format!(
+                "Layer: {}\n\n",
+                dashboard_inspect_export_summary_layer(requested_output_format)
             ));
             if let Some(export_org) = &summary.export_org {
                 output.push_str(&format!("Export org: {}\n", export_org));
@@ -317,6 +338,7 @@ mod tests {
     fn render_export_inspection_summary_output_renders_inventory_orphans_and_mixed_dashboards() {
         let args = InspectExportArgs {
             import_dir: PathBuf::from("/tmp/demo"),
+            input_type: None,
             input_format: crate::dashboard::DashboardImportInputFormat::Raw,
             text: false,
             csv: false,
@@ -336,7 +358,8 @@ mod tests {
 
         let output = render_export_inspection_summary_output(&args, &make_summary()).unwrap();
 
-        assert!(output.starts_with("Export inspection report: /tmp/demo"));
+        assert!(output.starts_with("Dashboard inspect-export operator-summary: /tmp/demo"));
+        assert!(output.contains("Layer: operator-summary"));
         assert!(output.contains("# Datasource inventory"));
         assert!(output.contains("# Orphaned datasources"));
         assert!(output.contains("# Mixed datasource dashboards"));
@@ -348,6 +371,7 @@ mod tests {
     fn render_export_inspection_summary_output_honors_table_mode() {
         let args = InspectExportArgs {
             import_dir: PathBuf::from("/tmp/demo"),
+            input_type: None,
             input_format: crate::dashboard::DashboardImportInputFormat::Raw,
             text: false,
             csv: false,
@@ -367,6 +391,7 @@ mod tests {
 
         let output = render_export_inspection_summary_output(&args, &make_summary()).unwrap();
 
+        assert!(output.contains("Layer: operator-summary"));
         assert!(output.contains("# Overview"));
         assert!(!output.contains("Dashboards: 2\n"));
         assert!(output.contains("NAME"));
@@ -377,6 +402,7 @@ mod tests {
     fn render_export_inspection_summary_output_honors_csv_and_yaml_modes() {
         let csv_args = InspectExportArgs {
             import_dir: PathBuf::from("/tmp/demo"),
+            input_type: None,
             input_format: crate::dashboard::DashboardImportInputFormat::Raw,
             text: false,
             csv: false,

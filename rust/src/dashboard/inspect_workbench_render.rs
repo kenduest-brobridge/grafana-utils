@@ -46,7 +46,7 @@ pub(crate) fn render_frame(frame: &mut ratatui::Frame, state: &mut InspectWorkbe
         .map(Line::from)
         .collect::<Vec<_>>();
     header_lines.push(Line::from(vec![
-        tui_shell::label("Focus "),
+        tui_shell::focus_label("Focus "),
         inspect_workbench_render_helpers::key_chip(
             match state.focus {
                 InspectPane::Groups => "Modes",

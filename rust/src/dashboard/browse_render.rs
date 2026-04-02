@@ -426,7 +426,7 @@ fn render_summary_lines(state: &BrowserState) -> Vec<Line<'static>> {
                 tui_shell::label("Mode "),
                 tui_shell::accent("confirm-delete", Color::LightRed),
                 Span::raw("  "),
-                tui_shell::label("Focus "),
+                tui_shell::focus_label("Focus "),
                 tui_shell::key_chip(
                     match state.focus {
                         PaneFocus::Tree => "Tree",
@@ -443,7 +443,7 @@ fn render_summary_lines(state: &BrowserState) -> Vec<Line<'static>> {
                 tui_shell::label("Mode "),
                 tui_shell::accent("browse", Color::Green),
                 Span::raw("  "),
-                tui_shell::label("Focus "),
+                tui_shell::focus_label("Focus "),
                 tui_shell::key_chip(
                     match state.focus {
                         PaneFocus::Tree => "Tree",
@@ -585,6 +585,8 @@ fn node_color(node: &DashboardBrowseNode) -> Color {
 }
 
 fn pane_block(title: &str, focused: bool, accent: Color, bg: Color) -> Block<'static> {
+    let title_bg = if focused { accent } else { bg };
+    let title_fg = if focused { Color::Black } else { Color::White };
     Block::default()
         .borders(Borders::ALL)
         .title(if focused {
@@ -596,8 +598,8 @@ fn pane_block(title: &str, focused: bool, accent: Color, bg: Color) -> Block<'st
         .border_style(Style::default().fg(if focused { accent } else { Color::Gray }))
         .title_style(
             Style::default()
-                .fg(Color::White)
-                .bg(bg)
+                .fg(title_fg)
+                .bg(title_bg)
                 .add_modifier(if focused {
                     Modifier::BOLD
                 } else {

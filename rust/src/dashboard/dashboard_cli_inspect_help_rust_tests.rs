@@ -351,6 +351,22 @@ fn inspect_export_help_lists_datasource_uid_report_column() {
 }
 
 #[test]
+fn inspect_export_help_mentions_operator_summary_and_machine_readable_paths() {
+    let help = render_dashboard_subcommand_help("inspect-export");
+
+    assert!(help.contains("operator-summary table"));
+    assert!(help.contains("operator-summary CSV"));
+    assert!(help.contains("full machine-readable summary contract in JSON"));
+    assert!(help.contains("full machine-readable summary contract in YAML"));
+    assert!(help.contains("machine-readable governance contract"));
+    assert!(help.contains("operator-summary views"));
+    assert!(help.contains("report and contract views"));
+    assert!(help.contains(
+        "Analyze dashboard export directories with operator-summary and report-contract views."
+    ));
+}
+
+#[test]
 fn inspect_vars_help_mentions_all_baseline_output_formats() {
     let help = render_dashboard_subcommand_help("inspect-vars");
 

@@ -22,7 +22,7 @@ use crate::access::{
     ACCESS_EXPORT_KIND_ORGS, ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS, ACCESS_EXPORT_KIND_TEAMS,
     ACCESS_EXPORT_KIND_USERS,
 };
-use crate::common::Result;
+use crate::common::{render_json_value, set_json_color_choice, CliColorChoice, Result};
 use crate::project_status_command::run_project_status_live;
 use crate::tabular_output::{print_lines, render_summary_csv, render_summary_table, render_yaml};
 
@@ -69,10 +69,7 @@ pub const OVERVIEW_ARTIFACT_ACCESS_SERVICE_ACCOUNT_EXPORT_KIND: &str =
 pub const OVERVIEW_ARTIFACT_SYNC_SUMMARY_KIND: &str = "sync-summary";
 pub const OVERVIEW_ARTIFACT_BUNDLE_PREFLIGHT_KIND: &str = "bundle-preflight";
 pub const OVERVIEW_ARTIFACT_PROMOTION_PREFLIGHT_KIND: &str = "promotion-preflight";
-const DATASOURCE_EXPORT_FILENAME: &str = "datasources.json";
-const DATASOURCE_EXPORT_METADATA_FILENAME: &str = "export-metadata.json";
-const DATASOURCE_ROOT_KIND: &str = "grafana-utils-datasource-export-index";
-const DATASOURCE_ROOT_SCHEMA_VERSION: i64 = 1;
+pub const DATASOURCE_EXPORT_METADATA_FILENAME: &str = "export-metadata.json";
 const OVERVIEW_HELP_TEXT: &str = "Examples:\n\n  Summarize staged exports as a summary table from raw dashboard artifacts:\n    grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output table\n\n  Summarize staged exports from dashboard provisioning artifacts:\n    grafana-util overview --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output csv\n\n  Summarize datasource provisioning YAML instead of datasources.json:\n    grafana-util overview --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output yaml\n\n  Summarize bundle and promotion context as text:\n    grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output text\n\n  Open the live overview through the shared status live path:\n    grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output interactive";
 const OVERVIEW_LIVE_HELP_TEXT: &str = "Examples:\n\n  Render the live overview as YAML:\n    grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output yaml\n\n  Open the live overview in the interactive workbench:\n    grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output interactive";
 
@@ -199,6 +196,13 @@ pub struct OverviewArgs {
     after_help = OVERVIEW_HELP_TEXT
 )]
 pub struct OverviewCliArgs {
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = CliColorChoice::Auto,
+        help = "Colorize JSON output. Use auto, always, or never."
+    )]
+    pub color: CliColorChoice,
     #[command(flatten)]
     pub staged: OverviewArgs,
     #[command(subcommand)]
@@ -462,7 +466,7 @@ pub fn run_overview(args: OverviewArgs) -> Result<()> {
             Ok(())
         }
         OverviewOutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(&document)?);
+            println!("{}", render_json_value(&document)?);
             Ok(())
         }
         OverviewOutputFormat::Yaml => {
@@ -476,6 +480,7 @@ pub fn run_overview(args: OverviewArgs) -> Result<()> {
 
 /// Backward-compatible CLI entrypoint for the existing dispatcher wiring.
 pub fn run_overview_cli(args: OverviewCliArgs) -> Result<()> {
+    set_json_color_choice(args.color);
     match args.command {
         Some(OverviewCommand::Live(live_args)) => run_overview_live(live_args),
         None => run_overview(args.staged),

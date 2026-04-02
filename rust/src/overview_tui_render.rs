@@ -42,7 +42,7 @@ fn build_header_lines(state: &OverviewWorkbenchState) -> Vec<Line<'static>> {
             tui_shell::label("Sections "),
             tui_shell::accent(state.document.sections.len().to_string(), Color::White),
             Span::raw("  "),
-            tui_shell::label("Focus "),
+            tui_shell::focus_label("Focus "),
             tui_shell::key_chip(state.status_focus_label(), Color::Blue),
         ]),
         Line::from(vec![

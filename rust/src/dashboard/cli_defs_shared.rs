@@ -1,5 +1,6 @@
 //! CLI definitions for Dashboard command surface and option compatibility behavior.
 
+use crate::common::CliColorChoice;
 use clap::{Args, ValueEnum};
 
 use super::super::{DEFAULT_TIMEOUT, DEFAULT_URL};
@@ -62,6 +63,13 @@ pub enum ValidationOutputFormat {
 /// Shared Grafana connection/authentication arguments for dashboard commands.
 #[derive(Debug, Clone, Args)]
 pub struct CommonCliArgs {
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = CliColorChoice::Auto,
+        help = "Colorize JSON output. Use auto, always, or never."
+    )]
+    pub color: CliColorChoice,
     #[arg(
         long,
         help = "Load connection defaults from the selected repo-local profile in grafana-util.yaml."

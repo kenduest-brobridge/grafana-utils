@@ -5,7 +5,7 @@ use reqwest::Method;
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::common::{message, string_field, value_as_object, Result};
+use crate::common::{message, render_json_value, string_field, value_as_object, Result};
 use crate::http::JsonHttpClient;
 use crate::tabular_output::render_yaml;
 
@@ -361,7 +361,7 @@ fn render_dashboard_list_output(
     if args.json {
         println!(
             "{}",
-            serde_json::to_string_pretty(&render_dashboard_summary_json(
+            render_json_value(&render_dashboard_summary_json(
                 summaries,
                 &args.output_columns,
             ))?

@@ -5,7 +5,7 @@ use serde_json::Value;
 #[cfg(any(feature = "tui", test))]
 use std::cmp::Reverse;
 
-use crate::common::{load_json_object_file, message, Result};
+use crate::common::{load_json_object_file, message, render_json_value, Result};
 
 use super::governance_gate_rules as rules;
 #[cfg(all(feature = "tui", not(test)))]
@@ -449,7 +449,7 @@ pub(crate) fn run_dashboard_governance_gate(args: &GovernanceGateArgs) -> Result
     }
     match args.output_format {
         GovernanceGateOutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(&result)?);
+            println!("{}", render_json_value(&result)?);
         }
         GovernanceGateOutputFormat::Text => {
             println!("{}", render_dashboard_governance_gate_result(&result));

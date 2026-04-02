@@ -251,6 +251,7 @@ fn build_export_inspect_args_from_live(
 ) -> InspectExportArgs {
     InspectExportArgs {
         import_dir,
+        input_type: None,
         input_format: super::DashboardImportInputFormat::Raw,
         text: args.text,
         csv: args.csv,
@@ -281,7 +282,10 @@ fn load_json_array_file(path: &Path, error_context: &str) -> Result<Vec<Value>> 
     }
 }
 
-fn discover_org_raw_export_dirs(import_dir: &Path) -> Result<Vec<(String, PathBuf)>> {
+fn discover_org_variant_export_dirs(
+    import_dir: &Path,
+    expected_variant: &'static str,
+) -> Result<Vec<(String, PathBuf)>> {
     if !import_dir.exists() {
         return Err(message(format!(
             "Import directory does not exist: {}",
@@ -305,55 +309,55 @@ fn discover_org_raw_export_dirs(import_dir: &Path) -> Result<Vec<(String, PathBu
         if !org_name.starts_with("org_") {
             continue;
         }
-        let org_raw_dir = org_root.join(RAW_EXPORT_SUBDIR);
-        if org_raw_dir.is_dir() {
-            org_raw_dirs.push((org_name, org_raw_dir));
+        let org_variant_dir = org_root.join(expected_variant);
+        if org_variant_dir.is_dir() {
+            org_raw_dirs.push((org_name, org_variant_dir));
         }
     }
     org_raw_dirs.sort_by(|left, right| left.0.cmp(&right.0));
     if org_raw_dirs.is_empty() {
         return Err(message(format!(
-            "Import path {} does not contain any org-scoped {}/ exports. Point --import-dir at a combined multi-org export root created with --all-orgs.",
+            "Import path {} does not contain any org-scoped {expected_variant}/ exports. Point --import-dir at a combined multi-org dashboard export root that includes that variant.",
             import_dir.display(),
-            RAW_EXPORT_SUBDIR
         )));
     }
     Ok(org_raw_dirs)
 }
 
-fn merge_org_raw_exports_into_dir(
-    org_raw_dirs: &[(String, PathBuf)],
-    inspect_raw_dir: &Path,
+fn merge_org_variant_exports_into_dir(
+    org_variant_dirs: &[(String, PathBuf)],
+    inspect_variant_dir: &Path,
     source_root: Option<&Path>,
+    expected_variant: &'static str,
 ) -> Result<()> {
     // Preserve each org's raw export content and rewrite the index paths so the merged
     // tree still looks like one export root to the downstream inspect readers.
-    fs::create_dir_all(inspect_raw_dir)?;
+    fs::create_dir_all(inspect_variant_dir)?;
 
     let mut folder_inventory = Vec::new();
     let mut datasource_inventory = Vec::new();
     let mut index_entries = Vec::new();
     let mut dashboard_count = 0usize;
 
-    for (org_name, org_raw_dir) in org_raw_dirs {
-        let relative_target = inspect_raw_dir.join(org_name);
-        copy_dir_recursive(org_raw_dir, &relative_target)?;
+    for (org_name, org_variant_dir) in org_variant_dirs {
+        let relative_target = inspect_variant_dir.join(org_name);
+        copy_dir_recursive(org_variant_dir, &relative_target)?;
 
-        let metadata = load_export_metadata(org_raw_dir, Some(RAW_EXPORT_SUBDIR))?;
-        let org_index_entries = load_variant_index_entries(org_raw_dir, metadata.as_ref())?;
+        let metadata = load_export_metadata(org_variant_dir, Some(expected_variant))?;
+        let org_index_entries = load_variant_index_entries(org_variant_dir, metadata.as_ref())?;
         for mut entry in org_index_entries.clone() {
             entry.path = format!("{org_name}/{}", entry.path);
             index_entries.push(entry);
         }
 
-        let folder_path = org_raw_dir.join(FOLDER_INVENTORY_FILENAME);
+        let folder_path = org_variant_dir.join(FOLDER_INVENTORY_FILENAME);
         if folder_path.is_file() {
             folder_inventory.extend(load_json_array_file(
                 &folder_path,
                 "Dashboard folder inventory",
             )?);
         }
-        let datasource_path = org_raw_dir.join(DATASOURCE_INVENTORY_FILENAME);
+        let datasource_path = org_variant_dir.join(DATASOURCE_INVENTORY_FILENAME);
         if datasource_path.is_file() {
             datasource_inventory.extend(load_json_array_file(
                 &datasource_path,
@@ -369,7 +373,7 @@ fn merge_org_raw_exports_into_dir(
 
     write_json_document(
         &build_export_metadata(
-            RAW_EXPORT_SUBDIR,
+            expected_variant,
             dashboard_count,
             Some("grafana-web-import-preserve-uid"),
             Some(FOLDER_INVENTORY_FILENAME),
@@ -379,20 +383,20 @@ fn merge_org_raw_exports_into_dir(
             None,
             None,
         ),
-        &inspect_raw_dir.join(EXPORT_METADATA_FILENAME),
+        &inspect_variant_dir.join(EXPORT_METADATA_FILENAME),
     )?;
-    write_json_document(&index_entries, &inspect_raw_dir.join("index.json"))?;
+    write_json_document(&index_entries, &inspect_variant_dir.join("index.json"))?;
     write_json_document(
         &folder_inventory,
-        &inspect_raw_dir.join(FOLDER_INVENTORY_FILENAME),
+        &inspect_variant_dir.join(FOLDER_INVENTORY_FILENAME),
     )?;
     write_json_document(
         &datasource_inventory,
-        &inspect_raw_dir.join(DATASOURCE_INVENTORY_FILENAME),
+        &inspect_variant_dir.join(DATASOURCE_INVENTORY_FILENAME),
     )?;
     if let Some(source_root) = source_root {
         fs::write(
-            inspect_raw_dir.join(".inspect-source-root"),
+            inspect_variant_dir.join(".inspect-source-root"),
             source_root.display().to_string(),
         )?;
     }
@@ -428,29 +432,43 @@ pub(crate) fn prepare_inspect_live_import_dir(
     let inspect_raw_dir = temp_root
         .join("inspect-live-all-orgs")
         .join(RAW_EXPORT_SUBDIR);
-    let org_raw_dirs = discover_org_raw_export_dirs(temp_root)?;
-    merge_org_raw_exports_into_dir(&org_raw_dirs, &inspect_raw_dir, None)?;
+    let org_raw_dirs = discover_org_variant_export_dirs(temp_root, RAW_EXPORT_SUBDIR)?;
+    merge_org_variant_exports_into_dir(&org_raw_dirs, &inspect_raw_dir, None, RAW_EXPORT_SUBDIR)?;
     Ok(inspect_raw_dir)
 }
 
+#[cfg(test)]
 pub(crate) fn prepare_inspect_export_import_dir(
     temp_root: &Path,
     import_dir: &Path,
 ) -> Result<PathBuf> {
+    prepare_inspect_export_import_dir_for_variant(temp_root, import_dir, RAW_EXPORT_SUBDIR)
+}
+
+pub(crate) fn prepare_inspect_export_import_dir_for_variant(
+    temp_root: &Path,
+    import_dir: &Path,
+    expected_variant: &'static str,
+) -> Result<PathBuf> {
     // Root exports need one synthetic raw tree so offline inspect sees the same layout
     // whether the source was a live all-org fetch or a prebuilt export archive.
-    let metadata = load_export_metadata(import_dir, None)?;
-    if metadata
+    let root_manifest = super::files::resolve_dashboard_export_root(import_dir)?;
+    if root_manifest
         .as_ref()
-        .map(|item| item.variant.as_str() == "root")
+        .map(|resolved| resolved.manifest.scope_kind.is_root())
         .unwrap_or(false)
     {
-        let inspect_raw_dir = temp_root
+        let inspect_variant_dir = temp_root
             .join("inspect-export-all-orgs")
-            .join(RAW_EXPORT_SUBDIR);
-        let org_raw_dirs = discover_org_raw_export_dirs(import_dir)?;
-        merge_org_raw_exports_into_dir(&org_raw_dirs, &inspect_raw_dir, Some(import_dir))?;
-        return Ok(inspect_raw_dir);
+            .join(expected_variant);
+        let org_variant_dirs = discover_org_variant_export_dirs(import_dir, expected_variant)?;
+        merge_org_variant_exports_into_dir(
+            &org_variant_dirs,
+            &inspect_variant_dir,
+            Some(import_dir),
+            expected_variant,
+        )?;
+        return Ok(inspect_variant_dir);
     }
     Ok(import_dir.to_path_buf())
 }

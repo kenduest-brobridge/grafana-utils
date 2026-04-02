@@ -19,9 +19,9 @@ pub(crate) use crate::dashboard::export::{
 pub(crate) use crate::dashboard::files::{
     build_dashboard_index_item, build_export_metadata, build_import_payload,
     build_preserved_web_import_document, build_root_export_index, build_variant_index,
-    discover_dashboard_files, extract_dashboard_object, load_datasource_inventory,
-    load_export_metadata, load_folder_inventory, load_json_file, write_dashboard,
-    write_json_document,
+    discover_dashboard_files, extract_dashboard_object, load_dashboard_export_root_manifest,
+    load_datasource_inventory, load_export_metadata, load_folder_inventory, load_json_file,
+    resolve_dashboard_export_root, write_dashboard, write_json_document,
 };
 pub(crate) use crate::dashboard::governance_gate::{
     evaluate_dashboard_governance_gate, render_dashboard_governance_gate_result,
@@ -108,8 +108,9 @@ pub(crate) use crate::dashboard::live::{
     list_datasources_with_request,
 };
 pub(crate) use crate::dashboard::models::{
-    DashboardIndexItem, DatasourceInventoryItem, ExportDatasourceUsageSummary, ExportMetadata,
-    ExportOrgSummary, FolderInventoryItem, RootExportIndex, RootExportVariants, VariantIndexEntry,
+    DashboardExportRootManifest, DashboardExportRootScopeKind, DashboardIndexItem,
+    DatasourceInventoryItem, ExportDatasourceUsageSummary, ExportMetadata, ExportOrgSummary,
+    FolderInventoryItem, RootExportIndex, RootExportVariants, VariantIndexEntry,
 };
 pub(crate) use crate::dashboard::prompt::{
     build_datasource_catalog, build_external_export_document, collect_datasource_refs,

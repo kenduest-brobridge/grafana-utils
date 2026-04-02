@@ -34,16 +34,18 @@ use super::test_support::{
     filter_topology_tui_items, format_dashboard_summary_line, format_export_progress_line,
     format_export_verbose_line, format_folder_inventory_status_line, format_import_progress_line,
     format_import_verbose_line, import_dashboards_with_org_clients, import_dashboards_with_request,
-    list_dashboards_with_request, parse_cli_from, render_dashboard_governance_gate_result,
-    render_dashboard_summary_csv, render_dashboard_summary_json, render_dashboard_summary_table,
-    render_impact_text, render_import_dry_run_json, render_import_dry_run_table,
-    render_topology_dot, render_topology_mermaid, BrowseArgs, CommonCliArgs, DashboardCliArgs,
-    DashboardCommand, DashboardGovernanceGateFinding, DashboardGovernanceGateResult,
-    DashboardGovernanceGateSummary, DiffArgs, ExportArgs, FolderInventoryStatusKind,
-    GovernanceGateArgs, GovernanceGateOutputFormat, GovernancePolicySource, ImpactAlertResource,
-    ImpactDashboard, ImpactDocument, ImpactOutputFormat, ImpactSummary, ImportArgs,
-    InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs,
-    SimpleOutputFormat, TopologyDocument, TopologyOutputFormat, ValidationOutputFormat,
+    list_dashboards_with_request, load_dashboard_export_root_manifest, parse_cli_from,
+    render_dashboard_governance_gate_result, render_dashboard_summary_csv,
+    render_dashboard_summary_json, render_dashboard_summary_table, render_impact_text,
+    render_import_dry_run_json, render_import_dry_run_table, render_topology_dot,
+    render_topology_mermaid, resolve_dashboard_export_root, BrowseArgs, CommonCliArgs,
+    DashboardCliArgs, DashboardCommand, DashboardExportRootManifest, DashboardExportRootScopeKind,
+    DashboardGovernanceGateFinding, DashboardGovernanceGateResult, DashboardGovernanceGateSummary,
+    DiffArgs, ExportArgs, ExportOrgSummary, FolderInventoryStatusKind, GovernanceGateArgs,
+    GovernanceGateOutputFormat, GovernancePolicySource, ImpactAlertResource, ImpactDashboard,
+    ImpactDocument, ImpactOutputFormat, ImpactSummary, ImportArgs, InspectExportArgs,
+    InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs, SimpleOutputFormat,
+    TopologyDocument, TopologyOutputFormat, ValidationOutputFormat,
     DASHBOARD_PERMISSION_BUNDLE_FILENAME, DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME,
     FOLDER_INVENTORY_FILENAME, TOOL_SCHEMA_VERSION,
 };
@@ -67,6 +69,7 @@ pub(crate) type TestRequestResult = crate::common::Result<Option<Value>>;
 
 pub(crate) fn make_common_args(base_url: String) -> CommonCliArgs {
     CommonCliArgs {
+        color: crate::common::CliColorChoice::Auto,
         profile: None,
         url: base_url,
         api_token: Some("token".to_string()),
@@ -81,6 +84,7 @@ pub(crate) fn make_common_args(base_url: String) -> CommonCliArgs {
 
 pub(crate) fn make_basic_common_args(base_url: String) -> CommonCliArgs {
     CommonCliArgs {
+        color: crate::common::CliColorChoice::Auto,
         profile: None,
         url: base_url,
         api_token: None,
@@ -207,6 +211,127 @@ pub(crate) fn make_import_args(import_dir: PathBuf) -> ImportArgs {
         progress: false,
         verbose: false,
     }
+}
+
+#[test]
+fn dashboard_export_root_manifest_classifies_root_scopes() {
+    let org_root = DashboardExportRootManifest::from_metadata(build_export_metadata(
+        "root",
+        1,
+        None,
+        None,
+        None,
+        None,
+        Some("Main Org."),
+        Some("1"),
+        None,
+    ));
+    assert_eq!(org_root.scope_kind, DashboardExportRootScopeKind::OrgRoot);
+
+    let all_orgs_root = DashboardExportRootManifest::from_metadata(build_export_metadata(
+        "root",
+        2,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        Some(vec![ExportOrgSummary {
+            org: "Main Org.".to_string(),
+            org_id: "1".to_string(),
+            dashboard_count: 2,
+            datasource_count: None,
+            used_datasource_count: None,
+            used_datasources: None,
+            export_dir: None,
+        }]),
+    ));
+    assert_eq!(
+        all_orgs_root.scope_kind,
+        DashboardExportRootScopeKind::AllOrgsRoot
+    );
+
+    let workspace_root = all_orgs_root
+        .clone()
+        .with_scope_kind(DashboardExportRootScopeKind::WorkspaceRoot);
+    assert_eq!(
+        workspace_root.scope_kind,
+        DashboardExportRootScopeKind::WorkspaceRoot
+    );
+    assert!(workspace_root.scope_kind.is_aggregate());
+}
+
+#[test]
+fn load_dashboard_export_root_manifest_honors_explicit_workspace_scope_kind() {
+    let temp = tempdir().unwrap();
+    let metadata_path = temp.path().join(EXPORT_METADATA_FILENAME);
+    fs::write(
+        &metadata_path,
+        serde_json::to_string_pretty(&json!({
+            "kind": "grafana-utils-dashboard-export-index",
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "variant": "root",
+            "scopeKind": "workspace-root",
+            "dashboardCount": 2,
+            "indexFile": "index.json",
+            "orgCount": 2,
+            "orgs": [
+                {"org": "Main Org.", "orgId": "1", "dashboardCount": 1},
+                {"org": "Ops Org.", "orgId": "2", "dashboardCount": 1}
+            ]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let manifest = load_dashboard_export_root_manifest(&metadata_path).unwrap();
+    assert_eq!(
+        manifest.scope_kind,
+        DashboardExportRootScopeKind::WorkspaceRoot
+    );
+}
+
+#[test]
+fn resolve_dashboard_export_root_detects_workspace_wrapper_root() {
+    let temp = tempdir().unwrap();
+    let workspace_root = temp.path().join("workspace");
+    let dashboard_root = workspace_root.join("dashboards");
+    fs::create_dir_all(workspace_root.join("datasources")).unwrap();
+    fs::create_dir_all(dashboard_root.join("org_1_Main_Org").join("raw")).unwrap();
+    fs::write(
+        dashboard_root.join(EXPORT_METADATA_FILENAME),
+        serde_json::to_string_pretty(&build_export_metadata(
+            "root",
+            1,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(vec![ExportOrgSummary {
+                org: "Main Org.".to_string(),
+                org_id: "1".to_string(),
+                dashboard_count: 1,
+                datasource_count: None,
+                used_datasource_count: None,
+                used_datasources: None,
+                export_dir: None,
+            }]),
+        ))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let resolved = resolve_dashboard_export_root(&workspace_root)
+        .unwrap()
+        .expect("workspace root should resolve");
+    assert_eq!(resolved.metadata_dir, dashboard_root);
+    assert_eq!(
+        resolved.manifest.scope_kind,
+        DashboardExportRootScopeKind::WorkspaceRoot
+    );
 }
 
 #[allow(clippy::too_many_arguments)]

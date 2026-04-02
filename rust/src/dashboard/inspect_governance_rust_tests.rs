@@ -180,11 +180,11 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
     assert_eq!(document.summary.dashboard_datasource_edge_count, 2);
     assert_eq!(document.summary.datasource_risk_coverage_count, 2);
     assert_eq!(document.summary.dashboard_risk_coverage_count, 2);
-    assert_eq!(document.summary.risk_record_count, 5);
+    assert_eq!(document.summary.risk_record_count, 4);
     assert_eq!(document.dashboard_dependencies.len(), 2);
     assert_eq!(document.dashboard_governance.len(), 2);
     assert_eq!(document.datasource_governance.len(), 4);
-    assert_eq!(document.risk_records.len(), 5);
+    assert_eq!(document.risk_records.len(), 4);
     assert!(document
         .dashboard_governance
         .iter()
@@ -280,6 +280,63 @@ fn build_export_inspection_governance_document_flags_broad_loki_selectors() {
     assert!(risk
         .recommendation
         .contains("Narrow the Loki stream selector"));
+}
+
+#[test]
+fn build_export_inspection_governance_document_keeps_known_family_without_inventory_match() {
+    let summary = test_support::ExportInspectionSummary {
+        import_dir: "/tmp/raw".to_string(),
+        export_org: Some("Main Org.".to_string()),
+        export_org_id: Some("1".to_string()),
+        dashboard_count: 1,
+        folder_count: 1,
+        panel_count: 1,
+        query_count: 1,
+        datasource_inventory_count: 0,
+        orphaned_datasource_count: 0,
+        mixed_dashboard_count: 0,
+        folder_paths: Vec::new(),
+        datasource_usage: Vec::new(),
+        datasource_inventory: Vec::new(),
+        orphaned_datasources: Vec::new(),
+        mixed_dashboards: Vec::new(),
+    };
+    let report = test_support::ExportInspectionQueryReport {
+        import_dir: "/tmp/raw".to_string(),
+        summary: test_support::QueryReportSummary {
+            dashboard_count: 1,
+            panel_count: 1,
+            query_count: 1,
+            report_row_count: 1,
+        },
+        queries: vec![test_support::make_core_family_report_row(
+            "elastic-main",
+            "7",
+            "A",
+            "",
+            "dehk4kxat5la8b",
+            "prometheus",
+            "prometheus",
+            "label_values(up, job)",
+            &[],
+        )],
+    };
+
+    let document = test_support::build_export_inspection_governance_document(&summary, &report);
+    let dashboard = document
+        .dashboard_governance
+        .iter()
+        .find(|row| row.dashboard_uid == "elastic-main")
+        .expect("dashboard row should exist");
+
+    assert_eq!(
+        dashboard.datasource_families,
+        vec!["prometheus".to_string()]
+    );
+    assert!(!dashboard
+        .datasource_families
+        .iter()
+        .any(|family| family == "unknown"));
 }
 
 #[test]

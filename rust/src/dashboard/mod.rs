@@ -2,7 +2,7 @@
 //!
 //! This file is the boundary between unified command parsing and the lower-level
 //! dashboard modules that implement export/import/live/inspect/screenshot logic.
-use crate::common::{message, Result};
+use crate::common::{message, render_json_value, set_json_color_choice, Result};
 use crate::http::JsonHttpClient;
 use crate::tabular_output::render_yaml;
 use serde::Serialize;
@@ -136,9 +136,7 @@ pub(crate) use governance_policy::{
     load_builtin_governance_policy, load_governance_policy, load_governance_policy_file,
     load_governance_policy_source,
 };
-pub(crate) use inspect::{
-    build_export_inspection_summary, build_export_inspection_summary_for_variant,
-};
+pub(crate) use inspect::build_export_inspection_summary_for_variant;
 pub(crate) use inspect_live::TempInspectDir;
 pub(crate) use inspect_report::ExportInspectionQueryRow;
 pub(crate) use inspect_summary::{
@@ -156,8 +154,9 @@ pub(crate) use live::{
 #[allow(unused_imports)]
 pub(crate) use live_project_status::build_live_dashboard_domain_status;
 pub(crate) use models::{
-    DashboardIndexItem, DatasourceInventoryItem, ExportDatasourceUsageSummary, ExportMetadata,
-    ExportOrgSummary, FolderInventoryItem, RootExportIndex, RootExportVariants, VariantIndexEntry,
+    DashboardExportRootManifest, DashboardExportRootScopeKind, DashboardIndexItem,
+    DatasourceInventoryItem, ExportDatasourceUsageSummary, ExportMetadata, ExportOrgSummary,
+    FolderInventoryItem, RootExportIndex, RootExportVariants, VariantIndexEntry,
 };
 pub(crate) use project_status::build_dashboard_domain_status;
 pub(crate) use prompt::{
@@ -283,7 +282,7 @@ pub fn execute_dashboard_list(args: &ListArgs) -> Result<DashboardWebRunOutput> 
     let summaries = collect_dashboard_list_summaries(args)?;
     let rows = list::render_dashboard_summary_json(&summaries, &args.output_columns);
     let text_lines = if args.json {
-        rendered_output_to_lines(format!("{}\n", serde_json::to_string_pretty(&rows)?))
+        rendered_output_to_lines(render_json_value(&rows)?)
     } else if args.yaml {
         rendered_output_to_lines(render_yaml(&rows)?)
     } else if args.csv {
@@ -316,23 +315,31 @@ pub fn execute_dashboard_list(args: &ListArgs) -> Result<DashboardWebRunOutput> 
 fn execute_dashboard_inspect_at_path(
     args: &InspectExportArgs,
     import_dir: &Path,
+    expected_variant: &str,
 ) -> Result<DashboardWebRunOutput> {
     inspect::validate_inspect_export_report_args(args)?;
     if let Some(report_format) = inspect::effective_inspect_report_format(args) {
         let report = inspect::apply_query_report_filters(
-            inspect::build_export_inspection_query_report(import_dir)?,
+            inspect::build_export_inspection_query_report_for_variant(
+                import_dir,
+                expected_variant,
+            )?,
             args.report_filter_datasource.as_deref(),
             args.report_filter_panel_id.as_deref(),
         );
         let rendered = inspect::render_export_inspection_report_output(
             args,
             import_dir,
+            expected_variant,
             report_format,
             &report,
         )?;
         let document = match report_format {
             InspectExportReportFormat::Governance | InspectExportReportFormat::GovernanceJson => {
-                let summary = inspect::build_export_inspection_summary(import_dir)?;
+                let summary = inspect::build_export_inspection_summary_for_variant(
+                    import_dir,
+                    expected_variant,
+                )?;
                 serde_json::to_value(
                     inspect_governance::build_export_inspection_governance_document(
                         &summary, &report,
@@ -340,7 +347,7 @@ fn execute_dashboard_inspect_at_path(
                 )?
             }
             InspectExportReportFormat::Dependency | InspectExportReportFormat::DependencyJson => {
-                let metadata = load_export_metadata(import_dir, Some(RAW_EXPORT_SUBDIR))?;
+                let metadata = load_export_metadata(import_dir, Some(expected_variant))?;
                 let datasource_inventory =
                     load_datasource_inventory(import_dir, metadata.as_ref())?;
                 crate::dashboard_inspection_dependency_contract::build_offline_dependency_contract_from_report_rows(
@@ -362,7 +369,8 @@ fn execute_dashboard_inspect_at_path(
         });
     }
 
-    let summary = inspect::build_export_inspection_summary(import_dir)?;
+    let summary =
+        inspect::build_export_inspection_summary_for_variant(import_dir, expected_variant)?;
     let rendered = inspect::render_export_inspection_summary_output(args, &summary)?;
     Ok(DashboardWebRunOutput {
         document: serde_json::to_value(build_export_inspection_summary_document(&summary))?,
@@ -376,8 +384,10 @@ pub fn execute_dashboard_inspect_export(args: &InspectExportArgs) -> Result<Dash
         &temp_dir.path,
         &args.import_dir,
         args.input_format,
+        args.input_type,
+        args.interactive,
     )?;
-    execute_dashboard_inspect_at_path(args, &import_dir)
+    execute_dashboard_inspect_at_path(args, &import_dir.import_dir, import_dir.expected_variant)
 }
 
 pub fn execute_dashboard_inspect_live(args: &InspectLiveArgs) -> Result<DashboardWebRunOutput> {
@@ -407,6 +417,7 @@ pub fn execute_dashboard_inspect_live(args: &InspectLiveArgs) -> Result<Dashboar
     let inspect_import_dir = inspect_live::prepare_inspect_live_import_dir(&temp_dir.path, args)?;
     let inspect_args = InspectExportArgs {
         import_dir: inspect_import_dir,
+        input_type: None,
         input_format: DashboardImportInputFormat::Raw,
         text: args.text,
         csv: args.csv,
@@ -423,7 +434,7 @@ pub fn execute_dashboard_inspect_live(args: &InspectLiveArgs) -> Result<Dashboar
         output_file: None,
         interactive: false,
     };
-    execute_dashboard_inspect_at_path(&inspect_args, &inspect_args.import_dir)
+    execute_dashboard_inspect_at_path(&inspect_args, &inspect_args.import_dir, RAW_EXPORT_SUBDIR)
 }
 
 pub fn execute_dashboard_inspect_vars(args: &InspectVarsArgs) -> Result<DashboardWebRunOutput> {
@@ -565,6 +576,7 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
     // This is the main runtime entrypoint for dashboard commands from the binary:
     // normalize CLI args first, then decide whether each branch needs org fan-out,
     // one live client, or no client at all.
+    set_json_color_choice(args.color);
     let args = normalize_dashboard_cli_args(args);
     match args.command {
         DashboardCommand::Browse(browse_args) => {

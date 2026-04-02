@@ -10,7 +10,9 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
-use crate::common::Result as CommonResult;
+use crate::common::{
+    render_json_value, set_json_color_choice, CliColorChoice, Result as CommonResult,
+};
 use crate::overview::{self, OverviewArgs, OverviewOutputFormat};
 use crate::project_status::ProjectStatus;
 use crate::project_status_live_runtime::build_live_project_status;
@@ -253,6 +255,13 @@ pub enum ProjectStatusSubcommand {
     after_help = PROJECT_STATUS_HELP_TEXT
 )]
 pub struct ProjectStatusCliArgs {
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = CliColorChoice::Auto,
+        help = "Colorize JSON output. Use auto, always, or never."
+    )]
+    pub color: CliColorChoice,
     #[command(subcommand)]
     pub command: ProjectStatusSubcommand,
 }
@@ -419,7 +428,7 @@ pub fn run_project_status_staged(args: ProjectStatusStagedArgs) -> CommonResult<
             Ok(())
         }
         ProjectStatusOutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(&status)?);
+            println!("{}", render_json_value(&status)?);
             Ok(())
         }
         ProjectStatusOutputFormat::Yaml => {
@@ -453,7 +462,7 @@ pub fn run_project_status_live(args: ProjectStatusLiveArgs) -> CommonResult<()> 
             Ok(())
         }
         ProjectStatusOutputFormat::Json => {
-            println!("{}", serde_json::to_string_pretty(&status)?);
+            println!("{}", render_json_value(&status)?);
             Ok(())
         }
         ProjectStatusOutputFormat::Yaml => {
@@ -466,6 +475,7 @@ pub fn run_project_status_live(args: ProjectStatusLiveArgs) -> CommonResult<()> 
 }
 
 pub fn run_project_status_cli(args: ProjectStatusCliArgs) -> CommonResult<()> {
+    set_json_color_choice(args.color);
     match args.command {
         ProjectStatusSubcommand::Staged(inner) => run_project_status_staged(inner),
         ProjectStatusSubcommand::Live(inner) => run_project_status_live(inner),

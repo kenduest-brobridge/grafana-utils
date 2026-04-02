@@ -175,6 +175,7 @@ fn inspect_live_dashboards_with_request_all_orgs_aggregates_multiple_org_exports
     let export_report_output = temp.path().join("export-report.json");
     let export_report_args = InspectExportArgs {
         import_dir: export_root.clone(),
+        input_type: None,
         input_format: crate::dashboard::DashboardImportInputFormat::Raw,
         text: false,
         csv: false,
@@ -227,6 +228,7 @@ fn inspect_live_dashboards_with_request_all_orgs_aggregates_multiple_org_exports
     let export_governance_output = temp.path().join("export-governance.json");
     let export_governance_args = InspectExportArgs {
         import_dir: export_root.clone(),
+        input_type: None,
         input_format: crate::dashboard::DashboardImportInputFormat::Raw,
         text: false,
         csv: false,
@@ -280,6 +282,7 @@ fn inspect_live_dashboards_with_request_all_orgs_aggregates_multiple_org_exports
     let export_dependency_output = temp.path().join("export-dependency.json");
     let export_dependency_args = InspectExportArgs {
         import_dir: export_root.clone(),
+        input_type: None,
         input_format: crate::dashboard::DashboardImportInputFormat::Raw,
         text: false,
         csv: false,

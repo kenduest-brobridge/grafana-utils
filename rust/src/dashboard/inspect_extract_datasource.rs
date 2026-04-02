@@ -112,11 +112,14 @@ impl<'a> DatasourceReferenceObject<'a> {
 
 impl<'a> DatasourceReference<'a> {
     fn parse(reference: &'a Value) -> Option<Self> {
-        if reference.is_null() || is_builtin_datasource_ref(reference) {
+        if reference.is_null() {
             return None;
         }
         match reference {
             Value::String(text) => {
+                if is_builtin_datasource_ref(reference) {
+                    return None;
+                }
                 let normalized = text.trim();
                 if normalized.is_empty() {
                     None
@@ -124,7 +127,14 @@ impl<'a> DatasourceReference<'a> {
                     Some(Self::String(normalized))
                 }
             }
-            Value::Object(_) => DatasourceReferenceObject::from_value(reference).map(Self::Object),
+            Value::Object(_) => {
+                let object = DatasourceReferenceObject::from_value(reference)?;
+                if object.datasource_type.is_none() && is_builtin_datasource_ref(reference) {
+                    None
+                } else {
+                    Some(Self::Object(object))
+                }
+            }
             _ => None,
         }
     }

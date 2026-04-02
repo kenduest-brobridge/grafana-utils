@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::fs;
 use std::path::Path;
 
-use crate::common::{load_json_object_file, Result};
+use crate::common::{load_json_object_file, render_json_value, Result};
 
 use super::{
     write_json_document, ImpactArgs, ImpactOutputFormat, TopologyArgs, TopologyOutputFormat,
@@ -363,7 +363,7 @@ pub(crate) fn run_dashboard_topology(args: &TopologyArgs) -> Result<()> {
     }
     let rendered = match args.output_format {
         TopologyOutputFormat::Text => render_topology_text(&document),
-        TopologyOutputFormat::Json => serde_json::to_string_pretty(&document)?,
+        TopologyOutputFormat::Json => render_json_value(&document)?,
         TopologyOutputFormat::Mermaid => render_topology_mermaid(&document),
         TopologyOutputFormat::Dot => render_topology_dot(&document),
     };
@@ -406,7 +406,7 @@ pub(crate) fn run_dashboard_impact(args: &ImpactArgs) -> Result<()> {
     }
     match args.output_format {
         ImpactOutputFormat::Text => println!("{}", render_impact_text(&document)),
-        ImpactOutputFormat::Json => println!("{}", serde_json::to_string_pretty(&document)?),
+        ImpactOutputFormat::Json => print!("{}", render_json_value(&document)?),
     }
     Ok(())
 }

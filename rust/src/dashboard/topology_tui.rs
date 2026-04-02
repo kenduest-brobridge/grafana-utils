@@ -70,7 +70,13 @@ fn pane_title(label: &str, active: bool) -> String {
 fn pane_block(label: &str, active: bool) -> Block<'static> {
     let mut block = Block::default()
         .borders(Borders::ALL)
-        .title(pane_title(label, active));
+        .title(pane_title(label, active))
+        .title_style(
+            Style::default()
+                .fg(if active { Color::Black } else { Color::White })
+                .bg(if active { Color::Cyan } else { Color::Reset })
+                .add_modifier(Modifier::BOLD),
+        );
     if active {
         block = block.border_style(Style::default().fg(Color::Cyan));
     }
@@ -331,7 +337,7 @@ pub(crate) fn run_topology_interactive(document: &TopologyDocument) -> Result<()
             frame.render_widget(
                 tui_shell::build_footer_controls(vec![
                     Line::from(vec![
-                        tui_shell::label("Focus "),
+                        tui_shell::focus_label("Focus "),
                         tui_shell::key_chip(
                             match active_pane {
                                 TopologyPane::Groups => "Groups",

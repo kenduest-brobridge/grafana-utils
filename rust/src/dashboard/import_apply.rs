@@ -438,7 +438,7 @@ where
             .filter(|record| record[2] == "skip-folder-mismatch")
             .count();
         if args.json {
-            println!(
+            print!(
                 "{}",
                 render_import_dry_run_json(
                     mode,

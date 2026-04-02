@@ -188,6 +188,7 @@ fn render_dashboard_variable_output_supports_text_yaml_and_json() {
 
     let base_args = super::test_support::InspectVarsArgs {
         common: super::test_support::CommonCliArgs {
+            color: crate::common::CliColorChoice::Auto,
             profile: None,
             url: "https://grafana.example.com".to_string(),
             api_token: Some("secret".to_string()),

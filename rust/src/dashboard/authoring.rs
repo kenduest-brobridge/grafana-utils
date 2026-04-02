@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::common::{message, string_field, value_as_object, Result};
+use crate::common::{message, render_json_value, string_field, value_as_object, Result};
 use crate::http::JsonHttpClient;
 use crate::tabular_output::{render_summary_csv, render_summary_table, render_yaml};
 
@@ -328,10 +328,7 @@ pub(crate) fn render_dashboard_review_csv(result: &DashboardAuthoringReviewResul
 pub(crate) fn render_dashboard_review_json(
     result: &DashboardAuthoringReviewResult,
 ) -> Result<String> {
-    Ok(format!(
-        "{}\n",
-        serde_json::to_string_pretty(&review_result_document(result))?
-    ))
+    render_json_value(&review_result_document(result))
 }
 
 pub(crate) fn render_dashboard_review_yaml(

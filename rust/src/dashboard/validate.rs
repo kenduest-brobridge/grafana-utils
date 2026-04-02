@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
-use crate::common::{message, string_field, value_as_object, Result};
+use crate::common::{message, render_json_value, string_field, value_as_object, Result};
 
 use super::{
     discover_dashboard_files, extract_dashboard_object, load_json_file, ValidateExportArgs,
@@ -355,7 +355,7 @@ fn render_validation_result_text(result: &DashboardValidationResult) -> Vec<Stri
 pub(crate) fn render_validation_result_json(result: &DashboardValidationResult) -> Result<String> {
     Ok(format!(
         "{}\n",
-        serde_json::to_string_pretty(&validation_result_document(result))?
+        render_json_value(&validation_result_document(result))?
     ))
 }
 
@@ -365,9 +365,11 @@ pub(crate) fn run_dashboard_validate_export(args: &ValidateExportArgs) -> Result
         &temp_dir.path,
         &args.import_dir,
         args.input_format,
+        None,
+        false,
     )?;
     let result = validate_dashboard_export_dir(
-        &import_dir,
+        &import_dir.import_dir,
         args.reject_custom_plugins,
         args.reject_legacy_properties,
         args.target_schema_version,

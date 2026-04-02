@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use crate::common::Result;
+use crate::common::{render_json_value, Result};
 use crate::dashboard::cli_defs::{InspectExportArgs, InspectExportReportFormat};
 use crate::dashboard::files::{load_datasource_inventory, load_export_metadata};
 use crate::dashboard::inspect_dependency_render::render_export_inspection_dependency_table_report;
@@ -23,7 +23,7 @@ use crate::dashboard_inspection_dependency_contract::{
     build_offline_dependency_contract_from_report_rows,
 };
 
-use super::super::{build_export_inspection_summary, RAW_EXPORT_SUBDIR};
+use super::super::build_export_inspection_summary_for_variant;
 use super::{render_lines_to_string, ExportInspectionRenderedOutput};
 
 fn render_export_inspection_governance_output(
@@ -32,7 +32,7 @@ fn render_export_inspection_governance_output(
     report_format: InspectExportReportFormat,
 ) -> Result<ExportInspectionRenderedOutput> {
     let output = if report_format == InspectExportReportFormat::GovernanceJson {
-        format!("{}\n", serde_json::to_string_pretty(governance)?)
+        format!("{}\n", render_json_value(governance)?)
     } else {
         render_lines_to_string(render_governance_table_report(
             &summary.import_dir,
@@ -121,22 +121,23 @@ fn render_export_inspection_json_output(
 ) -> Result<ExportInspectionRenderedOutput> {
     let document = build_export_inspection_query_report_document(report);
     Ok(ExportInspectionRenderedOutput {
-        output: format!("{}\n", serde_json::to_string_pretty(&document)?),
+        output: format!("{}\n", render_json_value(&document)?),
         dashboard_count: report.summary.dashboard_count,
     })
 }
 
 fn render_export_inspection_dependency_output(
     import_dir: &Path,
+    expected_variant: &str,
     report_format: InspectExportReportFormat,
     report: &ExportInspectionQueryReport,
 ) -> Result<ExportInspectionRenderedOutput> {
-    let metadata = load_export_metadata(import_dir, Some(RAW_EXPORT_SUBDIR))?;
+    let metadata = load_export_metadata(import_dir, Some(expected_variant))?;
     let datasource_inventory = load_datasource_inventory(import_dir, metadata.as_ref())?;
     let output = if report_format == InspectExportReportFormat::DependencyJson {
         format!(
             "{}\n",
-            serde_json::to_string_pretty(&build_offline_dependency_contract_from_report_rows(
+            render_json_value(&build_offline_dependency_contract_from_report_rows(
                 &report.queries,
                 &datasource_inventory,
             ))?
@@ -160,18 +161,25 @@ fn render_export_inspection_dependency_output(
 pub(crate) fn render_export_inspection_report_output(
     args: &InspectExportArgs,
     import_dir: &Path,
+    expected_variant: &str,
     report_format: InspectExportReportFormat,
     report: &ExportInspectionQueryReport,
 ) -> Result<ExportInspectionRenderedOutput> {
     match report_format {
         InspectExportReportFormat::Governance | InspectExportReportFormat::GovernanceJson => {
-            let summary = build_export_inspection_summary(import_dir)?;
+            let summary =
+                build_export_inspection_summary_for_variant(import_dir, expected_variant)?;
             let governance = build_export_inspection_governance_document(&summary, report);
             render_export_inspection_governance_output(&summary, &governance, report_format)
         }
         InspectExportReportFormat::Json => render_export_inspection_json_output(report),
         InspectExportReportFormat::Dependency | InspectExportReportFormat::DependencyJson => {
-            render_export_inspection_dependency_output(import_dir, report_format, report)
+            render_export_inspection_dependency_output(
+                import_dir,
+                expected_variant,
+                report_format,
+                report,
+            )
         }
         InspectExportReportFormat::Tree => Ok(render_export_inspection_tree_output(report)),
         InspectExportReportFormat::TreeTable
@@ -275,6 +283,7 @@ mod tests {
 
         let args = InspectExportArgs {
             import_dir: import_dir.to_path_buf(),
+            input_type: None,
             input_format: crate::dashboard::DashboardImportInputFormat::Raw,
             text: false,
             csv: false,
@@ -296,6 +305,7 @@ mod tests {
         let dependency_output = render_export_inspection_report_output(
             &args,
             import_dir,
+            "raw",
             InspectExportReportFormat::Dependency,
             &report,
         )
@@ -316,6 +326,7 @@ mod tests {
         let dependency_json_output = render_export_inspection_report_output(
             &args,
             import_dir,
+            "raw",
             InspectExportReportFormat::DependencyJson,
             &report,
         )

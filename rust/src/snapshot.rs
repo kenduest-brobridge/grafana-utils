@@ -12,7 +12,7 @@ use clap::{Args, CommandFactory, Parser, Subcommand};
 use rpassword::prompt_password;
 use serde_json::{json, Value};
 
-use crate::common::{GrafanaCliError, Result};
+use crate::common::{render_json_value, CliColorChoice, GrafanaCliError, Result};
 use crate::dashboard::{
     self, CommonCliArgs, DashboardCliArgs, DashboardCommand, ExportArgs as DashboardExportArgs,
     TempInspectDir, EXPORT_METADATA_FILENAME, ROOT_INDEX_KIND, TOOL_SCHEMA_VERSION,
@@ -37,6 +37,55 @@ const SNAPSHOT_REVIEW_SCHEMA_VERSION: i64 = 1;
 const SNAPSHOT_ROOT_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot --overwrite\n\n  grafana-util snapshot review --input-dir ./snapshot --output table\n\n  grafana-util snapshot review --input-dir ./snapshot --interactive";
 const SNAPSHOT_EXPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot --overwrite";
 const SNAPSHOT_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot review --input-dir ./snapshot --output table\n  grafana-util snapshot review --input-dir ./snapshot --output csv\n  grafana-util snapshot review --input-dir ./snapshot --output text\n  grafana-util snapshot review --input-dir ./snapshot --output json\n  grafana-util snapshot review --input-dir ./snapshot --output yaml\n  grafana-util snapshot review --input-dir ./snapshot --interactive";
+
+fn export_scope_kind_from_metadata_value(metadata: &Value) -> &str {
+    metadata
+        .get("scopeKind")
+        .and_then(Value::as_str)
+        .unwrap_or_else(|| {
+            match metadata
+                .get("variant")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+            {
+                "all-orgs-root" => "all-orgs-root",
+                "root" => "org-root",
+                _ => "",
+            }
+        })
+}
+
+fn rewrite_export_scope_kind(metadata_path: &Path, scope_kind: &str) -> Result<()> {
+    if !metadata_path.is_file() {
+        return Ok(());
+    }
+    let mut metadata =
+        crate::common::load_json_object_file(metadata_path, "Snapshot export metadata")?;
+    let object = metadata
+        .as_object_mut()
+        .ok_or_else(|| crate::common::message("Snapshot export metadata must be a JSON object."))?;
+    object.insert(
+        "scopeKind".to_string(),
+        Value::String(scope_kind.to_string()),
+    );
+    fs::write(metadata_path, serde_json::to_string_pretty(&metadata)?)?;
+    Ok(())
+}
+
+fn annotate_snapshot_root_scope_kinds(export_dir: &Path) -> Result<()> {
+    let paths = build_snapshot_paths(export_dir);
+    rewrite_export_scope_kind(
+        &paths.dashboards.join(EXPORT_METADATA_FILENAME),
+        "workspace-root",
+    )?;
+    rewrite_export_scope_kind(
+        &paths
+            .datasources
+            .join(SNAPSHOT_DATASOURCE_EXPORT_METADATA_FILENAME),
+        "workspace-root",
+    )?;
+    Ok(())
+}
 
 #[cfg(feature = "tui")]
 const SNAPSHOT_REVIEW_OUTPUT_HELP: &str =
@@ -95,6 +144,13 @@ pub struct SnapshotReviewArgs {
     styles = crate::help_styles::CLI_HELP_STYLES
 )]
 pub struct SnapshotCliArgs {
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = CliColorChoice::Auto,
+        help = "Colorize JSON output. Use auto, always, or never."
+    )]
+    pub color: CliColorChoice,
     #[command(subcommand)]
     pub command: SnapshotCommand,
 }
@@ -331,25 +387,21 @@ fn build_dashboard_lane_summary(scope_dirs: &[PathBuf]) -> Value {
 fn build_datasource_lane_summary(datasource_lane_dir: &Path, scope_dirs: &[PathBuf]) -> Value {
     let scope_count = scope_dirs.len() as u64;
     let metadata_path = datasource_lane_dir.join(SNAPSHOT_DATASOURCE_EXPORT_METADATA_FILENAME);
-    let variant = fs::read_to_string(&metadata_path)
+    let metadata = fs::read_to_string(&metadata_path)
         .ok()
         .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
-        .and_then(|value| {
-            value
-                .get("variant")
-                .and_then(Value::as_str)
-                .map(str::to_string)
-        })
-        .unwrap_or_default();
+        .unwrap_or(Value::Null);
     let has_non_root_scopes = scope_dirs.iter().any(|scope| scope != datasource_lane_dir);
-    let inventory_scope_dirs: Vec<&PathBuf> = if variant == "all-orgs-root" && has_non_root_scopes {
-        scope_dirs
-            .iter()
-            .filter(|scope| scope.as_path() != datasource_lane_dir)
-            .collect()
-    } else {
-        scope_dirs.iter().collect()
-    };
+    let scope_kind = export_scope_kind_from_metadata_value(&metadata);
+    let inventory_scope_dirs: Vec<&PathBuf> =
+        if matches!(scope_kind, "all-orgs-root" | "workspace-root") && has_non_root_scopes {
+            scope_dirs
+                .iter()
+                .filter(|scope| scope.as_path() != datasource_lane_dir)
+                .collect()
+        } else {
+            scope_dirs.iter().collect()
+        };
     let inventory_count = inventory_scope_dirs
         .iter()
         .filter(|scope| scope.join(SNAPSHOT_DATASOURCE_EXPORT_FILENAME).is_file())
@@ -383,18 +435,17 @@ fn load_snapshot_datasource_rows(datasource_dir: &Path) -> Result<Vec<Value>> {
         .get("schemaVersion")
         .and_then(Value::as_i64)
         .unwrap_or_default();
-    let variant = metadata
-        .get("variant")
-        .and_then(Value::as_str)
-        .unwrap_or_default();
     let resource = metadata
         .get("resource")
         .and_then(Value::as_str)
         .unwrap_or_default();
     if kind != SNAPSHOT_DATASOURCE_ROOT_INDEX_KIND
         || schema_version != SNAPSHOT_DATASOURCE_TOOL_SCHEMA_VERSION
-        || variant != "root"
         || resource != "datasource"
+        || !matches!(
+            export_scope_kind_from_metadata_value(&metadata),
+            "org-root" | "all-orgs-root" | "workspace-root"
+        )
     {
         return Err(crate::common::message(format!(
             "Snapshot datasource export metadata is not a supported root export: {}",
@@ -1679,7 +1730,7 @@ fn emit_snapshot_review_output(document: &Value, output: OverviewOutputFormat) -
                 &build_snapshot_review_tabular_rows(document)?,
             ));
         }
-        OverviewOutputFormat::Json => println!("{}", serde_json::to_string_pretty(document)?),
+        OverviewOutputFormat::Json => print!("{}", render_json_value(document)?),
         OverviewOutputFormat::Text => {
             for line in render_snapshot_review_text(document)? {
                 println!("{line}");
@@ -1809,10 +1860,6 @@ fn normalize_snapshot_datasource_dir(temp_root: &Path, datasource_dir: &Path) ->
     }
 
     let metadata: Value = serde_json::from_str(&fs::read_to_string(&metadata_path)?)?;
-    let variant = metadata
-        .get("variant")
-        .and_then(Value::as_str)
-        .unwrap_or_default();
     let kind = metadata
         .get("kind")
         .and_then(Value::as_str)
@@ -1824,7 +1871,10 @@ fn normalize_snapshot_datasource_dir(temp_root: &Path, datasource_dir: &Path) ->
 
     if kind != SNAPSHOT_DATASOURCE_ROOT_INDEX_KIND
         || resource != "datasource"
-        || variant != "all-orgs-root"
+        || !matches!(
+            export_scope_kind_from_metadata_value(&metadata),
+            "all-orgs-root" | "workspace-root"
+        )
     {
         return Ok(datasource_dir.to_path_buf());
     }
@@ -1893,11 +1943,13 @@ where
 {
     args.common = materialize_snapshot_common_auth(args.common)?;
     run_dashboard(DashboardCliArgs {
+        color: args.common.color,
         command: DashboardCommand::Export(build_snapshot_dashboard_export_args(&args)),
     })?;
     run_datasource(DatasourceGroupCommand::Export(
         build_snapshot_datasource_export_args(&args),
     ))?;
+    annotate_snapshot_root_scope_kinds(&args.export_dir)?;
     Ok(())
 }
 
@@ -1950,6 +2002,7 @@ mod tests {
 
     fn sample_common_args() -> CommonCliArgs {
         CommonCliArgs {
+            color: crate::common::CliColorChoice::Auto,
             profile: Some("prod".to_string()),
             url: "http://grafana.example.com".to_string(),
             api_token: None,

@@ -8,7 +8,9 @@ use serde_json::{Map, Value};
 use std::fs;
 use std::path::PathBuf;
 
-use crate::common::{message, object_field, string_field, value_as_object, Result};
+use crate::common::{
+    message, object_field, render_json_value, string_field, value_as_object, Result,
+};
 use crate::http::JsonHttpClient;
 use crate::tabular_output::render_yaml;
 
@@ -64,7 +66,7 @@ pub(crate) fn render_dashboard_variable_output(
 ) -> Result<String> {
     match args.output_format.unwrap_or(SimpleOutputFormat::Table) {
         SimpleOutputFormat::Text => Ok(format!("{}\n", render_dashboard_variable_text(document))),
-        SimpleOutputFormat::Json => Ok(format!("{}\n", serde_json::to_string_pretty(document)?)),
+        SimpleOutputFormat::Json => Ok(format!("{}\n", render_json_value(document)?)),
         SimpleOutputFormat::Yaml => Ok(format!("{}\n", render_yaml(document)?)),
         SimpleOutputFormat::Csv => {
             let mut rendered = String::new();
