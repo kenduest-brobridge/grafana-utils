@@ -156,6 +156,7 @@ fn push_warning(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_live_dashboard_warnings(
     dashboard_count: usize,
     folder_count: usize,
@@ -225,6 +226,27 @@ fn build_live_dashboard_warnings(
         DASHBOARD_IMPORT_READY_SIGNAL_KEY,
     );
     warnings
+}
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct LiveDashboardProjectStatusInputs {
+    pub dashboard_summaries: Vec<Map<String, Value>>,
+    pub datasources: Vec<Map<String, Value>>,
+}
+
+pub(crate) fn collect_live_dashboard_project_status_inputs_with_request<F>(
+    request_json: &mut F,
+) -> Result<LiveDashboardProjectStatusInputs>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let dashboard_summaries =
+        list_dashboard_summaries_with_request(&mut *request_json, DEFAULT_PAGE_SIZE)?;
+    let datasources = list_datasources_with_request(&mut *request_json)?;
+    Ok(LiveDashboardProjectStatusInputs {
+        dashboard_summaries,
+        datasources,
+    })
 }
 
 pub(crate) fn build_live_dashboard_domain_status(
@@ -313,6 +335,12 @@ pub(crate) fn build_live_dashboard_domain_status(
     }
 }
 
+pub(crate) fn build_live_dashboard_domain_status_from_inputs(
+    inputs: &LiveDashboardProjectStatusInputs,
+) -> ProjectDomainStatus {
+    build_live_dashboard_domain_status(&inputs.dashboard_summaries, &inputs.datasources)
+}
+
 #[allow(dead_code)]
 pub(crate) fn build_live_dashboard_domain_status_with_request<F>(
     request_json: F,
@@ -321,18 +349,17 @@ where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
     let mut request_json = request_json;
-    let dashboard_summaries =
-        list_dashboard_summaries_with_request(&mut request_json, DEFAULT_PAGE_SIZE)?;
-    let datasources = list_datasources_with_request(&mut request_json)?;
-    Ok(build_live_dashboard_domain_status(
-        &dashboard_summaries,
-        &datasources,
-    ))
+    let inputs = collect_live_dashboard_project_status_inputs_with_request(&mut request_json)?;
+    Ok(build_live_dashboard_domain_status_from_inputs(&inputs))
 }
 
 #[cfg(test)]
 mod live_project_status_rust_tests {
     use super::build_live_dashboard_domain_status_with_request;
+    use super::{
+        build_live_dashboard_domain_status_from_inputs,
+        collect_live_dashboard_project_status_inputs_with_request,
+    };
     use crate::project_status::{status_finding, PROJECT_STATUS_PARTIAL, PROJECT_STATUS_READY};
     use serde_json::json;
     use serde_json::Value;
@@ -383,7 +410,10 @@ mod live_project_status_rust_tests {
 
     #[test]
     fn build_live_dashboard_domain_status_tracks_live_summary_and_datasource_reads() {
-        let domain = build_live_dashboard_domain_status_with_request(request_fixture()).unwrap();
+        let mut request = request_fixture();
+        let inputs =
+            collect_live_dashboard_project_status_inputs_with_request(&mut request).unwrap();
+        let domain = build_live_dashboard_domain_status_from_inputs(&inputs);
 
         assert_eq!(domain.id, "dashboard");
         assert_eq!(domain.scope, "live");
@@ -429,6 +459,33 @@ mod live_project_status_rust_tests {
                 "review live dashboard governance and import-readiness warnings before re-running live dashboard read"
                     .to_string(),
             ]
+        );
+    }
+
+    #[test]
+    fn collect_live_dashboard_project_status_inputs_with_request_reads_dashboard_and_datasource_surfaces(
+    ) {
+        let mut request = request_fixture();
+        let inputs =
+            collect_live_dashboard_project_status_inputs_with_request(&mut request).unwrap();
+
+        assert_eq!(inputs.dashboard_summaries.len(), 2);
+        assert_eq!(inputs.datasources.len(), 3);
+        assert_eq!(
+            inputs
+                .dashboard_summaries
+                .first()
+                .and_then(|summary| summary.get("uid"))
+                .and_then(Value::as_str),
+            Some("cpu-main")
+        );
+        assert_eq!(
+            inputs
+                .datasources
+                .first()
+                .and_then(|datasource| datasource.get("uid"))
+                .and_then(Value::as_str),
+            Some("prom-main")
         );
     }
 

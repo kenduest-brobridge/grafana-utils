@@ -152,7 +152,10 @@ pub(crate) use live::{
     list_datasources_with_request,
 };
 #[allow(unused_imports)]
-pub(crate) use live_project_status::build_live_dashboard_domain_status;
+pub(crate) use live_project_status::{
+    build_live_dashboard_domain_status, build_live_dashboard_domain_status_from_inputs,
+    collect_live_dashboard_project_status_inputs_with_request, LiveDashboardProjectStatusInputs,
+};
 pub(crate) use models::{
     DashboardExportRootManifest, DashboardExportRootScopeKind, DashboardIndexItem,
     DatasourceInventoryItem, ExportDatasourceUsageSummary, ExportMetadata, ExportOrgSummary,
@@ -448,7 +451,7 @@ pub fn execute_dashboard_inspect_vars(args: &InspectVarsArgs) -> Result<Dashboar
 
 pub(crate) fn review_dashboard_file(args: &ReviewArgs) -> Result<()> {
     let review = build_dashboard_review(&args.input)?;
-    let output_format = args.output_format.unwrap_or_else(|| {
+    let output_format = args.output_format.unwrap_or({
         if args.json {
             SimpleOutputFormat::Json
         } else if args.table {

@@ -15,11 +15,12 @@ use crate::access::build_access_live_domain_status;
 use crate::alert::{build_alert_live_project_status_domain, AlertLiveProjectStatusInputs};
 use crate::common::{load_json_object_file, message, value_as_object, Result};
 use crate::dashboard::{
-    build_live_dashboard_domain_status, list_dashboard_summaries_with_request,
-    list_datasources_with_request, DEFAULT_PAGE_SIZE,
+    build_live_dashboard_domain_status_from_inputs,
+    collect_live_dashboard_project_status_inputs_with_request,
 };
 use crate::datasource_live_project_status::{
-    build_datasource_live_project_status, DatasourceLiveProjectStatusInputs,
+    build_datasource_live_project_status_from_inputs,
+    collect_live_datasource_project_status_inputs_with_request,
 };
 use crate::http::JsonHttpClient;
 use crate::project_status::{
@@ -74,14 +75,6 @@ fn request_object_list(
     }
 }
 
-fn request_object_optional(client: &JsonHttpClient, path: &str) -> Option<Map<String, Value>> {
-    client
-        .request_json(Method::GET, path, &[], None)
-        .ok()
-        .flatten()
-        .and_then(|value| value.as_object().cloned())
-}
-
 fn build_live_read_failed_domain_status(
     id: &str,
     mode: &str,
@@ -118,13 +111,13 @@ fn load_optional_project_status_document_with_metadata(
     path.map(|path| {
         let document = load_json_object_file(path, label)?;
         let metadata = std::fs::metadata(path)
-            .map_err(|error| message(&format!("Failed to stat {}: {}", path.display(), error)))?;
+            .map_err(|error| message(format!("Failed to stat {}: {}", path.display(), error)))?;
         Ok((document, metadata))
     })
     .transpose()
 }
 
-fn project_status_timestamp_from_object<'a>(object: &'a Map<String, Value>) -> Option<&'a str> {
+fn project_status_timestamp_from_object(object: &Map<String, Value>) -> Option<&str> {
     for key in PROJECT_STATUS_TIMESTAMP_FIELDS {
         if let Some(observed_at) = object.get(*key).and_then(Value::as_str) {
             let observed_at = observed_at.trim();
@@ -244,39 +237,30 @@ fn build_live_dashboard_status_with_request<F>(mut request_json: F) -> ProjectDo
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    match list_dashboard_summaries_with_request(&mut request_json, DEFAULT_PAGE_SIZE) {
-        Ok(dashboard_summaries) => match list_datasources_with_request(&mut request_json) {
-            Ok(datasources) => {
-                let status = build_live_dashboard_domain_status(&dashboard_summaries, &datasources);
-                let mut freshness_samples = project_status_freshness_samples_from_records(
-                    "dashboard-search",
-                    &dashboard_summaries,
-                );
-                freshness_samples.extend(project_status_freshness_samples_from_records(
-                    "datasource-list",
-                    &datasources,
-                ));
-                let dashboard_version_timestamp = if freshness_samples.is_empty() {
-                    latest_dashboard_version_timestamp(&mut request_json, &dashboard_summaries)
-                } else {
-                    None
-                };
-                if let Some(observed_at) = dashboard_version_timestamp.as_deref() {
-                    freshness_samples.push(ProjectStatusFreshnessSample::ObservedAtRfc3339 {
-                        source: "dashboard-version-history",
-                        observed_at,
-                    });
-                }
-                stamp_live_domain_freshness(status, &freshness_samples)
+    match collect_live_dashboard_project_status_inputs_with_request(&mut request_json) {
+        Ok(inputs) => {
+            let status = build_live_dashboard_domain_status_from_inputs(&inputs);
+            let mut freshness_samples = project_status_freshness_samples_from_records(
+                "dashboard-search",
+                &inputs.dashboard_summaries,
+            );
+            freshness_samples.extend(project_status_freshness_samples_from_records(
+                "datasource-list",
+                &inputs.datasources,
+            ));
+            let dashboard_version_timestamp = if freshness_samples.is_empty() {
+                latest_dashboard_version_timestamp(&mut request_json, &inputs.dashboard_summaries)
+            } else {
+                None
+            };
+            if let Some(observed_at) = dashboard_version_timestamp.as_deref() {
+                freshness_samples.push(ProjectStatusFreshnessSample::ObservedAtRfc3339 {
+                    source: "dashboard-version-history",
+                    observed_at,
+                });
             }
-            Err(_) => build_live_read_failed_domain_status(
-                "dashboard",
-                "live-dashboard-read",
-                "live-datasource-list",
-                "live.datasourceCount",
-                "restore datasource read access, then re-run live status",
-            ),
-        },
+            stamp_live_domain_freshness(status, &freshness_samples)
+        }
         Err(_) => build_live_read_failed_domain_status(
             "dashboard",
             "live-dashboard-read",
@@ -294,28 +278,11 @@ fn build_live_dashboard_status(client: &JsonHttpClient) -> ProjectDomainStatus {
 }
 
 fn build_live_datasource_status(client: &JsonHttpClient) -> ProjectDomainStatus {
-    let status = match request_object_list(
-        client,
-        "/api/datasources",
-        &[],
-        "Unexpected datasource list response from Grafana.",
+    let status = match collect_live_datasource_project_status_inputs_with_request(
+        &mut |method, path, params, payload| client.request_json(method, path, params, payload),
     ) {
-        Ok(datasource_list) => {
-            let org_list = request_object_list(
-                client,
-                "/api/orgs",
-                &[],
-                "Unexpected /api/orgs payload from Grafana.",
-            )
-            .ok();
-            let current_org = request_object_optional(client, "/api/org");
-            build_datasource_live_project_status(DatasourceLiveProjectStatusInputs {
-                datasource_list: Some(&datasource_list),
-                datasource_read: None,
-                org_list: org_list.as_deref(),
-                current_org: current_org.as_ref(),
-            })
-            .unwrap_or_else(|| {
+        Ok(inputs) => {
+            build_datasource_live_project_status_from_inputs(&inputs).unwrap_or_else(|| {
                 build_live_read_failed_domain_status(
                     "datasource",
                     "live-inventory",
@@ -459,12 +426,7 @@ fn merge_live_domain_statuses(statuses: Vec<ProjectDomainStatus>) -> Result<Proj
             .flat_map(|status| status.warnings.iter().cloned())
             .collect::<Vec<_>>(),
     );
-    let freshness = build_live_overall_freshness(
-        &statuses
-            .iter()
-            .cloned()
-            .collect::<Vec<ProjectDomainStatus>>(),
-    );
+    let freshness = build_live_overall_freshness(&statuses.to_vec());
     let reason_code = if statuses
         .iter()
         .all(|status| status.reason_code == aggregate.reason_code)
