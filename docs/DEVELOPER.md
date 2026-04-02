@@ -25,6 +25,7 @@ This document is for maintainers. Keep `README.md` and the user guides operator-
   - legacy Python reference: `python/grafana_utils/dashboard_cli.py`
 - `grafana-util datasource`
   - Rust owner: `rust/src/datasource.rs`
+  - current contract: `datasources.json` is the canonical masked-recovery replay artifact; `provisioning/datasources.yaml` is a projection, not the primary restore contract
   - legacy Python reference: `python/grafana_utils/datasource_cli.py`
 - `grafana-util alert`
   - Rust owner: `rust/src/alert.rs` and alert helper modules
@@ -32,6 +33,31 @@ This document is for maintainers. Keep `README.md` and the user guides operator-
 - `grafana-util access`
   - Rust owner: `rust/src/access/`
   - legacy Python reference: `python/grafana_utils/access_cli.py`
+
+## Export-Root / Output Layering
+
+- `dashboard` and `datasource` are the current repo-level examples of the explicit export-root/output-layering contract.
+- Treat the root export directory as the contract boundary in those domains, and treat generated projection files as derived outputs rather than alternate primary restore shapes.
+- Extend this pattern first when adding new dashboard or datasource export/output variants.
+- `access` stays on resource-specific export bundle contracts and `alert` stays on a resource-tree export contract with a root index.
+- Keep room for `alert` or `access` to evolve later, but do not preemptively converge them into the export-root pattern.
+- Define any new domain export-root contract in `docs/DEVELOPER.md` before implementing root-contract vocabulary or behavior in code.
+- See [`docs/internal/contract-doc-map.md`](/Users/kendlee/work/grafana-utils/docs/internal/contract-doc-map.md) for the current summary/spec/trace map.
+- See [`docs/internal/export-root-output-layering-policy.md`](/Users/kendlee/work/grafana-utils/docs/internal/export-root-output-layering-policy.md) for the repo-level detailed policy.
+- See [`docs/internal/alert-access-contract-policy.md`](/Users/kendlee/work/grafana-utils/docs/internal/alert-access-contract-policy.md) for the detailed `alert` / `access` requirements, promotion criteria, and documentation guidance.
+
+## Datasource Masked-Recovery Contract
+
+- `datasources.json` is the canonical replay, import, and diff artifact for the masked-recovery datasource export contract.
+- `provisioning/datasources.yaml` is a derived provisioning projection for Grafana file provisioning only.
+- See [`docs/internal/datasource-masked-recovery-contract.md`](/Users/kendlee/work/grafana-utils/docs/internal/datasource-masked-recovery-contract.md) for the detailed stable fields, compatibility rules, and schema guidance.
+
+## Dashboard Export-Root Contract
+
+- The dashboard export root is a typed contract boundary, not just a convenience directory layout.
+- `raw/` is the canonical dashboard export variant for staged consumers that expect dashboard exports.
+- `provisioning/` is a derived export variant with an explicit provisioning-only input contract; it does not replace the `raw/` contract.
+- See [`docs/internal/dashboard-export-root-contract.md`](/Users/kendlee/work/grafana-utils/docs/internal/dashboard-export-root-contract.md) for the stable root fields, scope semantics, output-layering rules, and compatibility guidance.
 
 See [`docs/internal/project-surface-boundaries.md`](/Users/kendlee/work/grafana-utils/docs/internal/project-surface-boundaries.md) for the current public-name versus internal-name map.
 
@@ -131,7 +157,7 @@ validation plan.
 - `sync` contract changes: start in `rust/src/sync/mod.rs`, then route dispatch and helpers through `rust/src/sync/cli.rs`, `rust/src/sync/live.rs`, `rust/src/sync/json.rs`, `rust/src/sync/bundle_inputs.rs`, `rust/src/sync/staged_documents.rs`, and `rust/src/sync/workbench.rs`; `live.rs`, `staged_documents.rs`, and `workbench.rs` own the typed apply/live boundary.
 - `sync` test changes: keep CLI and live regressions in `rust/src/sync/cli_rust_tests.rs` and `rust/src/sync/rust_tests.rs`.
 - `access` auth scope, request-shape, or browse changes: start in `rust/src/access/mod.rs`; only then branch into `cli_defs.rs` for parser shape or `user.rs` / `team.rs` / `service_account.rs` / `org.rs` for resource-specific workflow logic.
-- `datasource` import/export/diff or mutation changes: start in `rust/src/datasource.rs`, then move into `datasource_import_export.rs`, `datasource_diff.rs`, or `datasource_mutation_support.rs` depending on whether the change is contract, compare semantics, or live mutation payload/rendering.
+- `datasource` import/export/diff or mutation changes: start in `rust/src/datasource.rs`, then move into `datasource_import_export.rs`, `datasource_diff.rs`, or `datasource_mutation_support.rs` depending on whether the change is contract, compare semantics, or live mutation payload/rendering. Keep the masked-recovery boundary explicit: `datasources.json` remains the replay contract, and provisioning YAML should stay a projection that never redefines secret handling.
 
 ## Version Workflow
 
