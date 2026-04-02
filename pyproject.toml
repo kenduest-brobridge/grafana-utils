@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "grafana-util"
-version = "0.5.0"
+version = "0.6.0"
 description = "Grafana dashboard and alerting export/import utilities."
 readme = "README.md"
 requires-python = ">=3.9"

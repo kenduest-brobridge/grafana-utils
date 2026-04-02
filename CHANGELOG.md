@@ -14,9 +14,7 @@ Format rule going forward:
 - keep older tagged releases below
 - use commit/tag history as the source of truth
 
-## [Unreleased] / [0.6.0] - Planned
-
-`0.6.0` is the next planned release after `v0.5.0`.
+## [0.6.0] - 2026-04-02
 
 ### Highlights
 
