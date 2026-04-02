@@ -1,57 +1,38 @@
-# Datasource Handbook
+# Datasource Operator Handbook
 
-This page covers `grafana-util datasource` as an operator workflow for datasource inventory, recovery, replay, provisioning projection, and controlled live mutation. It is the datasource counterpart to the dashboard handbook: the focus is on how to move and govern datasource state safely, not on authoring individual datasource definitions by hand, and on how to interpret the live inventory output before you make a change.
+This guide covers `grafana-util datasource` as an operator workflow for inventory, recovery, replay, and controlled live mutation. 
 
-## What this area is for
+> **Goal**: Ensure datasource configuration can be backed up, compared, and replayed safely using a **Masked Recovery** contract that protects sensitive credentials.
 
-Use the datasource area when you need to understand which datasources exist, back them up, recreate them in another environment, compare staged files with live Grafana, or patch a live datasource deliberately.
+---
 
-This area is especially useful when you need:
+## 🛠️ What This Area Is For
 
-- a recoverable export of datasource inventory
-- a provisioning file for Grafana file provisioning
-- a dry-run preview before any live add, modify, delete, or import
-- a multi-org replay path with explicit org routing
-- a quick inventory of datasource names, types, URLs, and identities
+Use the datasource area when you need to:
+- **Inventory**: Audit which datasources exist, their types, and backend URLs.
+- **Recovery & Replay**: Maintain a recoverable export of datasource records.
+- **Provisioning Projection**: Generate the YAML files required for Grafana's file provisioning.
+- **Drift Review**: Compare staged datasource files with live Grafana.
+- **Controlled Mutation**: Add, modify, or delete live datasources with dry-run protection.
 
-Do not use this area when you are trying to reason about dashboard panels, dashboard folder structure, or query behavior inside a dashboard. Those concerns belong in the dashboard handbook.
+---
 
-It is not the dashboard query analysis surface. For that work, stay in the dashboard chapter and use dashboard inspection commands.
+## 🚧 Workflow Boundaries
 
-## Workflow Boundaries
+Datasource export produces two primary artifacts, each with a specific job:
 
-Datasource export produces two different artifacts with different jobs.
+| Artifact | Purpose | Best Use Case |
+| :--- | :--- | :--- |
+| `datasources.json` | **Masked Recovery** | The canonical replay contract. Used for restores, replays, and drift comparison. |
+| `provisioning/datasources.yaml` | **Provisioning Projection** | Mirrors the disk shape Grafana expects for file-based provisioning. |
 
-- `datasources.json` is the canonical masked recovery and replay contract. Use it when you need to restore, replay, or compare datasource inventory.
-- `provisioning/datasources.yaml` is a derived provisioning projection. Use it when Grafana should read datasource configuration from a provisioning file.
+**Important**: Treat `datasources.json` as the authoritative recovery source. The provisioning YAML is a secondary projection derived from the recovery bundle.
 
-The projection is intentionally secondary. Treat `datasources.json` as the primary restore source, and treat `provisioning/` as the disk shape Grafana expects for file provisioning.
+---
 
-Exported datasource state is masked on purpose. That means the bundle is suitable for recovery and replay without exposing secrets as plain export data. The provisioning YAML exists to express the runtime configuration Grafana needs, not to replace the recovery bundle.
+## 📋 Reading Live Inventory
 
-Org routing matters here. `--org-id` and `--all-orgs` on datasource list and export are Basic-auth-only because the CLI must switch org context through Grafana admin APIs.
-
-## Staged vs Live
-
-Datasource work also splits cleanly into staged and live halves:
-
-- staged work is export, provisioning projection review, diff, and dry-run import review
-- live work is list, add, modify, delete, and import into Grafana
-
-Use the staged path when you need to compare or replay. Use the live path when you are ready to change Grafana.
-
-Good operator habits:
-
-- list first to confirm the current datasource inventory
-- export before making changes if you need a recovery point
-- review both `datasources.json` and the derived provisioning YAML
-- diff staged files against live Grafana before importing
-- use `--dry-run` on import and add flows before applying changes
-- keep `datasources.json` as the authoritative replay source even when provisioning output is present
-
-## Reading Live Inventory
-
-`datasource list` is the first command to run when you want to confirm what Grafana currently has, which plugin family each datasource belongs to, and whether the datasource is the default one for the org.
+Use `datasource list` to verify the current state of your Grafana plugins and targets.
 
 ```bash
 grafana-util datasource list \
@@ -61,142 +42,73 @@ grafana-util datasource list \
   --table
 ```
 
-Validated live output excerpt:
-
+**Validated Output Excerpt:**
 ```text
 UID             NAME        TYPE        URL                     IS_DEFAULT  ORG  ORG_ID
 --------------  ----------  ----------  ----------------------  ----------  ---  ------
 dehk4kxat5la8b  Prometheus  prometheus  http://prometheus:9090  true             1
-
-Listed 1 data source(s).
 ```
 
-Read the row from left to right:
+**How to Read It:**
+- **UID**: Stable identity for automation.
+- **TYPE**: Identifies the plugin implementation (e.g., prometheus, loki).
+- **IS_DEFAULT**: Indicates if this is the default datasource for the organization.
+- **URL**: The backend target associated with the record.
 
-- `UID` is the stable automation identity.
-- `NAME` is the human-facing label you will usually recognize in Grafana.
-- `TYPE` tells you which plugin family or datasource implementation is in play.
-- `URL` shows the backend target associated with the datasource.
-- `IS_DEFAULT` tells you whether Grafana will use this datasource when a dashboard does not specify one.
-- `ORG` and `ORG_ID` tell you which org owns the datasource record.
+---
 
-If the datasource is default but the URL or type does not match what the estate expects, treat that as a configuration problem before exporting or replaying anything.
+## 🚀 Key Commands (Full Argument Reference)
 
-## Key Commands
+| Command | Full Example with Arguments |
+| :--- | :--- |
+| **List** | `grafana-util datasource list --all-orgs --table` |
+| **Export** | `grafana-util datasource export --export-dir ./datasources --overwrite` |
+| **Import** | `grafana-util datasource import --import-dir ./datasources --replace-existing --dry-run --table` |
+| **Diff** | `grafana-util datasource diff --import-dir ./datasources` |
+| **Add** | `grafana-util datasource add --uid <UID> --name <NAME> --type prometheus --datasource-url <URL> --dry-run --table` |
 
-The datasource area is smaller than the dashboard area but the same operator logic applies.
+---
 
-| Command | Best use |
-| --- | --- |
-| `datasource list` | Live inventory of datasources across one org or many orgs |
-| `datasource export` | Produce the masked recovery bundle and provisioning projection |
-| `datasource import` | Replay inventory or provisioning-derived definitions into live Grafana |
-| `datasource diff` | Compare staged datasource files with live Grafana |
-| `datasource add` | Create one live datasource directly in Grafana |
-| `datasource modify` | Update an existing live datasource directly |
-| `datasource delete` | Remove one live datasource deliberately |
+## 🔬 Validated Docker Examples
 
-For most operators the cycle is:
-
-1. list the current datasources
-2. export the inventory to get `datasources.json`
-3. inspect the masked recovery bundle and provisioning projection
-4. diff the staged files against live Grafana
-5. import or mutate live state with a dry-run first
-
-## Docker Grafana Validated Examples
-
-The examples below were exercised against a local Docker Grafana `12.4.1` instance in the live-smoke path used by the main guide.
-
-### Export inventory
-
+### 1. Export Inventory
 ```bash
-grafana-util datasource export \
-  --url http://localhost:3000 \
-  --basic-user admin \
-  --basic-password admin \
-  --export-dir ./datasources \
-  --overwrite
+grafana-util datasource export --export-dir ./datasources --overwrite
 ```
-
-Example output excerpt:
-
+**Output Excerpt:**
 ```text
 Exported datasource inventory -> datasources/datasources.json
 Exported metadata            -> datasources/export-metadata.json
 Datasource export completed: 3 item(s)
 ```
 
-The export also writes `provisioning/datasources.yaml` by default unless you explicitly skip the provisioning lane.
-
-### Dry-run import preview
-
+### 2. Dry-Run Import Preview
 ```bash
-grafana-util datasource import \
-  --url http://localhost:3000 \
-  --basic-user admin \
-  --basic-password admin \
-  --import-dir ./datasources \
-  --replace-existing \
-  --dry-run \
-  --table
+grafana-util datasource import --import-dir ./datasources --replace-existing --dry-run --table
 ```
-
-Example output excerpt:
-
+**Output Excerpt:**
 ```text
 UID         NAME               TYPE         ACTION   DESTINATION
 prom-main   prometheus-main    prometheus   update   existing
 loki-prod   loki-prod          loki         create   missing
 ```
+- **ACTION=create**: New datasource record will be created.
+- **ACTION=update**: Existing record will be replaced.
 
-How to read it:
-
-- `ACTION=create` means Grafana does not have that datasource yet.
-- `ACTION=update` means the live datasource would be replaced.
-- `DESTINATION=missing` means no live match was found.
-- `DESTINATION=existing` means a live datasource was matched before the importer decided whether to update it.
-
-### Direct live add preview
-
+### 3. Direct Live Add (Dry-Run)
 ```bash
 grafana-util datasource add \
-  --url http://localhost:3000 \
-  --token <TOKEN> \
-  --uid prom-main \
-  --name prometheus-main \
-  --type prometheus \
-  --access proxy \
-  --datasource-url http://prometheus:9090 \
-  --basic-auth \
-  --basic-auth-user metrics-user \
-  --basic-auth-password metrics-pass \
-  --dry-run \
-  --table
+  --uid prom-main --name prom-new --type prometheus \
+  --datasource-url http://prometheus:9090 --dry-run --table
 ```
-
-Example output excerpt:
-
+**Output Excerpt:**
 ```text
-INDEX  NAME               TYPE         ACTION  DETAIL
-1      prometheus-main    prometheus   create  would create datasource uid=prom-main
+INDEX  NAME       TYPE         ACTION  DETAIL
+1      prom-new   prometheus   create  would create datasource uid=prom-main
 ```
 
-This is the expected shape for a deliberate live mutation preview. Use the same pattern for `modify` and `delete` before removing `--dry-run`.
+---
 
-## Output Excerpts
-
-Datasource output is easiest to interpret if you keep three identities in mind:
-
-- `UID` is the stable automation key.
-- `NAME` is the human-facing label.
-- `TYPE` must match the plugin or datasource family you intend to manage.
-
-For routed multi-org imports, dry-run output may also report org-level states such as `exists`, `missing-org`, or `would-create-org` before it evaluates individual datasource rows. That distinction matters when you are replaying a combined export root with `--use-export-org`.
-
-The most important contract decision is simple:
-
-- use `datasources.json` for restore and replay
-- use `provisioning/datasources.yaml` for Grafana file provisioning
-
-If those two files disagree with your intent, fix the export or the replay target before mutating live Grafana. When you are reading a table, start with the action or default state, then confirm the UID and org context, then verify the URL or folder-like destination that will be affected.
+## ⏭️ Next Steps
+- Learn about [**Dashboard Management**](./dashboard.md).
+- Explore [**Alerting Workflows**](./alert.md).

@@ -17,7 +17,7 @@ This page is a maintainer map, not a full spec. Keep it short, orientation-first
 - `grafana-util status`
 - `grafana-util overview`
 
-Keep `README.md`, `README.zh-TW.md`, `docs/user-guide/en/`, and `docs/user-guide-TW.md` focused on the maintained operator surface. When command behavior changes, update both user guides together.
+Keep `README.md`, `README.zh-TW.md`, `docs/user-guide/en/`, and `docs/user-guide/zh-TW/` focused on the maintained operator surface. When command behavior changes, update both user guides together.
 
 ## Maintainer Pointers
 

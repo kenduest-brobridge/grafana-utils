@@ -1,143 +1,126 @@
-# Alert Handbook
+# Alert Operator Handbook
 
-This page covers the alerting surface only. It is the operator handbook for building alert desired state, reviewing planned alert changes, applying reviewed plans, and handling older migration-style replay flows.
+This guide covers `grafana-util alert` as an operator workflow for alert desired-state authoring, review-first mutation, and migration-style replay flows.
 
-Use the handbook landing page at [index.md](./index.md) when you need the route map for the full guide. Use this page when you need the alert workflow boundaries in one place.
+> **Operator Principle**: Change alerts deliberately through a **Plan -> Review -> Apply** cycle to prevent accidental mutations in live environments.
 
-## What Alert Is For
+---
 
-Use `grafana-util alert ...` when the work is about Grafana alerting resources:
+## 🛠️ What This Area Is For
 
-- Build new alert desired state.
-- Review changes before they touch live Grafana.
-- Apply a reviewed alert plan.
-- Export, import, diff, or list alerting resources in the older replay lane.
+Use the alert area when the work is about Grafana alerting resources:
+- **Desired State**: Build new alert configurations locally without touching live Grafana.
+- **Review delta**: Compare your desired state against the live estate before approving changes.
+- **Controlled Apply**: Execute only reviewed plans.
+- **Migration & Replay**: Use the legacy `raw/` lane for inventory snapshots and environment-wide moves.
 
-## What It Is Not For
+---
 
-Do not use the alert surface for:
+## 🚧 Workflow Boundaries (Two Lanes)
 
-- Dashboard authoring or migration.
-- Datasource inventory or replay.
-- Access, org, team, or service-account management.
-- Project-wide readiness checks. Use [change / overview / status](./change-overview-status.md) for that.
+Alerting is split into two distinct operational lanes. **Do not mix these lanes.**
 
-## Command Families
+| Lane | Purpose | Common Commands |
+| :--- | :--- | :--- |
+| **Authoring Lane** | Desired-state files for review/apply. | `init`, `add-rule`, `add-contact-point`, `plan`, `apply` |
+| **Migration Lane** | Inventory snapshots and raw replay. | `export`, `import`, `diff`, `list-rules` |
 
-The alert surface has three operator-facing layers:
+---
 
-| Layer | Commands | Purpose |
-| --- | --- | --- |
-| Authoring | `init`, `add-rule`, `clone-rule`, `add-contact-point`, `set-route`, `preview-route`, `new-rule`, `new-contact-point`, `new-template` | Build or preview desired alert files without using the legacy replay tree. |
-| Review and apply | `plan`, `apply`, `delete` | Review desired state against live Grafana, then apply a reviewed plan or preview a delete. |
-| Migration | `export`, `import`, `diff`, `list-rules`, `list-contact-points`, `list-mute-timings`, `list-templates` | Inventory and replay the older `raw/` lane. |
+## 📋 Authoring Desired State
 
-## Workflow Boundaries
-
-Keep these lanes separate:
-
-- The authoring commands write or preview desired-state files. They do not mutate live Grafana directly.
-- `plan` and `apply` are the normal live-mutation path for the desired-state lane.
-- `export`, `import`, and `diff` stay on the older `raw/` replay lane. Do not mix that lane into the desired-state authoring flow.
-- `add-rule` is intentionally limited to simple threshold or classic-condition style authoring. For richer rules, clone an existing desired rule and edit it by hand.
-- `preview-route` is a contract preview, not a full Grafana routing simulator.
-- `set-route` owns one managed route. Re-running it replaces that route instead of merging a new matcher into the old one.
-- `delete` is a preview surface. `policy-tree` is special because Grafana treats it as a reset path, not a normal delete.
-
-## Authoring Lane
-
-Start with the desired tree:
+Start by scaffolding a desired-state tree. This creates local files that represent your "intent".
 
 ```bash
+# Initialize a desired-state tree
 grafana-util alert init --desired-dir ./alerts/desired
+
+# Add a rule to your local files (does not touch Grafana yet)
+grafana-util alert add-rule \
+  --desired-dir ./alerts/desired \
+  --name cpu-high --folder platform-alerts \
+  --receiver pagerduty-primary --threshold 80 --above --for 5m
 ```
 
-Then add or clone resources into that tree:
+---
+
+## 🔬 Review and Apply (The Review Cycle)
+
+Use `plan` to build a preview of the delta between your local files and live Grafana.
 
 ```bash
-grafana-util alert add-contact-point --desired-dir ./alerts/desired --name pagerduty-primary
-grafana-util alert add-rule --desired-dir ./alerts/desired --name cpu-high --folder platform-alerts --rule-group cpu --receiver pagerduty-primary --label team=platform --severity critical --expr A --threshold 80 --above --for 5m
-grafana-util alert preview-route --desired-dir ./alerts/desired --label team=platform --severity critical
+# Generate a plan for review
+grafana-util alert plan \
+  --url http://localhost:3000 \
+  --basic-user admin --basic-password admin \
+  --desired-dir ./alerts/desired --prune --output json
 ```
 
-Validated output excerpt from the current Docker Grafana `12.4.1` fixture:
+**How to Read the Plan Output:**
+- **create**: Desired resource is missing in live Grafana.
+- **update**: Live Grafana differs from your desired file.
+- **delete**: Triggered by `--prune` when a live resource is not in your files.
 
-```json
-{
-  "input": {
-    "labels": {
-      "team": "platform"
-    },
-    "severity": "critical"
-  },
-  "matches": []
-}
-```
-
-That empty match list is expected here. It means the preview contract was evaluated, not that a live alert instance was routed end to end.
-
-## Review And Apply
-
-Use `plan` to compare desired alert files against live Grafana:
-
+**Validated Apply Step:**
+Only execute after the plan has been reviewed and saved.
 ```bash
-grafana-util alert plan --url http://localhost:3000 --basic-user admin --basic-password admin --desired-dir ./alerts/desired --prune --output json
+grafana-util alert apply \
+  --plan-file ./alert-plan-reviewed.json \
+  --approve --output json
 ```
 
-Use `apply` only after the plan has been reviewed:
+---
 
+## 🚀 Key Commands (Full Argument Reference)
+
+| Command | Full Example with Arguments |
+| :--- | :--- |
+| **List Rules** | `grafana-util alert list-rules --all-orgs --table` |
+| **Export** | `grafana-util alert export --export-dir ./alerts --overwrite` |
+| **Plan** | `grafana-util alert plan --desired-dir ./alerts/desired --prune --output json` |
+| **Apply** | `grafana-util alert apply --plan-file ./plan.json --approve` |
+| **Set Route** | `grafana-util alert set-route --desired-dir ./alerts/desired --receiver pagerduty` |
+| **New Rule** | `grafana-util alert new-rule --name <NAME> --folder <FOLDER> --output <FILE>` |
+| **New Contact** | `grafana-util alert new-contact-point --name <NAME> --type <TYPE> --output <FILE>` |
+| **New Template** | `grafana-util alert new-template --name <NAME> --template <CONTENT> --output <FILE>` |
+
+---
+
+## 🔬 Validated Docker Examples
+
+### 1. Alert Plan Excerpt
 ```bash
-grafana-util alert apply --url http://localhost:3000 --basic-user admin --basic-password admin --plan-file ./alert-plan-reviewed.json --approve --output json
+grafana-util alert plan --desired-dir ./alerts/desired --prune --output json
 ```
-
-How to read the plan/apply lane:
-
-- `create` means the desired resource is missing in live Grafana.
-- `update` means live Grafana differs from the desired document.
-- `noop` means the resource already matches.
-- `delete` appears only when `--prune` is enabled.
-- `blocked` means the plan found a change but refused to treat it as live-safe.
-
-Validated delete-path excerpt from the current Docker Grafana `12.4.1` fixture:
-
+**Output Excerpt:**
 ```json
 {
   "summary": {
-    "blocked": 0,
-    "create": 0,
+    "create": 1,
+    "update": 2,
     "delete": 1,
     "noop": 0,
-    "processed": 3,
-    "update": 2
+    "blocked": 0
   }
 }
 ```
 
+### 2. Route Preview
+Verify your routing logic locally before applying.
+```bash
+grafana-util alert preview-route --desired-dir ./alerts/desired --label team=platform --severity critical
+```
+**Output Excerpt:**
 ```json
 {
-  "action": "delete",
-  "identity": "cpu-high",
-  "kind": "grafana-alert-rule",
-  "reason": "missing-from-desired-state"
+  "input": { "labels": { "team": "platform" }, "severity": "critical" },
+  "matches": []
 }
 ```
+*Note: A blank match list means the contract was evaluated successfully, not necessarily that a live alert exists.*
 
-The same validation still carried two update rows because of live normalization differences. The important signal is the delete row created by `--prune`.
+---
 
-## Migration Lane
-
-Use the migration lane when you are replaying older alert exports, comparing an export against live Grafana, or listing live alerting inventory.
-
-- `export` writes alert resources into the older export layout.
-- `import` replays that export layout back into Grafana.
-- `diff` compares exported alert state with live Grafana.
-- `list-*` commands are inventory tools. They do not author desired state.
-
-## Where This Fits
-
-- Use [access](./access.md) when the task is about Grafana identities, teams, organizations, or service accounts.
-- Use [change / overview / status](./change-overview-status.md) when the task is about project-wide staged change, human project review, or readiness gating.
-
-## Validation Anchor
-
-The current guide documents this alert surface as validated locally on March 30, 2026 against Docker Grafana `12.4.1` at `http://127.0.0.1:43111`. The covered flow includes the desired-tree authoring path, `plan`, `apply`, and the prune/delete path.
+## ⏭️ Next Steps
+- Learn about [**Access Management**](./access.md).
+- Explore [**Project Status and Overview**](./change-overview-status.md).
