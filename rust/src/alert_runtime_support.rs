@@ -31,6 +31,7 @@ pub const ALERT_PLAN_KIND: &str = "grafana-util-alert-plan";
 pub const ALERT_PLAN_SCHEMA_VERSION: i64 = 1;
 pub const ALERT_DELETE_PREVIEW_KIND: &str = "grafana-util-alert-delete-preview";
 pub const ALERT_DELETE_PREVIEW_SCHEMA_VERSION: i64 = 1;
+type AlertDesiredOperation = (PathBuf, String, Map<String, Value>);
 
 fn row_object<'a>(row: &'a Value, label: &str) -> Result<&'a Map<String, Value>> {
     value_as_object(row, label)
@@ -555,9 +556,7 @@ pub fn build_alert_delete_preview_document(rows: &[Value], allow_policy_reset: b
     })
 }
 
-pub fn load_alert_desired_operations(
-    dir: &Path,
-) -> Result<Vec<(PathBuf, String, Map<String, Value>)>> {
+pub fn load_alert_desired_operations(dir: &Path) -> Result<Vec<AlertDesiredOperation>> {
     let resource_files = discover_alert_resource_files(dir)?;
     let mut operations = Vec::new();
     for path in resource_files {

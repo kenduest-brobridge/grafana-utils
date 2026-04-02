@@ -685,6 +685,7 @@ fn merge_snapshot_review_org_counts(
     orgs.into_values().collect()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn build_snapshot_review_warnings(
     dashboard_lane_summary: &Value,
     datasource_lane_summary: &Value,

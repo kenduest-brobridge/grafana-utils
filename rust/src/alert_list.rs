@@ -127,26 +127,30 @@ fn render_alert_text(
     render_alert_table(rows, fields, headers, include_header)
 }
 
+#[derive(Clone, Copy)]
+enum AlertRowRenderFormat {
+    Table,
+    Text,
+    Csv,
+    Json,
+    Yaml,
+}
+
 fn render_alert_rows_for_output(
     rows: &[BTreeMap<&str, String>],
     fields: &[&str],
     headers: &[(&str, &str)],
     include_header: bool,
-    text: bool,
-    csv: bool,
-    json: bool,
-    yaml: bool,
+    format: AlertRowRenderFormat,
 ) -> Result<String> {
-    if json {
-        render_json_value(rows)
-    } else if yaml {
-        render_yaml(&rows)
-    } else if csv {
-        Ok(render_alert_csv(rows, fields))
-    } else if text {
-        Ok(render_alert_text(rows, fields, headers, false))
-    } else {
-        Ok(render_alert_table(rows, fields, headers, include_header))
+    match format {
+        AlertRowRenderFormat::Json => render_json_value(rows),
+        AlertRowRenderFormat::Yaml => render_yaml(&rows),
+        AlertRowRenderFormat::Csv => Ok(render_alert_csv(rows, fields)),
+        AlertRowRenderFormat::Text => Ok(render_alert_text(rows, fields, headers, false)),
+        AlertRowRenderFormat::Table => {
+            Ok(render_alert_table(rows, fields, headers, include_header))
+        }
     }
 }
 
@@ -349,10 +353,17 @@ pub fn list_alert_resources(args: &AlertCliArgs) -> Result<()> {
                 &fields,
                 &headers,
                 !args.no_header,
-                args.text,
-                args.csv,
-                args.json,
-                args.yaml,
+                if args.json {
+                    AlertRowRenderFormat::Json
+                } else if args.yaml {
+                    AlertRowRenderFormat::Yaml
+                } else if args.csv {
+                    AlertRowRenderFormat::Csv
+                } else if args.text {
+                    AlertRowRenderFormat::Text
+                } else {
+                    AlertRowRenderFormat::Table
+                },
             )?;
             if args.csv || args.yaml {
                 print!("{output}");
@@ -373,10 +384,17 @@ pub fn list_alert_resources(args: &AlertCliArgs) -> Result<()> {
                 &fields,
                 &headers,
                 !args.no_header,
-                args.text,
-                args.csv,
-                args.json,
-                args.yaml,
+                if args.json {
+                    AlertRowRenderFormat::Json
+                } else if args.yaml {
+                    AlertRowRenderFormat::Yaml
+                } else if args.csv {
+                    AlertRowRenderFormat::Csv
+                } else if args.text {
+                    AlertRowRenderFormat::Text
+                } else {
+                    AlertRowRenderFormat::Table
+                },
             )?;
             if args.csv || args.yaml {
                 print!("{output}");
@@ -397,10 +415,17 @@ pub fn list_alert_resources(args: &AlertCliArgs) -> Result<()> {
                 &fields,
                 &headers,
                 !args.no_header,
-                args.text,
-                args.csv,
-                args.json,
-                args.yaml,
+                if args.json {
+                    AlertRowRenderFormat::Json
+                } else if args.yaml {
+                    AlertRowRenderFormat::Yaml
+                } else if args.csv {
+                    AlertRowRenderFormat::Csv
+                } else if args.text {
+                    AlertRowRenderFormat::Text
+                } else {
+                    AlertRowRenderFormat::Table
+                },
             )?;
             if args.csv || args.yaml {
                 print!("{output}");
@@ -418,10 +443,17 @@ pub fn list_alert_resources(args: &AlertCliArgs) -> Result<()> {
                 &fields,
                 &headers,
                 !args.no_header,
-                args.text,
-                args.csv,
-                args.json,
-                args.yaml,
+                if args.json {
+                    AlertRowRenderFormat::Json
+                } else if args.yaml {
+                    AlertRowRenderFormat::Yaml
+                } else if args.csv {
+                    AlertRowRenderFormat::Csv
+                } else if args.text {
+                    AlertRowRenderFormat::Text
+                } else {
+                    AlertRowRenderFormat::Table
+                },
             )?;
             if args.csv || args.yaml {
                 print!("{output}");
@@ -460,18 +492,33 @@ mod tests {
             false,
         );
 
-        let text_output =
-            render_alert_rows_for_output(&rows, &fields, &headers, true, true, false, false, false)
-                .unwrap();
+        let text_output = render_alert_rows_for_output(
+            &rows,
+            &fields,
+            &headers,
+            true,
+            AlertRowRenderFormat::Text,
+        )
+        .unwrap();
         let csv_output =
-            render_alert_rows_for_output(&rows, &fields, &headers, true, false, true, false, false)
+            render_alert_rows_for_output(&rows, &fields, &headers, true, AlertRowRenderFormat::Csv)
                 .unwrap();
-        let json_output =
-            render_alert_rows_for_output(&rows, &fields, &headers, true, false, false, true, false)
-                .unwrap();
-        let yaml_output =
-            render_alert_rows_for_output(&rows, &fields, &headers, true, false, false, false, true)
-                .unwrap();
+        let json_output = render_alert_rows_for_output(
+            &rows,
+            &fields,
+            &headers,
+            true,
+            AlertRowRenderFormat::Json,
+        )
+        .unwrap();
+        let yaml_output = render_alert_rows_for_output(
+            &rows,
+            &fields,
+            &headers,
+            true,
+            AlertRowRenderFormat::Yaml,
+        )
+        .unwrap();
 
         assert!(text_output.contains("rule-uid"));
         assert!(text_output.contains("CPU High"));

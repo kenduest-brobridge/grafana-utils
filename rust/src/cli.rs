@@ -479,6 +479,7 @@ fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
 ///
 /// Handlers are injected as callables so tests can assert routing without
 /// triggering network-heavy domain execution.
+#[allow(clippy::too_many_arguments)]
 fn dispatch_with_handlers<FD, FS, FY, FA, FX, FP, FR, FO, FQ>(
     args: CliArgs,
     mut run_dashboard: FD,

@@ -272,7 +272,6 @@ pub fn build_alert_live_project_status_domain(
         )
     };
 
-    let mut warnings = warnings;
     add_missing_surface_signal(
         &mut warnings,
         &mut next_actions,

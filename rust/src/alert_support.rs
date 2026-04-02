@@ -355,8 +355,8 @@ fn remove_bool_field_when(object: &mut Map<String, Value>, key: &str, expected: 
     }
 }
 
-fn sort_matcher_values(matchers: &mut Vec<Value>) {
-    matchers.sort_by(|left, right| value_to_string(left).cmp(&value_to_string(right)));
+fn sort_matcher_values(matchers: &mut [Value]) {
+    matchers.sort_by_key(value_to_string);
 }
 
 fn normalize_compare_value(value: Value) -> Value {
@@ -1070,7 +1070,7 @@ pub fn build_new_contact_point_scaffold_document(name: &str) -> Value {
 
 pub fn build_new_template_scaffold_document(name: &str) -> Value {
     build_template_export_document(
-        &json!({
+        json!({
             "name": name,
             "template": format!("{{{{ define \"{name}\" }}}}replace me{{{{ end }}}}")
         })
@@ -1131,7 +1131,7 @@ pub fn build_contact_point_scaffold_document(name: &str, channel_type: &str) -> 
         ),
     };
     let mut document = build_contact_point_export_document(
-        &json!({
+        json!({
             "uid": identity,
             "name": name,
             "type": normalized_type,

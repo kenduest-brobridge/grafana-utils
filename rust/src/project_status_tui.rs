@@ -227,9 +227,9 @@ impl ProjectStatusTuiState {
                 .to_string(),
         });
 
-        lines.push(format!(
-            "Navigation: Enter hands off from Home to the recommended domain and preselects the matching action. Path: Home -> Domains -> Actions.",
-        ));
+        lines.push(
+            "Navigation: Enter hands off from Home to the recommended domain and preselects the matching action. Path: Home -> Domains -> Actions.".to_string(),
+        );
         lines.push(format!(
             "Domains: {}",
             self.document

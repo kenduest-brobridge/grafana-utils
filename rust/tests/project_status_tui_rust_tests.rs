@@ -14,6 +14,7 @@ use project_status_tui::{ProjectStatusPane, ProjectStatusTuiState};
 use ratatui::backend::TestBackend;
 use ratatui::Terminal;
 
+#[allow(clippy::too_many_arguments)]
 fn domain(
     id: &str,
     status: &str,

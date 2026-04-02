@@ -198,7 +198,7 @@ fn build_alert_assets_view(artifact: &OverviewArtifact) -> Option<OverviewSectio
                     },
                 ],
                 details: vec![
-                    detail_line("Kind", &kind),
+                    detail_line("Kind", kind),
                     detail_line("Title", &title),
                     detail_line("Name", &name),
                     detail_line("Receiver", &receiver),

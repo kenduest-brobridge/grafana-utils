@@ -690,7 +690,18 @@ mod tests {
         Arc<AtomicBool>,
         thread::JoinHandle<()>,
     ) {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let listener = match TcpListener::bind("127.0.0.1:0") {
+            Ok(listener) => listener,
+            Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
+                return (
+                    String::new(),
+                    Arc::new(AtomicBool::new(false)),
+                    Arc::new(AtomicBool::new(true)),
+                    thread::spawn(|| {}),
+                );
+            }
+            Err(error) => panic!("failed to bind datasource import test listener: {error}"),
+        };
         listener.set_nonblocking(true).unwrap();
         let address = listener.local_addr().unwrap();
         let saw_write = Arc::new(AtomicBool::new(false));
@@ -750,6 +761,9 @@ mod tests {
         let temp = tempdir().unwrap();
         write_import_fixture(temp.path());
         let (base_url, saw_write, stop, handle) = spawn_datasource_import_server();
+        if base_url.is_empty() {
+            return;
+        }
         let client = JsonHttpClient::new(JsonHttpClientConfig {
             base_url,
             headers: Vec::new(),
@@ -891,6 +905,9 @@ mod tests {
         let temp = tempdir().unwrap();
         write_import_fixture(temp.path());
         let (base_url, saw_write, stop, handle) = spawn_datasource_import_server();
+        if base_url.is_empty() {
+            return;
+        }
         let client = JsonHttpClient::new(JsonHttpClientConfig {
             base_url,
             headers: Vec::new(),

@@ -80,7 +80,7 @@ pub(crate) fn effective_inspect_report_format(
 }
 
 pub(crate) fn effective_inspect_output_format(args: &InspectExportArgs) -> InspectOutputFormat {
-    args.output_format.unwrap_or_else(|| {
+    args.output_format.unwrap_or({
         if args.text {
             InspectOutputFormat::Text
         } else if args.table {

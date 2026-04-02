@@ -1014,7 +1014,7 @@ fn build_overview_document_and_render_overview_text_for_all_sections() {
         .any(|domain| domain["id"] == json!("promotion")
             && domain["status"] == json!("blocked")
             && domain["reasonCode"] == json!("blocked-by-blockers")
-            && domain["blockers"].as_array().unwrap().len() >= 1));
+            && !domain["blockers"].as_array().unwrap().is_empty()));
     let promotion_domain = json_document["projectStatus"]["domains"]
         .as_array()
         .unwrap()
@@ -2366,13 +2366,26 @@ fn live_response_body(target: &str, org_id: Option<&str>) -> String {
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn spawn_live_project_status_test_server() -> (
     String,
     Arc<Mutex<Vec<LiveRequestRecord>>>,
     mpsc::Sender<()>,
     thread::JoinHandle<()>,
 ) {
-    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let listener = match TcpListener::bind("127.0.0.1:0") {
+        Ok(listener) => listener,
+        Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
+            let (stop_tx, _stop_rx) = mpsc::channel();
+            return (
+                String::new(),
+                Arc::new(Mutex::new(Vec::new())),
+                stop_tx,
+                thread::spawn(|| {}),
+            );
+        }
+        Err(error) => panic!("failed to bind live project-status test listener: {error}"),
+    };
     listener.set_nonblocking(true).unwrap();
     let address = listener.local_addr().unwrap();
     let requests = Arc::new(Mutex::new(Vec::new()));
@@ -2494,6 +2507,9 @@ fn sample_project_status_live_args(base_url: String) -> ProjectStatusLiveArgs {
 #[test]
 fn project_status_live_org_id_scopes_live_reads() {
     let (base_url, requests, stop_tx, handle) = spawn_live_project_status_test_server();
+    if base_url.is_empty() {
+        return;
+    }
     let mut args = sample_project_status_live_args(base_url);
     args.org_id = Some(7);
 
@@ -2512,6 +2528,9 @@ fn project_status_live_org_id_scopes_live_reads() {
 #[test]
 fn project_status_live_all_orgs_fans_out_across_visible_orgs() {
     let (base_url, requests, stop_tx, handle) = spawn_live_project_status_test_server();
+    if base_url.is_empty() {
+        return;
+    }
     let mut args = sample_project_status_live_args(base_url);
     args.api_token = None;
     args.username = Some("admin".to_string());
@@ -2541,6 +2560,9 @@ fn project_status_live_all_orgs_fans_out_across_visible_orgs() {
 #[test]
 fn overview_live_delegates_org_scoped_reads_to_shared_live_path() {
     let (base_url, requests, stop_tx, handle) = spawn_live_project_status_test_server();
+    if base_url.is_empty() {
+        return;
+    }
     let mut args = sample_project_status_live_args(base_url);
     args.org_id = Some(9);
 

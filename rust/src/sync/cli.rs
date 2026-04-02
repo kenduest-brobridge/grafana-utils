@@ -259,7 +259,7 @@ fn run_sync_apply(args: SyncApplyArgs) -> Result<()> {
         )?;
         emit_text_or_json(
             &live_result,
-            &vec![
+            &[
                 "Sync live apply".to_string(),
                 format!(
                     "Applied: {}",

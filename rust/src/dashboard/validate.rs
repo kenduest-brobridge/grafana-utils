@@ -394,6 +394,7 @@ pub(crate) fn run_dashboard_validate_export(args: &ValidateExportArgs) -> Result
 }
 
 #[cfg(test)]
+#[allow(clippy::items_after_test_module)]
 mod tests {
     use super::*;
     use crate::dashboard::{DashboardImportInputFormat, ValidationOutputFormat};

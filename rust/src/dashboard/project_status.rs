@@ -153,6 +153,7 @@ fn push_detail_signal_keys(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn push_detail_findings_with_count<F>(
     findings: &mut Vec<crate::project_status::ProjectStatusFinding>,
     signal_keys: &mut Vec<String>,
@@ -204,6 +205,7 @@ fn detail_source_key(document_key: &str, item: &Value, index: usize, fields: &[&
     format!("{document_key}[{index}]")
 }
 
+#[allow(clippy::too_many_arguments)]
 fn push_detail_findings(
     findings: &mut Vec<crate::project_status::ProjectStatusFinding>,
     signal_keys: &mut Vec<String>,

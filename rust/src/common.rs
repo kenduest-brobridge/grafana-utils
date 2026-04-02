@@ -111,7 +111,7 @@ fn colorize_json_pretty(rendered: &str) -> String {
             '"' => {
                 let mut token = String::from("\"");
                 let mut escaped = false;
-                while let Some(next) = chars.next() {
+                for next in chars.by_ref() {
                     token.push(next);
                     if escaped {
                         escaped = false;
