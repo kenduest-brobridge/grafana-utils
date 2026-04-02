@@ -14,6 +14,37 @@ Format rule going forward:
 - keep older tagged releases below
 - use commit/tag history as the source of truth
 
+## [0.6.3] - 2026-04-02
+
+### Highlights
+
+- The user guide now works as a bilingual handbook instead of a mixed set of
+  oversized files and partial entry pages.
+- The Traditional Chinese guide now follows the same chapter-based structure
+  as the English handbook, so operators can move between languages without
+  losing the reading order, workflow boundaries, or chapter layout.
+
+### Changed
+
+- `docs/user-guide/zh-TW/` is now the primary Traditional Chinese user-guide
+  location.
+- The English handbook chapters were expanded with per-page navigation,
+  clearer table-based summaries, and more explicit output and interactive-mode
+  guidance.
+- The Traditional Chinese handbook now includes matching chapters for getting
+  started, reference, dashboards, datasources, alerts, access, project-wide
+  status, and scenarios.
+- `docs/user-guide-TW.md` now remains as a compatibility bridge for older
+  links while directing readers into the new handbook structure.
+- `README.md`, `README.zh-TW.md`, and `docs/DEVELOPER.md` now point to the
+  maintained handbook paths.
+
+### Notes
+
+- This release remains documentation-focused. It improves how operators find,
+  read, and follow the maintained workflows; it does not change the CLI's live
+  Grafana behavior.
+
 ## [0.6.2] - 2026-04-02
 
 ### Highlights

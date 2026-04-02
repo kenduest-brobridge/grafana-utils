@@ -1,6 +1,6 @@
 # Grafana Utilities (`grafana-util`)
 
-[![Version](https://img.shields.io/badge/version-0.6.2-blue.svg)](https://github.com/kenduest-brobridge/grafana-utils/releases)
+[![Version](https://img.shields.io/badge/version-0.6.3-blue.svg)](https://github.com/kenduest-brobridge/grafana-utils/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos-lightgrey.svg)](#安裝)
 
@@ -38,7 +38,7 @@ curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/ma
 
 指定版本或安裝路徑：
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | BIN_DIR=/usr/local/bin VERSION=v0.6.2 sh
+curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | BIN_DIR=/usr/local/bin VERSION=v0.6.3 sh
 ```
 
 如果你已經有 repo checkout：
