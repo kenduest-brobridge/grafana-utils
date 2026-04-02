@@ -190,7 +190,7 @@ Use this as the quick maturity map.
 
 ## Documentation
 
-- [English user guide](docs/user-guide.md)
+- [English user guide](docs/user-guide/en/index.md)
 - [Traditional Chinese user guide](docs/user-guide-TW.md)
 - [Developer guide](docs/DEVELOPER.md)
 - [Rust technical overview](docs/overview-rust.md)

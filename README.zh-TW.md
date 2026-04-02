@@ -190,7 +190,7 @@ alert surface 是刻意拆開的：
 
 ## 文件
 
-- [英文使用者指南](docs/user-guide.md)
+- [英文使用者指南](docs/user-guide/en/index.md)
 - [繁體中文使用者指南](docs/user-guide-TW.md)
 - [開發者手冊](docs/DEVELOPER.md)
 - [Rust 技術總覽](docs/overview-rust.md)
