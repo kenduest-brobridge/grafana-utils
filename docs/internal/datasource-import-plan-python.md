@@ -1,5 +1,11 @@
 # Python Datasource Import Design Note
 
+Historical note:
+
+- Datasource import is already implemented.
+- This file is kept as design history and follow-up context.
+- Current preferred user-facing commands use `grafana-util ...`; older `grafana-utils ...` references below are historical.
+
 ## Goal
 
 Add a first-class Python `grafana-utils datasource import` workflow that can round-trip the existing datasource export format back into Grafana with a dry-run safety layer and operator-facing semantics that feel familiar to `dashboard import`, while still respecting datasource-specific constraints.
@@ -52,7 +58,7 @@ Datasource import is implemented. This note is retained as historical design con
 The implemented Python subcommand is:
 
 ```bash
-grafana-utils datasource import \
+grafana-util datasource import \
   --url http://localhost:3000 \
   --import-dir ./datasources \
   --replace-existing

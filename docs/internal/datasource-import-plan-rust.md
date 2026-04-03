@@ -1,5 +1,11 @@
 # Rust Datasource Import Plan
 
+Historical note:
+
+- Datasource import is already implemented.
+- This file is kept as design history and follow-up context.
+- Current preferred user-facing commands use `grafana-util ...`; older `grafana-utils ...` references below are historical.
+
 ## Goal
 
 Add a first-class Rust `grafana-utils datasource import` workflow that can round-trip the existing datasource export format back into Grafana with an operator experience close to `dashboard import`, while keeping datasource-specific semantics explicit where dashboards and datasources differ.
@@ -22,9 +28,9 @@ Rust now ships a dedicated datasource utility rather than a dashboard subcommand
 
 Preferred user-facing commands:
 
-- `grafana-utils datasource list ...`
-- `grafana-utils datasource export ...`
-- `grafana-utils datasource import ...`
+- `grafana-util datasource list ...`
+- `grafana-util datasource export ...`
+- `grafana-util datasource import ...`
 
 Rust already has a dedicated datasource namespace, so follow-on work should continue there rather than reusing `dashboard list-data-sources`.
 

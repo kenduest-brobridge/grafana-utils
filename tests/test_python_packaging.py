@@ -1,4 +1,3 @@
-import re
 import unittest
 from pathlib import Path
 
@@ -16,14 +15,16 @@ class PackagingTests(unittest.TestCase):
     def test_pyproject_declares_console_scripts(self):
         content = PYPROJECT_PATH.read_text(encoding="utf-8")
 
-        self.assertRegex(content, r'(?m)^\[project\.scripts\]$')
-        self.assertRegex(content, r'(?m)^grafana-util = "grafana_utils\.unified_cli:main"$')
-        self.assertNotRegex(content, r'(?m)^grafana-access-utils = ')
+        self.assertRegex(content, r"(?m)^\[project\.scripts\]$")
+        self.assertRegex(
+            content, r'(?m)^grafana-util = "grafana_utils\.unified_cli:main"$'
+        )
+        self.assertNotRegex(content, r"(?m)^grafana-access-utils = ")
 
     def test_pyproject_declares_base_requests_dependency(self):
         content = PYPROJECT_PATH.read_text(encoding="utf-8")
 
-        self.assertIn('requests>=2.27,<3', content)
+        self.assertIn("requests>=2.27,<3", content)
 
     def test_pyproject_requires_python39_or_newer(self):
         content = PYPROJECT_PATH.read_text(encoding="utf-8")
@@ -45,7 +46,7 @@ class PackagingTests(unittest.TestCase):
         self.assertIn('build = ">=1.2,<2"', content)
         self.assertIn('mypy = ">=1.10,<2"', content)
         self.assertIn('ruff = ">=0.11,<1"', content)
-        self.assertIn('setuptools = ">=59"', content)
+        self.assertIn('setuptools = ">=80.9"', content)
         self.assertIn('wheel = ">=0.45,<1"', content)
 
     def test_package_declares_module_entrypoint(self):

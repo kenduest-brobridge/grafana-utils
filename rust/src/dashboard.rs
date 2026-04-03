@@ -1,8 +1,7 @@
 //! Dashboard domain orchestrator.
 //!
 //! Purpose:
-//! - Own the dashboard command surface (`list`, `list-data-sources`, `export`,
-//!   `import`, `diff`, `inspect`).
+//! - Own the dashboard command surface (`list`, `export`, `import`, `diff`, `inspect`).
 //! - Re-export shared parser and helper APIs from sibling modules for consumers.
 //! - Keep transport setup, normalization, and execution branching in this module.
 //!
@@ -56,11 +55,15 @@ mod dashboard_models;
 #[path = "dashboard_prompt.rs"]
 mod dashboard_prompt;
 
+#[cfg(test)]
+#[allow(unused_imports)]
+pub(crate) use dashboard_cli_defs::try_normalize_dashboard_cli_args;
 pub use dashboard_cli_defs::{
     build_auth_context, build_http_client, build_http_client_for_org, normalize_dashboard_cli_args,
     parse_cli_from, CommonCliArgs, DashboardAuthContext, DashboardCliArgs, DashboardCommand,
-    DiffArgs, ExportArgs, ImportArgs, InspectExportArgs, InspectExportReportFormat,
-    InspectLiveArgs, InspectOutputFormat, ListArgs, ListDataSourcesArgs,
+    DiffArgs, ExportArgs, ImportArgs, InspectExportArgs, InspectExportReportFormat, InspectLayout,
+    InspectLiveArgs, InspectOutputFormat, InspectRenderFormat, InspectView, ListArgs,
+    ListDataSourcesArgs,
 };
 pub use dashboard_export::{
     build_export_variant_dirs, build_output_path, export_dashboards_with_client,
@@ -212,10 +215,6 @@ pub fn run_dashboard_cli_with_client(
             let _ = list_dashboards_with_client(client, &list_args)?;
             Ok(())
         }
-        DashboardCommand::ListDataSources(list_data_sources_args) => {
-            let _ = list_data_sources_with_client(client, &list_data_sources_args)?;
-            Ok(())
-        }
         DashboardCommand::Export(export_args) => {
             let _ = export_dashboards_with_client(client, &export_args)?;
             Ok(())
@@ -267,11 +266,6 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
     match args.command {
         DashboardCommand::List(list_args) => {
             let _ = list_dashboards_with_org_clients(&list_args)?;
-            Ok(())
-        }
-        DashboardCommand::ListDataSources(list_data_sources_args) => {
-            let client = build_http_client(&list_data_sources_args.common)?;
-            let _ = list_data_sources_with_client(&client, &list_data_sources_args)?;
             Ok(())
         }
         DashboardCommand::Export(export_args) => {

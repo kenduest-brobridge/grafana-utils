@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented. `grafana-utils datasource import` now exists in both the Python and Rust CLIs.
+Implemented. `grafana-util datasource import` now exists in both the Python and Rust CLIs.
 
 This note now serves as an implementation-status summary plus a pointer to the original Python and Rust design notes:
 
@@ -13,7 +13,7 @@ This note now serves as an implementation-status summary plus a pointer to the o
 
 Implemented behavior includes:
 
-- `grafana-utils datasource import`
+- `grafana-util datasource import`
 - import modes:
   - `create-only`
   - `create-or-update`
@@ -23,7 +23,7 @@ Implemented behavior includes:
 - dry-run output in text, table, and JSON forms
 - dedicated Python and Rust datasource namespaces
 
-The remaining sections are retained as historical design context and for any follow-on datasource import work.
+The remaining sections are retained as historical design context and for any follow-on datasource import work. Older `grafana-utils ...` references below should be read as historical wording rather than current primary command guidance.
 
 ## Goal
 

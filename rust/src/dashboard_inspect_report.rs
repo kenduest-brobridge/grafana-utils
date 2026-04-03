@@ -4,7 +4,7 @@ use serde::Serialize;
 
 use crate::common::{message, Result};
 
-use super::InspectExportReportFormat;
+use super::{ExportInspectionSummary, InspectExportReportFormat};
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct QueryReportSummary {
@@ -57,6 +57,10 @@ pub(crate) struct ExportInspectionQueryReport {
 pub(crate) struct ExportInspectionQueryReportJsonSummary {
     #[serde(rename = "dashboardCount")]
     pub(crate) dashboard_count: usize,
+    #[serde(rename = "datasourceCount")]
+    pub(crate) datasource_count: usize,
+    #[serde(rename = "datasourceInventoryCount")]
+    pub(crate) datasource_inventory_count: usize,
     #[serde(rename = "queryRecordCount")]
     pub(crate) query_record_count: usize,
 }
@@ -65,6 +69,46 @@ pub(crate) struct ExportInspectionQueryReportJsonSummary {
 pub(crate) struct ExportInspectionQueryReportDocument {
     pub(crate) summary: ExportInspectionQueryReportJsonSummary,
     pub(crate) queries: Vec<ExportInspectionQueryRow>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub(crate) struct ExportInspectionDatasourceSummaryRow {
+    pub(crate) datasource: String,
+    #[serde(rename = "datasourceUid")]
+    pub(crate) datasource_uid: String,
+    #[serde(rename = "type")]
+    pub(crate) datasource_type: String,
+    pub(crate) family: String,
+    #[serde(rename = "dashboardCount")]
+    pub(crate) dashboard_count: usize,
+    #[serde(rename = "panelCount")]
+    pub(crate) panel_count: usize,
+    #[serde(rename = "queryCount")]
+    pub(crate) query_count: usize,
+    pub(crate) orphaned: String,
+    pub(crate) metrics: Vec<String>,
+    pub(crate) measurements: Vec<String>,
+    pub(crate) buckets: Vec<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub(crate) struct ExportInspectionDatasourceSummaryDocumentSummary {
+    #[serde(rename = "dashboardCount")]
+    pub(crate) dashboard_count: usize,
+    #[serde(rename = "queryRecordCount")]
+    pub(crate) query_record_count: usize,
+    #[serde(rename = "datasourceCount")]
+    pub(crate) datasource_count: usize,
+    #[serde(rename = "activeDatasourceCount")]
+    pub(crate) active_datasource_count: usize,
+    #[serde(rename = "orphanedDatasourceCount")]
+    pub(crate) orphaned_datasource_count: usize,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+pub(crate) struct ExportInspectionDatasourceSummaryDocument {
+    pub(crate) summary: ExportInspectionDatasourceSummaryDocumentSummary,
+    pub(crate) datasources: Vec<ExportInspectionDatasourceSummaryRow>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -148,9 +192,184 @@ pub(crate) fn build_export_inspection_query_report_document(
     ExportInspectionQueryReportDocument {
         summary: ExportInspectionQueryReportJsonSummary {
             dashboard_count: report.summary.dashboard_count,
+            datasource_count: report
+                .queries
+                .iter()
+                .map(|row| {
+                    if row.datasource_uid.is_empty() {
+                        row.datasource.clone()
+                    } else {
+                        row.datasource_uid.clone()
+                    }
+                })
+                .filter(|value| !value.is_empty())
+                .collect::<std::collections::BTreeSet<String>>()
+                .len(),
+            datasource_inventory_count: 0,
             query_record_count: report.queries.len(),
         },
         queries: report.queries.clone(),
+    }
+}
+
+fn ordered_unique_strings(values: &[String]) -> Vec<String> {
+    let mut seen = std::collections::BTreeSet::new();
+    let mut normalized = Vec::new();
+    for value in values {
+        let trimmed = value.trim();
+        if trimmed.is_empty() || !seen.insert(trimmed.to_string()) {
+            continue;
+        }
+        normalized.push(trimmed.to_string());
+    }
+    normalized
+}
+
+fn normalize_datasource_family(datasource_type: &str) -> String {
+    match datasource_type.trim().to_ascii_lowercase().as_str() {
+        "" => "unknown".to_string(),
+        "grafana-postgresql-datasource" => "postgres".to_string(),
+        "grafana-mysql-datasource" => "mysql".to_string(),
+        "postgres" => "postgres".to_string(),
+        "prometheus" => "prometheus".to_string(),
+        "loki" => "loki".to_string(),
+        "influxdb" => "influxdb".to_string(),
+        other => other.to_string(),
+    }
+}
+
+pub(crate) fn build_export_inspection_datasource_summary_document(
+    summary: &ExportInspectionSummary,
+    report: &ExportInspectionQueryReport,
+    datasource_filter: Option<&str>,
+) -> ExportInspectionDatasourceSummaryDocument {
+    #[derive(Default)]
+    struct RowState {
+        datasource: String,
+        datasource_uid: String,
+        dashboards: std::collections::BTreeSet<String>,
+        panels: std::collections::BTreeSet<(String, String)>,
+        query_count: usize,
+        metrics: Vec<String>,
+        measurements: Vec<String>,
+        buckets: Vec<String>,
+    }
+
+    let datasource_filter = datasource_filter
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let mut by_key = std::collections::BTreeMap::<String, RowState>::new();
+
+    for row in &report.queries {
+        let key = if !row.datasource_uid.is_empty() {
+            row.datasource_uid.clone()
+        } else {
+            row.datasource.clone()
+        };
+        if key.is_empty() {
+            continue;
+        }
+        if let Some(filter) = datasource_filter {
+            if row.datasource != filter && row.datasource_uid != filter {
+                continue;
+            }
+        }
+        let state = by_key.entry(key).or_default();
+        if state.datasource.is_empty() {
+            state.datasource = row.datasource.clone();
+        }
+        if state.datasource_uid.is_empty() {
+            state.datasource_uid = row.datasource_uid.clone();
+        }
+        state.dashboards.insert(row.dashboard_uid.clone());
+        state
+            .panels
+            .insert((row.dashboard_uid.clone(), row.panel_id.clone()));
+        state.query_count += 1;
+        state.metrics.extend(row.metrics.clone());
+        state.measurements.extend(row.measurements.clone());
+        state.buckets.extend(row.buckets.clone());
+    }
+
+    let mut rows = Vec::new();
+    for inventory in &summary.datasource_inventory {
+        let key = if inventory.uid.is_empty() {
+            inventory.name.clone()
+        } else {
+            inventory.uid.clone()
+        };
+        let matches_filter = datasource_filter
+            .is_none_or(|filter| inventory.uid == filter || inventory.name == filter);
+        let state = by_key.remove(&key);
+        if !matches_filter && state.is_none() {
+            continue;
+        }
+        let (dashboard_count, panel_count, query_count, metrics, measurements, buckets) =
+            if let Some(state) = state {
+                (
+                    state.dashboards.len(),
+                    state.panels.len(),
+                    state.query_count,
+                    ordered_unique_strings(&state.metrics),
+                    ordered_unique_strings(&state.measurements),
+                    ordered_unique_strings(&state.buckets),
+                )
+            } else {
+                (0, 0, 0, Vec::new(), Vec::new(), Vec::new())
+            };
+        rows.push(ExportInspectionDatasourceSummaryRow {
+            datasource: inventory.name.clone(),
+            datasource_uid: inventory.uid.clone(),
+            datasource_type: inventory.datasource_type.clone(),
+            family: normalize_datasource_family(&inventory.datasource_type),
+            dashboard_count,
+            panel_count,
+            query_count,
+            orphaned: (dashboard_count == 0 && query_count == 0).to_string(),
+            metrics,
+            measurements,
+            buckets,
+        });
+    }
+
+    for (key, state) in by_key {
+        if let Some(filter) = datasource_filter {
+            if key != filter && state.datasource != filter && state.datasource_uid != filter {
+                continue;
+            }
+        }
+        rows.push(ExportInspectionDatasourceSummaryRow {
+            datasource: state.datasource,
+            datasource_uid: state.datasource_uid,
+            datasource_type: String::new(),
+            family: "unknown".to_string(),
+            dashboard_count: state.dashboards.len(),
+            panel_count: state.panels.len(),
+            query_count: state.query_count,
+            orphaned: "false".to_string(),
+            metrics: ordered_unique_strings(&state.metrics),
+            measurements: ordered_unique_strings(&state.measurements),
+            buckets: ordered_unique_strings(&state.buckets),
+        });
+    }
+
+    rows.sort_by(|left, right| {
+        left.datasource
+            .cmp(&right.datasource)
+            .then(left.datasource_uid.cmp(&right.datasource_uid))
+    });
+    let active_count = rows.iter().filter(|item| item.orphaned != "true").count();
+    let orphaned_count = rows.iter().filter(|item| item.orphaned == "true").count();
+
+    ExportInspectionDatasourceSummaryDocument {
+        summary: ExportInspectionDatasourceSummaryDocumentSummary {
+            dashboard_count: report.summary.dashboard_count,
+            query_record_count: report.queries.len(),
+            datasource_count: rows.len(),
+            active_datasource_count: active_count,
+            orphaned_datasource_count: orphaned_count,
+        },
+        datasources: rows,
     }
 }
 

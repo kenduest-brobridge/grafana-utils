@@ -28,13 +28,28 @@ use super::{
 pub struct TeamDeleteArgs {
     #[command(flatten)]
     pub common: CommonCliArgs,
-    #[arg(long, conflicts_with = "name")]
+    #[arg(
+        long,
+        help_heading = "Target Selection",
+        conflicts_with = "name",
+        help = "Target one team by numeric Grafana team id."
+    )]
     pub team_id: Option<String>,
-    #[arg(long, conflicts_with = "team_id")]
+    #[arg(
+        long,
+        help_heading = "Target Selection",
+        conflicts_with = "team_id",
+        help = "Target one team by exact name."
+    )]
     pub name: Option<String>,
-    #[arg(long, default_value_t = false)]
+    #[arg(
+        long,
+        help_heading = "Safety",
+        default_value_t = false,
+        help = "Skip the interactive confirmation prompt."
+    )]
     pub yes: bool,
-    #[arg(long, default_value_t = false)]
+    #[arg(long, default_value_t = false, help_heading = "Output Options")]
     pub json: bool,
 }
 
@@ -42,13 +57,28 @@ pub struct TeamDeleteArgs {
 pub struct ServiceAccountDeleteArgs {
     #[command(flatten)]
     pub common: CommonCliArgs,
-    #[arg(long = "service-account-id", conflicts_with = "name")]
+    #[arg(
+        long = "service-account-id",
+        help_heading = "Target Selection",
+        conflicts_with = "name",
+        help = "Target one service account by numeric id."
+    )]
     pub service_account_id: Option<String>,
-    #[arg(long, conflicts_with = "service_account_id")]
+    #[arg(
+        long,
+        help_heading = "Target Selection",
+        conflicts_with = "service_account_id",
+        help = "Target one service account by exact name."
+    )]
     pub name: Option<String>,
-    #[arg(long, default_value_t = false)]
+    #[arg(
+        long,
+        help_heading = "Safety",
+        default_value_t = false,
+        help = "Skip the interactive confirmation prompt."
+    )]
     pub yes: bool,
-    #[arg(long, default_value_t = false)]
+    #[arg(long, default_value_t = false, help_heading = "Output Options")]
     pub json: bool,
 }
 
@@ -56,17 +86,42 @@ pub struct ServiceAccountDeleteArgs {
 pub struct ServiceAccountTokenDeleteArgs {
     #[command(flatten)]
     pub common: CommonCliArgs,
-    #[arg(long = "service-account-id", conflicts_with = "name")]
+    #[arg(
+        long = "service-account-id",
+        help_heading = "Target Selection",
+        conflicts_with = "name",
+        help = "Target one service account by numeric id."
+    )]
     pub service_account_id: Option<String>,
-    #[arg(long, conflicts_with = "service_account_id")]
+    #[arg(
+        long,
+        help_heading = "Target Selection",
+        conflicts_with = "service_account_id",
+        help = "Target one service account by exact name."
+    )]
     pub name: Option<String>,
-    #[arg(long = "token-id", conflicts_with = "token_name")]
+    #[arg(
+        long = "token-id",
+        help_heading = "Target Selection",
+        conflicts_with = "token_name",
+        help = "Target token by numeric token id."
+    )]
     pub token_id: Option<String>,
-    #[arg(long = "token-name", conflicts_with = "token_id")]
+    #[arg(
+        long = "token-name",
+        help_heading = "Target Selection",
+        conflicts_with = "token_id",
+        help = "Target token by exact token name."
+    )]
     pub token_name: Option<String>,
-    #[arg(long, default_value_t = false)]
+    #[arg(
+        long,
+        help_heading = "Safety",
+        default_value_t = false,
+        help = "Skip the interactive confirmation prompt."
+    )]
     pub yes: bool,
-    #[arg(long, default_value_t = false)]
+    #[arg(long, default_value_t = false, help_heading = "Output Options")]
     pub json: bool,
 }
 

@@ -1,0 +1,171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://grafana-utils.local/docs/internal/schemas/grafana-utils-sync-apply-intent.schema.json",
+  "title": "grafana-utils-sync-apply-intent",
+  "type": "object",
+  "required": [
+    "kind",
+    "schemaVersion",
+    "traceId",
+    "stage",
+    "stepIndex",
+    "parentTraceId",
+    "reviewRequired",
+    "reviewed",
+    "approved",
+    "allowPrune",
+    "summary",
+    "operations"
+  ],
+  "properties": {
+    "kind": {
+      "const": "grafana-utils-sync-apply-intent"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "traceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stage": {
+      "const": "apply"
+    },
+    "stepIndex": {
+      "const": 3
+    },
+    "parentTraceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewRequired": {
+      "type": "boolean"
+    },
+    "reviewed": {
+      "type": "boolean"
+    },
+    "approved": {
+      "type": "boolean",
+      "const": true
+    },
+    "allowPrune": {
+      "type": "boolean"
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "would_create",
+        "would_update",
+        "would_delete"
+      ],
+      "properties": {
+        "would_create": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "would_update": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "would_delete": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "identity",
+          "action"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "dashboard",
+              "datasource",
+              "folder",
+              "alert"
+            ]
+          },
+          "identity": {
+            "type": "string",
+            "minLength": 1
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "would-create",
+              "would-update",
+              "would-delete"
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "preflightSummary": {
+      "type": "object",
+      "required": [
+        "kind",
+        "checkCount",
+        "okCount",
+        "blockingCount"
+      ],
+      "properties": {
+        "kind": {
+          "const": "grafana-utils-sync-preflight"
+        },
+        "checkCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "okCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blockingCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "bundlePreflightSummary": {
+      "type": "object",
+      "required": [
+        "kind",
+        "resourceCount",
+        "syncBlockingCount",
+        "providerBlockingCount"
+      ],
+      "properties": {
+        "kind": {
+          "const": "grafana-utils-sync-bundle-preflight"
+        },
+        "resourceCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "syncBlockingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "providerBlockingCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "alertAssessment": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,135 +1,78 @@
-# 📊 Grafana Utilities (Operator Toolkit)
+# Grafana Utilities
 
 Language: **English** | [繁體中文版](README.zh-TW.md)
 
-`grafana-utils` is an operator-focused toolkit designed for Grafana administrators and SREs.
+`grafana-util` is a Rust-first operator CLI for Grafana inventory, backup, drift review, and staged sync work.
 
-### 💡 The Philosophy: Why This Tool?
+## Scope
 
-**"Official tools are for users. Grafana Utilities is for admins."**
+- `dashboard`: list, export, import, diff, inspect-export, inspect-live
+- `datasource`: list, add, modify, delete, export, import, diff
+- `alert`: export, import, diff, list-rules, list-contact-points, list-mute-timings, list-templates
+- `access`: user, team, org, service-account lifecycle and snapshot workflows
+- `sync`: summary, plan, review, preflight, assess-alerts, bundle-preflight, apply
 
-While the official Grafana UI and CLI are excellent for day-to-day interactions, they often fall short when managing **environments at scale**—dozens of datasources, hundreds of dashboards, and multiple clusters. Administrators frequently face these operational challenges:
+## Build
 
-- **Inventory Blind Spots**: Difficult to quickly answer "What assets exist?", "Which datasources are unused or broken?", or "What changed since the last snapshot?"
-- **Migration Friction**: Manual export/import struggles to preserve folder structures and UID consistency without repeatable, automated workflows.
-- **Risky Live Mutations**: Applying changes directly to production is dangerous. The lack of a preview (dry-run) mechanism can lead to broken dashboards or silent alert failures.
-- **Fragmented Governance**: Dashboards, datasources, and access rules often drift into inconsistent manual habits instead of a standardized workflow.
-
-`grafana-utils` turns these problems into **standardized CLI operations** with stable outputs, diffing capabilities, dry-run support, and environment-to-environment state synchronization.
-
----
-
-## 🚀 Key Capabilities & Advantages
-
-### 1. Deep Environment Inventory
-- Full-spectrum scanning of Dashboards, Datasources, Alerting rules, Organizations, Users, Teams, and Service Accounts.
-- Multiple output modes (Table, CSV, JSON) for human review or CI/CD integration.
-
-### 2. Safe Change Management
-- **Diffing**: Compare local snapshots with live environments before committing any changes.
-- **Dry-run Support**: Preview expected actions (Create/Update/Skip) in detail to ensure operational safety.
-
-### 3. Smart Backup & Migration
-- **Folder-aware Workflows**: Automatically reconstruct folder hierarchies and handle path-matching across environments.
-- **State Replay**: Transform Grafana state into Git-ops-friendly JSON for rapid restoration or environment mirroring.
-
-### 4. Governance-Oriented Inspection
-- Analyze dashboard structures and query inventory to identify redundant or inefficient resources.
-- Optimized for large-scale instances using high-performance pagination and processing (powered by Rust).
-
-### Support Matrix
-
-| Domain | List / Inspect | Add / Modify / Delete | Export / Import / Diff | Notes |
-| --- | --- | --- | --- | --- |
-| Dashboard | Yes | No | Yes | Import-driven changes, folder-aware migration, dry-run support, and routed multi-org export/import with missing-org creation |
-| Alerting | Yes | No | Yes | Import-driven rule and contact-point workflows |
-| Datasource | Yes | Yes | Yes | Dry-run and diff supported, plus all-org export and routed multi-org import with missing-org creation |
-| Access User | Yes | Yes | Yes | Supports `--password-file` / `--prompt-user-password` and `--set-password-file` / `--prompt-set-password` |
-| Access Org | Yes | Yes | Yes | Includes org membership replay during import |
-| Access Team | Yes | Yes | Yes | Membership-aware export/import/diff |
-| Access Service Account | Yes | Yes | Yes | Snapshot export/import/diff plus token add/delete workflows |
-
----
-
-## 🏗️ Technical Architecture
-
-This project leverages a hybrid approach for efficiency:
-- **Python (Workflow Logic)**: Handles CLI definitions, complex business logic, and flexible integration workflows.
-- **Rust (Performance Engine)**: Powers high-performance data parsing, query validation, and provides standalone binaries.
-
----
-
-## 🛠️ Quick Start
-
-### Installation
-
-**Python Package:**
 ```bash
-python3 -m pip install .
+cargo build --release --manifest-path rust/Cargo.toml --bin grafana-util
+grafana-util -h
 ```
 
-**Rust Binary:**
+## Quick Start
+
+List dashboards from a local Grafana:
+
 ```bash
-cd rust && cargo build --release
-```
-
-### Downloads
-
-Tagged GitHub releases publish prebuilt Rust packages under **Assets**:
-
-- [Browse GitHub Releases](../../releases)
-
-- `grafana-utils-rust-linux-amd64-vX.Y.Z.tar.gz`
-- `grafana-utils-rust-macos-arm64-vX.Y.Z.tar.gz`
-
-Each archive includes:
-
-- `bin/grafana-util`
-- `README.md`, `README.zh-TW.md`, `LICENSE`
-- `docs/user-guide.md`, `docs/user-guide-TW.md`
-
-### Common Usage Example
-
-**Batch Export Dashboards (Preserving Structure):**
-```bash
-grafana-util dashboard export \
+grafana-util dashboard list \
   --url http://localhost:3000 \
   --basic-user admin \
   --basic-password admin \
-  --export-dir ./dashboards \
-  --overwrite
+  --table
 ```
 
-**Preview Changes Before Importing:**
+Preview a dashboard restore before changing Grafana:
+
 ```bash
 grafana-util dashboard import \
   --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
   --import-dir ./dashboards/raw \
   --replace-existing \
-  --dry-run --table
+  --dry-run \
+  --output-format table
 ```
 
----
+Preview a datasource import:
 
-## 📄 Documentation
+```bash
+grafana-util datasource import \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
+  --import-dir ./datasources \
+  --replace-existing \
+  --dry-run \
+  --output-format table
+```
 
-- **[Traditional Chinese Guide](docs/user-guide-TW.md)**: Detailed commands and authentication rules.
-- **[English User Guide](docs/user-guide.md)**: Standard operator instructions.
-- **[Technical Overview (Python)](docs/overview-python.md)** | **[Technical Overview (Rust)](docs/overview-rust.md)**
-- **[Developer Guide](docs/DEVELOPER.md)**: Maintenance and contribution notes.
+Build a staged sync plan from local JSON:
 
----
+```bash
+grafana-util sync plan \
+  --desired-file ./tests/fixtures/rust_sync_demo_desired.json \
+  --live-file ./tests/fixtures/rust_sync_demo_live.json
+```
 
-## 📈 Compatibility
-- **OS**: RHEL 8+, macOS, Linux.
-- **Runtime**: Python 3.9+.
-- **Grafana**: Supports v8.x, v9.x, v10.x+.
+## Documentation
 
-## Project Status
+- [User Guide](docs/user-guide.md)
+- [Traditional Chinese User Guide](docs/user-guide-TW.md)
+- [Developer Guide](docs/DEVELOPER.md)
+- [Rust Technical Overview](docs/overview-rust.md)
 
-This project is still in active development.
+## Compatibility
 
-- Expect ongoing CLI, workflow, and documentation refinement.
-- Bug reports, edge cases, and operator feedback are welcome.
-- Please use GitHub issues or pull requests for reporting and discussion.
-- Maintainer: `Kenduest`
+- Grafana version used for current local live examples: `12.4.1`
+- Tested local smoke paths in this repo: Rust live smoke plus local Docker-backed sample-data workflows

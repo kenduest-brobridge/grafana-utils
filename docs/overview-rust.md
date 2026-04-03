@@ -29,6 +29,10 @@ Rust crate 提供四個 CLI domain 的核心執行能力：
     2. 否則交由 `cli::parse_cli_from` 與 `cli::run_cli`。
   - 只處理 process exit 邏輯，不處理 domain 行為。
 
+- `rust/src/bin/grafana-access-utils.rs`
+  - 兼容 shim，直接委派給 access domain 的 parser + runner。
+  - 用於保留舊命令相容鏈路。
+
 ### 2.2 Unified Dispatcher 層
 
 - `rust/src/cli.rs`
@@ -51,11 +55,16 @@ Rust crate 提供四個 CLI domain 的核心執行能力：
 - `rust/src/access.rs`
   - 處理 access 命令入口與巢狀 dispatch（user/team/service-account）。
   - `run_access_cli_with_request` 可注入 request 函式，這是測試時 decouple transport 的主要入口。
-  - `run_access_cli` 主要負責 normalize 與 client 注入。
+  - `run_access_cli` 主要負責 normalize，並透過小型 helper 從各 command 擷取 `common` 設定後建立正確 client，再交給 request-injection runner。
 
 - `rust/src/datasource.rs`
   - 管理 list/export/import/diff 四類流程與輸出模式（table/csv/json）。
   - `run_datasource_cli` 先 normalize 再 build client，接著進入對應 handler。
+
+- `rust/src/sync.rs`
+  - 管理 Rust `sync` namespace，包含 `summary`、`plan`、`review`、`apply`、`preflight`、`bundle-preflight`、`assess-alerts`。
+  - 目前的維護心智模型是「local/document-first with optional live fetch/apply hooks」：先產生 reviewable JSON，再經 review / preflight gate，最後才允許受限 live apply。
+  - 穩定 sync contract 匯入應以 `crate::sync_contracts` 為主；`sync_workbench` 只保留相容用途。
 
 ### 2.4 Domain 子模組（實作重點）
 
@@ -63,8 +72,15 @@ Rust crate 提供四個 CLI domain 的核心執行能力：
 - `rust/src/alert_*`：`alert_cli_defs`, `alert_client`, `alert_list`。
 - `rust/src/access_*`：`access_cli_defs`, `access_render`, `access_user`, `access_team`, `access_service_account`, `access_pending_delete`。
 - `rust/src/datasource_diff.rs`：diff 合併/欄位對齊與結果摘要模型。
+- `rust/src/sync_workbench.rs`：`crate::sync_contracts` 背後的相容實作檔，保留舊路徑但不再作為首選匯入名稱。
+- `rust/src/sync_preflight.rs`
+  - 純 staged preflight contract：把 datasource / dashboard dependency 與 alert live-apply policy 轉成 reviewable checks。
+- `rust/src/sync_bundle_preflight.rs`
+  - 把 sync preflight、alert assessment、datasource provider checks 聚合成一份 bundle-level review document。
 - `rust/src/http.rs`：HTTP transport 實作、query/url 建構、錯誤對映。
 - `rust/src/common.rs`：錯誤型別、訊息、解析工具與共用 helper。
+- `docs/internal/rust-sync-artifacts.md`
+  - Rust `sync` staged artifact kind、fixture 檔位置、與 fixture-driven 測試規則的集中說明。
 
 ## 3) 執行資料流（可複製做 debug）
 
@@ -100,6 +116,18 @@ Rust crate 提供四個 CLI domain 的核心執行能力：
 3. 分流到 list/export/import/diff 分支。  
 4. list 直接輸出；export 產生 `datasources.json` 與 index/manifest；import/diff 依錄入 metadata 與 live records 驗證。
 
+### Sync 命令流
+
+1. `cli` 命令 -> `SyncGroupCommand`。
+2. `sync::run_sync_cli` 依子命令分流，所有 staged artifact 都先讀寫本地 JSON。
+3. 典型路徑：
+   - `summary`: 只做 desired-state normalization 與 kind/count summary。
+   - `plan`: desired vs live 比對，輸出 review-required plan；可用 `--fetch-live` 改由 Grafana 抓 live inventory。
+   - `review`: 驗證 review token，將 plan 標成 reviewed，並保留 trace/lineage/audit metadata。
+   - `preflight` / `bundle-preflight`: 建 staged checks，之後可被 `apply` 當作 gating input。
+   - `apply`: 先檢查 reviewed state、approval、lineage、preflight，再產生 apply intent，或在受支援資源上進入 limited live apply。
+4. `assess-alerts` 是 policy inspection surface，不是 mutation surface；它的輸出應和 `plan` / `preflight` 的 alert semantics 一致。
+
 ## 4) 關鍵設計意圖（不只是概念，是真實維運規範）
 
 - 命令可讀性優先於「壓縮重構」：`cli`/domain 分層清楚時，help text、deprecation alias、parser 改動最不容易破壞執行邏輯。
@@ -108,13 +136,42 @@ Rust crate 提供四個 CLI domain 的核心執行能力：
   - 重要 parser 行為有 `*_cli_defs` + `*_rust_tests.rs` 覆蓋。
 - 向後相容優先：legacy alias 與 namespaced command 在 `cli.rs` 集中管理，降低散落修改風險。
 - 模組邊界不混：transport 由 `http`/`common` 做；parser 規格在 `*_cli_defs.rs`；執行路由在 domain runner；IO/輸出集中在子模組。
+- `sync` 維持 staged-contract-first：
+  - `sync.rs` 是 CLI / orchestration / live bridge。
+  - `sync_contracts` 是穩定 import path。
+  - `sync_workbench.rs` 是 summary/plan/apply-intent 的 compatibility implementation。
+  - `sync_preflight.rs` 與 `sync_bundle_preflight.rs` 是純 review document builders。
+  - artifact kind 與 canonical fixture 路徑請集中看 `docs/internal/rust-sync-artifacts.md`，不要把 fixture 規則分散寫在多份 maintainer 文檔。
 
-## 5) 你要改某條命令時，建議改哪一層
+## 5) Rust Sync 維護規則
+
+- `traceId` 是同一條 staged 流程的主鍵；沒有明確 trace 時可由 CLI 產生 deterministic id，但後續 artifact 不能隨意換掉它。
+- `stage` / `stepIndex` / `parentTraceId` 是 lineage contract：
+  - `plan` = step 1
+  - `review` = step 2，parent 指向 plan trace
+  - `preflight` / `bundle-preflight` = step 2，parent 指向 plan trace
+  - `apply` = step 3，parent 指向 reviewed plan trace
+- `apply` 的 gate 不是只有 `reviewed=true`：
+  - 要求 explicit approval
+  - 如果有 preflight / bundle-preflight，必須通過 blocking-count 與 lineage/trace validation
+  - lineage-aware artifact 不能跨 plan 混用
+- managed scope 目前只限定 `dashboard`、`datasource`、`folder`、`alert`
+  - `alert` 仍是受限語意，必須帶 `managedFields`
+  - `unmanaged` 表示 live-only 但不在 prune scope
+  - `would-delete` 只在 `allow_prune` 明確開啟時出現，這是 Git-managed scope 的刪除邊界
+- 如果要新增 staged metadata，優先補在 artifact JSON 與 renderers，再補 CLI tests；不要只在文字輸出層藏規則。
+
+## 6) 你要改某條命令時，建議改哪一層
 
 - 新增/調整 CLI 旗標：
   - 先改 `*_cli_defs.rs`（例如 `dashboard_cli_defs.rs`）  
   - 再看 `cli.rs` 是否需要 alias/command 樹更新  
   - 最後補 parser/help/錯誤訊息對齊測試
+- 改 Rust `sync` 的 staged contract：
+  - `plan/apply-intent` shape -> `sync_contracts` / `sync_workbench.rs`
+  - dependency checks / blocking summary -> `sync_preflight.rs`
+  - cross-resource aggregate review doc -> `sync_bundle_preflight.rs`
+  - CLI wiring / live bridge / lineage gate -> `sync.rs`
 - 改單一命令流程：
   - 只改對應 domain orchestrator（如 `dashboard.rs` 或 `alert.rs`）中的 dispatch + runner。
 - 改 API 呼叫/傳輸：
@@ -127,15 +184,18 @@ Rust crate 提供四個 CLI domain 的核心執行能力：
   - 再加 runner 分派（`cli.rs`）  
   - 最後加 domain orchestrator 與子模組。
 
-## 6) 常見維運風險與紅旗（先看這裡）
+## 7) 常見維運風險與紅旗（先看這裡）
 
 - 避免在 `cli.rs` 新增 domain 判斷邏輯（破壞 dispatch 可測試性）。  
 - 避免直接把 API 欄位轉換放進 `run_cli` 或 `run_*_cli`（應放在 handler 專屬模組）。  
 - legacy alias 不能隨意刪除；需保留 fallback 覆蓋路徑並更新 `help text`。  
 - 資料輸出格式旗標衝突（`--table`, `--csv`, `--json`）要保持單一路徑規則。  
 - 跨 domain 共用常數要放在各 domain module 的 `pub const`，不要散在 handler 實作內聯。
+- 不要讓 `sync` 的 review / preflight / bundle-preflight 規則只存在 CLI 層；可重用的 gating 應留在 contract helper 或明確 validator。
+- 不要把 `unmanaged` 和 `would-delete` 混成同一件事；前者是 scope 外 live drift，後者是 operator 明確允許 prune 後的刪除意圖。
+- alert sync 若要放寬 live apply，必須同步更新 assessment、preflight、plan summary、bundle summary 與 tests，不能只改單一 renderer。
 
-## 7) 快速驗證指令（維護 SOP）
+## 8) 快速驗證指令（維護 SOP）
 
 ### 單純語法/邏輯
 
@@ -152,7 +212,7 @@ Rust crate 提供四個 CLI domain 的核心執行能力：
 - 新命令/旗標新增前：先跑 `cargo test --quiet`  
 - 加入輸出變更後：補對應測試，特別是 `*_rust_tests.rs` 中的 parser 或 formatter 行為
 
-## 8) 維護節點參考（Rust）
+## 9) 維護節點參考（Rust）
 
 - 新增/調整命令：先看 `cli.rs` 的統一 topology，再更新 `dashboard.rs|alert.rs|access.rs|datasource.rs` 的 runner。
 - 改 parser：先改對應 `*_cli_defs.rs` 再補 test。

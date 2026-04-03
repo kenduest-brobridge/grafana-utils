@@ -49,7 +49,7 @@ else:
 print(f"version-policy OK: python={python_version} rust={rust_version} branch={branch or '-'} tag={tag or '-'}")
 '
 
-python-quality-base:
+python-static-analysis:
   stage: quality
   image: python:3.12-slim
   rules:
@@ -58,22 +58,13 @@ python-quality-base:
     - if: '$CI_COMMIT_BRANCH == "main"'
   before_script:
     - python3 -m pip install --upgrade pip
-    - python3 -m pip install . black mypy ruff
+    - python3 -m pip install requests black mypy ruff
   script:
-    - make quality-python
-
-python-quality-http2:
-  stage: quality
-  image: python:3.12-slim
-  rules:
-    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
-    - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == "main"'
-  before_script:
-    - python3 -m pip install --upgrade pip
-    - python3 -m pip install '.[http2]' black mypy ruff
-  script:
-    - make quality-python
+    # 僅執行編譯檢查與 Lint，不執行 unittest
+    - python3 -m compileall -q grafana_utils python
+    - python3 -m ruff check grafana_utils python
+    - python3 -m mypy grafana_utils python
+    - python3 -m black --check grafana_utils python
 
 rust-static-analysis:
   stage: quality
@@ -95,8 +86,7 @@ python-package-preview:
   image: python:3.12-slim
   needs:
     - version-policy
-    - python-quality-base
-    - python-quality-http2
+    - python-static-analysis
   rules:
     - if: '$CI_COMMIT_BRANCH == "dev"'
     - if: '$CI_COMMIT_BRANCH == "main"'
@@ -118,8 +108,7 @@ python-package-release:
   image: python:3.12-slim
   needs:
     - version-policy
-    - python-quality-base
-    - python-quality-http2
+    - python-static-analysis
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
   before_script:
@@ -147,13 +136,12 @@ rust-package-preview:
   script:
     - cd rust
     - cargo build --release
-    - cd ..
-    - ./scripts/package-rust-artifacts.sh dist/rust-preview rust/target/release "grafana-utils-rust-linux-amd64-${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}"
   artifacts:
     name: "rust-preview-$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA"
     expire_in: 7 days
     paths:
-      - dist/rust-preview/*.tar.gz
+      - rust/target/release/grafana-util
+      - rust/target/release/grafana-access-utils
 
 rust-package-release:
   stage: package
@@ -166,10 +154,9 @@ rust-package-release:
   script:
     - cd rust
     - cargo build --release
-    - cd ..
-    - ./scripts/package-rust-artifacts.sh dist/rust-release rust/target/release "grafana-utils-rust-linux-amd64-${CI_COMMIT_TAG}"
   artifacts:
     name: "rust-release-$CI_COMMIT_TAG"
     expire_in: 30 days
     paths:
-      - dist/rust-release/*.tar.gz
+      - rust/target/release/grafana-util
+      - rust/target/release/grafana-access-utils

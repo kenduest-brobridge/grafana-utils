@@ -1,0 +1,19 @@
+[
+  {
+    "kind": "folder",
+    "uid": "ops",
+    "title": "Ops",
+    "body": {
+      "title": "Operations"
+    }
+  },
+  {
+    "kind": "datasource",
+    "uid": "prom-main",
+    "name": "Prometheus Main",
+    "body": {
+      "name": "Prometheus",
+      "type": "prometheus"
+    }
+  }
+]

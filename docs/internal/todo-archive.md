@@ -4,12 +4,18 @@ This file preserves completed and superseded items that previously lived in `TOD
 
 `TODO.md` should stay focused on active backlog and current constraints.
 
+Historical note:
+
+- This archive intentionally preserves older wording from the time each item was active.
+- Current preferred user-facing commands use `grafana-util ...`; older `grafana-utils ...`, wrapper-path, and compatibility-binary references below should be read as historical context, not current primary guidance.
+- Current source-tree Python guidance is the unified module entrypoint `python3 -m grafana_utils ...`, not an older wrapper path.
+
 ## Completed Access And CLI Shape Work
 
-- unified primary CLI is now `grafana-utils`
-- Python source-tree wrapper is now `python/grafana-utils.py`
+- unified primary CLI is now `grafana-util`
+- Python source-tree usage is now centered on the unified module entrypoint
 - Python `grafana-access-utils` shim was removed
-- Python and Rust both support access-management commands through `grafana-utils access ...`
+- Python and Rust both support access-management commands through `grafana-util access ...`
 - implemented access `user list`
 - implemented access `user add`
 - implemented access `user modify`
@@ -30,32 +36,32 @@ This file preserves completed and superseded items that previously lived in `TOD
 ### Access Command Shape
 
 ```text
-grafana-utils access user list
-grafana-utils access user add
-grafana-utils access user modify
-grafana-utils access user delete
+grafana-util access user list
+grafana-util access user add
+grafana-util access user modify
+grafana-util access user delete
 
-grafana-utils access team list
-grafana-utils access team add
-grafana-utils access team modify
-grafana-utils access team delete
+grafana-util access team list
+grafana-util access team add
+grafana-util access team modify
+grafana-util access team delete
 
-grafana-utils access group list
-grafana-utils access group add
-grafana-utils access group modify
-grafana-utils access group delete
+grafana-util access group list
+grafana-util access group add
+grafana-util access group modify
+grafana-util access group delete
 
-grafana-utils access service-account list
-grafana-utils access service-account add
-grafana-utils access service-account delete
-grafana-utils access service-account token add
-grafana-utils access service-account token delete
+grafana-util access service-account list
+grafana-util access service-account add
+grafana-util access service-account delete
+grafana-util access service-account token add
+grafana-util access service-account token delete
 ```
 
 ### Access Notes
 
 - `group` remains a compatibility alias for `team`
-- Rust may still keep `grafana-access-utils` as a compatibility binary, but the primary command model is `grafana-utils access ...`
+- Rust may still keep `grafana-access-utils` as a compatibility binary, but the primary command model is `grafana-util access ...`
 - Python should not reintroduce a separate `grafana-access-utils` wrapper or console script
 
 ## Completed Internal Refactors

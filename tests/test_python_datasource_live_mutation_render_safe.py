@@ -6,8 +6,12 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-MODULE_PATH = REPO_ROOT / "grafana_utils" / "datasource" / "live_mutation_render_safe.py"
-render_safe = importlib.import_module("grafana_utils.datasource.live_mutation_render_safe")
+MODULE_PATH = (
+    REPO_ROOT / "grafana_utils" / "datasource" / "live_mutation_render_safe.py"
+)
+render_safe = importlib.import_module(
+    "grafana_utils.datasource.live_mutation_render_safe"
+)
 GrafanaError = importlib.import_module("grafana_utils.dashboard_cli").GrafanaError
 
 
@@ -17,7 +21,9 @@ class DatasourceLiveMutationRenderSafeTests(unittest.TestCase):
         ast.parse(source, filename=str(MODULE_PATH), feature_version=(3, 9))
 
     def test_validate_columns_rejects_unknown_values(self):
-        with self.assertRaisesRegex(GrafanaError, "Unsupported live mutation dry-run column"):
+        with self.assertRaisesRegex(
+            GrafanaError, "Unsupported live mutation dry-run column"
+        ):
             render_safe.validate_columns(["uid", "bad_column"])
 
     def test_render_table_uses_selected_columns(self):

@@ -22,7 +22,9 @@ def _render_rows(records, columns):
             widths[index] = max(widths[index], len(value))
 
     def render_row(values):
-        return "  ".join(values[index].ljust(widths[index]) for index in range(len(values)))
+        return "  ".join(
+            values[index].ljust(widths[index]) for index in range(len(values))
+        )
 
     lines = [render_row(headers), render_row(["-" * width for width in widths])]
     for row in rows:
@@ -46,8 +48,7 @@ def build_live_mutation_dry_run_record(operation, plan, spec=None, uid=None, nam
 
 def render_live_mutation_dry_run_table(records, include_header=True, columns=None):
     selected_columns = list(
-        columns
-        or ["operation", "uid", "name", "type", "match", "action", "targetId"]
+        columns or ["operation", "uid", "name", "type", "match", "action", "targetId"]
     )
     lines = _render_rows(records, selected_columns)
     if include_header:
@@ -58,8 +59,12 @@ def render_live_mutation_dry_run_table(records, include_header=True, columns=Non
 def render_live_mutation_dry_run_json(records):
     summary = {
         "itemCount": len(records),
-        "createCount": len([item for item in records if item.get("action") == "would-create"]),
-        "deleteCount": len([item for item in records if item.get("action") == "would-delete"]),
+        "createCount": len(
+            [item for item in records if item.get("action") == "would-create"]
+        ),
+        "deleteCount": len(
+            [item for item in records if item.get("action") == "would-delete"]
+        ),
         "blockedCount": len(
             [
                 item

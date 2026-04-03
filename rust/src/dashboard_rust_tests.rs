@@ -13,10 +13,11 @@ use super::{
     list_dashboards_with_request, list_data_sources_with_request, parse_cli_from,
     render_dashboard_summary_csv, render_dashboard_summary_json, render_dashboard_summary_table,
     render_data_source_csv, render_data_source_json, render_data_source_table,
-    render_import_dry_run_json, render_import_dry_run_table, CommonCliArgs, DashboardCliArgs,
-    DashboardCommand, DiffArgs, ExportArgs, FolderInventoryStatusKind, ImportArgs,
-    InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, ListArgs,
-    ListDataSourcesArgs, DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME,
+    render_import_dry_run_json, render_import_dry_run_table, try_normalize_dashboard_cli_args,
+    CommonCliArgs, DashboardCliArgs, DashboardCommand, DiffArgs, ExportArgs,
+    FolderInventoryStatusKind, ImportArgs, InspectExportArgs, InspectExportReportFormat,
+    InspectLayout, InspectLiveArgs, InspectOutputFormat, InspectRenderFormat, InspectView,
+    ListArgs, ListDataSourcesArgs, DATASOURCE_INVENTORY_FILENAME, EXPORT_METADATA_FILENAME,
     FOLDER_INVENTORY_FILENAME, TOOL_SCHEMA_VERSION,
 };
 use crate::common::api_response;
@@ -74,6 +75,7 @@ fn make_import_args(import_dir: PathBuf) -> ImportArgs {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     }
 }
@@ -301,47 +303,6 @@ fn parse_cli_supports_list_output_format_csv() {
 }
 
 #[test]
-fn parse_cli_supports_list_data_sources_mode() {
-    let args = parse_cli_from([
-        "grafana-util",
-        "list-data-sources",
-        "--url",
-        "https://grafana.example.com",
-        "--table",
-    ]);
-
-    match args.command {
-        DashboardCommand::ListDataSources(list_args) => {
-            assert_eq!(list_args.common.url, "https://grafana.example.com");
-            assert!(list_args.table);
-            assert!(!list_args.csv);
-            assert!(!list_args.json);
-            assert!(!list_args.no_header);
-        }
-        _ => panic!("expected list-data-sources command"),
-    }
-}
-
-#[test]
-fn parse_cli_supports_list_data_sources_output_format_json() {
-    let args = parse_cli_from([
-        "grafana-util",
-        "list-data-sources",
-        "--output-format",
-        "json",
-    ]);
-
-    match args.command {
-        DashboardCommand::ListDataSources(list_args) => {
-            assert!(list_args.json);
-            assert!(!list_args.table);
-            assert!(!list_args.csv);
-        }
-        _ => panic!("expected list-data-sources command"),
-    }
-}
-
-#[test]
 fn parse_cli_supports_preferred_auth_aliases() {
     let args = parse_cli_from([
         "grafana-util",
@@ -436,11 +397,14 @@ fn export_help_explains_flat_layout() {
     let help = render_dashboard_subcommand_help("export");
     assert!(help.contains("Write dashboard files directly into each export variant directory"));
     assert!(help.contains("folder-based subdirectories on disk"));
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("grafana-util dashboard export --url http://localhost:3000 --export-dir ./dashboards --overwrite"));
 }
 
 #[test]
 fn export_help_describes_progress_and_verbose_modes() {
     let help = render_dashboard_subcommand_help("export");
+    assert!(help.contains("Connection And Auth:"));
     assert!(help.contains("--progress"));
     assert!(help.contains("<current>/<total>"));
     assert!(help.contains("-v, --verbose"));
@@ -464,6 +428,31 @@ fn import_help_explains_common_operator_flags() {
     assert!(help.contains("requires Basic auth"));
     assert!(help.contains("--require-matching-export-org"));
     assert!(help.contains("--output-columns"));
+    assert!(help.contains("Connection And Auth:"));
+    assert!(help.contains("Import Input And Org Routing:"));
+    assert!(help.contains("Import Behavior:"));
+    assert!(help.contains("Import Safety:"));
+    assert!(help.contains("Dry-Run Output:"));
+    assert!(help.contains("Progress And Logging:"));
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("grafana-util dashboard import --url http://localhost:3000 --import-dir ./dashboards/raw --replace-existing --dry-run --output-format table"));
+}
+
+#[test]
+fn list_and_diff_help_include_examples() {
+    let list_help = render_dashboard_subcommand_help("list");
+    assert!(list_help.contains("Connection And Auth:"));
+    assert!(list_help.contains("Examples:"));
+    assert!(list_help.contains(
+        "grafana-util dashboard list --url http://localhost:3000 --table --show-folder-path"
+    ));
+
+    let diff_help = render_dashboard_subcommand_help("diff");
+    assert!(diff_help.contains("Connection And Auth:"));
+    assert!(diff_help.contains("Examples:"));
+    assert!(diff_help.contains(
+        "grafana-util dashboard diff --url http://localhost:3000 --import-dir ./dashboards/raw"
+    ));
 }
 
 #[test]
@@ -600,6 +589,24 @@ fn parse_cli_supports_import_dry_run_output_columns() {
                     "file",
                 ]
             );
+        }
+        _ => panic!("expected import command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_import_continue_on_error_flag() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "import",
+        "--import-dir",
+        "./dashboards/raw",
+        "--continue-on-error",
+    ]);
+
+    match args.command {
+        DashboardCommand::Import(import_args) => {
+            assert!(import_args.continue_on_error);
         }
         _ => panic!("expected import command"),
     }
@@ -794,6 +801,62 @@ fn parse_cli_supports_inspect_export_output_format_flag() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_export_view_format_layout_flags() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--view",
+        "query",
+        "--format",
+        "table",
+        "--layout",
+        "tree",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(inspect_args.view, Some(InspectView::Query));
+            assert_eq!(inspect_args.format, Some(InspectRenderFormat::Table));
+            assert_eq!(inspect_args.layout, Some(InspectLayout::Tree));
+            assert_eq!(
+                inspect_args.report,
+                Some(InspectExportReportFormat::TreeTable)
+            );
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_inspect_export_summary_view_json_format() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--view",
+        "summary",
+        "--format",
+        "json",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(inspect_args.view, Some(InspectView::Summary));
+            assert_eq!(inspect_args.format, Some(InspectRenderFormat::Json));
+            assert!(inspect_args.json);
+            assert!(!inspect_args.table);
+            assert_eq!(inspect_args.report, None);
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_inspect_export_report_json_flag() {
     let args = parse_cli_from([
         "grafana-util",
@@ -910,6 +973,27 @@ fn parse_cli_supports_inspect_export_report_governance_flag() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_export_report_datasource_summary_flag() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--report",
+        "datasource-summary",
+    ]);
+    match args.command {
+        DashboardCommand::InspectExport(inspect_args) => {
+            assert_eq!(
+                inspect_args.report,
+                Some(InspectExportReportFormat::DatasourceSummary)
+            );
+        }
+        _ => panic!("expected inspect-export command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_inspect_export_help_full_flag() {
     let args = parse_cli_from([
         "grafana-util",
@@ -1014,6 +1098,57 @@ fn parse_cli_supports_inspect_live_output_format_flag() {
 }
 
 #[test]
+fn parse_cli_supports_inspect_live_output_format_datasource_summary_json() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-live",
+        "--url",
+        "https://grafana.example.com",
+        "--output-format",
+        "datasource-summary-json",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectLive(inspect_args) => {
+            assert_eq!(
+                inspect_args.output_format,
+                Some(InspectOutputFormat::DatasourceSummaryJson)
+            );
+            assert_eq!(inspect_args.report, None);
+        }
+        _ => panic!("expected inspect-live command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_inspect_live_view_format_flags() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-live",
+        "--url",
+        "https://grafana.example.com",
+        "--view",
+        "datasource",
+        "--format",
+        "json",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectLive(inspect_args) => {
+            assert_eq!(inspect_args.view, Some(InspectView::Datasource));
+            assert_eq!(inspect_args.format, Some(InspectRenderFormat::Json));
+            assert_eq!(
+                inspect_args.report,
+                Some(InspectExportReportFormat::DatasourceSummaryJson)
+            );
+            assert!(!inspect_args.json);
+            assert!(!inspect_args.table);
+        }
+        _ => panic!("expected inspect-live command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_inspect_live_report_tree_table_flag() {
     let args = parse_cli_from([
         "grafana-util",
@@ -1083,16 +1218,106 @@ fn parse_cli_supports_inspect_live_help_full_flag() {
 }
 
 #[test]
+fn inspect_help_mentions_view_format_and_layout_flags() {
+    let help = render_dashboard_subcommand_help("inspect-export");
+
+    assert!(help.contains("--view"));
+    assert!(help.contains("--format"));
+    assert!(help.contains("--layout"));
+    assert!(help.contains("--output-format"));
+}
+
+#[test]
+fn inspect_export_output_flags_are_grouped() {
+    let help = render_dashboard_subcommand_help("inspect-export");
+    let output_idx = help
+        .find("Output Options:")
+        .expect("missing Output Options section");
+    assert!(
+        help.find("--report-columns")
+            .expect("missing --report-columns")
+            > output_idx
+    );
+    assert!(
+        help.find("--report-filter-datasource")
+            .expect("missing --report-filter-datasource")
+            > output_idx
+    );
+    assert!(
+        help.find("--report-filter-panel-id")
+            .expect("missing --report-filter-panel-id")
+            > output_idx
+    );
+}
+
+#[test]
+fn normalize_dashboard_cli_args_rejects_inspect_format_without_view() {
+    let error = DashboardCliArgs::try_parse_from([
+        "grafana-util",
+        "inspect-export",
+        "--import-dir",
+        "./dashboards/raw",
+        "--format",
+        "json",
+    ])
+    .unwrap_err()
+    .to_string();
+    assert!(error.contains("--view <VIEW>"));
+}
+
+#[test]
+fn normalize_dashboard_cli_args_rejects_query_text_without_tree_layout() {
+    let parsed = DashboardCliArgs::try_parse_from([
+        "grafana-util",
+        "inspect-live",
+        "--url",
+        "https://grafana.example.com",
+        "--view",
+        "query",
+        "--format",
+        "text",
+    ])
+    .unwrap();
+
+    let error = try_normalize_dashboard_cli_args(parsed).unwrap_err();
+    assert!(error.contains("--view query with --format text requires --layout tree."));
+}
+
+#[test]
 fn inspect_live_help_mentions_report_and_panel_filter_flags() {
     let help = render_dashboard_subcommand_help("inspect-live");
+    assert!(help.contains("Connection And Auth:"));
 
     assert!(help.contains("--report"));
     assert!(help.contains("--output-format"));
+    assert!(help.contains("--view"));
+    assert!(help.contains("--format"));
     assert!(help.contains("--report-filter-panel-id"));
     assert!(help.contains("--help-full"));
-    assert!(help.contains("tree"));
-    assert!(help.contains("tree-table"));
     assert!(!help.contains("Extended Examples:"));
+}
+
+#[test]
+fn inspect_live_output_flags_are_grouped() {
+    let help = render_dashboard_subcommand_help("inspect-live");
+    let output_idx = help
+        .find("Output Options:")
+        .expect("missing Output Options section");
+    assert!(
+        help.find("--report-columns")
+            .expect("missing --report-columns")
+            > output_idx
+    );
+    assert!(
+        help.find("--report-filter-datasource")
+            .expect("missing --report-filter-datasource")
+            > output_idx
+    );
+    assert!(
+        help.find("--report-filter-panel-id")
+            .expect("missing --report-filter-panel-id")
+            > output_idx
+    );
 }
 
 #[test]
@@ -1114,9 +1339,9 @@ fn inspect_export_help_full_includes_extended_examples() {
 
     assert!(help.contains("--help-full"));
     assert!(help.contains("Extended Examples:"));
-    assert!(help.contains("--report tree-table"));
+    assert!(help.contains("--view query --format table --layout tree"));
     assert!(help.contains("--report-filter-datasource"));
-    assert!(help.contains("--report-columns"));
+    assert!(help.contains("--view datasource --format json"));
 }
 
 #[test]
@@ -1125,9 +1350,9 @@ fn inspect_live_help_full_includes_extended_examples() {
 
     assert!(help.contains("--help-full"));
     assert!(help.contains("Extended Examples:"));
-    assert!(help.contains("--report tree-table"));
+    assert!(help.contains("--view query --format table --layout tree"));
     assert!(help.contains("--report-filter-panel-id"));
-    assert!(help.contains("--report-columns"));
+    assert!(help.contains("--view governance --format table"));
 }
 
 #[test]
@@ -1142,7 +1367,7 @@ fn maybe_render_dashboard_help_full_from_os_args_handles_missing_required_args()
 
     assert!(help.contains("inspect-export"));
     assert!(help.contains("Extended Examples:"));
-    assert!(help.contains("--report tree-table"));
+    assert!(help.contains("--view query --format table --layout tree"));
 }
 
 #[test]
@@ -1227,27 +1452,17 @@ fn parse_cli_rejects_conflicting_list_org_scope_flags() {
 }
 
 #[test]
-fn parse_cli_supports_legacy_list_alias() {
-    let args = parse_cli_from(["grafana-util", "list-dashboard", "--json"]);
-
-    match args.command {
-        DashboardCommand::List(list_args) => assert!(list_args.json),
-        _ => panic!("expected list command"),
-    }
-}
-
-#[test]
-fn parse_cli_rejects_conflicting_list_data_sources_output_modes() {
+fn parse_cli_rejects_unrecognized_command_list_data_sources() {
     let error = DashboardCliArgs::try_parse_from([
         "grafana-util",
         "list-data-sources",
-        "--table",
-        "--json",
+        "--url",
+        "https://grafana.example.com",
     ])
     .unwrap_err();
 
-    assert!(error.to_string().contains("--table"));
-    assert!(error.to_string().contains("--json"));
+    assert!(error.to_string().contains("list-data-sources"));
+    assert!(error.to_string().contains("unrecognized subcommand"));
 }
 
 #[test]
@@ -3753,6 +3968,9 @@ fn validate_inspect_export_report_args_rejects_report_columns_without_report() {
         table: false,
         report: None,
         output_format: None,
+        view: None,
+        format: None,
+        layout: None,
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -3774,6 +3992,9 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_json_report() 
         table: false,
         report: Some(InspectExportReportFormat::Json),
         output_format: None,
+        view: None,
+        format: None,
+        layout: None,
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -3795,6 +4016,9 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_tree_report() 
         table: false,
         report: Some(InspectExportReportFormat::Tree),
         output_format: None,
+        view: None,
+        format: None,
+        layout: None,
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -3816,6 +4040,9 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_governance_rep
         table: false,
         report: Some(InspectExportReportFormat::Governance),
         output_format: None,
+        view: None,
+        format: None,
+        layout: None,
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -3837,6 +4064,9 @@ fn validate_inspect_export_report_args_allows_report_columns_for_tree_table_repo
         table: false,
         report: Some(InspectExportReportFormat::TreeTable),
         output_format: None,
+        view: None,
+        format: None,
+        layout: None,
         report_columns: vec!["panel_id".to_string(), "query".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -4320,6 +4550,9 @@ fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
         table: false,
         report: None,
         output_format: None,
+        view: None,
+        format: None,
+        layout: None,
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: Some("7".to_string()),
@@ -4344,6 +4577,9 @@ fn inspect_live_dashboards_with_request_reports_live_json_via_temp_raw_export() 
         table: false,
         report: Some(InspectExportReportFormat::Json),
         output_format: None,
+        view: None,
+        format: None,
+        layout: None,
         report_columns: Vec::new(),
         report_filter_datasource: Some("prom-main".to_string()),
         report_filter_panel_id: Some("7".to_string()),
@@ -4423,6 +4659,116 @@ fn inspect_live_dashboards_with_request_reports_live_json_via_temp_raw_export() 
 }
 
 #[test]
+fn inspect_live_dashboards_with_request_supports_all_orgs() {
+    let args = InspectLiveArgs {
+        common: make_common_args("https://grafana.example.com".to_string()),
+        page_size: 100,
+        org_id: None,
+        all_orgs: true,
+        json: false,
+        table: false,
+        report: Some(InspectExportReportFormat::Json),
+        output_format: None,
+        view: None,
+        format: None,
+        layout: None,
+        report_columns: Vec::new(),
+        report_filter_datasource: None,
+        report_filter_panel_id: None,
+        help_full: false,
+        no_header: false,
+    };
+
+    let count = super::inspect_live_dashboards_with_request(
+        |method, path, params, _payload| match (method, path) {
+            (reqwest::Method::GET, "/api/orgs") => Ok(Some(json!([
+                {"id": 1, "name": "Main Org."},
+                {"id": 2, "name": "Org Two"}
+            ]))),
+            (reqwest::Method::GET, "/api/org") => {
+                let org_id = params
+                    .iter()
+                    .find(|(key, _)| key == "orgId")
+                    .map(|(_, value)| value.clone());
+                match org_id.as_deref() {
+                    Some("2") => Ok(Some(json!({"id": 2, "name": "Org Two"}))),
+                    _ => Ok(Some(json!({"id": 1, "name": "Main Org."}))),
+                }
+            }
+            (reqwest::Method::GET, "/api/datasources") => {
+                let org_id = params
+                    .iter()
+                    .find(|(key, _)| key == "orgId")
+                    .map(|(_, value)| value.clone());
+                match org_id.as_deref() {
+                    Some("2") => Ok(Some(json!([
+                        {"uid": "logs-main", "name": "Logs Main", "type": "loki", "access": "proxy", "url": "http://loki:3100", "isDefault": false}
+                    ]))),
+                    _ => Ok(Some(json!([
+                        {"uid": "prom-main", "name": "Prometheus Main", "type": "prometheus", "access": "proxy", "url": "http://prometheus:9090", "isDefault": true}
+                    ]))),
+                }
+            }
+            (reqwest::Method::GET, "/api/search") => {
+                let org_id = params
+                    .iter()
+                    .find(|(key, _)| key == "orgId")
+                    .map(|(_, value)| value.clone());
+                match org_id.as_deref() {
+                    Some("2") => Ok(Some(json!([
+                        {"uid": "logs-main", "title": "Logs Main", "type": "dash-db", "folderUid": "logs", "folderTitle": "Logs"}
+                    ]))),
+                    _ => Ok(Some(json!([
+                        {"uid": "cpu-main", "title": "CPU Main", "type": "dash-db", "folderUid": "general", "folderTitle": "General"}
+                    ]))),
+                }
+            }
+            (reqwest::Method::GET, "/api/folders/general") => {
+                Ok(Some(json!({"uid": "general", "title": "General"})))
+            }
+            (reqwest::Method::GET, "/api/folders/logs") => {
+                Ok(Some(json!({"uid": "logs", "title": "Logs"})))
+            }
+            (reqwest::Method::GET, "/api/dashboards/uid/cpu-main") => Ok(Some(json!({
+                "dashboard": {
+                    "id": 11,
+                    "uid": "cpu-main",
+                    "title": "CPU Main",
+                    "panels": [{
+                        "id": 7,
+                        "title": "CPU Query",
+                        "type": "timeseries",
+                        "datasource": {"uid": "prom-main", "type": "prometheus"},
+                        "targets": [{"refId": "A", "expr": "up"}]
+                    }]
+                },
+                "meta": {"folderUid": "general"}
+            }))),
+            (reqwest::Method::GET, "/api/dashboards/uid/logs-main") => Ok(Some(json!({
+                "dashboard": {
+                    "id": 12,
+                    "uid": "logs-main",
+                    "title": "Logs Main",
+                    "panels": [{
+                        "id": 8,
+                        "title": "Logs Query",
+                        "type": "logs",
+                        "datasource": {"uid": "logs-main", "type": "loki"},
+                        "targets": [{"refId": "A", "expr": "{job=\"grafana\"}"}]
+                    }]
+                },
+                "meta": {"folderUid": "logs"}
+            }))),
+            _ => Err(super::message("unexpected request")),
+        },
+        &args,
+    )
+    .unwrap();
+
+    assert_eq!(count, 2);
+}
+
+#[test]
 fn import_dashboards_with_client_imports_discovered_files() {
     let temp = tempdir().unwrap();
     let raw_dir = temp.path().join("raw");
@@ -4470,6 +4816,7 @@ fn import_dashboards_with_client_imports_discovered_files() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
     let mut posted_payloads = Vec::new();
@@ -4487,6 +4834,138 @@ fn import_dashboards_with_client_imports_discovered_files() {
     assert_eq!(posted_payloads.len(), 1);
     assert_eq!(posted_payloads[0]["folderUid"], "new-folder");
     assert_eq!(posted_payloads[0]["dashboard"]["id"], Value::Null);
+}
+
+#[test]
+fn import_dashboards_with_request_continues_on_parse_error_with_continue_on_error_enabled() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(&raw_dir).unwrap();
+    fs::write(raw_dir.join("a-bad.json"), "not-json".as_bytes()).unwrap();
+    fs::write(
+        raw_dir.join("z-good.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {"id": 7, "uid": "good", "title": "CPU"},
+            "meta": {"folderUid": "general"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let mut args = make_import_args(raw_dir.clone());
+    args.dry_run = true;
+    args.continue_on_error = true;
+    let mut calls = 0usize;
+
+    let error = import_dashboards_with_request(
+        |_method, path, _params, _payload| {
+            calls += 1;
+            if path == "/api/dashboards/uid/good" {
+                Ok(Some(json!({
+                    "dashboard": {"uid": "good"}
+                })))
+            } else {
+                Err(super::message(format!("unexpected path {path}")))
+            }
+        },
+        &args,
+    )
+    .unwrap_err();
+
+    assert_eq!(calls, 1);
+    assert!(error.to_string().contains("1"));
+    assert!(error.to_string().contains("dashboard file"));
+    assert!(error.to_string().contains("--continue-on-error"));
+}
+
+#[test]
+fn import_dashboards_with_request_fails_fast_without_continue_on_error_on_parse_error() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(&raw_dir).unwrap();
+    fs::write(raw_dir.join("a-bad.json"), "not-json".as_bytes()).unwrap();
+    fs::write(
+        raw_dir.join("z-good.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {"id": 7, "uid": "good", "title": "CPU"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let mut args = make_import_args(raw_dir.clone());
+    args.dry_run = true;
+    args.continue_on_error = false;
+    let mut calls = 0usize;
+
+    let error = import_dashboards_with_request(
+        |_method, _path, _params, _payload| {
+            calls += 1;
+            Ok(None)
+        },
+        &args,
+    )
+    .unwrap_err();
+
+    assert_eq!(calls, 0);
+    assert!(error
+        .to_string()
+        .contains("JSON error: expected ident at line 1 column 2"));
+}
+
+#[test]
+fn import_dashboards_with_request_continues_on_api_error_and_reports_failed_count() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(&raw_dir).unwrap();
+    fs::write(
+        raw_dir.join("alpha.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {"id": 7, "uid": "alpha", "title": "Alpha"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        raw_dir.join("zeta.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {"id": 8, "uid": "zeta", "title": "Zeta"}
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let mut args = make_import_args(raw_dir.clone());
+    args.continue_on_error = true;
+    args.dry_run = false;
+    let mut calls = Vec::new();
+
+    let error = import_dashboards_with_request(
+        |_method, path, _params, payload| {
+            calls.push(path.to_string());
+            let payload_object = payload
+                .and_then(|value| value.as_object())
+                .and_then(|value| value.get("dashboard"))
+                .and_then(|value| value.as_object());
+            let uid = payload_object
+                .and_then(|dashboard| dashboard.get("uid"))
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            if path == "/api/dashboards/db" && uid == "zeta" {
+                Err(api_response(
+                    500,
+                    format!("http://127.0.0.1:3000{path}"),
+                    "{\"message\":\"boom\"}",
+                ))
+            } else {
+                Ok(Some(json!({"status": "success"})))
+            }
+        },
+        &args,
+    )
+    .unwrap_err();
+
+    assert_eq!(calls, vec!["/api/dashboards/db", "/api/dashboards/db"]);
+    assert!(error.to_string().contains(
+        "Dashboard import encountered 1 failed dashboard file(s) with --continue-on-error"
+    ));
 }
 
 #[test]
@@ -4513,6 +4992,7 @@ fn import_dashboards_with_org_id_requires_basic_auth() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
 
@@ -4974,6 +5454,7 @@ fn build_import_auth_context_adds_org_header_for_basic_auth_imports() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
 
@@ -5167,6 +5648,7 @@ fn import_dashboards_rejects_mismatched_export_org_with_explicit_org_id() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
 
@@ -5240,6 +5722,7 @@ fn import_dashboards_rejects_mismatched_export_org_with_current_token_org() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
 
@@ -5319,6 +5802,7 @@ fn import_dashboards_allows_matching_export_org_with_current_org_lookup() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
     let mut calls = Vec::new();
@@ -5392,6 +5876,7 @@ fn import_dashboards_with_dry_run_skips_post_requests() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
 
@@ -5450,6 +5935,7 @@ fn import_dashboards_rejects_unsupported_export_schema_version() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
 
@@ -5516,6 +6002,7 @@ fn import_dashboards_with_update_existing_only_skips_missing_dashboards() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
     let mut posted_payloads = Vec::new();
@@ -5592,6 +6079,7 @@ fn import_dashboards_with_update_existing_only_table_marks_missing_dashboards_as
         no_header: true,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
 
@@ -5660,6 +6148,7 @@ fn import_dashboards_replace_existing_preserves_destination_folder() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
     let mut posted_payloads = Vec::new();
@@ -5733,6 +6222,7 @@ fn import_dashboards_rejects_ensure_folders_with_import_folder_override() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
 
@@ -5791,6 +6281,7 @@ fn import_dashboards_rejects_matching_folder_path_with_import_folder_uid() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
 
@@ -5915,6 +6406,7 @@ fn import_dashboards_with_matching_folder_path_skips_live_update_mismatch() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
     let mut posted_payloads = Vec::new();
@@ -5983,6 +6475,7 @@ fn import_dashboards_rejects_json_without_dry_run() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
 
@@ -6033,6 +6526,7 @@ fn import_dashboards_reject_output_columns_without_table_output() {
         no_header: false,
         output_columns: vec!["uid".to_string()],
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
 
@@ -6116,6 +6610,7 @@ fn import_dashboards_with_ensure_folders_creates_missing_folder_chain_from_raw_i
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
     let mut calls = Vec::new();
@@ -6247,6 +6742,7 @@ fn import_dashboards_with_dry_run_and_ensure_folders_checks_folder_inventory() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
     let mut calls = Vec::new();
@@ -6340,6 +6836,7 @@ fn import_dashboards_with_ensure_folders_requires_inventory_manifest() {
         no_header: false,
         output_columns: Vec::new(),
         progress: false,
+        continue_on_error: false,
         verbose: false,
     };
 

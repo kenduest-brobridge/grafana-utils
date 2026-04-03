@@ -7,9 +7,8 @@ RUST_DIR="${REPO_ROOT}/rust"
 OUTPUT_DIR="${REPO_ROOT}/dist/linux-amd64"
 RUST_IMAGE="${RUST_IMAGE:-rust:1.89-bookworm}"
 TARGET_TRIPLE="x86_64-unknown-linux-gnu"
-PACKAGE_SCRIPT="${REPO_ROOT}/scripts/package-rust-artifacts.sh"
-PACKAGE_VERSION="$(sed -n 's/^version = \"\\([^\"]*\\)\"/\\1/p' "${RUST_DIR}/Cargo.toml" | head -n 1)"
-PACKAGE_NAME="grafana-utils-rust-linux-amd64-v${PACKAGE_VERSION}"
+
+bash "${REPO_ROOT}/scripts/set-version.sh" --sync-from-file >/dev/null
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "Error: docker is required for Linux amd64 Rust builds." >&2
@@ -34,6 +33,5 @@ docker run --rm \
   "
 
 cp "${RUST_DIR}/target/${TARGET_TRIPLE}/release/grafana-util" "${OUTPUT_DIR}/grafana-util"
-"${PACKAGE_SCRIPT}" "${OUTPUT_DIR}" "${RUST_DIR}/target/${TARGET_TRIPLE}/release" "${PACKAGE_NAME}"
 echo "Built Linux amd64 Rust binaries:"
 echo "  ${OUTPUT_DIR}/grafana-util"

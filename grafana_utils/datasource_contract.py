@@ -52,9 +52,9 @@ def normalize_datasource_record(record: dict[str, Any]) -> dict[str, str]:
         "type": normalize_datasource_string(record.get("type")),
         "access": normalize_datasource_string(record.get("access")),
         "url": normalize_datasource_string(record.get("url")),
-        "isDefault": "true"
-        if normalize_datasource_bool(record.get("isDefault"))
-        else "false",
+        "isDefault": (
+            "true" if normalize_datasource_bool(record.get("isDefault")) else "false"
+        ),
         "org": normalize_datasource_string(record.get("org")),
         "orgId": normalize_datasource_string(record.get("orgId")),
     }

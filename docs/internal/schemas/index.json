@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "kind": "grafana-utils-sync-schema-index",
+  "schemaVersion": 1,
+  "artifacts": [
+    {
+      "kind": "grafana-utils-sync-summary",
+      "path": "docs/internal/schemas/grafana-utils-sync-summary.schema.json",
+      "id": "https://grafana-utils.local/docs/internal/schemas/grafana-utils-sync-summary.schema.json",
+      "staged": false
+    },
+    {
+      "kind": "grafana-utils-sync-plan",
+      "path": "docs/internal/schemas/grafana-utils-sync-plan.schema.json",
+      "id": "https://grafana-utils.local/docs/internal/schemas/grafana-utils-sync-plan.schema.json",
+      "staged": true
+    },
+    {
+      "kind": "grafana-utils-sync-preflight",
+      "path": "docs/internal/schemas/grafana-utils-sync-preflight.schema.json",
+      "id": "https://grafana-utils.local/docs/internal/schemas/grafana-utils-sync-preflight.schema.json",
+      "staged": true
+    },
+    {
+      "kind": "grafana-utils-sync-bundle-preflight",
+      "path": "docs/internal/schemas/grafana-utils-sync-bundle-preflight.schema.json",
+      "id": "https://grafana-utils.local/docs/internal/schemas/grafana-utils-sync-bundle-preflight.schema.json",
+      "staged": true
+    },
+    {
+      "kind": "grafana-utils-sync-apply-intent",
+      "path": "docs/internal/schemas/grafana-utils-sync-apply-intent.schema.json",
+      "id": "https://grafana-utils.local/docs/internal/schemas/grafana-utils-sync-apply-intent.schema.json",
+      "staged": true
+    }
+  ]
+}

@@ -5,6 +5,7 @@ from urllib import parse
 
 from ..access.common import GrafanaApiError, GrafanaError
 from ..http_transport import (
+    DEFAULT_HTTP_TRANSPORT,
     HttpTransportApiError,
     HttpTransportError,
     JsonHttpTransport,
@@ -21,13 +22,16 @@ class GrafanaAccessClient:
         headers: dict[str, str],
         timeout: int,
         verify_ssl: bool,
+        transport_name: str = DEFAULT_HTTP_TRANSPORT,
         transport: Optional[JsonHttpTransport] = None,
     ) -> None:
+        self.transport_name = transport_name
         self.transport = transport or build_json_http_transport(
             base_url=base_url,
             headers={"Accept": "application/json", **headers},
             timeout=timeout,
             verify_ssl=verify_ssl,
+            transport_name=transport_name,
         )
 
     def request_json(
@@ -62,13 +66,10 @@ class GrafanaAccessClient:
         return [item for item in data if isinstance(item, dict)]
 
     def get_organization(self, org_id: Any) -> dict[str, Any]:
-        data = self.request_json(
-            "/api/orgs/%s" % parse.quote(str(org_id), safe="")
-        )
+        data = self.request_json("/api/orgs/%s" % parse.quote(str(org_id), safe=""))
         if not isinstance(data, dict):
             raise GrafanaError(
-                "Unexpected organization lookup response for Grafana org %s."
-                % org_id
+                "Unexpected organization lookup response for Grafana org %s." % org_id
             )
         return data
 
@@ -82,7 +83,9 @@ class GrafanaAccessClient:
             raise GrafanaError("Unexpected organization create response from Grafana.")
         return data
 
-    def update_organization(self, org_id: Any, payload: dict[str, Any]) -> dict[str, Any]:
+    def update_organization(
+        self, org_id: Any, payload: dict[str, Any]
+    ) -> dict[str, Any]:
         data = self.request_json(
             "/api/orgs/%s" % parse.quote(str(org_id), safe=""),
             method="PUT",
@@ -90,8 +93,7 @@ class GrafanaAccessClient:
         )
         if not isinstance(data, dict):
             raise GrafanaError(
-                "Unexpected organization update response for Grafana org %s."
-                % org_id
+                "Unexpected organization update response for Grafana org %s." % org_id
             )
         return data
 
@@ -102,8 +104,7 @@ class GrafanaAccessClient:
         )
         if not isinstance(data, dict):
             raise GrafanaError(
-                "Unexpected organization delete response for Grafana org %s."
-                % org_id
+                "Unexpected organization delete response for Grafana org %s." % org_id
             )
         return data
 
@@ -201,9 +202,7 @@ class GrafanaAccessClient:
         return [item for item in data if isinstance(item, dict)]
 
     def get_user(self, user_id: Any) -> dict[str, Any]:
-        data = self.request_json(
-            "/api/users/%s" % parse.quote(str(user_id), safe="")
-        )
+        data = self.request_json("/api/users/%s" % parse.quote(str(user_id), safe=""))
         if not isinstance(data, dict):
             raise GrafanaError(
                 "Unexpected user lookup response for Grafana user %s." % user_id
@@ -240,8 +239,7 @@ class GrafanaAccessClient:
         )
         if not isinstance(data, dict):
             raise GrafanaError(
-                "Unexpected password update response for Grafana user %s."
-                % user_id
+                "Unexpected password update response for Grafana user %s." % user_id
             )
         return data
 
@@ -269,8 +267,7 @@ class GrafanaAccessClient:
         )
         if not isinstance(data, dict):
             raise GrafanaError(
-                "Unexpected permission update response for Grafana user %s."
-                % user_id
+                "Unexpected permission update response for Grafana user %s." % user_id
             )
         return data
 
@@ -281,8 +278,7 @@ class GrafanaAccessClient:
         )
         if not isinstance(data, dict):
             raise GrafanaError(
-                "Unexpected global delete response for Grafana user %s."
-                % user_id
+                "Unexpected global delete response for Grafana user %s." % user_id
             )
         return data
 
@@ -312,14 +308,10 @@ class GrafanaAccessClient:
             },
         )
         if not isinstance(data, dict):
-            raise GrafanaError(
-                "Unexpected service-account list response from Grafana."
-            )
+            raise GrafanaError("Unexpected service-account list response from Grafana.")
         items = data.get("serviceAccounts", [])
         if not isinstance(items, list):
-            raise GrafanaError(
-                "Unexpected service-account list response from Grafana."
-            )
+            raise GrafanaError("Unexpected service-account list response from Grafana.")
         return [item for item in items if isinstance(item, dict)]
 
     def list_teams(
@@ -375,9 +367,7 @@ class GrafanaAccessClient:
         return [item for item in data if isinstance(item, dict)]
 
     def get_team(self, team_id: Any) -> dict[str, Any]:
-        data = self.request_json(
-            "/api/teams/%s" % parse.quote(str(team_id), safe="")
-        )
+        data = self.request_json("/api/teams/%s" % parse.quote(str(team_id), safe=""))
         if not isinstance(data, dict):
             raise GrafanaError(
                 "Unexpected team lookup response for Grafana team %s." % team_id
@@ -432,7 +422,9 @@ class GrafanaAccessClient:
             )
         return data
 
-    def update_team_members(self, team_id: Any, payload: dict[str, Any]) -> dict[str, Any]:
+    def update_team_members(
+        self, team_id: Any, payload: dict[str, Any]
+    ) -> dict[str, Any]:
         data = self.request_json(
             "/api/teams/%s/members" % parse.quote(str(team_id), safe=""),
             method="PUT",
@@ -440,8 +432,7 @@ class GrafanaAccessClient:
         )
         if not isinstance(data, dict):
             raise GrafanaError(
-                "Unexpected team member update response for Grafana team %s."
-                % team_id
+                "Unexpected team member update response for Grafana team %s." % team_id
             )
         return data
 

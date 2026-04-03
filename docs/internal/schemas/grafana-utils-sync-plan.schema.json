@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://grafana-utils.local/docs/internal/schemas/grafana-utils-sync-plan.schema.json",
+  "title": "grafana-utils-sync-plan",
+  "type": "object",
+  "required": [
+    "kind",
+    "schemaVersion",
+    "traceId",
+    "stage",
+    "stepIndex",
+    "reviewRequired",
+    "reviewed",
+    "allowPrune",
+    "summary",
+    "scope",
+    "alertAssessment",
+    "operations"
+  ],
+  "properties": {
+    "kind": {
+      "const": "grafana-utils-sync-plan"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "traceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "plan",
+        "review"
+      ]
+    },
+    "stepIndex": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "parentTraceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewRequired": {
+      "type": "boolean"
+    },
+    "reviewed": {
+      "type": "boolean"
+    },
+    "allowPrune": {
+      "type": "boolean"
+    },
+    "dryRun": {
+      "type": "boolean"
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "would_create",
+        "would_update",
+        "would_delete",
+        "noop",
+        "unmanaged",
+        "alert_candidate",
+        "alert_plan_only",
+        "alert_blocked"
+      ],
+      "properties": {
+        "would_create": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "would_update": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "would_delete": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "noop": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unmanaged": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "alert_candidate": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "alert_plan_only": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "alert_blocked": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "scope": {
+      "type": "object",
+      "required": [
+        "managedResourceKinds"
+      ],
+      "properties": {
+        "managedResourceKinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "alertAssessment": {
+      "type": "object",
+      "required": [
+        "summary"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "schemaVersion": {
+          "type": "integer"
+        },
+        "summary": {
+          "type": "object",
+          "properties": {
+            "alertCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "candidateCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "planOnlyCount": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "blockedCount": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "identity",
+          "action"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "dashboard",
+              "datasource",
+              "folder",
+              "alert"
+            ]
+          },
+          "identity": {
+            "type": "string",
+            "minLength": 1
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "would-create",
+              "would-update",
+              "would-delete",
+              "noop",
+              "unmanaged"
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "stage": {
+            "const": "plan"
+          }
+        },
+        "required": [
+          "stage"
+        ]
+      },
+      "then": {
+        "properties": {
+          "stepIndex": {
+            "const": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "stage": {
+            "const": "review"
+          }
+        },
+        "required": [
+          "stage"
+        ]
+      },
+      "then": {
+        "required": [
+          "parentTraceId"
+        ],
+        "properties": {
+          "stepIndex": {
+            "const": 2
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": true
+}

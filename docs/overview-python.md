@@ -53,7 +53,7 @@ Python CLI 的定位是保留一個統一進入點、穩定的域名封裝與可
   - `grafana_utils/clients/alert_client.py`：純 HTTP 呼叫。
 - Access
   - `grafana_utils/access/parser.py`：argparse wiring + 命令樹。
-  - `grafana_utils/access/workflows.py`：validation + 解析 lookup + command dispatch。
+- `grafana_utils/access/workflows.py`：validation + 解析 lookup + dispatch table routing。
   - `grafana_utils/access/models.py`：輸出格式化與列舉資料標準化。
   - `grafana_utils/access/common.py`：shared helper/錯誤類型。
 - Datasource
