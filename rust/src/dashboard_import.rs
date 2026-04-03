@@ -165,7 +165,10 @@ fn parse_export_org_scope(import_root: &Path, raw_dir: &Path) -> Result<ExportOr
         return Err(message(format!(
             "Cannot route import by export org for {}: found multiple export orgIds ({}).",
             raw_dir.display(),
-            export_org_ids.into_iter().collect::<Vec<String>>().join(", ")
+            export_org_ids
+                .into_iter()
+                .collect::<Vec<String>>()
+                .join(", ")
         )));
     }
     let source_org_id_text = export_org_ids.into_iter().next().unwrap_or_default();
@@ -202,7 +205,8 @@ fn discover_export_org_import_scopes(args: &ImportArgs) -> Result<Vec<ExportOrgI
     if !args.use_export_org {
         return Ok(Vec::new());
     }
-    let selected_org_ids: std::collections::BTreeSet<i64> = args.only_org_id.iter().copied().collect();
+    let selected_org_ids: std::collections::BTreeSet<i64> =
+        args.only_org_id.iter().copied().collect();
     let mut scopes = Vec::new();
     for entry in fs::read_dir(&args.import_dir)? {
         let entry = entry?;
@@ -391,7 +395,8 @@ where
         });
     }
     let created = create_org_with_request(&mut request_json, &scope.source_org_name)?;
-    let created_org_id = org_id_string_from_value(created.get("orgId").or_else(|| created.get("id")));
+    let created_org_id =
+        org_id_string_from_value(created.get("orgId").or_else(|| created.get("id")));
     if created_org_id.is_empty() {
         return Err(message(format!(
             "Grafana did not return a usable orgId after creating destination org '{}' for exported org {}.",
@@ -1280,7 +1285,7 @@ where
             &folder_path,
             &normalized_source_folder_path,
             normalized_destination_folder_path.as_deref(),
-            &folder_match_reason,
+            folder_match_reason,
         ));
     }
     Ok(ImportDryRunReport {
@@ -1577,7 +1582,7 @@ where
                     &folder_path,
                     &normalized_source_folder_path,
                     normalized_destination_folder_path.as_deref(),
-                    &folder_match_reason,
+                    folder_match_reason,
                 ));
             } else if args.verbose {
                 println!(
@@ -1805,11 +1810,8 @@ where
     let mut orgs = Vec::new();
     let mut imports = Vec::new();
     for scope in scopes {
-        let target_plan = resolve_target_org_plan_for_export_scope_with_request(
-            &mut request_json,
-            args,
-            &scope,
-        )?;
+        let target_plan =
+            resolve_target_org_plan_for_export_scope_with_request(&mut request_json, args, &scope)?;
         let dashboard_count = discover_dashboard_files(&target_plan.import_dir)?
             .into_iter()
             .filter(|path| {
@@ -1858,10 +1860,7 @@ where
             "sourceOrgName".to_string(),
             Value::from(target_plan.source_org_name.clone()),
         );
-        import_entry.insert(
-            "orgAction".to_string(),
-            Value::from(target_plan.org_action),
-        );
+        import_entry.insert("orgAction".to_string(), Value::from(target_plan.org_action));
         import_entry.insert(
             "targetOrgId".to_string(),
             target_plan
@@ -1906,11 +1905,8 @@ where
     let mut org_rows = Vec::new();
     let mut resolved_plans = Vec::new();
     for scope in scopes {
-        let target_plan = resolve_target_org_plan_for_export_scope_with_request(
-            &mut request_json,
-            args,
-            &scope,
-        )?;
+        let target_plan =
+            resolve_target_org_plan_for_export_scope_with_request(&mut request_json, args, &scope)?;
         let dashboard_count = discover_dashboard_files(&target_plan.import_dir)?
             .into_iter()
             .filter(|path| {

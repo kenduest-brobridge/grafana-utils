@@ -31,8 +31,6 @@ mod dashboard_help;
 mod dashboard_import;
 #[path = "dashboard_inspect.rs"]
 mod dashboard_inspect;
-#[path = "dashboard_inspect_summary.rs"]
-mod dashboard_inspect_summary;
 #[path = "dashboard_inspect_analyzer_flux.rs"]
 mod dashboard_inspect_analyzer_flux;
 #[path = "dashboard_inspect_analyzer_loki.rs"]
@@ -47,6 +45,8 @@ mod dashboard_inspect_governance;
 mod dashboard_inspect_render;
 #[path = "dashboard_inspect_report.rs"]
 mod dashboard_inspect_report;
+#[path = "dashboard_inspect_summary.rs"]
+mod dashboard_inspect_summary;
 #[path = "dashboard_list.rs"]
 mod dashboard_list;
 #[path = "dashboard_live.rs"]
@@ -91,11 +91,6 @@ pub(crate) use dashboard_files::{
     load_export_metadata, load_folder_inventory, load_json_file, write_dashboard,
     write_json_document,
 };
-pub(crate) use dashboard_inspect_summary::{
-    build_export_inspection_summary_document, DatasourceInventorySummary,
-    ExportDatasourceUsage, ExportFolderUsage, ExportInspectionSummary,
-    MixedDashboardSummary,
-};
 #[cfg(test)]
 pub(crate) use dashboard_import::{
     build_import_auth_context, describe_dashboard_import_mode, diff_dashboards_with_request,
@@ -127,6 +122,10 @@ pub(crate) use dashboard_inspect_report::{
 };
 #[cfg(test)]
 pub(crate) use dashboard_inspect_report::{QueryReportSummary, DEFAULT_REPORT_COLUMN_IDS};
+pub(crate) use dashboard_inspect_summary::{
+    build_export_inspection_summary_document, DatasourceInventorySummary, ExportDatasourceUsage,
+    ExportFolderUsage, ExportInspectionSummary, MixedDashboardSummary,
+};
 #[cfg(test)]
 pub(crate) use dashboard_list::{
     attach_dashboard_folder_paths_with_request, collect_dashboard_source_metadata,
@@ -145,14 +144,14 @@ pub(crate) use dashboard_live::{
     format_folder_inventory_status_line, import_dashboard_request_with_request,
     list_dashboard_summaries_with_request, list_datasources_with_request,
 };
+pub(crate) use dashboard_models::{
+    DashboardIndexItem, DatasourceInventoryItem, ExportMetadata, FolderInventoryItem,
+    RootExportIndex, RootExportVariants, VariantIndexEntry,
+};
 pub(crate) use dashboard_prompt::{
     build_datasource_catalog, collect_datasource_refs, datasource_type_alias,
     is_builtin_datasource_ref, is_placeholder_string, lookup_datasource,
     resolve_datasource_type_alias,
-};
-pub(crate) use dashboard_models::{
-    DashboardIndexItem, DatasourceInventoryItem, ExportMetadata, FolderInventoryItem,
-    RootExportIndex, RootExportVariants, VariantIndexEntry,
 };
 
 pub const DEFAULT_URL: &str = "http://localhost:3000";
@@ -261,6 +260,7 @@ pub fn run_dashboard_cli_with_client(
 ///
 /// Flow:
 /// 1) normalize args, 2) build or reuse client(s), 3) delegate to domain handlers.
+///
 /// Errors are surfaced directly to the CLI caller for consistent exit behavior.
 pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
     let args = normalize_dashboard_cli_args(args);

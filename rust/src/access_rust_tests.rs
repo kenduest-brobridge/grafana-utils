@@ -1,8 +1,8 @@
 // Access domain test suite.
 // Validates CLI parsing/help text surfaces and handler contract behavior with stubbed request closures.
 use super::{
-    add_service_account_token_with_request, add_service_account_with_request, add_team_with_request,
-    add_user_with_request, delete_org_with_request,
+    add_service_account_token_with_request, add_service_account_with_request,
+    add_team_with_request, add_user_with_request, delete_org_with_request,
     delete_service_account_token_with_request, delete_service_account_with_request,
     delete_team_with_request, delete_user_with_request, diff_service_accounts_with_request,
     diff_teams_with_request, diff_users_with_request, export_service_accounts_with_request,
@@ -10,17 +10,16 @@ use super::{
     list_service_accounts_command_with_request, list_teams_command_with_request,
     list_users_with_request, modify_org_with_request, modify_team_with_request,
     modify_user_with_request, parse_cli_from, run_access_cli_with_request, AccessCommand,
-    CommonCliArgs, DryRunOutputFormat, OrgCommand, OrgDeleteArgs,
-    OrgListArgs, OrgModifyArgs, Scope, ServiceAccountAddArgs, ServiceAccountCommand,
-    ServiceAccountDeleteArgs, ServiceAccountDiffArgs, ServiceAccountExportArgs,
-    ServiceAccountImportArgs, ServiceAccountListArgs,
-    ServiceAccountTokenAddArgs, ServiceAccountTokenCommand, ServiceAccountTokenDeleteArgs,
-    TeamAddArgs, TeamCommand, TeamDeleteArgs, TeamDiffArgs, TeamImportArgs, TeamListArgs,
-    TeamModifyArgs, UserAddArgs, UserCommand, UserDeleteArgs, UserDiffArgs, UserListArgs,
-    UserModifyArgs,
+    CommonCliArgs, DryRunOutputFormat, OrgCommand, OrgDeleteArgs, OrgListArgs, OrgModifyArgs,
+    Scope, ServiceAccountAddArgs, ServiceAccountCommand, ServiceAccountDeleteArgs,
+    ServiceAccountDiffArgs, ServiceAccountExportArgs, ServiceAccountImportArgs,
+    ServiceAccountListArgs, ServiceAccountTokenAddArgs, ServiceAccountTokenCommand,
+    ServiceAccountTokenDeleteArgs, TeamAddArgs, TeamCommand, TeamDeleteArgs, TeamDiffArgs,
+    TeamImportArgs, TeamListArgs, TeamModifyArgs, UserAddArgs, UserCommand, UserDeleteArgs,
+    UserDiffArgs, UserListArgs, UserModifyArgs,
 };
-use crate::access::access_cli_defs::CommonCliArgsNoOrgId;
 use crate::access::access_cli_defs::AccessCliRoot;
+use crate::access::access_cli_defs::CommonCliArgsNoOrgId;
 use clap::{CommandFactory, Parser};
 use reqwest::Method;
 use serde_json::json;
@@ -1004,7 +1003,10 @@ fn run_access_cli_with_request_routes_org_import() {
                 (Method::GET, "/api/orgs") => Ok(Some(json!([]))),
                 (Method::POST, "/api/orgs") => {
                     assert_eq!(
-                        payload.and_then(|value| value.as_object()).unwrap().get("name"),
+                        payload
+                            .and_then(|value| value.as_object())
+                            .unwrap()
+                            .get("name"),
                         Some(&json!("Main Org"))
                     );
                     Ok(Some(json!({"orgId": "3"})))
@@ -1017,7 +1019,9 @@ fn run_access_cli_with_request_routes_org_import() {
         args,
     );
     assert!(result.is_ok());
-    assert!(calls.iter().any(|(method, path)| method == "POST" && path == "/api/orgs"));
+    assert!(calls
+        .iter()
+        .any(|(method, path)| method == "POST" && path == "/api/orgs"));
     assert!(calls
         .iter()
         .any(|(method, path)| method == "POST" && path == "/api/orgs/3/users"));
@@ -1487,20 +1491,18 @@ fn user_modify_with_request_reads_set_password_file() {
     };
     let mut captured_password = None;
     let result = modify_user_with_request(
-        |method, path, _params, payload| {
-            match path {
-                "/api/users/9" if method == Method::GET => Ok(Some(
-                    json!({"id": 9, "login": "alice", "email": "alice@example.com", "name": "Alice"}),
-                )),
-                "/api/admin/users/9/password" if method == Method::PUT => {
-                    captured_password = payload
-                        .and_then(|value| value.get("password"))
-                        .and_then(|value| value.as_str())
-                        .map(str::to_string);
-                    Ok(Some(json!({"message": "ok"})))
-                }
-                _ => panic!("unexpected request"),
+        |method, path, _params, payload| match path {
+            "/api/users/9" if method == Method::GET => Ok(Some(
+                json!({"id": 9, "login": "alice", "email": "alice@example.com", "name": "Alice"}),
+            )),
+            "/api/admin/users/9/password" if method == Method::PUT => {
+                captured_password = payload
+                    .and_then(|value| value.get("password"))
+                    .and_then(|value| value.as_str())
+                    .map(str::to_string);
+                Ok(Some(json!({"message": "ok"})))
             }
+            _ => panic!("unexpected request"),
         },
         &args,
     );
@@ -2081,7 +2083,10 @@ fn modify_org_with_request_renames_resolved_org() {
                 ]))),
                 (Method::PUT, "/api/orgs/4") => {
                     assert_eq!(
-                        payload.and_then(|value| value.as_object()).unwrap().get("name"),
+                        payload
+                            .and_then(|value| value.as_object())
+                            .unwrap()
+                            .get("name"),
                         Some(&json!("Renamed Org"))
                     );
                     Ok(Some(json!({"message": "ok"})))

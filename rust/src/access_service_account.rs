@@ -353,7 +353,7 @@ fn build_record_diff_fields(left: &Map<String, Value>, right: &Map<String, Value
 fn build_service_account_diff_map(
     records: &[Map<String, Value>],
     source: &str,
-) -> Result<BTreeMap<String, (String, Map<String, Value>)>> {
+) -> Result<ServiceAccountDiffMap> {
     let mut indexed = BTreeMap::new();
     for record in records {
         let name = string_field(record, "name", "");
@@ -377,6 +377,8 @@ fn build_service_account_diff_map(
     }
     Ok(indexed)
 }
+
+type ServiceAccountDiffMap = BTreeMap<String, (String, Map<String, Value>)>;
 
 pub(crate) fn list_service_accounts_command_with_request<F>(
     mut request_json: F,

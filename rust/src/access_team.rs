@@ -81,11 +81,13 @@ fn normalize_team_for_diff(
     payload
 }
 
+type TeamDiffMap = BTreeMap<String, (String, Map<String, Value>)>;
+
 fn build_team_diff_map(
     records: &[Map<String, Value>],
     source: &str,
     include_members: bool,
-) -> Result<BTreeMap<String, (String, Map<String, Value>)>> {
+) -> Result<TeamDiffMap> {
     let mut indexed = BTreeMap::new();
     for record in records {
         let team_name = string_field(record, "name", "");
@@ -1100,10 +1102,7 @@ where
             .map(|identity| normalize_access_identity(identity))
             .collect::<BTreeSet<String>>();
 
-        let existing = match lookup_team_by_name(&mut request_json, &team_name).ok() {
-            Some(team) => Some(team),
-            None => None,
-        };
+        let existing = lookup_team_by_name(&mut request_json, &team_name).ok();
 
         let existing_team_id = existing.as_ref().and_then(|team| {
             let team_id = scalar_text(team.get("teamId"));

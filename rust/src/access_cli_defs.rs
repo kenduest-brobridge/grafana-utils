@@ -657,7 +657,11 @@ pub struct OrgAddArgs {
     pub common: CommonCliArgsNoOrgId,
     #[arg(long, help = "Name for the new Grafana organization.")]
     pub name: String,
-    #[arg(long, default_value_t = false, help = "Render the create response as JSON.")]
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Render the create response as JSON."
+    )]
     pub json: bool,
 }
 
@@ -665,13 +669,25 @@ pub struct OrgAddArgs {
 pub struct OrgModifyArgs {
     #[command(flatten)]
     pub common: CommonCliArgsNoOrgId,
-    #[arg(long = "org-id", conflicts_with = "name", help = "Target one organization by numeric Grafana org id.")]
+    #[arg(
+        long = "org-id",
+        conflicts_with = "name",
+        help = "Target one organization by numeric Grafana org id."
+    )]
     pub org_id: Option<i64>,
-    #[arg(long, conflicts_with = "org_id", help = "Target one organization by exact name.")]
+    #[arg(
+        long,
+        conflicts_with = "org_id",
+        help = "Target one organization by exact name."
+    )]
     pub name: Option<String>,
     #[arg(long, help = "Replace the organization name with this new value.")]
     pub set_name: String,
-    #[arg(long, default_value_t = false, help = "Render the modify response as JSON.")]
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Render the modify response as JSON."
+    )]
     pub json: bool,
 }
 
@@ -679,13 +695,29 @@ pub struct OrgModifyArgs {
 pub struct OrgDeleteArgs {
     #[command(flatten)]
     pub common: CommonCliArgsNoOrgId,
-    #[arg(long = "org-id", conflicts_with = "name", help = "Delete one organization by numeric Grafana org id.")]
+    #[arg(
+        long = "org-id",
+        conflicts_with = "name",
+        help = "Delete one organization by numeric Grafana org id."
+    )]
     pub org_id: Option<i64>,
-    #[arg(long, conflicts_with = "org_id", help = "Delete one organization by exact name.")]
+    #[arg(
+        long,
+        conflicts_with = "org_id",
+        help = "Delete one organization by exact name."
+    )]
     pub name: Option<String>,
-    #[arg(long, default_value_t = false, help = "Skip the interactive confirmation prompt.")]
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Skip the interactive confirmation prompt."
+    )]
     pub yes: bool,
-    #[arg(long, default_value_t = false, help = "Render the delete response as JSON.")]
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Render the delete response as JSON."
+    )]
     pub json: bool,
 }
 
@@ -701,13 +733,25 @@ pub struct OrgExportArgs {
         help = "Directory to write orgs.json and export-metadata.json."
     )]
     pub export_dir: PathBuf,
-    #[arg(long, default_value_t = false, help = "Overwrite existing export files instead of failing.")]
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Overwrite existing export files instead of failing."
+    )]
     pub overwrite: bool,
-    #[arg(long, default_value_t = false, help = "Preview export paths without writing files.")]
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Preview export paths without writing files."
+    )]
     pub dry_run: bool,
     #[arg(long, help = "Filter export to one exact organization name.")]
     pub name: Option<String>,
-    #[arg(long, default_value_t = false, help = "Include org users and org roles in the export bundle.")]
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Include org users and org roles in the export bundle."
+    )]
     pub with_users: bool,
 }
 
@@ -715,13 +759,28 @@ pub struct OrgExportArgs {
 pub struct OrgImportArgs {
     #[command(flatten)]
     pub common: CommonCliArgsNoOrgId,
-    #[arg(long, help = "Import directory that contains orgs.json and export-metadata.json.")]
+    #[arg(
+        long,
+        help = "Import directory that contains orgs.json and export-metadata.json."
+    )]
     pub import_dir: PathBuf,
-    #[arg(long, default_value_t = false, help = "Update matching existing orgs or create missing orgs instead of skipping them.")]
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Update matching existing orgs or create missing orgs instead of skipping them."
+    )]
     pub replace_existing: bool,
-    #[arg(long, default_value_t = false, help = "Preview import changes without writing to Grafana.")]
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Preview import changes without writing to Grafana."
+    )]
     pub dry_run: bool,
-    #[arg(long, default_value_t = false, help = "Acknowledge destructive import operations when required.")]
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Acknowledge destructive import operations when required."
+    )]
     pub yes: bool,
 }
 
