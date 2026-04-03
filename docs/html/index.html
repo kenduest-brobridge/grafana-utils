@@ -6,12 +6,6 @@
   <title>grafana-util HTML docs · grafana-util docs</title>
   <style>:root {
   color-scheme: light dark;
-  --font-display-en: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
-  --font-body-en: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-body-zh: "PingFang TC", "Hiragino Sans GB", "Noto Sans CJK TC", "Noto Sans TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
-  --font-display: var(--font-display-en);
-  --font-body: var(--font-body-en);
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
   --panel: rgba(255, 255, 255, 0.82);
   --panel-strong: rgba(255, 255, 255, 0.92);
@@ -82,17 +76,13 @@ html[data-theme="dark"] body {
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  font-family: var(--font-body);
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
   color: var(--text);
   background: var(--bg);
 }
-html[lang="zh-TW"] body {
-  --font-display: var(--font-body-zh);
-  --font-body: var(--font-body-zh);
-}
 a { color: var(--accent); }
 code {
-  font: 0.92em var(--font-mono);
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
   background: var(--code-bg);
   padding: 0.12em 0.35em;
   border-radius: 4px;
@@ -141,7 +131,7 @@ th {
   text-decoration: none;
 }
 .brand {
-  font: 700 0.96rem/1.2 var(--font-mono);
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -150,7 +140,7 @@ th {
   gap: 8px;
   align-items: center;
   color: var(--muted);
-  font: 600 12px/1.2 var(--font-mono);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .themebar select {
   border: 1px solid var(--border);
@@ -173,14 +163,12 @@ th {
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent);
-  font: 700 12px/1.2 var(--font-mono);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 .hero h1 {
   margin: 0;
-  font-family: var(--font-display);
-  font-weight: 700;
   font-size: clamp(2rem, 4vw, 3.2rem);
   line-height: 1.05;
   color: var(--heading);
@@ -234,7 +222,6 @@ th {
 .article h1,
 .article h2,
 .article h3 {
-  font-family: var(--font-display);
   color: var(--heading);
 }
 .article h1 {
@@ -316,9 +303,6 @@ th {
   gap: 18px;
   margin-top: 22px;
 }
-.landing-grid.primary {
-  align-items: stretch;
-}
 .landing-card {
   padding: 22px;
   border: 1px solid var(--border);
@@ -328,43 +312,11 @@ th {
 }
 .landing-card h2 {
   margin-top: 0;
-  font-family: var(--font-display);
   color: var(--heading);
 }
 .landing-card ul {
   margin: 0;
   padding-left: 20px;
-}
-.landing-secondary {
-  margin-top: 18px;
-  padding: 18px 22px;
-}
-.landing-secondary h2 {
-  margin: 0 0 8px;
-  font-family: var(--font-display);
-  color: var(--heading);
-}
-.landing-secondary p {
-  margin: 0 0 14px;
-  color: var(--muted);
-}
-.inline-link-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.inline-link-list a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 40px;
-  padding: 9px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--panel-strong);
-  text-decoration: none;
 }
 @media (max-width: 980px) {
   .layout,
@@ -376,9 +328,6 @@ th {
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
-  }
-  .inline-link-list {
-    flex-direction: column;
   }
 }</style>
 </head>
@@ -403,28 +352,54 @@ th {
     </header>
     <div class="layout">
       <article class="panel article">
-        <div class="landing-grid primary">
+        <div class="landing-grid">
+  <section class="landing-card">
+    <div class="eyebrow">Language</div>
+    <h2>Start by language</h2>
+    <p>Choose the language lane first, then continue into the handbook, command reference, or role-specific entry pages.</p>
+    <ul>
+      <li><a href="handbook/en/index.html">English handbook</a></li>
+      <li><a href="commands/en/index.html">English command reference</a></li>
+      <li><a href="handbook/zh-TW/index.html">繁體中文手冊</a></li>
+      <li><a href="commands/zh-TW/index.html">繁體中文逐指令說明</a></li>
+    </ul>
+  </section>
+  <section class="landing-card">
+    <div class="eyebrow">Maintainer</div>
+    <h2>Repository and design docs</h2>
+    <p>Maintainer-facing documentation stays separate from the public handbook and command-reference lanes.</p>
+    <ul>
+      <li><a href="../DEVELOPER.md">Maintainer entrypoint</a></li>
+      <li><a href="../internal/maintainer-quickstart.md">Maintainer quickstart</a></li>
+      <li><a href="../internal/README.md">Internal docs index</a></li>
+    </ul>
+  </section>
+</div>
+<div class="landing-grid">
   <section class="landing-card">
     <div class="eyebrow">English</div>
-    <h2>English docs lane</h2>
-    <p>Start here if you want the handbook, role guides, and command reference in English without mixing locales in the first reading path.</p>
+    <h2>English handbook and reference</h2>
+    <p>Use the English lane if you want the handbook, role guides, and one-page-per-command reference in English.</p>
     <ul>
       <li><a href="handbook/en/index.html">Handbook index</a></li>
-      <li><a href="commands/en/index.html">Command reference</a></li>
       <li><a href="handbook/en/role-new-user.html">New user path</a></li>
       <li><a href="handbook/en/role-sre-ops.html">SRE / operator path</a></li>
+      <li><a href="handbook/en/role-automation-ci.html">Automation / CI path</a></li>
+      <li><a href="commands/en/index.html">Command reference</a></li>
+      <li><a href="man/index.html">Manpages (HTML)</a></li>
     </ul>
   </section>
   <section class="landing-card">
     <div class="eyebrow">繁體中文</div>
-    <h2>繁體中文文件入口</h2>
-    <p>如果你想直接用繁體中文閱讀手冊、角色導覽與逐指令說明，從這裡進去會最順，不需要先在英文入口之後再切語言。</p>
+    <h2>繁體中文手冊與逐指令說明</h2>
+    <p>Use the Traditional Chinese lane if you want handbook chapters, role guides, and command pages without mixing locales in the same entry flow.</p>
     <ul>
       <li><a href="handbook/zh-TW/index.html">手冊目錄</a></li>
-      <li><a href="commands/zh-TW/index.html">逐指令說明</a></li>
       <li><a href="handbook/zh-TW/role-new-user.html">新使用者路徑</a></li>
       <li><a href="handbook/zh-TW/role-sre-ops.html">SRE / 維運路徑</a></li>
       <li><a href="handbook/zh-TW/role-automation-ci.html">自動化 / CI 路徑</a></li>
+      <li><a href="commands/zh-TW/index.html">逐指令說明</a></li>
+      <li><a href="man/index.html">Manpage HTML</a></li>
     </ul>
   </section>
 </div>
@@ -433,11 +408,11 @@ th {
       <aside class="panel sidebar">
         <section>
           <h2>On This Page</h2>
-          <p>Choose a language lane first, then use version links only if you need a different release context.</p>
+          <p>Start from one of the two main entrypoints.</p>
         </section>
         <section>
           <h2>Related</h2>
-          <ul><li><a class="link-card" href="../DEVELOPER.md">Maintainer entrypoint</a></li></ul>
+          <ul><li><a class="link-card" href="handbook/en/index.html">English handbook</a></li><li><a class="link-card" href="handbook/zh-TW/index.html">繁體中文手冊</a></li><li><a class="link-card" href="commands/en/index.html">English command reference</a></li><li><a class="link-card" href="commands/zh-TW/index.html">繁體中文逐指令說明</a></li><li><a class="link-card" href="../DEVELOPER.md">Maintainer entrypoint</a></li></ul>
         </section>
         <section>
           <h2>Version</h2>
@@ -445,7 +420,7 @@ th {
         </section>
         <section>
           <h2>Language</h2>
-          <p>This homepage is language-first by design: enter English or 繁體中文, then keep reading inside that lane.</p>
+          <p>Choose a language first, then stay within that handbook or command-reference lane.</p>
         </section>
       </aside>
     </div>
