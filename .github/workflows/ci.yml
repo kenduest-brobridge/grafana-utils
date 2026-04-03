@@ -15,8 +15,8 @@ jobs:
   python-quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - name: Install Python runtime dependencies
@@ -31,7 +31,7 @@ jobs:
     needs:
       - python-quality
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -46,7 +46,7 @@ jobs:
     env:
       RUSTFLAGS: -C debuginfo=0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - name: Build Linux amd64 Rust release binary
         run: cargo build --release --manifest-path rust/Cargo.toml --bin grafana-util
@@ -57,7 +57,7 @@ jobs:
             "release-assets/rust/grafana-utils-rust-linux-amd64-${GITHUB_REF_NAME}.tar.gz" \
             grafana-util
       - name: Upload Linux amd64 Rust release archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: rust-release-linux-amd64-${{ github.ref_name }}-${{ github.sha }}
           path: release-assets/rust/grafana-utils-rust-linux-amd64-${{ github.ref_name }}.tar.gz
@@ -71,7 +71,7 @@ jobs:
     env:
       RUSTFLAGS: -C debuginfo=0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - name: Build macOS arm64 Rust release binary
         run: cargo build --release --manifest-path rust/Cargo.toml --bin grafana-util
@@ -82,7 +82,7 @@ jobs:
             "release-assets/rust/grafana-utils-rust-macos-arm64-${GITHUB_REF_NAME}.tar.gz" \
             grafana-util
       - name: Upload macOS arm64 Rust release archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: rust-release-macos-arm64-${{ github.ref_name }}-${{ github.sha }}
           path: release-assets/rust/grafana-utils-rust-macos-arm64-${{ github.ref_name }}.tar.gz
@@ -98,12 +98,12 @@ jobs:
       contents: write
     steps:
       - name: Download Linux amd64 Rust release archive
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: rust-release-linux-amd64-${{ github.ref_name }}-${{ github.sha }}
           path: release-assets/rust
       - name: Download macOS arm64 Rust release archive
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: rust-release-macos-arm64-${{ github.ref_name }}-${{ github.sha }}
           path: release-assets/rust

@@ -149,6 +149,11 @@ pub fn render_unified_help_full_text(colorize: bool) -> String {
     help
 }
 
+/// Render the canonical unified CLI version line.
+pub fn render_unified_version_text() -> String {
+    format!("grafana-util {}\n", crate::common::TOOL_VERSION)
+}
+
 /// maybe render unified help from os args.
 pub fn maybe_render_unified_help_from_os_args<I, T>(iter: I, colorize: bool) -> Option<String>
 where
@@ -329,6 +334,8 @@ pub enum DashboardGroupCommand {
 /// Namespaced root commands handled by the Rust `grafana-util` binary.
 #[derive(Debug, Clone, Subcommand)]
 pub enum UnifiedCommand {
+    #[command(about = "Print the current grafana-util version.")]
+    Version,
     #[command(
         about = "Run dashboard browse, authoring, export, import, diff, patch-file, review, and publish workflows.",
         visible_alias = "db",
@@ -400,6 +407,7 @@ pub enum UnifiedCommand {
 #[derive(Debug, Clone, Parser)]
 #[command(
     name = "grafana-util",
+    version = crate::common::TOOL_VERSION,
     about = "Unified Grafana dashboard, alerting, access, and profile utility.",
     after_help = UNIFIED_HELP_TEXT,
     styles = crate::help_styles::CLI_HELP_STYLES
@@ -505,6 +513,10 @@ where
 {
     let default_color = args.color;
     match args.command {
+        UnifiedCommand::Version => {
+            print!("{}", render_unified_version_text());
+            Ok(())
+        }
         UnifiedCommand::Dashboard { command } => run_dashboard(wrap_dashboard_group(command)),
         UnifiedCommand::Datasource { color, command } => {
             set_json_color_choice(color.unwrap_or(default_color));

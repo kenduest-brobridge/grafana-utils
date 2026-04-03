@@ -15,7 +15,7 @@ curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/ma
 Override the install location or pinned version when needed:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | BIN_DIR=/usr/local/bin VERSION=v0.6.0 sh
+curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | BIN_DIR=/usr/local/bin VERSION=v0.6.1 sh
 ```
 
 If you already have a local checkout, run the script from the repository root instead:
@@ -55,6 +55,8 @@ Quick jump sections:
 Confirm the CLI surface first so the flags in the document match your local checkout:
 
 ```bash
+grafana-util --version
+grafana-util version
 grafana-util -h
 grafana-util dashboard -h
 grafana-util alert -h
@@ -75,6 +77,7 @@ grafana-util <domain> <command> [options]
 CLI notes:
 
 - `grafana-util` is the primary unified CLI.
+- `grafana-util --version` and `grafana-util version` both print the current CLI version.
 - Use the namespaced `grafana-util <domain> <command>` layout throughout this guide.
 - Use `grafana-util profile init`, `profile list`, and `profile show` to manage repo-local live connection defaults in `grafana-util.yaml`.
 - `dashboard list-data-sources` remains available under the dashboard command surface, but new datasource inventory workflows should prefer `datasource list`.

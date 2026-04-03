@@ -14,6 +14,30 @@ Format rule going forward:
 - keep older tagged releases below
 - use commit/tag history as the source of truth
 
+## [0.6.1] - 2026-04-02
+
+### Highlights
+
+- The CLI now exposes a direct version check at the root through both
+  `grafana-util --version` and `grafana-util version`.
+- The release-facing documentation was rewritten to make the command areas,
+  workflow boundaries, and staged contract rules easier to follow.
+
+### Changed
+
+- `README.md` and `README.zh-TW.md` now act more like product entry pages:
+  they explain what the tool is for, how the major command areas fit
+  together, and which staged workflow rules matter most.
+- `docs/user-guide.md` and `docs/user-guide-TW.md` now tell operators to
+  confirm the installed CLI version at the start of the workflow.
+
+### Fixed
+
+- GitHub Actions release and quality workflows now use Node 24 compatible
+  versions of the official checkout, setup-python, upload-artifact, and
+  download-artifact actions, avoiding the Node 20 deprecation warnings on
+  current runners.
+
 ## [0.6.0] - 2026-04-02
 
 ### Highlights

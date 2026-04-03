@@ -20,7 +20,7 @@ curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/ma
 需要指定安裝位置或固定版本時：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | BIN_DIR=/usr/local/bin VERSION=v0.6.0 sh
+curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | BIN_DIR=/usr/local/bin VERSION=v0.6.1 sh
 ```
 
 如果您已經有本地 checkout，也可以直接在 repo 根目錄執行：
@@ -60,6 +60,8 @@ sh ./scripts/install.sh
 開始之前，您可以透過以下指令確認各模組的說明資訊：
 
 ```bash
+grafana-util --version
+grafana-util version
 grafana-util -h
 grafana-util dashboard -h
 grafana-util alert -h
@@ -78,6 +80,7 @@ grafana-util <domain> <command> [options]
 
 ### 入口點說明：
 - **`grafana-util`**：統一入口，支援 `dashboard/alert/datasource/access/change/overview/status`。
+- `grafana-util --version` 和 `grafana-util version` 都可以顯示目前 CLI 版本。
 - 統一 CLI 請使用命名空間形式：`grafana-util <domain> <command>`。
 - `dashboard list-data-sources` 仍可使用，但新的資料來源盤點流程應優先改用 `datasource list`。
 - `overview` 是人類優先的專案入口，`status` 是正式 status contract，`change` 則承接 staged change workflow。

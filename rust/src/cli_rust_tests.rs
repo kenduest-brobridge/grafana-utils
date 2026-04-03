@@ -3,9 +3,11 @@
 //! domain payload shapes.
 use super::{
     dispatch_with_handlers, maybe_render_unified_help_from_os_args, parse_cli_from,
-    render_unified_help_full_text, render_unified_help_text, CliArgs, UnifiedCommand,
+    render_unified_help_full_text, render_unified_help_text, render_unified_version_text, CliArgs,
+    UnifiedCommand,
 };
 use crate::alert::{parse_cli_from as parse_alert_cli_from, root_command as alert_root_command};
+use crate::common::TOOL_VERSION;
 use crate::dashboard::{DashboardCommand, SimpleOutputFormat};
 use crate::datasource::DatasourceGroupCommand;
 use crate::overview::OverviewOutputFormat;
@@ -66,6 +68,7 @@ fn render_snapshot_subcommand_help(path: &[&str]) -> String {
 #[test]
 fn unified_help_mentions_screenshot_and_inspect_vars_examples() {
     let help = render_unified_help();
+    assert!(help.contains("--version"));
     assert!(help.contains("--help-full"));
     assert!(help.contains("Print help with extended examples"));
     assert!(help.contains("[Dashboard Export] Export dashboards with Basic auth"));
@@ -82,6 +85,24 @@ fn unified_help_mentions_screenshot_and_inspect_vars_examples() {
     assert!(help.contains("Review a local snapshot inventory as JSON"));
     assert!(help.contains("Run profile list, show, and init workflows."));
     assert!(help.contains("[Profile Show]"));
+}
+
+#[test]
+fn unified_cli_renders_root_version_flag_output() {
+    let clap_version = CliArgs::command().render_version().to_string();
+    let unified_version = render_unified_version_text();
+    assert_eq!(clap_version, unified_version);
+    assert!(unified_version.contains("grafana-util"));
+    assert!(unified_version.contains(TOOL_VERSION));
+}
+
+#[test]
+fn parse_cli_supports_version_subcommand() {
+    let args: CliArgs = parse_cli_from(["grafana-util", "version"]);
+    match args.command {
+        UnifiedCommand::Version => {}
+        _ => panic!("expected version command"),
+    }
 }
 
 #[test]

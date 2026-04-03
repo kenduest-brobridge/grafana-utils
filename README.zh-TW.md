@@ -2,74 +2,79 @@
 
 [English Version](README.md) | **繁體中文版**
 
-`grafana-util` 是一套以 Rust 為主的 Grafana 維運 CLI，重點放在盤點、遷移、review-first 的匯出/匯入流程、dashboard 分析、專案層 overview/status 讀取，以及 staged change 工作流。
+`grafana-util` 是一套以 Rust 為主的 Grafana 維運 CLI，重點放在盤點、匯出匯入、drift review、staged change 工作流，以及專案層級的狀態讀取。
 
-## 為什麼會有這個工具
+它解的是 estate-level 的操作問題，不是單一物件逐個點選的 UI 管理問題。當你需要先看清楚現況、把資料匯出成可審查檔案、比較 staged 與 live Grafana 的差異，再決定是否套用時，這個工具才是它真正的使用場景。
 
-Grafana 的 UI 很適合做單一物件的日常管理，但一碰到 estate-level 的工作，例如批次匯出、跨 org 盤點、依賴分析、遷移預演、reviewable 變更證據，就會變得不夠順手。
+## 這個工具適合做什麼
 
-這個落差在企業環境或多 org 環境特別明顯：
+適合拿 `grafana-util` 來做這些事：
 
-- Grafana UI 的 dashboard export 很難做批次遷移，很多情況還是得一個一個處理
-- 要把 dashboard 轉移到別的環境時，常常得選對「可供外部分享 / 可供匯入重映射 datasource」那種 export 形式，目標端匯入時才能重新選 datasource
-- 維運人員需要知道目前有哪些 datasources、哪些 dashboards 用到哪些 datasources、每個 dashboard 裡實際用了哪些 query / metric 語法
-- user、org、team、service account、permission 這些狀態，在 Grafana UI 裡分散，很難做完整盤點
-- alerting 資源的搬移也很麻煩，因為 Grafana 沒有提供像 dashboard 那樣完整直覺的 UI import 路徑
-- 真正在維運時，import / replay 這類動作應該要先能 `diff`、`dry-run`、review，再決定是否 apply，而不是直接盲改
+- 把 dashboard、datasource、alerting 資源或 access 狀態匯出成可審查的本地檔案
+- 在真正修改 Grafana 前，先比對 staged 檔案與 live 狀態
+- 跑 `dry-run`、review、apply 這種受控流程，而不是直接盲改
+- 在專案尺度分析 dashboard query、datasource 依賴、staged inventory
+- 用 `overview` 或 `status` 先讀出整個專案的摘要與 readiness
 
-`grafana-util` 的定位，就是把 Grafana 狀態轉成可盤點、可匯出、可分析、可 diff、可 dry-run、可 review 的維運材料。它主要解的是 migration、audit、governance、handoff 這類操作流程，不是拿來取代 Grafana 本身的 dashboard 編輯體驗。
+這個專案不是要取代 Grafana 的編輯 UI。它主要解 migration、audit、governance、handoff，以及 operator-safe change workflow。
 
-## 輸出與操作面相
+## 主要命令區域
 
-很多命令都刻意提供不只一種輸出面，讓同一套流程可以同時支援人工巡檢、互動式操作，以及自動化串接。
-
-| 面相 | 適合用途 | 代表命令 |
+| 區域 | 主要用途 | 常見命令 |
 | --- | --- | --- |
-| 互動式 TUI | 導覽、審查、在終端機內逐步操作 | `dashboard browse`、`dashboard inspect-export --interactive`、`dashboard inspect-live --interactive`、`datasource browse`、`overview --output interactive`、`status ... --output interactive` |
-| 純文字 | 預設維運摘要、dry-run 預覽、人工閱讀 | `change`、`overview`、`status`、各種 dry-run 摘要 |
-| JSON | CI、自動化、結構化審查結果、命令間資料接力 | import dry-run、change 文件、staged/live status contract |
-| Table / CSV / report | 清單盤點、分析報表、治理檢查 | list 系列命令、`dashboard inspect-*`、review tables |
+| `dashboard` | dashboard 盤點、匯出匯入、diff、分析、截圖 | `list`、`export`、`import`、`diff`、`inspect-export`、`inspect-live`、`browse`、`screenshot` |
+| `datasource` | datasource 盤點、masked recovery 匯出、回放、live mutation | `list`、`export`、`import`、`diff`、`browse`、`add`、`modify`、`delete` |
+| `alert` | alert 管理、review/apply 工作流、遷移 bundle | `plan`、`apply`、`delete`、`export`、`import`、`diff`、`list-*`、`add-rule`、`clone-rule` |
+| `access` | org、user、team、service account 的盤點與回放 | `org ...`、`user ...`、`team ...`、`service-account ...` |
+| `change` | staged review-first 變更工作流 | `summary`、`plan`、`review`、`apply`、`preflight`、`bundle-preflight` |
+| `overview` | 人類導向的整體專案摘要 | `overview`、`overview live` |
+| `status` | 正式的 staged/live status contract | `status staged`、`status live` |
+| `profile` | repo-local 連線預設值 | `init`、`list`、`show` |
 
-## 功能支援層級
+## 輸出模式
 
-如果你想快速判斷「這個專案在每個模組到底支援到多深」，先看這張表。
+同一類工作流通常不只一種輸出面：
 
-| 模組 | 支援層級 | 目前可做的事 | 輸出與操作面 | 備註 |
-| --- | --- | --- | --- | --- |
-| `dashboard` | 最完整、最深入 | list、export、import、diff、delete、live/export inspect、query inventory、datasource dependency review、permission export | text、table/csv/json、report 模式、互動式 TUI、screenshot/PDF | 功能最完整，也是分析能力最重的模組 |
-| `datasource` | 深且成熟 | list、export、import、diff、add、modify、delete、live browse、跨 org replay | text、table/csv/json、互動式 browse | 同時支援 live mutation 與檔案回放 |
-| `alert` | 成熟的管理與遷移面 | 列出 rules、contact points、mute timings、templates；建立 reviewable alert plan；套用已審查變更；預覽 explicit delete；建立 managed desired-state scaffold；並支援 export、import、diff、dry-run bundle | text/json、table/csv/json | 同時涵蓋 operator-first 管理流程與舊有遷移 / replay 流程 |
-| `access` | 成熟的盤點與回放面 | 管理 org、user、team、service account；支援 export、import、diff、dry-run；service-account token add/delete | table/csv/json | 適合 access state inventory 與受控重建 |
-| `change` | 進階 staged workflow | 建立 summary、bundle、preflight、plan、review record、apply intent、audit、promotion-preflight 文件 | text/json | 重點是 review-first 的變更流程，不是直接盲目套用 |
-| `overview` | 人類優先的專案入口 | 把 staged exports 或 live Grafana 整理成單一專案快照 | text/json/interactive | 適合 handoff、triage、人工巡檢時先進來看 |
-| `status` | 正式 status contract | 輸出專案層的 staged/live readiness contract | text/json/interactive | 適合自動化、交接，或需要同一份穩定跨模組 status 時使用 |
+| 模式 | 適合用途 |
+| --- | --- |
+| text | 預設維運摘要與 dry-run 預覽 |
+| json | CI、自動化、穩定的 machine-readable handoff |
+| table / csv | 清單盤點與類試算表輸出 |
+| interactive TUI | 導覽式瀏覽與終端機內審查 |
 
-## 功能快速矩陣
+## 安裝
 
-這是 README 版的精簡支援矩陣；如果要看完整到每個命令層級的差異，請再往 user guide 查。
+安裝最新版：
 
-核心資源工作流：
+```bash
+curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+```
 
-| 模組 | List | Export | Import | Diff | Inspect / Analyze | Live mutation | TUI |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `dashboard` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `datasource` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `alert` | ✓ | ✓ | ✓ | ✓ | - | ✓ | - |
-| `access` | ✓ | ✓ | ✓ | ✓ | - | ✓ | - |
+需要固定版本或指定安裝位置時：
 
-專案層工作流：
+```bash
+curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | BIN_DIR=/usr/local/bin VERSION=v0.6.1 sh
+```
 
-| 入口 | Staged review | Live read | Interactive view |
-| --- | --- | --- | --- |
-| `change` | ✓ | ✓ | - |
-| `overview` | ✓ | ✓ | ✓ |
-| `status` | ✓ | ✓ | ✓ |
+如果你已經有 repo checkout：
+
+```bash
+sh ./scripts/install.sh
+```
+
+從原始碼建置：
+
+```bash
+cd rust && cargo build --release
+```
 
 ## 快速開始
 
-先確認目前維護中的命令面：
+先確認版本與目前維護中的命令面：
 
 ```bash
+grafana-util --version
+grafana-util version
 grafana-util -h
 grafana-util dashboard -h
 grafana-util datasource -h
@@ -80,9 +85,9 @@ grafana-util overview -h
 grafana-util status -h
 ```
 
-本 README 的範例已在本地 Docker Grafana `12.4.1` 驗證，並另外灌入 sample org、dashboard、datasource、alerting resource、user、team、service account。
+本 README 的 live 範例已在本地 Docker Grafana `12.4.1` 驗證。
 
-跨 org 列出 dashboard 並帶出 datasource：
+跨 org 列出 dashboard，並附帶 datasource 資訊：
 
 ```bash
 grafana-util dashboard list \
@@ -94,7 +99,7 @@ grafana-util dashboard list \
   --table
 ```
 
-分析已匯出的 dashboard，查看 datasource 使用情況、query 結構與治理報表：
+分析已匯出的 dashboard tree：
 
 ```bash
 grafana-util dashboard inspect-export \
@@ -102,11 +107,7 @@ grafana-util dashboard inspect-export \
   --output-format report-table
 ```
 
-`dashboard export` 預設會同時寫出三條 lane：`raw/` 給 grafana-util API replay，`prompt/` 給 Grafana UI 匯入，`provisioning/` 給 Grafana file provisioning artifacts。
-
-`datasource export` 則會把可回放的 masked recovery contract 寫進 `datasources.json`，另外再輸出 `provisioning/datasources.yaml` 作為 Grafana file provisioning projection。真正的 restore/replay contract 仍應以 `datasources.json` 為主，`provisioning/` 只視為衍生輸出。
-
-在真正匯入前先做 dry-run 預覽：
+在真正套用前先預覽 dashboard import：
 
 ```bash
 grafana-util dashboard import \
@@ -119,7 +120,7 @@ grafana-util dashboard import \
   --table
 ```
 
-匯出 alerting 資源做遷移或審查：
+匯出 alerting 資源做審查或遷移：
 
 ```bash
 grafana-util alert export \
@@ -130,7 +131,7 @@ grafana-util alert export \
   --overwrite
 ```
 
-從 desired YAML / JSON 建立 reviewable 的 alert management plan：
+從 desired files 建立可審查的 alert plan：
 
 ```bash
 grafana-util alert plan \
@@ -142,94 +143,60 @@ grafana-util alert plan \
   --output json
 ```
 
-現在 alert 可以分成三層來理解：
+## 重要工作流規則
 
-1. Authoring layer：`alert add-rule`、`clone-rule`、`add-contact-point`、`set-route`、`preview-route`，以及較低階的 `init` / `new-*` scaffold。這些命令只會寫或預覽 desired-state files，不會直接修改 live Grafana。
-2. Review/apply layer：`alert plan` 會把 desired files 和 live Grafana 做比對，`alert apply` 只執行已審查的 create / update / delete row。
-3. Migration layer：`alert export`、`import`、`diff` 仍維持在 raw inventory、replay、bundle 型遷移流程。
+### Dashboard export 會刻意拆成不同 lane
 
-Authoring 邊界：
-- `add-rule` 只適合 simple threshold / classic-condition style authoring。比較複雜的 rule，先用 `clone-rule` 從真實 rule 起手，再手改 desired file。
-- `set-route` 管的是同一條 managed route。重跑會覆蓋那條 route，不做 field-by-field merge。
-- `preview-route` 只是 desired-state preview helper，不是完整的 Grafana routing simulator。
-- `--folder` 目前只會寫進 authored desired metadata，不是 live resolve/create folder workflow。
-- authoring commands 都支援 `--dry-run`，可先看輸出的 desired document 再決定是否落檔。
+`dashboard export` 會寫出三種不同輸出：
 
-短版 alert 工作流：
+- `raw/`：給 grafana-util replay/import 用的 canonical lane
+- `prompt/`：給 Grafana UI 匯入的 lane
+- `provisioning/`：給 Grafana file provisioning 的 lane
 
-1. 先用 authoring layer 在 `./alerts/desired` 產生或修改 desired files。
-2. 用 `alert plan` 審查 live Grafana 會 create、update、blocked、delete 哪些資源。
-3. 確認 plan 後，再用 `alert apply` 套用已審查的 plan file。
-4. 如果要刪除，先移除 desired file，再跑 `alert plan --prune`，最後套用 delete plan。
+這三條 lane 不是互換的。做什麼流程，就要用對應的 lane。
 
-最小 authoring 到 apply 範例：
+### Datasource export 使用 masked recovery contract
 
-```bash
-grafana-util alert init --desired-dir ./alerts/desired
-grafana-util alert add-contact-point --desired-dir ./alerts/desired --name pagerduty-primary
-grafana-util alert add-rule --desired-dir ./alerts/desired --name cpu-high --folder platform-alerts --rule-group cpu --receiver pagerduty-primary --label team=platform --severity critical --expr A --threshold 80 --above --for 5m
-grafana-util alert preview-route --desired-dir ./alerts/desired --label team=platform --severity critical
-grafana-util alert plan --url http://localhost:3000 --basic-user admin --basic-password admin --desired-dir ./alerts/desired --output json
-grafana-util alert apply --url http://localhost:3000 --basic-user admin --basic-password admin --plan-file ./alert-plan-reviewed.json --approve --output json
-```
+`datasource export` 會寫出：
 
-複雜 rule 路徑：
+- `datasources.json`：canonical masked recovery / replay contract
+- `provisioning/datasources.yaml`：衍生出來的 provisioning projection
 
-```bash
-grafana-util alert clone-rule --desired-dir ./alerts/desired --source cpu-high --name cpu-high-staging --folder staging-alerts --rule-group cpu --receiver slack-platform
-# 手改 ./alerts/desired/rules/cpu-high-staging.yaml 或 .json
-grafana-util alert plan --url http://localhost:3000 --basic-user admin --basic-password admin --desired-dir ./alerts/desired --output json
-grafana-util alert apply --url http://localhost:3000 --basic-user admin --basic-password admin --plan-file ./alert-plan-reviewed.json --approve --output json
-```
+真正要拿來 restore 或 replay 的是 `datasources.json`。`provisioning/` 應視為 Grafana file provisioning 用的 projection，不是主要 restore source。
 
-刪除路徑：
+### Alert management 刻意分成 authoring 與 apply 兩段
 
-```bash
-rm ./alerts/desired/rules/cpu-high.yaml
-grafana-util alert plan --url http://localhost:3000 --basic-user admin --basic-password admin --desired-dir ./alerts/desired --prune --output json
-grafana-util alert apply --url http://localhost:3000 --basic-user admin --basic-password admin --plan-file ./alert-plan-reviewed.json --approve --output json
-```
+alert surface 是刻意拆開的：
 
-完整的 alert authoring、review/apply、migration、prune delete 指南在 [docs/user-guide-TW.md](./docs/user-guide-TW.md)。
+- 先用 `add-rule`、`clone-rule`、`add-contact-point` 之類的命令寫 desired-state files
+- 再用 `alert plan` 審查 delta
+- 最後只用 `alert apply` 執行已審查的變更
 
-## 安裝與建置
+這不是多此一舉，而是刻意把 alert 變更做成可 review 的流程，降低直接動 live Grafana 的風險。
 
-使用 repo 內建安裝腳本，一行完成安裝：
+## 各區域成熟度
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
-```
+如果你只想快速看支援深度，先看這張表。
 
-需要指定安裝位置或版本時：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | BIN_DIR=/usr/local/bin VERSION=v0.6.0 sh
-```
-
-如果您已經有本地 checkout，也可以直接在 repo 根目錄執行：
-
-```bash
-sh ./scripts/install.sh
-```
-
-若要使用目前 checkout 的版本或自行從原始碼建置：
-
-```bash
-cd rust && cargo build --release
-```
-
-- [最新版 release](https://github.com/kenduest-brobridge/grafana-utils/releases/latest)
-- [所有 releases](https://github.com/kenduest-brobridge/grafana-utils/releases)
+| 區域 | 目前成熟度 | 備註 |
+| --- | --- | --- |
+| `dashboard` | 最深 | 分析、匯出匯入、審查工具最完整 |
+| `datasource` | 深且成熟 | 同時支援 live mutation 與檔案回放 |
+| `alert` | 成熟 | 同時支援 review/apply 管理流程與遷移式 export/import |
+| `access` | 成熟 | 最適合做 inventory、replay、受控重建 |
+| `change` | 進階 | 重點是 review-first staged workflow |
+| `overview` | 穩定的人類入口 | 適合 handoff 與 triage 的第一站 |
+| `status` | 穩定 contract surface | 適合需要單一跨 domain staged/live status 時使用 |
 
 ## 文件
 
 - [英文使用者指南](docs/user-guide.md)
 - [繁體中文使用者指南](docs/user-guide-TW.md)
-- [Rust 技術總覽](docs/overview-rust.md)
 - [開發者手冊](docs/DEVELOPER.md)
+- [Rust 技術總覽](docs/overview-rust.md)
+- [變更紀錄](CHANGELOG.md)
 
-## 相容性
+## Releases
 
-- OS：Linux、macOS
-- 執行型態：Rust release binary
-- Grafana：已驗證 `12.4.1`，目標支援 `8.x` 到目前 `12.x`
+- [最新版 release](https://github.com/kenduest-brobridge/grafana-utils/releases/latest)
+- [所有 releases](https://github.com/kenduest-brobridge/grafana-utils/releases)
