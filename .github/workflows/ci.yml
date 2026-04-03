@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches:
@@ -68,3 +71,28 @@ jobs:
           path: dist/macos-arm64/*.tar.gz
           if-no-files-found: error
           retention-days: 30
+
+  github-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - rust-package-linux-amd64
+      - rust-package-macos-arm64
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Rust release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: rust-*
+          path: release-assets
+          merge-multiple: true
+      - name: Publish GitHub release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 || \
+            gh release create "$RELEASE_TAG" --title "$RELEASE_TAG" --notes ""
+          gh release upload "$RELEASE_TAG" release-assets/*.tar.gz --clobber

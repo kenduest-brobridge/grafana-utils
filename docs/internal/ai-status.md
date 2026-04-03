@@ -26,6 +26,13 @@ Historical note:
 - Current Update: Extended the GitHub workflow to trigger on `v*` tags, added a Linux amd64 release-packaging job on `ubuntu-latest`, added a macOS arm64 release-packaging job on `macos-15`, and uploaded each generated `.tar.gz` package as a retained workflow artifact. Updated the maintainer guide to describe the new tagged GitHub artifact path.
 - Result: Tagged GitHub Actions runs now produce downloadable Rust release tarballs for both Linux amd64 and macOS arm64 using the existing repo packaging scripts.
 
+## 2026-03-15 - Task: Attach Tagged Rust Packages To GitHub Releases
+- State: Done
+- Scope: `.github/workflows/ci.yml`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Tagged GitHub Actions runs already built Rust tarballs for Linux amd64 and macOS arm64, but those files only existed as workflow artifacts. Operators still had to open the workflow run to download them, and tag pushes did not populate the matching GitHub Release with platform assets.
+- Current Update: Added a tag-only `github-release` job that waits for both Rust package jobs, downloads their uploaded artifacts, and uses the GitHub CLI with `contents: write` permission to create or update the matching GitHub Release and upload both `.tar.gz` files as release assets.
+- Result: `vX.Y.Z` tag runs now publish the Linux amd64 and macOS arm64 Rust packages directly on the matching GitHub Release in addition to the workflow-artifact copies.
+
 ## 2026-03-15 - Task: Add Python Datasource Org-Scoped Export And Routed Import
 - State: Done
 - Scope: `grafana_utils/datasource/parser.py`, `grafana_utils/datasource_cli.py`, `grafana_utils/datasource/workflows.py`, `tests/test_python_datasource_cli.py`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
