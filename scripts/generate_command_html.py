@@ -165,9 +165,9 @@ th {
   background: var(--accent-soft);
 }
 .site {
-  max-width: 1220px;
+  max-width: 1520px;
   margin: 0 auto;
-  padding: 28px 22px 68px;
+  padding: 28px 28px 68px;
 }
 .topbar {
   display: flex;
@@ -230,6 +230,12 @@ th {
   line-height: 1.8;
   color: var(--muted);
 }
+.hero p.hero-summary-inline {
+  max-width: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .breadcrumbs {
   margin: 20px 0 0;
   padding: 0;
@@ -250,7 +256,7 @@ th {
 }
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 290px;
+  grid-template-columns: minmax(0, 1.18fr) 320px;
   gap: 22px;
   margin-top: 22px;
 }
@@ -368,6 +374,11 @@ th {
   .footer-nav {
     grid-template-columns: 1fr;
   }
+  .hero p.hero-summary-inline {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
 }
 """.strip()
 
@@ -452,6 +463,7 @@ def page_shell(
     home_href: str,
     hero_title: str,
     hero_summary: str,
+    hero_summary_class: str = "",
     eyebrow: str,
     breadcrumbs: list[tuple[str, str | None]],
     body_html: str,
@@ -486,7 +498,7 @@ def page_shell(
     <header class="hero">
       <div class="eyebrow">{html.escape(eyebrow)}</div>
       <h1>{html.escape(hero_title)}</h1>
-      <p>{hero_summary}</p>
+      <p class="{html.escape(hero_summary_class)}">{hero_summary}</p>
       {render_breadcrumbs(breadcrumbs)}
     </header>
     <div class="layout">
@@ -584,6 +596,7 @@ def render_manpage_index_page(output_rel: str, manpage_names: list[str], config:
         home_href=relative_href(output_rel, prefixed_output_rel(config, "index.html")),
         hero_title="Generated Manpages",
         hero_summary="Browser-readable HTML mirrors of the checked-in generated manpages.",
+        hero_summary_class="",
         eyebrow=f"Manpages · grafana-util {html.escape(config.version)}",
         breadcrumbs=[
             ("Home", relative_href(output_rel, prefixed_output_rel(config, "index.html"))),
@@ -620,6 +633,7 @@ def render_manpage_page(output_rel: str, name: str, roff_text_body: str, config:
         home_href=relative_href(output_rel, prefixed_output_rel(config, "index.html")),
         hero_title=name,
         hero_summary="HTML mirror of a generated roff manpage.",
+        hero_summary_class="",
         eyebrow=f"Manpage Mirror · {html.escape(config.version)}",
         breadcrumbs=[
             ("Home", relative_href(output_rel, prefixed_output_rel(config, "index.html"))),
@@ -733,6 +747,7 @@ def render_landing_page(config: HtmlBuildConfig) -> str:
         home_href=relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "index.html")),
         hero_title="grafana-util HTML Docs",
         hero_summary="Generated manual-style HTML with separate handbook and command-reference entrypoints.",
+        hero_summary_class="hero-summary-inline",
         eyebrow=f"Generated HTML · grafana-util {html.escape(config.version)}",
         breadcrumbs=[("Home", None)],
         body_html=body_html,
@@ -836,6 +851,7 @@ def render_handbook_page(page, config: HtmlBuildConfig) -> str:
         home_href=relative_href(page.output_rel, prefixed_output_rel(config, "index.html")),
         hero_title=page_title,
         hero_summary=handbook_intro_text(page.locale),
+        hero_summary_class="",
         eyebrow=f"Handbook · {LOCALE_LABELS[page.locale]}",
         breadcrumbs=breadcrumbs,
         body_html=document.body_html,
@@ -881,6 +897,7 @@ def render_command_page(locale: str, source_path: Path, output_rel: str, config:
         home_href=relative_href(output_rel, prefixed_output_rel(config, "index.html")),
         hero_title=page_title,
         hero_summary=command_intro_text(locale),
+        hero_summary_class="",
         eyebrow=f"Command Reference · {LOCALE_LABELS[locale]}",
         breadcrumbs=breadcrumbs,
         body_html=document.body_html,

@@ -115,9 +115,9 @@ th {
   background: var(--accent-soft);
 }
 .site {
-  max-width: 1220px;
+  max-width: 1520px;
   margin: 0 auto;
-  padding: 28px 22px 68px;
+  padding: 28px 28px 68px;
 }
 .topbar {
   display: flex;
@@ -180,6 +180,12 @@ th {
   line-height: 1.8;
   color: var(--muted);
 }
+.hero p.hero-summary-inline {
+  max-width: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .breadcrumbs {
   margin: 20px 0 0;
   padding: 0;
@@ -200,7 +206,7 @@ th {
 }
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 290px;
+  grid-template-columns: minmax(0, 1.18fr) 320px;
   gap: 22px;
   margin-top: 22px;
 }
@@ -318,6 +324,11 @@ th {
   .footer-nav {
     grid-template-columns: 1fr;
   }
+  .hero p.hero-summary-inline {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
 }</style>
 </head>
 <body>
@@ -336,7 +347,7 @@ th {
     <header class="hero">
       <div class="eyebrow">Handbook · 繁體中文</div>
       <h1>🛠️ SRE / 維運角色導讀</h1>
-      <p>敘事式手冊頁面，適合照工作流閱讀，再跳到逐指令頁查精確命令面。</p>
+      <p class="">敘事式手冊頁面，適合照工作流閱讀，再跳到逐指令頁查精確命令面。</p>
       <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Handbook</a></li><li>繁體中文</li><li>🛠️ SRE / 維運角色導讀</li></ol>
     </header>
     <div class="layout">
