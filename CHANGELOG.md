@@ -14,6 +14,32 @@ Format rule going forward:
 - keep older tagged releases below
 - use commit/tag history as the source of truth
 
+## [0.6.2] - 2026-04-02
+
+### Highlights
+
+- The English operator guide moved from one oversized file into a handbook
+  layout with focused chapters for getting started, reference, dashboards,
+  datasources, alerts, access, project-wide status, and task-oriented
+  scenarios.
+- Release-facing entry docs now point readers directly at the handbook, so
+  the first-run path is clearer and the older single-file guide no longer has
+  to carry the full operator manual by itself.
+
+### Changed
+
+- `docs/user-guide/en/` is now the primary English user-guide location.
+- `docs/user-guide.md` now remains as a compatibility bridge for older links
+  while directing readers into the handbook structure.
+- The English handbook now includes validated live-output excerpts for version
+  checks, project status, dashboard inventory, and datasource inventory.
+
+### Notes
+
+- This release is documentation-focused. It does not change the Grafana API
+  behavior of the CLI; it changes how the operator manual is organized and how
+  readers discover the maintained workflows.
+
 ## [0.6.1] - 2026-04-02
 
 ### Highlights

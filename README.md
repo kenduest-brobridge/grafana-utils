@@ -53,7 +53,7 @@ curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/ma
 Pin a version or install location when needed:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | BIN_DIR=/usr/local/bin VERSION=v0.6.1 sh
+curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | BIN_DIR=/usr/local/bin VERSION=v0.6.2 sh
 ```
 
 If you already have a checkout:
@@ -190,7 +190,7 @@ Use this as the quick maturity map.
 
 ## Documentation
 
-- [English user guide](docs/user-guide.md)
+- [English user guide](docs/user-guide/en/index.md)
 - [Traditional Chinese user guide](docs/user-guide-TW.md)
 - [Developer guide](docs/DEVELOPER.md)
 - [Rust technical overview](docs/overview-rust.md)
