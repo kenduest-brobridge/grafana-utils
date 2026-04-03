@@ -1,0 +1,139 @@
+# 🍳 Best Practices & Real-World Recipes
+
+This chapter provides practical solutions for common Grafana operational headaches. The goal is not just to show a command, but to show when to use it, what success looks like, and what to check when the workflow goes sideways.
+
+---
+
+## 🚀 Recipe 1: Promoting Dashboards (Dev -> Prod)
+
+**Problem**: Exporting from Dev and importing to Prod often fails due to hardcoded organization IDs, folder context, or source-environment datasource UIDs.
+
+**Solution**: Use the **`prompt/` lane** for a clean promotion handoff.
+
+1. **Export from Dev**: `grafana-util dashboard export --export-dir ./dev-assets`
+2. **Locate Clean Source**: Use files in `./dev-assets/prompt/`. These have environment-specific metadata stripped.
+3. **Import to Prod**:
+   ```bash
+   grafana-util dashboard import --import-dir ./dev-assets/prompt --url https://prod-grafana --replace-existing
+   ```
+
+**Use this when**: the source and target environments share dashboard intent, but you do not want to replay every source-specific field literally.
+
+**Do not use this when**: you are performing raw backup/replay or disaster recovery. In that case, start from `raw/`, not `prompt/`.
+
+**Success looks like**:
+
+- the import lands without source-environment-only metadata causing conflicts
+- target dashboards bind to the intended target datasources and folders
+- the resulting live dashboards need minimal cleanup after import
+
+**If it fails, check**:
+
+- whether the target datasource UIDs or names actually exist
+- whether the chosen lane should have been `raw/` instead of `prompt/`
+- whether your credential scope can see the target org or folder
+
+---
+
+## 🔍 Recipe 2: Auditing Dependencies Before Import
+
+**Problem**: Importing a dashboard without its required datasource results in broken panels and misleading "successful" imports.
+
+**Solution**: Run a **pre-import inspection**.
+
+```bash
+# Generate a report of all required datasources in your export tree
+grafana-util dashboard inspect-export --import-dir ./backups/raw --output-format report-table
+```
+
+**What to check**: Ensure every `UID` listed in the "Sources" column exists in your target Grafana's `datasource list`.
+
+**Use this when**: you are preparing an import, validating a promotion bundle, or checking whether a dashboard export is portable enough for another environment.
+
+**Success looks like**:
+
+- every required datasource UID is present in the target
+- missing dependencies are known before import time
+- you can explain which dashboards are blocked and why
+
+**If it fails, check**:
+
+- whether the target environment uses different datasource naming or UID conventions
+- whether you exported the correct lane
+- whether the target credentials can list the datasources you expect
+
+---
+
+## 🛠️ Recipe 3: Mass Tagging/Renaming (Surgical Patching)
+
+**Problem**: You need to add a tag such as `ManagedBySRE` to many dashboards at once without hand-editing every file.
+
+**Solution**: Use `patch-file` in a loop, then preview the result before replaying it.
+
+```bash
+for file in ./dashboards/raw/*.json; do
+  grafana-util dashboard patch-file --input "$file" --tag "ManagedBySRE" --output "$file"
+done
+
+grafana-util dashboard import --import-dir ./dashboards/raw --replace-existing --dry-run --table
+```
+
+**Use this when**: the structural change is local and mechanical, and you want to keep the update reviewable.
+
+**Do not use this when**: the patch logic is so complex that a loop hides too much risk, or when the right answer depends on live discovery rather than local artifacts.
+
+**Success looks like**:
+
+- the modified files still review cleanly in Git
+- repeated patching does not create unexpected drift
+- the follow-on import is still previewed with `--dry-run` before live execution
+
+**If it fails, check**:
+
+- whether your loop is patching the right lane and file set
+- whether the patch should have targeted `prompt/` rather than `raw/`
+- whether the import should be previewed first with `--dry-run`
+
+---
+
+## 🚨 Recipe 4: Verifying Alert Routing Logic
+
+**Problem**: Complex notification policies make it hard to know where an alert will land.
+
+**Solution**: Use `preview-route` to simulate matches.
+
+```bash
+grafana-util alert preview-route \
+  --desired-dir ./alerts/desired \
+  --label service=order \
+  --severity critical
+```
+
+**Goal**: Verify that the `receiver` in the output matches your intended Slack channel or PagerDuty service.
+
+**Use this when**: labels or notification policies are changing and you want a deterministic answer before anyone assumes the route is correct.
+
+**Success looks like**:
+
+- the resolved receiver matches the intended destination
+- labels that should distinguish critical paths actually do
+- route previews are reviewed before a plan/apply step
+
+**If it fails, check**:
+
+- whether the labels in the preview match the labels your rules will actually emit
+- whether the desired alert files and notification policies are in sync
+- whether the issue is route logic versus rule classification
+
+---
+
+## 💡 Expert Tips
+
+- **UID consistency**: Always define stable `uid`s in your JSON. Do not rely on incremental `id`s.
+- **Dry-run everything**: Use `--dry-run` to see the `ACTION=update` vs `ACTION=create` preview before making live changes.
+- **Git integration**: Only commit the `raw/` and `desired/` directories to Git. These are your canonical sources.
+- **Credential reality check**: Before blaming the recipe, verify that the chosen credential can really see the org, folder, or admin surface you are operating on.
+- **Role split**: Use the handbook for workflow choice and the command reference when you need the exact flags for one step.
+
+---
+[⬅️ Previous: Technical Reference](reference.md) | [🏠 Home](index.md) | [➡️ Next: Troubleshooting & Glossary](troubleshooting.md)

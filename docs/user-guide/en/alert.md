@@ -4,6 +4,17 @@ This guide covers `grafana-util alert` as an operator workflow for alert desired
 
 > **Operator Principle**: Change alerts deliberately through a **Plan -> Review -> Apply** cycle to prevent accidental mutations in live environments.
 
+## 🔗 Command Pages
+
+Need the command-by-command surface instead of the workflow guide?
+
+- [alert command overview](../../commands/en/alert.md)
+- [alert plan](../../commands/en/alert-plan.md)
+- [alert apply](../../commands/en/alert-apply.md)
+- [alert export](../../commands/en/alert-export.md)
+- [alert preview-route](../../commands/en/alert-preview-route.md)
+- [full command index](../../commands/en/index.md)
+
 ---
 
 ## 🛠️ What This Area Is For
@@ -120,7 +131,4 @@ grafana-util alert preview-route --desired-dir ./alerts/desired --label team=pla
 *Note: A blank match list means the contract was evaluated successfully, not necessarily that a live alert exists.*
 
 ---
-
-## ⏭️ Next Steps
-- Learn about [**Access Management**](./access.md).
-- Explore [**Project Status and Overview**](./change-overview-status.md).
+[⬅️ Previous: Datasource Management](datasource.md) | [🏠 Home](index.md) | [➡️ Next: Access Management](access.md)

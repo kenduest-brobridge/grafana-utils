@@ -8,6 +8,83 @@ Current AI-maintained status only.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-status-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-31.md).
 
+## 2026-04-03 - Tighten dashboard raw-to-prompt semantic compatibility
+- State: Done
+- Scope: `rust/src/dashboard/prompt.rs`, `rust/src/dashboard/raw_to_prompt_rust_tests.rs`, `scripts/compare_prompt_semantics.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the first `dashboard raw-to-prompt` implementation produced usable prompt JSON, but when compared against a real historical export bundle it only matched 40 of 83 prompt dashboards semantically. The main drift was missing datasource template variables, treating generic `type: datasource` or `-- Mixed --` selectors incorrectly, and collapsing repeated same-family datasource requirements too aggressively.
+- Current Update: updated the shared prompt builder so single-family dashboards preserve the Grafana-style datasource templating variable even when multiple prompt slots exist, generic/mixed datasource selectors now become prompt slots without rewriting builtin Grafana annotation selectors, and `__requires` now keeps one datasource entry per prompt slot instead of deduplicating by plugin family. Added focused regression tests for single-family templating, mixed-selector rewriting, and builtin Grafana annotation handling, plus a semantic compare script for replaying historical prompt bundles against generated output. The final historical edge case is now handled in the `raw-to-prompt` runtime itself: it records which panel-subtree datasource paths were placeholders in the raw dashboard and rewrites only those same prompt-output paths back to `$datasource`.
+- Result: on the Pontus dashboard export sample, semantic compatibility improved from 40/83 prompt dashboards to 83/83 without modifying the source bundle.
+
+## 2026-04-03 - Thin the unified CLI and type the sync apply intent envelope
+- State: Done
+- Scope: `rust/src/cli.rs`, `rust/src/cli_help.rs`, `rust/src/lib.rs`, `rust/src/sync/apply_contract.rs`, `rust/src/sync/apply_builder.rs`, `rust/src/sync/live.rs`, `rust/src/sync/live_apply.rs`, `rust/src/sync/workbench.rs`, `rust/src/alert_client.rs`, `rust/src/http.rs`, `rust/src/dashboard/export.rs`, `rust/src/dashboard/live.rs`, `rust/src/sync/preflight.rs`, `rust/src/sync/rust_tests.rs`, `rust/src/sync/live_rust_tests.rs`, `docs/DEVELOPER.md`, `docs/overview-rust.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `cli.rs` still mixed command topology with large help-rendering/example blocks, the sync apply-intent contract was still passed around mostly as ad hoc JSON, and several Rust files still carried low-signal comments that narrated signatures instead of explaining boundaries or invariants.
+- Current Update: moved unified help rendering and long example blocks into `cli_help.rs`, introduced `sync/apply_contract.rs` as the typed apply-intent envelope shared by the local builder and live execution, kept the operation loader backward-compatible for existing review/render/live tests, and removed boilerplate comments from the touched Rust files. Maintainer docs now point to the new helper modules and restate the comment-signal / thin-facade rule alongside the concrete refactor.
+- Result: the root CLI entrypoint is thinner, the sync apply-intent path now has a repo-owned typed contract instead of only loose JSON, comment noise is lower in the touched files, and the full Rust test suite still passes.
+
+## 2026-04-03 - Add dashboard raw-to-prompt migration workflow
+- State: Done
+- Scope: `rust/src/dashboard/cli_defs_command.rs`, `rust/src/dashboard/cli_defs_shared.rs`, `rust/src/dashboard/raw_to_prompt.rs`, `rust/src/dashboard/raw_to_prompt_rust_tests.rs`, `rust/src/dashboard/mod.rs`, `rust/src/dashboard/test_support.rs`, `rust/src/cli.rs`, `rust/src/cli_help.rs`, `rust/src/cli_help_examples.rs`, `rust/src/cli_rust_tests.rs`, `rust/src/dashboard/dashboard_cli_parser_help_rust_tests.rs`, `README.md`, `README.zh-TW.md`, `docs/commands/en/*.md`, `docs/commands/zh-TW/*.md`, `docs/user-guide/en/dashboard.md`, `docs/user-guide/en/reference.md`, `docs/user-guide/zh-TW/dashboard.md`, `docs/user-guide/zh-TW/reference.md`, `docs/man/*.1`, `docs/html/**`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the dashboard surface could export a `prompt/` lane from live Grafana, but there was no offline migration path for ordinary dashboard JSON or `raw/` files. Operators had to hand-edit datasource prompts or misuse `dashboard import` for files that really belonged in the Grafana UI import flow.
+- Current Update: added a dedicated `dashboard raw-to-prompt` command with explicit file/dir input modes, sibling/default output rules, `infer-family|exact|strict` datasource repair policy, summary/log output controls, optional live datasource lookup through `--profile` or direct live auth flags, and prompt-lane metadata/index writing for `raw/` directory conversions. The command docs, handbook, README, generated manpages, and generated HTML now all explain that `raw/` remains the API replay lane, `prompt/` is for Grafana UI import, and `raw-to-prompt` is the migration bridge between them.
+- Result: the repo now has an operator-facing migration path for raw dashboard JSON to prompt JSON, plus optional live datasource augmentation when operators need to repair prompt files against a target Grafana inventory. Focused Rust tests and docs generation now pass for this slice.
+
+## 2026-04-03 - Add maintainer quickstart for first-entry repo orientation
+- State: Done
+- Scope: `README.md`, `README.zh-TW.md`, `docs/DEVELOPER.md`, `docs/internal/README.md`, `docs/internal/maintainer-quickstart.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the repo already had several strong entrypoints, but a first-time AI agent or new maintainer still had to infer the right reading order from multiple files. There was no single short page that answered which files to open first, which layers are source of truth, which outputs are generated, and which safe validation commands to prefer while still orienting.
+- Current Update: added a dedicated `maintainer-quickstart.md` under `docs/internal/` and linked it from README, the Traditional Chinese README, `docs/DEVELOPER.md`, and the internal docs index. The new page defines the first files to read, the maintained surfaces, source-of-truth boundaries, task routing, safe validation defaults, and repo-specific gotchas.
+- Result: future AI agents and human maintainers now have one explicit first-stop orientation page instead of reconstructing the repo map from scattered entrypoints.
+
+## 2026-04-03 - Document generated docs architecture for maintainers
+- State: Done
+- Scope: `docs/DEVELOPER.md`, `docs/internal/generated-docs-architecture.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the repo already had working Markdown-to-manpage and Markdown-to-HTML generators, but the maintainer-facing explanation was still scattered across script docstrings and short notes. Future maintainers would have had to infer source-of-truth rules, Markdown subset limits, locale asymmetry, and Pages deployment behavior from code.
+- Current Update: added a dedicated internal design document for the generated docs system and linked it from `docs/DEVELOPER.md`. The new doc explains source layers, output trees, module responsibilities, supported Markdown subset, command/handbook schema expectations, test flow, and GitHub Pages deployment rules.
+- Result: maintainers now have one explicit design/maintenance reference for the generated docs pipeline instead of reconstructing it from the generators.
+
+## 2026-04-03 - Add generated docs maintainer playbook
+- State: Done
+- Scope: `docs/DEVELOPER.md`, `docs/internal/generated-docs-architecture.md`, `docs/internal/generated-docs-playbook.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the new generated-docs architecture note explained the system well, but it was still architecture-first. A maintainer adding a new command page, handbook chapter, namespace manpage, locale, or Pages-facing output file still had to translate the design into concrete repo steps by hand.
+- Current Update: added a task-oriented playbook for the generated docs pipeline and linked it from both `docs/DEVELOPER.md` and the architecture note. The playbook covers the common change types, the exact files to edit, the generator hooks to update, and the standard validation loop.
+- Result: maintainers now have both the design reference and an operational cookbook for common generated-docs changes.
+
+## 2026-04-03 - Reorganize DEVELOPER.md as a maintainer routing map
+- State: Done
+- Scope: `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `docs/DEVELOPER.md` already contained the right pointers, but the content was still arranged more like a short note dump than a high-signal maintainer map. It mixed code architecture, generated-docs notes, contract pointers, and validation guidance without a strong routing structure.
+- Current Update: reorganized `docs/DEVELOPER.md` into explicit maintainer sections: start-here routing, repo priorities, code architecture map, documentation map, validation/build guidance, project rules, and a quick routing table by task type.
+- Result: maintainers can now navigate by concern instead of reading the whole page linearly to discover where to go next.
+
+## 2026-04-03 - Tighten maintainer guidance for comment signal and facade thinning
+- State: Done
+- Scope: `docs/DEVELOPER.md`, `docs/overview-rust.md`, `docs/internal/maintainer-quickstart.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the maintainer docs already described the Rust routing layers, but they did not yet state the quality bar clearly enough for comment signal, repo-owned envelopes, or how thin the facades should stay.
+- Current Update: added short maintainer guidance that prefers repo-owned typed envelopes over ad hoc shapes, keeps `cli.rs` and domain facades focused on routing/normalize/re-export, and treats comments as signal for ownership or non-obvious behavior rather than narration.
+- Result: maintainers now have a concise policy for keeping the Rust surface thinner and the comments more useful without turning the docs into a longer design note.
+
+## 2026-04-03 - Document profile secret storage across user and maintainer docs
+- State: Done
+- Scope: `README.md`, `README.zh-TW.md`, `docs/DEVELOPER.md`, `docs/internal/README.md`, `docs/internal/profile-secret-storage-architecture.md`, `docs/user-guide/en/reference.md`, `docs/user-guide/zh-TW/reference.md`, `docs/commands/en/profile.md`, `docs/commands/zh-TW/profile.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the repo already supported environment-backed secrets, OS secret storage, and encrypted secret files, but that guidance was scattered. Operators could see fragments in `profile` docs, and maintainers could infer the platform backends from Rust code, but there was no single complete explanation of what the modes are, why they exist, what platforms they support, or how to troubleshoot them.
+- Current Update: added a dedicated internal secret-storage architecture note, linked it from the maintainer entrypoints, and expanded the user-facing reference/profile docs with complete mode descriptions, macOS/Linux OS-store notes, usage guidance, caveats, and troubleshooting.
+- Result: both operators and maintainers now have a clear documented model for profile secret storage instead of piecing it together from examples and code.
+
+## 2026-04-03 - Add role-based doc entrypoints for operators and maintainers
+- State: Done
+- Scope: `README.md`, `README.zh-TW.md`, `docs/user-guide/en/index.md`, `docs/user-guide/zh-TW/index.md`, `docs/user-guide/en/role-new-user.md`, `docs/user-guide/en/role-sre-ops.md`, `docs/user-guide/en/role-automation-ci.md`, `docs/user-guide/zh-TW/role-new-user.md`, `docs/user-guide/zh-TW/role-sre-ops.md`, `docs/user-guide/zh-TW/role-automation-ci.md`, `docs/DEVELOPER.md`, `docs/internal/README.md`, `docs/internal/maintainer-role-map.md`, `scripts/docgen_handbook.py`, `scripts/generate_command_html.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the docs already had substantial content, but the primary navigation was still file-family oriented. New users, SREs, automation owners, and maintainers had to infer their own reading order from README sections, handbook chapter lists, and internal indexes.
+- Current Update: added dedicated public role-guide handbook pages in English and Traditional Chinese, added an internal maintainer-role map, updated handbook ordering to treat the public role pages as first-class chapters, and upgraded README, handbook indexes, and the generated HTML landing page to route readers by role as well as by document type.
+- Result: the docs now support both content-type navigation and role-based navigation, which makes the full document set easier to approach without already knowing the repo’s file layout.
+
+## 2026-04-03 - Split default and browser-enabled Rust release artifacts
+- State: Done
+- Scope: `rust/Cargo.toml`, `Makefile`, `scripts/build-rust-macos-arm64.sh`, `scripts/build-rust-linux-amd64.sh`, `scripts/build-rust-linux-amd64-zig.sh`, `scripts/validate-rust-linux-amd64-artifact.sh`, `scripts/install.sh`, `.github/workflows/ci.yml`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the default Rust feature set included `browser`, so every normal build and release artifact pulled in `headless_chrome`. That made cross-builds slower and heavier, while Linux validation kept getting tangled with the browser-enabled dependency set.
+- Current Update: switched the default feature set to lean/TUI-only, added explicit browser-enabled build targets and release assets, aligned install/build/validation tooling to choose standard versus browser artifacts intentionally, and cleaned up browser-disabled screenshot warnings triggered by the new default feature policy.
+- Result: standard builds now omit `headless_chrome`, browser support is shipped through explicit `*-browser` artifacts and CI jobs, and both the default and browser-enabled Rust compile paths validate cleanly.
+
 ## 2026-04-02 - Consolidate contract docs into summary/spec/trace layers
 - State: Done
 - Scope: `docs/DEVELOPER.md`, `docs/internal/contract-doc-map.md`, `docs/internal/export-root-output-layering-policy.md`, `docs/internal/dashboard-export-root-contract.md`, `docs/internal/datasource-masked-recovery-contract.md`, `docs/internal/alert-access-contract-policy.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

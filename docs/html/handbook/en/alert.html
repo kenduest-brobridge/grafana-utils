@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alert Operator Handbook · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+    --panel: rgba(15, 23, 32, 0.86);
+    --panel-strong: rgba(15, 23, 32, 0.94);
+    --text: #d9e2ec;
+    --muted: #9fb3c8;
+    --heading: #f0f4f8;
+    --accent: #7bdcb5;
+    --accent-soft: rgba(18, 53, 40, 0.9);
+    --border: #243b53;
+    --code-bg: #1f2933;
+    --pre-bg: #081018;
+    --pre-text: #e6edf3;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] body {
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+html[data-theme="dark"] body {
+  --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --panel: rgba(15, 23, 32, 0.86);
+  --panel-strong: rgba(15, 23, 32, 0.94);
+  --text: #d9e2ec;
+  --muted: #9fb3c8;
+  --heading: #f0f4f8;
+  --accent: #7bdcb5;
+  --accent-soft: rgba(18, 53, 40, 0.9);
+  --border: #243b53;
+  --code-bg: #1f2933;
+  --pre-bg: #081018;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+a { color: var(--accent); }
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 0.98rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+th {
+  text-align: left;
+  background: var(--accent-soft);
+}
+.site {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 28px 22px 68px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.brand {
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.themebar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.hero {
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--heading);
+}
+.hero p {
+  max-width: 74ch;
+  margin: 14px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.breadcrumbs {
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  font-size: 0.96rem;
+  color: var(--muted);
+}
+.breadcrumbs li::after {
+  content: "/";
+  margin-left: 10px;
+}
+.breadcrumbs li:last-child::after {
+  content: "";
+  margin: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px;
+  margin-top: 22px;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article {
+  padding: 30px;
+}
+.article h1,
+.article h2,
+.article h3 {
+  color: var(--heading);
+}
+.article h1 {
+  margin-top: 0;
+}
+.article h2 {
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.article h3 {
+  margin-top: 28px;
+}
+.article p,
+.article li {
+  font-size: 1.03rem;
+  line-height: 1.8;
+}
+.sidebar {
+  padding: 22px;
+}
+.sidebar section + section {
+  margin-top: 20px;
+}
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li + li {
+  margin-top: 8px;
+}
+.sidebar a {
+  text-decoration: none;
+}
+.link-card {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+.footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.footer-nav .link-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.site-footer {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.landing-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.landing-card h2 {
+  margin-top: 0;
+  color: var(--heading);
+}
+.landing-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+@media (max-width: 980px) {
+  .layout,
+  .landing-grid,
+  .footer-nav {
+    grid-template-columns: 1fr;
+  }
+}</style>
+</head>
+<body>
+  <div class="site">
+    <div class="topbar">
+      <a class="brand" href="../../index.html">grafana-util docs</a>
+      <div class="themebar">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+    <header class="hero">
+      <div class="eyebrow">Handbook · English</div>
+      <h1>Alert Operator Handbook</h1>
+      <p>Narrative handbook chapters for learning the workflow first, then jumping to command-reference pages for exact syntax.</p>
+      <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Handbook</a></li><li>English</li><li>Alert Operator Handbook</li></ol>
+    </header>
+    <div class="layout">
+      <article class="panel article">
+        <h1 id="alert-operator-handbook">Alert Operator Handbook</h1>
+<p>This guide covers <code>grafana-util alert</code> as an operator workflow for alert desired-state authoring, review-first mutation, and migration-style replay flows.</p>
+<p>&gt; <strong>Operator Principle</strong>: Change alerts deliberately through a <strong>Plan -&gt; Review -&gt; Apply</strong> cycle to prevent accidental mutations in live environments.</p>
+<h2 id="command-pages">🔗 Command Pages</h2>
+<p>Need the command-by-command surface instead of the workflow guide?</p>
+<ul><li><a href="../../commands/en/alert.html">alert command overview</a></li><li><a href="../../commands/en/alert-plan.html">alert plan</a></li><li><a href="../../commands/en/alert-apply.html">alert apply</a></li><li><a href="../../commands/en/alert-export.html">alert export</a></li><li><a href="../../commands/en/alert-preview-route.html">alert preview-route</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
+<h2 id="what-this-area-is-for">🛠️ What This Area Is For</h2>
+<p>Use the alert area when the work is about Grafana alerting resources:</p>
+<ul><li><strong>Desired State</strong>: Build new alert configurations locally without touching live Grafana.</li><li><strong>Review delta</strong>: Compare your desired state against the live estate before approving changes.</li><li><strong>Controlled Apply</strong>: Execute only reviewed plans.</li><li><strong>Migration &amp; Replay</strong>: Use the legacy <code>raw/</code> lane for inventory snapshots and environment-wide moves.</li></ul>
+<h2 id="workflow-boundaries-two-lanes">🚧 Workflow Boundaries (Two Lanes)</h2>
+<p>Alerting is split into two distinct operational lanes. <strong>Do not mix these lanes.</strong></p>
+<table><thead><tr><th>Lane</th><th>Purpose</th><th>Common Commands</th></tr></thead><tbody><tr><td><strong>Authoring Lane</strong></td><td>Desired-state files for review/apply.</td><td><code>init</code>, <code>add-rule</code>, <code>add-contact-point</code>, <code>plan</code>, <code>apply</code></td></tr><tr><td><strong>Migration Lane</strong></td><td>Inventory snapshots and raw replay.</td><td><code>export</code>, <code>import</code>, <code>diff</code>, <code>list-rules</code></td></tr></tbody></table>
+<h2 id="authoring-desired-state">📋 Authoring Desired State</h2>
+<p>Start by scaffolding a desired-state tree. This creates local files that represent your &quot;intent&quot;.</p>
+<pre><code># Initialize a desired-state tree</code></pre>
+<pre><code>grafana-util alert init --desired-dir ./alerts/desired</code></pre>
+<pre><code># Add a rule to your local files (does not touch Grafana yet)</code></pre>
+<pre><code>grafana-util alert add-rule \</code></pre>
+<pre><code>  --desired-dir ./alerts/desired \</code></pre>
+<pre><code>  --name cpu-high --folder platform-alerts \</code></pre>
+<pre><code>  --receiver pagerduty-primary --threshold 80 --above --for 5m</code></pre>
+<h2 id="review-and-apply-the-review-cycle">🔬 Review and Apply (The Review Cycle)</h2>
+<p>Use <code>plan</code> to build a preview of the delta between your local files and live Grafana.</p>
+<pre><code># Generate a plan for review</code></pre>
+<pre><code>grafana-util alert plan \</code></pre>
+<pre><code>  --url http://localhost:3000 \</code></pre>
+<pre><code>  --basic-user admin --basic-password admin \</code></pre>
+<pre><code>  --desired-dir ./alerts/desired --prune --output json</code></pre>
+<p><strong>How to Read the Plan Output:</strong></p>
+<ul><li><strong>create</strong>: Desired resource is missing in live Grafana.</li><li><strong>update</strong>: Live Grafana differs from your desired file.</li><li><strong>delete</strong>: Triggered by <code>--prune</code> when a live resource is not in your files.</li></ul>
+<p><strong>Validated Apply Step:</strong> Only execute after the plan has been reviewed and saved.</p>
+<pre><code>grafana-util alert apply \</code></pre>
+<pre><code>  --plan-file ./alert-plan-reviewed.json \</code></pre>
+<pre><code>  --approve --output json</code></pre>
+<h2 id="key-commands-full-argument-reference">🚀 Key Commands (Full Argument Reference)</h2>
+<table><thead><tr><th>Command</th><th>Full Example with Arguments</th></tr></thead><tbody><tr><td><strong>List Rules</strong></td><td><code>grafana-util alert list-rules --all-orgs --table</code></td></tr><tr><td><strong>Export</strong></td><td><code>grafana-util alert export --export-dir ./alerts --overwrite</code></td></tr><tr><td><strong>Plan</strong></td><td><code>grafana-util alert plan --desired-dir ./alerts/desired --prune --output json</code></td></tr><tr><td><strong>Apply</strong></td><td><code>grafana-util alert apply --plan-file ./plan.json --approve</code></td></tr><tr><td><strong>Set Route</strong></td><td><code>grafana-util alert set-route --desired-dir ./alerts/desired --receiver pagerduty</code></td></tr><tr><td><strong>New Rule</strong></td><td><code>grafana-util alert new-rule --name &lt;NAME&gt; --folder &lt;FOLDER&gt; --output &lt;FILE&gt;</code></td></tr><tr><td><strong>New Contact</strong></td><td><code>grafana-util alert new-contact-point --name &lt;NAME&gt; --type &lt;TYPE&gt; --output &lt;FILE&gt;</code></td></tr><tr><td><strong>New Template</strong></td><td><code>grafana-util alert new-template --name &lt;NAME&gt; --template &lt;CONTENT&gt; --output &lt;FILE&gt;</code></td></tr></tbody></table>
+<h2 id="validated-docker-examples">🔬 Validated Docker Examples</h2>
+<h3 id="1-alert-plan-excerpt">1. Alert Plan Excerpt</h3>
+<pre><code>grafana-util alert plan --desired-dir ./alerts/desired --prune --output json</code></pre>
+<p><strong>Output Excerpt:</strong></p>
+<pre><code>{
+  &quot;summary&quot;: {
+    &quot;create&quot;: 1,
+    &quot;update&quot;: 2,
+    &quot;delete&quot;: 1,
+    &quot;noop&quot;: 0,
+    &quot;blocked&quot;: 0
+  }
+}</code></pre>
+<h3 id="2-route-preview">2. Route Preview</h3>
+<p>Verify your routing logic locally before applying.</p>
+<pre><code>grafana-util alert preview-route --desired-dir ./alerts/desired --label team=platform --severity critical</code></pre>
+<p><strong>Output Excerpt:</strong></p>
+<pre><code>{
+  &quot;input&quot;: { &quot;labels&quot;: { &quot;team&quot;: &quot;platform&quot; }, &quot;severity&quot;: &quot;critical&quot; },
+  &quot;matches&quot;: []
+}</code></pre>
+<p><em>Note: A blank match list means the contract was evaluated successfully, not necessarily that a live alert exists.</em></p>
+<p><a href="datasource.html">⬅️ Previous: Datasource Management</a> | <a href="index.html">🏠 Home</a> | <a href="access.html">➡️ Next: Access Management</a></p>
+        <nav class="footer-nav"><a class="link-card" href="datasource.html"><span>Previous</span>Datasource Operator Handbook</a><a class="link-card" href="access.html"><span>Next</span>Access Management (Identity &amp; Orgs)</a></nav>
+      </article>
+      <aside class="panel sidebar">
+        <section>
+          <h2>On This Page</h2>
+          <ul><li><a class="link-card" href="#command-pages">🔗 Command Pages</a></li><li><a class="link-card" href="#what-this-area-is-for">🛠️ What This Area Is For</a></li><li><a class="link-card" href="#workflow-boundaries-two-lanes">🚧 Workflow Boundaries (Two Lanes)</a></li><li><a class="link-card" href="#authoring-desired-state">📋 Authoring Desired State</a></li><li><a class="link-card" href="#review-and-apply-the-review-cycle">🔬 Review and Apply (The Review Cycle)</a></li><li><a class="link-card" href="#key-commands-full-argument-reference">🚀 Key Commands (Full Argument Reference)</a></li><li><a class="link-card" href="#validated-docker-examples">🔬 Validated Docker Examples</a></li><li><a class="link-card" href="#1-alert-plan-excerpt">1. Alert Plan Excerpt</a></li><li><a class="link-card" href="#2-route-preview">2. Route Preview</a></li></ul>
+        </section>
+        <section>
+          <h2>Related</h2>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/en/index.html">Command reference index</a></li></ul>
+        </section>
+        <section>
+          <h2>Language</h2>
+          <ul><li><a class="link-card" href="#">Current: English</a></li><li><a class="link-card" href="../zh-TW/alert.html">Switch to 繁體中文</a></li></ul>
+        </section>
+      </aside>
+    </div>
+    <footer class="site-footer">Source: <code>docs/user-guide/en/alert.md</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script>
+(() => {
+  const storageKey = "grafana-util-docs-theme";
+  const root = document.documentElement;
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (value) => {
+    if (value === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", value);
+    }
+  };
+  applyTheme(saved);
+  if (select) {
+    select.value = saved;
+    select.addEventListener("change", (event) => {
+      const value = event.target.value;
+      localStorage.setItem(storageKey, value);
+      applyTheme(value);
+    });
+  }
+})();
+</script>
+</body>
+</html>

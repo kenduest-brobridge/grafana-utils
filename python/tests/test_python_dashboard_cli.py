@@ -821,6 +821,41 @@ class ExporterTests(unittest.TestCase):
         self.assertIn("Output Options", help_text)
         self.assertIn("Header Options", help_text)
 
+    def test_dashboard_governance_gate_help_includes_examples(self):
+        stream = io.StringIO()
+
+        with redirect_stdout(stream):
+            with self.assertRaises(SystemExit):
+                exporter.parse_args(["governance-gate", "-h"])
+
+        help_text = stream.getvalue()
+        self.assertIn("Examples:", help_text)
+        self.assertIn("governance-gate", help_text)
+        self.assertIn("machine-readable", help_text)
+        self.assertIn("policy", help_text)
+
+    def test_dashboard_topology_help_includes_examples_and_grouped_sections(self):
+        stream = io.StringIO()
+
+        with redirect_stdout(stream):
+            with self.assertRaises(SystemExit):
+                exporter.parse_args(["topology", "-h"])
+
+        help_text = stream.getvalue()
+        self.assertIn("Examples:", help_text)
+        self.assertIn("topology", help_text)
+        self.assertIn(
+            "Render the dashboard topology as Mermaid:",
+            help_text,
+        )
+        self.assertIn("DOT", help_text)
+        self.assertIn("--governance", help_text)
+        self.assertIn("--queries", help_text)
+        self.assertIn("--alert-contract", help_text)
+        self.assertIn("--output-format", help_text)
+        self.assertIn("--output-file", help_text)
+        self.assertIn("--interactive", help_text)
+
     def test_dashboard_inspect_export_help_mentions_raw_export_directory(self):
         stream = io.StringIO()
 
@@ -946,12 +981,107 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(args.import_dir, "dashboards")
         self.assertEqual(args.command, "import-dashboard")
 
+    def test_dashboard_parse_args_supports_governance_gate_mode(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args = exporter.parse_args(
+                [
+                    "governance-gate",
+                    "--policy",
+                    f"{tmpdir}/policy.json",
+                    "--governance",
+                    f"{tmpdir}/governance.json",
+                    "--queries",
+                    f"{tmpdir}/queries.json",
+                    "--output-format",
+                    "json",
+                ]
+            )
+
+        self.assertEqual(args.command, "governance-gate")
+        self.assertEqual(args.output_format, "json")
+
+    def test_dashboard_parse_args_supports_topology_mode(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args = exporter.parse_args(
+                [
+                    "topology",
+                    "--governance",
+                    f"{tmpdir}/governance.json",
+                    "--queries",
+                    f"{tmpdir}/queries.json",
+                    "--alert-contract",
+                    f"{tmpdir}/alert-contract.json",
+                    "--output-format",
+                    "json",
+                ]
+            )
+
+        self.assertEqual(args.command, "topology")
+        self.assertEqual(args.governance, f"{tmpdir}/governance.json")
+        self.assertEqual(args.queries, f"{tmpdir}/queries.json")
+        self.assertEqual(args.alert_contract, f"{tmpdir}/alert-contract.json")
+        self.assertEqual(args.output_format, "json")
+
+    def test_dashboard_parse_args_supports_topology_alias(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args = exporter.parse_args(
+                [
+                    "graph",
+                    "--governance",
+                    f"{tmpdir}/governance.json",
+                ]
+            )
+
+        self.assertEqual(args.command, "topology")
+        self.assertEqual(args.governance, f"{tmpdir}/governance.json")
+
+    def test_dashboard_parse_args_rejects_topology_without_governance(self):
+        with self.assertRaises(SystemExit):
+            exporter.parse_args(["topology"])
+
     def test_dashboard_parse_args_supports_import_org_id(self):
         args = exporter.parse_args(
             ["import-dashboard", "--import-dir", "dashboards/raw", "--org-id", "2"]
         )
 
         self.assertEqual(args.org_id, "2")
+
+    def test_dashboard_main_dispatches_governance_gate_mode(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.object(
+                exporter, "governance_gate_dashboards", return_value=13
+            ) as mocked:
+                result = exporter.main(
+                    [
+                        "governance-gate",
+                        "--policy",
+                        f"{tmpdir}/policy.json",
+                        "--governance",
+                        f"{tmpdir}/governance.json",
+                        "--queries",
+                        f"{tmpdir}/queries.json",
+                    ]
+                )
+
+        self.assertEqual(result, 13)
+        mocked.assert_called_once()
+        self.assertEqual(mocked.call_args.args[0].command, "governance-gate")
+
+    def test_dashboard_main_dispatches_topology_mode(self):
+        with mock.patch.object(exporter, "topology_dashboards", return_value=17) as mocked:
+            result = exporter.main(["topology", "--governance", "./governance.json"])
+
+        self.assertEqual(result, 17)
+        mocked.assert_called_once()
+        self.assertEqual(mocked.call_args.args[0].command, "topology")
+
+    def test_dashboard_main_dispatches_topology_alias(self):
+        with mock.patch.object(exporter, "topology_dashboards", return_value=18) as mocked:
+            result = exporter.main(["graph", "--governance", "./governance.json"])
+
+        self.assertEqual(result, 18)
+        mocked.assert_called_once()
+        self.assertEqual(mocked.call_args.args[0].command, "topology")
 
     def test_dashboard_main_requires_approve_for_live_import(self):
         stream = io.StringIO()

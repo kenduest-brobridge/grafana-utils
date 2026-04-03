@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🍳 Best Practices &amp; Real-World Recipes · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+    --panel: rgba(15, 23, 32, 0.86);
+    --panel-strong: rgba(15, 23, 32, 0.94);
+    --text: #d9e2ec;
+    --muted: #9fb3c8;
+    --heading: #f0f4f8;
+    --accent: #7bdcb5;
+    --accent-soft: rgba(18, 53, 40, 0.9);
+    --border: #243b53;
+    --code-bg: #1f2933;
+    --pre-bg: #081018;
+    --pre-text: #e6edf3;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] body {
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+html[data-theme="dark"] body {
+  --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --panel: rgba(15, 23, 32, 0.86);
+  --panel-strong: rgba(15, 23, 32, 0.94);
+  --text: #d9e2ec;
+  --muted: #9fb3c8;
+  --heading: #f0f4f8;
+  --accent: #7bdcb5;
+  --accent-soft: rgba(18, 53, 40, 0.9);
+  --border: #243b53;
+  --code-bg: #1f2933;
+  --pre-bg: #081018;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+a { color: var(--accent); }
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 0.98rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+th {
+  text-align: left;
+  background: var(--accent-soft);
+}
+.site {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 28px 22px 68px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.brand {
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.themebar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.hero {
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--heading);
+}
+.hero p {
+  max-width: 74ch;
+  margin: 14px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.breadcrumbs {
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  font-size: 0.96rem;
+  color: var(--muted);
+}
+.breadcrumbs li::after {
+  content: "/";
+  margin-left: 10px;
+}
+.breadcrumbs li:last-child::after {
+  content: "";
+  margin: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px;
+  margin-top: 22px;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article {
+  padding: 30px;
+}
+.article h1,
+.article h2,
+.article h3 {
+  color: var(--heading);
+}
+.article h1 {
+  margin-top: 0;
+}
+.article h2 {
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.article h3 {
+  margin-top: 28px;
+}
+.article p,
+.article li {
+  font-size: 1.03rem;
+  line-height: 1.8;
+}
+.sidebar {
+  padding: 22px;
+}
+.sidebar section + section {
+  margin-top: 20px;
+}
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li + li {
+  margin-top: 8px;
+}
+.sidebar a {
+  text-decoration: none;
+}
+.link-card {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+.footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.footer-nav .link-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.site-footer {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.landing-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.landing-card h2 {
+  margin-top: 0;
+  color: var(--heading);
+}
+.landing-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+@media (max-width: 980px) {
+  .layout,
+  .landing-grid,
+  .footer-nav {
+    grid-template-columns: 1fr;
+  }
+}</style>
+</head>
+<body>
+  <div class="site">
+    <div class="topbar">
+      <a class="brand" href="../../index.html">grafana-util docs</a>
+      <div class="themebar">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+    <header class="hero">
+      <div class="eyebrow">Handbook · English</div>
+      <h1>🍳 Best Practices &amp; Real-World Recipes</h1>
+      <p>Narrative handbook chapters for learning the workflow first, then jumping to command-reference pages for exact syntax.</p>
+      <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Handbook</a></li><li>English</li><li>🍳 Best Practices &amp; Real-World Recipes</li></ol>
+    </header>
+    <div class="layout">
+      <article class="panel article">
+        <h1 id="best-practices-real-world-recipes">🍳 Best Practices &amp; Real-World Recipes</h1>
+<p>This chapter provides practical solutions for common Grafana operational headaches. The goal is not just to show a command, but to show when to use it, what success looks like, and what to check when the workflow goes sideways.</p>
+<h2 id="recipe-1-promoting-dashboards-dev-prod">🚀 Recipe 1: Promoting Dashboards (Dev -&gt; Prod)</h2>
+<p><strong>Problem</strong>: Exporting from Dev and importing to Prod often fails due to hardcoded organization IDs, folder context, or source-environment datasource UIDs.</p>
+<p><strong>Solution</strong>: Use the <strong><code>prompt/</code> lane</strong> for a clean promotion handoff.</p>
+<p>1. <strong>Export from Dev</strong>: <code>grafana-util dashboard export --export-dir ./dev-assets</code> 2. <strong>Locate Clean Source</strong>: Use files in <code>./dev-assets/prompt/</code>. These have environment-specific metadata stripped. 3. <strong>Import to Prod</strong>:</p>
+<pre><code>   grafana-util dashboard import --import-dir ./dev-assets/prompt --url https://prod-grafana --replace-existing</code></pre>
+<p><strong>Use this when</strong>: the source and target environments share dashboard intent, but you do not want to replay every source-specific field literally.</p>
+<p><strong>Do not use this when</strong>: you are performing raw backup/replay or disaster recovery. In that case, start from <code>raw/</code>, not <code>prompt/</code>.</p>
+<p><strong>Success looks like</strong>:</p>
+<ul><li>the import lands without source-environment-only metadata causing conflicts</li><li>target dashboards bind to the intended target datasources and folders</li><li>the resulting live dashboards need minimal cleanup after import</li></ul>
+<p><strong>If it fails, check</strong>:</p>
+<ul><li>whether the target datasource UIDs or names actually exist</li><li>whether the chosen lane should have been <code>raw/</code> instead of <code>prompt/</code></li><li>whether your credential scope can see the target org or folder</li></ul>
+<h2 id="recipe-2-auditing-dependencies-before-import">🔍 Recipe 2: Auditing Dependencies Before Import</h2>
+<p><strong>Problem</strong>: Importing a dashboard without its required datasource results in broken panels and misleading &quot;successful&quot; imports.</p>
+<p><strong>Solution</strong>: Run a <strong>pre-import inspection</strong>.</p>
+<pre><code># Generate a report of all required datasources in your export tree</code></pre>
+<pre><code>grafana-util dashboard inspect-export --import-dir ./backups/raw --output-format report-table</code></pre>
+<p><strong>What to check</strong>: Ensure every <code>UID</code> listed in the &quot;Sources&quot; column exists in your target Grafana&#x27;s <code>datasource list</code>.</p>
+<p><strong>Use this when</strong>: you are preparing an import, validating a promotion bundle, or checking whether a dashboard export is portable enough for another environment.</p>
+<p><strong>Success looks like</strong>:</p>
+<ul><li>every required datasource UID is present in the target</li><li>missing dependencies are known before import time</li><li>you can explain which dashboards are blocked and why</li></ul>
+<p><strong>If it fails, check</strong>:</p>
+<ul><li>whether the target environment uses different datasource naming or UID conventions</li><li>whether you exported the correct lane</li><li>whether the target credentials can list the datasources you expect</li></ul>
+<h2 id="recipe-3-mass-taggingrenaming-surgical-patching">🛠️ Recipe 3: Mass Tagging/Renaming (Surgical Patching)</h2>
+<p><strong>Problem</strong>: You need to add a tag such as <code>ManagedBySRE</code> to many dashboards at once without hand-editing every file.</p>
+<p><strong>Solution</strong>: Use <code>patch-file</code> in a loop, then preview the result before replaying it.</p>
+<pre><code>for file in ./dashboards/raw/*.json; do</code></pre>
+<pre><code>  grafana-util dashboard patch-file --input &quot;$file&quot; --tag &quot;ManagedBySRE&quot; --output &quot;$file&quot;</code></pre>
+<pre><code>done</code></pre>
+<pre><code>grafana-util dashboard import --import-dir ./dashboards/raw --replace-existing --dry-run --table</code></pre>
+<p><strong>Use this when</strong>: the structural change is local and mechanical, and you want to keep the update reviewable.</p>
+<p><strong>Do not use this when</strong>: the patch logic is so complex that a loop hides too much risk, or when the right answer depends on live discovery rather than local artifacts.</p>
+<p><strong>Success looks like</strong>:</p>
+<ul><li>the modified files still review cleanly in Git</li><li>repeated patching does not create unexpected drift</li><li>the follow-on import is still previewed with <code>--dry-run</code> before live execution</li></ul>
+<p><strong>If it fails, check</strong>:</p>
+<ul><li>whether your loop is patching the right lane and file set</li><li>whether the patch should have targeted <code>prompt/</code> rather than <code>raw/</code></li><li>whether the import should be previewed first with <code>--dry-run</code></li></ul>
+<h2 id="recipe-4-verifying-alert-routing-logic">🚨 Recipe 4: Verifying Alert Routing Logic</h2>
+<p><strong>Problem</strong>: Complex notification policies make it hard to know where an alert will land.</p>
+<p><strong>Solution</strong>: Use <code>preview-route</code> to simulate matches.</p>
+<pre><code>grafana-util alert preview-route \</code></pre>
+<pre><code>  --desired-dir ./alerts/desired \</code></pre>
+<pre><code>  --label service=order \</code></pre>
+<pre><code>  --severity critical</code></pre>
+<p><strong>Goal</strong>: Verify that the <code>receiver</code> in the output matches your intended Slack channel or PagerDuty service.</p>
+<p><strong>Use this when</strong>: labels or notification policies are changing and you want a deterministic answer before anyone assumes the route is correct.</p>
+<p><strong>Success looks like</strong>:</p>
+<ul><li>the resolved receiver matches the intended destination</li><li>labels that should distinguish critical paths actually do</li><li>route previews are reviewed before a plan/apply step</li></ul>
+<p><strong>If it fails, check</strong>:</p>
+<ul><li>whether the labels in the preview match the labels your rules will actually emit</li><li>whether the desired alert files and notification policies are in sync</li><li>whether the issue is route logic versus rule classification</li></ul>
+<h2 id="expert-tips">💡 Expert Tips</h2>
+<ul><li><strong>UID consistency</strong>: Always define stable <code>uid</code>s in your JSON. Do not rely on incremental <code>id</code>s.</li><li><strong>Dry-run everything</strong>: Use <code>--dry-run</code> to see the <code>ACTION=update</code> vs <code>ACTION=create</code> preview before making live changes.</li><li><strong>Git integration</strong>: Only commit the <code>raw/</code> and <code>desired/</code> directories to Git. These are your canonical sources.</li><li><strong>Credential reality check</strong>: Before blaming the recipe, verify that the chosen credential can really see the org, folder, or admin surface you are operating on.</li><li><strong>Role split</strong>: Use the handbook for workflow choice and the command reference when you need the exact flags for one step.</li></ul>
+<p><a href="reference.html">⬅️ Previous: Technical Reference</a> | <a href="index.html">🏠 Home</a> | <a href="troubleshooting.html">➡️ Next: Troubleshooting &amp; Glossary</a></p>
+        <nav class="footer-nav"><a class="link-card" href="scenarios.html"><span>Previous</span>Operator Scenarios</a><a class="link-card" href="reference.html"><span>Next</span>Technical Reference Manual</a></nav>
+      </article>
+      <aside class="panel sidebar">
+        <section>
+          <h2>On This Page</h2>
+          <ul><li><a class="link-card" href="#recipe-1-promoting-dashboards-dev-prod">🚀 Recipe 1: Promoting Dashboards (Dev -&gt; Prod)</a></li><li><a class="link-card" href="#recipe-2-auditing-dependencies-before-import">🔍 Recipe 2: Auditing Dependencies Before Import</a></li><li><a class="link-card" href="#recipe-3-mass-taggingrenaming-surgical-patching">🛠️ Recipe 3: Mass Tagging/Renaming (Surgical Patching)</a></li><li><a class="link-card" href="#recipe-4-verifying-alert-routing-logic">🚨 Recipe 4: Verifying Alert Routing Logic</a></li><li><a class="link-card" href="#expert-tips">💡 Expert Tips</a></li></ul>
+        </section>
+        <section>
+          <h2>Related</h2>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/en/index.html">Command reference index</a></li></ul>
+        </section>
+        <section>
+          <h2>Language</h2>
+          <ul><li><a class="link-card" href="#">Current: English</a></li><li><a class="link-card" href="../zh-TW/recipes.html">Switch to 繁體中文</a></li></ul>
+        </section>
+      </aside>
+    </div>
+    <footer class="site-footer">Source: <code>docs/user-guide/en/recipes.md</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script>
+(() => {
+  const storageKey = "grafana-util-docs-theme";
+  const root = document.documentElement;
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (value) => {
+    if (value === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", value);
+    }
+  };
+  applyTheme(saved);
+  if (select) {
+    select.value = saved;
+    select.addEventListener("change", (event) => {
+      const value = event.target.value;
+      localStorage.setItem(storageKey, value);
+      applyTheme(value);
+    });
+  }
+})();
+</script>
+</body>
+</html>

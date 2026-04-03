@@ -4,7 +4,7 @@
 //! - This module is the last staged/live boundary: it consumes reviewed apply
 //!   intent operations and translates them into Grafana requests without
 //!   mutating the staged document itself.
-//! - `live_intent.rs` owns parsing the staged contract shape; this file owns
+//! - `apply_contract.rs` owns parsing the staged contract shape; this file owns
 //!   per-kind request mapping, identity fallback, and destructive-operation
 //!   guards.
 //! - Returned JSON is treated as a separate live execution audit record, not as
@@ -18,7 +18,7 @@ use crate::common::{message, Result};
 use reqwest::Method;
 use serde_json::{Map, Value};
 
-use super::live_intent::SyncApplyOperation;
+use crate::sync::apply_contract::SyncApplyOperation;
 
 fn apply_folder_operation_with_request<F>(
     request_json: &mut F,

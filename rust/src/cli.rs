@@ -14,228 +14,41 @@
 //! Caveats:
 //! - Do not add domain logic or HTTP transport details here.
 //! - Keep help output canonical-first so users discover formal commands.
-use clap::{ColorChoice, CommandFactory, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 
-use crate::access::{root_command as access_root_command, run_access_cli, AccessCliArgs};
+use crate::access::{run_access_cli, AccessCliArgs};
 use crate::alert::{
-    normalize_alert_namespace_args, root_command as alert_root_command, run_alert_cli,
-    AlertCliArgs, AlertNamespaceArgs,
+    normalize_alert_namespace_args, run_alert_cli, AlertCliArgs, AlertNamespaceArgs,
 };
-use crate::cli_help_examples::{
-    colorize_help_examples, inject_help_full_hint, ACCESS_HELP_FULL_TEXT, ALERT_HELP_FULL_TEXT,
-    DATASOURCE_HELP_FULL_TEXT, OVERVIEW_HELP_FULL_TEXT, PROJECT_STATUS_HELP_FULL_TEXT,
-    SYNC_HELP_FULL_TEXT, UNIFIED_HELP_FULL_TEXT, UNIFIED_HELP_TEXT,
+pub use crate::cli_help::{
+    maybe_render_unified_help_from_os_args, render_unified_help_full_text,
+    render_unified_help_text, render_unified_version_text,
 };
+use crate::cli_help::{
+    DASHBOARD_BROWSE_HELP_TEXT, DASHBOARD_CLONE_LIVE_HELP_TEXT, DASHBOARD_DELETE_HELP_TEXT,
+    DASHBOARD_DIFF_HELP_TEXT, DASHBOARD_EXPORT_HELP_TEXT, DASHBOARD_GET_HELP_TEXT,
+    DASHBOARD_GOVERNANCE_GATE_HELP_TEXT, DASHBOARD_IMPORT_HELP_TEXT,
+    DASHBOARD_INSPECT_EXPORT_HELP_TEXT, DASHBOARD_INSPECT_LIVE_HELP_TEXT,
+    DASHBOARD_INSPECT_VARS_HELP_TEXT, DASHBOARD_LIST_HELP_TEXT, DASHBOARD_PATCH_FILE_HELP_TEXT,
+    DASHBOARD_PUBLISH_HELP_TEXT, DASHBOARD_RAW_TO_PROMPT_HELP_TEXT, DASHBOARD_REVIEW_HELP_TEXT,
+    DASHBOARD_SCREENSHOT_HELP_TEXT, DASHBOARD_TOPOLOGY_HELP_TEXT, SNAPSHOT_HELP_TEXT,
+    UNIFIED_ACCESS_HELP_TEXT, UNIFIED_ALERT_HELP_TEXT, UNIFIED_DASHBOARD_HELP_TEXT,
+    UNIFIED_DATASOURCE_HELP_TEXT, UNIFIED_PROFILE_HELP_TEXT, UNIFIED_SYNC_HELP_TEXT,
+};
+use crate::cli_help_examples::UNIFIED_HELP_TEXT;
 use crate::common::{json_color_choice, set_json_color_choice, CliColorChoice, Result};
 use crate::dashboard::{
     run_dashboard_cli, BrowseArgs, CloneLiveArgs, DashboardCliArgs, DashboardCommand, DeleteArgs,
     DiffArgs, ExportArgs, GetArgs, GovernanceGateArgs, ImportArgs, InspectExportArgs,
-    InspectLiveArgs, InspectVarsArgs, ListArgs, PatchFileArgs, PublishArgs, ReviewArgs,
-    ScreenshotArgs, TopologyArgs,
+    InspectLiveArgs, InspectVarsArgs, ListArgs, PatchFileArgs, PublishArgs, RawToPromptArgs,
+    ReviewArgs, ScreenshotArgs, TopologyArgs,
 };
-use crate::datasource::{
-    root_command as datasource_root_command, run_datasource_cli, DatasourceGroupCommand,
-};
+use crate::datasource::{run_datasource_cli, DatasourceGroupCommand};
 use crate::overview::{run_overview_cli, OverviewCliArgs};
-use crate::profile_cli::{root_command as profile_root_command, run_profile_cli, ProfileCliArgs};
+use crate::profile_cli::{run_profile_cli, ProfileCliArgs};
 use crate::project_status_command::{run_project_status_cli, ProjectStatusCliArgs};
-use crate::snapshot::{root_command as snapshot_root_command, run_snapshot_cli, SnapshotCommand};
-use crate::sync::{run_sync_cli, SyncCliArgs, SyncGroupCommand};
-
-const UNIFIED_DASHBOARD_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard browse --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n  grafana-util dashboard get --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --dashboard-uid cpu-main --output ./cpu-main.json\n  grafana-util dashboard clone-live --url http://localhost:3000 --basic-user admin --basic-password admin --source-uid cpu-main --output ./cpu-main-clone.json\n  grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite\n  grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw\n  grafana-util dashboard patch-file --input ./dashboards/raw/cpu-main.json --name 'CPU Overview' --folder-uid infra --tag prod --tag sre\n  grafana-util dashboard review --input ./drafts/cpu-main.json --output-format yaml\n  grafana-util dashboard publish --url http://localhost:3000 --basic-user admin --basic-password admin --input ./drafts/cpu-main.json --dry-run --table";
-const UNIFIED_DATASOURCE_HELP_TEXT: &str = "Examples:\n\n  grafana-util datasource browse --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n  grafana-util datasource inspect-export --input-dir ./datasources --json\n  grafana-util datasource list --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --json\n  grafana-util datasource import --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --import-dir ./datasources --dry-run --json";
-const UNIFIED_SYNC_HELP_TEXT: &str = "Examples:\n\n  grafana-util change summary --desired-file ./desired.json\n  grafana-util change plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n  grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
-const UNIFIED_ALERT_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n  grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dry-run --json\n  grafana-util alert list-rules --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json";
-const UNIFIED_ACCESS_HELP_TEXT: &str = "Examples:\n\n  grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n  grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --yes\n  grafana-util access service-account token add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly";
-const UNIFIED_PROFILE_HELP_TEXT: &str = "Examples:\n\n  grafana-util profile list\n  grafana-util profile show --profile prod --output-format yaml\n  grafana-util profile init --overwrite";
-const DASHBOARD_BROWSE_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard browse --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n  grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --basic-password admin --path 'Platform / Infra'\n  grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs";
-const DASHBOARD_GET_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard get --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --dashboard-uid cpu-main --output ./cpu-main.json\n  grafana-util dashboard get --profile prod --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --output ./cpu-main.json";
-const DASHBOARD_CLONE_LIVE_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard clone-live --url http://localhost:3000 --basic-user admin --basic-password admin --source-uid cpu-main --output ./cpu-main-clone.json\n  grafana-util dashboard clone-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --source-uid cpu-main --name 'CPU Clone' --uid cpu-main-clone --folder-uid infra --output ./cpu-main-clone.json";
-const DASHBOARD_LIST_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard list --url http://localhost:3000 --basic-user admin --basic-password admin\n  grafana-util dashboard list --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --json\n  grafana-util dashboard list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json";
-const DASHBOARD_EXPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite\n  grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./dashboards --overwrite\n  grafana-util dashboard export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite";
-const DASHBOARD_IMPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw --replace-existing\n  grafana-util dashboard import --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --import-dir ./dashboards/raw --dry-run --table\n  grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw --interactive --replace-existing";
-const DASHBOARD_PATCH_FILE_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard patch-file --input ./dashboards/raw/cpu-main.json --name 'CPU Overview' --folder-uid infra --tag prod --tag sre\n  grafana-util dashboard patch-file --input ./drafts/cpu-main.json --output ./drafts/cpu-main-patched.json --uid cpu-main --message 'Add folder metadata before publish'";
-const DASHBOARD_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard review --input ./drafts/cpu-main.json\n  grafana-util dashboard review --input ./drafts/cpu-main.json --output-format yaml";
-const DASHBOARD_PUBLISH_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard publish --url http://localhost:3000 --basic-user admin --basic-password admin --input ./drafts/cpu-main.json --folder-uid infra --message 'Promote CPU dashboard'\n  grafana-util dashboard publish --url http://localhost:3000 --basic-user admin --basic-password admin --input ./drafts/cpu-main.json --dry-run --table";
-const DASHBOARD_DELETE_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --uid cpu-main --dry-run --json\n  grafana-util dashboard delete --url http://localhost:3000 --basic-user admin --basic-password admin --path 'Platform / Infra' --yes\n  grafana-util dashboard delete --url http://localhost:3000 --interactive";
-const DASHBOARD_DIFF_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw\n  grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --org-id 2 --import-dir ./dashboards/raw --json";
-const DASHBOARD_INSPECT_EXPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard inspect-export --import-dir ./dashboards/raw --input-format raw --table\n  grafana-util dashboard inspect-export --import-dir ./dashboards/raw --input-format raw --interactive\n  grafana-util dashboard inspect-export --import-dir ./dashboards/raw --input-format raw --report governance-json\n  grafana-util dashboard inspect-export --import-dir ./dashboards/provisioning --input-format provisioning --report tree-table";
-const DASHBOARD_INSPECT_LIVE_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format governance-json\n  grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin --basic-password admin --interactive";
-const DASHBOARD_INSPECT_VARS_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard inspect-vars --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --token \"$GRAFANA_API_TOKEN\" --output-format table\n  grafana-util dashboard inspect-vars --url https://grafana.example.com --dashboard-uid cpu-main --vars-query 'var-cluster=prod-a&var-instance=node01' --token \"$GRAFANA_API_TOKEN\" --output-format json";
-const DASHBOARD_GOVERNANCE_GATE_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard governance-gate --policy-source file --policy ./policy.yaml --governance ./governance.json --queries ./queries.json\n  grafana-util dashboard governance-gate --policy-source builtin --builtin-policy default --governance ./governance.json --queries ./queries.json --output-format json --json-output ./governance-check.json";
-const DASHBOARD_TOPOLOGY_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard topology --governance ./governance.json --queries ./queries.json --alert-contract ./alert-contract.json --output-format mermaid\n  grafana-util dashboard graph --governance ./governance.json --queries ./queries.json --alert-contract ./alert-contract.json --output-format dot --output-file ./dashboard-topology.dot";
-const DASHBOARD_SCREENSHOT_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard screenshot --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --token \"$GRAFANA_API_TOKEN\" --output ./cpu-main.png --full-page --header-title --header-url --header-captured-at\n  grafana-util dashboard screenshot --url https://grafana.example.com --dashboard-uid rYdddlPWk --panel-id 20 --vars-query 'var-datasource=prom-main&var-job=node-exporter&var-node=host01:9100' --token \"$GRAFANA_API_TOKEN\" --output ./panel.png --header-title 'CPU Busy' --header-text 'Solo panel debug capture'";
-const SNAPSHOT_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot --overwrite\n  grafana-util snapshot review --input-dir ./snapshot --output text\n  grafana-util snapshot review --input-dir ./snapshot --output json\n  grafana-util snapshot review --input-dir ./snapshot --interactive";
-
-fn render_long_help_with_color_choice(command: &mut clap::Command, colorize: bool) -> String {
-    let configured = std::mem::take(command).color(if colorize {
-        ColorChoice::Always
-    } else {
-        ColorChoice::Never
-    });
-    *command = configured;
-    let rendered = command.render_long_help();
-    if colorize {
-        rendered.ansi().to_string()
-    } else {
-        rendered.to_string()
-    }
-}
-
-/// Render unified help text and apply compact "full examples" markers.
-///
-/// This keeps default help stable while allowing operators to discover the
-/// extended example section when needed.
-pub fn render_unified_help_text(colorize: bool) -> String {
-    let mut command = CliArgs::command();
-    let help = inject_help_full_hint(render_long_help_with_color_choice(&mut command, colorize));
-    let mut help = if colorize {
-        help.replace(
-            UNIFIED_HELP_TEXT,
-            &colorize_help_examples(UNIFIED_HELP_TEXT),
-        )
-    } else {
-        help
-    };
-    help.push_str(OVERVIEW_HELP_SHAPE_NOTE);
-    help
-}
-
-fn render_domain_help_text(mut command: clap::Command, colorize: bool) -> String {
-    inject_help_full_hint(render_long_help_with_color_choice(&mut command, colorize))
-}
-
-fn render_domain_help_full_text(
-    mut command: clap::Command,
-    extended_examples: &str,
-    colorize: bool,
-) -> String {
-    let mut help = render_long_help_with_color_choice(&mut command, colorize);
-    if colorize {
-        help.push_str(&colorize_help_examples(extended_examples));
-    } else {
-        help.push_str(extended_examples);
-    }
-    help
-}
-
-const OVERVIEW_HELP_SHAPE_NOTE: &str =
-    "\nStaged overview is the default. Use `grafana-util overview live` to route into shared live status.\n";
-
-fn render_overview_help_text(colorize: bool) -> String {
-    let mut help = render_domain_help_text(OverviewCliArgs::command(), colorize);
-    help.push_str(OVERVIEW_HELP_SHAPE_NOTE);
-    help
-}
-
-fn render_overview_help_full_text(colorize: bool) -> String {
-    let mut help = render_domain_help_full_text(
-        OverviewCliArgs::command(),
-        OVERVIEW_HELP_FULL_TEXT,
-        colorize,
-    );
-    help.push_str(OVERVIEW_HELP_SHAPE_NOTE);
-    help
-}
-
-/// Render the unified help text with the longer `--help-full` example block.
-pub fn render_unified_help_full_text(colorize: bool) -> String {
-    let mut help = render_unified_help_text(colorize);
-    if colorize {
-        help.push_str(&colorize_help_examples(UNIFIED_HELP_FULL_TEXT));
-    } else {
-        help.push_str(UNIFIED_HELP_FULL_TEXT);
-    }
-    help
-}
-
-/// Render the canonical unified CLI version line.
-pub fn render_unified_version_text() -> String {
-    format!("grafana-util {}\n", crate::common::TOOL_VERSION)
-}
-
-/// maybe render unified help from os args.
-pub fn maybe_render_unified_help_from_os_args<I, T>(iter: I, colorize: bool) -> Option<String>
-where
-    I: IntoIterator<Item = T>,
-    T: Into<std::ffi::OsString> + Clone,
-{
-    // Fast path for `-h/--help` and `--help-full` before command parsing.
-    // This avoids constructing a full `CliArgs` value for top-level help usage.
-    let args = iter
-        .into_iter()
-        .map(|value| value.into().to_string_lossy().into_owned())
-        .collect::<Vec<_>>();
-    match args.as_slice() {
-        [_binary] => Some(render_unified_help_text(colorize)),
-        [_binary, flag] if flag == "--help" || flag == "-h" => {
-            Some(render_unified_help_text(colorize))
-        }
-        [_binary, flag] if flag == "--help-full" => Some(render_unified_help_full_text(colorize)),
-        [_binary, command, flag] if command == "alert" && (flag == "--help" || flag == "-h") => {
-            Some(render_domain_help_text(alert_root_command(), colorize))
-        }
-        [_binary, command, flag]
-            if command == "datasource" && (flag == "--help" || flag == "-h") =>
-        {
-            Some(render_domain_help_text(datasource_root_command(), colorize))
-        }
-        [_binary, command, flag] if command == "access" && (flag == "--help" || flag == "-h") => {
-            Some(render_domain_help_text(access_root_command(), colorize))
-        }
-        [_binary, command, flag] if command == "profile" && (flag == "--help" || flag == "-h") => {
-            Some(render_domain_help_text(profile_root_command(), colorize))
-        }
-        [_binary, command, flag] if command == "snapshot" && (flag == "--help" || flag == "-h") => {
-            Some(render_domain_help_text(snapshot_root_command(), colorize))
-        }
-        [_binary, command, flag] if command == "overview" && (flag == "--help" || flag == "-h") => {
-            Some(render_overview_help_text(colorize))
-        }
-        [_binary, command, flag] if command == "status" && (flag == "--help" || flag == "-h") => {
-            Some(render_domain_help_text(
-                ProjectStatusCliArgs::command(),
-                colorize,
-            ))
-        }
-        [_binary, command, flag] if command == "change" && (flag == "--help" || flag == "-h") => {
-            Some(render_domain_help_text(SyncCliArgs::command(), colorize))
-        }
-        [_binary, command, flag] if command == "alert" && flag == "--help-full" => Some(
-            render_domain_help_full_text(alert_root_command(), ALERT_HELP_FULL_TEXT, colorize),
-        ),
-        [_binary, command, flag] if command == "datasource" && flag == "--help-full" => {
-            Some(render_domain_help_full_text(
-                datasource_root_command(),
-                DATASOURCE_HELP_FULL_TEXT,
-                colorize,
-            ))
-        }
-        [_binary, command, flag] if command == "access" && flag == "--help-full" => Some(
-            render_domain_help_full_text(access_root_command(), ACCESS_HELP_FULL_TEXT, colorize),
-        ),
-        [_binary, command, flag] if command == "profile" && flag == "--help-full" => {
-            Some(render_domain_help_text(profile_root_command(), colorize))
-        }
-        [_binary, command, flag] if command == "snapshot" && flag == "--help-full" => {
-            Some(render_domain_help_text(snapshot_root_command(), colorize))
-        }
-        [_binary, command, flag] if command == "overview" && flag == "--help-full" => {
-            Some(render_overview_help_full_text(colorize))
-        }
-        [_binary, command, flag] if command == "status" && flag == "--help-full" => {
-            Some(render_domain_help_full_text(
-                ProjectStatusCliArgs::command(),
-                PROJECT_STATUS_HELP_FULL_TEXT,
-                colorize,
-            ))
-        }
-        [_binary, command, flag] if command == "change" && flag == "--help-full" => Some(
-            render_domain_help_full_text(SyncCliArgs::command(), SYNC_HELP_FULL_TEXT, colorize),
-        ),
-        _ => None,
-    }
-}
+use crate::snapshot::{run_snapshot_cli, SnapshotCommand};
+use crate::sync::{run_sync_cli, SyncGroupCommand};
 
 /// Dashboard subcommands exposed through the unified root CLI.
 #[derive(Debug, Clone, Subcommand)]
@@ -265,6 +78,12 @@ pub enum DashboardGroupCommand {
         after_help = DASHBOARD_EXPORT_HELP_TEXT
     )]
     Export(ExportArgs),
+    #[command(
+        name = "raw-to-prompt",
+        about = "Convert raw dashboard exports into prompt lane artifacts.",
+        after_help = DASHBOARD_RAW_TO_PROMPT_HELP_TEXT
+    )]
+    RawToPrompt(RawToPromptArgs),
     #[command(
         about = "Import dashboard JSON files through the Grafana API.",
         after_help = DASHBOARD_IMPORT_HELP_TEXT
@@ -337,7 +156,7 @@ pub enum UnifiedCommand {
     #[command(about = "Print the current grafana-util version.")]
     Version,
     #[command(
-        about = "Run dashboard browse, authoring, export, import, diff, patch-file, review, and publish workflows.",
+        about = "Run dashboard browse, authoring, export, raw-to-prompt, import, diff, patch-file, review, and publish workflows.",
         visible_alias = "db",
         after_help = UNIFIED_DASHBOARD_HELP_TEXT
     )]
@@ -381,7 +200,7 @@ pub enum UnifiedCommand {
     )]
     Access(AccessCliArgs),
     #[command(
-        about = "Run profile list, show, and init workflows.",
+        about = "Run profile list, show, add, example, and init workflows.",
         after_help = UNIFIED_PROFILE_HELP_TEXT
     )]
     Profile(ProfileCliArgs),
@@ -454,6 +273,9 @@ fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
         }
         DashboardGroupCommand::List(inner) => wrap_dashboard(DashboardCommand::List(inner)),
         DashboardGroupCommand::Export(inner) => wrap_dashboard(DashboardCommand::Export(inner)),
+        DashboardGroupCommand::RawToPrompt(inner) => {
+            wrap_dashboard(DashboardCommand::RawToPrompt(inner))
+        }
         DashboardGroupCommand::Import(inner) => wrap_dashboard(DashboardCommand::Import(inner)),
         DashboardGroupCommand::Delete(inner) => wrap_dashboard(DashboardCommand::Delete(inner)),
         DashboardGroupCommand::Diff(inner) => wrap_dashboard(DashboardCommand::Diff(inner)),

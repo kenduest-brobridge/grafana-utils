@@ -8,19 +8,17 @@
 mod live_apply;
 #[path = "live_fetch.rs"]
 mod live_fetch;
-#[path = "live_intent.rs"]
-mod live_intent;
 
 use crate::common::Result;
 use crate::dashboard::{build_http_client, build_http_client_for_org, CommonCliArgs};
 use serde_json::Value;
 
+pub(crate) use super::apply_contract::{load_apply_intent_operations, SyncApplyOperation};
 pub(crate) use live_apply::execute_live_apply_with_request;
 pub(crate) use live_fetch::{
     fetch_live_availability_with_request, fetch_live_resource_specs_with_request,
     merge_availability,
 };
-pub(crate) use live_intent::{load_apply_intent_operations, SyncApplyOperation};
 
 fn build_sync_http_client(
     common: &CommonCliArgs,

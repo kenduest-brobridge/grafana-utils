@@ -15,12 +15,37 @@ pub enum SimpleOutputFormat {
     Yaml,
 }
 
+/// Output selectors for dashboard raw-to-prompt migration summaries.
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum RawToPromptOutputFormat {
+    Text,
+    Table,
+    Json,
+    Yaml,
+}
+
 /// Output selectors for dashboard dry-run style commands.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum DryRunOutputFormat {
     Text,
     Table,
     Json,
+}
+
+/// Log renderers for dashboard raw-to-prompt migration events.
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum RawToPromptLogFormat {
+    Text,
+    Json,
+}
+
+/// Datasource resolution modes for dashboard raw-to-prompt migration.
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum RawToPromptResolution {
+    #[value(alias = "infer")]
+    InferFamily,
+    Exact,
+    Strict,
 }
 
 /// Output selectors for dashboard governance-gate reports.

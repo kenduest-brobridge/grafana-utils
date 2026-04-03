@@ -15,6 +15,7 @@ use std::fs;
 use std::path::PathBuf;
 
 mod apply_builder;
+mod apply_contract;
 pub mod audit;
 pub mod audit_tui;
 pub(crate) mod blocked_reasons;

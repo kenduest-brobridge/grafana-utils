@@ -8,7 +8,10 @@ use super::{
 };
 use crate::alert::{parse_cli_from as parse_alert_cli_from, root_command as alert_root_command};
 use crate::common::TOOL_VERSION;
-use crate::dashboard::{DashboardCommand, SimpleOutputFormat};
+use crate::dashboard::{
+    DashboardCommand, RawToPromptLogFormat, RawToPromptOutputFormat, RawToPromptResolution,
+    SimpleOutputFormat,
+};
 use crate::datasource::DatasourceGroupCommand;
 use crate::overview::OverviewOutputFormat;
 use crate::profile_cli::{root_command as profile_root_command, ProfileCommand};
@@ -73,6 +76,8 @@ fn unified_help_mentions_screenshot_and_inspect_vars_examples() {
     assert!(help.contains("Print help with extended examples"));
     assert!(help.contains("[Dashboard Export] Export dashboards with Basic auth"));
     assert!(help.contains("[Dashboard Export] Export dashboards across all visible orgs"));
+    assert!(help.contains("[Dashboard Raw To Prompt]"));
+    assert!(help.contains("dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json"));
     assert!(help.contains("--basic-user admin --basic-password admin"));
     assert!(help.contains("--all-orgs"));
     assert!(help.contains("dashboard screenshot"));
@@ -83,8 +88,10 @@ fn unified_help_mentions_screenshot_and_inspect_vars_examples() {
     assert!(help.contains("snapshot export"));
     assert!(help.contains("snapshot review"));
     assert!(help.contains("Review a local snapshot inventory as JSON"));
-    assert!(help.contains("Run profile list, show, and init workflows."));
+    assert!(help.contains("Run profile list, show, add, example, and init workflows."));
     assert!(help.contains("[Profile Show]"));
+    assert!(help.contains("[Profile Add]"));
+    assert!(help.contains("[Profile Example]"));
 }
 
 #[test]
@@ -121,6 +128,45 @@ fn parse_cli_supports_dashboard_group_command() {
                 assert_eq!(inner.export_dir, Path::new("./dashboards"));
             }
             _ => panic!("expected dashboard export"),
+        },
+        _ => panic!("expected dashboard group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_dashboard_group_raw_to_prompt_command() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "dashboard",
+        "raw-to-prompt",
+        "--input-file",
+        "./dashboards/raw/cpu-main.json",
+        "--output-format",
+        "yaml",
+        "--log-format",
+        "json",
+        "--resolution",
+        "strict",
+        "--profile",
+        "prod",
+        "--org-id",
+        "2",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Dashboard { command } => match command {
+            super::DashboardGroupCommand::RawToPrompt(inner) => {
+                assert_eq!(
+                    inner.input_file,
+                    vec![Path::new("./dashboards/raw/cpu-main.json").to_path_buf()]
+                );
+                assert_eq!(inner.output_format, RawToPromptOutputFormat::Yaml);
+                assert_eq!(inner.log_format, RawToPromptLogFormat::Json);
+                assert_eq!(inner.resolution, RawToPromptResolution::Strict);
+                assert_eq!(inner.profile.as_deref(), Some("prod"));
+                assert_eq!(inner.org_id, Some(2));
+            }
+            _ => panic!("expected dashboard raw-to-prompt"),
         },
         _ => panic!("expected dashboard group"),
     }
@@ -381,7 +427,31 @@ fn parse_cli_supports_profile_group_show_command() {
         UnifiedCommand::Profile(profile_args) => match profile_args.command {
             ProfileCommand::Show(show_args) => {
                 assert_eq!(show_args.profile.as_deref(), Some("prod"));
+                assert!(!show_args.show_secrets);
                 assert_eq!(show_args.output_format, SimpleOutputFormat::Yaml);
+            }
+            _ => panic!("expected profile show"),
+        },
+        _ => panic!("expected profile group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_profile_group_show_secrets_command() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "profile",
+        "show",
+        "--profile",
+        "prod",
+        "--show-secrets",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Profile(profile_args) => match profile_args.command {
+            ProfileCommand::Show(show_args) => {
+                assert_eq!(show_args.profile.as_deref(), Some("prod"));
+                assert!(show_args.show_secrets);
             }
             _ => panic!("expected profile show"),
         },
@@ -405,11 +475,108 @@ fn parse_cli_supports_profile_group_init_command() {
 }
 
 #[test]
+fn parse_cli_supports_profile_group_add_command() {
+    let args: CliArgs = parse_cli_from([
+        "grafana-util",
+        "profile",
+        "add",
+        "prod",
+        "--url",
+        "https://grafana.example.com",
+        "--basic-user",
+        "admin",
+        "--prompt-password",
+        "--store-secret",
+        "encrypted-file",
+    ]);
+
+    match args.command {
+        UnifiedCommand::Profile(profile_args) => match profile_args.command {
+            ProfileCommand::Add(add_args) => {
+                assert_eq!(add_args.name.as_str(), "prod");
+                assert_eq!(add_args.url.as_str(), "https://grafana.example.com");
+                assert_eq!(add_args.basic_user.as_deref(), Some("admin"));
+                assert!(add_args.prompt_password);
+                assert_eq!(
+                    add_args.store_secret,
+                    crate::profile_cli::ProfileSecretStorageMode::EncryptedFile
+                );
+            }
+            _ => panic!("expected profile add"),
+        },
+        _ => panic!("expected profile group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_profile_group_example_command() {
+    let args: CliArgs = parse_cli_from(["grafana-util", "profile", "example", "--mode", "basic"]);
+
+    match args.command {
+        UnifiedCommand::Profile(profile_args) => match profile_args.command {
+            ProfileCommand::Example(example_args) => {
+                assert_eq!(
+                    example_args.mode,
+                    crate::profile_cli::ProfileExampleMode::Basic
+                );
+            }
+            _ => panic!("expected profile example"),
+        },
+        _ => panic!("expected profile group"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_profile_group_example_full_mode_command() {
+    let args: CliArgs = parse_cli_from(["grafana-util", "profile", "example", "--mode", "full"]);
+
+    match args.command {
+        UnifiedCommand::Profile(profile_args) => match profile_args.command {
+            ProfileCommand::Example(example_args) => {
+                assert_eq!(
+                    example_args.mode,
+                    crate::profile_cli::ProfileExampleMode::Full
+                );
+            }
+            _ => panic!("expected profile example"),
+        },
+        _ => panic!("expected profile group"),
+    }
+}
+
+#[test]
 fn profile_show_subcommand_help_mentions_output_format() {
     let help = render_profile_subcommand_help(&["show"]);
 
     assert!(help.contains("--output-format"));
     assert!(help.contains("--profile"));
+    assert!(help.contains("--show-secrets"));
+}
+
+#[test]
+fn profile_add_subcommand_help_mentions_secret_modes() {
+    let help = render_profile_subcommand_help(&["add"]);
+
+    assert!(help.contains("--store-secret"));
+    assert!(help.contains("--prompt-password"));
+    assert!(help.contains("--prompt-secret-passphrase"));
+}
+
+#[test]
+fn profile_example_subcommand_help_mentions_mode() {
+    let help = render_profile_subcommand_help(&["example"]);
+
+    assert!(help.contains("--mode"));
+    assert!(help.contains("annotated profile config example"));
+}
+
+#[test]
+fn profile_example_subcommand_help_mentions_modes() {
+    let help = render_profile_subcommand_help(&["example"]);
+
+    assert!(help.contains("--mode"));
+    assert!(help.contains("basic"));
+    assert!(help.contains("full"));
 }
 
 #[test]

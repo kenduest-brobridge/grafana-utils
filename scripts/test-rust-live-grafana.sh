@@ -6,12 +6,12 @@ RUST_DIR="$ROOT_DIR/rust"
 CARGO_BIN="${CARGO_BIN:-cargo}"
 RUST_LIVE_SCOPE="${RUST_LIVE_SCOPE:-full}"
 GRAFANA_IMAGE="${GRAFANA_IMAGE:-grafana/grafana:12.4.1}"
-GRAFANA_PORT="${GRAFANA_PORT:-}"
+GRAFANA_PORT="${GRAFANA_PORT:-43011}"
 GRAFANA_USER="${GRAFANA_USER:-admin}"
 GRAFANA_PASSWORD="${GRAFANA_PASSWORD:-admin}"
 GRAFANA_API_TOKEN="${GRAFANA_API_TOKEN:-}"
 GRAFANA_URL=""
-CONTAINER_NAME="${GRAFANA_CONTAINER_NAME:-grafana-util-rust-live-$$}"
+CONTAINER_NAME="${GRAFANA_CONTAINER_NAME:-grafana-util-live-grafana}"
 WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/grafana-util-rust-live.XXXXXX")"
 DASHBOARD_EXPORT_DIR="${WORK_DIR}/dashboards"
 DASHBOARD_DRY_RUN_DIR="${WORK_DIR}/dashboards-dry-run"
@@ -447,12 +447,9 @@ create_api_token() {
 start_grafana() {
   local publish_args=()
 
-  if [[ -n "${GRAFANA_PORT}" ]]; then
-    check_requested_grafana_port
-    publish_args=(-p "127.0.0.1:${GRAFANA_PORT}:3000")
-  else
-    publish_args=(-p "127.0.0.1::3000")
-  fi
+  docker rm -f "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+  check_requested_grafana_port
+  publish_args=(-p "127.0.0.1:${GRAFANA_PORT}:3000")
 
   docker run -d \
     --name "${CONTAINER_NAME}" \
@@ -462,9 +459,6 @@ start_grafana() {
     -e "GF_USERS_ALLOW_SIGN_UP=false" \
     "${GRAFANA_IMAGE}" >/dev/null
 
-  if [[ -z "${GRAFANA_PORT}" ]]; then
-    GRAFANA_PORT="$(docker port "${CONTAINER_NAME}" 3000/tcp | awk -F: 'END {print $NF}')"
-  fi
   GRAFANA_URL="http://127.0.0.1:${GRAFANA_PORT}"
   wait_for_grafana
 }

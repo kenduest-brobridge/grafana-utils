@@ -847,6 +847,8 @@ mod tests {
 
     #[test]
     fn build_live_dashboard_status_uses_dashboard_version_history_for_freshness() {
+        let created =
+            DateTime::<Utc>::from(SystemTime::now() - Duration::from_secs(60)).to_rfc3339();
         let status = build_live_dashboard_status_with_request(|method, path, params, _payload| {
             match (method, path) {
                 (Method::GET, "/api/search") => {
@@ -878,7 +880,7 @@ mod tests {
                     Ok(Some(json!([
                         {
                             "version": 7,
-                            "created": "2026-03-26T10:00:00Z",
+                            "created": created,
                             "createdBy": "admin"
                         }
                     ])))

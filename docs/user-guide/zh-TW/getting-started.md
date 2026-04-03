@@ -1,92 +1,150 @@
-# 開始使用
+# 🚀 開始使用 (Getting Started)
 
-本章提供逐步指引，幫助您驗證 `grafana-util` 安裝，並建立與 Grafana 實例的連線。
+本章說明 `grafana-util` 目前的首次使用流程。
 
-> **目標**：確保 binary 正確安裝，驗證 Grafana 連線，並安全執行第一次唯讀指令。
+若要對照本章提到的旗標，請一併參考 [profile](../../commands/zh-TW/profile.md)、[status](../../commands/zh-TW/status.md) 與 [overview](../../commands/zh-TW/overview.md)。
 
 ---
 
-## 🛠️ 步驟 1：驗證安裝
+## 📋 步驟 1：安裝
 
-確認已安裝的版本並探索可用的命令面。這能確保您執行的是正確的 binary。
-
+### 下載並安裝
 ```bash
-# 驗證 binary 版本
+curl -sSL https://raw.githubusercontent.com/kendlee/grafana-utils/main/scripts/install.sh | bash
+```
+
+### 驗證版本
+```bash
 grafana-util --version
-
-# 探索全域與特定領域的說明
-grafana-util -h
-grafana-util dashboard -h
-grafana-util alert -h
-grafana-util datasource -h
-grafana-util access -h
-grafana-util profile -h
-grafana-util change -h
-grafana-util overview -h
-grafana-util status -h
 ```
+**預期輸出：**
+```text
+grafana-util 0.7.0
+```
+這代表執行檔已在 `PATH` 上，而且版本與目前檢出的發行版一致。
 
 ---
 
-## 🔐 步驟 2：連線模型
+## 📋 步驟 2：Profile 檔案
 
-`grafana-util` 支援兩種主要方式與 Grafana 互動：
+Profile 流程是 repo-local 的。`grafana-util profile` 預設會讀寫目前工作目錄中的 `grafana-util.yaml`，如果你有設定 `GRAFANA_UTIL_CONFIG`，就會改讀那個路徑。
 
-### 1. 直接帶旗標 (Direct CLI Flags)
-適合一次性任務或測試。您直接在每個指令中傳遞憑證。
+### 驗證模式速覽
 
+建議依照這個順序使用：
+
+| 模式 | 適合情境 | 範例 |
+| :--- | :--- | :--- |
+| `--profile` | 日常維運、CI、可重複執行的工作流 | `grafana-util status live --profile prod --output yaml` |
+| 直接 Basic auth | 本機 bootstrap、break-glass、管理員流程 | `grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output yaml` |
+| 直接 token | 單一 org 或權限較窄的 API 自動化 | `grafana-util overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output yaml` |
+
+若要用環境變數承載秘密，建議把它放在 profile 裡，例如 `password_env: GRAFANA_PROD_PASSWORD` 或 `token_env: GRAFANA_DEV_TOKEN`，不要把明文秘密一再寫進每一條命令列。
+
+### 1. 選一種建立 profile 的方式
 ```bash
-grafana-util dashboard list \
-  --url http://localhost:3000 \
-  --basic-user admin \
-  --basic-password admin
+grafana-util profile init --overwrite
+grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password
+grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN --store-secret os
+grafana-util profile example --mode full
 ```
+`profile init` 會產生一份最小可用的 `grafana-util.yaml`。`profile add` 可以一步建立 Basic-auth 或 token-backed 的可用 profile，不用自己手改 YAML。`profile example` 則會印出完整註解版範本，方便你拿去改。
 
-### 2. 本地設定檔 (Repo-Local Profiles)
-最適合重複性的維運工作。Profile 將 URL、驗證資訊與 timeout 設定儲存在 `grafana-profiles.yaml`。
+如果你想自己確認這些檔案會放哪裡，規則很單純：
 
-**初始化 Profile：**
+| 檔案 | 預設位置 | 用途 |
+| :--- | :--- | :--- |
+| `grafana-util.yaml` | 目前工作目錄，或 `GRAFANA_UTIL_CONFIG` 指定的路徑 | repo-local profile 設定檔 |
+| `.grafana-util.secrets.yaml` | 跟 `grafana-util.yaml` 放同一個目錄 | `encrypted-file` 模式用的加密秘密檔 |
+| `.grafana-util.secrets.key` | 跟 `grafana-util.yaml` 放同一個目錄 | 沒有 passphrase 時的本機 key 檔 |
+
+### 2. 列出設定檔中的 profile
 ```bash
-grafana-util profile init
-```
-
-**檢視與管理 Profile：**
-```bash
-# 列出所有 Profile
 grafana-util profile list
+```
+**預期輸出：**
+```text
+dev
+prod
+```
+在剛初始化完成的設定檔中，`profile list` 會一行列出一個 profile 名稱。
 
-# 顯示特定 Profile 的詳細內容
+若要看每個旗標背後的驗證規則，可再對照 [profile](../../commands/zh-TW/profile.md) 指令頁。
+
+### 3. 查看已解析的 profile
+```bash
 grafana-util profile show --profile prod --output-format yaml
 ```
+**預期輸出：**
+```text
+name: prod
+source_path: grafana-util.yaml
+profile:
+  url: https://grafana.example.com
+  username: admin
+  password_env: GRAFANA_PROD_PASSWORD
+  verify_ssl: true
+```
+要覆蓋預設選擇規則時，用 `--profile`；想人工確認最後採用的設定時，用 `yaml` 最直觀。
 
 ---
 
-## 📋 步驟 3：第一步安全指令
+## 📋 步驟 3：第一批唯讀檢查
 
-在執行任何變更 (Import/Apply) 前，請先透過這些安全、非破壞性的指令驗證存取權限。
+只要 profile 檔案已準備好，就可以先用唯讀指令確認目前 CLI 的行為，再去碰 live 資料。
 
-| 任務 | 完整指令範例 | 驗證目的 |
-| :--- | :--- | :--- |
-| **資產盤點** | `grafana-util dashboard list --all-orgs --with-sources --table` | 驗證 API 連線與目錄可見度。 |
-| **資料來源** | `grafana-util datasource list --table` | 驗證讀取 Datasource 外掛與類型的能力。 |
-| **整備度** | `grafana-util status live --output-format table` | 全專案整備度與健康度報告。 |
-| **總覽** | `grafana-util overview live` | 人類可讀的整體資產摘要。 |
+### 1. `status live` 入口
+```bash
+grafana-util status live -h
+```
+**預期輸出：**
+```text
+Render project status from live Grafana read surfaces. Use current Grafana state plus optional staged context files.
+
+Usage: grafana-util status live [OPTIONS]
+
+Options:
+      --profile <PROFILE>
+          Load connection defaults from the selected repo-local profile in grafana-util.yaml.
+      --url <URL>
+          Grafana base URL. [default: http://localhost:3000]
+```
+`status live` 會直接查詢 Grafana，而且現在用的是 `--output`，不是舊文件常見的 `--output-format`。
+
+### 2. `overview live` 入口
+```bash
+grafana-util overview live -h
+```
+**預期輸出：**
+```text
+Render a live overview by delegating to the shared status live path.
+...
+Examples:
+  grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output interactive
+  grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output yaml
+```
+`overview live` 是共用 live status 路徑的人類導向包裝。要看可讀摘要可用 `--output yaml`，想進互動式工作台就用 `--output interactive`。
+
+### 3. 用兩種常見驗證方式跑同一個唯讀檢查
+```bash
+grafana-util overview live --profile prod --output yaml
+grafana-util overview live --url http://localhost:3000 --basic-user admin --prompt-password --output interactive
+```
+平常可重複執行的工作優先用 profile。直接 Basic auth 則保留給 bootstrap、臨時救援或尚未建好 profile 的管理員流程。
+
+### 4. 先知道 token 的常見限制
+
+Token 驗證足以處理單一 org 的讀取流程，但跨 org 或管理員範圍的操作常常還是需要使用者身分或具備較廣權限的 Basic auth。
+
+- `--all-orgs` 相關的盤點與匯出流程，最穩妥的是使用管理員憑證支援的 `--profile` 或直接 Basic auth。
+- org、user、team 與 service-account 管理通常需要管理員等級權限，窄權限 token 可能無法完成。
+- 如果 token 看不到所有目標 org，即使旗標要求更廣的範圍，輸出仍會被 token 權限限制。
 
 ---
 
 ## 🖥️ 互動模式 (TUI)
 
-部分指令支援 **終端機使用者介面 (TUI)**，提供引導式的人類審查。
-
-| 命令 | 用法 | 最佳用途 |
-| :--- | :--- | :--- |
-| `dashboard browse` | `grafana-util dashboard browse` | 引導式發現現有的 Dashboard。 |
-| `inspect` | `grafana-util dashboard inspect-export --interactive` | 離線審查匯出的 Dashboard 目錄。 |
-| `overview` | `grafana-util overview --output interactive` | 在終端機內以互動方式檢視專案狀態。 |
+`grafana-util dashboard browse` 會在終端機中開啟 live dashboard tree；`overview live --output interactive` 則會開啟互動式的整體總覽。
 
 ---
-
-## ⏭️ 下一步
-
-- 參考 [**參考手冊**](./reference.md) 了解詳細的旗標與驗證規則。
-- 遵循 [**情境手冊**](./scenarios.md) 了解端到端的工作流 (例如遷移、備份)。
+[🏠 回首頁](index.md) | [➡️ 下一章：系統架構與設計原則](architecture.md)

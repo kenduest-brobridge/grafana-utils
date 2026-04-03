@@ -5,7 +5,7 @@
 //! - Validate screenshot CLI arguments before browser launch.
 //! - Reuse dashboard auth headers for a headless Chromium session.
 //! - Capture PNG, JPEG, or PDF output through a browser-rendered page.
-#![cfg_attr(not(any(feature = "browser", test)), allow(dead_code))]
+#![cfg_attr(not(feature = "browser"), allow(dead_code))]
 
 #[cfg(feature = "browser")]
 #[path = "screenshot_full_page.rs"]

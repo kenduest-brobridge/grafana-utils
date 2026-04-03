@@ -11,6 +11,16 @@ backlogs, market analysis, and progress snapshots have been moved into
   - current change trace and active maintainer notes
 - `ai-changes.md`
   - current summarized change log for meaningful behavior or architecture work
+- `generated-docs-architecture.md`
+  - design map for the Markdown-to-manpage and Markdown-to-HTML pipeline
+- `generated-docs-playbook.md`
+  - task-oriented maintainer recipes for common generated-docs changes
+- `maintainer-quickstart.md`
+  - first-entry route for new maintainers and AI agents
+- `profile-secret-storage-architecture.md`
+  - profile secret backend model, platform support, and maintainer rules
+- `maintainer-role-map.md`
+  - maintainer routing by concern: runtime, docs, contracts, and release flow
 - `overview-architecture.md`
   - source-of-truth maintainer map for `grafana-util overview`
 - `project-status-architecture.md`
@@ -27,6 +37,11 @@ backlogs, market analysis, and progress snapshots have been moved into
 
 - `ai-status.md` -> active trace and decision log
 - `ai-changes.md` -> condensed change ledger for meaningful behavior or architecture work
+- `generated-docs-architecture.md` -> source/output model, generator split, and generated-docs design rules
+- `generated-docs-playbook.md` -> maintainer cookbook for adding docs pages, locales, outputs, and manpage coverage
+- `maintainer-quickstart.md` -> first-entry reading order, source-of-truth map, task routing, and safe validation commands
+- `profile-secret-storage-architecture.md` -> profile secret modes, macOS/Linux backend behavior, and secret-resolution design rules
+- `maintainer-role-map.md` -> maintainer persona entrypoint and validation map by concern
 - `overview-architecture.md` -> `grafana-util overview` map and extension rules
 - `project-status-architecture.md` -> cross-domain status model behind the public `status` surface
 - `project-surface-boundaries.md` -> public-name and internal-name bridge plus current-vs-target ownership

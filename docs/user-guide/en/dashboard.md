@@ -4,6 +4,18 @@ This guide covers `grafana-util dashboard` as an operator workflow for inventory
 
 > **Operator-First Design**: This tool treats dashboards as version-controlled assets. The goal is to move and govern dashboard state safely, providing clear visibility into changes before they touch live Grafana.
 
+## 🔗 Command Pages
+
+Need the command-by-command surface instead of the workflow guide?
+
+- [dashboard command overview](../../commands/en/dashboard.md)
+- [dashboard export](../../commands/en/dashboard-export.md)
+- [dashboard import](../../commands/en/dashboard-import.md)
+- [dashboard raw-to-prompt](../../commands/en/dashboard-raw-to-prompt.md)
+- [dashboard diff](../../commands/en/dashboard-diff.md)
+- [dashboard inspect-export](../../commands/en/dashboard-inspect-export.md)
+- [full command index](../../commands/en/index.md)
+
 ---
 
 ## 🛠️ What This Area Is For
@@ -23,9 +35,19 @@ Dashboard export intentionally produces three different "lanes" because each ser
 
 | Lane | Purpose | Best Use Case |
 | :--- | :--- | :--- |
-| `raw/` | **Canonical Replay** | The primary source for `grafana-util import`. Reversible and API-friendly. |
-| `prompt/` | **UI Import** | Compatible with the Grafana UI "Upload JSON" feature. |
+| `raw/` | **Canonical Replay** | The primary source for `grafana-util dashboard import`. Reversible and API-friendly. |
+| `prompt/` | **UI Import** | Compatible with the Grafana UI "Upload JSON" feature. If you only have ordinary or raw dashboard JSON, convert it first with `grafana-util dashboard raw-to-prompt`. |
 | `provisioning/` | **File Provisioning** | When Grafana should read dashboards from disk via its internal provisioning system. |
+
+---
+
+## 🔤 Prompt Placeholder Notes
+
+- `$datasource` is a dashboard variable reference.
+- `${DS_*}` is an external-import placeholder created from `__inputs`.
+- A prompt dashboard can legitimately contain both forms at once.
+- That usually means the dashboard keeps a Grafana datasource-variable workflow while also needing external-import inputs.
+- Do not assume `$datasource` automatically means mixed datasource families. In many cases it only means the dashboard is still routing panel selection through one datasource variable.
 
 ---
 
@@ -71,6 +93,7 @@ spring-jmx-node-unified  Spring JMX + Node Unified Dashboard (VM)  Demo    ffhrm
 | :--- | :--- |
 | **List** | `grafana-util dashboard list --all-orgs --with-sources --table` |
 | **Export** | `grafana-util dashboard export --export-dir ./dashboards --overwrite --progress` |
+| **Raw to Prompt** | `grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite --progress` |
 | **Import** | `grafana-util dashboard import --import-dir ./dashboards/raw --replace-existing --dry-run --table` |
 | **Diff** | `grafana-util dashboard diff --import-dir ./dashboards/raw --input-format raw` |
 | **Inspect** | `grafana-util dashboard inspect-export --import-dir ./dashboards/raw --output-format report-table` |
@@ -111,6 +134,8 @@ subfolder-chain-smoke  missing      create  Platform / Team / Apps / Prod  ./das
 ```
 - **ACTION=create**: New dashboard will be added.
 - **ACTION=update**: Existing live dashboard will be replaced.
+- **DESTINATION=missing**: No live dashboard currently owns that UID, so the import would create a new record.
+- **DESTINATION=exists**: The UID already exists in Grafana, so the import would target that live dashboard.
 
 ### 3. Provisioning-Oriented Comparison
 Compare your local provisioning files against live state.
@@ -126,7 +151,4 @@ grafana-util dashboard diff --import-dir ./dashboards/provisioning --input-forma
 ```
 
 ---
-
-## ⏭️ Next Steps
-- Learn about [**Datasource Management**](./datasource.md).
-- Explore [**Alerting Workflows**](./alert.md).
+[⬅️ Previous: Architecture & Design](architecture.md) | [🏠 Home](index.md) | [➡️ Next: Datasource Management](datasource.md)

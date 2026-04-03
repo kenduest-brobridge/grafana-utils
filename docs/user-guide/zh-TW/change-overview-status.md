@@ -1,109 +1,108 @@
-# Change, Overview, and Status 維運人員手冊
+# 專案狀態與變更總覽 (Change & Status)
 
-本指南涵蓋專案層級的介面指令：`change`、`overview` 與 `status`。
+本章聚焦在治理關卡，也就是在執行變更前後的最後一層驗證。
 
-> **目標**：將分散的資源 (Dashboard, Alert, Access) 統合成一個統一的專案視角，用於生命週期管理與整備度報告。
+## 🔗 逐指令頁面
 
----
+如果您現在想看的是逐指令說明，而不是工作流章節，請直接使用逐指令頁面：
 
-## 🛠️ 這些介面的用途
-
-不同的任務需要不同的分析介面。
-
-| 介面 | 最佳用途 | 合約類型 |
-| :--- | :--- | :--- |
-| **`change`** | 暫存工作流與執行意圖。 | 暫存審查週期。 |
-| **`overview`** | 人類專案審查。 | 人類觀點快照。 |
-| **`status`** | 整備度門禁與自動化。 | 官方整備度合約。 |
+- [change](../../commands/zh-TW/change.md)
+- [status](../../commands/zh-TW/status.md)
+- [overview](../../commands/zh-TW/overview.md)
+- [snapshot](../../commands/zh-TW/snapshot.md)
+- [逐指令總索引](../../commands/zh-TW/index.md)
 
 ---
 
-## 🚧 工作流路徑邊界 (審查週期)
+## 🚦 狀態介面 (Status Surfaces)
 
-當暫存資產需要受控且審查優先的路徑時，請依序使用 `change` 指令。
+我們區分 **Live** (實際運行中) 與 **Staged** (您打算部署的內容)。
 
-1. **`plan`**：在本地檔案與即時狀態之間產生可審查的差異。
-2. **`review`**：紀錄維運人員的決策 (批准 / 拒絕)。
-3. **`apply`**：在核准後發出最終的執行意圖 (Apply Intent)。
-
----
-
-## 📋 閱讀專案狀態 (Project Status)
-
-使用 `status live` 驗證即時 Grafana 資產的健康度與整備度。
-
+### 1. 即時整備度檢查 (Live Check)
 ```bash
-grafana-util status live --url http://localhost:3000 --basic-user admin --basic-password admin --table
+grafana-util status live --output table
+grafana-util status live --profile prod --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output json
 ```
-
-**驗證輸出摘錄：**
+**預期輸出：**
 ```text
-Project status
-Overall: status=partial scope=live domains=6 present=6 blocked=0 blockers=0 warnings=4
-Domains:
-- dashboard status=ready mode=live-read primary=3 blockers=0 warnings=0
-- datasource status=ready mode=live-inventory primary=1 blockers=0 warnings=1
-- alert status=ready mode=live-alert-surfaces primary=2 blockers=0 warnings=0
+OVERALL: status=ready
+
+COMPONENT    HEALTH   REASON
+Dashboards   ok       32/32 可存取
+Datasources  ok       秘密資訊恢復驗證通過
+Alerts       ok       無孤立規則
 ```
+`status live` 走的是共用的 live 狀態路徑。搭配 staged sync 檔案時，可以在不改變命令形狀的前提下，讓 live 視圖帶入更多脈絡。
 
-**如何解讀：**
-- **Overall status**：`ready` (良好), `partial` (存在警告), 或 `blocked` (發現錯誤)。
-- **Domains**：各資源家族 (Dashboard, Datasource, Alert 等) 的整備度報告。
-- **Blockers**：在專案被視為「準備就緒」前，必須解決的具體問題。
-
----
-
-## 🚀 關鍵指令 (完整參數參考)
-
-| 指令 | 帶有參數的完整範例 |
-| :--- | :--- |
-| **即時狀態** | `grafana-util status live --url <URL> --basic-user admin --table` |
-| **暫存狀態** | `grafana-util status staged --dashboard-export-dir ./dashboards --output json` |
-| **總覽** | `grafana-util overview --dashboard-export-dir ./dashboards --output interactive` |
-| **變更計畫** | `grafana-util change plan --desired-file <FILE> --live-file <FILE> --output json` |
-| **審查** | `grafana-util change review --plan-file <FILE> --reviewed-by admin --approve` |
-
----
-
-## 🔬 Docker 驗證範例
-
-### 1. 變更計畫摘錄 (Change Plan)
-預覽暫存變更包的意圖。
-```bash
-grafana-util change plan --desired-file ./desired.json --live-file ./live.json --output json
-```
-**輸出摘錄：**
-```json
-{
-  "summary": { "would_create": 3, "would_update": 0, "would_delete": 0, "noop": 0 },
-  "reviewRequired": true
-}
-```
-
-### 2. 暫存狀態合約 (Staged Status)
-在 CI 中使用此功能，根據本地檔案的整備度來控制部署門禁。
+### 2. 暫存整備度檢查 (Staged Check)
+在執行 `apply` 之前，將此作為 CI/CD 的強制性門禁。
 ```bash
 grafana-util status staged --desired-file ./desired.json --output json
+grafana-util status staged --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output table
 ```
-**輸出摘錄：**
+**預期輸出：**
 ```json
 {
-  "overall": { "status": "blocked", "domainCount": 6, "blockedCount": 1, "blockerCount": 3 }
+  "status": "ready",
+  "blockers": [],
+  "warnings": ["1 個儀表板缺少唯一的目錄分配"]
 }
 ```
-*註：'blocked' 狀態代表本地檔案尚未達到專案的整備標準。*
+`status staged` 是給機器讀的驗證關卡。`blockers` 代表必須停下來處理，`warnings` 則是需要人工再確認的風險。
 
 ---
 
-## ⚠️ 專案介面維運規則
+## 📋 變更生命週期 (Change Lifecycle)
 
-1.  **區分介面用途**：人類審查使用 `overview`，機器合約或 CI 門禁使用 `status`。
-2.  **暫存 vs 即時**：`status staged` 讀取本地檔案；`status live` 讀取 Grafana。切勿假設兩者代表相同的狀態。
-3.  **審查鏈**：`change review` 對於追蹤「誰在變更包到達生產環境前核准了它」至關重要。
-4.  **TUI 導覽**：對於複雜的資產審查，使用 `overview --output interactive` 來深入了解具體的 Blockers 或警告。
+管理從 Git 到正式 Grafana 環境的過渡。
+
+### 1. 變更摘要 (Change Summary)
+獲取目前變更包的高階摘要。
+```bash
+grafana-util change summary --desired-file ./desired.json
+grafana-util change summary --desired-file ./desired.json --output json
+```
+**預期輸出：**
+```text
+CHANGE PACKAGE SUMMARY:
+- dashboards: 5 modified, 2 added
+- alerts: 3 modified
+- access: 1 added
+- total impact: 11 operations
+```
+先用 summary 看整個變更包的規模，再往下看 plan。若總數異常偏大，應先停下來檢查 staged 輸入。
+
+### 2. 預檢驗證 (Preflight Validation)
+驗證匯出 / 匯入目錄結構的完整性。
+```bash
+grafana-util change preflight --desired-file ./desired.json --availability-file ./availability.json
+grafana-util change preflight --desired-file ./desired.json --fetch-live --output json
+```
+**預期輸出：**
+```text
+PREFLIGHT CHECK:
+- dashboards: valid (7 files)
+- datasources: valid (1 inventory found)
+- result: 0 errors, 0 blockers
+```
+preflight 適合放在規劃或套用前，做結構層的檢查。通過只代表輸入形狀合理，不代表 live 狀態已經完全吻合。
 
 ---
 
-## ⏭️ 下一步
-- 參考 [**Dashboard**](./dashboard.md) 或 [**Alert**](./alert.md) 手冊了解領域細節。
-- 參閱 [**情境手冊**](./scenarios.md) 了解端到端範例。
+## 🖥️ 互動模式 (TUI) 語意
+
+`overview live --output interactive` 會透過共用的 live status 路徑開啟 live project overview。
+
+```bash
+grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output interactive
+```
+
+TUI 使用以下視覺語言：
+- **🟢 綠色**：組件健康且完全可達。
+- **🟡 黃色**：組件可用，但有警告，例如缺少元數據。
+- **🔴 紅色**：組件受阻，在進行任何部署前都需要處理。
+
+如果要看 staged 產物的人工審查畫面，用不帶 `live` 的 `overview`；如果要機器可讀的 live 驗證關卡，改用 `status live`。
+
+---
+[⬅️ 上一章：Access 管理](access.md) | [🏠 回首頁](index.md) | [➡️ 下一章：維運情境手冊](scenarios.md)

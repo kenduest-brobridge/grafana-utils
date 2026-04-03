@@ -31,6 +31,8 @@ pub(crate) mod alert_sync;
 pub(crate) mod bundle_preflight;
 /// Unified top-level CLI parsing and dispatch for the Rust binary.
 pub mod cli;
+/// Unified CLI help rendering and example blocks.
+pub(crate) mod cli_help;
 /// Structured help/example text used by the unified CLI renderer.
 pub(crate) mod cli_help_examples;
 /// Shared error, auth, JSON, and filesystem helpers reused across domains.
@@ -67,6 +69,8 @@ pub mod overview;
 pub mod profile_cli;
 /// Repo-local profile/workspace config loading and live connection default resolution.
 pub mod profile_config;
+/// Secret storage backends for repo-local profile credentials.
+pub(crate) mod profile_secret_store;
 /// Shared status contract shapes reused across overview and future status producers.
 pub(crate) mod project_status;
 /// Top-level status command surface for staged/live project-wide status.

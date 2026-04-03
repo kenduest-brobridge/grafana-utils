@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dashboard raw-to-prompt · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+    --panel: rgba(15, 23, 32, 0.86);
+    --panel-strong: rgba(15, 23, 32, 0.94);
+    --text: #d9e2ec;
+    --muted: #9fb3c8;
+    --heading: #f0f4f8;
+    --accent: #7bdcb5;
+    --accent-soft: rgba(18, 53, 40, 0.9);
+    --border: #243b53;
+    --code-bg: #1f2933;
+    --pre-bg: #081018;
+    --pre-text: #e6edf3;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] body {
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+html[data-theme="dark"] body {
+  --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --panel: rgba(15, 23, 32, 0.86);
+  --panel-strong: rgba(15, 23, 32, 0.94);
+  --text: #d9e2ec;
+  --muted: #9fb3c8;
+  --heading: #f0f4f8;
+  --accent: #7bdcb5;
+  --accent-soft: rgba(18, 53, 40, 0.9);
+  --border: #243b53;
+  --code-bg: #1f2933;
+  --pre-bg: #081018;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+a { color: var(--accent); }
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 0.98rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+th {
+  text-align: left;
+  background: var(--accent-soft);
+}
+.site {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 28px 22px 68px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.brand {
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.themebar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.hero {
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--heading);
+}
+.hero p {
+  max-width: 74ch;
+  margin: 14px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.breadcrumbs {
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  font-size: 0.96rem;
+  color: var(--muted);
+}
+.breadcrumbs li::after {
+  content: "/";
+  margin-left: 10px;
+}
+.breadcrumbs li:last-child::after {
+  content: "";
+  margin: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px;
+  margin-top: 22px;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article {
+  padding: 30px;
+}
+.article h1,
+.article h2,
+.article h3 {
+  color: var(--heading);
+}
+.article h1 {
+  margin-top: 0;
+}
+.article h2 {
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.article h3 {
+  margin-top: 28px;
+}
+.article p,
+.article li {
+  font-size: 1.03rem;
+  line-height: 1.8;
+}
+.sidebar {
+  padding: 22px;
+}
+.sidebar section + section {
+  margin-top: 20px;
+}
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li + li {
+  margin-top: 8px;
+}
+.sidebar a {
+  text-decoration: none;
+}
+.link-card {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+.footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.footer-nav .link-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.site-footer {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.landing-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.landing-card h2 {
+  margin-top: 0;
+  color: var(--heading);
+}
+.landing-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+@media (max-width: 980px) {
+  .layout,
+  .landing-grid,
+  .footer-nav {
+    grid-template-columns: 1fr;
+  }
+}</style>
+</head>
+<body>
+  <div class="site">
+    <div class="topbar">
+      <a class="brand" href="../../index.html">grafana-util docs</a>
+      <div class="themebar">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+    <header class="hero">
+      <div class="eyebrow">Command Reference · 繁體中文</div>
+      <h1>dashboard raw-to-prompt</h1>
+      <p>逐指令 reference，適合快速查 flags、examples、相鄰命令與對應手冊章節。</p>
+      <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Command Reference</a></li><li>繁體中文</li><li>dashboard raw-to-prompt</li></ol>
+    </header>
+    <div class="layout">
+      <article class="panel article">
+        <h1 id="dashboard-raw-to-prompt">dashboard raw-to-prompt</h1>
+<h2 id="用途">用途</h2>
+<p>把一般 dashboard JSON 或 <code>raw/</code> lane 檔案轉成帶有 <code>__inputs</code> 的 Grafana UI prompt JSON。</p>
+<h2 id="何時使用">何時使用</h2>
+<p>當別人給您一般 Grafana dashboard export、legacy raw JSON，或您手上只有 <code>raw/</code> lane 檔案，但接下來要走 Grafana UI <code>Upload JSON</code> 匯入流程時，使用這個指令。</p>
+<h2 id="重點旗標">重點旗標</h2>
+<ul><li><code>--input-file</code>：可重複指定一個或多個 dashboard JSON 檔。</li><li><code>--input-dir</code>：轉換一整個目錄樹。若輸入是 <code>raw/</code> 或 export root，預設輸出到 sibling <code>prompt/</code> lane。</li><li><code>--output-file</code>：指定單一輸出檔，只能配單一 <code>--input-file</code>。</li><li><code>--output-dir</code>：把轉換結果寫到一個輸出目錄樹。</li><li><code>--overwrite</code>：覆蓋既有 prompt 檔。</li><li><code>--datasource-map</code>：可選的 JSON/YAML mapping，用來修補 datasource 參照。</li><li><code>--resolution</code>：選擇 <code>infer-family</code>、<code>exact</code> 或 <code>strict</code>。</li><li><code>--profile</code>、<code>--url</code>、<code>--token</code>、<code>--basic-user</code>、<code>--basic-password</code>、<code>--org-id</code>：可選的 live datasource lookup 參數，用來補強 datasource 解析。</li><li><code>--dry-run</code>：只預覽，不寫檔。</li><li><code>--progress</code>、<code>--verbose</code>：顯示進度或逐檔詳細結果。</li><li><code>--output-format</code>：最後 summary 用 <code>text</code>、<code>table</code>、<code>json</code> 或 <code>yaml</code> 輸出。</li><li><code>--log-file</code>、<code>--log-format</code>：把逐檔 success/fail 事件寫成文字 log 或 NDJSON。</li><li><code>--color</code>：用 <code>auto</code>、<code>always</code> 或 <code>never</code> 控制彩色輸出。</li></ul>
+<h2 id="工作流說明">工作流說明</h2>
+<ul><li>單檔模式預設輸出為同目錄下的 <code>*.prompt.json</code>。</li><li>多個 <code>--input-file</code> 也會預設各自輸出到原檔旁邊。</li><li>一般目錄輸入必須帶 <code>--output-dir</code>，避免把生成檔混進任意來源目錄。</li><li>若輸入是 <code>raw/</code> 或 combined export root，預設會生成 sibling <code>prompt/</code> lane，並一併寫出 <code>index.json</code> 與 <code>export-metadata.json</code>。</li><li><code>prompt/</code> 產物是給 Grafana UI <code>Upload JSON</code> 用的，不是給 <code>grafana-util dashboard import</code> API 匯入路徑直接吃的。</li><li>如果提供 <code>--profile</code> 或其他 live auth 參數，這個命令會先查目標 Grafana 的 datasource inventory，並優先使用 live match。</li></ul>
+<h2 id="datasource-解析">Datasource 解析</h2>
+<ul><li>預設 <code>infer-family</code> 是實務上最方便的模式，可從 query 形狀推測 Prometheus、Loki、Flux/Influx 這類明確 family。</li><li><code>exact</code> 要求 datasource 必須能從檔案內嵌資訊、raw inventory 或 <code>--datasource-map</code> 被精準解析。</li><li><code>exact</code> 也可以搭配 <code>--profile</code> 或直接 live auth 參數，透過 live datasource lookup 成功解析。</li><li><code>strict</code> 只要有 datasource 不能精準解析就直接失敗。</li><li>若同一 dashboard 內可區分出多個 datasource 參照，這個命令會保留多個 prompt slot，不會只因為 family 相同就直接合併。</li><li>若是泛用 SQL/search/tracing 這類模糊 family，通常仍建議補 <code>--datasource-map</code>。</li></ul>
+<h2 id="placeholder-模型">Placeholder 模型</h2>
+<ul><li><code>$datasource</code> 是 dashboard variable 參照，代表 dashboard 或 panel 是透過名為 <code>datasource</code> 的 Grafana 變數來選 datasource。</li><li><code>${DS_PROMETHEUS}</code> 或 <code>${DS_*}</code> 是 external import input placeholder，代表 Grafana 在 <code>Upload JSON</code> 時要先詢問 datasource，再把結果注入 dashboard。</li><li>這兩者有關聯，但不是同一件事。生成後的 prompt 檔可以同時包含：</li><li><code>__inputs</code> 內的 <code>${DS_*}</code> 與某些 typed datasource 參照</li><li>panel 層級刻意保留的 <code>$datasource</code></li><li><code>raw-to-prompt</code> 的目標是保留這個邊界，而不是把所有 datasource placeholder 都壓成同一種寫法。</li><li>如果原始 dashboard 本來就依賴 Grafana datasource variable，轉換後的 prompt 檔仍可能同時看到 <code>$datasource</code> 與 <code>__inputs</code>。</li></ul>
+<h2 id="範例">範例</h2>
+<pre><code>grafana-util dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json</code></pre>
+<pre><code>grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu.json --input-file ./legacy/logs.json --progress</code></pre>
+<pre><code>grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --overwrite</code></pre>
+<pre><code>grafana-util dashboard raw-to-prompt --input-dir ./legacy-json --output-dir ./converted/prompt --output-format table</code></pre>
+<pre><code>grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu.json --datasource-map ./datasource-map.yaml --resolution exact --log-file ./raw-to-prompt.log --log-format json</code></pre>
+<pre><code>grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu.json --profile prod --org-id 2 --resolution exact</code></pre>
+<h2 id="相關指令">相關指令</h2>
+<ul><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-inspect-export.html">dashboard inspect-export</a></li><li><a href="dashboard-diff.html">dashboard diff</a></li></ul>
+        
+      </article>
+      <aside class="panel sidebar">
+        <section>
+          <h2>On This Page</h2>
+          <ul><li><a class="link-card" href="#用途">用途</a></li><li><a class="link-card" href="#何時使用">何時使用</a></li><li><a class="link-card" href="#重點旗標">重點旗標</a></li><li><a class="link-card" href="#工作流說明">工作流說明</a></li><li><a class="link-card" href="#datasource-解析">Datasource 解析</a></li><li><a class="link-card" href="#placeholder-模型">Placeholder 模型</a></li><li><a class="link-card" href="#範例">範例</a></li><li><a class="link-card" href="#相關指令">相關指令</a></li></ul>
+        </section>
+        <section>
+          <h2>Related</h2>
+          <ul><li><a class="link-card" href="index.html">Command reference home</a></li><li><a class="link-card" href="../../handbook/zh-TW/dashboard.html">Matching handbook chapter</a></li></ul>
+        </section>
+        <section>
+          <h2>Language</h2>
+          <ul><li><a class="link-card" href="#">Current: 繁體中文</a></li><li><a class="link-card" href="../en/dashboard-raw-to-prompt.html">Switch to English</a></li></ul>
+        </section>
+      </aside>
+    </div>
+    <footer class="site-footer">Source: <code>docs/commands/zh-TW/dashboard-raw-to-prompt.md</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script>
+(() => {
+  const storageKey = "grafana-util-docs-theme";
+  const root = document.documentElement;
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (value) => {
+    if (value === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", value);
+    }
+  };
+  applyTheme(saved);
+  if (select) {
+    select.value = saved;
+    select.addEventListener("change", (event) => {
+      const value = event.target.value;
+      localStorage.setItem(storageKey, value);
+      applyTheme(value);
+    });
+  }
+})();
+</script>
+</body>
+</html>

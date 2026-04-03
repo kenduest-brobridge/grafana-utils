@@ -63,7 +63,11 @@ fn resolve_placeholder_object_ref(
     }?;
     let token = extract_placeholder_name(placeholder_value);
     Some(build_resolved_datasource(
-        format!("var:{ds_type}:{token}"),
+        if token == "datasource" {
+            format!("templating:{token}")
+        } else {
+            format!("var:{ds_type}:{token}")
+        },
         ds_type.to_string(),
         format_plugin_name(ds_type),
     ))
@@ -76,6 +80,16 @@ fn resolve_object_datasource_ref(
     let uid = reference.get("uid").and_then(Value::as_str);
     let name = reference.get("name").and_then(Value::as_str);
     let ds_type = reference.get("type").and_then(Value::as_str);
+    if ds_type == Some("datasource") && !should_promote_generic_datasource_ref(uid, name, ds_type) {
+        return Ok(None);
+    }
+    if should_promote_generic_datasource_ref(uid, name, ds_type) {
+        return Ok(Some(build_resolved_datasource(
+            "type:datasource".to_string(),
+            "datasource".to_string(),
+            "datasource".to_string(),
+        )));
+    }
     let has_placeholder =
         uid.is_some_and(is_placeholder_string) || name.is_some_and(is_placeholder_string);
 
@@ -128,7 +142,14 @@ fn resolve_datasource_ref(
     reference: &Value,
     datasource_catalog: &DatasourceCatalog,
 ) -> Result<Option<ResolvedDatasource>> {
-    if reference.is_null() || is_builtin_datasource_ref(reference) {
+    let allow_generic_object = reference.as_object().is_some_and(|object| {
+        should_promote_generic_datasource_ref(
+            object.get("uid").and_then(Value::as_str),
+            object.get("name").and_then(Value::as_str),
+            object.get("type").and_then(Value::as_str),
+        )
+    });
+    if reference.is_null() || (is_builtin_datasource_ref(reference) && !allow_generic_object) {
         return Ok(None);
     }
     match reference {
@@ -142,6 +163,23 @@ fn resolve_datasource_ref(
         Value::Object(object) => resolve_object_datasource_ref(object, datasource_catalog),
         _ => Ok(None),
     }
+}
+
+fn should_promote_generic_datasource_ref(
+    uid: Option<&str>,
+    name: Option<&str>,
+    ds_type: Option<&str>,
+) -> bool {
+    if ds_type != Some("datasource") {
+        return false;
+    }
+    let uid = uid.unwrap_or_default();
+    let name = name.unwrap_or_default();
+    (uid.is_empty() && name.is_empty())
+        || uid == "-- Mixed --"
+        || name == "-- Mixed --"
+        || is_placeholder_string(uid)
+        || is_placeholder_string(name)
 }
 
 fn allocate_input_mapping(
@@ -363,6 +401,94 @@ fn replace_datasource_refs_in_dashboard(
     Ok(())
 }
 
+fn is_placeholder_datasource_ref(reference: &Value) -> bool {
+    match reference {
+        Value::String(text) => is_placeholder_string(text),
+        Value::Object(object) => {
+            object
+                .get("uid")
+                .and_then(Value::as_str)
+                .is_some_and(is_placeholder_string)
+                || object
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .is_some_and(is_placeholder_string)
+        }
+        _ => false,
+    }
+}
+
+fn collect_placeholder_panel_datasource_paths(
+    node: &Value,
+    current_path: &str,
+    placeholder_paths: &mut BTreeSet<String>,
+) {
+    match node {
+        Value::Object(object) => {
+            for (key, value) in object {
+                let next_path = if current_path.is_empty() {
+                    key.to_string()
+                } else {
+                    format!("{current_path}.{key}")
+                };
+                if key == "datasource" && is_placeholder_datasource_ref(value) {
+                    placeholder_paths.insert(next_path.clone());
+                }
+                collect_placeholder_panel_datasource_paths(value, &next_path, placeholder_paths);
+            }
+        }
+        Value::Array(items) => {
+            for (index, item) in items.iter().enumerate() {
+                collect_placeholder_panel_datasource_paths(
+                    item,
+                    &format!("{current_path}[{index}]"),
+                    placeholder_paths,
+                );
+            }
+        }
+        _ => {}
+    }
+}
+
+fn rewrite_placeholder_panel_datasource_paths(
+    node: &mut Value,
+    current_path: &str,
+    placeholder_paths: &BTreeSet<String>,
+) {
+    match node {
+        Value::Object(object) => {
+            if let Some(datasource) = object.get_mut("datasource") {
+                let datasource_path = if current_path.is_empty() {
+                    "datasource".to_string()
+                } else {
+                    format!("{current_path}.datasource")
+                };
+                if placeholder_paths.contains(&datasource_path) {
+                    *datasource = json!({"uid": "$datasource"});
+                }
+            }
+            for (key, value) in object {
+                let next_path = if current_path.is_empty() {
+                    key.to_string()
+                } else {
+                    format!("{current_path}.{key}")
+                };
+                rewrite_placeholder_panel_datasource_paths(value, &next_path, placeholder_paths);
+            }
+        }
+        Value::Array(items) => {
+            for (index, item) in items.iter_mut().enumerate() {
+                rewrite_placeholder_panel_datasource_paths(
+                    item,
+                    &format!("{current_path}[{index}]"),
+                    placeholder_paths,
+                );
+            }
+        }
+        _ => {}
+    }
+}
+
 fn ensure_datasource_template_variable(dashboard: &mut Map<String, Value>, datasource_type: &str) {
     let templating = dashboard
         .entry("templating".to_string())
@@ -486,21 +612,14 @@ fn build_requires_block(
         "name": "Grafana",
         "version": "",
     })];
-    let mut datasource_plugins = BTreeMap::new();
-    for mapping in ref_mapping.values() {
-        let entry = datasource_plugins
-            .entry(mapping.ds_type.clone())
-            .or_insert_with(|| (mapping.plugin_name.clone(), mapping.plugin_version.clone()));
-        if entry.1.is_empty() && !mapping.plugin_version.is_empty() {
-            *entry = (mapping.plugin_name.clone(), mapping.plugin_version.clone());
-        }
-    }
-    for (plugin_id, (plugin_name, plugin_version)) in datasource_plugins {
+    let mut datasource_mappings = ref_mapping.values().cloned().collect::<Vec<_>>();
+    datasource_mappings.sort_by(|left, right| left.input_name.cmp(&right.input_name));
+    for mapping in datasource_mappings {
         requires.push(json!({
             "type": "datasource",
-            "id": plugin_id,
-            "name": plugin_name,
-            "version": plugin_version,
+            "id": mapping.ds_type,
+            "name": mapping.plugin_name,
+            "version": mapping.plugin_version,
         }));
     }
     for panel_type in panel_types {
@@ -514,18 +633,10 @@ fn build_requires_block(
     Value::Array(requires)
 }
 
-/// Purpose: implementation note.
-///
-/// Args: see function signature.
-/// Returns: see implementation.
 pub fn build_external_export_document(
     payload: &Value,
     datasource_catalog: &DatasourceCatalog,
 ) -> Result<Value> {
-    // Call graph (hierarchy): this function is used in related modules.
-    // Upstream callers: dashboard_rust_tests.rs:build_external_export_document_adds_datasource_inputs, dashboard_rust_tests.rs:build_external_export_document_creates_input_from_datasource_template_variable, dashboard_rust_tests.rs:build_external_export_document_deduplicates_same_type_datasource_requires, dashboard_rust_tests.rs:build_external_export_document_keeps_distinct_same_type_object_reference_names, dashboard_rust_tests.rs:build_external_export_document_uses_grafana_style_plugin_names_for_inputs_and_requires
-    // Downstream callees: common.rs:message, dashboard_prompt.rs:allocate_input_mapping, dashboard_prompt.rs:build_input_definitions, dashboard_prompt.rs:build_requires_block, dashboard_prompt.rs:collect_panel_types, dashboard_prompt.rs:ensure_datasource_template_variable, dashboard_prompt.rs:prepare_templating_for_external_import, dashboard_prompt.rs:replace_datasource_refs_in_dashboard, dashboard_prompt.rs:resolve_datasource_ref, dashboard_prompt.rs:rewrite_panel_datasources_to_template_variable
-
     let mut dashboard = build_preserved_web_import_document(payload)?;
     let dashboard_object = dashboard
         .as_object_mut()
@@ -533,6 +644,14 @@ pub fn build_external_export_document(
 
     let mut refs = Vec::new();
     collect_datasource_refs(&Value::Object(dashboard_object.clone()), &mut refs);
+    let mut placeholder_panel_datasource_paths = BTreeSet::new();
+    if let Some(panels) = dashboard_object.get("panels").and_then(Value::as_array) {
+        collect_placeholder_panel_datasource_paths(
+            &Value::Array(panels.clone()),
+            "panels",
+            &mut placeholder_panel_datasource_paths,
+        );
+    }
 
     let mut ref_mapping = BTreeMap::new();
     let mut type_counts = BTreeMap::new();
@@ -558,7 +677,12 @@ pub fn build_external_export_document(
         .values()
         .map(|mapping| mapping.ds_type.clone())
         .collect::<BTreeSet<String>>();
-    if datasource_types.len() == 1 && ref_mapping.len() == 1 {
+    if datasource_types.len() == 1
+        && datasource_types
+            .iter()
+            .next()
+            .is_some_and(|value| value != "datasource")
+    {
         let datasource_type = datasource_types.iter().next().cloned().unwrap_or_default();
         let dashboard_object = dashboard
             .as_object_mut()
@@ -573,6 +697,13 @@ pub fn build_external_export_document(
             .and_then(Value::as_array_mut)
         {
             rewrite_panel_datasources_to_template_variable(panels, &placeholder_names);
+            let mut panel_root = Value::Array(panels.clone());
+            rewrite_placeholder_panel_datasource_paths(
+                &mut panel_root,
+                "panels",
+                &placeholder_panel_datasource_paths,
+            );
+            *panels = panel_root.as_array().cloned().unwrap_or_default();
         }
     }
 

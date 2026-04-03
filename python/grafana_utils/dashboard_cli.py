@@ -162,6 +162,11 @@ from .dashboards.variable_inspection import (
     render_dashboard_variable_document,
     inspect_dashboard_variables_with_client,
 )
+from .dashboard_governance_gate import run_dashboard_governance_gate
+from .dashboard_topology import (
+    TOPOLOGY_OUTPUT_FORMAT_CHOICES,
+    run_dashboard_topology,
+)
 
 __all__ = [
     "DATASOURCE_INVENTORY_FILENAME",
@@ -208,9 +213,12 @@ __all__ = [
     "format_dashboard_summary_line",
     "format_data_source_line",
     "import_dashboards",
+    "governance_gate_dashboards",
+    "topology_dashboards",
     "inspect_export",
     "inspect_folder_inventory",
     "inspect_live",
+    "inspect_vars",
     "list_dashboards",
     "main",
     "parse_args",
@@ -970,6 +978,79 @@ def add_inspect_vars_cli_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_governance_gate_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Add governance gate cli args implementation."""
+    parser.add_argument(
+        "--policy",
+        required=True,
+        help="Path to the governance policy JSON.",
+    )
+    parser.add_argument(
+        "--governance",
+        required=True,
+        help="Path to dashboard inspect governance-json output.",
+    )
+    parser.add_argument(
+        "--queries",
+        required=True,
+        help="Path to dashboard inspect report json output.",
+    )
+    parser.add_argument(
+        "--import-dir",
+        default=None,
+        help=(
+            "Optional raw dashboard export directory. Provide this when policy rules need "
+            "plugin or templating-variable checks in addition to inspect JSON."
+        ),
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=("text", "json"),
+        default="text",
+        help="Render the gate result as text or JSON.",
+    )
+    parser.add_argument(
+        "--json-output",
+        default=None,
+        help="Optional path to also write the normalized gate result JSON.",
+    )
+
+
+def add_topology_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Add topology cli args implementation."""
+    parser.add_argument(
+        "--governance",
+        required=True,
+        help="Path to dashboard governance JSON.",
+    )
+    parser.add_argument(
+        "--queries",
+        default=None,
+        help="Optional path to dashboard query-report JSON.",
+    )
+    parser.add_argument(
+        "--alert-contract",
+        default=None,
+        help="Optional path to dashboard alert contract JSON.",
+    )
+    parser.add_argument(
+        "--output-format",
+        choices=TOPOLOGY_OUTPUT_FORMAT_CHOICES,
+        default="text",
+        help="Render topology as text, json, mermaid, or dot (default: text).",
+    )
+    parser.add_argument(
+        "--output-file",
+        default=None,
+        help="Write topology output to this file while also printing to stdout.",
+    )
+    parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Open an interactive terminal browser over the topology nodes and edges.",
+    )
+
+
 def add_screenshot_cli_args(parser: argparse.ArgumentParser) -> None:
     """Add screenshot cli args implementation."""
     add_common_cli_args(parser)
@@ -1233,8 +1314,25 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_screenshot_cli_args(screenshot_parser)
+    topology_parser = subparsers.add_parser(
+        "topology",
+        aliases=["graph"],
+        help="Build a deterministic dashboard topology graph from JSON artifacts.",
+        epilog=TOPOLOGY_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_topology_cli_args(topology_parser)
+    governance_gate_parser = subparsers.add_parser(
+        "governance-gate",
+        help="Evaluate a dashboard governance policy against inspect JSON artifacts.",
+        epilog=GOVERNANCE_GATE_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_governance_gate_cli_args(governance_gate_parser)
 
     args = parser.parse_args(argv)
+    if args.command == "graph":
+        args.command = "topology"
     _normalize_output_format_args(args, parser)
     _validate_import_routing_args(args, parser)
     _parse_dashboard_import_output_columns(args, parser)
@@ -1318,6 +1416,22 @@ SCREENSHOT_HELP_EXAMPLES = (
     "    grafana-util dashboard screenshot --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --token \"$GRAFANA_API_TOKEN\" --output ./cpu-main.png --full-page\n\n"
     "  Capture a solo panel with a custom header:\n"
     "    grafana-util dashboard screenshot --url https://grafana.example.com --dashboard-uid rYdddlPWk --panel-id 20 --token \"$GRAFANA_API_TOKEN\" --output ./panel.png --header-title 'CPU Busy'"
+)
+
+TOPOLOGY_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  Render the dashboard topology as Mermaid:\n"
+    "    grafana-util dashboard topology --governance ./governance.json --queries ./queries.json --alert-contract ./alert-contract.json --output-format mermaid\n\n"
+    "  Render the same topology as DOT and persist it for downstream tooling:\n"
+    "    grafana-util dashboard graph --governance ./governance.json --queries ./queries.json --alert-contract ./alert-contract.json --output-format dot --output-file ./dashboard-topology.dot"
+)
+
+GOVERNANCE_GATE_HELP_EXAMPLES = (
+    "Examples:\n\n"
+    "  Run policy checks for one dashboard export:\n"
+    "    grafana-util dashboard governance-gate --policy ./policy.json --governance ./governance.json --queries ./queries.json\n\n"
+    "  Render machine-readable output and write a copy:\n"
+    "    grafana-util dashboard governance-gate --policy ./policy.json --governance ./governance.json --queries ./queries.json --output-format json --json-output ./governance-gate.json"
 )
 
 
@@ -1617,6 +1731,16 @@ def diff_dashboards(args: argparse.Namespace) -> int:
     return run_diff_dashboards(args, _build_diff_workflow_deps())
 
 
+def governance_gate_dashboards(args: argparse.Namespace) -> int:
+    """Evaluate dashboard governance policy against export artifacts."""
+    return run_dashboard_governance_gate(args)
+
+
+def topology_dashboards(args: argparse.Namespace) -> int:
+    """Build one dashboard topology view from governance artifacts."""
+    return run_dashboard_topology(args)
+
+
 def build_client(args: argparse.Namespace) -> GrafanaClient:
     """Build the dashboard API client from parsed CLI arguments."""
     headers = resolve_auth(args)
@@ -1665,8 +1789,12 @@ def main(argv: Optional[list[str]] = None) -> int:
             return import_dashboards(args)
         if args.command == "diff":
             return diff_dashboards(args)
+        if args.command == "governance-gate":
+            return governance_gate_dashboards(args)
+        if args.command == "topology":
+            return topology_dashboards(args)
         return export_dashboards(args)
-    except GrafanaError as exc:
+    except (GrafanaError, ValueError, OSError) as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 

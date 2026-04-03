@@ -14,6 +14,71 @@ Format rule going forward:
 - keep older tagged releases below
 - use commit/tag history as the source of truth
 
+## [0.7.0] - 2026-04-03
+
+### Highlights
+
+- Dashboard migration now includes a dedicated `raw-to-prompt` workflow for
+  converting ordinary Grafana dashboard JSON into UI-importable prompt JSON.
+- The operator documentation now has a generated reference surface alongside
+  the handbook, including man pages, local HTML output, and a clearer
+  maintainer-oriented docs map.
+- Live connection profiles now support multiple secret-storage modes, so
+  repeated URL and credential handling can move out of ad hoc command lines.
+
+### Added
+
+- New dashboard migration command:
+  - `grafana-util dashboard raw-to-prompt`
+- New profile secret-storage modes in the Rust implementation:
+  - `file`
+  - `os`
+  - `encrypted-file`
+- New generated documentation surfaces:
+  - `docs/man/*.1`
+  - `docs/html/`
+  - `make man`
+  - `make man-check`
+  - `make html`
+  - `make html-check`
+- New maintainer/internal docs for generated-doc architecture, playbooks,
+  maintainer quickstart, role maps, and profile secret-storage design.
+- New browser-enabled Rust build lane for release artifacts that need the
+  optional browser feature.
+
+### Changed
+
+- `raw-to-prompt` now preserves the historical prompt semantics used by the
+  existing exported dashboard bundles, including datasource-variable and
+  prompt-placeholder edge cases.
+- The operator handbook, command reference, generated HTML, and man pages are
+  now aligned around the same command-doc source layer instead of drifting as
+  separate handwritten outputs.
+- Auth and example guidance now prefer `--profile` and basic-auth/profile
+  workflows before token-first examples, with clearer notes around multi-org
+  and scope limitations.
+- Maintainer entry docs now route more explicitly by task and role, including
+  first-entry guidance for new maintainers and AI/code agents.
+
+### Fixed
+
+- `cargo clippy --all-targets -- -D warnings` is clean again after addressing
+  the profile CLI enum layout and secret-store lint issues.
+- Dashboard prompt migration now matches the checked historical prompt bundle
+  semantics used for compatibility validation, rather than producing only a
+  superficially similar prompt document.
+
+### Migration Notes
+
+- If you receive a plain Grafana dashboard export and need a UI-importable
+  prompt file, use `grafana-util dashboard raw-to-prompt` instead of trying to
+  feed that JSON directly into the staged replay/import workflow.
+- If you maintain local docs or release docs, treat `docs/commands/*` and
+  `docs/user-guide/*` as the editable source layers; `docs/man/*.1` and
+  `docs/html/` are generated artifacts.
+- If you rely on repeated live connection flags, prefer moving them into
+  profiles before the `0.7.0` line lands more broadly in release workflows.
+
 ## [0.6.3] - 2026-04-02
 
 ### Highlights
@@ -256,25 +321,153 @@ Format rule going forward:
   tree.
 - Dashboard export/import and inspection contracts became much more explicit.
 
-## [0.2.x] - 2026-03-23 and earlier
+## [0.2.20] - 2026-03-23
 
-### Summary
+### Highlights
 
-The `0.2.x` series was the formative line that established the base utility
-set and the first Rust/Python shared operator story.
-
-### Major Themes
-
-- Initial dashboard export/list/import/diff workflows.
-- Early alert export/import utility support.
-- Initial access management commands.
-- Packaging, HTTP transport, and installability improvements.
-- Multi-org and dry-run support across several operator paths.
-- Early documentation split between user-facing guides and maintainer notes.
+- Dashboard workflows expanded further around browse/governance-style flows.
+- Sync/preflight and datasource-secret handling became much more explicit.
+- Operator and maintainer docs were refreshed alongside the larger CLI growth.
 
 ### Notes
 
-- This range includes many rapid point releases from `v0.2.0` through
-  `v0.2.20`.
-- The earlier history is better treated as one foundation series than as
-  separate operator-facing release notes for each point tag.
+- This was one of the largest `0.2.x` releases and acted as the handoff point
+  into the later `0.3.x` Rust-first line.
+
+## [0.2.19] - 2026-03-18
+
+### Highlights
+
+- Release/version handling was refreshed.
+- Sync-related release preparation and staging behavior were tightened.
+
+## [0.2.18] - 2026-03-17
+
+### Highlights
+
+- Dashboard workflows expanded noticeably, especially around governance and
+  inspection-related behavior.
+- Sync/preflight and access/alert support both grew in scope.
+
+### Notes
+
+- This release significantly broadened the operator surface before the later
+  `0.2.19` and `0.2.20` cleanup/release-prep steps.
+
+## [0.2.17] - 2026-03-17
+
+### Highlights
+
+- Dashboard workflows were broadened again, with more practical review and
+  maintenance-oriented behavior.
+- Public docs and release/build polish were refreshed at the same time.
+
+## [0.2.16] - 2026-03-16
+
+### Highlights
+
+- Sync/preflight behavior improved substantially.
+- Early interactive/TUI-style review flows were added.
+
+## [0.2.15] - 2026-03-16
+
+### Highlights
+
+- Release/build handling was refreshed.
+
+## [0.2.14] - 2026-03-16
+
+### Highlights
+
+- Release packaging and version metadata were adjusted for the next point
+  release step.
+
+## [0.2.13] - 2026-03-16
+
+### Highlights
+
+- Release/build handling was refreshed.
+
+## [0.2.12] - 2026-03-16
+
+### Highlights
+
+- Operator and maintainer docs were reorganized.
+- Release/build handling was refreshed during the same pass.
+
+## [0.2.11] - 2026-03-16
+
+### Highlights
+
+- Release/build handling was refreshed.
+
+## [0.2.10] - 2026-03-16
+
+### Highlights
+
+- The project took a major step forward in dashboard, sync, access, and alert
+  operator coverage.
+- This release is the main pivot point where the CLI started to feel like a
+  broader multi-surface operator tool instead of a smaller utility set.
+
+## [0.2.8] - 2026-03-15
+
+### Highlights
+
+- Operator/maintainer docs and release handling were refreshed together.
+
+## [0.2.7] - 2026-03-15
+
+### Highlights
+
+- This release mostly captured published tree cleanup and consolidation rather
+  than a new operator-facing feature cluster.
+
+## [0.2.6] - 2026-03-15
+
+### Highlights
+
+- Release/build handling was refreshed.
+
+## [0.2.5] - 2026-03-15
+
+### Highlights
+
+- Release/build handling was refreshed.
+
+## [0.2.4] - 2026-03-15
+
+### Highlights
+
+- Release/build handling was refreshed.
+
+## [0.2.3] - 2026-03-15
+
+### Highlights
+
+- Release/build handling and docs were both refreshed.
+
+## [0.2.2] - 2026-03-15
+
+### Highlights
+
+- This release primarily captured published tree cleanup without a strong new
+  operator-facing feature area.
+
+## [0.2.1] - 2026-03-15
+
+### Highlights
+
+- Docs and release/build handling were refreshed.
+- Early status/overview-facing guidance became clearer.
+
+## [0.2.0] - 2026-03-15
+
+### Highlights
+
+- Baseline `0.2.x` release line for the early mixed Rust/Python utility era.
+
+### Notes
+
+- The later `0.2.x` point releases expanded this baseline into broader
+  dashboard, sync, datasource, access, and alert operator workflows.

@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alert 維運人員手冊 · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+    --panel: rgba(15, 23, 32, 0.86);
+    --panel-strong: rgba(15, 23, 32, 0.94);
+    --text: #d9e2ec;
+    --muted: #9fb3c8;
+    --heading: #f0f4f8;
+    --accent: #7bdcb5;
+    --accent-soft: rgba(18, 53, 40, 0.9);
+    --border: #243b53;
+    --code-bg: #1f2933;
+    --pre-bg: #081018;
+    --pre-text: #e6edf3;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] body {
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+html[data-theme="dark"] body {
+  --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --panel: rgba(15, 23, 32, 0.86);
+  --panel-strong: rgba(15, 23, 32, 0.94);
+  --text: #d9e2ec;
+  --muted: #9fb3c8;
+  --heading: #f0f4f8;
+  --accent: #7bdcb5;
+  --accent-soft: rgba(18, 53, 40, 0.9);
+  --border: #243b53;
+  --code-bg: #1f2933;
+  --pre-bg: #081018;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+a { color: var(--accent); }
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 0.98rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+th {
+  text-align: left;
+  background: var(--accent-soft);
+}
+.site {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 28px 22px 68px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.brand {
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.themebar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.hero {
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--heading);
+}
+.hero p {
+  max-width: 74ch;
+  margin: 14px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.breadcrumbs {
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  font-size: 0.96rem;
+  color: var(--muted);
+}
+.breadcrumbs li::after {
+  content: "/";
+  margin-left: 10px;
+}
+.breadcrumbs li:last-child::after {
+  content: "";
+  margin: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px;
+  margin-top: 22px;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article {
+  padding: 30px;
+}
+.article h1,
+.article h2,
+.article h3 {
+  color: var(--heading);
+}
+.article h1 {
+  margin-top: 0;
+}
+.article h2 {
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.article h3 {
+  margin-top: 28px;
+}
+.article p,
+.article li {
+  font-size: 1.03rem;
+  line-height: 1.8;
+}
+.sidebar {
+  padding: 22px;
+}
+.sidebar section + section {
+  margin-top: 20px;
+}
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li + li {
+  margin-top: 8px;
+}
+.sidebar a {
+  text-decoration: none;
+}
+.link-card {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+.footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.footer-nav .link-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.site-footer {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.landing-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.landing-card h2 {
+  margin-top: 0;
+  color: var(--heading);
+}
+.landing-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+@media (max-width: 980px) {
+  .layout,
+  .landing-grid,
+  .footer-nav {
+    grid-template-columns: 1fr;
+  }
+}</style>
+</head>
+<body>
+  <div class="site">
+    <div class="topbar">
+      <a class="brand" href="../../index.html">grafana-util docs</a>
+      <div class="themebar">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+    <header class="hero">
+      <div class="eyebrow">Handbook · 繁體中文</div>
+      <h1>Alert 維運人員手冊</h1>
+      <p>敘事式手冊頁面，適合照工作流閱讀，再跳到逐指令頁查精確命令面。</p>
+      <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Handbook</a></li><li>繁體中文</li><li>Alert 維運人員手冊</li></ol>
+    </header>
+    <div class="layout">
+      <article class="panel article">
+        <h1 id="alert-維運人員手冊">Alert 維運人員手冊</h1>
+<p>本指南涵蓋 <code>grafana-util alert</code> 維運工作流，包含告警 Desired-State 編寫、審查優先變更與遷移式回放流。</p>
+<p>&gt; <strong>維運原則</strong>：透過 <strong>計畫 (Plan) -&gt; 審查 (Review) -&gt; 套用 (Apply)</strong> 週期來謹慎變更告警，防止即時環境發生意外。</p>
+<h2 id="逐指令頁面">🔗 逐指令頁面</h2>
+<p>如果您現在想看的是逐指令說明，而不是工作流章節，請直接使用逐指令頁面：</p>
+<ul><li><a href="../../commands/zh-TW/alert.html">alert 指令總覽</a></li><li><a href="../../commands/zh-TW/alert-plan.html">alert plan</a></li><li><a href="../../commands/zh-TW/alert-apply.html">alert apply</a></li><li><a href="../../commands/zh-TW/alert-export.html">alert export</a></li><li><a href="../../commands/zh-TW/alert-preview-route.html">alert preview-route</a></li><li><a href="../../commands/zh-TW/index.html">逐指令總索引</a></li></ul>
+<h2 id="核心工作流用途">🛠️ 核心工作流用途</h2>
+<p>告警領域專為下列場景設計：</p>
+<ul><li><strong>Desired State</strong>：在不觸碰即時 Grafana 的情況下，於本地建立告警配置。</li><li><strong>審查差異</strong>：在核准變更前，比對 Desired State 與現有資產。</li><li><strong>受控套用</strong>：僅執行已通過審查的計畫。</li><li><strong>遷移與回放</strong>：使用傳統 <code>raw/</code> 路徑進行資產快照與環境遷移。</li></ul>
+<h2 id="工作流路徑邊界-兩條路徑">🚧 工作流路徑邊界 (兩條路徑)</h2>
+<p>告警管理拆分為兩條獨立的維運路徑。<strong>請勿混用這些路徑。</strong></p>
+<table><thead><tr><th>路徑 (Lane)</th><th>用途</th><th>常用指令</th></tr></thead><tbody><tr><td><strong>編寫路徑 (Authoring)</strong></td><td>供審查 / 套用的 Desired-State 檔案。</td><td><code>init</code>, <code>add-rule</code>, <code>add-contact-point</code>, <code>plan</code>, <code>apply</code></td></tr><tr><td><strong>遷移路徑 (Migration)</strong></td><td>資產快照與原始回放。</td><td><code>export</code>, <code>import</code>, <code>diff</code>, <code>list-rules</code></td></tr></tbody></table>
+<h2 id="編寫-desired-state">📋 編寫 Desired State</h2>
+<p>從建置 Desired-State 樹狀結構開始。這會建立代表您「變更意圖」的本地檔案。</p>
+<pre><code># 初始化 Desired-State 目錄</code></pre>
+<pre><code>grafana-util alert init --desired-dir ./alerts/desired</code></pre>
+<pre><code># 新增規則到本地檔案 (尚未觸及 Grafana)</code></pre>
+<pre><code>grafana-util alert add-rule \</code></pre>
+<pre><code>  --desired-dir ./alerts/desired \</code></pre>
+<pre><code>  --name cpu-high --folder platform-alerts \</code></pre>
+<pre><code>  --receiver pagerduty-primary --threshold 80 --above --for 5m</code></pre>
+<h2 id="審查與套用-審查週期">🔬 審查與套用 (審查週期)</h2>
+<p>使用 <code>plan</code> 來建立本地檔案與即時 Grafana 之間的差異預覽。</p>
+<pre><code># 產生供審查的計畫</code></pre>
+<pre><code>grafana-util alert plan \</code></pre>
+<pre><code>  --url http://localhost:3000 \</code></pre>
+<pre><code>  --basic-user admin --basic-password admin \</code></pre>
+<pre><code>  --desired-dir ./alerts/desired --prune --output json</code></pre>
+<p><strong>如何解讀計畫輸出：</strong></p>
+<ul><li><strong>create</strong>：Desired 資源在即時 Grafana 中缺失。</li><li><strong>update</strong>：即時 Grafana 與您的 Desired 檔案存在差異。</li><li><strong>delete</strong>：當啟動 <code>--prune</code> 且即時資源不在您的檔案中時觸發。</li></ul>
+<p><strong>驗證套用步驟：</strong> 僅在計畫審查完成並保存後執行。</p>
+<pre><code>grafana-util alert apply \</code></pre>
+<pre><code>  --plan-file ./alert-plan-reviewed.json \</code></pre>
+<pre><code>  --approve --output json</code></pre>
+<h2 id="關鍵指令-完整參數參考">🚀 關鍵指令 (完整參數參考)</h2>
+<table><thead><tr><th>指令</th><th>帶有參數的完整範例</th></tr></thead><tbody><tr><td><strong>列出規則 (List)</strong></td><td><code>grafana-util alert list-rules --all-orgs --table</code></td></tr><tr><td><strong>匯出 (Export)</strong></td><td><code>grafana-util alert export --export-dir ./alerts --overwrite</code></td></tr><tr><td><strong>計畫 (Plan)</strong></td><td><code>grafana-util alert plan --desired-dir ./alerts/desired --prune --output json</code></td></tr><tr><td><strong>套用 (Apply)</strong></td><td><code>grafana-util alert apply --plan-file ./plan.json --approve</code></td></tr><tr><td><strong>設定路由 (Set Route)</strong></td><td><code>grafana-util alert set-route --desired-dir ./alerts/desired --receiver pagerduty</code></td></tr><tr><td><strong>新增規則 (New)</strong></td><td><code>grafana-util alert new-rule --name &lt;NAME&gt; --folder &lt;FOLDER&gt; --output &lt;FILE&gt;</code></td></tr><tr><td><strong>新增聯絡點 (New)</strong></td><td><code>grafana-util alert new-contact-point --name &lt;NAME&gt; --type &lt;TYPE&gt; --output &lt;FILE&gt;</code></td></tr><tr><td><strong>新增範本 (New)</strong></td><td><code>grafana-util alert new-template --name &lt;NAME&gt; --template &lt;CONTENT&gt; --output &lt;FILE&gt;</code></td></tr></tbody></table>
+<h2 id="docker-驗證範例">🔬 Docker 驗證範例</h2>
+<h3 id="1-告警計畫摘錄">1. 告警計畫摘錄</h3>
+<pre><code>grafana-util alert plan --desired-dir ./alerts/desired --prune --output json</code></pre>
+<p><strong>輸出摘錄：</strong></p>
+<pre><code>{
+  &quot;summary&quot;: {
+    &quot;create&quot;: 1,
+    &quot;update&quot;: 2,
+    &quot;delete&quot;: 1,
+    &quot;noop&quot;: 0,
+    &quot;blocked&quot;: 0
+  }
+}</code></pre>
+<h3 id="2-路由預覽">2. 路由預覽</h3>
+<p>在套用前於本地驗證路由邏輯。</p>
+<pre><code>grafana-util alert preview-route --desired-dir ./alerts/desired --label team=platform --severity critical</code></pre>
+<p><strong>輸出摘錄：</strong></p>
+<pre><code>{
+  &quot;input&quot;: { &quot;labels&quot;: { &quot;team&quot;: &quot;platform&quot; }, &quot;severity&quot;: &quot;critical&quot; },
+  &quot;matches&quot;: []
+}</code></pre>
+<p><em>註：空白的 match list 代表合約驗證成功，不一定代表存在即時告警實例。</em></p>
+<p><a href="datasource.html">⬅️ 上一章：Datasource 管理</a> | <a href="index.html">🏠 回首頁</a> | <a href="access.html">➡️ 下一章：Access 管理</a></p>
+        <nav class="footer-nav"><a class="link-card" href="datasource.html"><span>Previous</span>Datasource 維運人員手冊</a><a class="link-card" href="access.html"><span>Next</span>身分與存取管理 (Identity &amp; Access)</a></nav>
+      </article>
+      <aside class="panel sidebar">
+        <section>
+          <h2>On This Page</h2>
+          <ul><li><a class="link-card" href="#逐指令頁面">🔗 逐指令頁面</a></li><li><a class="link-card" href="#核心工作流用途">🛠️ 核心工作流用途</a></li><li><a class="link-card" href="#工作流路徑邊界-兩條路徑">🚧 工作流路徑邊界 (兩條路徑)</a></li><li><a class="link-card" href="#編寫-desired-state">📋 編寫 Desired State</a></li><li><a class="link-card" href="#審查與套用-審查週期">🔬 審查與套用 (審查週期)</a></li><li><a class="link-card" href="#關鍵指令-完整參數參考">🚀 關鍵指令 (完整參數參考)</a></li><li><a class="link-card" href="#docker-驗證範例">🔬 Docker 驗證範例</a></li><li><a class="link-card" href="#1-告警計畫摘錄">1. 告警計畫摘錄</a></li><li><a class="link-card" href="#2-路由預覽">2. 路由預覽</a></li></ul>
+        </section>
+        <section>
+          <h2>Related</h2>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/zh-TW/index.html">Command reference index</a></li></ul>
+        </section>
+        <section>
+          <h2>Language</h2>
+          <ul><li><a class="link-card" href="#">Current: 繁體中文</a></li><li><a class="link-card" href="../en/alert.html">Switch to English</a></li></ul>
+        </section>
+      </aside>
+    </div>
+    <footer class="site-footer">Source: <code>docs/user-guide/zh-TW/alert.md</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script>
+(() => {
+  const storageKey = "grafana-util-docs-theme";
+  const root = document.documentElement;
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (value) => {
+    if (value === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", value);
+    }
+  };
+  applyTheme(saved);
+  if (select) {
+    select.value = saved;
+    select.addEventListener("change", (event) => {
+      const value = event.target.value;
+      localStorage.setItem(storageKey, value);
+      applyTheme(value);
+    });
+  }
+})();
+</script>
+</body>
+</html>

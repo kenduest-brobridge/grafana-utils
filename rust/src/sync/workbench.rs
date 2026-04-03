@@ -11,23 +11,14 @@ use serde_json::{Map, Value};
 use super::{apply_builder, bundle_builder, plan_builder, summary_builder};
 use crate::common::Result;
 
-/// Constant for sync summary kind.
 pub const SYNC_SUMMARY_KIND: &str = "grafana-utils-sync-summary";
-/// Constant for sync summary schema version.
 pub const SYNC_SUMMARY_SCHEMA_VERSION: i64 = 1;
-/// Constant for sync source bundle kind.
 pub const SYNC_SOURCE_BUNDLE_KIND: &str = "grafana-utils-sync-source-bundle";
-/// Constant for sync source bundle schema version.
 pub const SYNC_SOURCE_BUNDLE_SCHEMA_VERSION: i64 = 1;
-/// Constant for sync plan kind.
 pub const SYNC_PLAN_KIND: &str = "grafana-utils-sync-plan";
-/// Constant for sync plan schema version.
 pub const SYNC_PLAN_SCHEMA_VERSION: i64 = 1;
-/// Constant for sync apply intent kind.
 pub const SYNC_APPLY_INTENT_KIND: &str = "grafana-utils-sync-apply-intent";
-/// Constant for sync apply intent schema version.
 pub const SYNC_APPLY_INTENT_SCHEMA_VERSION: i64 = 1;
-/// Constant for resource kinds.
 pub const RESOURCE_KINDS: &[&str] = &[
     "dashboard",
     "datasource",
@@ -39,7 +30,6 @@ pub const RESOURCE_KINDS: &[&str] = &[
     "alert-template",
 ];
 
-/// Struct definition for SyncResourceSpec.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SyncResourceSpec {
     pub kind: String,
@@ -50,7 +40,6 @@ pub struct SyncResourceSpec {
     pub source_path: String,
 }
 
-/// Struct definition for SyncSummary.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SyncSummary {
     pub resource_count: usize,
@@ -60,39 +49,22 @@ pub struct SyncSummary {
     pub alert_count: usize,
 }
 
-/// Purpose: implementation note.
-///
-/// Args: see function signature.
-/// Returns: see implementation.
 pub fn normalize_resource_spec(raw_spec: &Value) -> Result<SyncResourceSpec> {
     summary_builder::normalize_resource_spec(raw_spec)
 }
 
-/// Purpose: implementation note.
-///
-/// Args: see function signature.
-/// Returns: see implementation.
 pub fn normalize_resource_specs(raw_specs: &[Value]) -> Result<Vec<SyncResourceSpec>> {
     summary_builder::normalize_resource_specs(raw_specs)
 }
 
-/// summarize resource specs.
 pub fn summarize_resource_specs(specs: &[SyncResourceSpec]) -> SyncSummary {
     summary_builder::summarize_resource_specs(specs)
 }
 
-/// Purpose: implementation note.
-///
-/// Args: see function signature.
-/// Returns: see implementation.
 pub fn build_sync_summary_document(raw_specs: &[Value]) -> Result<Value> {
     summary_builder::build_sync_summary_document(raw_specs)
 }
 
-/// Purpose: implementation note.
-///
-/// Args: see function signature.
-/// Returns: see implementation.
 pub fn build_sync_source_bundle_document(
     dashboards: &[Value],
     datasources: &[Value],
@@ -111,18 +83,10 @@ pub fn build_sync_source_bundle_document(
     )
 }
 
-/// Purpose: implementation note.
-///
-/// Args: see function signature.
-/// Returns: see implementation.
 pub fn render_sync_source_bundle_text(document: &Value) -> Result<Vec<String>> {
     bundle_builder::render_sync_source_bundle_text(document)
 }
 
-/// Purpose: implementation note.
-///
-/// Args: see function signature.
-/// Returns: see implementation.
 pub fn build_sync_plan_document(
     desired_specs: &[Value],
     live_specs: &[Value],
@@ -131,10 +95,6 @@ pub fn build_sync_plan_document(
     plan_builder::build_sync_plan_document(desired_specs, live_specs, allow_prune)
 }
 
-/// Purpose: implementation note.
-///
-/// Args: see function signature.
-/// Returns: see implementation.
 pub fn build_sync_apply_intent_document(plan_document: &Value, approve: bool) -> Result<Value> {
     apply_builder::build_sync_apply_intent_document(plan_document, approve)
 }

@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="${REPO_ROOT_OVERRIDE:-${DEFAULT_REPO_ROOT}}"
 VERSION_FILE="${VERSION_FILE_OVERRIDE:-${REPO_ROOT}/VERSION}"
-PYPROJECT_TOML="${PYPROJECT_TOML_OVERRIDE:-${REPO_ROOT}/pyproject.toml}"
+PYPROJECT_TOML="${PYPROJECT_TOML_OVERRIDE:-${REPO_ROOT}/python/pyproject.toml}"
 CARGO_TOML="${CARGO_TOML_OVERRIDE:-${REPO_ROOT}/rust/Cargo.toml}"
 CARGO_LOCK="${CARGO_LOCK_OVERRIDE:-${REPO_ROOT}/rust/Cargo.lock}"
 CARGO_LOCK_PACKAGE="${CARGO_LOCK_PACKAGE_OVERRIDE:-grafana-utils-rust}"
@@ -22,7 +22,7 @@ Usage:
   bash ./scripts/set-version.sh --version 0.2.9.dev1 --dry-run
 
 Options:
-  --sync-from-file Sync pyproject.toml, rust/Cargo.toml, and rust/Cargo.lock from ./VERSION.
+  --sync-from-file Sync python/pyproject.toml, rust/Cargo.toml, and rust/Cargo.lock from ./VERSION.
   --print-current  Print the current Python and Rust package versions.
   --version VALUE  Set both source versions from one version string.
                    Accepts Python dev form (X.Y.Z.devN), Rust dev form

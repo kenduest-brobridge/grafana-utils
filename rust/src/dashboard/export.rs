@@ -43,10 +43,6 @@ pub(crate) struct ScopeExportResult {
     org_summary: Option<ExportOrgSummary>,
 }
 
-/// Purpose: implementation note.
-///
-/// Args: see function signature.
-/// Returns: see implementation.
 pub fn build_output_path(output_dir: &Path, summary: &Map<String, Value>, flat: bool) -> PathBuf {
     let folder_title = string_field(summary, "folderTitle", DEFAULT_FOLDER_TITLE);
     let title = string_field(summary, "title", DEFAULT_DASHBOARD_TITLE);
@@ -66,10 +62,6 @@ pub fn build_output_path(output_dir: &Path, summary: &Map<String, Value>, flat: 
     }
 }
 
-/// Purpose: implementation note.
-///
-/// Args: see function signature.
-/// Returns: see implementation.
 pub fn build_export_variant_dirs(output_dir: &Path) -> (PathBuf, PathBuf, PathBuf) {
     (
         output_dir.join(RAW_EXPORT_SUBDIR),
@@ -189,7 +181,6 @@ pub(crate) fn format_export_verbose_line(
     )
 }
 
-/// Purpose: implementation note.
 pub(crate) fn export_dashboards_in_scope_with_request<F>(
     request_json: &mut F,
     args: &ExportArgs,
@@ -551,7 +542,6 @@ fn write_all_orgs_root_export_bundle(
     Ok(())
 }
 
-/// Purpose: implementation note.
 pub(crate) fn export_dashboards_with_request<F>(
     mut request_json: F,
     args: &ExportArgs,
@@ -598,10 +588,6 @@ where
     }
 }
 
-/// Purpose: implementation note.
-///
-/// Args: see function signature.
-/// Returns: see implementation.
 pub fn export_dashboards_with_client(client: &JsonHttpClient, args: &ExportArgs) -> Result<usize> {
     export_dashboards_with_request(
         |method, path, params, payload| client.request_json(method, path, params, payload),
@@ -609,7 +595,6 @@ pub fn export_dashboards_with_client(client: &JsonHttpClient, args: &ExportArgs)
     )
 }
 
-/// Purpose: implementation note.
 pub(crate) fn export_dashboards_with_org_clients(args: &ExportArgs) -> Result<usize> {
     if args.all_orgs {
         let admin_client = build_http_client(&args.common)?;

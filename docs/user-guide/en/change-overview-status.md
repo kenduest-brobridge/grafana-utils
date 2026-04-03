@@ -1,109 +1,108 @@
-# Change, Overview, and Status Handbook
+# Project Status & Change Overview
 
-This guide covers project-surface commands: `change`, `overview`, and `status`.
+This domain focuses on the governance gate: the final layer of validation before and after making changes.
 
-> **Goal**: Synthesize disparate resources (Dashboards, Alerts, Access) into a single, unified project view for lifecycle management and readiness reporting.
+## 🔗 Command Pages
 
----
+Need the command-by-command surface instead of the workflow guide?
 
-## 🛠️ What These Surfaces Are For
-
-Different tasks require different analytical surfaces.
-
-| Surface | Best For | Contract |
-| :--- | :--- | :--- |
-| **`change`** | Staged workflows and apply intent. | Staged Review Cycle. |
-| **`overview`** | Human project review. | Human Snapshot. |
-| **`status`** | Readiness gating and automation. | Canonical Readiness Contract. |
+- [change](../../commands/en/change.md)
+- [status](../../commands/en/status.md)
+- [overview](../../commands/en/overview.md)
+- [snapshot](../../commands/en/snapshot.md)
+- [full command index](../../commands/en/index.md)
 
 ---
 
-## 🚧 Workflow Boundaries (The Review Cycle)
+## 🚦 Status Surfaces
 
-Use `change` commands in order when you need a controlled, reviewed-first path for staged assets.
+We distinguish between **Live** (what is actually running) and **Staged** (what you intend to deploy).
 
-1. **`plan`**: Generate a reviewable delta between local files and live state.
-2. **`review`**: Record the operator's decision (Approve/Reject).
-3. **`apply`**: Emit the final apply intent after approval.
-
----
-
-## 📋 Reading Project Status
-
-Use `status live` to verify the health and readiness of your live Grafana estate.
-
+### 1. Live Readiness Check
 ```bash
-grafana-util status live --url http://localhost:3000 --basic-user admin --basic-password admin --table
+grafana-util status live --output table
+grafana-util status live --profile prod --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output json
 ```
-
-**Validated Output Excerpt:**
+**Expected Output:**
 ```text
-Project status
-Overall: status=partial scope=live domains=6 present=6 blocked=0 blockers=0 warnings=4
-Domains:
-- dashboard status=ready mode=live-read primary=3 blockers=0 warnings=0
-- datasource status=ready mode=live-inventory primary=1 blockers=0 warnings=1
-- alert status=ready mode=live-alert-surfaces primary=2 blockers=0 warnings=0
+OVERALL: status=ready
+
+COMPONENT    HEALTH   REASON
+Dashboards   ok       32/32 Accessible
+Datasources  ok       Secret recovery verified
+Alerts       ok       No dangling rules
 ```
+Use `status live` when you want the shared live status path to tell you whether Grafana is safe to read from or promote into. The extra staged sync files deepen the live view without changing the command shape.
 
-**How to Read It:**
-- **Overall status**: `ready` (good), `partial` (warnings exist), or `blocked` (errors found).
-- **Domains**: Readiness report for each family (Dashboard, Datasource, Alert, etc.).
-- **Blockers**: Specific items that must be resolved before the project is considered "ready".
-
----
-
-## 🚀 Key Commands (Full Argument Reference)
-
-| Command | Full Example with Arguments |
-| :--- | :--- |
-| **Live Status** | `grafana-util status live --url <URL> --basic-user admin --table` |
-| **Staged Status** | `grafana-util status staged --dashboard-export-dir ./dashboards --output json` |
-| **Overview** | `grafana-util overview --dashboard-export-dir ./dashboards --output interactive` |
-| **Change Plan** | `grafana-util change plan --desired-file <FILE> --live-file <FILE> --output json` |
-| **Review** | `grafana-util change review --plan-file <FILE> --reviewed-by admin --approve` |
-
----
-
-## 🔬 Validated Docker Examples
-
-### 1. Change Plan Excerpt
-Preview the intent of a staged change package.
-```bash
-grafana-util change plan --desired-file ./desired.json --live-file ./live.json --output json
-```
-**Output Excerpt:**
-```json
-{
-  "summary": { "would_create": 3, "would_update": 0, "would_delete": 0, "noop": 0 },
-  "reviewRequired": true
-}
-```
-
-### 2. Staged Status Contract
-Use this in CI to gate deployments based on local file readiness.
+### 2. Staged Readiness Check
+Use this as a mandatory CI/CD gate before running `apply`.
 ```bash
 grafana-util status staged --desired-file ./desired.json --output json
+grafana-util status staged --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output table
 ```
-**Output Excerpt:**
+**Expected Output:**
 ```json
 {
-  "overall": { "status": "blocked", "domainCount": 6, "blockedCount": 1, "blockerCount": 3 }
+  "status": "ready",
+  "blockers": [],
+  "warnings": ["1 dashboard missing a unique folder assignment"]
 }
 ```
-*Note: A 'blocked' status means the local files do not yet meet the project's readiness criteria.*
+`status staged` is the machine-readable gate. Treat `blockers` as hard stops and `warnings` as review items.
 
 ---
 
-## ⚠️ Operator Rules for Project Surfaces
+## 📋 Change Lifecycle
 
-1.  **Differentiate Surfaces**: Use `overview` for human reviews and `status` for machine contracts or CI gates.
-2.  **Staged vs Live**: `status staged` reads local files; `status live` reads Grafana. Do not assume one represents the other.
-3.  **Review Chain**: `change review` is mandatory for tracking who approved a change package before it reaches production.
-4.  **TUI Navigation**: For complex estate reviews, use `overview --output interactive` to drill down into specific blockers or warnings.
+Manage the transition from Git to production Grafana.
+
+### 1. Change Summary
+Get a high-level summary of your current change package.
+```bash
+grafana-util change summary --desired-file ./desired.json
+grafana-util change summary --desired-file ./desired.json --output json
+```
+**Expected Output:**
+```text
+CHANGE PACKAGE SUMMARY:
+- dashboards: 5 modified, 2 added
+- alerts: 3 modified
+- access: 1 added
+- total impact: 11 operations
+```
+Use the summary to size the change before you inspect the plan. If the total is unexpectedly large, stop and review the staged inputs first.
+
+### 2. Preflight Validation
+Verify the structural integrity of your export/import trees.
+```bash
+grafana-util change preflight --desired-file ./desired.json --availability-file ./availability.json
+grafana-util change preflight --desired-file ./desired.json --fetch-live --output json
+```
+**Expected Output:**
+```text
+PREFLIGHT CHECK:
+- dashboards: valid (7 files)
+- datasources: valid (1 inventory found)
+- result: 0 errors, 0 blockers
+```
+Use preflight when you need a structural gate before planning or applying. A clean preflight means the inputs are shaped correctly, not that live Grafana already matches them.
 
 ---
 
-## ⏭️ Next Steps
-- Review the [**Dashboard**](./dashboard.md) or [**Alert**](./alert.md) handbooks for domain-specific details.
-- See the [**Scenarios**](./scenarios.md) for end-to-end examples.
+## 🖥️ Interactive Mode (TUI) Semantics
+
+`overview live --output interactive` opens the live project overview through the shared status live path.
+
+```bash
+grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output interactive
+```
+
+The TUI uses the following visual language:
+- **🟢 Green**: The component is healthy and fully reachable.
+- **🟡 Yellow**: The component is functional but has warnings, such as missing metadata.
+- **🔴 Red**: The component is blocked and needs action before deployment.
+
+Use `overview` without `live` for staged artifact review, and use `status live` when you need the same live gate in machine-readable form.
+
+---
+[⬅️ Previous: Access Management](access.md) | [🏠 Home](index.md) | [➡️ Next: Operator Scenarios](scenarios.md)

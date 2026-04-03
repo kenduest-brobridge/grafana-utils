@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "datasources": {
+    "allowedFamilies": ["prometheus", "loki"],
+    "allowedUids": ["prom-main", "logs-main"],
+    "forbidUnknown": true,
+    "forbidMixedFamilies": true
+  },
+  "plugins": {
+    "allowedPluginIds": ["timeseries", "logs", "stat"]
+  },
+  "libraries": {
+    "allowedLibraryPanelUids": ["lib-cpu-summary", "lib-log-overview"]
+  },
+  "routing": {
+    "allowedFolderPrefixes": ["General", "Platform / Infra", "Operations"]
+  },
+  "variables": {
+    "forbidUndefinedDatasourceVariables": true
+  },
+  "queries": {
+    "maxQueriesPerDashboard": 80,
+    "maxQueriesPerPanel": 8,
+    "maxQueryComplexityScore": 6,
+    "maxDashboardComplexityScore": 40,
+    "forbidSelectStar": true,
+    "requireSqlTimeFilter": true,
+    "forbidBroadLokiRegex": true
+  },
+  "enforcement": {
+    "failOnWarnings": false
+  }
+}

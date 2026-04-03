@@ -1,100 +1,99 @@
 # Operator Scenarios
 
-This chapter translates discrete command families into end-to-end operator workflows. Use this guide when you have a specific problem to solve and need a roadmap rather than a reference page.
+This chapter translates discrete command families into end-to-end operator workflows.
 
----
-
-## 📖 Scenario Map
-
-| Scenario | Goal | Key Surface |
-| :--- | :--- | :--- |
-| **[1. Environment Verification](#1-environment-verification)** | Proving connectivity before making changes. | `status`, `profile` |
-| **[2. Estate-Wide Audit](#2-estate-wide-audit)** | Generating inventory and readiness reports. | `dashboard`, `datasource`, `overview` |
-| **[3. Reliable Backups](#3-reliable-backups)** | Exporting assets for version control or DR. | `dashboard export` |
-| **[4. Controlled Restore](#4-controlled-restore)** | Replaying exports into live Grafana safely. | `dashboard import` |
-| **[5. Alert Governance](#5-alert-governance)** | Managing alerts via the Plan/Apply cycle. | `alert` |
-| **[6. Identity Replay](#6-identity-replay)** | Managing Orgs, Users, and Teams. | `access` |
-| **[7. Staged Promotion](#7-staged-promotion)** | Handling cross-domain change packages. | `change`, `status` |
+For the exact flags behind each workflow, see [dashboard](../../commands/en/dashboard.md), [access](../../commands/en/access.md), [alert](../../commands/en/alert.md), [change](../../commands/en/change.md), [status](../../commands/en/status.md), and [overview](../../commands/en/overview.md).
 
 ---
 
 ## 1. Environment Verification
 
-Before any mutation, prove the CLI is pointed at the right target.
-
-**Workflow:**
-1. Verify binary version.
-2. Initialize or select a Profile.
-3. Run a read-only health check.
+Prove connectivity and version alignment before making changes.
 
 ```bash
-grafana-util --version
 grafana-util profile list
-grafana-util status live --profile prod --output-format table
+grafana-util status live --profile prod --output table
+grafana-util overview live --profile prod --output interactive
 ```
+**Expected Output:**
+```text
+PROFILES:
+  * prod (default) -> http://grafana.internal
 
-**How to Read the Status:**
-- **Overall: status=ready**: Your connection and project health are optimal.
-- **Overall: status=blocked**: There are critical errors (blockers) that prevent safe operations.
+OVERALL: status=ready
+
+Project overview
+Live status: ready
+```
+Start with `profile list` to confirm which repo-local defaults are active, then use `status live` for the gate and `overview live --output interactive` when you want the same live surface in a browsable TUI.
 
 ---
 
 ## 2. Estate-Wide Audit
 
-Use this for onboarding, security audits, or pre-change snapshots.
-
-**Workflow:**
-1. List all dashboards and their datasource dependencies.
-2. Summarize the readiness of the entire project.
+Inventory all assets across all organizations.
 
 ```bash
-# Inventory all dashboards across all organizations
 grafana-util dashboard list --profile prod --all-orgs --with-sources --table
-
-# High-level project snapshot
-grafana-util overview live --profile prod
+grafana-util access org list --basic-user admin --basic-password admin --with-users --output-format yaml
 ```
+**Expected Output:**
+```text
+UID        TITLE             FOLDER    ORG   SOURCES
+cpu-view   CPU Metrics       Metrics   1     prometheus-main
+mem-view   Memory Usage      Metrics   5     loki-prod
+
+id: 1
+name: Main Org
+users:
+  - alice@example.com
+```
+Use the dashboard and access inventory together when you need to answer what exists before you touch anything.
 
 ---
 
 ## 3. Reliable Backups (Dashboard Export)
 
-Export live dashboards into a durable, version-control-friendly tree.
+Export live dashboards into a durable tree.
 
 ```bash
-grafana-util dashboard export \
-  --url http://localhost:3000 \
-  --basic-user admin \
-  --basic-password admin \
-  --export-dir ./backups \
-  --overwrite --progress
+grafana-util dashboard export --export-dir ./backups --overwrite --progress
+grafana-util access org export --export-dir ./access-orgs
+grafana-util access service-account export --export-dir ./access-service-accounts
 ```
+**Expected Output:**
+```text
+Exporting dashboard 1/32: cpu-metrics
+Exporting dashboard 2/32: memory-leak-check
+...
+Export completed: 32 dashboards saved to ./backups/raw
 
-**What to look for:**
-- `raw/`: Your primary backup source for later restoration.
-- `export-metadata.json`: Summarizes which organizations and dashboards were included.
+Exported organization inventory -> access-orgs/orgs.json
+Exported service account inventory -> access-service-accounts/service-accounts.json
+```
+Keep dashboard, org, and service-account exports together when the goal is a reproducible estate snapshot.
 
 ---
 
 ## 4. Controlled Restore (Dashboard Import)
 
-Replay a backup into a live Grafana instance. **Always use Dry-Run.**
+Replay a backup into a live Grafana instance.
 
 ```bash
-grafana-util dashboard import \
-  --url http://localhost:3000 \
-  --basic-user admin \
-  --basic-password admin \
-  --import-dir ./backups/raw \
-  --replace-existing \
-  --dry-run \
-  --table
+grafana-util dashboard import --import-dir ./backups/raw --replace-existing --dry-run --table
+grafana-util access team import --import-dir ./access-teams --replace-existing --dry-run --table
 ```
+**Expected Output:**
+```text
+UID        TITLE          ACTION   DESTINATION
+cpu-view   CPU Metrics    update   exists
+net-view   Network IO     create   missing
 
-**How to Read the Import Preview:**
-- **ACTION=create**: No existing dashboard with this UID was found; it will be added.
-- **ACTION=update**: A dashboard with this UID exists; it will be overwritten.
-- **DESTINATION=exists**: Confirms the target UID is already present in Grafana.
+LOGIN       ROLE    ACTION   STATUS
+dev-admin   Admin   update   existing
+ops-user    Viewer  create   missing
+```
+Use the dry-run tables to check whether the restore is additive or destructive before you commit to the live import.
 
 ---
 
@@ -102,18 +101,27 @@ grafana-util dashboard import \
 
 Move alerting changes through a reviewed lifecycle.
 
-**Workflow:**
-1. Scaffolding/Editing: `alert add-rule` or manual edits in the desired directory.
-2. Review: `alert plan` to generate a delta.
-3. Execution: `alert apply` to commit the reviewed changes.
-
 ```bash
-# Build the change plan
-grafana-util alert plan --profile prod --desired-dir ./alerts/desired --prune --output json
-
-# Apply only after review
-grafana-util alert apply --profile prod --plan-file ./reviewed-plan.json --approve
+grafana-util change summary --desired-file ./desired.json
+grafana-util change preflight --desired-file ./desired.json --output json
+grafana-util alert plan --profile prod --desired-dir ./alerts/desired --output json
 ```
+**Expected Output (Snippet):**
+```text
+CHANGE PACKAGE SUMMARY:
+- dashboards: 5 modified, 2 added
+- alerts: 3 modified
+
+PREFLIGHT CHECK:
+- dashboards: valid (7 files)
+- result: 0 errors, 0 blockers
+
+{
+  "summary": { "modified": 2, "added": 1, "deleted": 0 },
+  "plan_id": "plan-2026-04-02-abc"
+}
+```
+Run `change summary` first when you want to understand the size of the change, then `change preflight` when you need to confirm the staged inputs are structurally sound before alert-specific planning.
 
 ---
 
@@ -122,33 +130,24 @@ grafana-util alert apply --profile prod --plan-file ./reviewed-plan.json --appro
 Manage users, teams, and service accounts through snapshots.
 
 ```bash
-# Audit service accounts and their tokens
-grafana-util access service-account list --profile prod --table
-
-# Replay user roles and organization memberships
-grafana-util access user import --import-dir ./access-users --replace-existing --dry-run
+grafana-util access user import --import-dir ./access-users --dry-run --table
+grafana-util access service-account token add --service-account-id 15 --token-name nightly --seconds-to-live 3600 --json
+grafana-util access service-account token delete --service-account-id 15 --token-name nightly --yes --json
 ```
+**Expected Output:**
+```text
+LOGIN       ROLE    ACTION   STATUS
+dev-admin   Admin   update   existing
+ops-user    Viewer  create   missing
+
+{
+  "serviceAccountId": "15",
+  "name": "nightly",
+  "secondsToLive": "3600",
+  "key": "eyJ..."
+}
+```
+This workflow is for replaying identity state safely: use import dry-run for users, and use the service-account token commands when you need to rotate automation credentials without guessing at the target account.
 
 ---
-
-## 7. Staged Promotion (Change Management)
-
-Handle large, cross-domain change packages (Dashboards + Alerts + Datasources).
-
-**Workflow:**
-1. Build staged assets.
-2. Run `change summary` for a sanity check.
-3. Execute `status staged` for a final readiness gate.
-
-```bash
-grafana-util change summary
-grafana-util status staged --desired-file ./desired.json --output-format interactive
-```
-
-**Why this matters:**
-This ensures that the entire "bundle" of changes is consistent and ready before any part of it touches production.
-
----
-
-## 🔬 Validation Note
-All scenarios in this handbook are validated against **Docker Grafana 12.4.1**. Using these patterns ensures consistent, predictable results in production environments.
+[⬅️ Previous: Change & Status](change-overview-status.md) | [🏠 Home](index.md) | [➡️ Next: Technical Reference](reference.md)

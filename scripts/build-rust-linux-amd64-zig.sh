@@ -4,31 +4,101 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RUST_DIR="${REPO_ROOT}/rust"
-OUTPUT_DIR="${REPO_ROOT}/dist/linux-amd64"
 TARGET_TRIPLE="x86_64-unknown-linux-gnu"
+BINARY_NAME="grafana-util"
+
 CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}"
 RUST_RELEASE_RUSTFLAGS="${RUST_RELEASE_RUSTFLAGS:--C debuginfo=0}"
-BUILD_RUSTFLAGS="${RUSTFLAGS:+${RUSTFLAGS} }${RUST_RELEASE_RUSTFLAGS}"
+ZIG_BUILD_EXTRA_RUSTFLAGS="${ZIG_BUILD_EXTRA_RUSTFLAGS:--C codegen-units=1}"
+BUILD_RUSTFLAGS="${RUSTFLAGS:+${RUSTFLAGS} }${RUST_RELEASE_RUSTFLAGS} ${ZIG_BUILD_EXTRA_RUSTFLAGS}"
+VERBOSE="${VERBOSE:-0}"
+BUILD_BROWSER="${BUILD_BROWSER:-0}"
+ZIG_RELEASE_LTO="${ZIG_RELEASE_LTO:-off}"
 
-if ! command -v zig >/dev/null 2>&1; then
-  echo "Error: zig is required for non-Docker Linux amd64 Rust builds." >&2
-  exit 1
-fi
+require_tool() {
+  local tool_name="$1"
+  local reason="$2"
 
-if ! command -v cargo-zigbuild >/dev/null 2>&1; then
-  echo "Error: cargo-zigbuild is required for non-Docker Linux amd64 Rust builds." >&2
-  exit 1
-fi
+  if ! command -v "${tool_name}" >/dev/null 2>&1; then
+    echo "Error: ${tool_name} is required for ${reason}." >&2
+    exit 1
+  fi
+}
 
-export PATH="${HOME}/.cargo/bin:${PATH}"
+resolve_output_dir() {
+  if [[ "${BUILD_BROWSER}" != "0" ]]; then
+    printf '%s\n' "${REPO_ROOT}/dist/linux-amd64-browser"
+    return 0
+  fi
 
-mkdir -p "${OUTPUT_DIR}"
+  printf '%s\n' "${REPO_ROOT}/dist/linux-amd64"
+}
 
-(
-  cd "${RUST_DIR}"
-  RUSTFLAGS="${BUILD_RUSTFLAGS}" cargo zigbuild --release --jobs "${CARGO_BUILD_JOBS}" --target "${TARGET_TRIPLE}"
-)
+build_flavor_label() {
+  if [[ "${BUILD_BROWSER}" != "0" ]]; then
+    printf '%s\n' "browser-enabled"
+    return 0
+  fi
 
-cp "${RUST_DIR}/target/${TARGET_TRIPLE}/release/grafana-util" "${OUTPUT_DIR}/grafana-util"
-echo "Built Linux amd64 Rust binaries with zig:"
-echo "  ${OUTPUT_DIR}/grafana-util"
+  printf '%s\n' "default"
+}
+
+run_zigbuild() {
+  local cargo_args=(
+    zigbuild
+    --release
+    --jobs "${CARGO_BUILD_JOBS}"
+    --target "${TARGET_TRIPLE}"
+  )
+
+  if [[ "${VERBOSE}" != "0" ]]; then
+    cargo_args=(-vv "${cargo_args[@]}")
+  fi
+
+  if [[ "${BUILD_BROWSER}" != "0" ]]; then
+    cargo_args+=(--features browser)
+  fi
+
+  (
+    cd "${RUST_DIR}"
+    CARGO_PROFILE_RELEASE_LTO="${ZIG_RELEASE_LTO}" \
+      RUSTFLAGS="${BUILD_RUSTFLAGS}" \
+      cargo "${cargo_args[@]}"
+  )
+}
+
+copy_artifact() {
+  local output_dir="$1"
+  local source_path="${RUST_DIR}/target/${TARGET_TRIPLE}/release/${BINARY_NAME}"
+  local target_path="${output_dir}/${BINARY_NAME}"
+
+  mkdir -p "${output_dir}"
+  cp "${source_path}" "${target_path}"
+}
+
+print_summary() {
+  local output_dir="$1"
+  local flavor_label="$2"
+
+  echo "Built Linux amd64 ${flavor_label} Rust binary with zig:"
+  echo "  ${output_dir}/${BINARY_NAME}"
+}
+
+main() {
+  local output_dir
+  local flavor_label
+
+  require_tool "zig" "non-Docker Linux amd64 Rust builds"
+  require_tool "cargo-zigbuild" "non-Docker Linux amd64 Rust builds"
+
+  export PATH="${HOME}/.cargo/bin:${PATH}"
+
+  output_dir="$(resolve_output_dir)"
+  flavor_label="$(build_flavor_label)"
+
+  run_zigbuild
+  copy_artifact "${output_dir}"
+  print_summary "${output_dir}" "${flavor_label}"
+}
+
+main "$@"

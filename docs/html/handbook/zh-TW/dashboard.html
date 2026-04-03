@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard 維運人員手冊 · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+    --panel: rgba(15, 23, 32, 0.86);
+    --panel-strong: rgba(15, 23, 32, 0.94);
+    --text: #d9e2ec;
+    --muted: #9fb3c8;
+    --heading: #f0f4f8;
+    --accent: #7bdcb5;
+    --accent-soft: rgba(18, 53, 40, 0.9);
+    --border: #243b53;
+    --code-bg: #1f2933;
+    --pre-bg: #081018;
+    --pre-text: #e6edf3;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] body {
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+html[data-theme="dark"] body {
+  --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --panel: rgba(15, 23, 32, 0.86);
+  --panel-strong: rgba(15, 23, 32, 0.94);
+  --text: #d9e2ec;
+  --muted: #9fb3c8;
+  --heading: #f0f4f8;
+  --accent: #7bdcb5;
+  --accent-soft: rgba(18, 53, 40, 0.9);
+  --border: #243b53;
+  --code-bg: #1f2933;
+  --pre-bg: #081018;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+a { color: var(--accent); }
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 0.98rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+th {
+  text-align: left;
+  background: var(--accent-soft);
+}
+.site {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 28px 22px 68px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.brand {
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.themebar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.hero {
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--heading);
+}
+.hero p {
+  max-width: 74ch;
+  margin: 14px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.breadcrumbs {
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  font-size: 0.96rem;
+  color: var(--muted);
+}
+.breadcrumbs li::after {
+  content: "/";
+  margin-left: 10px;
+}
+.breadcrumbs li:last-child::after {
+  content: "";
+  margin: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px;
+  margin-top: 22px;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article {
+  padding: 30px;
+}
+.article h1,
+.article h2,
+.article h3 {
+  color: var(--heading);
+}
+.article h1 {
+  margin-top: 0;
+}
+.article h2 {
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.article h3 {
+  margin-top: 28px;
+}
+.article p,
+.article li {
+  font-size: 1.03rem;
+  line-height: 1.8;
+}
+.sidebar {
+  padding: 22px;
+}
+.sidebar section + section {
+  margin-top: 20px;
+}
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li + li {
+  margin-top: 8px;
+}
+.sidebar a {
+  text-decoration: none;
+}
+.link-card {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+.footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.footer-nav .link-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.site-footer {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.landing-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.landing-card h2 {
+  margin-top: 0;
+  color: var(--heading);
+}
+.landing-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+@media (max-width: 980px) {
+  .layout,
+  .landing-grid,
+  .footer-nav {
+    grid-template-columns: 1fr;
+  }
+}</style>
+</head>
+<body>
+  <div class="site">
+    <div class="topbar">
+      <a class="brand" href="../../index.html">grafana-util docs</a>
+      <div class="themebar">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+    <header class="hero">
+      <div class="eyebrow">Handbook · 繁體中文</div>
+      <h1>Dashboard 維運人員手冊</h1>
+      <p>敘事式手冊頁面，適合照工作流閱讀，再跳到逐指令頁查精確命令面。</p>
+      <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Handbook</a></li><li>繁體中文</li><li>Dashboard 維運人員手冊</li></ol>
+    </header>
+    <div class="layout">
+      <article class="panel article">
+        <h1 id="dashboard-維運人員手冊">Dashboard 維運人員手冊</h1>
+<p>本指南涵蓋 <code>grafana-util dashboard</code> 維運工作流，包含資產盤點、匯出 / 匯入、Drift 審查與 Dashboard 分析。</p>
+<p>&gt; <strong>維運優先設計</strong>：本工具將 Dashboard 視為版本控制資產。目標是安全地搬移與治理 Dashboard 狀態，在變更觸及即時環境前提供清晰的可視化預覽。</p>
+<h2 id="逐指令頁面">🔗 逐指令頁面</h2>
+<p>如果您現在想看的是逐指令說明，而不是工作流章節，請直接使用逐指令頁面：</p>
+<ul><li><a href="../../commands/zh-TW/dashboard.html">dashboard 指令總覽</a></li><li><a href="../../commands/zh-TW/dashboard-export.html">dashboard export</a></li><li><a href="../../commands/zh-TW/dashboard-import.html">dashboard import</a></li><li><a href="../../commands/zh-TW/dashboard-raw-to-prompt.html">dashboard raw-to-prompt</a></li><li><a href="../../commands/zh-TW/dashboard-diff.html">dashboard diff</a></li><li><a href="../../commands/zh-TW/dashboard-inspect-export.html">dashboard inspect-export</a></li><li><a href="../../commands/zh-TW/index.html">逐指令總索引</a></li></ul>
+<h2 id="核心工作流用途">🛠️ 核心工作流用途</h2>
+<p>Dashboard 領域專為大規模治理而設計：</p>
+<ul><li><strong>資產盤點</strong>：了解跨一個或多個組織的 Dashboard 現況。</li><li><strong>結構化匯出</strong>：使用專屬「路徑 (Lanes)」在環境間遷移 Dashboard。</li><li><strong>深度檢視</strong>：離線分析查詢 (Queries) 與資料來源 (Datasource) 依賴。</li><li><strong>差異審查 (Drift Review)</strong>：在套用變更前，比對本地暫存檔案與 live Grafana。</li><li><strong>受控變更</strong>：透過強制性的 Dry-run 執行匯入或刪除。</li></ul>
+<h2 id="工作流路徑邊界-三條路徑">🚧 工作流路徑邊界 (三條路徑)</h2>
+<p>Dashboard 匯出刻意產生三種不同的路徑，因為每一條路徑都對應不同的維運工作流。<strong>這些路徑之間不可互換。</strong></p>
+<table><thead><tr><th>路徑 (Lane)</th><th>用途</th><th>最佳使用場景</th></tr></thead><tbody><tr><td><code>raw/</code></td><td><strong>標準回放 (Replay)</strong></td><td><code>grafana-util dashboard import</code> 的主要來源。可還原且 API 友善。</td></tr><tr><td><code>prompt/</code></td><td><strong>UI 匯入</strong></td><td>與 Grafana UI 內建的 &quot;Upload JSON&quot; 功能相容。若您手上只有一般或 raw 的 dashboard JSON，請先用 <code>grafana-util dashboard raw-to-prompt</code> 轉換。</td></tr><tr><td><code>provisioning/</code></td><td><strong>檔案配置</strong></td><td>供 Grafana 透過其內建配置系統從磁碟讀取 Dashboard。</td></tr></tbody></table>
+<h2 id="prompt-placeholder-說明">🔤 Prompt Placeholder 說明</h2>
+<ul><li><code>$datasource</code> 是 dashboard variable 參照。</li><li><code>${DS_*}</code> 是由 <code>__inputs</code> 產生的 external import placeholder。</li><li>一份 prompt dashboard 同時出現這兩種寫法是合理的。</li><li>這通常代表 dashboard 一邊保留 Grafana datasource variable 的工作流，一邊也需要 external import input。</li><li>不要把 <code>$datasource</code> 直接解讀成 mixed datasource family；很多情況只是 panel 仍透過同一個 datasource variable 做選擇。</li></ul>
+<h2 id="暫存-vs-即時維運邏輯">⚖️ 暫存 vs 即時：維運邏輯</h2>
+<ul><li><strong>暫存工作 (Staged)</strong>：本地匯出樹、驗證、離線檢視與 Dry-run 審查。</li><li><strong>即時工作 (Live)</strong>：直接對接 Grafana 的盤點、即時 Diff、匯入與刪除。</li></ul>
+<p><strong>黃金守則</strong>：先用 <code>list</code> 或 <code>browse</code> 發現資產，<code>export</code> 到暫存目錄，透過 <code>inspect</code> 與 <code>diff</code> 驗證，最後在 Dry-run 符合預期後才執行 <code>import</code> 或 <code>delete</code>。</p>
+<h2 id="閱讀即時資產盤點">📋 閱讀即時資產盤點</h2>
+<p>使用 <code>dashboard list</code> 快速取得資產全貌。</p>
+<pre><code>grafana-util dashboard list \</code></pre>
+<pre><code>  --url http://localhost:3000 \</code></pre>
+<pre><code>  --basic-user admin \</code></pre>
+<pre><code>  --basic-password admin \</code></pre>
+<pre><code>  --table</code></pre>
+<p><strong>驗證輸出摘錄：</strong></p>
+<pre><code>UID                      NAME                                      FOLDER  FOLDER_UID      FOLDER_PATH  ORG        ORG_ID
+-----------------------  ----------------------------------------  ------  --------------  -----------  ---------  ------
+rYdddlPWl                Node Exporter Full for Host               Demo    ffhrmit0usjk0b  Demo         Main Org.  1
+spring-jmx-node-unified  Spring JMX + Node Unified Dashboard (VM)  Demo    ffhrmit0usjk0b  Demo         Main Org.  1</code></pre>
+<p><strong>如何解讀：</strong></p>
+<ul><li><strong>UID</strong>：用於自動化與刪除的穩定身份識別。</li><li><strong>FOLDER_PATH</strong>：Dashboard 所屬的目錄路徑。</li><li><strong>ORG/ORG_ID</strong>：確認該物件隸屬於哪個組織。</li></ul>
+<h2 id="關鍵指令-完整參數參考">🚀 關鍵指令 (完整參數參考)</h2>
+<table><thead><tr><th>指令</th><th>帶有參數的完整範例</th></tr></thead><tbody><tr><td><strong>盤點 (List)</strong></td><td><code>grafana-util dashboard list --all-orgs --with-sources --table</code></td></tr><tr><td><strong>匯出 (Export)</strong></td><td><code>grafana-util dashboard export --export-dir ./dashboards --overwrite --progress</code></td></tr><tr><td><strong>Raw 轉 Prompt</strong></td><td><code>grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite --progress</code></td></tr><tr><td><strong>匯入 (Import)</strong></td><td><code>grafana-util dashboard import --import-dir ./dashboards/raw --replace-existing --dry-run --table</code></td></tr><tr><td><strong>比對 (Diff)</strong></td><td><code>grafana-util dashboard diff --import-dir ./dashboards/raw --input-format raw</code></td></tr><tr><td><strong>分析 (Inspect)</strong></td><td><code>grafana-util dashboard inspect-export --import-dir ./dashboards/raw --output-format report-table</code></td></tr><tr><td><strong>刪除 (Delete)</strong></td><td><code>grafana-util dashboard delete --uid &lt;UID&gt; --url &lt;URL&gt; --basic-user admin --basic-password admin</code></td></tr><tr><td><strong>變數檢視 (Vars)</strong></td><td><code>grafana-util dashboard inspect-vars --uid &lt;UID&gt; --url &lt;URL&gt; --table</code></td></tr><tr><td><strong>檔案修正 (Patch)</strong></td><td><code>grafana-util dashboard patch-file --input &lt;FILE&gt; --title &quot;New Title&quot; --output &lt;FILE&gt;</code></td></tr><tr><td><strong>發佈 (Publish)</strong></td><td><code>grafana-util dashboard publish --input &lt;FILE&gt; --url &lt;URL&gt; --basic-user admin --basic-password admin</code></td></tr><tr><td><strong>複製 (Clone)</strong></td><td><code>grafana-util dashboard clone-live --uid &lt;UID&gt; --output &lt;FILE&gt; --url &lt;URL&gt;</code></td></tr></tbody></table>
+<h2 id="docker-驗證範例">🔬 Docker 驗證範例</h2>
+<h3 id="1-匯出進度-export-progress">1. 匯出進度 (Export Progress)</h3>
+<p>在大規模匯出時使用 <code>--progress</code> 以取得簡潔的日誌。</p>
+<pre><code>grafana-util dashboard export --export-dir ./dashboards --overwrite --progress</code></pre>
+<p><strong>輸出摘錄：</strong></p>
+<pre><code>Exporting dashboard 1/7: mixed-query-smoke
+Exporting dashboard 2/7: smoke-prom-only
+...
+Exporting dashboard 7/7: two-prom-query-smoke</code></pre>
+<h3 id="2-dry-run-匯入預覽">2. Dry-Run 匯入預覽</h3>
+<p>在變更前務必確認目標動作。</p>
+<pre><code>grafana-util dashboard import --import-dir ./dashboards/raw --dry-run --table</code></pre>
+<p><strong>輸出摘錄：</strong></p>
+<pre><code>UID                    DESTINATION  ACTION  FOLDER_PATH                    FILE
+---------------------  -----------  ------  -----------------------------  --------------------------------------
+mixed-query-smoke      exists       update  General                        ./dashboards/raw/Mixed_Query_Dashboard.json
+subfolder-chain-smoke  missing      create  Platform / Team / Apps / Prod  ./dashboards/raw/Subfolder_Chain.json</code></pre>
+<ul><li><strong>ACTION=create</strong>：將新增 Dashboard。</li><li><strong>ACTION=update</strong>：將取代現有的 live Dashboard。</li><li><strong>DESTINATION=missing</strong>：Grafana 目前沒有這個 UID，因此匯入時會建立新紀錄。</li><li><strong>DESTINATION=exists</strong>：Grafana 目前已經有這個 UID，因此匯入時會對應到既有 Dashboard。</li></ul>
+<h3 id="3-provisioning-比對">3. Provisioning 比對</h3>
+<p>比對本地配置檔案與實例現況。</p>
+<pre><code>grafana-util dashboard diff --import-dir ./dashboards/provisioning --input-format provisioning</code></pre>
+<p><strong>輸出摘錄：</strong></p>
+<pre><code>--- live/cpu-main
++++ export/cpu-main
+-  &quot;title&quot;: &quot;CPU Overview&quot;
++  &quot;title&quot;: &quot;CPU Overview v2&quot;</code></pre>
+<p><a href="architecture.html">⬅️ 上一章：系統架構與設計原則</a> | <a href="index.html">🏠 回首頁</a> | <a href="datasource.html">➡️ 下一章：Datasource 管理</a></p>
+        <nav class="footer-nav"><a class="link-card" href="architecture.html"><span>Previous</span>🏛️ 系統架構與設計原則</a><a class="link-card" href="datasource.html"><span>Next</span>Datasource 維運人員手冊</a></nav>
+      </article>
+      <aside class="panel sidebar">
+        <section>
+          <h2>On This Page</h2>
+          <ul><li><a class="link-card" href="#逐指令頁面">🔗 逐指令頁面</a></li><li><a class="link-card" href="#核心工作流用途">🛠️ 核心工作流用途</a></li><li><a class="link-card" href="#工作流路徑邊界-三條路徑">🚧 工作流路徑邊界 (三條路徑)</a></li><li><a class="link-card" href="#prompt-placeholder-說明">🔤 Prompt Placeholder 說明</a></li><li><a class="link-card" href="#暫存-vs-即時維運邏輯">⚖️ 暫存 vs 即時：維運邏輯</a></li><li><a class="link-card" href="#閱讀即時資產盤點">📋 閱讀即時資產盤點</a></li><li><a class="link-card" href="#關鍵指令-完整參數參考">🚀 關鍵指令 (完整參數參考)</a></li><li><a class="link-card" href="#docker-驗證範例">🔬 Docker 驗證範例</a></li><li><a class="link-card" href="#1-匯出進度-export-progress">1. 匯出進度 (Export Progress)</a></li><li><a class="link-card" href="#2-dry-run-匯入預覽">2. Dry-Run 匯入預覽</a></li><li><a class="link-card" href="#3-provisioning-比對">3. Provisioning 比對</a></li></ul>
+        </section>
+        <section>
+          <h2>Related</h2>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/zh-TW/index.html">Command reference index</a></li></ul>
+        </section>
+        <section>
+          <h2>Language</h2>
+          <ul><li><a class="link-card" href="#">Current: 繁體中文</a></li><li><a class="link-card" href="../en/dashboard.html">Switch to English</a></li></ul>
+        </section>
+      </aside>
+    </div>
+    <footer class="site-footer">Source: <code>docs/user-guide/zh-TW/dashboard.md</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script>
+(() => {
+  const storageKey = "grafana-util-docs-theme";
+  const root = document.documentElement;
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (value) => {
+    if (value === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", value);
+    }
+  };
+  applyTheme(saved);
+  if (select) {
+    select.value = saved;
+    select.addEventListener("change", (event) => {
+      const value = event.target.value;
+      localStorage.setItem(storageKey, value);
+      applyTheme(value);
+    });
+  }
+})();
+</script>
+</body>
+</html>

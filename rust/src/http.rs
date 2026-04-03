@@ -26,15 +26,10 @@ pub struct JsonHttpClient {
 }
 
 impl JsonHttpClient {
-    /// Purpose: implementation note.
-    ///
-    /// Args: see function signature.
-    /// Returns: see implementation.
     pub fn new(config: JsonHttpClientConfig) -> Result<Self> {
         Self::new_with_ca_cert(config, None)
     }
 
-    /// new with ca cert.
     pub fn new_with_ca_cert(
         config: JsonHttpClientConfig,
         ca_cert: Option<&std::path::Path>,
@@ -78,10 +73,6 @@ impl JsonHttpClient {
         params: &[(String, String)],
         payload: Option<&Value>,
     ) -> Result<Option<Value>> {
-        // Call graph (hierarchy): this function is used in related modules.
-        // Upstream callers: 無
-        // Downstream callees: common.rs:api_response, dashboard_list.rs:header, http.rs:build_url
-
         let url = self.build_url(path, params)?;
         let mut request = self.client.request(method, url.clone());
         if payload.is_some() {
@@ -107,8 +98,7 @@ impl JsonHttpClient {
         Ok(Some(serde_json::from_slice(&body)?))
     }
 
-    // Centralized URL constructor for path+query assembly.
-    // Accepts already-resolved base_url and enforces consistent param encoding.
+    // Keep URL assembly consistent across callers.
     fn build_url(&self, path: &str, params: &[(String, String)]) -> Result<Url> {
         let mut url = Url::parse(&format!("{}{}", self.base_url, path))
             .map_err(|error| invalid_url(format!("request path {path}"), error))?;

@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🏛️ Architecture &amp; Design Principles · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+    --panel: rgba(15, 23, 32, 0.86);
+    --panel-strong: rgba(15, 23, 32, 0.94);
+    --text: #d9e2ec;
+    --muted: #9fb3c8;
+    --heading: #f0f4f8;
+    --accent: #7bdcb5;
+    --accent-soft: rgba(18, 53, 40, 0.9);
+    --border: #243b53;
+    --code-bg: #1f2933;
+    --pre-bg: #081018;
+    --pre-text: #e6edf3;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] body {
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+html[data-theme="dark"] body {
+  --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --panel: rgba(15, 23, 32, 0.86);
+  --panel-strong: rgba(15, 23, 32, 0.94);
+  --text: #d9e2ec;
+  --muted: #9fb3c8;
+  --heading: #f0f4f8;
+  --accent: #7bdcb5;
+  --accent-soft: rgba(18, 53, 40, 0.9);
+  --border: #243b53;
+  --code-bg: #1f2933;
+  --pre-bg: #081018;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+a { color: var(--accent); }
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 0.98rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+th {
+  text-align: left;
+  background: var(--accent-soft);
+}
+.site {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 28px 22px 68px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.brand {
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.themebar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.hero {
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--heading);
+}
+.hero p {
+  max-width: 74ch;
+  margin: 14px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.breadcrumbs {
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  font-size: 0.96rem;
+  color: var(--muted);
+}
+.breadcrumbs li::after {
+  content: "/";
+  margin-left: 10px;
+}
+.breadcrumbs li:last-child::after {
+  content: "";
+  margin: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px;
+  margin-top: 22px;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article {
+  padding: 30px;
+}
+.article h1,
+.article h2,
+.article h3 {
+  color: var(--heading);
+}
+.article h1 {
+  margin-top: 0;
+}
+.article h2 {
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.article h3 {
+  margin-top: 28px;
+}
+.article p,
+.article li {
+  font-size: 1.03rem;
+  line-height: 1.8;
+}
+.sidebar {
+  padding: 22px;
+}
+.sidebar section + section {
+  margin-top: 20px;
+}
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li + li {
+  margin-top: 8px;
+}
+.sidebar a {
+  text-decoration: none;
+}
+.link-card {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+.footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.footer-nav .link-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.site-footer {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.landing-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.landing-card h2 {
+  margin-top: 0;
+  color: var(--heading);
+}
+.landing-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+@media (max-width: 980px) {
+  .layout,
+  .landing-grid,
+  .footer-nav {
+    grid-template-columns: 1fr;
+  }
+}</style>
+</head>
+<body>
+  <div class="site">
+    <div class="topbar">
+      <a class="brand" href="../../index.html">grafana-util docs</a>
+      <div class="themebar">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+    <header class="hero">
+      <div class="eyebrow">Handbook · English</div>
+      <h1>🏛️ Architecture &amp; Design Principles</h1>
+      <p>Narrative handbook chapters for learning the workflow first, then jumping to command-reference pages for exact syntax.</p>
+      <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Handbook</a></li><li>English</li><li>🏛️ Architecture &amp; Design Principles</li></ol>
+    </header>
+    <div class="layout">
+      <article class="panel article">
+        <h1 id="architecture-design-principles">🏛️ Architecture &amp; Design Principles</h1>
+<p>Understanding the architectural philosophy of <code>grafana-util</code> is key to managing large-scale Grafana estates effectively. This chapter explains the &quot;Why&quot; behind our design decisions, but it also tells you how those decisions should change the way you operate.</p>
+<p>For the command surface behind these ideas, see <a href="../../commands/en/status.html">status</a>, <a href="../../commands/en/overview.html">overview</a>, <a href="../../commands/en/change.html">change</a>, and <a href="../../commands/en/dashboard.html">dashboard</a>.</p>
+<h2 id="the-three-surfaces-pattern">🏗️ The Three Surfaces Pattern</h2>
+<p><code>grafana-util</code> separates operational concerns into three distinct &quot;Surfaces.&quot; This prevents mixing human-facing data with machine-readable contracts.</p>
+<table><thead><tr><th>Surface</th><th>Purpose</th><th>Primary Target</th><th>Output Formats</th></tr></thead><tbody><tr><td><strong>Status</strong></td><td><strong>Readiness &amp; Contracts</strong></td><td>CI/CD Pipelines, Scripts</td><td>JSON, Table</td></tr><tr><td><strong>Overview</strong></td><td><strong>Global Observability</strong></td><td>Human SREs, Managers</td><td>Interactive TUI, Summary</td></tr><tr><td><strong>Change</strong></td><td><strong>Intent &amp; Lifecycle</strong></td><td>PR Reviews, Audit Logs</td><td>JSON Plan, Diff</td></tr></tbody></table>
+<h3 id="how-to-choose-the-right-surface">How to choose the right surface</h3>
+<ul><li>Use <code>status</code> when you need a gate, a machine-readable result, or a clean pass/fail readout.</li><li>Use <code>overview</code> when you need to look across the estate as a human and decide where to drill in next.</li><li>Use <code>change</code> when you already know there is intended work and need to summarize, preflight, plan, review, or apply it.</li></ul>
+<p>Typical operator decisions:</p>
+<ul><li>&quot;Can I trust the current state enough to proceed?&quot; -&gt; <code>status live</code></li><li>&quot;What does this Grafana estate look like right now?&quot; -&gt; <code>overview live</code></li><li>&quot;Is my staged package structurally and operationally sane?&quot; -&gt; <code>status staged</code> plus <code>change preflight</code></li><li>&quot;What exactly will change?&quot; -&gt; <code>change summary</code>, <code>change plan</code>, then <code>change review</code></li></ul>
+<h3 id="why-the-split-matters">Why the split matters</h3>
+<p>If the three surfaces collapse into one mental bucket, teams usually make one of these mistakes:</p>
+<ul><li>they use a human-facing summary where a machine gate was required</li><li>they treat a live read as if it proved staged inputs were ready</li><li>they skip review/plan flow because the current live state &quot;looks fine&quot;</li></ul>
+<p>The design is intentionally opinionated so operators do not have to guess which output is safe to automate against and which output is meant for human interpretation.</p>
+<h2 id="lane-isolation-policy">🛣️ Lane Isolation Policy</h2>
+<p>To prevent configuration drift and &quot;Frankenstein&quot; assets, we enforce strict isolation between data lanes.</p>
+<p>1. <strong>The Raw Lane (<code>raw/</code>)</strong>: A 1:1 API fidelity snapshot. Used for backup and full-estate DR. No manual editing allowed. 2. <strong>The Prompt Lane (<code>prompt/</code>)</strong>: Optimized for UI-based imports. Metadata is stripped to ensure clean adoption by new organizations. 3. <strong>The Provisioning Lane (<code>provisioning/</code>)</strong>: Static files for disk-based Grafana provisioning. This is a one-way transformation from the canonical API model.</p>
+<h3 id="how-lane-isolation-changes-real-operator-behavior">How lane isolation changes real operator behavior</h3>
+<ul><li>Treat <code>raw/</code> as the canonical replay and audit lane for dashboards.</li><li>Treat <code>prompt/</code> as the clean handoff lane when you want to move dashboards between environments without dragging source-environment metadata along.</li><li>Treat <code>provisioning/</code> as a derived deployment lane, not as the place where you invent the source of truth.</li></ul>
+<p>If you ignore lane isolation, the failure is often subtle rather than spectacular:</p>
+<ul><li>imported dashboards keep the wrong environment assumptions</li><li>provisioning files no longer match the canonical export tree</li><li>teams patch the wrong artifact family and later cannot explain why live state drifted</li></ul>
+<h3 id="what-to-do-when-you-are-unsure-which-lane-to-use">What to do when you are unsure which lane to use</h3>
+<ul><li>Use <code>raw/</code> for backup, replay, diff, and audit workflows.</li><li>Use <code>prompt/</code> for environment promotion and UI-first adoption.</li><li>Use <code>provisioning/</code> only when the target workflow is Grafana disk provisioning.</li></ul>
+<h2 id="secret-governance-masked-recovery">🔐 Secret Governance (Masked Recovery)</h2>
+<p><code>grafana-util</code> follows a <strong>&quot;Safe-by-Default&quot;</strong> architecture for secrets such as datasource passwords and secure connection fields.</p>
+<ul><li><strong>Export</strong>: Sensitive fields are masked. The export file is safe to commit to Git.</li><li><strong>Recovery</strong>: During <code>import</code>, the CLI identifies missing secrets and provides a secure protocol for re-injection via environment variables or interactive prompts.</li></ul>
+<h3 id="why-this-matters-in-practice">Why this matters in practice</h3>
+<p>This design is meant to avoid two bad outcomes:</p>
+<ul><li>leaking a working datasource secret into Git</li><li>treating a masked export as if it still contained everything needed for live replay</li></ul>
+<p>Success looks like this:</p>
+<ul><li>you can commit the datasource inventory safely</li><li>replay/import tells you which secrets still need to be re-injected</li><li>operators know that secret recovery is a deliberate step, not an invisible side effect</li></ul>
+<p>When this goes wrong, the symptoms are usually:</p>
+<ul><li>imports fail because masked fields were never re-supplied</li><li>teams assume the export is &quot;complete&quot; and only discover the gap during restore</li><li>people try to stuff plaintext secrets back into the export file instead of using the supported recovery path</li></ul>
+<h2 id="state-transition-model">🔄 State Transition Model</h2>
+<p><code>grafana-util</code> operates as a <strong>State Reconciler</strong> for Alerting, and a <strong>Snapshot Replayer</strong> for Dashboards.</p>
+<ul><li><strong>Dashboards (Snapshot/Replay)</strong>: Imperative. &quot;Make the target look exactly like this file right now.&quot;</li><li><strong>Alerting (Desired State)</strong>: Declarative. &quot;Compute the difference (Plan) between my files and the server, then apply only the delta.&quot;</li></ul>
+<h3 id="why-dashboards-and-alerts-are-intentionally-different">Why dashboards and alerts are intentionally different</h3>
+<p>They solve different operational problems:</p>
+<ul><li>dashboards are usually handled as exported artifacts that you inspect, patch, and replay</li><li>alerts behave more like managed desired state where review and delta visibility matter before execution</li></ul>
+<p>Operational consequence:</p>
+<ul><li>for dashboards, think in terms of artifact quality, lane choice, and replay target</li><li>for alerts, think in terms of staged intent, route correctness, plan review, and controlled apply</li></ul>
+<h3 id="decision-guide">Decision guide</h3>
+<ul><li>if your first concern is &quot;is this file the right artifact to replay?&quot; you are in dashboard thinking</li><li>if your first concern is &quot;what delta will this create?&quot; you are in alert/change thinking</li></ul>
+<h2 id="what-good-looks-like">✅ What Good Looks Like</h2>
+<p>The architecture is working for you when:</p>
+<ul><li>your team can explain the difference between <code>status</code>, <code>overview</code>, and <code>change</code></li><li>live checks and staged checks are not treated as interchangeable</li><li>dashboard lanes are not mixed casually</li><li>masked secret exports are treated as safe artifacts, not as complete replay payloads</li><li>operators know when to stop at read-only validation and when to move into plan/apply workflows</li></ul>
+<p><a href="getting-started.html">⬅️ Previous: Getting Started</a> | <a href="index.html">🏠 Home</a> | <a href="dashboard.html">➡️ Next: Dashboard Management</a></p>
+        <nav class="footer-nav"><a class="link-card" href="role-automation-ci.html"><span>Previous</span>Automation / CI Handbook</a><a class="link-card" href="dashboard.html"><span>Next</span>Dashboard Operator Handbook</a></nav>
+      </article>
+      <aside class="panel sidebar">
+        <section>
+          <h2>On This Page</h2>
+          <ul><li><a class="link-card" href="#the-three-surfaces-pattern">🏗️ The Three Surfaces Pattern</a></li><li><a class="link-card" href="#how-to-choose-the-right-surface">How to choose the right surface</a></li><li><a class="link-card" href="#why-the-split-matters">Why the split matters</a></li><li><a class="link-card" href="#lane-isolation-policy">🛣️ Lane Isolation Policy</a></li><li><a class="link-card" href="#how-lane-isolation-changes-real-operator-behavior">How lane isolation changes real operator behavior</a></li><li><a class="link-card" href="#what-to-do-when-you-are-unsure-which-lane-to-use">What to do when you are unsure which lane to use</a></li><li><a class="link-card" href="#secret-governance-masked-recovery">🔐 Secret Governance (Masked Recovery)</a></li><li><a class="link-card" href="#why-this-matters-in-practice">Why this matters in practice</a></li><li><a class="link-card" href="#state-transition-model">🔄 State Transition Model</a></li><li><a class="link-card" href="#why-dashboards-and-alerts-are-intentionally-different">Why dashboards and alerts are intentionally different</a></li><li><a class="link-card" href="#decision-guide">Decision guide</a></li><li><a class="link-card" href="#what-good-looks-like">✅ What Good Looks Like</a></li></ul>
+        </section>
+        <section>
+          <h2>Related</h2>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/en/index.html">Command reference index</a></li></ul>
+        </section>
+        <section>
+          <h2>Language</h2>
+          <ul><li><a class="link-card" href="#">Current: English</a></li><li><a class="link-card" href="../zh-TW/architecture.html">Switch to 繁體中文</a></li></ul>
+        </section>
+      </aside>
+    </div>
+    <footer class="site-footer">Source: <code>docs/user-guide/en/architecture.md</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script>
+(() => {
+  const storageKey = "grafana-util-docs-theme";
+  const root = document.documentElement;
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (value) => {
+    if (value === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", value);
+    }
+  };
+  applyTheme(saved);
+  if (select) {
+    select.value = saved;
+    select.addEventListener("change", (event) => {
+      const value = event.target.value;
+      localStorage.setItem(storageKey, value);
+      applyTheme(value);
+    });
+  }
+})();
+</script>
+</body>
+</html>

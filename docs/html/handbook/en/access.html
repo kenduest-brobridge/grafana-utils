@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Access Management (Identity &amp; Orgs) · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+    --panel: rgba(15, 23, 32, 0.86);
+    --panel-strong: rgba(15, 23, 32, 0.94);
+    --text: #d9e2ec;
+    --muted: #9fb3c8;
+    --heading: #f0f4f8;
+    --accent: #7bdcb5;
+    --accent-soft: rgba(18, 53, 40, 0.9);
+    --border: #243b53;
+    --code-bg: #1f2933;
+    --pre-bg: #081018;
+    --pre-text: #e6edf3;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] body {
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+html[data-theme="dark"] body {
+  --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --panel: rgba(15, 23, 32, 0.86);
+  --panel-strong: rgba(15, 23, 32, 0.94);
+  --text: #d9e2ec;
+  --muted: #9fb3c8;
+  --heading: #f0f4f8;
+  --accent: #7bdcb5;
+  --accent-soft: rgba(18, 53, 40, 0.9);
+  --border: #243b53;
+  --code-bg: #1f2933;
+  --pre-bg: #081018;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+a { color: var(--accent); }
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 0.98rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+th {
+  text-align: left;
+  background: var(--accent-soft);
+}
+.site {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 28px 22px 68px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.brand {
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.themebar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.hero {
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--heading);
+}
+.hero p {
+  max-width: 74ch;
+  margin: 14px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.breadcrumbs {
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  font-size: 0.96rem;
+  color: var(--muted);
+}
+.breadcrumbs li::after {
+  content: "/";
+  margin-left: 10px;
+}
+.breadcrumbs li:last-child::after {
+  content: "";
+  margin: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px;
+  margin-top: 22px;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article {
+  padding: 30px;
+}
+.article h1,
+.article h2,
+.article h3 {
+  color: var(--heading);
+}
+.article h1 {
+  margin-top: 0;
+}
+.article h2 {
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.article h3 {
+  margin-top: 28px;
+}
+.article p,
+.article li {
+  font-size: 1.03rem;
+  line-height: 1.8;
+}
+.sidebar {
+  padding: 22px;
+}
+.sidebar section + section {
+  margin-top: 20px;
+}
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li + li {
+  margin-top: 8px;
+}
+.sidebar a {
+  text-decoration: none;
+}
+.link-card {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+.footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.footer-nav .link-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.site-footer {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.landing-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.landing-card h2 {
+  margin-top: 0;
+  color: var(--heading);
+}
+.landing-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+@media (max-width: 980px) {
+  .layout,
+  .landing-grid,
+  .footer-nav {
+    grid-template-columns: 1fr;
+  }
+}</style>
+</head>
+<body>
+  <div class="site">
+    <div class="topbar">
+      <a class="brand" href="../../index.html">grafana-util docs</a>
+      <div class="themebar">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+    <header class="hero">
+      <div class="eyebrow">Handbook · English</div>
+      <h1>Access Management (Identity &amp; Orgs)</h1>
+      <p>Narrative handbook chapters for learning the workflow first, then jumping to command-reference pages for exact syntax.</p>
+      <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Handbook</a></li><li>English</li><li>Access Management (Identity &amp; Orgs)</li></ol>
+    </header>
+    <div class="layout">
+      <article class="panel article">
+        <h1 id="access-management-identity-orgs">Access Management (Identity &amp; Orgs)</h1>
+<p>Manage the identity layer of your Grafana estate: organizations, users, teams, and service accounts.</p>
+<h2 id="command-pages">🔗 Command Pages</h2>
+<p>Need the command-by-command surface instead of the workflow guide?</p>
+<ul><li><a href="../../commands/en/access.html">access command overview</a></li><li><a href="../../commands/en/access-user.html">access user</a></li><li><a href="../../commands/en/access-org.html">access org</a></li><li><a href="../../commands/en/access-team.html">access team</a></li><li><a href="../../commands/en/access-service-account.html">access service-account</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
+<h2 id="organization-management">🏢 Organization Management</h2>
+<p>Use <code>access org</code> when you need Basic-auth-backed inventory, export, or replay for organizations.</p>
+<h3 id="1-list-export-and-replay-organizations">1. List, Export, and Replay Organizations</h3>
+<pre><code>grafana-util access org list --table</code></pre>
+<pre><code>grafana-util access org export --export-dir ./access-orgs</code></pre>
+<pre><code>grafana-util access org import --import-dir ./access-orgs --dry-run</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>ID   NAME        IS_MAIN   QUOTA
+1    Main Org    true      -
+5    SRE Team    false     10
+
+Exported organization inventory -&gt; access-orgs/orgs.json
+Exported organization metadata   -&gt; access-orgs/export-metadata.json
+
+PREFLIGHT IMPORT:
+  - would create 0 org(s)
+  - would update 1 org(s)</code></pre>
+<p>Use the list output to confirm the main org, then export/import when you need a repeatable org snapshot.</p>
+<h2 id="user-team-management">👤 User &amp; Team Management</h2>
+<p>Use <code>access user</code> and <code>access team</code> for membership changes, snapshots, and drift checks.</p>
+<h3 id="1-add-modify-and-diff-users">1. Add, Modify, and Diff Users</h3>
+<pre><code># Add a new user with global admin role</code></pre>
+<pre><code>grafana-util access user add --login dev-user --role Admin --prompt-password</code></pre>
+<pre><code># Update an existing user&#x27;s organization role</code></pre>
+<pre><code>grafana-util access user modify --login dev-user --org-id 5 --role Editor</code></pre>
+<pre><code># Compare a saved user snapshot against live Grafana</code></pre>
+<pre><code>grafana-util access user diff --diff-dir ./access-users --scope global</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>Created user dev-user -&gt; id=12 orgRole=Editor grafanaAdmin=true
+
+No user differences across 12 user(s).</code></pre>
+<p>Use <code>--prompt-password</code> when you do not want a password in shell history. <code>--scope global</code> requires Basic auth.</p>
+<h3 id="2-discover-and-sync-teams">2. Discover and Sync Teams</h3>
+<pre><code>grafana-util access team list --org-id 1 --table</code></pre>
+<pre><code>grafana-util access team export --export-dir ./access-teams --with-members</code></pre>
+<pre><code>grafana-util access team import --import-dir ./access-teams --replace-existing --dry-run --table</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>ID   NAME           MEMBERS   EMAIL
+10   Platform SRE   5         sre@company.com
+
+Exported team inventory -&gt; access-teams/teams.json
+Exported team metadata   -&gt; access-teams/export-metadata.json
+
+LOGIN       ROLE    ACTION   STATUS
+dev-admin   Admin   update   existing
+ops-user    Viewer  create   missing</code></pre>
+<p>Use <code>--with-members</code> when the export must preserve membership state, and use <code>--dry-run --table</code> before a destructive import.</p>
+<h2 id="service-account-management">🤖 Service Account Management</h2>
+<p>Service accounts are the foundation of automated pipelines.</p>
+<h3 id="1-list-and-export-service-accounts">1. List and Export Service Accounts</h3>
+<pre><code>grafana-util access service-account list --json</code></pre>
+<pre><code>grafana-util access service-account export --export-dir ./access-sa</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>[
+  {
+    &quot;id&quot;: &quot;15&quot;,
+    &quot;name&quot;: &quot;deploy-bot&quot;,
+    &quot;role&quot;: &quot;Editor&quot;,
+    &quot;disabled&quot;: false,
+    &quot;tokens&quot;: &quot;1&quot;,
+    &quot;orgId&quot;: &quot;1&quot;
+  }
+]
+
+Listed 1 service account(s) at http://127.0.0.1:3000
+
+Exported service account inventory -&gt; access-sa/service-accounts.json
+Exported service account tokens    -&gt; access-sa/tokens.json</code></pre>
+<p><code>access service-account export</code> writes both the inventory and the token bundle. Treat <code>tokens.json</code> as sensitive.</p>
+<h3 id="2-create-and-delete-tokens">2. Create and Delete Tokens</h3>
+<pre><code># Add a new token to a service account by name</code></pre>
+<pre><code>grafana-util access service-account token add --name deploy-bot --token-name nightly --seconds-to-live 3600</code></pre>
+<pre><code># Add a new token by numeric id and capture the one-time secret</code></pre>
+<pre><code>grafana-util access service-account token add --service-account-id 15 --token-name ci-deployment-token --json</code></pre>
+<pre><code># Delete an old token after verification</code></pre>
+<pre><code>grafana-util access service-account token delete --service-account-id 15 --token-name nightly --yes --json</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>Created service-account token nightly -&gt; serviceAccountId=15
+
+{
+  &quot;serviceAccountId&quot;: &quot;15&quot;,
+  &quot;name&quot;: &quot;ci-deployment-token&quot;,
+  &quot;secondsToLive&quot;: &quot;3600&quot;,
+  &quot;key&quot;: &quot;eyJ...&quot;
+}
+
+{
+  &quot;serviceAccountId&quot;: &quot;15&quot;,
+  &quot;tokenId&quot;: &quot;42&quot;,
+  &quot;name&quot;: &quot;nightly&quot;,
+  &quot;message&quot;: &quot;Service-account token deleted.&quot;
+}</code></pre>
+<p>Use <code>--json</code> when you need the one-time <code>key</code> field. Plain text is better for logs, not for credential capture.</p>
+<h2 id="drift-detection-diff">🔍 Drift Detection (Diff)</h2>
+<p>Compare your local identity snapshots against the live Grafana server.</p>
+<pre><code>grafana-util access user diff --import-dir ./access-users</code></pre>
+<pre><code>grafana-util access team diff --diff-dir ./access-teams</code></pre>
+<pre><code>grafana-util access service-account diff --diff-dir ./access-sa</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>--- Live Users
++++ Snapshot Users
+-  &quot;login&quot;: &quot;old-user&quot;
++  &quot;login&quot;: &quot;new-user&quot;
+
+No team differences across 4 team(s).
+No service account differences across 2 service account(s).</code></pre>
+<p>Use diff output to decide whether a snapshot is safe to import or whether live Grafana has already drifted.</p>
+<p><a href="alert.html">⬅️ Previous: Alerting Governance</a> | <a href="index.html">🏠 Home</a> | <a href="change-overview-status.html">➡️ Next: Change &amp; Status</a></p>
+        <nav class="footer-nav"><a class="link-card" href="alert.html"><span>Previous</span>Alert Operator Handbook</a><a class="link-card" href="change-overview-status.html"><span>Next</span>Project Status &amp; Change Overview</a></nav>
+      </article>
+      <aside class="panel sidebar">
+        <section>
+          <h2>On This Page</h2>
+          <ul><li><a class="link-card" href="#command-pages">🔗 Command Pages</a></li><li><a class="link-card" href="#organization-management">🏢 Organization Management</a></li><li><a class="link-card" href="#1-list-export-and-replay-organizations">1. List, Export, and Replay Organizations</a></li><li><a class="link-card" href="#user-team-management">👤 User &amp; Team Management</a></li><li><a class="link-card" href="#1-add-modify-and-diff-users">1. Add, Modify, and Diff Users</a></li><li><a class="link-card" href="#2-discover-and-sync-teams">2. Discover and Sync Teams</a></li><li><a class="link-card" href="#service-account-management">🤖 Service Account Management</a></li><li><a class="link-card" href="#1-list-and-export-service-accounts">1. List and Export Service Accounts</a></li><li><a class="link-card" href="#2-create-and-delete-tokens">2. Create and Delete Tokens</a></li><li><a class="link-card" href="#drift-detection-diff">🔍 Drift Detection (Diff)</a></li></ul>
+        </section>
+        <section>
+          <h2>Related</h2>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/en/index.html">Command reference index</a></li></ul>
+        </section>
+        <section>
+          <h2>Language</h2>
+          <ul><li><a class="link-card" href="#">Current: English</a></li><li><a class="link-card" href="../zh-TW/access.html">Switch to 繁體中文</a></li></ul>
+        </section>
+      </aside>
+    </div>
+    <footer class="site-footer">Source: <code>docs/user-guide/en/access.md</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script>
+(() => {
+  const storageKey = "grafana-util-docs-theme";
+  const root = document.documentElement;
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (value) => {
+    if (value === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", value);
+    }
+  };
+  applyTheme(saved);
+  if (select) {
+    select.value = saved;
+    select.addEventListener("change", (event) => {
+      const value = event.target.value;
+      localStorage.setItem(storageKey, value);
+      applyTheme(value);
+    });
+  }
+})();
+</script>
+</body>
+</html>

@@ -4,6 +4,17 @@
 
 > **維運目標**：確保資料來源配置可以被安全地備份、比對與回放，並透過 **Masked Recovery** 合約保護敏感憑證。
 
+## 🔗 逐指令頁面
+
+如果您現在想看的是逐指令說明，而不是工作流章節，請直接使用逐指令頁面：
+
+- [datasource 指令總覽](../../commands/zh-TW/datasource.md)
+- [datasource export](../../commands/zh-TW/datasource-export.md)
+- [datasource import](../../commands/zh-TW/datasource-import.md)
+- [datasource diff](../../commands/zh-TW/datasource-diff.md)
+- [datasource list](../../commands/zh-TW/datasource-list.md)
+- [逐指令總索引](../../commands/zh-TW/index.md)
+
 ---
 
 ## 🛠️ 核心工作流用途
@@ -94,6 +105,8 @@ loki-prod   loki-prod          loki         create   missing
 ```
 - **ACTION=create**：將建立新的資料來源紀錄。
 - **ACTION=update**：將取代現有的紀錄。
+- **DESTINATION=missing**：Grafana 目前沒有這個 UID，因此匯入時會建立新紀錄。
+- **DESTINATION=existing**：Grafana 目前已經有這個 UID，因此匯入時會覆蓋既有資料來源紀錄。
 
 ### 3. 直接即時新增 (Dry-Run)
 ```bash
@@ -108,7 +121,4 @@ INDEX  NAME       TYPE         ACTION  DETAIL
 ```
 
 ---
-
-## ⏭️ 下一步
-- 了解 [**Dashboard 資產管理**](./dashboard.md)。
-- 探索 [**告警工作流**](./alert.md)。
+[⬅️ 上一章：Dashboard 管理](dashboard.md) | [🏠 回首頁](index.md) | [➡️ 下一章：告警治理](alert.md)

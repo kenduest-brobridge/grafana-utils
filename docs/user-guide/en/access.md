@@ -1,102 +1,174 @@
-# Access Operator Handbook
+# Access Management (Identity & Orgs)
 
-This guide covers Grafana identity and membership management: Orgs, Users, Teams, Service Accounts, and Tokens.
+Manage the identity layer of your Grafana estate: organizations, users, teams, and service accounts.
 
-> **Goal**: Manage who can access your Grafana estate, their organizational roles, and their automation identities with clear inventory and replay capabilities.
+## 🔗 Command Pages
 
----
+Need the command-by-command surface instead of the workflow guide?
 
-## 🛠️ What Access Is For
-
-Use `grafana-util access ...` when you need to:
-- **Inventory Identities**: Audit users, teams, and service accounts across the estate.
-- **Direct Live Mutation**: Create, modify, or delete identities in a specific organization.
-- **Snapshot & Replay**: Export identity state into a snapshot for review or cross-environment replay.
-- **Token Management**: Lifecycle control for service-account tokens.
-
----
-
-## 🚧 Workflow Boundaries
-
-| Family | Purpose | Common Operations |
-| :--- | :--- | :--- |
-| **Org** | Organization lifecycle. | `list`, `add`, `modify`, `export`, `import` |
-| **User** | Human accounts. | `list`, `add`, `modify`, `export`, `import`, `diff` |
-| **Team** | Membership groups. | `list`, `add`, `modify`, `export`, `import`, `diff` |
-| **Service Account** | Automation identities. | `list`, `add`, `token add`, `token delete`, `export`, `import` |
+- [access command overview](../../commands/en/access.md)
+- [access user](../../commands/en/access-user.md)
+- [access org](../../commands/en/access-org.md)
+- [access team](../../commands/en/access-team.md)
+- [access service-account](../../commands/en/access-service-account.md)
+- [full command index](../../commands/en/index.md)
 
 ---
 
-## 📋 Reading Live Identity Inventory
+## 🏢 Organization Management
 
-Use `access user list` to verify human accounts and their organization roles.
+Use `access org` when you need Basic-auth-backed inventory, export, or replay for organizations.
+
+### 1. List, Export, and Replay Organizations
+```bash
+grafana-util access org list --table
+grafana-util access org export --export-dir ./access-orgs
+grafana-util access org import --import-dir ./access-orgs --dry-run
+```
+**Expected Output:**
+```text
+ID   NAME        IS_MAIN   QUOTA
+1    Main Org    true      -
+5    SRE Team    false     10
+
+Exported organization inventory -> access-orgs/orgs.json
+Exported organization metadata   -> access-orgs/export-metadata.json
+
+PREFLIGHT IMPORT:
+  - would create 0 org(s)
+  - would update 1 org(s)
+```
+Use the list output to confirm the main org, then export/import when you need a repeatable org snapshot.
+
+---
+
+## 👤 User & Team Management
+
+Use `access user` and `access team` for membership changes, snapshots, and drift checks.
+
+### 1. Add, Modify, and Diff Users
+```bash
+# Add a new user with global admin role
+grafana-util access user add --login dev-user --role Admin --prompt-password
+
+# Update an existing user's organization role
+grafana-util access user modify --login dev-user --org-id 5 --role Editor
+
+# Compare a saved user snapshot against live Grafana
+grafana-util access user diff --diff-dir ./access-users --scope global
+```
+**Expected Output:**
+```text
+Created user dev-user -> id=12 orgRole=Editor grafanaAdmin=true
+
+No user differences across 12 user(s).
+```
+Use `--prompt-password` when you do not want a password in shell history. `--scope global` requires Basic auth.
+
+### 2. Discover and Sync Teams
+```bash
+grafana-util access team list --org-id 1 --table
+grafana-util access team export --export-dir ./access-teams --with-members
+grafana-util access team import --import-dir ./access-teams --replace-existing --dry-run --table
+```
+**Expected Output:**
+```text
+ID   NAME           MEMBERS   EMAIL
+10   Platform SRE   5         sre@company.com
+
+Exported team inventory -> access-teams/teams.json
+Exported team metadata   -> access-teams/export-metadata.json
+
+LOGIN       ROLE    ACTION   STATUS
+dev-admin   Admin   update   existing
+ops-user    Viewer  create   missing
+```
+Use `--with-members` when the export must preserve membership state, and use `--dry-run --table` before a destructive import.
+
+---
+
+## 🤖 Service Account Management
+
+Service accounts are the foundation of automated pipelines.
+
+### 1. List and Export Service Accounts
+```bash
+grafana-util access service-account list --json
+grafana-util access service-account export --export-dir ./access-sa
+```
+**Expected Output:**
+```text
+[
+  {
+    "id": "15",
+    "name": "deploy-bot",
+    "role": "Editor",
+    "disabled": false,
+    "tokens": "1",
+    "orgId": "1"
+  }
+]
+
+Listed 1 service account(s) at http://127.0.0.1:3000
+
+Exported service account inventory -> access-sa/service-accounts.json
+Exported service account tokens    -> access-sa/tokens.json
+```
+`access service-account export` writes both the inventory and the token bundle. Treat `tokens.json` as sensitive.
+
+### 2. Create and Delete Tokens
+```bash
+# Add a new token to a service account by name
+grafana-util access service-account token add --name deploy-bot --token-name nightly --seconds-to-live 3600
+
+# Add a new token by numeric id and capture the one-time secret
+grafana-util access service-account token add --service-account-id 15 --token-name ci-deployment-token --json
+
+# Delete an old token after verification
+grafana-util access service-account token delete --service-account-id 15 --token-name nightly --yes --json
+```
+**Expected Output:**
+```text
+Created service-account token nightly -> serviceAccountId=15
+
+{
+  "serviceAccountId": "15",
+  "name": "ci-deployment-token",
+  "secondsToLive": "3600",
+  "key": "eyJ..."
+}
+
+{
+  "serviceAccountId": "15",
+  "tokenId": "42",
+  "name": "nightly",
+  "message": "Service-account token deleted."
+}
+```
+Use `--json` when you need the one-time `key` field. Plain text is better for logs, not for credential capture.
+
+---
+
+## 🔍 Drift Detection (Diff)
+
+Compare your local identity snapshots against the live Grafana server.
 
 ```bash
-grafana-util access user list --scope global --table
+grafana-util access user diff --import-dir ./access-users
+grafana-util access team diff --diff-dir ./access-teams
+grafana-util access service-account diff --diff-dir ./access-sa
 ```
-
-**Validated Output Excerpt:**
+**Expected Output:**
 ```text
-ID   LOGIN      EMAIL                NAME             ORG_ROLE   GRAFANA_ADMIN
-1    admin      admin@example.com    Grafana Admin    Admin      true
-7    svc-ci     ci@example.com       CI Service       Editor     false
-```
+--- Live Users
++++ Snapshot Users
+-  "login": "old-user"
++  "login": "new-user"
 
-**How to Read It:**
-- **LOGIN**: The unique username for signing in.
-- **ORG_ROLE**: The role within the current organization (Admin, Editor, Viewer).
-- **GRAFANA_ADMIN**: Indicates if the user has server-wide administrative privileges.
+No team differences across 4 team(s).
+No service account differences across 2 service account(s).
+```
+Use diff output to decide whether a snapshot is safe to import or whether live Grafana has already drifted.
 
 ---
-
-## 🚀 Key Commands (Full Argument Reference)
-
-| Command | Full Example with Arguments |
-| :--- | :--- |
-| **List Users** | `grafana-util access user list --scope global --table` |
-| **Add User** | `grafana-util access user add --login dev-user --email dev@example.com --password <PASS>` |
-| **Export Teams** | `grafana-util access team export --output-dir ./access/teams --overwrite` |
-| **Token Add** | `grafana-util access service-account token add --id <SA_ID> --name ci-token` |
-| **Org List** | `grafana-util access org list --all-orgs` |
-
----
-
-## 🔬 Validated Docker Examples
-
-### 1. Team Import (Dry-Run Replay)
-Preview how local team files would affect your live Grafana estate.
-```bash
-grafana-util access team import --import-dir ./access/teams --replace-existing --dry-run --table
-```
-**Output Excerpt:**
-```text
-INDEX  IDENTITY         ACTION       DETAIL
-1      platform-team    skip         existing and --replace-existing was not set.
-2      sre-team         create       would create team
-3      edge-team        add-member   would add team member alice@example.com
-```
-
-### 2. Service Account Snapshot
-Export service accounts for backup or migration.
-```bash
-grafana-util access service-account export --output-dir ./access/service-accounts --overwrite
-```
-**Output Excerpt:**
-```text
-Exported 3 service-account(s) -> access/service-accounts/service-accounts.json
-```
-
----
-
-## ⚠️ Operator Rules for Access
-
-1.  **Scope Control**: Use `--scope global` for server-wide user audits, or default to the current organization context.
-2.  **Destructive Actions**: Commands like `delete` or imports that remove items require the `--yes` acknowledgement flag.
-3.  **Token Security**: Tokens are only visible once during creation. `grafana-util` does not store or manage plain-text tokens after they are generated.
-4.  **Admin Privileges**: Be cautious when using `access org` or `access user list --all-orgs`, as these require Basic Auth or a server-wide admin token.
-
----
-
-## ⏭️ Next Steps
-- Learn about [**Project Status and Overview**](./change-overview-status.md).
-- Follow the [**Scenarios**](./scenarios.md) for end-to-end workflows.
+[⬅️ Previous: Alerting Governance](alert.md) | [🏠 Home](index.md) | [➡️ Next: Change & Status](change-overview-status.md)

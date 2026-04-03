@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🍳 實戰錦囊與最佳實踐 · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+    --panel: rgba(15, 23, 32, 0.86);
+    --panel-strong: rgba(15, 23, 32, 0.94);
+    --text: #d9e2ec;
+    --muted: #9fb3c8;
+    --heading: #f0f4f8;
+    --accent: #7bdcb5;
+    --accent-soft: rgba(18, 53, 40, 0.9);
+    --border: #243b53;
+    --code-bg: #1f2933;
+    --pre-bg: #081018;
+    --pre-text: #e6edf3;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] body {
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+html[data-theme="dark"] body {
+  --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --panel: rgba(15, 23, 32, 0.86);
+  --panel-strong: rgba(15, 23, 32, 0.94);
+  --text: #d9e2ec;
+  --muted: #9fb3c8;
+  --heading: #f0f4f8;
+  --accent: #7bdcb5;
+  --accent-soft: rgba(18, 53, 40, 0.9);
+  --border: #243b53;
+  --code-bg: #1f2933;
+  --pre-bg: #081018;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+a { color: var(--accent); }
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 0.98rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+th {
+  text-align: left;
+  background: var(--accent-soft);
+}
+.site {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 28px 22px 68px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.brand {
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.themebar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.hero {
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--heading);
+}
+.hero p {
+  max-width: 74ch;
+  margin: 14px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.breadcrumbs {
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  font-size: 0.96rem;
+  color: var(--muted);
+}
+.breadcrumbs li::after {
+  content: "/";
+  margin-left: 10px;
+}
+.breadcrumbs li:last-child::after {
+  content: "";
+  margin: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px;
+  margin-top: 22px;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article {
+  padding: 30px;
+}
+.article h1,
+.article h2,
+.article h3 {
+  color: var(--heading);
+}
+.article h1 {
+  margin-top: 0;
+}
+.article h2 {
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.article h3 {
+  margin-top: 28px;
+}
+.article p,
+.article li {
+  font-size: 1.03rem;
+  line-height: 1.8;
+}
+.sidebar {
+  padding: 22px;
+}
+.sidebar section + section {
+  margin-top: 20px;
+}
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li + li {
+  margin-top: 8px;
+}
+.sidebar a {
+  text-decoration: none;
+}
+.link-card {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+.footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.footer-nav .link-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.site-footer {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.landing-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.landing-card h2 {
+  margin-top: 0;
+  color: var(--heading);
+}
+.landing-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+@media (max-width: 980px) {
+  .layout,
+  .landing-grid,
+  .footer-nav {
+    grid-template-columns: 1fr;
+  }
+}</style>
+</head>
+<body>
+  <div class="site">
+    <div class="topbar">
+      <a class="brand" href="../../index.html">grafana-util docs</a>
+      <div class="themebar">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+    <header class="hero">
+      <div class="eyebrow">Handbook · 繁體中文</div>
+      <h1>🍳 實戰錦囊與最佳實踐</h1>
+      <p>敘事式手冊頁面，適合照工作流閱讀，再跳到逐指令頁查精確命令面。</p>
+      <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Handbook</a></li><li>繁體中文</li><li>🍳 實戰錦囊與最佳實踐</li></ol>
+    </header>
+    <div class="layout">
+      <article class="panel article">
+        <h1 id="實戰錦囊與最佳實踐">🍳 實戰錦囊與最佳實踐</h1>
+<p>本章提供真正可落地的 Grafana 維運配方。重點不只是指令本身，而是：什麼時候該用、成功長什麼樣、失敗先查哪裡。</p>
+<h2 id="錦囊-1跨環境儀表板遷移-dev-prod">🚀 錦囊 1：跨環境儀表板遷移 (Dev -&gt; Prod)</h2>
+<p><strong>問題描述</strong>：直接從開發環境匯出再匯入到正式環境，常會因組織 ID、folder context 或 datasource UID 不一致而失敗。</p>
+<p><strong>解決方案</strong>：利用 <strong><code>prompt/</code> lane</strong> 做乾淨遷移。</p>
+<p>1. <strong>從 Dev 匯出</strong>：<code>grafana-util dashboard export --export-dir ./dev-assets</code> 2. <strong>定位乾淨來源</strong>：使用 <code>./dev-assets/prompt/</code> 下的檔案。這些檔案已去除來源環境專屬 metadata。 3. <strong>匯入到 Prod</strong>：</p>
+<pre><code>   grafana-util dashboard import --import-dir ./dev-assets/prompt --url https://prod-grafana --replace-existing</code></pre>
+<p><strong>適合什麼時候用</strong>：來源與目標環境有相同 dashboard 意圖，但不應直接攜帶來源環境 metadata 時。</p>
+<p><strong>不適合什麼時候用</strong>：如果您的目標是 raw backup/replay 或災難恢復，請從 <code>raw/</code> 開始，不要從 <code>prompt/</code> 開始。</p>
+<p><strong>成功判準</strong>：</p>
+<ul><li>匯入不會被來源環境專屬 metadata 干擾</li><li>目標 dashboard 能綁定到正確的 datasource 與 folder</li><li>匯入後只需要最小化的人工清理</li></ul>
+<p><strong>失敗時先檢查</strong>：</p>
+<ul><li>目標環境是否真的有對應 datasource UID 或名稱</li><li>這次工作流到底該用 <code>prompt/</code> 還是 <code>raw/</code></li><li>您的 credential 是否看得到目標 org 或 folder</li></ul>
+<h2 id="錦囊-2匯入前的依賴性盤點">🔍 錦囊 2：匯入前的依賴性盤點</h2>
+<p><strong>問題描述</strong>：dashboard 匯入成功了，但 panel 因缺少 datasource 而全部壞掉。</p>
+<p><strong>解決方案</strong>：匯入前先跑 <strong>pre-import inspection</strong>。</p>
+<pre><code>grafana-util dashboard inspect-export --import-dir ./backups/raw --output-format report-table</code></pre>
+<p><strong>檢查重點</strong>：確認報告中 <code>Sources</code> 欄位列出的每個 UID，都存在於目標環境的 <code>datasource list</code>。</p>
+<p><strong>適合什麼時候用</strong>：正式匯入前、promotion bundle 送審前，或確認某批 dashboard export 是否真的可攜時。</p>
+<p><strong>成功判準</strong>：</p>
+<ul><li>所有必要 datasource UID 都在目標環境存在</li><li>缺少的依賴在匯入前就已被找出</li><li>您能說清楚哪些 dashboard 被阻擋、原因是什麼</li></ul>
+<p><strong>失敗時先檢查</strong>：</p>
+<ul><li>目標環境是否用了不同的 datasource 命名或 UID 慣例</li><li>您是否匯出了正確的 lane</li><li>目標 credential 是否真的能列出您預期的 datasource</li></ul>
+<h2 id="錦囊-3批次加標籤或更名-surgical-patching">🛠️ 錦囊 3：批次加標籤或更名 (Surgical Patching)</h2>
+<p><strong>問題描述</strong>：您需要一次幫很多 dashboard 加 tag 或做機械式更名。</p>
+<p><strong>解決方案</strong>：在迴圈中使用 <code>patch-file</code>，然後在 replay 前先 preview。</p>
+<pre><code>for file in ./dashboards/raw/*.json; do</code></pre>
+<pre><code>  grafana-util dashboard patch-file --input &quot;$file&quot; --tag &quot;ManagedBySRE&quot; --output &quot;$file&quot;</code></pre>
+<pre><code>done</code></pre>
+<pre><code>grafana-util dashboard import --import-dir ./dashboards/raw --replace-existing --dry-run --table</code></pre>
+<p><strong>適合什麼時候用</strong>：修改是本機、機械式、可審查的結構調整時。</p>
+<p><strong>不適合什麼時候用</strong>：如果 patch 邏輯太複雜、已經看不出風險，或它其實依賴 live discovery，就不該只用單純迴圈硬改。</p>
+<p><strong>成功判準</strong>：</p>
+<ul><li>改完的檔案仍能在 Git 中清楚 review</li><li>重複 patch 不會產生意外 drift</li><li>匯入前仍會先跑 <code>--dry-run</code></li></ul>
+<p><strong>失敗時先檢查</strong>：</p>
+<ul><li>您 patch 的是不是正確 lane 與正確檔案集合</li><li>這次修改是不是其實應該落在 <code>prompt/</code> 而不是 <code>raw/</code></li><li>匯入前是否先跑了 <code>--dry-run</code></li></ul>
+<h2 id="錦囊-4驗證告警路由邏輯">🚨 錦囊 4：驗證告警路由邏輯</h2>
+<p><strong>問題描述</strong>：通知策略複雜，您無法只靠眼睛判斷告警最後會送到哪個 receiver。</p>
+<p><strong>解決方案</strong>：使用 <code>preview-route</code> 模擬匹配結果。</p>
+<pre><code>grafana-util alert preview-route \</code></pre>
+<pre><code>  --desired-dir ./alerts/desired \</code></pre>
+<pre><code>  --label service=order \</code></pre>
+<pre><code>  --severity critical</code></pre>
+<p><strong>目標</strong>：確認輸出中的 <code>receiver</code> 是否符合預期的 Slack channel 或 PagerDuty service。</p>
+<p><strong>適合什麼時候用</strong>：label、route 或 notification policy 有變更，而您希望在任何人假設「應該會送對地方」之前先得到明確答案時。</p>
+<p><strong>成功判準</strong>：</p>
+<ul><li>輸出的 receiver 與預期一致</li><li>本來應該分流 critical 路徑的 label，真的有分流成功</li><li>preview 結果會在 plan/apply 之前先被 review</li></ul>
+<p><strong>失敗時先檢查</strong>：</p>
+<ul><li>preview 使用的 label 是否真的和 rule 實際會送出的 label 一樣</li><li>desired alert files 與 notification policies 是否同步</li><li>問題是 route 邏輯，還是 rule 本身分類就錯了</li></ul>
+<h2 id="專家建議">💡 專家建議</h2>
+<ul><li><strong>UID 一致性</strong>：務必在 JSON 中定義穩定的 <code>uid</code>，不要依賴自動遞增的 <code>id</code>。</li><li><strong>預覽優先</strong>：任何 live 變動前，先跑 <code>--dry-run</code>。</li><li><strong>Git 整合</strong>：只把 <code>raw/</code> 與 <code>desired/</code> 視為真正值得版本管理的核心來源。</li><li><strong>先確認憑證範圍</strong>：recipe 看起來失敗時，先確認 credential 是否真的看得到目標 org、folder 或 admin surface。</li><li><strong>角色分工</strong>：workflow 選擇看 handbook，需要精確旗標時再切到逐指令頁。</li></ul>
+<p><a href="reference.html">⬅️ 上一章：技術參考手冊</a> | <a href="index.html">🏠 回首頁</a> | <a href="troubleshooting.html">➡️ 下一章：疑難排解與名詞解釋</a></p>
+        <nav class="footer-nav"><a class="link-card" href="scenarios.html"><span>Previous</span>維運情境手冊 (Operator Scenarios)</a><a class="link-card" href="reference.html"><span>Next</span>技術參考手冊 (Technical Reference)</a></nav>
+      </article>
+      <aside class="panel sidebar">
+        <section>
+          <h2>On This Page</h2>
+          <ul><li><a class="link-card" href="#錦囊-1跨環境儀表板遷移-dev-prod">🚀 錦囊 1：跨環境儀表板遷移 (Dev -&gt; Prod)</a></li><li><a class="link-card" href="#錦囊-2匯入前的依賴性盤點">🔍 錦囊 2：匯入前的依賴性盤點</a></li><li><a class="link-card" href="#錦囊-3批次加標籤或更名-surgical-patching">🛠️ 錦囊 3：批次加標籤或更名 (Surgical Patching)</a></li><li><a class="link-card" href="#錦囊-4驗證告警路由邏輯">🚨 錦囊 4：驗證告警路由邏輯</a></li><li><a class="link-card" href="#專家建議">💡 專家建議</a></li></ul>
+        </section>
+        <section>
+          <h2>Related</h2>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/zh-TW/index.html">Command reference index</a></li></ul>
+        </section>
+        <section>
+          <h2>Language</h2>
+          <ul><li><a class="link-card" href="#">Current: 繁體中文</a></li><li><a class="link-card" href="../en/recipes.html">Switch to English</a></li></ul>
+        </section>
+      </aside>
+    </div>
+    <footer class="site-footer">Source: <code>docs/user-guide/zh-TW/recipes.md</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script>
+(() => {
+  const storageKey = "grafana-util-docs-theme";
+  const root = document.documentElement;
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (value) => {
+    if (value === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", value);
+    }
+  };
+  applyTheme(saved);
+  if (select) {
+    select.value = saved;
+    select.addEventListener("change", (event) => {
+      const value = event.target.value;
+      localStorage.setItem(storageKey, value);
+      applyTheme(value);
+    });
+  }
+})();
+</script>
+</body>
+</html>

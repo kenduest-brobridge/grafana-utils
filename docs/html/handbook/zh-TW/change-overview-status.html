@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>專案狀態與變更總覽 (Change &amp; Status) · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+    --panel: rgba(15, 23, 32, 0.86);
+    --panel-strong: rgba(15, 23, 32, 0.94);
+    --text: #d9e2ec;
+    --muted: #9fb3c8;
+    --heading: #f0f4f8;
+    --accent: #7bdcb5;
+    --accent-soft: rgba(18, 53, 40, 0.9);
+    --border: #243b53;
+    --code-bg: #1f2933;
+    --pre-bg: #081018;
+    --pre-text: #e6edf3;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] body {
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+html[data-theme="dark"] body {
+  --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --panel: rgba(15, 23, 32, 0.86);
+  --panel-strong: rgba(15, 23, 32, 0.94);
+  --text: #d9e2ec;
+  --muted: #9fb3c8;
+  --heading: #f0f4f8;
+  --accent: #7bdcb5;
+  --accent-soft: rgba(18, 53, 40, 0.9);
+  --border: #243b53;
+  --code-bg: #1f2933;
+  --pre-bg: #081018;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+a { color: var(--accent); }
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 0.98rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+th {
+  text-align: left;
+  background: var(--accent-soft);
+}
+.site {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 28px 22px 68px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.brand {
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.themebar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.hero {
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--heading);
+}
+.hero p {
+  max-width: 74ch;
+  margin: 14px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.breadcrumbs {
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  font-size: 0.96rem;
+  color: var(--muted);
+}
+.breadcrumbs li::after {
+  content: "/";
+  margin-left: 10px;
+}
+.breadcrumbs li:last-child::after {
+  content: "";
+  margin: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px;
+  margin-top: 22px;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article {
+  padding: 30px;
+}
+.article h1,
+.article h2,
+.article h3 {
+  color: var(--heading);
+}
+.article h1 {
+  margin-top: 0;
+}
+.article h2 {
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.article h3 {
+  margin-top: 28px;
+}
+.article p,
+.article li {
+  font-size: 1.03rem;
+  line-height: 1.8;
+}
+.sidebar {
+  padding: 22px;
+}
+.sidebar section + section {
+  margin-top: 20px;
+}
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li + li {
+  margin-top: 8px;
+}
+.sidebar a {
+  text-decoration: none;
+}
+.link-card {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+.footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.footer-nav .link-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.site-footer {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.landing-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.landing-card h2 {
+  margin-top: 0;
+  color: var(--heading);
+}
+.landing-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+@media (max-width: 980px) {
+  .layout,
+  .landing-grid,
+  .footer-nav {
+    grid-template-columns: 1fr;
+  }
+}</style>
+</head>
+<body>
+  <div class="site">
+    <div class="topbar">
+      <a class="brand" href="../../index.html">grafana-util docs</a>
+      <div class="themebar">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+    <header class="hero">
+      <div class="eyebrow">Handbook · 繁體中文</div>
+      <h1>專案狀態與變更總覽 (Change &amp; Status)</h1>
+      <p>敘事式手冊頁面，適合照工作流閱讀，再跳到逐指令頁查精確命令面。</p>
+      <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Handbook</a></li><li>繁體中文</li><li>專案狀態與變更總覽 (Change &amp; Status)</li></ol>
+    </header>
+    <div class="layout">
+      <article class="panel article">
+        <h1 id="專案狀態與變更總覽-change-status">專案狀態與變更總覽 (Change &amp; Status)</h1>
+<p>本章聚焦在治理關卡，也就是在執行變更前後的最後一層驗證。</p>
+<h2 id="逐指令頁面">🔗 逐指令頁面</h2>
+<p>如果您現在想看的是逐指令說明，而不是工作流章節，請直接使用逐指令頁面：</p>
+<ul><li><a href="../../commands/zh-TW/change.html">change</a></li><li><a href="../../commands/zh-TW/status.html">status</a></li><li><a href="../../commands/zh-TW/overview.html">overview</a></li><li><a href="../../commands/zh-TW/snapshot.html">snapshot</a></li><li><a href="../../commands/zh-TW/index.html">逐指令總索引</a></li></ul>
+<h2 id="狀態介面-status-surfaces">🚦 狀態介面 (Status Surfaces)</h2>
+<p>我們區分 <strong>Live</strong> (實際運行中) 與 <strong>Staged</strong> (您打算部署的內容)。</p>
+<h3 id="1-即時整備度檢查-live-check">1. 即時整備度檢查 (Live Check)</h3>
+<pre><code>grafana-util status live --output table</code></pre>
+<pre><code>grafana-util status live --profile prod --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output json</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>OVERALL: status=ready
+
+COMPONENT    HEALTH   REASON
+Dashboards   ok       32/32 可存取
+Datasources  ok       秘密資訊恢復驗證通過
+Alerts       ok       無孤立規則</code></pre>
+<p><code>status live</code> 走的是共用的 live 狀態路徑。搭配 staged sync 檔案時，可以在不改變命令形狀的前提下，讓 live 視圖帶入更多脈絡。</p>
+<h3 id="2-暫存整備度檢查-staged-check">2. 暫存整備度檢查 (Staged Check)</h3>
+<p>在執行 <code>apply</code> 之前，將此作為 CI/CD 的強制性門禁。</p>
+<pre><code>grafana-util status staged --desired-file ./desired.json --output json</code></pre>
+<pre><code>grafana-util status staged --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output table</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>{
+  &quot;status&quot;: &quot;ready&quot;,
+  &quot;blockers&quot;: [],
+  &quot;warnings&quot;: [&quot;1 個儀表板缺少唯一的目錄分配&quot;]
+}</code></pre>
+<p><code>status staged</code> 是給機器讀的驗證關卡。<code>blockers</code> 代表必須停下來處理，<code>warnings</code> 則是需要人工再確認的風險。</p>
+<h2 id="變更生命週期-change-lifecycle">📋 變更生命週期 (Change Lifecycle)</h2>
+<p>管理從 Git 到正式 Grafana 環境的過渡。</p>
+<h3 id="1-變更摘要-change-summary">1. 變更摘要 (Change Summary)</h3>
+<p>獲取目前變更包的高階摘要。</p>
+<pre><code>grafana-util change summary --desired-file ./desired.json</code></pre>
+<pre><code>grafana-util change summary --desired-file ./desired.json --output json</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>CHANGE PACKAGE SUMMARY:
+- dashboards: 5 modified, 2 added
+- alerts: 3 modified
+- access: 1 added
+- total impact: 11 operations</code></pre>
+<p>先用 summary 看整個變更包的規模，再往下看 plan。若總數異常偏大，應先停下來檢查 staged 輸入。</p>
+<h3 id="2-預檢驗證-preflight-validation">2. 預檢驗證 (Preflight Validation)</h3>
+<p>驗證匯出 / 匯入目錄結構的完整性。</p>
+<pre><code>grafana-util change preflight --desired-file ./desired.json --availability-file ./availability.json</code></pre>
+<pre><code>grafana-util change preflight --desired-file ./desired.json --fetch-live --output json</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>PREFLIGHT CHECK:
+- dashboards: valid (7 files)
+- datasources: valid (1 inventory found)
+- result: 0 errors, 0 blockers</code></pre>
+<p>preflight 適合放在規劃或套用前，做結構層的檢查。通過只代表輸入形狀合理，不代表 live 狀態已經完全吻合。</p>
+<h2 id="互動模式-tui-語意">🖥️ 互動模式 (TUI) 語意</h2>
+<p><code>overview live --output interactive</code> 會透過共用的 live status 路徑開啟 live project overview。</p>
+<pre><code>grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output interactive</code></pre>
+<p>TUI 使用以下視覺語言：</p>
+<ul><li><strong>🟢 綠色</strong>：組件健康且完全可達。</li><li><strong>🟡 黃色</strong>：組件可用，但有警告，例如缺少元數據。</li><li><strong>🔴 紅色</strong>：組件受阻，在進行任何部署前都需要處理。</li></ul>
+<p>如果要看 staged 產物的人工審查畫面，用不帶 <code>live</code> 的 <code>overview</code>；如果要機器可讀的 live 驗證關卡，改用 <code>status live</code>。</p>
+<p><a href="access.html">⬅️ 上一章：Access 管理</a> | <a href="index.html">🏠 回首頁</a> | <a href="scenarios.html">➡️ 下一章：維運情境手冊</a></p>
+        <nav class="footer-nav"><a class="link-card" href="access.html"><span>Previous</span>身分與存取管理 (Identity &amp; Access)</a><a class="link-card" href="scenarios.html"><span>Next</span>維運情境手冊 (Operator Scenarios)</a></nav>
+      </article>
+      <aside class="panel sidebar">
+        <section>
+          <h2>On This Page</h2>
+          <ul><li><a class="link-card" href="#逐指令頁面">🔗 逐指令頁面</a></li><li><a class="link-card" href="#狀態介面-status-surfaces">🚦 狀態介面 (Status Surfaces)</a></li><li><a class="link-card" href="#1-即時整備度檢查-live-check">1. 即時整備度檢查 (Live Check)</a></li><li><a class="link-card" href="#2-暫存整備度檢查-staged-check">2. 暫存整備度檢查 (Staged Check)</a></li><li><a class="link-card" href="#變更生命週期-change-lifecycle">📋 變更生命週期 (Change Lifecycle)</a></li><li><a class="link-card" href="#1-變更摘要-change-summary">1. 變更摘要 (Change Summary)</a></li><li><a class="link-card" href="#2-預檢驗證-preflight-validation">2. 預檢驗證 (Preflight Validation)</a></li><li><a class="link-card" href="#互動模式-tui-語意">🖥️ 互動模式 (TUI) 語意</a></li></ul>
+        </section>
+        <section>
+          <h2>Related</h2>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/zh-TW/index.html">Command reference index</a></li></ul>
+        </section>
+        <section>
+          <h2>Language</h2>
+          <ul><li><a class="link-card" href="#">Current: 繁體中文</a></li><li><a class="link-card" href="../en/change-overview-status.html">Switch to English</a></li></ul>
+        </section>
+      </aside>
+    </div>
+    <footer class="site-footer">Source: <code>docs/user-guide/zh-TW/change-overview-status.md</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script>
+(() => {
+  const storageKey = "grafana-util-docs-theme";
+  const root = document.documentElement;
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (value) => {
+    if (value === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", value);
+    }
+  };
+  applyTheme(saved);
+  if (select) {
+    select.value = saved;
+    select.addEventListener("change", (event) => {
+      const value = event.target.value;
+      localStorage.setItem(storageKey, value);
+      applyTheme(value);
+    });
+  }
+})();
+</script>
+</body>
+</html>

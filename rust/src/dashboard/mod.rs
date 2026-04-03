@@ -77,6 +77,7 @@ mod models;
 mod project_status;
 mod prompt;
 mod prompt_helpers;
+mod raw_to_prompt;
 mod screenshot;
 mod topology;
 mod topology_tui;
@@ -96,6 +97,7 @@ pub use cli_defs::{
     ExportArgs, GetArgs, GovernanceGateArgs, GovernanceGateOutputFormat, GovernancePolicySource,
     ImpactArgs, ImpactOutputFormat, ImportArgs, InspectExportArgs, InspectExportReportFormat,
     InspectLiveArgs, InspectOutputFormat, InspectVarsArgs, ListArgs, PatchFileArgs, PublishArgs,
+    RawToPromptArgs, RawToPromptLogFormat, RawToPromptOutputFormat, RawToPromptResolution,
     ReviewArgs, ScreenshotArgs, ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme,
     SimpleOutputFormat, TopologyArgs, TopologyOutputFormat, ValidateExportArgs,
     ValidationOutputFormat,
@@ -112,6 +114,7 @@ pub use live::{
     list_dashboard_summaries, list_datasources,
 };
 pub use prompt::build_external_export_document;
+pub(crate) use raw_to_prompt::run_raw_to_prompt;
 
 use browse::browse_dashboards_with_org_client;
 use delete::delete_dashboards_with_org_clients;
@@ -508,6 +511,10 @@ pub fn run_dashboard_cli_with_client(
             let _ = export_dashboards_with_client(client, &export_args)?;
             Ok(())
         }
+        DashboardCommand::RawToPrompt(raw_to_prompt_args) => {
+            set_json_color_choice(raw_to_prompt_args.color);
+            run_raw_to_prompt(&raw_to_prompt_args)
+        }
         DashboardCommand::Get(get_args) => {
             get_live_dashboard_to_file_with_client(client, &get_args)
         }
@@ -604,6 +611,10 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
             let _ = export_dashboards_with_org_clients(&export_args)?;
             Ok(())
         }
+        DashboardCommand::RawToPrompt(raw_to_prompt_args) => {
+            set_json_color_choice(raw_to_prompt_args.color);
+            run_raw_to_prompt(&raw_to_prompt_args)
+        }
         DashboardCommand::Get(get_args) => {
             let client = build_http_client(&get_args.common)?;
             get_live_dashboard_to_file_with_client(&client, &get_args)
@@ -698,6 +709,9 @@ mod inspect_live_rust_tests;
 #[cfg(test)]
 #[path = "inspect_vars_rust_tests.rs"]
 mod inspect_vars_rust_tests;
+#[cfg(test)]
+#[path = "raw_to_prompt_rust_tests.rs"]
+mod raw_to_prompt_rust_tests;
 #[cfg(test)]
 #[path = "screenshot_rust_tests.rs"]
 mod screenshot_rust_tests;

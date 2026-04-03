@@ -9,7 +9,10 @@ use super::cli_defs_inspect::{
     GovernanceGateArgs, ImpactArgs, InspectExportArgs, InspectLiveArgs, InspectVarsArgs,
     ScreenshotArgs, TopologyArgs, ValidateExportArgs,
 };
-use super::cli_defs_shared::{CommonCliArgs, DryRunOutputFormat, SimpleOutputFormat};
+use super::cli_defs_shared::{
+    CommonCliArgs, DryRunOutputFormat, RawToPromptLogFormat, RawToPromptOutputFormat,
+    RawToPromptResolution, SimpleOutputFormat,
+};
 use super::dashboard_runtime::{
     parse_dashboard_import_output_column, parse_dashboard_list_output_column,
 };
@@ -123,6 +126,166 @@ pub struct ExportArgs {
         help = "Show detailed per-item export output, including variants and output paths. Overrides --progress output."
     )]
     pub verbose: bool,
+}
+
+/// Arguments for converting raw dashboard exports into prompt-lane artifacts.
+#[derive(Debug, Clone, Args)]
+pub struct RawToPromptArgs {
+    #[arg(
+        long = "input-file",
+        value_name = "FILE",
+        conflicts_with = "input_dir",
+        required_unless_present = "input_dir",
+        help = "Repeat this flag for each raw dashboard file to convert. When output-file is omitted, the default target is the sibling .prompt.json path."
+    )]
+    pub input_file: Vec<PathBuf>,
+    #[arg(
+        long = "input-dir",
+        value_name = "DIR",
+        conflicts_with = "input_file",
+        required_unless_present = "input_file",
+        help = "Convert every raw dashboard file in this directory. Point this at a raw export root or its raw/ lane when generating a prompt/ lane."
+    )]
+    pub input_dir: Option<PathBuf>,
+    #[arg(
+        long = "output-file",
+        value_name = "FILE",
+        conflicts_with = "output_dir",
+        help = "Write the converted prompt document to this file. For single-file mode, the default is the sibling .prompt.json path."
+    )]
+    pub output_file: Option<PathBuf>,
+    #[arg(
+        long = "output-dir",
+        value_name = "DIR",
+        conflicts_with = "output_file",
+        help = "Write converted prompt artifacts into this directory. For raw export roots, the default is the sibling prompt/ lane."
+    )]
+    pub output_dir: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Overwrite existing output files instead of failing when the target already exists."
+    )]
+    pub overwrite: bool,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = RawToPromptOutputFormat::Text,
+        help = "Render the command summary as text, table, json, or yaml."
+    )]
+    pub output_format: RawToPromptOutputFormat,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Do not print table headers when rendering table output."
+    )]
+    pub no_header: bool,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = CliColorChoice::Auto,
+        help = "Colorize output. Use auto, always, or never."
+    )]
+    pub color: CliColorChoice,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Show concise per-item conversion progress while processing files."
+    )]
+    pub progress: bool,
+    #[arg(
+        short = 'v',
+        long,
+        default_value_t = false,
+        help = "Show detailed per-item conversion output. Overrides --progress output."
+    )]
+    pub verbose: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Preview the conversion without writing files."
+    )]
+    pub dry_run: bool,
+    #[arg(
+        long = "log-file",
+        value_name = "FILE",
+        help = "Write structured conversion logs to this file."
+    )]
+    pub log_file: Option<PathBuf>,
+    #[arg(
+        long = "log-format",
+        value_enum,
+        default_value_t = RawToPromptLogFormat::Text,
+        help = "Render logs as text or json."
+    )]
+    pub log_format: RawToPromptLogFormat,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = RawToPromptResolution::InferFamily,
+        help = "Choose how datasource references are resolved. Use infer-family, exact, or strict."
+    )]
+    pub resolution: RawToPromptResolution,
+    #[arg(
+        long = "datasource-map",
+        value_name = "FILE",
+        help = "Optional datasource mapping file used while resolving prompt output."
+    )]
+    pub datasource_map: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Load live lookup defaults from the selected repo-local profile in grafana-util.yaml. When set, raw-to-prompt can query Grafana datasources to resolve prompt output."
+    )]
+    pub profile: Option<String>,
+    #[arg(
+        long,
+        help = "Grafana base URL used for optional live datasource lookup."
+    )]
+    pub url: Option<String>,
+    #[arg(
+        long = "token",
+        visible_alias = "api-token",
+        help = "Grafana API token used for optional live datasource lookup."
+    )]
+    pub api_token: Option<String>,
+    #[arg(
+        long = "basic-user",
+        help = "Grafana Basic auth username used for optional live datasource lookup."
+    )]
+    pub username: Option<String>,
+    #[arg(
+        long = "basic-password",
+        help = "Grafana Basic auth password used for optional live datasource lookup."
+    )]
+    pub password: Option<String>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Prompt for the Grafana Basic auth password for optional live datasource lookup."
+    )]
+    pub prompt_password: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Prompt for the Grafana API token for optional live datasource lookup."
+    )]
+    pub prompt_token: bool,
+    #[arg(
+        long,
+        help = "Scope optional live datasource lookup to one explicit Grafana org ID."
+    )]
+    pub org_id: Option<i64>,
+    #[arg(
+        long,
+        help = "HTTP timeout in seconds for optional live datasource lookup."
+    )]
+    pub timeout: Option<u64>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Enable TLS certificate verification for optional live datasource lookup."
+    )]
+    pub verify_ssl: bool,
 }
 
 /// Arguments for listing dashboards from live Grafana.
@@ -672,6 +835,12 @@ pub enum DashboardCommand {
         after_help = "The provisioning export writes a Grafana file-provisioning provider file at provisioning/provisioning/dashboards.yaml. Override the provider name, org ID, path, or update behavior when you need a different on-disk deployment target.\n\nExamples:\n\n  Export dashboards from the current org with Basic auth:\n    grafana-util export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite\n\n  Export dashboards across all visible orgs with Basic auth:\n    grafana-util export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./dashboards --overwrite\n\n  Export dashboards with a custom provisioning provider path:\n    grafana-util export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite --provisioning-provider-name grafana-utils-prod --provisioning-provider-org-id 2 --provisioning-provider-path /srv/grafana/dashboards --provisioning-provider-disable-deletion --provisioning-provider-update-interval-seconds 60\n\n  Export dashboards from one explicit org ID:\n    grafana-util export --url http://localhost:3000 --basic-user admin --basic-password admin --org-id 2 --export-dir ./dashboards --overwrite\n\n  Export dashboards from the current org with an API token:\n    export GRAFANA_API_TOKEN='your-token'\n    grafana-util export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./dashboards --overwrite"
     )]
     Export(ExportArgs),
+    #[command(
+        name = "raw-to-prompt",
+        about = "Convert raw dashboard exports into prompt lane artifacts.",
+        after_help = "Examples:\n\n  Convert one raw dashboard file and rely on the sibling .prompt.json target:\n    grafana-util dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json\n\n  Convert one raw export root into a sibling prompt/ lane:\n    grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite\n\n  Convert a raw file with explicit datasource resolution settings:\n    grafana-util dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json --datasource-map ./datasource-map.json --resolution exact --output-format json\n\n  Augment datasource resolution with live lookup from a profile:\n    grafana-util dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json --profile prod --org-id 2"
+    )]
+    RawToPrompt(RawToPromptArgs),
     #[command(
         name = "import",
         about = "Import dashboard JSON files through the Grafana API.",

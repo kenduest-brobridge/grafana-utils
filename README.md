@@ -1,169 +1,166 @@
-# Grafana Utilities (`grafana-util`)
+# grafana-util 🚀
+### The Missing CLI for Professional Grafana Estate Management
 
-[![Version](https://img.shields.io/badge/version-0.6.3-blue.svg)](https://github.com/kenduest-brobridge/grafana-utils/releases)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos-lightgrey.svg)](#install)
+[![CI](https://img.shields.io/github/actions/workflow/status/kendlee/grafana-utils/ci.yml?branch=main)](https://github.com/kendlee/grafana-utils/actions)
+[![License](https://img.shields.io/github/license/kendlee/grafana-utils)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/kendlee/grafana-utils)](https://github.com/kendlee/grafana-utils/releases)
 
-Language: **English** | [繁體中文版](README.zh-TW.md)
+**Stop manually clicking. Start governing your Grafana at scale.**
 
-`grafana-util` is a high-performance, Rust-powered CLI designed for **Grafana Operators**. It specializes in inventory management, export/import workflows, drift detection, and staged change review at scale.
+`grafana-util` is a high-performance, Rust-powered CLI designed for SREs and Platform Engineers who manage complex Grafana environments across multiple organizations and instances. It bridges the gap between raw API calls and enterprise-grade governance.
 
-## 🚀 Why `grafana-util`?
+---
 
-Unlike basic API scripts, `grafana-util` is built for estate-level operations where safety and reproducibility matter:
+## 🌟 Why `grafana-util`?
 
-- 🛡️ **Safe Mutations**: Use `dry-run`, `plan`, and `review` workflows to avoid "blind" changes.
-- 📂 **Structured Exports**: Clean, version-control-friendly directory structures for Dashboards, Datasources, and Alerts.
-- 🔍 **Deep Inspection**: Analyze dashboard queries and datasource dependencies in one command.
-- ⚡ **Performance**: Native Rust binary for fast processing of large Grafana estates.
+| Feature | Standard CLI / curl | **grafana-util** |
+| :--- | :---: | :--- |
+| **Multi-Org Discovery** | Manual per org | ✅ One command to scan all orgs |
+| **Dependency Audit** | Impossible | ✅ Find broken datasources before importing |
+| **Alerting Lifecycle** | "Blind" Apply | ✅ **Plan/Apply** cycle (Review before commit) |
+| **Secret Safety** | Leaks secrets | ✅ **Masked Recovery** (Safe-for-Git exports) |
+| **Visual Review** | Raw JSON | ✅ Interactive **TUI** and beautiful Tables |
 
-## 🛠️ Main Command Areas
+---
 
-| Area | Primary use | Typical commands |
-| --- | --- | --- |
-| `dashboard` | dashboard inventory, export/import, diff, analysis, screenshot | `list`, `export`, `import`, `diff`, `inspect-export`, `inspect-live`, `browse`, `screenshot` |
-| `datasource` | datasource inventory, masked recovery, live mutation | `list`, `export`, `import`, `diff`, `browse`, `add`, `modify`, `delete` |
-| `alert` | alert management, review/apply workflows | `plan`, `apply`, `delete`, `export`, `import`, `diff`, `list-*`, `add-rule`, `clone-rule` |
-| `access` | org, user, team, and service-account inventory | `org ...`, `user ...`, `team ...`, `service-account ...` |
-| `change` | staged review-first change workflow | `summary`, `plan`, `review`, `apply`, `preflight`, `bundle-preflight` |
-| `overview` | operator-facing whole-project summary | `overview`, `overview live` |
-| `status` | canonical staged/live status contract | `status staged`, `status live` |
-| `profile` | repo-local connection defaults | `init`, `list`, `show` |
-
-## 📥 Install
-
-Install the latest release:
-```bash
-curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
-```
-
-Pin a version or install location:
-```bash
-curl -fsSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | BIN_DIR=/usr/local/bin VERSION=v0.6.3 sh
-```
-
-If you already have a checkout:
-```bash
-sh ./scripts/install.sh
-```
-
-Build from source:
-```bash
-cd rust && cargo build --release
-```
-
-## 🏎️ Quick Start
-
-Check the installed version and available command surface:
+## ⚡ 30-Second Quick Start
 
 ```bash
+# 1. Install via One-Liner
+curl -sSL https://raw.githubusercontent.com/kendlee/grafana-utils/main/scripts/install.sh | bash
+
+# 2. Confirm the installed version
 grafana-util --version
-grafana-util version
-grafana-util -h
-grafana-util dashboard -h
-grafana-util datasource -h
-grafana-util alert -h
-grafana-util access -h
-grafana-util change -h
-grafana-util overview -h
-grafana-util status -h
+
+# 3. See your estate's health immediately
+grafana-util overview live --url http://my-grafana:3000 --basic-user admin --prompt-password --output interactive
 ```
 
-### Examples (Validated against Grafana `12.4.1`)
+---
 
-**List dashboards across orgs with datasource context:**
+## 🚀 Key Workflows (The "Killer" Commands)
+
+### 📊 Dashboard: Estate-Wide Management
 ```bash
-grafana-util dashboard list \
-  --url http://localhost:3000 \
-  --basic-user admin \
-  --basic-password admin \
-  --all-orgs \
-  --with-sources \
-  --table
+# 1. Export ALL dashboards from ALL organizations with progress bars
+grafana-util dashboard export --all-orgs --export-dir ./backup --progress
+
+# 2. Convert ordinary/raw dashboard JSON into Grafana UI prompt JSON
+grafana-util dashboard raw-to-prompt --input-dir ./backup/raw --output-dir ./backup/prompt --overwrite --progress
+
+# 3. Dry-Run Import: Preview exactly what will happen before committing
+grafana-util dashboard import --import-dir ./backup/raw --replace-existing --dry-run --table
+
+# 4. Dependency Audit: Identify missing datasources in your export tree
+grafana-util dashboard inspect-export --import-dir ./backup/raw --output-format report-table
+
+# 5. Interactive Browser: Discover and search live dashboards in the terminal
+grafana-util dashboard browse
 ```
 
-**Inspect an exported dashboard tree:**
+### 🚨 Alerting: The Plan/Apply Lifecycle
 ```bash
-grafana-util dashboard inspect-export \
-  --import-dir ./dashboards/raw \
-  --output-format report-table
+# 1. Build a Change Plan: Compare local files vs live server
+grafana-util alert plan --desired-dir ./alerts/desired --prune --output json
+
+# 2. Safety First: Preview where an alert will land based on its labels
+grafana-util alert preview-route --desired-dir ./alerts/desired --label team=sre --severity critical
 ```
 
-**Preview a dashboard import before applying it:**
+### 🔐 Datasources: Masked Recovery
 ```bash
-grafana-util dashboard import \
-  --url http://localhost:3000 \
-  --basic-user admin \
-  --basic-password admin \
-  --import-dir ./dashboards/raw \
-  --replace-existing \
-  --dry-run \
-  --table
+# Export datasources with secrets masked (Safe for Git!)
+grafana-util datasource export --export-dir ./datasources --overwrite
+
+# Import with automatic secret re-injection protocol
+grafana-util datasource import --import-dir ./datasources --replace-existing --prompt-password
 ```
 
-**Export alerting resources for review or migration:**
+### 🛡️ Project Health: The Unified Surface
 ```bash
-grafana-util alert export \
-  --url http://localhost:3000 \
-  --basic-user admin \
-  --basic-password admin \
-  --output-dir ./alerts \
-  --overwrite
+# Interactive TUI: A beautiful, live dashboard of your entire Grafana estate
+grafana-util overview live --output interactive
 ```
 
-**Build a reviewable alert plan from desired files:**
+---
+
+## 🛠️ Core Capabilities
+
+*   **Dashboards**: Full-fidelity export/import, variable inspection, and mass patching.
+*   **Alerting**: Declarative management for Grafana Alerts. Preview routes and prune stale rules safely.
+*   **Datasources**: Masked export/import. Safely recover datasources with secret re-injection.
+*   **Access**: Audit and replay Organizations, Users, Teams, and Service Accounts.
+*   **Status & Readiness**: Machine-readable contracts for CI/CD gates and human-friendly TUI reports.
+
+---
+
+## 📖 Operator Handbook
+
+Don't just run commands—master the workflow. We have prepared a comprehensive **Operator Handbook** for you:
+
+If plain Markdown is awkward to read, generate the local HTML docs site and open the entrypoint:
+
 ```bash
-grafana-util alert plan \
-  --url http://localhost:3000 \
-  --basic-user admin \
-  --basic-password admin \
-  --desired-dir ./alerts/desired \
-  --prune \
-  --output json
+make html
+open ./docs/html/index.html
 ```
 
-## ⚠️ Important Workflow Rules
+On Linux, replace `open` with `xdg-open`. The checked-in HTML files are meant for local browsing from the repo checkout; GitHub itself does not present them as a fully navigable static docs site.
 
-### Dashboard exports are split into distinct lanes
-`dashboard export` writes three different outputs on purpose:
-- `raw/`: the canonical grafana-util replay/import lane.
-- `prompt/`: Grafana UI import lane.
-- `provisioning/`: Grafana file provisioning lane.
+For a published browser-friendly copy, use the GitHub Pages site for this repository:
 
-These lanes are not interchangeable. Use the lane that matches the workflow you are performing.
+*   **Published HTML Docs**: <https://kendlee.github.io/grafana-utils/>
+*   The site is generated from `docs/commands/*/*.md` and `docs/user-guide/*/*.md` and deployed from `main` by `.github/workflows/docs-pages.yml`.
 
-### Datasource export uses a masked recovery contract
-`datasource export` writes:
-- `datasources.json`: the canonical masked recovery and replay contract.
-- `provisioning/datasources.yaml`: a derived provisioning projection.
+*   **[Getting Started](./docs/user-guide/en/getting-started.md)**: Profiles and Setup.
+*   **[Architecture & Principles](./docs/user-guide/en/architecture.md)**: The "Why" behind our lanes.
+*   **[Real-World Recipes](./docs/user-guide/en/recipes.md)**: Solving common Grafana headaches.
+*   **[Command Docs](./docs/commands/en/index.md)**: One page per command and subcommand, aligned to the current Rust CLI help.
+*   **[HTML Docs Entry](./docs/html/index.html)**: Local handbook + command-reference entrypoint after `make html`.
+*   **[Man Page](./docs/man/grafana-util.1)**: Top-level `man` format reference. View it locally with `man ./docs/man/grafana-util.1` on macOS or `man -l docs/man/grafana-util.1` on GNU/Linux.
+*   **[Troubleshooting](./docs/user-guide/en/troubleshooting.md)**: Diagnostics and Glossary.
 
-Treat `datasources.json` for restore and replay. Treat `provisioning/` as a projection for Grafana file provisioning, not as the primary restore source.
+**[Full Handbook Table of Contents →](./docs/user-guide/en/index.md)**
 
-### Alert management has separate authoring and apply phases
-The alert surface is intentionally split:
-- Author desired-state files with commands such as `add-rule`, `clone-rule`, and `add-contact-point`.
-- Review the delta with `alert plan`.
-- Execute only reviewed operations with `alert apply`.
+---
 
-## 📊 Coverage By Area (Maturity Map)
+## 🧭 Documentation Map
 
-| Area | Current depth | Notes |
-| --- | --- | --- |
-| `dashboard` | deepest surface | most complete analysis, export/import, and review tooling |
-| `datasource` | deep and mature | supports live mutation plus file-based recovery/replay |
-| `alert` | mature | supports both review/apply management and migration-style export/import |
-| `access` | mature | strongest for inventory, replay, and controlled rebuilds |
-| `change` | advanced | review-first staged workflow rather than direct mutation |
-| `overview` | stable human entrypoint | best first stop for operator handoff and triage |
-| `status` | stable contract surface | use when you need one cross-domain staged/live status view |
+If you are not sure which document to open first, use this map:
 
-## 📖 Documentation
+*   **Operator handbook**: [docs/user-guide/en/](./docs/user-guide/en/index.md) for workflow, concepts, and guided reading order.
+*   **Command reference**: [docs/commands/en/](./docs/commands/en/index.md) for one page per command and subcommand.
+*   **Browsable HTML docs**: [docs/html/index.html](./docs/html/index.html) locally after `make html`, or <https://kendlee.github.io/grafana-utils/> remotely.
+*   **Terminal manpage**: [docs/man/grafana-util.1](./docs/man/grafana-util.1) for `man`-style lookup.
+*   **Maintainer entrypoint**: [docs/DEVELOPER.md](./docs/DEVELOPER.md) for code architecture, docs routing, build/validation flow, and maintainer pointers.
+*   **Maintainer quickstart**: [docs/internal/maintainer-quickstart.md](./docs/internal/maintainer-quickstart.md) for the shortest first-day reading order, source-of-truth map, generated-file boundaries, and safe validation commands.
+*   **Generated docs design**: [docs/internal/generated-docs-architecture.md](./docs/internal/generated-docs-architecture.md) for the Markdown-to-HTML/manpage system design.
+*   **Generated docs playbook**: [docs/internal/generated-docs-playbook.md](./docs/internal/generated-docs-playbook.md) for step-by-step maintainer tasks.
+*   **Secret storage architecture**: [docs/internal/profile-secret-storage-architecture.md](./docs/internal/profile-secret-storage-architecture.md) for profile secret modes, macOS/Linux support, limits, and maintainer rules.
+*   **Internal docs index**: [docs/internal/README.md](./docs/internal/README.md) for the current internal spec, architecture, and trace inventory.
 
-- 📘 [English User Guide](docs/user-guide/en/index.md)
-- 📙 [繁體中文使用者指南](docs/user-guide/zh-TW/index.md)
-- 🛠️ [Developer Guide](docs/DEVELOPER.md)
-- 📜 [Changelog](CHANGELOG.md)
+---
 
-## ⚖️ License
+## 👥 Choose Your Path
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Read by role instead of by file tree if that is easier:
+
+*   **New user**: start with the dedicated [New User path](./docs/user-guide/en/role-new-user.md), then [Getting Started](./docs/user-guide/en/getting-started.md), then [Technical Reference](./docs/user-guide/en/reference.md).
+*   **SRE / operator**: start with the dedicated [SRE / Ops path](./docs/user-guide/en/role-sre-ops.md), then [Change & Status](./docs/user-guide/en/change-overview-status.md), [Dashboard Management](./docs/user-guide/en/dashboard.md), [Datasource Management](./docs/user-guide/en/datasource.md), and [Troubleshooting](./docs/user-guide/en/troubleshooting.md).
+*   **Automation / CI owner**: start with the dedicated [Automation / CI path](./docs/user-guide/en/role-automation-ci.md), then [Technical Reference](./docs/user-guide/en/reference.md), [Command Docs](./docs/commands/en/index.md), and the top-level [manpage](./docs/man/grafana-util.1).
+*   **Platform architect / maintainer**: start with [Maintainer quickstart](./docs/internal/maintainer-quickstart.md), then [docs/DEVELOPER.md](./docs/DEVELOPER.md), [Maintainer Role Map](./docs/internal/maintainer-role-map.md), [generated docs architecture](./docs/internal/generated-docs-architecture.md), [generated docs playbook](./docs/internal/generated-docs-playbook.md), [secret storage architecture](./docs/internal/profile-secret-storage-architecture.md), and [docs/internal/README.md](./docs/internal/README.md).
+
+---
+
+## 🏗️ Technical Foundation
+*   **Rust Engine**: Single static binary, no dependencies, blazing fast.
+*   **Validated**: Tested against **Grafana 12.4.1** in Docker environments.
+*   **CI/CD Ready**: Predictable exit codes and JSON-first output architecture.
+
+---
+
+## 🤝 Contributing
+We welcome contributions! Please see our [Developer Guide](./docs/DEVELOPER.md) for setup instructions.
+
+---
+*Maintained by [kendlee](https://github.com/kendlee)*

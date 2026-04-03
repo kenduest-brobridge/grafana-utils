@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🚀 開始使用 (Getting Started) · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+    --panel: rgba(15, 23, 32, 0.86);
+    --panel-strong: rgba(15, 23, 32, 0.94);
+    --text: #d9e2ec;
+    --muted: #9fb3c8;
+    --heading: #f0f4f8;
+    --accent: #7bdcb5;
+    --accent-soft: rgba(18, 53, 40, 0.9);
+    --border: #243b53;
+    --code-bg: #1f2933;
+    --pre-bg: #081018;
+    --pre-text: #e6edf3;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] body {
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+html[data-theme="dark"] body {
+  --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --panel: rgba(15, 23, 32, 0.86);
+  --panel-strong: rgba(15, 23, 32, 0.94);
+  --text: #d9e2ec;
+  --muted: #9fb3c8;
+  --heading: #f0f4f8;
+  --accent: #7bdcb5;
+  --accent-soft: rgba(18, 53, 40, 0.9);
+  --border: #243b53;
+  --code-bg: #1f2933;
+  --pre-bg: #081018;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+a { color: var(--accent); }
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 0.98rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+th {
+  text-align: left;
+  background: var(--accent-soft);
+}
+.site {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 28px 22px 68px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.brand {
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.themebar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.hero {
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--heading);
+}
+.hero p {
+  max-width: 74ch;
+  margin: 14px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.breadcrumbs {
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  font-size: 0.96rem;
+  color: var(--muted);
+}
+.breadcrumbs li::after {
+  content: "/";
+  margin-left: 10px;
+}
+.breadcrumbs li:last-child::after {
+  content: "";
+  margin: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px;
+  margin-top: 22px;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article {
+  padding: 30px;
+}
+.article h1,
+.article h2,
+.article h3 {
+  color: var(--heading);
+}
+.article h1 {
+  margin-top: 0;
+}
+.article h2 {
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.article h3 {
+  margin-top: 28px;
+}
+.article p,
+.article li {
+  font-size: 1.03rem;
+  line-height: 1.8;
+}
+.sidebar {
+  padding: 22px;
+}
+.sidebar section + section {
+  margin-top: 20px;
+}
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li + li {
+  margin-top: 8px;
+}
+.sidebar a {
+  text-decoration: none;
+}
+.link-card {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+.footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.footer-nav .link-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.site-footer {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.landing-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.landing-card h2 {
+  margin-top: 0;
+  color: var(--heading);
+}
+.landing-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+@media (max-width: 980px) {
+  .layout,
+  .landing-grid,
+  .footer-nav {
+    grid-template-columns: 1fr;
+  }
+}</style>
+</head>
+<body>
+  <div class="site">
+    <div class="topbar">
+      <a class="brand" href="../../index.html">grafana-util docs</a>
+      <div class="themebar">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+    <header class="hero">
+      <div class="eyebrow">Handbook · 繁體中文</div>
+      <h1>🚀 開始使用 (Getting Started)</h1>
+      <p>敘事式手冊頁面，適合照工作流閱讀，再跳到逐指令頁查精確命令面。</p>
+      <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Handbook</a></li><li>繁體中文</li><li>🚀 開始使用 (Getting Started)</li></ol>
+    </header>
+    <div class="layout">
+      <article class="panel article">
+        <h1 id="開始使用-getting-started">🚀 開始使用 (Getting Started)</h1>
+<p>本章說明 <code>grafana-util</code> 目前的首次使用流程。</p>
+<p>若要對照本章提到的旗標，請一併參考 <a href="../../commands/zh-TW/profile.html">profile</a>、<a href="../../commands/zh-TW/status.html">status</a> 與 <a href="../../commands/zh-TW/overview.html">overview</a>。</p>
+<h2 id="步驟-1安裝">📋 步驟 1：安裝</h2>
+<h3 id="下載並安裝">下載並安裝</h3>
+<pre><code>curl -sSL https://raw.githubusercontent.com/kendlee/grafana-utils/main/scripts/install.sh | bash</code></pre>
+<h3 id="驗證版本">驗證版本</h3>
+<pre><code>grafana-util --version</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>grafana-util 0.7.0</code></pre>
+<p>這代表執行檔已在 <code>PATH</code> 上，而且版本與目前檢出的發行版一致。</p>
+<h2 id="步驟-2profile-檔案">📋 步驟 2：Profile 檔案</h2>
+<p>Profile 流程是 repo-local 的。<code>grafana-util profile</code> 預設會讀寫目前工作目錄中的 <code>grafana-util.yaml</code>，如果你有設定 <code>GRAFANA_UTIL_CONFIG</code>，就會改讀那個路徑。</p>
+<h3 id="驗證模式速覽">驗證模式速覽</h3>
+<p>建議依照這個順序使用：</p>
+<table><thead><tr><th>模式</th><th>適合情境</th><th>範例</th></tr></thead><tbody><tr><td><code>--profile</code></td><td>日常維運、CI、可重複執行的工作流</td><td><code>grafana-util status live --profile prod --output yaml</code></td></tr><tr><td>直接 Basic auth</td><td>本機 bootstrap、break-glass、管理員流程</td><td><code>grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output yaml</code></td></tr><tr><td>直接 token</td><td>單一 org 或權限較窄的 API 自動化</td><td><code>grafana-util overview live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output yaml</code></td></tr></tbody></table>
+<p>若要用環境變數承載秘密，建議把它放在 profile 裡，例如 <code>password_env: GRAFANA_PROD_PASSWORD</code> 或 <code>token_env: GRAFANA_DEV_TOKEN</code>，不要把明文秘密一再寫進每一條命令列。</p>
+<h3 id="1-選一種建立-profile-的方式">1. 選一種建立 profile 的方式</h3>
+<pre><code>grafana-util profile init --overwrite</code></pre>
+<pre><code>grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password</code></pre>
+<pre><code>grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN --store-secret os</code></pre>
+<pre><code>grafana-util profile example --mode full</code></pre>
+<p><code>profile init</code> 會產生一份最小可用的 <code>grafana-util.yaml</code>。<code>profile add</code> 可以一步建立 Basic-auth 或 token-backed 的可用 profile，不用自己手改 YAML。<code>profile example</code> 則會印出完整註解版範本，方便你拿去改。</p>
+<p>如果你想自己確認這些檔案會放哪裡，規則很單純：</p>
+<table><thead><tr><th>檔案</th><th>預設位置</th><th>用途</th></tr></thead><tbody><tr><td><code>grafana-util.yaml</code></td><td>目前工作目錄，或 <code>GRAFANA_UTIL_CONFIG</code> 指定的路徑</td><td>repo-local profile 設定檔</td></tr><tr><td><code>.grafana-util.secrets.yaml</code></td><td>跟 <code>grafana-util.yaml</code> 放同一個目錄</td><td><code>encrypted-file</code> 模式用的加密秘密檔</td></tr><tr><td><code>.grafana-util.secrets.key</code></td><td>跟 <code>grafana-util.yaml</code> 放同一個目錄</td><td>沒有 passphrase 時的本機 key 檔</td></tr></tbody></table>
+<h3 id="2-列出設定檔中的-profile">2. 列出設定檔中的 profile</h3>
+<pre><code>grafana-util profile list</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>dev
+prod</code></pre>
+<p>在剛初始化完成的設定檔中，<code>profile list</code> 會一行列出一個 profile 名稱。</p>
+<p>若要看每個旗標背後的驗證規則，可再對照 <a href="../../commands/zh-TW/profile.html">profile</a> 指令頁。</p>
+<h3 id="3-查看已解析的-profile">3. 查看已解析的 profile</h3>
+<pre><code>grafana-util profile show --profile prod --output-format yaml</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>name: prod
+source_path: grafana-util.yaml
+profile:
+  url: https://grafana.example.com
+  username: admin
+  password_env: GRAFANA_PROD_PASSWORD
+  verify_ssl: true</code></pre>
+<p>要覆蓋預設選擇規則時，用 <code>--profile</code>；想人工確認最後採用的設定時，用 <code>yaml</code> 最直觀。</p>
+<h2 id="步驟-3第一批唯讀檢查">📋 步驟 3：第一批唯讀檢查</h2>
+<p>只要 profile 檔案已準備好，就可以先用唯讀指令確認目前 CLI 的行為，再去碰 live 資料。</p>
+<h3 id="1-status-live-入口">1. <code>status live</code> 入口</h3>
+<pre><code>grafana-util status live -h</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>Render project status from live Grafana read surfaces. Use current Grafana state plus optional staged context files.
+
+Usage: grafana-util status live [OPTIONS]
+
+Options:
+      --profile &lt;PROFILE&gt;
+          Load connection defaults from the selected repo-local profile in grafana-util.yaml.
+      --url &lt;URL&gt;
+          Grafana base URL. [default: http://localhost:3000]</code></pre>
+<p><code>status live</code> 會直接查詢 Grafana，而且現在用的是 <code>--output</code>，不是舊文件常見的 <code>--output-format</code>。</p>
+<h3 id="2-overview-live-入口">2. <code>overview live</code> 入口</h3>
+<pre><code>grafana-util overview live -h</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>Render a live overview by delegating to the shared status live path.
+...
+Examples:
+  grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output interactive
+  grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output yaml</code></pre>
+<p><code>overview live</code> 是共用 live status 路徑的人類導向包裝。要看可讀摘要可用 <code>--output yaml</code>，想進互動式工作台就用 <code>--output interactive</code>。</p>
+<h3 id="3-用兩種常見驗證方式跑同一個唯讀檢查">3. 用兩種常見驗證方式跑同一個唯讀檢查</h3>
+<pre><code>grafana-util overview live --profile prod --output yaml</code></pre>
+<pre><code>grafana-util overview live --url http://localhost:3000 --basic-user admin --prompt-password --output interactive</code></pre>
+<p>平常可重複執行的工作優先用 profile。直接 Basic auth 則保留給 bootstrap、臨時救援或尚未建好 profile 的管理員流程。</p>
+<h3 id="4-先知道-token-的常見限制">4. 先知道 token 的常見限制</h3>
+<p>Token 驗證足以處理單一 org 的讀取流程，但跨 org 或管理員範圍的操作常常還是需要使用者身分或具備較廣權限的 Basic auth。</p>
+<ul><li><code>--all-orgs</code> 相關的盤點與匯出流程，最穩妥的是使用管理員憑證支援的 <code>--profile</code> 或直接 Basic auth。</li><li>org、user、team 與 service-account 管理通常需要管理員等級權限，窄權限 token 可能無法完成。</li><li>如果 token 看不到所有目標 org，即使旗標要求更廣的範圍，輸出仍會被 token 權限限制。</li></ul>
+<h2 id="互動模式-tui">🖥️ 互動模式 (TUI)</h2>
+<p><code>grafana-util dashboard browse</code> 會在終端機中開啟 live dashboard tree；<code>overview live --output interactive</code> 則會開啟互動式的整體總覽。</p>
+<p><a href="index.html">🏠 回首頁</a> | <a href="architecture.html">➡️ 下一章：系統架構與設計原則</a></p>
+        <nav class="footer-nav"><a class="link-card" href="index.html"><span>Previous</span>📖 維運導引手冊 (Operator Handbook)</a><a class="link-card" href="role-new-user.html"><span>Next</span>👤 新使用者角色導讀</a></nav>
+      </article>
+      <aside class="panel sidebar">
+        <section>
+          <h2>On This Page</h2>
+          <ul><li><a class="link-card" href="#步驟-1安裝">📋 步驟 1：安裝</a></li><li><a class="link-card" href="#下載並安裝">下載並安裝</a></li><li><a class="link-card" href="#驗證版本">驗證版本</a></li><li><a class="link-card" href="#步驟-2profile-檔案">📋 步驟 2：Profile 檔案</a></li><li><a class="link-card" href="#驗證模式速覽">驗證模式速覽</a></li><li><a class="link-card" href="#1-選一種建立-profile-的方式">1. 選一種建立 profile 的方式</a></li><li><a class="link-card" href="#2-列出設定檔中的-profile">2. 列出設定檔中的 profile</a></li><li><a class="link-card" href="#3-查看已解析的-profile">3. 查看已解析的 profile</a></li><li><a class="link-card" href="#步驟-3第一批唯讀檢查">📋 步驟 3：第一批唯讀檢查</a></li><li><a class="link-card" href="#1-status-live-入口">1. `status live` 入口</a></li><li><a class="link-card" href="#2-overview-live-入口">2. `overview live` 入口</a></li><li><a class="link-card" href="#3-用兩種常見驗證方式跑同一個唯讀檢查">3. 用兩種常見驗證方式跑同一個唯讀檢查</a></li><li><a class="link-card" href="#4-先知道-token-的常見限制">4. 先知道 token 的常見限制</a></li><li><a class="link-card" href="#互動模式-tui">🖥️ 互動模式 (TUI)</a></li></ul>
+        </section>
+        <section>
+          <h2>Related</h2>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/zh-TW/index.html">Command reference index</a></li></ul>
+        </section>
+        <section>
+          <h2>Language</h2>
+          <ul><li><a class="link-card" href="#">Current: 繁體中文</a></li><li><a class="link-card" href="../en/getting-started.html">Switch to English</a></li></ul>
+        </section>
+      </aside>
+    </div>
+    <footer class="site-footer">Source: <code>docs/user-guide/zh-TW/getting-started.md</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script>
+(() => {
+  const storageKey = "grafana-util-docs-theme";
+  const root = document.documentElement;
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (value) => {
+    if (value === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", value);
+    }
+  };
+  applyTheme(saved);
+  if (select) {
+    select.value = saved;
+    select.addEventListener("change", (event) => {
+      const value = event.target.value;
+      localStorage.setItem(storageKey, value);
+      applyTheme(value);
+    });
+  }
+})();
+</script>
+</body>
+</html>

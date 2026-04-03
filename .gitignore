@@ -9,6 +9,7 @@ python/grafana_utils/dashboards/**/__pycache__/
 python/grafana_utils/dashboards/**/*.pyc
 build/
 dist/
+rust/target/
 *.egg-info/
 tmp/
 .playwright-cli/

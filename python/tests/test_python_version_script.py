@@ -14,9 +14,10 @@ class SetVersionScriptTests(unittest.TestCase):
     def _make_fixture(self):
         temp_dir = tempfile.TemporaryDirectory()
         root = Path(temp_dir.name)
+        (root / "python").mkdir()
         (root / "rust").mkdir()
         (root / "VERSION").write_text("0.2.17\n", encoding="utf-8")
-        (root / "pyproject.toml").write_text(
+        (root / "python" / "pyproject.toml").write_text(
             textwrap.dedent("""
                 [project]
                 version = "0.2.17"
@@ -49,7 +50,7 @@ class SetVersionScriptTests(unittest.TestCase):
             {
                 "REPO_ROOT_OVERRIDE": str(root),
                 "VERSION_FILE_OVERRIDE": str(root / "VERSION"),
-                "PYPROJECT_TOML_OVERRIDE": str(root / "pyproject.toml"),
+                "PYPROJECT_TOML_OVERRIDE": str(root / "python" / "pyproject.toml"),
                 "CARGO_TOML_OVERRIDE": str(root / "rust" / "Cargo.toml"),
                 "CARGO_LOCK_OVERRIDE": str(root / "rust" / "Cargo.lock"),
             }
@@ -71,7 +72,8 @@ class SetVersionScriptTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, msg=result.stderr)
         self.assertIn(
-            'version = "0.2.18"', (root / "pyproject.toml").read_text(encoding="utf-8")
+            'version = "0.2.18"',
+            (root / "python" / "pyproject.toml").read_text(encoding="utf-8"),
         )
         self.assertIn(
             'version = "0.2.18"',
@@ -95,7 +97,7 @@ class SetVersionScriptTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, msg=result.stderr)
         self.assertIn(
             'version = "0.2.19.dev3"',
-            (root / "pyproject.toml").read_text(encoding="utf-8"),
+            (root / "python" / "pyproject.toml").read_text(encoding="utf-8"),
         )
         self.assertIn(
             'version = "0.2.19-dev.3"',
@@ -109,12 +111,15 @@ class SetVersionScriptTests(unittest.TestCase):
     def test_version_script_dry_run_leaves_files_unchanged(self):
         temp_dir, root = self._make_fixture()
         self.addCleanup(temp_dir.cleanup)
-        before = (root / "pyproject.toml").read_text(encoding="utf-8")
+        before = (root / "python" / "pyproject.toml").read_text(encoding="utf-8")
 
         result = self._run_script(root, "--version", "0.2.20", "--dry-run")
 
         self.assertEqual(result.returncode, 0, msg=result.stderr)
-        self.assertEqual((root / "pyproject.toml").read_text(encoding="utf-8"), before)
+        self.assertEqual(
+            (root / "python" / "pyproject.toml").read_text(encoding="utf-8"),
+            before,
+        )
         self.assertEqual(
             (root / "VERSION").read_text(encoding="utf-8").strip(), "0.2.17"
         )

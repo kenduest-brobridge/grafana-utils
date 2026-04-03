@@ -75,6 +75,11 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
         "grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite"
     ),
     (
+        "[Dashboard Raw To Prompt]",
+        "Convert one raw dashboard file into its sibling .prompt.json target:",
+        "grafana-util dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json"
+    ),
+    (
         "[Dashboard Export]",
         "Export dashboards across all visible orgs:",
         "grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./dashboards --overwrite"
@@ -125,6 +130,16 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
         "grafana-util profile show --profile prod --output-format yaml"
     ),
     (
+        "[Profile Add]",
+        "Create or replace one repo-local profile entry:",
+        "grafana-util profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file"
+    ),
+    (
+        "[Profile Example]",
+        "Render a full annotated config example for reference editing:",
+        "grafana-util profile example --mode full"
+    ),
+    (
         "[Snapshot Review]",
         "Review a local snapshot inventory as JSON:",
         "grafana-util snapshot review --input-dir ./snapshot --output json"
@@ -147,6 +162,11 @@ pub(crate) const UNIFIED_HELP_FULL_TEXT: &str = help_block!(
         "[Dashboard Inspect Export]",
         "Render a grouped dashboard dependency table from raw exports:",
         "grafana-util dashboard inspect-export --import-dir ./dashboards/raw --input-format raw --output-format report-tree-table --report-columns dashboard_uid,panel_title,datasource_uid,query"
+    ),
+    (
+        "[Dashboard Raw To Prompt]",
+        "Generate a prompt/ lane from a raw export root:",
+        "grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite"
     ),
     (
         "[Dashboard Inspect Export]",
@@ -182,6 +202,16 @@ pub(crate) const UNIFIED_HELP_FULL_TEXT: &str = help_block!(
         "[Profile Init]",
         "Seed grafana-util.yaml in the current directory from the built-in template:",
         "grafana-util profile init --overwrite"
+    ),
+    (
+        "[Profile Add]",
+        "Create or replace one repo-local profile entry:",
+        "grafana-util profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file"
+    ),
+    (
+        "[Profile Example]",
+        "Render a full annotated config example for reference editing:",
+        "grafana-util profile example --mode full"
     ),
     (
         "[Snapshot Export]",
@@ -396,7 +426,7 @@ pub(crate) const SYNC_HELP_FULL_TEXT: &str = help_block!(
     )
 );
 
-pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 29] = [
+pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 31] = [
     ("[Dashboard Export]", HELP_COLOR_DASHBOARD),
     ("[Dashboard Capture]", HELP_COLOR_DASHBOARD),
     ("[Dashboard Inspect Export]", HELP_COLOR_DASHBOARD),
@@ -417,6 +447,8 @@ pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 29] = [
     ("[Access Token Add]", HELP_COLOR_ACCESS),
     ("[Profile Show]", HELP_COLOR_PROFILE),
     ("[Profile Init]", HELP_COLOR_PROFILE),
+    ("[Profile Add]", HELP_COLOR_PROFILE),
+    ("[Profile Example]", HELP_COLOR_PROFILE),
     ("[Change Planning]", HELP_COLOR_SYNC),
     ("[Change Summary]", HELP_COLOR_SYNC),
     ("[Change Plan]", HELP_COLOR_SYNC),

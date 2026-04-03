@@ -40,6 +40,8 @@ DASHBOARD_COMMAND_HELP = {
     "inspect-export": "Analyze a raw dashboard export directory offline.",
     "inspect-live": "Analyze live Grafana dashboards without writing a persistent export.",
     "inspect-vars": "List dashboard templating variables from live Grafana.",
+    "governance-gate": "Evaluate dashboard governance policy against inspect artifacts.",
+    "topology": "Build a deterministic dashboard topology graph from governance artifacts.",
     "screenshot": "Capture one Grafana dashboard or panel through a browser backend.",
 }
 UNIFIED_DASHBOARD_COMMAND_MAP = {
@@ -51,6 +53,9 @@ UNIFIED_DASHBOARD_COMMAND_MAP = {
     "inspect-export": "inspect-export",
     "inspect-live": "inspect-live",
     "inspect-vars": "inspect-vars",
+    "governance-gate": "governance-gate",
+    "topology": "topology",
+    "graph": "topology",
     "screenshot": "screenshot",
 }
 DATASOURCE_COMMAND_HELP = {
@@ -88,6 +93,8 @@ def _print_dashboard_group_help() -> None:
         "  inspect-export     Analyze a raw dashboard export directory offline.\n"
         "  inspect-live       Analyze live Grafana dashboards without writing a persistent export.\n"
         "  inspect-vars       List dashboard templating variables from live Grafana.\n"
+        "  governance-gate    Evaluate dashboard governance policy against inspect artifacts.\n"
+        "  topology (graph)   Build a deterministic dashboard topology graph from JSON artifacts.\n"
         "  screenshot         Capture one Grafana dashboard or panel through a browser backend."
     )
 

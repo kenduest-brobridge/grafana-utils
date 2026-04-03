@@ -8,6 +8,87 @@ Current AI change log only.
 - Keep this file limited to the latest active architecture and maintenance changes.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-changes-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-03-31.md).
 
+## 2026-04-03 - Thin the unified CLI and type the sync apply intent envelope
+- Summary: split unified help rendering and long example blocks out of `rust/src/cli.rs` into `rust/src/cli_help.rs` so the root CLI module stays focused on command topology and dispatch. Added `rust/src/sync/apply_contract.rs` as the typed apply-intent envelope shared by the local builder and live execution path, then kept `load_apply_intent_operations` backward-compatible so existing review/render/live callers can still consume lighter JSON documents. Also removed low-signal boilerplate comments from the touched Rust files and updated the maintainer docs to point at the new helper modules.
+- Tests: updated sync apply-intent regression coverage and revalidated the full Rust suite after the refactor.
+- Test Run: `cd rust && cargo fmt --check`; `cd rust && cargo test --quiet`
+- Impact: `rust/src/cli.rs`, `rust/src/cli_help.rs`, `rust/src/lib.rs`, `rust/src/sync/apply_contract.rs`, `rust/src/sync/apply_builder.rs`, `rust/src/sync/live.rs`, `rust/src/sync/live_apply.rs`, `rust/src/sync/workbench.rs`, `rust/src/http.rs`, `rust/src/alert_client.rs`, `rust/src/dashboard/export.rs`, `rust/src/dashboard/live.rs`, `rust/src/sync/preflight.rs`, `rust/src/sync/rust_tests.rs`, `rust/src/sync/live_rust_tests.rs`, `docs/DEVELOPER.md`, `docs/overview-rust.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: moderate but contained to CLI help routing and sync apply-intent parsing. If a regression appears, roll back the `cli_help.rs` extraction or the `apply_contract.rs` introduction as isolated steps rather than reverting unrelated sync or dashboard logic.
+- Follow-up: `cargo clippy --all-targets -- -D warnings` still fails on pre-existing issues in `rust/src/profile_cli_defs.rs` and `rust/src/profile_secret_store.rs`, outside this change scope.
+
+## 2026-04-03 - Add dashboard raw-to-prompt migration workflow
+- Summary: added a dedicated `grafana-util dashboard raw-to-prompt` surface for converting ordinary dashboard JSON or `raw/` lane files into Grafana UI prompt JSON with `__inputs`. The new runtime handles repeatable `--input-file`, `--input-dir`, sibling/default output rules, `--output-format`, `--log-file`, `--log-format`, `--color`, `--dry-run`, `infer-family|exact|strict` datasource resolution, and optional live datasource lookup through `--profile` or direct live auth flags. It also writes prompt-lane `index.json` plus `export-metadata.json` when converting a `raw/` directory tree and documents that `prompt/` is for Grafana UI import, not API import.
+- Tests: added focused dashboard parser/runtime tests for the new command and regenerated the man/html docs to keep the public command references in sync.
+- Test Run: `cd rust && CARGO_INCREMENTAL=0 cargo test raw_to_prompt --quiet`; `cargo fmt --manifest-path rust/Cargo.toml --all`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `make man`; `make html`; `make man-check`; `make html-check`; `git diff --check`
+- Impact: `rust/src/dashboard/cli_defs_command.rs`, `rust/src/dashboard/cli_defs_shared.rs`, `rust/src/dashboard/raw_to_prompt.rs`, `rust/src/dashboard/raw_to_prompt_rust_tests.rs`, `rust/src/dashboard/mod.rs`, `rust/src/dashboard/test_support.rs`, `rust/src/cli.rs`, `rust/src/cli_help.rs`, `rust/src/cli_help_examples.rs`, `rust/src/cli_rust_tests.rs`, `rust/src/dashboard/dashboard_cli_parser_help_rust_tests.rs`, `README.md`, `README.zh-TW.md`, `docs/commands/en/dashboard.md`, `docs/commands/en/dashboard-export.md`, `docs/commands/en/dashboard-import.md`, `docs/commands/en/dashboard-raw-to-prompt.md`, `docs/commands/en/index.md`, `docs/commands/zh-TW/dashboard.md`, `docs/commands/zh-TW/dashboard-export.md`, `docs/commands/zh-TW/dashboard-import.md`, `docs/commands/zh-TW/dashboard-raw-to-prompt.md`, `docs/commands/zh-TW/index.md`, `docs/user-guide/en/dashboard.md`, `docs/user-guide/en/reference.md`, `docs/user-guide/zh-TW/dashboard.md`, `docs/user-guide/zh-TW/reference.md`, `docs/man/*.1`, `docs/html/**`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: moderate. The main risk is datasource inference for ambiguous SQL/search/tracing families, which intentionally still requires better source metadata or an explicit `--datasource-map`. If runtime behavior regresses, roll back `rust/src/dashboard/raw_to_prompt.rs` and the dispatch wiring as one slice.
+- Follow-up: broaden from the focused `raw_to_prompt` slice to full `cargo test --quiet` and `cargo clippy --all-targets -- -D warnings` once the remaining worktree changes are settled.
+
+## 2026-04-03 - Add maintainer quickstart for first-entry repo orientation
+- Summary: added a dedicated maintainer quickstart page so the next AI agent or new maintainer can enter the repo through one short route instead of bouncing between README, `docs/DEVELOPER.md`, generated-doc notes, and the internal docs index. The new page explains which files to open first, what the current maintained surfaces are, where source-of-truth layers live, which outputs are generated, how to route common task types, and which validation commands are safe to run first.
+- Tests: Not run. Documentation-only update.
+- Impact: `README.md`, `README.zh-TW.md`, `docs/DEVELOPER.md`, `docs/internal/README.md`, `docs/internal/maintainer-quickstart.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. This is an orientation-only docs change, but future maintainer-routing changes should update this page in the same patch so it stays more useful than a generic repo overview.
+- Follow-up: none.
+
+## 2026-04-03 - Document generated docs architecture for maintainers
+- Summary: added a dedicated internal design document for the Markdown-to-manpage and Markdown-to-HTML pipeline so maintainers can understand the current source-of-truth model, generator split, supported Markdown subset, locale policy, cross-linking rules, test flow, and GitHub Pages deployment without reverse-engineering the scripts.
+- Tests: Not run. Documentation-only update.
+- Impact: `docs/DEVELOPER.md`, `docs/internal/generated-docs-architecture.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. This is a documentation-only architecture clarification, but future generator changes should keep this design note current so it remains more useful than the script docstrings alone.
+- Follow-up: when the docs schema or generator split changes, update this design doc in the same patch instead of letting knowledge drift back into code-only comments.
+
+## 2026-04-03 - Add generated docs maintainer playbook
+- Summary: added a task-oriented playbook for the generated docs system so maintainers have direct recipes for the common changes: adding command pages, adding handbook chapters, wiring command-to-handbook links, adding namespace manpages, introducing locales, changing generated output inventory, and validating the result. Linked it from `docs/DEVELOPER.md` and the architecture note so the maintainer path is now design first, task cookbook second.
+- Tests: Not run. Documentation-only update.
+- Impact: `docs/DEVELOPER.md`, `docs/internal/generated-docs-architecture.md`, `docs/internal/generated-docs-playbook.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. This is documentation-only, but future generated-docs changes should update the playbook in the same patch so it stays operationally accurate.
+- Follow-up: none.
+
+## 2026-04-03 - Reorganize DEVELOPER.md as a maintainer routing map
+- Summary: reshaped `docs/DEVELOPER.md` from a compact note page into a clearer maintainer router. The file now starts with task-based entry guidance, then splits code architecture, documentation layers, validation/build flow, project rules, and quick routing into separate sections so maintainers can jump directly to the right surface.
+- Tests: Not run. Documentation-only update.
+- Impact: `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. This is a structure-only docs update, but future edits should preserve the routing-first shape instead of drifting back into an undifferentiated note list.
+- Follow-up: none.
+
+## 2026-04-03 - Tighten maintainer guidance for comment signal and facade thinning
+- Summary: added a short maintainer policy for the Rust layer that prefers repo-owned typed envelopes over ad hoc shapes, keeps facades thin, and uses comments only for ownership, invariants, or other non-obvious behavior. The same wording now appears in the Rust overview, the maintainer quickstart, and the maintainer summary so the guidance stays easy to find.
+- Tests: Not run. Documentation-only update.
+- Impact: `docs/DEVELOPER.md`, `docs/overview-rust.md`, `docs/internal/maintainer-quickstart.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. This is guidance-only documentation, but future maintainer docs should keep the comment-signal and facade-thinning advice aligned so the summary stays consistent.
+- Follow-up: none.
+
+## 2026-04-03 - Document profile secret storage across user and maintainer docs
+- Summary: filled the secret-storage documentation gap by adding a dedicated internal architecture note for profile secret handling and expanding the user-facing handbook/reference docs. The docs now explain what each secret mode is, why it exists, when to use it, macOS and Linux backend behavior for `os` storage, the main limits, and common troubleshooting paths. README and maintainer indexes now also point to the new secret-storage note so the topic has a clear entrypoint.
+- Tests: Not run. Documentation-only update.
+- Impact: `README.md`, `README.zh-TW.md`, `docs/DEVELOPER.md`, `docs/internal/README.md`, `docs/internal/profile-secret-storage-architecture.md`, `docs/user-guide/en/reference.md`, `docs/user-guide/zh-TW/reference.md`, `docs/commands/en/profile.md`, `docs/commands/zh-TW/profile.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. This is documentation-only, but future changes to secret backends, path rules, or profile resolution should update these notes together so operator guidance stays aligned with implementation.
+- Follow-up: if the repo later adds another secret backend or platform-specific behavior, extend this note before adding examples that assume the new mode exists.
+
+## 2026-04-03 - Tighten dashboard raw-to-prompt semantic compatibility
+- Summary: tightened the shared dashboard prompt builder so `dashboard raw-to-prompt` better matches historical prompt-lane semantics. Single-family dashboards now keep the Grafana-style datasource template variable even when several datasource slots exist, generic `type: datasource` / `-- Mixed --` selectors now become prompt slots without rewriting builtin Grafana annotation selectors, and `__requires` now preserves one datasource requirement per prompt slot instead of deduplicating by plugin family. Added a semantic compare helper to replay historical prompt bundles against regenerated output. The final historical edge case now uses a migrate-only post-processing step in `raw_to_prompt.rs`: after building prompt JSON, it rewrites only those panel-subtree datasource paths that were placeholders in the raw dashboard back to `$datasource`, which preserves the legacy panel/target placeholder mix without changing live export behavior.
+- Tests: added focused raw-to-prompt regressions for single-family templating, mixed datasource selectors, builtin Grafana annotation selectors, and datasource-variable slot reuse; reran the focused Rust raw-to-prompt slice; and replayed the Pontus dashboard export sample through the compare script until the historical prompt bundle reached full semantic parity.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all`; `cd rust && CARGO_INCREMENTAL=0 cargo test raw_to_prompt --quiet`; `python3 ./scripts/compare_prompt_semantics.py --expected-root /Users/kendlee/Downloads/2/Pontus_20260312_extracted/grafana-prod-dashboard-20260312-1/dashboard --generated-root /tmp/pontus-raw-to-prompt-check-v8 --show-limit 20`
+- Impact: `rust/src/dashboard/prompt.rs`, `rust/src/dashboard/raw_to_prompt_rust_tests.rs`, `scripts/compare_prompt_semantics.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: medium-low. The changes are isolated to prompt-lane generation semantics, but future prompt-builder work should re-run semantic comparisons against historical export bundles so datasource templating and mixed-selector behavior do not drift again.
+- Follow-up: none.
+
+## 2026-04-03 - Add role-based doc entrypoints for operators and maintainers
+- Summary: upgraded the docs from file-family navigation to a hybrid model with role-based entrypoints. Added short public role pages for new users, SRE / operators, and automation / CI readers in English and Traditional Chinese, added a maintainer-role map under `docs/internal/`, inserted the role pages into handbook ordering, and updated README, handbook indexes, `docs/DEVELOPER.md`, `docs/internal/README.md`, and the generated HTML landing page to route by persona as well as by document type.
+- Tests: regenerated the HTML docs site and ran the generated-doc determinism checks plus `git diff --check`.
+- Impact: `README.md`, `README.zh-TW.md`, `docs/user-guide/en/index.md`, `docs/user-guide/zh-TW/index.md`, `docs/user-guide/en/role-new-user.md`, `docs/user-guide/en/role-sre-ops.md`, `docs/user-guide/en/role-automation-ci.md`, `docs/user-guide/zh-TW/role-new-user.md`, `docs/user-guide/zh-TW/role-sre-ops.md`, `docs/user-guide/zh-TW/role-automation-ci.md`, `docs/DEVELOPER.md`, `docs/internal/README.md`, `docs/internal/maintainer-role-map.md`, `scripts/docgen_handbook.py`, `scripts/generate_command_html.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. This is still docs-only, but future navigation changes should keep the role paths synchronized across README, handbook indexes, and the generated HTML landing page.
+- Follow-up: after this lands, do a second-pass content review to find any role pages or entrypoint sections that feel too thin or purely ceremonial and enrich them with more concrete operator detail.
+
+## 2026-04-03 - Split default and browser-enabled Rust release artifacts
+- Summary: changed the Rust feature/build policy so the default artifact is lean and omits `browser`, while browser capture support now ships through explicit `*-browser` build targets and release assets. Updated the Makefile, build scripts, install script, Linux artifact validator, CI release jobs, and maintainer notes to keep the standard and browser-enabled artifacts separate.
+- Tests: updated browser-disabled screenshot code to allow dead code cleanly when `browser` is off, then validated the standard and browser-enabled compile paths plus the feature-disabled screenshot behavior.
+- Test Run: `bash -n scripts/build-rust-macos-arm64.sh scripts/build-rust-linux-amd64.sh scripts/build-rust-linux-amd64-zig.sh scripts/validate-rust-linux-amd64-artifact.sh scripts/install.sh`; `make help`; `cargo check --quiet --manifest-path rust/Cargo.toml`; `cargo check --quiet --manifest-path rust/Cargo.toml --features browser`; `cargo test --quiet --manifest-path rust/Cargo.toml capture_dashboard_screenshot_reports_missing_browser_support`; `git diff --check -- rust/Cargo.toml Makefile scripts/build-rust-macos-arm64.sh scripts/build-rust-linux-amd64.sh scripts/build-rust-linux-amd64-zig.sh scripts/validate-rust-linux-amd64-artifact.sh scripts/install.sh .github/workflows/ci.yml docs/DEVELOPER.md docs/internal/ai-status.md docs/internal/ai-changes.md rust/src/dashboard/screenshot.rs rust/src/dashboard/screenshot_runtime.rs rust/src/dashboard/screenshot_header.rs`
+- Impact: `rust/Cargo.toml`, `Makefile`, `scripts/build-rust-macos-arm64.sh`, `scripts/build-rust-linux-amd64.sh`, `scripts/build-rust-linux-amd64-zig.sh`, `scripts/validate-rust-linux-amd64-artifact.sh`, `scripts/install.sh`, `.github/workflows/ci.yml`, `docs/DEVELOPER.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: medium. This changes release artifact expectations and installer naming, so standard/browser archive names and feature flags must stay aligned across scripts and CI.
+- Follow-up: update release-facing docs and installer usage examples so users can discover the new browser-enabled artifact flavor without reading maintainer notes.
+
 ## 2026-04-02 - Consolidate contract docs into summary/spec/trace layers
 - Summary: reorganized the active contract documentation into three layers. `docs/DEVELOPER.md` now stays at short maintainer-summary level, dedicated `docs/internal/*` contract docs now hold current detailed requirements, and `ai-status.md` / `ai-changes.md` stay trace-oriented. Added a contract-doc map to make the navigation explicit.
 - Tests: Not run. Documentation-only update.

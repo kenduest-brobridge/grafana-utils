@@ -1,92 +1,150 @@
-# Getting Started
+# 🚀 Getting Started
 
-This chapter provides a step-by-step path to verifying your `grafana-util` installation and establishing a secure connection to your Grafana estate. 
+This guide covers the current first-run setup for `grafana-util`.
 
-> **Goal**: Ensure the binary is correctly installed, verify the connection to Grafana, and run your first read-only commands safely.
+For the exact flags behind this chapter, keep [profile](../../commands/en/profile.md), [status](../../commands/en/status.md), and [overview](../../commands/en/overview.md) open beside it.
 
 ---
 
-## 🛠️ Step 1: Verification
+## 📋 Step 1: Installation
 
-Confirm the installed version and explore the available command surface. This ensures you are not running an outdated binary.
-
+### Download and Install
 ```bash
-# Verify the binary version
+curl -sSL https://raw.githubusercontent.com/kendlee/grafana-utils/main/scripts/install.sh | bash
+```
+
+### Verify Version
+```bash
 grafana-util --version
-
-# Explore global help and specific domain surfaces
-grafana-util -h
-grafana-util dashboard -h
-grafana-util alert -h
-grafana-util datasource -h
-grafana-util access -h
-grafana-util profile -h
-grafana-util change -h
-grafana-util overview -h
-grafana-util status -h
 ```
+**Expected Output:**
+```text
+grafana-util 0.7.0
+```
+This confirms that the binary is on your `PATH` and matches the checked-in release.
 
 ---
 
-## 🔐 Step 2: Connection Models
+## 📋 Step 2: Profile Files
 
-`grafana-util` supports two primary methods for interacting with Grafana:
+Profile workflows are repo-local. `grafana-util profile` works against `grafana-util.yaml` in the current working directory by default, or against the file pointed to by `GRAFANA_UTIL_CONFIG`.
 
-### 1. Direct CLI Flags
-Best for one-off tasks or testing. You pass all credentials directly to each command.
+### Auth modes at a glance
 
+Use the auth modes in this order:
+
+| Pattern | Best for | Example |
+| :--- | :--- | :--- |
+| `--profile` | daily operator workflows and CI jobs | `grafana-util status live --profile prod --output yaml` |
+| direct Basic auth | quick local checks, bootstrap, admin-only workflows | `grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output yaml` |
+| direct token | narrow API automation that stays inside one org or one scoped permission set | `grafana-util overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output yaml` |
+
+When you want environment-backed secrets, prefer storing them in a profile such as `password_env: GRAFANA_PROD_PASSWORD` or `token_env: GRAFANA_DEV_TOKEN` instead of repeating raw secrets on every command line.
+
+### 1. Pick how you want to create profiles
 ```bash
-grafana-util dashboard list \
-  --url http://localhost:3000 \
-  --basic-user admin \
-  --basic-password admin
+grafana-util profile init --overwrite
+grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password
+grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN --store-secret os
+grafana-util profile example --mode full
 ```
+`profile init` creates a minimal starter `grafana-util.yaml`. `profile add` can create a reusable Basic-auth or token-backed profile in one step, and `profile example` prints a fully commented reference template that you can copy and edit.
 
-### 2. Repo-Local Profiles (Recommended)
-Best for repeated operator work. Profiles store URL, auth, and timeout settings in a `grafana-profiles.yaml` file.
+By default, the config file lives next to your current checkout. If you point `GRAFANA_UTIL_CONFIG` somewhere else, the helper files follow that config directory:
 
-**Initialize a profile:**
+| File | Default location | Purpose |
+| :--- | :--- | :--- |
+| `grafana-util.yaml` | current working directory, or the path given by `GRAFANA_UTIL_CONFIG` | repo-local profile definitions |
+| `.grafana-util.secrets.yaml` | same directory as `grafana-util.yaml` | encrypted secret store used by `encrypted-file` mode |
+| `.grafana-util.secrets.key` | same directory as `grafana-util.yaml` | local key file used by `encrypted-file` without a passphrase |
+
+### 2. List the profiles in the config file
 ```bash
-grafana-util profile init
-```
-
-**View and manage profiles:**
-```bash
-# List all profiles
 grafana-util profile list
+```
+**Expected Output:**
+```text
+dev
+prod
+```
+On a freshly initialized config, `profile list` prints one discovered profile name per line.
 
-# Show detailed configuration for a specific profile
+Use the [profile](../../commands/en/profile.md) command reference when you want the flag-by-flag auth rules.
+
+### 3. Inspect one resolved profile
+```bash
 grafana-util profile show --profile prod --output-format yaml
 ```
+**Expected Output:**
+```text
+name: prod
+source_path: grafana-util.yaml
+profile:
+  url: https://grafana.example.com
+  username: admin
+  password_env: GRAFANA_PROD_PASSWORD
+  verify_ssl: true
+```
+Use `--profile` when you want to override the default-selection rules, and `yaml` when you want the resolved fields in a readable form.
 
 ---
 
-## 📋 Step 3: Safe First Commands
+## 📋 Step 3: First Read-Only Checks
 
-Before performing any mutations (import/apply), verify read access with these safe, non-destructive commands.
+Once a profile file exists, use read-only commands to confirm the current command shape before you touch live data.
 
-| Task | Full Command Example | Proves |
-| :--- | :--- | :--- |
-| **Inventory** | `grafana-util dashboard list --all-orgs --with-sources --table` | API connectivity and folder visibility. |
-| **Datasources** | `grafana-util datasource list --table` | Ability to read datasource plugins and types. |
-| **Readiness** | `grafana-util status live --output-format table` | Full project-wide health and readiness report. |
-| **Overview** | `grafana-util overview live` | Human-facing summary of the entire estate. |
+### 1. Project Status Entry Point
+```bash
+grafana-util status live -h
+```
+**Expected Output:**
+```text
+Render project status from live Grafana read surfaces. Use current Grafana state plus optional staged context files.
+
+Usage: grafana-util status live [OPTIONS]
+
+Options:
+      --profile <PROFILE>
+          Load connection defaults from the selected repo-local profile in grafana-util.yaml.
+      --url <URL>
+          Grafana base URL. [default: http://localhost:3000]
+```
+`status live` queries Grafana directly, and its output selector is `--output`, not `--output-format`.
+
+### 2. Overview Entry Point
+```bash
+grafana-util overview live -h
+```
+**Expected Output:**
+```text
+Render a live overview by delegating to the shared status live path.
+
+Examples:
+  grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output interactive
+  grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output yaml
+```
+`overview live` is a thin wrapper over shared live status. Use `--output yaml` for a readable summary and `--output interactive` for the TUI workbench.
+
+### 3. Run the same read-only check in both common auth styles
+```bash
+grafana-util overview live --profile prod --output yaml
+grafana-util overview live --url http://localhost:3000 --basic-user admin --prompt-password --output interactive
+```
+Use the profile form for normal repeatable work. Keep the direct Basic-auth form for bootstrap, break-glass access, or admin-only workflows when you are not ready to create a profile yet.
+
+### 4. Know the common token limitation
+
+Token auth can be enough for single-org read flows, but multi-org or admin-scoped operations often need a user session or Basic auth with broader Grafana privileges.
+
+- `--all-orgs` inventory and export flows are safest with `--profile` backed by admin credentials or with direct Basic auth.
+- Org, user, team, and service-account management commonly needs admin-level credentials and may not work with a narrow API token.
+- When a token cannot see all target orgs, the command output is limited by that token's scope even if the flags ask for a broader view.
 
 ---
 
 ## 🖥️ Interactive Mode (TUI)
 
-Some commands support a **Terminal User Interface (TUI)** for guided human review. Note that these are separate from automation-friendly outputs like JSON.
-
-| Command | Usage | Best for |
-| :--- | :--- | :--- |
-| `dashboard browse` | `grafana-util dashboard browse` | Guided discovery of live dashboards. |
-| `inspect` | `grafana-util dashboard inspect-export --interactive` | Offline review of exported dashboard trees. |
-| `overview` | `grafana-util overview --output interactive` | Visual dashboard of project status in the terminal. |
+`grafana-util dashboard browse` opens the live dashboard tree in a terminal UI. `overview live --output interactive` opens the interactive overview mode.
 
 ---
-
-## ⏭️ Next Steps
-
-- Consult the [**Reference**](./reference.md) for detailed flag documentation and authentication rules.
-- Follow the [**Scenarios**](./scenarios.md) for step-by-step workflows (e.g., migration, backup).
+[🏠 Home](index.md) | [➡️ Next: Architecture & Design](architecture.md)

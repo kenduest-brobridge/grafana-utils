@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>維運情境手冊 (Operator Scenarios) · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+    --panel: rgba(15, 23, 32, 0.86);
+    --panel-strong: rgba(15, 23, 32, 0.94);
+    --text: #d9e2ec;
+    --muted: #9fb3c8;
+    --heading: #f0f4f8;
+    --accent: #7bdcb5;
+    --accent-soft: rgba(18, 53, 40, 0.9);
+    --border: #243b53;
+    --code-bg: #1f2933;
+    --pre-bg: #081018;
+    --pre-text: #e6edf3;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] body {
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+html[data-theme="dark"] body {
+  --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --panel: rgba(15, 23, 32, 0.86);
+  --panel-strong: rgba(15, 23, 32, 0.94);
+  --text: #d9e2ec;
+  --muted: #9fb3c8;
+  --heading: #f0f4f8;
+  --accent: #7bdcb5;
+  --accent-soft: rgba(18, 53, 40, 0.9);
+  --border: #243b53;
+  --code-bg: #1f2933;
+  --pre-bg: #081018;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+a { color: var(--accent); }
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 0.98rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+th {
+  text-align: left;
+  background: var(--accent-soft);
+}
+.site {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 28px 22px 68px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.brand {
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.themebar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.hero {
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--heading);
+}
+.hero p {
+  max-width: 74ch;
+  margin: 14px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.breadcrumbs {
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  font-size: 0.96rem;
+  color: var(--muted);
+}
+.breadcrumbs li::after {
+  content: "/";
+  margin-left: 10px;
+}
+.breadcrumbs li:last-child::after {
+  content: "";
+  margin: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px;
+  margin-top: 22px;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article {
+  padding: 30px;
+}
+.article h1,
+.article h2,
+.article h3 {
+  color: var(--heading);
+}
+.article h1 {
+  margin-top: 0;
+}
+.article h2 {
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.article h3 {
+  margin-top: 28px;
+}
+.article p,
+.article li {
+  font-size: 1.03rem;
+  line-height: 1.8;
+}
+.sidebar {
+  padding: 22px;
+}
+.sidebar section + section {
+  margin-top: 20px;
+}
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li + li {
+  margin-top: 8px;
+}
+.sidebar a {
+  text-decoration: none;
+}
+.link-card {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+.footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.footer-nav .link-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.site-footer {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.landing-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.landing-card h2 {
+  margin-top: 0;
+  color: var(--heading);
+}
+.landing-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+@media (max-width: 980px) {
+  .layout,
+  .landing-grid,
+  .footer-nav {
+    grid-template-columns: 1fr;
+  }
+}</style>
+</head>
+<body>
+  <div class="site">
+    <div class="topbar">
+      <a class="brand" href="../../index.html">grafana-util docs</a>
+      <div class="themebar">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+    <header class="hero">
+      <div class="eyebrow">Handbook · 繁體中文</div>
+      <h1>維運情境手冊 (Operator Scenarios)</h1>
+      <p>敘事式手冊頁面，適合照工作流閱讀，再跳到逐指令頁查精確命令面。</p>
+      <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Handbook</a></li><li>繁體中文</li><li>維運情境手冊 (Operator Scenarios)</li></ol>
+    </header>
+    <div class="layout">
+      <article class="panel article">
+        <h1 id="維運情境手冊-operator-scenarios">維運情境手冊 (Operator Scenarios)</h1>
+<p>本章把分散的指令家族整理成端對端的工作流程。</p>
+<p>如果要對照每個工作流對應的精確旗標，請搭配 <a href="../../commands/zh-TW/dashboard.html">dashboard</a>、<a href="../../commands/zh-TW/access.html">access</a>、<a href="../../commands/zh-TW/alert.html">alert</a>、<a href="../../commands/zh-TW/change.html">change</a>、<a href="../../commands/zh-TW/status.html">status</a> 與 <a href="../../commands/zh-TW/overview.html">overview</a> 一起看。</p>
+<h2 id="1-變更前環境驗證">1. 變更前環境驗證</h2>
+<p>在執行任何變更前，先確認連線正確且版本一致。</p>
+<pre><code>grafana-util profile list</code></pre>
+<pre><code>grafana-util status live --profile prod --output table</code></pre>
+<pre><code>grafana-util overview live --profile prod --output interactive</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>PROFILES:
+  * prod (預設) -&gt; http://grafana.internal
+
+OVERALL: status=ready
+
+Project overview
+Live status: ready</code></pre>
+<p>先用 <code>profile list</code> 確認 repo-local 預設值，再用 <code>status live</code> 做驗證，最後用 <code>overview live --output interactive</code> 看同一個 live surface 的可瀏覽版本。</p>
+<h2 id="2-全資產稽核-estate-wide-audit">2. 全資產稽核 (Estate-Wide Audit)</h2>
+<p>盤點跨組織的所有資產。</p>
+<pre><code>grafana-util dashboard list --profile prod --all-orgs --with-sources --table</code></pre>
+<pre><code>grafana-util access org list --basic-user admin --basic-password admin --with-users --output-format yaml</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>UID        TITLE             FOLDER    ORG   SOURCES
+cpu-view   CPU Metrics       Metrics   1     prometheus-main
+mem-view   Memory Usage      Metrics   5     loki-prod
+
+id: 1
+name: Main Org
+users:
+  - alice@example.com</code></pre>
+<p>Dashboard 與 access inventory 一起看，才比較能在動手前回答「目前到底有哪些東西」。</p>
+<h2 id="3-可靠的備份-dashboard-export">3. 可靠的備份 (Dashboard Export)</h2>
+<p>將即時 Dashboard 匯出為可持久化的目錄結構。</p>
+<pre><code>grafana-util dashboard export --export-dir ./backups --overwrite --progress</code></pre>
+<pre><code>grafana-util access org export --export-dir ./access-orgs</code></pre>
+<pre><code>grafana-util access service-account export --export-dir ./access-service-accounts</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>Exporting dashboard 1/32: cpu-metrics
+Exporting dashboard 2/32: memory-leak-check
+...
+匯出完成：32 個儀表板已儲存至 ./backups/raw
+
+Exported organization inventory -&gt; access-orgs/orgs.json
+Exported service account inventory -&gt; access-service-accounts/service-accounts.json</code></pre>
+<p>如果目標是建立可重播的 estate snapshot，dashboard、org 與 service-account 的匯出最好一起保留。</p>
+<h2 id="4-受控的恢復-dashboard-import">4. 受控的恢復 (Dashboard Import)</h2>
+<p>將備份回放到即時 Grafana 實例。</p>
+<pre><code>grafana-util dashboard import --import-dir ./backups/raw --replace-existing --dry-run --table</code></pre>
+<pre><code>grafana-util access team import --import-dir ./access-teams --replace-existing --dry-run --table</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>UID        TITLE          ACTION   DESTINATION
+cpu-view   CPU Metrics    update   exists
+net-view   Network IO     create   missing
+
+LOGIN       ROLE    ACTION   STATUS
+dev-admin   Admin   update   existing
+ops-user    Viewer  create   missing</code></pre>
+<p>先看 dry-run 表格，再決定這次回放是以新增為主，還是會覆寫既有資產。</p>
+<h2 id="5-告警治理流程-planapply">5. 告警治理流程 (Plan/Apply)</h2>
+<p>告警變更應遵循受審查的生命週期。</p>
+<pre><code>grafana-util change summary --desired-file ./desired.json</code></pre>
+<pre><code>grafana-util change preflight --desired-file ./desired.json --output json</code></pre>
+<pre><code>grafana-util alert plan --profile prod --desired-dir ./alerts/desired --output json</code></pre>
+<p><strong>預期輸出 (摘要片段)：</strong></p>
+<pre><code>CHANGE PACKAGE SUMMARY:
+- dashboards: 5 modified, 2 added
+- alerts: 3 modified
+
+PREFLIGHT CHECK:
+- dashboards: valid (7 files)
+- result: 0 errors, 0 blockers
+
+{
+  &quot;summary&quot;: { &quot;modified&quot;: 2, &quot;added&quot;: 1, &quot;deleted&quot;: 0 },
+  &quot;plan_id&quot;: &quot;plan-2026-04-02-abc&quot;
+}</code></pre>
+<p>想先了解變更包規模時，先跑 <code>change summary</code>；要確認 staged 輸入結構正確時，再跑 <code>change preflight</code>；最後才進入 alert-specific planning。</p>
+<h2 id="6-身份快照回放-access-management">6. 身份快照回放 (Access Management)</h2>
+<p>透過快照管理使用者、團隊與服務帳號。</p>
+<pre><code>grafana-util access user import --import-dir ./access-users --dry-run --table</code></pre>
+<pre><code>grafana-util access service-account token add --service-account-id 15 --token-name nightly --seconds-to-live 3600 --json</code></pre>
+<pre><code>grafana-util access service-account token delete --service-account-id 15 --token-name nightly --yes --json</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>LOGIN       ROLE    ACTION   STATUS
+dev-admin   Admin   update   existing
+ops-user    Viewer  create   missing
+
+{
+  &quot;serviceAccountId&quot;: &quot;15&quot;,
+  &quot;name&quot;: &quot;nightly&quot;,
+  &quot;secondsToLive&quot;: &quot;3600&quot;,
+  &quot;key&quot;: &quot;eyJ...&quot;
+}</code></pre>
+<p>這個工作流是用來安全回放身分狀態的：使用者先看 import dry-run，自動化憑證則透過 service-account token 指令做輪替，不必靠猜目標帳號。</p>
+<p><a href="change-overview-status.html">⬅️ 上一章：變更與狀態</a> | <a href="index.html">🏠 回首頁</a> | <a href="reference.html">➡️ 下一章：技術參考手冊</a></p>
+        <nav class="footer-nav"><a class="link-card" href="change-overview-status.html"><span>Previous</span>專案狀態與變更總覽 (Change &amp; Status)</a><a class="link-card" href="recipes.html"><span>Next</span>🍳 實戰錦囊與最佳實踐</a></nav>
+      </article>
+      <aside class="panel sidebar">
+        <section>
+          <h2>On This Page</h2>
+          <ul><li><a class="link-card" href="#1-變更前環境驗證">1. 變更前環境驗證</a></li><li><a class="link-card" href="#2-全資產稽核-estate-wide-audit">2. 全資產稽核 (Estate-Wide Audit)</a></li><li><a class="link-card" href="#3-可靠的備份-dashboard-export">3. 可靠的備份 (Dashboard Export)</a></li><li><a class="link-card" href="#4-受控的恢復-dashboard-import">4. 受控的恢復 (Dashboard Import)</a></li><li><a class="link-card" href="#5-告警治理流程-planapply">5. 告警治理流程 (Plan/Apply)</a></li><li><a class="link-card" href="#6-身份快照回放-access-management">6. 身份快照回放 (Access Management)</a></li></ul>
+        </section>
+        <section>
+          <h2>Related</h2>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/zh-TW/index.html">Command reference index</a></li></ul>
+        </section>
+        <section>
+          <h2>Language</h2>
+          <ul><li><a class="link-card" href="#">Current: 繁體中文</a></li><li><a class="link-card" href="../en/scenarios.html">Switch to English</a></li></ul>
+        </section>
+      </aside>
+    </div>
+    <footer class="site-footer">Source: <code>docs/user-guide/zh-TW/scenarios.md</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script>
+(() => {
+  const storageKey = "grafana-util-docs-theme";
+  const root = document.documentElement;
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (value) => {
+    if (value === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", value);
+    }
+  };
+  applyTheme(saved);
+  if (select) {
+    select.value = saved;
+    select.addEventListener("change", (event) => {
+      const value = event.target.value;
+      localStorage.setItem(storageKey, value);
+      applyTheme(value);
+    });
+  }
+})();
+</script>
+</body>
+</html>

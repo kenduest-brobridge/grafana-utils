@@ -8,6 +8,7 @@ VERSION="${VERSION:-latest}"
 BIN_DIR="${BIN_DIR:-}"
 ASSET_URL="${ASSET_URL:-}"
 INSTALL_TMPDIR="${TMPDIR:-/tmp}"
+RUST_ARTIFACT_FLAVOR="${RUST_ARTIFACT_FLAVOR:-standard}"
 
 log() {
   printf '%s\n' "$*"
@@ -82,6 +83,7 @@ resolve_latest_tag() {
 OS=$(detect_os)
 ARCH=$(detect_arch)
 PLATFORM="${OS}-${ARCH}"
+ARTIFACT_SUFFIX="$(resolve_artifact_suffix)"
 
 case "$PLATFORM" in
   linux-amd64|macos-arm64) ;;
@@ -99,7 +101,7 @@ else
   else
     release_tag=$(normalize_tag "$VERSION")
   fi
-  archive_name="grafana-utils-rust-${PLATFORM}-${release_tag}.tar.gz"
+  archive_name="grafana-utils-rust-${PLATFORM}${ARTIFACT_SUFFIX}-${release_tag}.tar.gz"
   archive_url="https://github.com/${REPO}/releases/download/${release_tag}/${archive_name}"
 fi
 
@@ -133,3 +135,10 @@ case ":${PATH:-}:" in
     log "  export PATH=\"${install_dir}:\$PATH\""
     ;;
 esac
+resolve_artifact_suffix() {
+  case "$RUST_ARTIFACT_FLAVOR" in
+    standard) printf '%s\n' "" ;;
+    browser) printf '%s\n' "-browser" ;;
+    *) fail "unsupported RUST_ARTIFACT_FLAVOR: ${RUST_ARTIFACT_FLAVOR}; supported values: standard, browser" ;;
+  esac
+}

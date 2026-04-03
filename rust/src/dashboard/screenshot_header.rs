@@ -1,5 +1,5 @@
 //! Dashboard screenshot header and capture metadata helpers.
-#![cfg_attr(not(any(feature = "browser", test)), allow(dead_code))]
+#![cfg_attr(not(feature = "browser"), allow(dead_code))]
 
 use chrono::Local;
 #[cfg(feature = "browser")]

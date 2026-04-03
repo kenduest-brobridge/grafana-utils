@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dashboard raw-to-prompt · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+    --panel: rgba(15, 23, 32, 0.86);
+    --panel-strong: rgba(15, 23, 32, 0.94);
+    --text: #d9e2ec;
+    --muted: #9fb3c8;
+    --heading: #f0f4f8;
+    --accent: #7bdcb5;
+    --accent-soft: rgba(18, 53, 40, 0.9);
+    --border: #243b53;
+    --code-bg: #1f2933;
+    --pre-bg: #081018;
+    --pre-text: #e6edf3;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] body {
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+html[data-theme="dark"] body {
+  --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --panel: rgba(15, 23, 32, 0.86);
+  --panel-strong: rgba(15, 23, 32, 0.94);
+  --text: #d9e2ec;
+  --muted: #9fb3c8;
+  --heading: #f0f4f8;
+  --accent: #7bdcb5;
+  --accent-soft: rgba(18, 53, 40, 0.9);
+  --border: #243b53;
+  --code-bg: #1f2933;
+  --pre-bg: #081018;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+a { color: var(--accent); }
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 0.98rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+th {
+  text-align: left;
+  background: var(--accent-soft);
+}
+.site {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 28px 22px 68px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.brand {
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.themebar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.hero {
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--heading);
+}
+.hero p {
+  max-width: 74ch;
+  margin: 14px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.breadcrumbs {
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  font-size: 0.96rem;
+  color: var(--muted);
+}
+.breadcrumbs li::after {
+  content: "/";
+  margin-left: 10px;
+}
+.breadcrumbs li:last-child::after {
+  content: "";
+  margin: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px;
+  margin-top: 22px;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article {
+  padding: 30px;
+}
+.article h1,
+.article h2,
+.article h3 {
+  color: var(--heading);
+}
+.article h1 {
+  margin-top: 0;
+}
+.article h2 {
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.article h3 {
+  margin-top: 28px;
+}
+.article p,
+.article li {
+  font-size: 1.03rem;
+  line-height: 1.8;
+}
+.sidebar {
+  padding: 22px;
+}
+.sidebar section + section {
+  margin-top: 20px;
+}
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li + li {
+  margin-top: 8px;
+}
+.sidebar a {
+  text-decoration: none;
+}
+.link-card {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+.footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.footer-nav .link-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.site-footer {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.landing-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.landing-card h2 {
+  margin-top: 0;
+  color: var(--heading);
+}
+.landing-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+@media (max-width: 980px) {
+  .layout,
+  .landing-grid,
+  .footer-nav {
+    grid-template-columns: 1fr;
+  }
+}</style>
+</head>
+<body>
+  <div class="site">
+    <div class="topbar">
+      <a class="brand" href="../../index.html">grafana-util docs</a>
+      <div class="themebar">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+    <header class="hero">
+      <div class="eyebrow">Command Reference · English</div>
+      <h1>dashboard raw-to-prompt</h1>
+      <p>Stable command-reference pages for exact flags, examples, nearby commands, and the matching handbook context.</p>
+      <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Command Reference</a></li><li>English</li><li>dashboard raw-to-prompt</li></ol>
+    </header>
+    <div class="layout">
+      <article class="panel article">
+        <h1 id="dashboard-raw-to-prompt">dashboard raw-to-prompt</h1>
+<h2 id="purpose">Purpose</h2>
+<p>Convert ordinary dashboard JSON or <code>raw/</code> lane files into Grafana UI prompt JSON with <code>__inputs</code>.</p>
+<h2 id="when-to-use">When to use</h2>
+<p>Use this when someone gives you a normal Grafana dashboard export, legacy raw JSON, or a <code>raw/</code> lane file and you need a prompt-safe file for the Grafana UI <code>Upload JSON</code> flow.</p>
+<h2 id="key-flags">Key flags</h2>
+<ul><li><code>--input-file</code>: repeat this for one or more dashboard JSON files.</li><li><code>--input-dir</code>: convert a directory tree. For <code>raw/</code> or export roots, the default output is a sibling <code>prompt/</code> lane.</li><li><code>--output-file</code>: write one explicit output file. Only valid with one <code>--input-file</code>.</li><li><code>--output-dir</code>: write converted files under one output tree.</li><li><code>--overwrite</code>: replace existing prompt files.</li><li><code>--datasource-map</code>: optional JSON or YAML map for repairing datasource references.</li><li><code>--resolution</code>: choose <code>infer-family</code>, <code>exact</code>, or <code>strict</code>.</li><li><code>--profile</code>, <code>--url</code>, <code>--token</code>, <code>--basic-user</code>, <code>--basic-password</code>, <code>--org-id</code>: optional live datasource lookup inputs used to augment datasource resolution.</li><li><code>--dry-run</code>: show what would be converted without writing files.</li><li><code>--progress</code>, <code>--verbose</code>: show progress lines or detailed per-file results.</li><li><code>--output-format</code>: render the final summary as <code>text</code>, <code>table</code>, <code>json</code>, or <code>yaml</code>.</li><li><code>--log-file</code>, <code>--log-format</code>: write per-item success/fail events to a text log or NDJSON log.</li><li><code>--color</code>: colorize summary output with <code>auto</code>, <code>always</code>, or <code>never</code>.</li></ul>
+<h2 id="workflow-notes">Workflow notes</h2>
+<ul><li>Single-file mode defaults to a sibling <code>*.prompt.json</code> output.</li><li>Repeated <code>--input-file</code> flags also default to sibling <code>*.prompt.json</code> outputs beside each source file.</li><li>Plain directory input requires <code>--output-dir</code> so generated prompt files do not mix into arbitrary source trees.</li><li><code>raw/</code> or combined export roots default to a sibling/generated <code>prompt/</code> lane and also write <code>index.json</code> plus <code>export-metadata.json</code>.</li><li><code>prompt/</code> artifacts are for the Grafana UI <code>Upload JSON</code> flow. They are not valid input for <code>grafana-util dashboard import</code>, which still expects <code>raw/</code> or <code>provisioning/</code>.</li><li>If you provide <code>--profile</code> or other live auth flags, the command queries the target Grafana datasource inventory and prefers those live matches over staged raw inventory.</li></ul>
+<h2 id="datasource-resolution">Datasource resolution</h2>
+<ul><li><code>infer-family</code> is the default practical mode. It can repair unambiguous families such as Prometheus, Loki, or Flux/Influx from query shape.</li><li><code>exact</code> requires an exact datasource match from embedded data, raw inventory, or <code>--datasource-map</code>.</li><li><code>exact</code> can also succeed through optional live datasource lookup when you provide <code>--profile</code> or direct live auth flags.</li><li><code>strict</code> fails as soon as a datasource cannot be resolved exactly.</li><li>When a dashboard uses multiple distinguishable datasource references, the command keeps multiple prompt slots instead of merging only by family.</li><li>Ambiguous families such as generic SQL/search/tracing still need better source data or an explicit <code>--datasource-map</code>.</li></ul>
+<h2 id="placeholder-model">Placeholder model</h2>
+<ul><li><code>$datasource</code> is a dashboard variable reference. It means the dashboard or panel is selecting a datasource through a Grafana variable named <code>datasource</code>.</li><li><code>${DS_PROMETHEUS}</code> or <code>${DS_*}</code> is an external-import input placeholder. It means Grafana should ask for a datasource during <code>Upload JSON</code> and then inject the selected value.</li><li>These are related but not identical. A generated prompt file can legitimately contain both:</li><li><code>${DS_*}</code> in <code>__inputs</code> and some typed datasource references</li><li><code>$datasource</code> in panel-level datasource fields that intentionally keep the dashboard-variable flow</li><li><code>raw-to-prompt</code> tries to preserve that distinction instead of flattening everything into one placeholder style.</li><li>If a dashboard historically used Grafana datasource variables, the migrated prompt may still contain <code>$datasource</code> alongside <code>__inputs</code>.</li></ul>
+<h2 id="examples">Examples</h2>
+<pre><code>grafana-util dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json</code></pre>
+<pre><code>grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu.json --input-file ./legacy/logs.json --progress</code></pre>
+<pre><code>grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --overwrite</code></pre>
+<pre><code>grafana-util dashboard raw-to-prompt --input-dir ./legacy-json --output-dir ./converted/prompt --output-format table</code></pre>
+<pre><code>grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu.json --datasource-map ./datasource-map.yaml --resolution exact --log-file ./raw-to-prompt.log --log-format json</code></pre>
+<pre><code>grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu.json --profile prod --org-id 2 --resolution exact</code></pre>
+<h2 id="related-commands">Related commands</h2>
+<ul><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-inspect-export.html">dashboard inspect-export</a></li><li><a href="dashboard-diff.html">dashboard diff</a></li></ul>
+        
+      </article>
+      <aside class="panel sidebar">
+        <section>
+          <h2>On This Page</h2>
+          <ul><li><a class="link-card" href="#purpose">Purpose</a></li><li><a class="link-card" href="#when-to-use">When to use</a></li><li><a class="link-card" href="#key-flags">Key flags</a></li><li><a class="link-card" href="#workflow-notes">Workflow notes</a></li><li><a class="link-card" href="#datasource-resolution">Datasource resolution</a></li><li><a class="link-card" href="#placeholder-model">Placeholder model</a></li><li><a class="link-card" href="#examples">Examples</a></li><li><a class="link-card" href="#related-commands">Related commands</a></li></ul>
+        </section>
+        <section>
+          <h2>Related</h2>
+          <ul><li><a class="link-card" href="index.html">Command reference home</a></li><li><a class="link-card" href="../../handbook/en/dashboard.html">Matching handbook chapter</a></li><li><a class="link-card" href="../../../man/grafana-util.1">Top-level manpage</a></li></ul>
+        </section>
+        <section>
+          <h2>Language</h2>
+          <ul><li><a class="link-card" href="#">Current: English</a></li><li><a class="link-card" href="../zh-TW/dashboard-raw-to-prompt.html">Switch to 繁體中文</a></li></ul>
+        </section>
+      </aside>
+    </div>
+    <footer class="site-footer">Source: <code>docs/commands/en/dashboard-raw-to-prompt.md</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script>
+(() => {
+  const storageKey = "grafana-util-docs-theme";
+  const root = document.documentElement;
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (value) => {
+    if (value === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", value);
+    }
+  };
+  applyTheme(saved);
+  if (select) {
+    select.value = saved;
+    select.addEventListener("change", (event) => {
+      const value = event.target.value;
+      localStorage.setItem(storageKey, value);
+      applyTheme(value);
+    });
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,5 +1,9 @@
 //! Dashboard CLI parser/help regressions kept separate from runtime-heavy tests.
-use super::super::{parse_cli_from, DashboardCliArgs, DashboardCommand, SimpleOutputFormat};
+use super::super::{
+    parse_cli_from, DashboardCliArgs, DashboardCommand, RawToPromptLogFormat,
+    RawToPromptOutputFormat, RawToPromptResolution, SimpleOutputFormat,
+};
+use crate::common::CliColorChoice;
 use crate::dashboard::DashboardImportInputFormat;
 use clap::{CommandFactory, Parser};
 use std::path::PathBuf;
@@ -195,6 +199,194 @@ fn parse_cli_supports_export_org_scope_flags() {
         }
         _ => panic!("expected export command"),
     }
+}
+
+#[test]
+fn parse_cli_supports_raw_to_prompt_command_defaults() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "raw-to-prompt",
+        "--input-file",
+        "./dashboards/raw/cpu-main.json",
+    ]);
+
+    match args.command {
+        DashboardCommand::RawToPrompt(raw_args) => {
+            assert_eq!(
+                raw_args.input_file,
+                vec![PathBuf::from("./dashboards/raw/cpu-main.json")]
+            );
+            assert_eq!(raw_args.input_dir, None);
+            assert_eq!(raw_args.output_file, None);
+            assert_eq!(raw_args.output_dir, None);
+            assert!(!raw_args.overwrite);
+            assert_eq!(raw_args.output_format, RawToPromptOutputFormat::Text);
+            assert!(!raw_args.no_header);
+            assert_eq!(raw_args.color, CliColorChoice::Auto);
+            assert!(!raw_args.progress);
+            assert!(!raw_args.verbose);
+            assert!(!raw_args.dry_run);
+            assert_eq!(raw_args.log_file, None);
+            assert_eq!(raw_args.log_format, RawToPromptLogFormat::Text);
+            assert_eq!(raw_args.resolution, RawToPromptResolution::InferFamily);
+            assert_eq!(raw_args.datasource_map, None);
+            assert_eq!(raw_args.profile, None);
+            assert_eq!(raw_args.url, None);
+            assert_eq!(raw_args.api_token, None);
+            assert_eq!(raw_args.username, None);
+            assert_eq!(raw_args.password, None);
+            assert!(!raw_args.prompt_password);
+            assert!(!raw_args.prompt_token);
+            assert_eq!(raw_args.org_id, None);
+            assert_eq!(raw_args.timeout, None);
+            assert!(!raw_args.verify_ssl);
+        }
+        _ => panic!("expected raw-to-prompt command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_raw_to_prompt_command_flags() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "raw-to-prompt",
+        "--input-dir",
+        "./dashboards/raw",
+        "--output-dir",
+        "./dashboards/prompt",
+        "--output-format",
+        "yaml",
+        "--no-header",
+        "--color",
+        "always",
+        "--progress",
+        "--verbose",
+        "--dry-run",
+        "--log-file",
+        "./raw-to-prompt.log",
+        "--log-format",
+        "json",
+        "--resolution",
+        "exact",
+        "--datasource-map",
+        "./datasource-map.json",
+        "--profile",
+        "prod",
+        "--url",
+        "https://grafana.example.com",
+        "--basic-user",
+        "admin",
+        "--basic-password",
+        "admin",
+        "--org-id",
+        "2",
+        "--timeout",
+        "45",
+        "--verify-ssl",
+        "--overwrite",
+    ]);
+
+    match args.command {
+        DashboardCommand::RawToPrompt(raw_args) => {
+            assert_eq!(raw_args.input_file, Vec::<PathBuf>::new());
+            assert_eq!(raw_args.input_dir, Some(PathBuf::from("./dashboards/raw")));
+            assert_eq!(
+                raw_args.output_dir,
+                Some(PathBuf::from("./dashboards/prompt"))
+            );
+            assert_eq!(raw_args.output_file, None);
+            assert!(raw_args.overwrite);
+            assert_eq!(raw_args.output_format, RawToPromptOutputFormat::Yaml);
+            assert!(raw_args.no_header);
+            assert_eq!(raw_args.color, CliColorChoice::Always);
+            assert!(raw_args.progress);
+            assert!(raw_args.verbose);
+            assert!(raw_args.dry_run);
+            assert_eq!(
+                raw_args.log_file,
+                Some(PathBuf::from("./raw-to-prompt.log"))
+            );
+            assert_eq!(raw_args.log_format, RawToPromptLogFormat::Json);
+            assert_eq!(raw_args.resolution, RawToPromptResolution::Exact);
+            assert_eq!(
+                raw_args.datasource_map,
+                Some(PathBuf::from("./datasource-map.json"))
+            );
+            assert_eq!(raw_args.profile.as_deref(), Some("prod"));
+            assert_eq!(raw_args.url.as_deref(), Some("https://grafana.example.com"));
+            assert_eq!(raw_args.username.as_deref(), Some("admin"));
+            assert_eq!(raw_args.password.as_deref(), Some("admin"));
+            assert_eq!(raw_args.org_id, Some(2));
+            assert_eq!(raw_args.timeout, Some(45));
+            assert!(raw_args.verify_ssl);
+        }
+        _ => panic!("expected raw-to-prompt command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_raw_to_prompt_multiple_input_files() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "raw-to-prompt",
+        "--input-file",
+        "./dashboards/raw/cpu-main.json",
+        "--input-file",
+        "./dashboards/raw/network-main.json",
+        "--output-file",
+        "./dashboards/prompt/cpu-main.prompt.json",
+    ]);
+
+    match args.command {
+        DashboardCommand::RawToPrompt(raw_args) => {
+            assert_eq!(
+                raw_args.input_file,
+                vec![
+                    PathBuf::from("./dashboards/raw/cpu-main.json"),
+                    PathBuf::from("./dashboards/raw/network-main.json"),
+                ]
+            );
+            assert_eq!(
+                raw_args.output_file,
+                Some(PathBuf::from("./dashboards/prompt/cpu-main.prompt.json"))
+            );
+        }
+        _ => panic!("expected raw-to-prompt command"),
+    }
+}
+
+#[test]
+fn parse_cli_rejects_raw_to_prompt_input_file_with_input_dir() {
+    let error = DashboardCliArgs::try_parse_from([
+        "grafana-util",
+        "raw-to-prompt",
+        "--input-file",
+        "./dashboards/raw/cpu-main.json",
+        "--input-dir",
+        "./dashboards/raw",
+    ])
+    .unwrap_err();
+
+    assert!(error.to_string().contains("--input-file"));
+    assert!(error.to_string().contains("--input-dir"));
+}
+
+#[test]
+fn parse_cli_rejects_raw_to_prompt_output_file_with_output_dir() {
+    let error = DashboardCliArgs::try_parse_from([
+        "grafana-util",
+        "raw-to-prompt",
+        "--input-file",
+        "./dashboards/raw/cpu-main.json",
+        "--output-file",
+        "./dashboards/prompt/cpu-main.prompt.json",
+        "--output-dir",
+        "./dashboards/prompt",
+    ])
+    .unwrap_err();
+
+    assert!(error.to_string().contains("--output-file"));
+    assert!(error.to_string().contains("--output-dir"));
 }
 
 #[test]
@@ -580,6 +772,29 @@ fn patch_file_help_mentions_in_place_and_output_paths() {
     assert!(help.contains("--tag"));
     assert!(help.contains("Patch a raw export file in place"));
     assert!(help.contains("Patch one draft file into a new output path"));
+}
+
+#[test]
+fn raw_to_prompt_help_mentions_defaults_and_output_controls() {
+    let help = render_dashboard_subcommand_help("raw-to-prompt");
+    assert!(help.contains("--input-file"));
+    assert!(help.contains("--input-dir"));
+    assert!(help.contains("--output-file"));
+    assert!(help.contains("--output-dir"));
+    assert!(help.contains("--output-format"));
+    assert!(help.contains("--no-header"));
+    assert!(help.contains("--color"));
+    assert!(help.contains("--progress"));
+    assert!(help.contains("--verbose"));
+    assert!(help.contains("--dry-run"));
+    assert!(help.contains("--log-file"));
+    assert!(help.contains("--log-format"));
+    assert!(help.contains("--resolution"));
+    assert!(help.contains("--datasource-map"));
+    assert!(help.contains("sibling .prompt.json"));
+    assert!(help.contains("prompt/ lane"));
+    assert!(help.contains("Convert raw dashboard exports into prompt lane artifacts."));
+    assert!(help.contains("Convert one raw export root into a sibling prompt/ lane"));
 }
 
 #[test]

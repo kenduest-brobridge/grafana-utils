@@ -41,6 +41,21 @@ Detailed requirements for the current dashboard staged export contract.
 - `schemaVersion` should bump only for real breaking changes to the dashboard
   root-manifest or staged input semantics.
 
+## Prompt Placeholder Boundary
+
+- `prompt/` artifacts may contain both dashboard-variable references and
+  external-import placeholders.
+- Treat `$datasource` as a Grafana dashboard variable reference, not as a raw
+  synonym for `${DS_*}`.
+- Treat `${DS_*}` as an external-import input placeholder backed by
+  `__inputs`.
+- Migration logic must preserve the distinction when the original dashboard
+  keeps a datasource-variable workflow alive inside panels or templating.
+- Do not infer mixed datasource families solely from the presence of
+  `$datasource`. That marker often means the dashboard is routing datasource
+  selection through one variable rather than hard-coding one concrete
+  datasource per panel.
+
 ## Documentation Guidance
 
 - Keep the short summary in `docs/DEVELOPER.md`.

@@ -1,154 +1,153 @@
 # 維運情境手冊 (Operator Scenarios)
 
-本章將離散的指令家族轉換為端對端的工作流。當您遇到具體問題、且需要一份導覽圖而非單一指令說明時，請參閱本章。
+本章把分散的指令家族整理成端對端的工作流程。
 
----
-
-## 📖 情境地圖 (Scenario Map)
-
-| 情境 | 任務目標 | 關鍵指令介面 |
-| :--- | :--- | :--- |
-| **[1. 變更前環境驗證](#1-變更前環境驗證)** | 在正式變更前，證明連線正確且環境健康。 | `status`, `profile` |
-| **[2. 全資產稽核](#2-全資產稽核)** | 產生資產清單、整備度與健康度報告。 | `dashboard`, `datasource`, `overview` |
-| **[3. 可靠的備份](#3-可靠的備份)** | 匯出資產以供版本控制或災難恢復。 | `dashboard export` |
-| **[4. 受控的恢復](#4-受控的恢復)** | 安全地將備份回放到即時 Grafana 實例。 | `dashboard import` |
-| **[5. 告警治理流程](#5-告警治理流程)** | 透過「計畫 / 套用」週期管理告警變更。 | `alert` |
-| **[6. 身份快照回放](#6-身份快照回放)** | 管理組織、使用者與團隊的身份狀態。 | `access` |
-| **[7. 暫存發佈流程](#7-暫存發佈流程)** | 處理跨域的大型變更包。 | `change`, `status` |
+如果要對照每個工作流對應的精確旗標，請搭配 [dashboard](../../commands/zh-TW/dashboard.md)、[access](../../commands/zh-TW/access.md)、[alert](../../commands/zh-TW/alert.md)、[change](../../commands/zh-TW/change.md)、[status](../../commands/zh-TW/status.md) 與 [overview](../../commands/zh-TW/overview.md) 一起看。
 
 ---
 
 ## 1. 變更前環境驗證
 
-在執行任何變更 (Mutation) 前，請先證明 CLI 指向正確的目標。
-
-**工作流：**
-1. 驗證 binary 版本。
-2. 載入 Profile 或手動指定連線。
-3. 執行一個安全的唯讀健康檢查。
+在執行任何變更前，先確認連線正確且版本一致。
 
 ```bash
-grafana-util --version
 grafana-util profile list
-grafana-util status live --profile prod --output-format table
+grafana-util status live --profile prod --output table
+grafana-util overview live --profile prod --output interactive
 ```
+**預期輸出：**
+```text
+PROFILES:
+  * prod (預設) -> http://grafana.internal
 
-**如何解讀狀態：**
-- **Overall: status=ready**：您的連線與專案健康度處於最佳狀態。
-- **Overall: status=blocked**：存在關鍵錯誤 (Blockers)，這會阻擋安全的維運作業。
+OVERALL: status=ready
+
+Project overview
+Live status: ready
+```
+先用 `profile list` 確認 repo-local 預設值，再用 `status live` 做驗證，最後用 `overview live --output interactive` 看同一個 live surface 的可瀏覽版本。
 
 ---
 
-## 2. 全資產稽核
+## 2. 全資產稽核 (Estate-Wide Audit)
 
-最適合用於上線前稽核、安全性檢查或變更前快照。
-
-**工作流：**
-1. 列出所有 Dashboard 與其資料來源依賴。
-2. 總結整個專案的整備度。
+盤點跨組織的所有資產。
 
 ```bash
-# 盤點跨組織的所有 Dashboard 與資料來源
 grafana-util dashboard list --profile prod --all-orgs --with-sources --table
-
-# 全專案的高階健康度快照
-grafana-util overview live --profile prod
+grafana-util access org list --basic-user admin --basic-password admin --with-users --output-format yaml
 ```
+**預期輸出：**
+```text
+UID        TITLE             FOLDER    ORG   SOURCES
+cpu-view   CPU Metrics       Metrics   1     prometheus-main
+mem-view   Memory Usage      Metrics   5     loki-prod
+
+id: 1
+name: Main Org
+users:
+  - alice@example.com
+```
+Dashboard 與 access inventory 一起看，才比較能在動手前回答「目前到底有哪些東西」。
 
 ---
 
-## 3. 可靠的備份 (Dashboard 匯出)
+## 3. 可靠的備份 (Dashboard Export)
 
-將 live Dashboard 匯出為可持久化的結構化目錄，以便進入版本控制。
+將即時 Dashboard 匯出為可持久化的目錄結構。
 
 ```bash
-grafana-util dashboard export \
-  --url http://localhost:3000 \
-  --basic-user admin \
-  --basic-password admin \
-  --export-dir ./backups \
-  --overwrite --progress
+grafana-util dashboard export --export-dir ./backups --overwrite --progress
+grafana-util access org export --export-dir ./access-orgs
+grafana-util access service-account export --export-dir ./access-service-accounts
 ```
+**預期輸出：**
+```text
+Exporting dashboard 1/32: cpu-metrics
+Exporting dashboard 2/32: memory-leak-check
+...
+匯出完成：32 個儀表板已儲存至 ./backups/raw
 
-**檢查重點：**
-- `raw/`：您的主要備份來源，供日後還原使用。
-- `export-metadata.json`：總結包含哪些組織與 Dashboard。
+Exported organization inventory -> access-orgs/orgs.json
+Exported service account inventory -> access-service-accounts/service-accounts.json
+```
+如果目標是建立可重播的 estate snapshot，dashboard、org 與 service-account 的匯出最好一起保留。
 
 ---
 
-## 4. 受控的恢復 (Dashboard 匯入)
+## 4. 受控的恢復 (Dashboard Import)
 
-將備份重新回放到 live Grafana。**請務必先執行 Dry-Run。**
+將備份回放到即時 Grafana 實例。
 
 ```bash
-grafana-util dashboard import \
-  --url http://localhost:3000 \
-  --basic-user admin \
-  --basic-password admin \
-  --import-dir ./backups/raw \
-  --replace-existing \
-  --dry-run \
-  --table
+grafana-util dashboard import --import-dir ./backups/raw --replace-existing --dry-run --table
+grafana-util access team import --import-dir ./access-teams --replace-existing --dry-run --table
 ```
+**預期輸出：**
+```text
+UID        TITLE          ACTION   DESTINATION
+cpu-view   CPU Metrics    update   exists
+net-view   Network IO     create   missing
 
-**如何解讀匯入預覽：**
-- **ACTION=create**：找不到該 UID 的現有 Dashboard；將會新增。
-- **ACTION=update**：該 UID 的 Dashboard 已存在；將會被覆蓋。
-- **DESTINATION=exists**：確認目標 UID 確實已存在於 Grafana 中。
+LOGIN       ROLE    ACTION   STATUS
+dev-admin   Admin   update   existing
+ops-user    Viewer  create   missing
+```
+先看 dry-run 表格，再決定這次回放是以新增為主，還是會覆寫既有資產。
 
 ---
 
-## 5. 告警治理流程 (計畫 / 套用)
+## 5. 告警治理流程 (Plan/Apply)
 
 告警變更應遵循受審查的生命週期。
 
-**工作流：**
-1. 編寫：在 Desired 目錄中編輯檔案或使用 `alert add-rule`。
-2. 審查：執行 `alert plan` 產生差異報告。
-3. 執行：執行 `alert apply` 提交已審查的變更。
-
 ```bash
-# 產生變更計畫
-grafana-util alert plan --profile prod --desired-dir ./alerts/desired --prune --output json
-
-# 審查後才執行套用
-grafana-util alert apply --profile prod --plan-file ./reviewed-plan.json --approve
+grafana-util change summary --desired-file ./desired.json
+grafana-util change preflight --desired-file ./desired.json --output json
+grafana-util alert plan --profile prod --desired-dir ./alerts/desired --output json
 ```
+**預期輸出 (摘要片段)：**
+```text
+CHANGE PACKAGE SUMMARY:
+- dashboards: 5 modified, 2 added
+- alerts: 3 modified
+
+PREFLIGHT CHECK:
+- dashboards: valid (7 files)
+- result: 0 errors, 0 blockers
+
+{
+  "summary": { "modified": 2, "added": 1, "deleted": 0 },
+  "plan_id": "plan-2026-04-02-abc"
+}
+```
+想先了解變更包規模時，先跑 `change summary`；要確認 staged 輸入結構正確時，再跑 `change preflight`；最後才進入 alert-specific planning。
 
 ---
 
-## 6. 身份快照回放 (Access 管理)
+## 6. 身份快照回放 (Access Management)
 
-透過快照管理組織、帳號、團隊或服務帳號。
-
-```bash
-# 稽核服務帳號及其權杖
-grafana-util access service-account list --profile prod --table
-
-# 回放使用者角色與組織成員資格
-grafana-util access user import --import-dir ./access-users --replace-existing --dry-run
-```
-
----
-
-## 7. 暫存發佈流程 (Change 管理)
-
-處理包含 Dashboard、Datasource 與 Alert 的整套跨域變更包。
-
-**工作流：**
-1. 準備暫存資產。
-2. 執行 `change summary` 進行初步檢查。
-3. 執行 `status staged` 作為最終整備度門禁。
+透過快照管理使用者、團隊與服務帳號。
 
 ```bash
-grafana-util change summary
-grafana-util status staged --desired-file ./desired.json --output-format interactive
+grafana-util access user import --import-dir ./access-users --dry-run --table
+grafana-util access service-account token add --service-account-id 15 --token-name nightly --seconds-to-live 3600 --json
+grafana-util access service-account token delete --service-account-id 15 --token-name nightly --yes --json
 ```
+**預期輸出：**
+```text
+LOGIN       ROLE    ACTION   STATUS
+dev-admin   Admin   update   existing
+ops-user    Viewer  create   missing
 
-**為什麼這很重要：**
-這能確保整個變更包在任何部分觸及正式環境前，都是一致且準備就緒的。
+{
+  "serviceAccountId": "15",
+  "name": "nightly",
+  "secondsToLive": "3600",
+  "key": "eyJ..."
+}
+```
+這個工作流是用來安全回放身分狀態的：使用者先看 import dry-run，自動化憑證則透過 service-account token 指令做輪替，不必靠猜目標帳號。
 
 ---
-
-## 🔬 驗證說明
-本手冊中所有情境均在 **Docker Grafana 12.4.1** 環境下通過驗證。遵循這些模式可確保在正式環境中獲得一致且可預測的結果。
+[⬅️ 上一章：變更與狀態](change-overview-status.md) | [🏠 回首頁](index.md) | [➡️ 下一章：技術參考手冊](reference.md)

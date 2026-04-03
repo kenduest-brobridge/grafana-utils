@@ -4,6 +4,17 @@ This guide covers `grafana-util datasource` as an operator workflow for inventor
 
 > **Goal**: Ensure datasource configuration can be backed up, compared, and replayed safely using a **Masked Recovery** contract that protects sensitive credentials.
 
+## 🔗 Command Pages
+
+Need the command-by-command surface instead of the workflow guide?
+
+- [datasource command overview](../../commands/en/datasource.md)
+- [datasource export](../../commands/en/datasource-export.md)
+- [datasource import](../../commands/en/datasource-import.md)
+- [datasource diff](../../commands/en/datasource-diff.md)
+- [datasource list](../../commands/en/datasource-list.md)
+- [full command index](../../commands/en/index.md)
+
 ---
 
 ## 🛠️ What This Area Is For
@@ -94,6 +105,8 @@ loki-prod   loki-prod          loki         create   missing
 ```
 - **ACTION=create**: New datasource record will be created.
 - **ACTION=update**: Existing record will be replaced.
+- **DESTINATION=missing**: No live datasource currently owns that UID, so the import would create a new record.
+- **DESTINATION=existing**: Grafana already has that UID, so the import would replace the current datasource record.
 
 ### 3. Direct Live Add (Dry-Run)
 ```bash
@@ -108,7 +121,4 @@ INDEX  NAME       TYPE         ACTION  DETAIL
 ```
 
 ---
-
-## ⏭️ Next Steps
-- Learn about [**Dashboard Management**](./dashboard.md).
-- Explore [**Alerting Workflows**](./alert.md).
+[⬅️ Previous: Dashboard Management](dashboard.md) | [🏠 Home](index.md) | [➡️ Next: Alerting Governance](alert.md)

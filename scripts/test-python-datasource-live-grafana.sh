@@ -4,12 +4,12 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 GRAFANA_IMAGE="${GRAFANA_IMAGE:-grafana/grafana:12.4.1}"
-GRAFANA_PORT="${GRAFANA_PORT:-}"
+GRAFANA_PORT="${GRAFANA_PORT:-43011}"
 GRAFANA_USER="${GRAFANA_USER:-admin}"
 GRAFANA_PASSWORD="${GRAFANA_PASSWORD:-admin}"
 GRAFANA_API_TOKEN="${GRAFANA_API_TOKEN:-}"
 GRAFANA_URL=""
-CONTAINER_NAME="${GRAFANA_CONTAINER_NAME:-grafana-util-python-datasource-live-$$}"
+CONTAINER_NAME="${GRAFANA_CONTAINER_NAME:-grafana-util-live-grafana}"
 WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/grafana-util-python-datasource-live.XXXXXX")"
 DATASOURCE_EXPORT_DIR="${WORK_DIR}/datasources"
 DATASOURCE_MULTI_ORG_EXPORT_DIR="${WORK_DIR}/datasources-all-orgs"
@@ -90,11 +90,8 @@ json_field() {
 start_grafana() {
   local publish_args=()
 
-  if [[ -n "${GRAFANA_PORT}" ]]; then
-    publish_args=(-p "127.0.0.1:${GRAFANA_PORT}:3000")
-  else
-    publish_args=(-p "127.0.0.1::3000")
-  fi
+  docker rm -f "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+  publish_args=(-p "127.0.0.1:${GRAFANA_PORT}:3000")
 
   docker run -d \
     --name "${CONTAINER_NAME}" \
@@ -104,9 +101,6 @@ start_grafana() {
     -e "GF_USERS_ALLOW_SIGN_UP=false" \
     "${GRAFANA_IMAGE}" >/dev/null
 
-  if [[ -z "${GRAFANA_PORT}" ]]; then
-    GRAFANA_PORT="$(docker port "${CONTAINER_NAME}" 3000/tcp | awk -F: 'END {print $NF}')"
-  fi
   GRAFANA_URL="http://127.0.0.1:${GRAFANA_PORT}"
   wait_for_grafana
 }

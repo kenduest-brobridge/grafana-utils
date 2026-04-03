@@ -26,6 +26,18 @@ fn load_apply_intent_operations_requires_operations_array() {
 }
 
 #[test]
+fn load_apply_intent_operations_rejects_wrong_kind() {
+    let error = load_apply_intent_operations(&json!({
+        "kind": "wrong-kind",
+        "operations": []
+    }))
+    .unwrap_err()
+    .to_string();
+
+    assert!(error.contains("kind is not supported"));
+}
+
+#[test]
 fn parse_sync_cli_supports_plan_fetch_live_mode() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",

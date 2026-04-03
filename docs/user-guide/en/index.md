@@ -1,56 +1,82 @@
-# Grafana Utilities Operator Handbook
+# 📖 Operator Handbook: grafana-util
 
-Welcome to the official operator-facing guide for `grafana-util`. This handbook is designed for engineers managing Grafana at scale, providing structured workflows for inventory, migration, and governance.
-
----
-
-## 📖 How to Use This Handbook
-
-This guide is organized into thematic chapters to minimize context switching. Choose your starting point based on your current task:
-
-| If you are... | Recommended Start | Why |
-| :--- | :--- | :--- |
-| **New to the tool** | [Getting Started](./getting-started.md) | Verify installation and establish your first safe connection. |
-| **Performing a task** | [Scenarios](./scenarios.md) | Follow end-to-end workflows for common operator jobs. |
-| **Looking for flags** | [Reference](./reference.md) | Detailed command syntax, authentication, and output contracts. |
-| **Managing resources** | Domain Chapters | Deep dives into Dashboards, Datasources, or Alerts. |
+Welcome to the official operator handbook for `grafana-util`. This guide is designed to take you from a fresh installation to mastering estate-level Grafana governance.
 
 ---
 
-## 🗺️ Handbook Map
+## ⚡ 30-Second Quick Start
 
-### 1. Orientation & Core Concepts
-- [**Getting Started**](./getting-started.md): Installation, profiles, and initial connectivity.
-- [**Reference**](./reference.md): Global flags, auth rules, and output formats (JSON, Table, TUI).
-- [**Scenarios**](./scenarios.md): Task-driven guides connecting multiple command families.
+Get from zero to a full project health report in three commands.
 
-### 2. Domain Handbooks
-- [**Dashboard Handbook**](./dashboard.md): Inventory, drift review, and multi-lane export/import.
-- [**Datasource Handbook**](./datasource.md): Masked recovery, live mutation, and provisioning projections.
-- [**Alert Handbook**](./alert.md): Plan/Apply workflows, state authoring, and migration bundles.
-- [**Access Handbook**](./access.md): Org, user, team, and service-account management.
-
-### 3. Advanced Operations
-- [**Change, Overview & Status**](./change-overview-status.md): Cross-domain staged changes and project-wide readiness.
-
----
-
-## ⚙️ Command Architecture
-
-All commands follow a consistent, predictable pattern:
-
+### 1. Install (Global Binary)
 ```bash
-grafana-util <domain> <command> [options]
+# Downloads and installs the latest version to your local bin directory
+curl -sSL https://raw.githubusercontent.com/kendlee/grafana-utils/main/scripts/install.sh | bash
 ```
 
-### Supported Output Modes
-Different tasks require different data surfaces. `grafana-util` supports:
-- 📝 **Plain Text**: Default for human-readable summaries and dry-run previews.
-- 🔢 **JSON**: Optimized for CI/CD pipelines and stable machine-readable handoffs.
-- 📊 **Table/CSV**: Ideal for audits, inventory listings, and side-by-side review.
-- 🖥️ **Interactive TUI**: Available for guided browsing (e.g., `dashboard browse`).
+### 2. Confirm the Installed Version
+```bash
+grafana-util --version
+```
+
+### 3. Run Your First Global Audit
+```bash
+# Generates a high-level health & inventory report of your entire Grafana estate
+grafana-util overview live --url http://localhost:3000 --basic-user admin --prompt-password --output interactive
+```
+
+**Why this matters:** In 30 seconds, you have verified connectivity, inventoried your dashboards/alerts, and identified any broken datasource configurations across all organizations.
 
 ---
 
-## 🎯 Target Environments
-Documentation examples are validated against **Grafana 12.4.1**. While the tool supports a wide range of versions, always verify command behavior in a staging environment before performing large-scale mutations.
+## 🧭 Navigation Map
+
+### 🚀 Phase 1: Foundation
+*   **[Getting Started](getting-started.md)**: Advanced installation, Profiles, and Auth rules.
+*   **[New User Path](role-new-user.md)**: The shortest safe path from install to first successful live read.
+*   **[SRE / Ops Path](role-sre-ops.md)**: The operator path for day-to-day governance, review-first change flows, and troubleshooting.
+*   **[Automation / CI Path](role-automation-ci.md)**: The profile, output, and command-reference path for scripting and automation.
+*   **[Architecture & Design Principles](architecture.md)**: The "Why" behind our design decisions.
+
+### 🛠️ Phase 2: Core Asset Management
+*   **[Dashboard Management](dashboard.md)**: Export, Import, and Live Inspection.
+*   **[Datasource Management](datasource.md)**: Masked Recovery and Live Mutations.
+*   **[Alerting Governance](alert.md)**: The Plan/Apply lifecycle for Grafana Alerts.
+
+### 🔐 Phase 3: Identity & Access
+*   **[Access Management](access.md)**: Organizations, Users, Teams, and Service Accounts.
+
+### 🛡️ Phase 4: Governance & Readiness
+*   **[Change & Status](change-overview-status.md)**: Staged workflows, project snapshots, and health gates.
+
+### 📖 Phase 5: Deep Dive
+*   **[Practical Scenarios](scenarios.md)**: End-to-end task recipes (Backups, DR, Audits).
+*   **[Best Practices & Recipes](recipes.md)**: Surgical solutions for common Grafana headaches.
+*   **[Technical Reference](reference.md)**: Full command map and global flag dictionary.
+*   **[Command Docs](../../commands/en/index.md)**: One page per command and subcommand, aligned to the current Rust CLI help.
+*   **[Troubleshooting & Glossary](troubleshooting.md)**: Diagnostic guides and terminology index.
+
+---
+
+## 👥 Choose Your Role
+
+Different readers usually need different paths through the handbook:
+
+*   **New user**
+  Start with [New User Path](role-new-user.md), then [Getting Started](getting-started.md), then open [Command Docs](../../commands/en/index.md) when you need exact flags.
+*   **SRE / operator**
+  Start with [SRE / Ops Path](role-sre-ops.md), then [Change & Status](change-overview-status.md), [Dashboard Management](dashboard.md), [Datasource Management](datasource.md), and [Troubleshooting](troubleshooting.md).
+*   **Identity / access administrator**
+  Start with [Access Management](access.md), then [Technical Reference](reference.md), then the [Command Docs](../../commands/en/index.md).
+*   **Automation / CI owner**
+  Start with [Automation / CI Path](role-automation-ci.md), then [Technical Reference](reference.md), then the [Command Docs](../../commands/en/index.md), then validate exact terminal lookup with the top-level manpage at `docs/man/grafana-util.1`.
+*   **Maintainer / architect**
+  Start with [docs/DEVELOPER.md](/Users/kendlee/work/grafana-utils/docs/DEVELOPER.md), then [maintainer-role-map.md](/Users/kendlee/work/grafana-utils/docs/internal/maintainer-role-map.md), then the internal design and playbook docs under [docs/internal/README.md](/Users/kendlee/work/grafana-utils/docs/internal/README.md).
+
+---
+
+## 🎯 How to use this guide
+If you are new, start with **Getting Started** and follow the **"Next Page"** links at the bottom of each chapter for a guided learning path.
+
+---
+**Next Step**: [🚀 Getting Started](getting-started.md)

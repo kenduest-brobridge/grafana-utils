@@ -48,6 +48,10 @@ execution plans、gap lists、或 progress snapshots，改到 `docs/internal/arc
   - 透過 `parse_cli_from` 完成 CLI 解析（純解析，無 side effect）。
   - 透過 `run_cli` 與 `dispatch_with_handlers` 實作 alias、legacy 及 namespaced 轉換，最後呼叫 domain runner。
   - 任何「domain 邏輯」都不應放在這裡；這一層只做「命令路徑決定」。
+  - 如果要補註解，先寫 boundary / ownership / non-obvious behavior，不要重述命令分流本身。
+
+- `rust/src/cli_help.rs`
+  - 承接 unified help rendering、extended examples 與 `--help-full` 快路徑，避免 `cli.rs` 重新膨脹回同時持有 command topology 與長篇 help 文案的混合層。
 
 ### 2.3 Domain orchestrator 層
 
@@ -70,6 +74,7 @@ execution plans、gap lists、或 progress snapshots，改到 `docs/internal/arc
 - `rust/src/sync/mod.rs`
   - 處理 sync 命令入口、staged document builder、review/audit/bundle workflow，並把 JSON、bundle inputs、staged document、以及 live fetch/apply helpers 分別收在 `sync/json.rs`、`sync/bundle_inputs.rs`、`sync/staged_documents.rs`、`sync/cli.rs`、`sync/live.rs`。
   - `run_sync_cli` 主要負責 normalize、document routing 與可選 live wiring 的分派。
+  - `sync/apply_contract.rs` 現在承接 apply-intent 這種 repo-owned envelope；`apply_builder.rs` 負責建構它，`live.rs` / `live_apply.rs` 只消費它。
   - Sync data contract is intentionally narrow:
     1. Input contract: the CLI accepts raw JSON arrays or objects from `--desired-file`, `--live-file`, `--lock-file`, `--availability-file`, `--source-bundle`, and `--target-inventory`; live-backed commands only consult Grafana when `--fetch-live` is set and they reuse `CommonCliArgs` plus optional `--org-id` / `--page-size`.
     2. Normalized internal model: `normalize_resource_spec` collapses staged resources into `SyncResourceSpec { kind, identity, title, body, managed_fields, source_path }`; `kind` is lower-cased, `identity` is derived from `uid/name/title/path`, and alert-like resources must keep `managedFields` so ownership stays explicit.
@@ -94,6 +99,7 @@ execution plans、gap lists、或 progress snapshots，改到 `docs/internal/arc
   - `rust/src/datasource.rs`
   - `rust/src/sync/mod.rs`
   - 這些檔案應維持在「command topology、normalize、client/request wiring、top-level dispatch」層級，不承接細部資料契約或 renderer 細節。
+  - 如果 facade 開始持有穩定 envelope、跨模組 shape 或 workflow 規則，就把那段邏輯下放到專屬 contract / submodule。
 
 - Typed contract / shared model：
   - `rust/src/dashboard/inspect_summary.rs`, `rust/src/dashboard/inspect_report.rs`
@@ -101,6 +107,7 @@ execution plans、gap lists、或 progress snapshots，改到 `docs/internal/arc
   - `rust/src/dashboard_inspection_dependency_contract.rs`
   - `rust/src/sync/workbench.rs`, `rust/src/sync/staged_documents.rs`, `rust/src/sync/bundle_alert_contracts.rs`
   - 這些模組定義跨流程要穩定的中介文件、summary/report 形狀、或 staged contract，改動時要先想 downstream render/tests 是否跟著變。
+  - 優先使用 repo-owned typed envelope 或明確 struct，避免在流程之間傳遞 ad hoc map / loosely typed blob。
 
 - Renderer / presentation：
   - `rust/src/dashboard/inspect_render.rs`, `rust/src/dashboard/inspect_dependency_render.rs`, `rust/src/dashboard/inspect_governance_render.rs`
@@ -232,6 +239,7 @@ execution plans、gap lists、或 progress snapshots，改到 `docs/internal/arc
 - legacy alias 不能隨意刪除；需保留 fallback 覆蓋路徑並更新 `help text`。  
 - 資料輸出格式旗標衝突（`--table`, `--csv`, `--json`）要保持單一路徑規則。  
 - 跨 domain 共用常數要放在各 domain module 的 `pub const`，不要散在 handler 實作內聯。
+- 註解只應補足邊界、意圖或不直觀行為；如果只是重述控制流程，先刪再看程式是否已經足夠清楚。
 
 ## 7) 快速驗證指令（維護 SOP）
 

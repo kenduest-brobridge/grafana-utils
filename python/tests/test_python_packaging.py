@@ -5,9 +5,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 PYTHON_ROOT = REPO_ROOT / "python"
 MAKEFILE_PATH = REPO_ROOT / "Makefile"
 CI_WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
-PYPROJECT_PATH = REPO_ROOT / "pyproject.toml"
+PYPROJECT_PATH = PYTHON_ROOT / "pyproject.toml"
 MODULE_ENTRYPOINT_PATH = REPO_ROOT / "python" / "grafana_utils" / "__main__.py"
-POETRY_LOCK_PATH = REPO_ROOT / "poetry.lock"
+POETRY_LOCK_PATH = PYTHON_ROOT / "poetry.lock"
 SET_VERSION_SCRIPT_PATH = REPO_ROOT / "scripts" / "set-version.sh"
 BUILD_RUST_MACOS_ARM64_SCRIPT_PATH = REPO_ROOT / "scripts" / "build-rust-macos-arm64.sh"
 VERSION_PATH = REPO_ROOT / "VERSION"
@@ -25,7 +25,7 @@ class PackagingTests(unittest.TestCase):
     def test_packaging_ci_python_quality_installs_project_runtime_dependencies(self):
         content = CI_WORKFLOW_PATH.read_text(encoding="utf-8")
 
-        self.assertIn("python3 -m pip install --upgrade pip .", content)
+        self.assertIn("python3 -m pip install --upgrade pip ./python", content)
         self.assertIn('"Pillow>=10,<12"', content)
 
     def test_packaging_pyproject_declares_console_scripts(self):
@@ -50,9 +50,9 @@ class PackagingTests(unittest.TestCase):
     def test_packaging_pyproject_finds_package_submodules(self):
         content = PYPROJECT_PATH.read_text(encoding="utf-8")
 
-        self.assertIn('{ include = "grafana_utils", from = "python" }', content)
-        self.assertIn('package-dir = {"" = "python"}', content)
-        self.assertIn('where = ["python"]', content)
+        self.assertIn('{ include = "grafana_utils", from = "." }', content)
+        self.assertIn('package-dir = {"" = "."}', content)
+        self.assertIn('where = ["."]', content)
         self.assertIn('include = ["grafana_utils", "grafana_utils.*"]', content)
 
     def test_packaging_pyproject_declares_poetry_dev_group(self):

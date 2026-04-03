@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Datasource 維運人員手冊 · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+    --panel: rgba(15, 23, 32, 0.86);
+    --panel-strong: rgba(15, 23, 32, 0.94);
+    --text: #d9e2ec;
+    --muted: #9fb3c8;
+    --heading: #f0f4f8;
+    --accent: #7bdcb5;
+    --accent-soft: rgba(18, 53, 40, 0.9);
+    --border: #243b53;
+    --code-bg: #1f2933;
+    --pre-bg: #081018;
+    --pre-text: #e6edf3;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] body {
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+html[data-theme="dark"] body {
+  --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --panel: rgba(15, 23, 32, 0.86);
+  --panel-strong: rgba(15, 23, 32, 0.94);
+  --text: #d9e2ec;
+  --muted: #9fb3c8;
+  --heading: #f0f4f8;
+  --accent: #7bdcb5;
+  --accent-soft: rgba(18, 53, 40, 0.9);
+  --border: #243b53;
+  --code-bg: #1f2933;
+  --pre-bg: #081018;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+a { color: var(--accent); }
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 0.98rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+th {
+  text-align: left;
+  background: var(--accent-soft);
+}
+.site {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 28px 22px 68px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.brand {
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.themebar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.hero {
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--heading);
+}
+.hero p {
+  max-width: 74ch;
+  margin: 14px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.breadcrumbs {
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  font-size: 0.96rem;
+  color: var(--muted);
+}
+.breadcrumbs li::after {
+  content: "/";
+  margin-left: 10px;
+}
+.breadcrumbs li:last-child::after {
+  content: "";
+  margin: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px;
+  margin-top: 22px;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article {
+  padding: 30px;
+}
+.article h1,
+.article h2,
+.article h3 {
+  color: var(--heading);
+}
+.article h1 {
+  margin-top: 0;
+}
+.article h2 {
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.article h3 {
+  margin-top: 28px;
+}
+.article p,
+.article li {
+  font-size: 1.03rem;
+  line-height: 1.8;
+}
+.sidebar {
+  padding: 22px;
+}
+.sidebar section + section {
+  margin-top: 20px;
+}
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li + li {
+  margin-top: 8px;
+}
+.sidebar a {
+  text-decoration: none;
+}
+.link-card {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+.footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.footer-nav .link-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.site-footer {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.landing-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.landing-card h2 {
+  margin-top: 0;
+  color: var(--heading);
+}
+.landing-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+@media (max-width: 980px) {
+  .layout,
+  .landing-grid,
+  .footer-nav {
+    grid-template-columns: 1fr;
+  }
+}</style>
+</head>
+<body>
+  <div class="site">
+    <div class="topbar">
+      <a class="brand" href="../../index.html">grafana-util docs</a>
+      <div class="themebar">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+    <header class="hero">
+      <div class="eyebrow">Handbook · 繁體中文</div>
+      <h1>Datasource 維運人員手冊</h1>
+      <p>敘事式手冊頁面，適合照工作流閱讀，再跳到逐指令頁查精確命令面。</p>
+      <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Handbook</a></li><li>繁體中文</li><li>Datasource 維運人員手冊</li></ol>
+    </header>
+    <div class="layout">
+      <article class="panel article">
+        <h1 id="datasource-維運人員手冊">Datasource 維運人員手冊</h1>
+<p>本指南涵蓋 <code>grafana-util datasource</code> 維運工作流，包含資產盤點、災難恢復、回放與受控的即時變更。</p>
+<p>&gt; <strong>維運目標</strong>：確保資料來源配置可以被安全地備份、比對與回放，並透過 <strong>Masked Recovery</strong> 合約保護敏感憑證。</p>
+<h2 id="逐指令頁面">🔗 逐指令頁面</h2>
+<p>如果您現在想看的是逐指令說明，而不是工作流章節，請直接使用逐指令頁面：</p>
+<ul><li><a href="../../commands/zh-TW/datasource.html">datasource 指令總覽</a></li><li><a href="../../commands/zh-TW/datasource-export.html">datasource export</a></li><li><a href="../../commands/zh-TW/datasource-import.html">datasource import</a></li><li><a href="../../commands/zh-TW/datasource-diff.html">datasource diff</a></li><li><a href="../../commands/zh-TW/datasource-list.html">datasource list</a></li><li><a href="../../commands/zh-TW/index.html">逐指令總索引</a></li></ul>
+<h2 id="核心工作流用途">🛠️ 核心工作流用途</h2>
+<p>資料來源領域專為下列場景設計：</p>
+<ul><li><strong>資產盤點</strong>：稽核現有的資料來源、其類型以及後端 URL。</li><li><strong>恢復與回放</strong>：維護可供災難恢復的資料來源匯出紀錄。</li><li><strong>Provisioning 投影</strong>：產生 Grafana 檔案式配置系統所需的 YAML 檔案。</li><li><strong>差異審查 (Drift Review)</strong>：在套用變更前，比對本地暫存檔案與 live Grafana。</li><li><strong>受控變更</strong>：在 Dry-run 保護下新增、修改或刪除 live 資料來源。</li></ul>
+<h2 id="工作流路徑邊界">🚧 工作流路徑邊界</h2>
+<p>資料來源匯出會產生兩個主要的 Artifact，各自負責不同的工作：</p>
+<table><thead><tr><th>檔案 (Artifact)</th><th>用途</th><th>最佳使用場景</th></tr></thead><tbody><tr><td><code>datasources.json</code></td><td><strong>Masked Recovery</strong></td><td>標準回放合約。用於還原、回放與差異比對。</td></tr><tr><td><code>provisioning/datasources.yaml</code></td><td><strong>Provisioning 投影</strong></td><td>模擬 Grafana 檔案配置系統所需的磁碟結構。</td></tr></tbody></table>
+<p><strong>重要提示</strong>：請始終將 <code>datasources.json</code> 視為「權威恢復來源」。Provisioning YAML 僅是從恢復包中衍生的次要投影。</p>
+<h2 id="閱讀即時資產盤點">📋 閱讀即時資產盤點</h2>
+<p>使用 <code>datasource list</code> 驗證目前 Grafana 的外掛與目標狀態。</p>
+<pre><code>grafana-util datasource list \</code></pre>
+<pre><code>  --url http://localhost:3000 \</code></pre>
+<pre><code>  --basic-user admin \</code></pre>
+<pre><code>  --basic-password admin \</code></pre>
+<pre><code>  --table</code></pre>
+<p><strong>驗證輸出摘錄：</strong></p>
+<pre><code>UID             NAME        TYPE        URL                     IS_DEFAULT  ORG  ORG_ID
+--------------  ----------  ----------  ----------------------  ----------  ---  ------
+dehk4kxat5la8b  Prometheus  prometheus  http://prometheus:9090  true             1</code></pre>
+<p><strong>如何解讀：</strong></p>
+<ul><li><strong>UID</strong>：用於自動化的穩定身份識別。</li><li><strong>TYPE</strong>：識別外掛實作 (例如 prometheus, loki)。</li><li><strong>IS_DEFAULT</strong>：標示這是否為該組織的預設資料來源。</li><li><strong>URL</strong>：該紀錄關聯的後端目標位址。</li></ul>
+<h2 id="關鍵指令-完整參數參考">🚀 關鍵指令 (完整參數參考)</h2>
+<table><thead><tr><th>指令</th><th>帶有參數的完整範例</th></tr></thead><tbody><tr><td><strong>盤點 (List)</strong></td><td><code>grafana-util datasource list --all-orgs --table</code></td></tr><tr><td><strong>匯出 (Export)</strong></td><td><code>grafana-util datasource export --export-dir ./datasources --overwrite</code></td></tr><tr><td><strong>匯入 (Import)</strong></td><td><code>grafana-util datasource import --import-dir ./datasources --replace-existing --dry-run --table</code></td></tr><tr><td><strong>比對 (Diff)</strong></td><td><code>grafana-util datasource diff --import-dir ./datasources</code></td></tr><tr><td><strong>新增 (Add)</strong></td><td><code>grafana-util datasource add --uid &lt;UID&gt; --name &lt;NAME&gt; --type prometheus --datasource-url &lt;URL&gt; --dry-run --table</code></td></tr></tbody></table>
+<h2 id="docker-驗證範例">🔬 Docker 驗證範例</h2>
+<h3 id="1-匯出盤點資產">1. 匯出盤點資產</h3>
+<pre><code>grafana-util datasource export --export-dir ./datasources --overwrite</code></pre>
+<p><strong>輸出摘錄：</strong></p>
+<pre><code>Exported datasource inventory -&gt; datasources/datasources.json
+Exported metadata            -&gt; datasources/export-metadata.json
+Datasource export completed: 3 item(s)</code></pre>
+<h3 id="2-dry-run-匯入預覽">2. Dry-Run 匯入預覽</h3>
+<pre><code>grafana-util datasource import --import-dir ./datasources --replace-existing --dry-run --table</code></pre>
+<p><strong>輸出摘錄：</strong></p>
+<pre><code>UID         NAME               TYPE         ACTION   DESTINATION
+prom-main   prometheus-main    prometheus   update   existing
+loki-prod   loki-prod          loki         create   missing</code></pre>
+<ul><li><strong>ACTION=create</strong>：將建立新的資料來源紀錄。</li><li><strong>ACTION=update</strong>：將取代現有的紀錄。</li><li><strong>DESTINATION=missing</strong>：Grafana 目前沒有這個 UID，因此匯入時會建立新紀錄。</li><li><strong>DESTINATION=existing</strong>：Grafana 目前已經有這個 UID，因此匯入時會覆蓋既有資料來源紀錄。</li></ul>
+<h3 id="3-直接即時新增-dry-run">3. 直接即時新增 (Dry-Run)</h3>
+<pre><code>grafana-util datasource add \</code></pre>
+<pre><code>  --uid prom-main --name prom-new --type prometheus \</code></pre>
+<pre><code>  --datasource-url http://prometheus:9090 --dry-run --table</code></pre>
+<p><strong>輸出摘錄：</strong></p>
+<pre><code>INDEX  NAME       TYPE         ACTION  DETAIL
+1      prom-new   prometheus   create  would create datasource uid=prom-main</code></pre>
+<p><a href="dashboard.html">⬅️ 上一章：Dashboard 管理</a> | <a href="index.html">🏠 回首頁</a> | <a href="alert.html">➡️ 下一章：告警治理</a></p>
+        <nav class="footer-nav"><a class="link-card" href="dashboard.html"><span>Previous</span>Dashboard 維運人員手冊</a><a class="link-card" href="alert.html"><span>Next</span>Alert 維運人員手冊</a></nav>
+      </article>
+      <aside class="panel sidebar">
+        <section>
+          <h2>On This Page</h2>
+          <ul><li><a class="link-card" href="#逐指令頁面">🔗 逐指令頁面</a></li><li><a class="link-card" href="#核心工作流用途">🛠️ 核心工作流用途</a></li><li><a class="link-card" href="#工作流路徑邊界">🚧 工作流路徑邊界</a></li><li><a class="link-card" href="#閱讀即時資產盤點">📋 閱讀即時資產盤點</a></li><li><a class="link-card" href="#關鍵指令-完整參數參考">🚀 關鍵指令 (完整參數參考)</a></li><li><a class="link-card" href="#docker-驗證範例">🔬 Docker 驗證範例</a></li><li><a class="link-card" href="#1-匯出盤點資產">1. 匯出盤點資產</a></li><li><a class="link-card" href="#2-dry-run-匯入預覽">2. Dry-Run 匯入預覽</a></li><li><a class="link-card" href="#3-直接即時新增-dry-run">3. 直接即時新增 (Dry-Run)</a></li></ul>
+        </section>
+        <section>
+          <h2>Related</h2>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/zh-TW/index.html">Command reference index</a></li></ul>
+        </section>
+        <section>
+          <h2>Language</h2>
+          <ul><li><a class="link-card" href="#">Current: 繁體中文</a></li><li><a class="link-card" href="../en/datasource.html">Switch to English</a></li></ul>
+        </section>
+      </aside>
+    </div>
+    <footer class="site-footer">Source: <code>docs/user-guide/zh-TW/datasource.md</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script>
+(() => {
+  const storageKey = "grafana-util-docs-theme";
+  const root = document.documentElement;
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (value) => {
+    if (value === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", value);
+    }
+  };
+  applyTheme(saved);
+  if (select) {
+    select.value = saved;
+    select.addEventListener("change", (event) => {
+      const value = event.target.value;
+      localStorage.setItem(storageKey, value);
+      applyTheme(value);
+    });
+  }
+})();
+</script>
+</body>
+</html>

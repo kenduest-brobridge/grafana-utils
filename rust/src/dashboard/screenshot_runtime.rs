@@ -1,5 +1,5 @@
 //! Dashboard screenshot runtime helpers.
-#![cfg_attr(not(any(feature = "browser", test)), allow(dead_code))]
+#![cfg_attr(not(feature = "browser"), allow(dead_code))]
 
 #[cfg(feature = "browser")]
 use headless_chrome::protocol::cdp::Emulation;

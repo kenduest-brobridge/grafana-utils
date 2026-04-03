@@ -6,7 +6,8 @@ use super::preflight::{
 };
 use super::workbench::{
     build_sync_apply_intent_document, build_sync_plan_document, build_sync_summary_document,
-    normalize_resource_spec, summarize_resource_specs, SYNC_APPLY_INTENT_KIND, SYNC_SUMMARY_KIND,
+    normalize_resource_spec, summarize_resource_specs, SYNC_APPLY_INTENT_KIND,
+    SYNC_APPLY_INTENT_SCHEMA_VERSION, SYNC_SUMMARY_KIND,
 };
 use crate::common::TOOL_VERSION;
 use serde_json::json;
@@ -355,8 +356,15 @@ fn build_sync_apply_intent_document_filters_non_mutating_operations() {
     let intent = build_sync_apply_intent_document(&plan, true).unwrap();
 
     assert_eq!(intent["kind"], json!(SYNC_APPLY_INTENT_KIND));
+    assert_eq!(
+        intent["schemaVersion"],
+        json!(SYNC_APPLY_INTENT_SCHEMA_VERSION)
+    );
+    assert_eq!(intent["toolVersion"], json!(TOOL_VERSION));
     assert_eq!(intent["mode"], json!("apply"));
     assert_eq!(intent["approved"], json!(true));
+    assert_eq!(intent["reviewRequired"], json!(true));
+    assert_eq!(intent["allowPrune"], json!(false));
     assert_eq!(intent["operations"].as_array().unwrap().len(), 2);
     assert!(intent["operations"]
         .as_array()

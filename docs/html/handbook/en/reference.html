@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Technical Reference Manual · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+    --panel: rgba(15, 23, 32, 0.86);
+    --panel-strong: rgba(15, 23, 32, 0.94);
+    --text: #d9e2ec;
+    --muted: #9fb3c8;
+    --heading: #f0f4f8;
+    --accent: #7bdcb5;
+    --accent-soft: rgba(18, 53, 40, 0.9);
+    --border: #243b53;
+    --code-bg: #1f2933;
+    --pre-bg: #081018;
+    --pre-text: #e6edf3;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] body {
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+html[data-theme="dark"] body {
+  --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --panel: rgba(15, 23, 32, 0.86);
+  --panel-strong: rgba(15, 23, 32, 0.94);
+  --text: #d9e2ec;
+  --muted: #9fb3c8;
+  --heading: #f0f4f8;
+  --accent: #7bdcb5;
+  --accent-soft: rgba(18, 53, 40, 0.9);
+  --border: #243b53;
+  --code-bg: #1f2933;
+  --pre-bg: #081018;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+a { color: var(--accent); }
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 0.98rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+th {
+  text-align: left;
+  background: var(--accent-soft);
+}
+.site {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 28px 22px 68px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.brand {
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.themebar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.hero {
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--heading);
+}
+.hero p {
+  max-width: 74ch;
+  margin: 14px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.breadcrumbs {
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  font-size: 0.96rem;
+  color: var(--muted);
+}
+.breadcrumbs li::after {
+  content: "/";
+  margin-left: 10px;
+}
+.breadcrumbs li:last-child::after {
+  content: "";
+  margin: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px;
+  margin-top: 22px;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article {
+  padding: 30px;
+}
+.article h1,
+.article h2,
+.article h3 {
+  color: var(--heading);
+}
+.article h1 {
+  margin-top: 0;
+}
+.article h2 {
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.article h3 {
+  margin-top: 28px;
+}
+.article p,
+.article li {
+  font-size: 1.03rem;
+  line-height: 1.8;
+}
+.sidebar {
+  padding: 22px;
+}
+.sidebar section + section {
+  margin-top: 20px;
+}
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li + li {
+  margin-top: 8px;
+}
+.sidebar a {
+  text-decoration: none;
+}
+.link-card {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+.footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.footer-nav .link-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.site-footer {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.landing-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.landing-card h2 {
+  margin-top: 0;
+  color: var(--heading);
+}
+.landing-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+@media (max-width: 980px) {
+  .layout,
+  .landing-grid,
+  .footer-nav {
+    grid-template-columns: 1fr;
+  }
+}</style>
+</head>
+<body>
+  <div class="site">
+    <div class="topbar">
+      <a class="brand" href="../../index.html">grafana-util docs</a>
+      <div class="themebar">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+    <header class="hero">
+      <div class="eyebrow">Handbook · English</div>
+      <h1>Technical Reference Manual</h1>
+      <p>Narrative handbook chapters for learning the workflow first, then jumping to command-reference pages for exact syntax.</p>
+      <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Handbook</a></li><li>English</li><li>Technical Reference Manual</li></ol>
+    </header>
+    <div class="layout">
+      <article class="panel article">
+        <h1 id="technical-reference-manual">Technical Reference Manual</h1>
+<p>This manual provides the current command surface for <code>grafana-util</code>, including profile resolution, output flags, and live/staged status entrypoints.</p>
+<p>Use this chapter alongside <a href="../../commands/en/profile.html">profile</a>, <a href="../../commands/en/status.html">status</a>, <a href="../../commands/en/overview.html">overview</a>, and <a href="../../commands/en/access.html">access</a> when you want the command-by-command surface.</p>
+<h2 id="profile-authentication-management">🔐 Profile &amp; Authentication Management</h2>
+<p>Profiles are repo-local. <code>grafana-util profile</code> reads and writes <code>grafana-util.yaml</code> in the current working directory, and <code>--profile</code> selects one named profile from that file.</p>
+<h3 id="recommended-auth-order">Recommended auth order</h3>
+<table><thead><tr><th>Method</th><th>Best fit</th><th>Strengths</th><th>Limits / cautions</th></tr></thead><tbody><tr><td><code>--profile</code></td><td>repeatable operator work, CI, long-lived checkouts</td><td>keeps secrets out of repeated command lines, supports env-backed and secret-store-backed secrets</td><td>requires initial setup</td></tr><tr><td>direct Basic auth</td><td>bootstrap, break-glass, global admin work</td><td>simple, works well for cross-org and admin surfaces</td><td>avoid leaving plaintext passwords in shell history; prefer <code>--prompt-password</code></td></tr><tr><td>direct token</td><td>narrow scripted reads or scoped API actions</td><td>easy to rotate and limit</td><td>scope may block <code>--all-orgs</code>, org admin, or global admin workflows</td></tr></tbody></table>
+<p>In this repo, the intended steady-state is: store connection defaults in <code>grafana-util.yaml</code>, back secrets with <code>password_env</code>, <code>token_env</code>, or a secret store, then run routine commands with <code>--profile</code>.</p>
+<h3 id="secret-storage-modes-what-they-are-why-they-exist-and-when-to-use-them">Secret storage modes: what they are, why they exist, and when to use them</h3>
+<p><code>grafana-util</code> supports more than one place to hold secrets because operators usually need different tradeoffs in local development, CI, and long-lived checkouts.</p>
+<table><thead><tr><th>Mode</th><th>What it is</th><th>Why it is useful</th><th>Limits / cautions</th></tr></thead><tbody><tr><td><code>file</code></td><td>plaintext secret directly in <code>grafana-util.yaml</code></td><td>easiest to understand and edit by hand</td><td>secret lives in the config file; avoid for shared repos or routine admin use</td></tr><tr><td><code>password_env</code> / <code>token_env</code></td><td>secret stays in an environment variable and the profile stores only the variable name</td><td>good for CI, wrappers, and shells that already manage env injection</td><td>process environment still needs to be managed carefully</td></tr><tr><td><code>os</code></td><td>profile stores a reference key, while the real secret lives in the macOS Keychain or Linux Secret Service</td><td>keeps secrets out of the YAML file and shell history for day-to-day operator use</td><td>only supported on macOS and Linux; Linux also needs a working OS secret-service session</td></tr><tr><td><code>encrypted-file</code></td><td>profile stores a reference key and the real secret is encrypted into <code>.grafana-util.secrets.yaml</code></td><td>portable across checkouts, good when OS secret storage is unavailable or not desirable</td><td>stronger than plaintext, but still depends on passphrase or local-key handling discipline</td></tr></tbody></table>
+<p>Recommended order for most teams:</p>
+<p>1. use <code>password_env</code> / <code>token_env</code> for CI and scripted automation 2. use <code>os</code> for repeated local operator work on macOS or Linux desktops 3. use <code>encrypted-file</code> when you need repo-local encrypted storage without depending on the OS secret service 4. use plaintext <code>file</code> only for demos, throwaway local labs, or explicit bootstrap cases</p>
+<h3 id="macos-and-linux-os-store-support">macOS and Linux OS-store support</h3>
+<p>The <code>os</code> provider is platform-backed:</p>
+<ul><li>macOS: stores secrets in the Keychain through the <code>security</code> tool</li><li>Linux: stores secrets in the desktop secret service through the system keyring integration</li></ul>
+<p>This is useful because your profile YAML keeps only a secret reference such as:</p>
+<pre><code>password_store:
+  provider: os
+  key: grafana-util/profile/prod/password</code></pre>
+<p>The password itself stays outside <code>grafana-util.yaml</code>.</p>
+<p>Important limits:</p>
+<ul><li><code>os</code> storage is only supported on macOS and Linux</li><li>Linux server, container, or CI environments may not have a working Secret Service session</li><li>when the OS store is unavailable, prefer <code>password_env</code>, <code>token_env</code>, or <code>encrypted-file</code></li></ul>
+<h3 id="1-choose-the-right-profile-workflow">1. Choose the right profile workflow</h3>
+<table><thead><tr><th>Workflow</th><th>Purpose</th><th>When to use</th></tr></thead><tbody><tr><td><code>profile init</code></td><td>Create a minimal starter <code>grafana-util.yaml</code>.</td><td>When you want a seed file before editing by hand.</td></tr><tr><td><code>profile add</code></td><td>Create or update one named profile directly.</td><td>When you want a friendly one-step setup path.</td></tr><tr><td><code>profile example</code></td><td>Print a fully commented reference config.</td><td>When you want a copy-edit template.</td></tr></tbody></table>
+<p>If you set <code>GRAFANA_UTIL_CONFIG</code>, the config file moves with that path. The helper files for <code>encrypted-file</code> mode follow the same directory:</p>
+<table><thead><tr><th>File</th><th>Default location</th></tr></thead><tbody><tr><td><code>grafana-util.yaml</code></td><td>current working directory, or the path given by <code>GRAFANA_UTIL_CONFIG</code></td></tr><tr><td><code>.grafana-util.secrets.yaml</code></td><td>same directory as <code>grafana-util.yaml</code></td></tr><tr><td><code>.grafana-util.secrets.key</code></td><td>same directory as <code>grafana-util.yaml</code></td></tr></tbody></table>
+<h3 id="2-initialize-add-and-list-profiles">2. Initialize, add, and list profiles</h3>
+<pre><code>grafana-util profile init --overwrite</code></pre>
+<pre><code>grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password</code></pre>
+<pre><code>grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN --store-secret os</code></pre>
+<pre><code>grafana-util profile list</code></pre>
+<pre><code>grafana-util profile example --mode full</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>Wrote grafana-util.yaml.
+dev
+prod</code></pre>
+<p><code>init</code> creates the local config file, <code>add</code> creates a usable profile in one step, and <code>list</code> prints one resolved profile name per line. <code>example</code> prints a full commented template that you can copy and edit.</p>
+<h3 id="3-show-the-resolved-profile">3. Show the resolved profile</h3>
+<pre><code>grafana-util profile show --profile prod --output-format yaml</code></pre>
+<pre><code>grafana-util profile show --profile prod --show-secrets --output-format yaml</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>name: prod
+source_path: grafana-util.yaml
+profile:
+  url: https://grafana.example.com
+  username: admin
+  password_env: GRAFANA_PROD_PASSWORD
+  verify_ssl: true</code></pre>
+<p>Use <code>show</code> when you need the final resolved values. <code>--profile</code> overrides the default selection rules, and <code>yaml</code> is the clearest format when you are checking auth wiring by hand.</p>
+<p>Be careful with <code>--show-secrets</code>: it is for local inspection only. It resolves secret-store references and prints plaintext values.</p>
+<h3 id="4-commented-example-output">4. Commented example output</h3>
+<pre><code># Default profile used when --profile is omitted.
+default_profile: dev
+
+profiles:
+  # Local demo profile using Basic auth credentials from the environment.
+  dev:
+    url: http://127.0.0.1:3000
+    username: admin
+    password_env: GRAFANA_DEV_PASSWORD
+    timeout: 30
+    verify_ssl: false
+
+  # Token from the environment. Useful for scoped automation jobs.
+  ci_token:
+    url: https://grafana.example.com
+    token_env: GRAFANA_CI_TOKEN
+    timeout: 30
+    verify_ssl: true
+
+  # Plaintext example. Easy to edit, but the secret lives in grafana-util.yaml.
+  prod_plaintext:
+    url: https://grafana.example.com
+    username: admin
+    password: change-me
+    verify_ssl: true
+
+  # OS secret store example. The secret is kept in macOS Keychain or Linux Secret Service.
+  prod_os_store:
+    url: https://grafana.example.com
+    username: admin
+    password_store:
+      provider: os
+      key: grafana-util/profile/prod_os_store/password
+
+  # Encrypted file with passphrase. The secret file defaults next to grafana-util.yaml.
+  prod_encrypted:
+    url: https://grafana.example.com
+    username: admin
+    password_store:
+      provider: encrypted-file
+      key: grafana-util/profile/prod_encrypted/password
+      path: .grafana-util.secrets.yaml
+
+  # Encrypted file without passphrase. Good for casual protection, not for local compromise resistance.
+  stage_encrypted_local_key:
+    url: https://grafana-stage.example.com
+    username: stage-bot
+    password_store:
+      provider: encrypted-file
+      key: grafana-util/profile/stage_encrypted_local_key/password
+      path: .grafana-util.secrets.yaml</code></pre>
+<h3 id="5-daily-use-examples-in-all-common-auth-styles">5. Daily-use examples in all common auth styles</h3>
+<pre><code>grafana-util status live --profile prod --output yaml</code></pre>
+<pre><code>grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output yaml</code></pre>
+<pre><code>grafana-util overview live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output json</code></pre>
+<p>Use the <code>--profile</code> form by default. Keep direct Basic auth for admin-heavy workflows and token auth for scoped automation where you understand the permission envelope.</p>
+<h3 id="6-complete-secret-handling-examples">6. Complete secret-handling examples</h3>
+<pre><code># Environment-backed password for a repeatable local profile.</code></pre>
+<pre><code>export GRAFANA_PROD_PASSWORD=&#x27;change-me&#x27;</code></pre>
+<pre><code>grafana-util profile add prod --url https://grafana.example.com --basic-user admin --password-env GRAFANA_PROD_PASSWORD</code></pre>
+<pre><code>grafana-util status live --profile prod --output yaml</code></pre>
+<pre><code># OS secret store for a desktop operator workflow on macOS or Linux.</code></pre>
+<pre><code>grafana-util profile add prod-os --url https://grafana.example.com --basic-user admin --prompt-password --store-secret os</code></pre>
+<pre><code>grafana-util overview live --profile prod-os --output interactive</code></pre>
+<pre><code># Encrypted file with a prompted passphrase.</code></pre>
+<pre><code>grafana-util profile add prod-encrypted --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file --prompt-secret-passphrase</code></pre>
+<pre><code>grafana-util status live --profile prod-encrypted --output yaml</code></pre>
+<pre><code># Scoped token from the environment for automation.</code></pre>
+<pre><code>export GRAFANA_CI_TOKEN=&#x27;replace-me&#x27;</code></pre>
+<pre><code>grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN</code></pre>
+<pre><code>grafana-util overview live --profile ci --output json</code></pre>
+<p>Why these examples matter:</p>
+<ul><li>they show the same runtime commands using profile-backed secret resolution</li><li>they keep shell examples aligned with the supported <code>file</code>, <code>os</code>, <code>encrypted-file</code>, and env-backed flows</li><li>they make it clear that day-to-day commands do not need to repeat raw passwords when a profile is already set up</li></ul>
+<h3 id="7-multi-org-and-admin-scope-caveats">7. Multi-org and admin-scope caveats</h3>
+<ul><li><code>--all-orgs</code> works best with <code>--profile</code> backed by admin credentials or with direct Basic auth.</li><li>A token only sees what that token is allowed to see. Multi-org inventory, org export/import, and user or team management can return partial data or fail when token scope is narrower than the requested operation.</li><li>Access-management surfaces such as <code>access org</code>, <code>access user</code>, <code>access team</code>, and service-account lifecycle operations commonly require broader Grafana privileges than a narrow API token carries.</li></ul>
+<h3 id="8-secret-storage-troubleshooting">8. Secret-storage troubleshooting</h3>
+<p>verify that the <code>security</code> tool is available and that the local login session can access the Keychain.</p>
+<p>the local environment may not have a working Secret Service session. This is common in headless shells, containers, or minimal servers. Use <code>password_env</code>, <code>token_env</code>, or <code>encrypted-file</code> instead.</p>
+<p>confirm that the referenced env var exists, the OS secret store entry still exists, or the encrypted secret file and passphrase/local key are still present.</p>
+<p>make sure the target checkout has the matching <code>.grafana-util.secrets.yaml</code> and either the same passphrase or the matching local key file.</p>
+<p>the stored credential may be valid but too narrow. Switch to admin-backed Basic auth or an admin-capable profile.</p>
+<ul><li><code>profile add --store-secret os</code> fails on macOS:</li><li><code>profile add --store-secret os</code> fails on Linux:</li><li><code>profile show --show-secrets</code> prints an error for a stored secret reference:</li><li><code>encrypted-file</code> works on one machine but not another:</li><li>a profile works for normal commands but fails for <code>--all-orgs</code> or access-management workflows:</li></ul>
+<h2 id="output-formats-comparison">📊 Output Formats Comparison</h2>
+<p><code>grafana-util</code> supports explicit per-format flags plus a single <code>--output-format</code> selector. For dashboards, the current list command exposes <code>--json</code>, <code>--table</code>, <code>--csv</code>, <code>--yaml</code>, and <code>--output-format</code>.</p>
+<h3 id="1-table-or-json-selection">1. Table or JSON selection</h3>
+<pre><code>grafana-util dashboard list -h</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>--text
+--table
+--csv
+--json
+--yaml
+--output-format &lt;OUTPUT_FORMAT&gt;</code></pre>
+<p>Use <code>--json</code> for automation, <code>--table</code> for quick human review, and <code>--output-format</code> when you want to switch output with a single flag. The older <code>--limit</code> example is no longer current; the command now uses <code>--page-size</code> for fetch sizing and <code>--output-columns</code> for column selection.</p>
+<h3 id="2-live-status-and-overview-output-selectors">2. Live status and overview output selectors</h3>
+<pre><code>grafana-util status live -h</code></pre>
+<pre><code>grafana-util overview live -h</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>Render project status from live Grafana read surfaces. Use current Grafana state plus optional staged context files.
+...
+--output &lt;OUTPUT&gt;
+    Render project status as table, csv, text, json, yaml, or interactive output.
+
+Render a live overview by delegating to the shared status live path.
+...
+--output &lt;OUTPUT&gt;
+    Render project status as table, csv, text, json, yaml, or interactive output.</code></pre>
+<p>Both live entrypoints use <code>--output</code>; they do not accept the older <code>--output-format</code> spelling.</p>
+<h2 id="dashboard-lanes">🗂️ Dashboard Lanes</h2>
+<ul><li><code>raw/</code> is the API-safe replay/import lane.</li><li><code>prompt/</code> is the Grafana UI import lane.</li><li><code>dashboard export</code> writes the prompt lane for you.</li><li><code>dashboard raw-to-prompt</code> converts ordinary or raw dashboard JSON into prompt JSON when you need to repair or migrate a dashboard for Grafana UI import.</li><li><code>dashboard import</code> consumes <code>raw/</code> or <code>provisioning/</code> input; it does not consume <code>prompt/</code>.</li></ul>
+<h2 id="automation-scripting-cicd">🤖 Automation &amp; Scripting (CI/CD)</h2>
+<h3 id="1-filtering-with-jq-bashzsh">1. Filtering with <code>jq</code> (Bash/Zsh)</h3>
+<pre><code># Get the UID of all dashboards in organization ID 5</code></pre>
+<pre><code>grafana-util dashboard list --profile prod --json | jq -r &#x27;.[] | select(.orgId == 5) | .uid&#x27;</code></pre>
+<p>This is the current JSON path for scripting. If you need fewer or different fields, use <code>--output-columns</code> instead of assuming the old sample table shape.</p>
+<h3 id="2-handling-exit-codes">2. Handling Exit Codes</h3>
+<pre><code>grafana-util status live --profile prod --output json</code></pre>
+<pre><code>if [ $? -eq 2 ]; then</code></pre>
+<pre><code>  echo &quot;CRITICAL: Grafana connection blocked!&quot;</code></pre>
+<pre><code>  exit 1</code></pre>
+<pre><code>fi</code></pre>
+<table><thead><tr><th>Exit Code</th><th>Meaning</th></tr></thead><tbody><tr><td><strong>0</strong></td><td><strong>Success</strong>: Task completed.</td></tr><tr><td><strong>1</strong></td><td><strong>General Error</strong>: Check syntax or local file permissions.</td></tr><tr><td><strong>2</strong></td><td><strong>Connection Blocked</strong>: Target Grafana is down or network is rejected.</td></tr><tr><td><strong>3</strong></td><td><strong>Validation Failed</strong>: Project contract or dashboard JSON is invalid.</td></tr></tbody></table>
+<p><a href="scenarios.html">⬅️ Previous: Operator Scenarios</a> | <a href="index.html">🏠 Home</a> | <a href="recipes.html">➡️ Next: Best Practices &amp; Recipes</a></p>
+        <nav class="footer-nav"><a class="link-card" href="recipes.html"><span>Previous</span>🍳 Best Practices &amp; Real-World Recipes</a><a class="link-card" href="troubleshooting.html"><span>Next</span>🔍 Troubleshooting &amp; Glossary</a></nav>
+      </article>
+      <aside class="panel sidebar">
+        <section>
+          <h2>On This Page</h2>
+          <ul><li><a class="link-card" href="#profile-authentication-management">🔐 Profile &amp; Authentication Management</a></li><li><a class="link-card" href="#recommended-auth-order">Recommended auth order</a></li><li><a class="link-card" href="#secret-storage-modes-what-they-are-why-they-exist-and-when-to-use-them">Secret storage modes: what they are, why they exist, and when to use them</a></li><li><a class="link-card" href="#macos-and-linux-os-store-support">macOS and Linux OS-store support</a></li><li><a class="link-card" href="#1-choose-the-right-profile-workflow">1. Choose the right profile workflow</a></li><li><a class="link-card" href="#2-initialize-add-and-list-profiles">2. Initialize, add, and list profiles</a></li><li><a class="link-card" href="#3-show-the-resolved-profile">3. Show the resolved profile</a></li><li><a class="link-card" href="#4-commented-example-output">4. Commented example output</a></li><li><a class="link-card" href="#5-daily-use-examples-in-all-common-auth-styles">5. Daily-use examples in all common auth styles</a></li><li><a class="link-card" href="#6-complete-secret-handling-examples">6. Complete secret-handling examples</a></li><li><a class="link-card" href="#7-multi-org-and-admin-scope-caveats">7. Multi-org and admin-scope caveats</a></li><li><a class="link-card" href="#8-secret-storage-troubleshooting">8. Secret-storage troubleshooting</a></li><li><a class="link-card" href="#output-formats-comparison">📊 Output Formats Comparison</a></li><li><a class="link-card" href="#1-table-or-json-selection">1. Table or JSON selection</a></li><li><a class="link-card" href="#2-live-status-and-overview-output-selectors">2. Live status and overview output selectors</a></li><li><a class="link-card" href="#dashboard-lanes">🗂️ Dashboard Lanes</a></li><li><a class="link-card" href="#automation-scripting-cicd">🤖 Automation &amp; Scripting (CI/CD)</a></li><li><a class="link-card" href="#1-filtering-with-jq-bashzsh">1. Filtering with `jq` (Bash/Zsh)</a></li><li><a class="link-card" href="#2-handling-exit-codes">2. Handling Exit Codes</a></li></ul>
+        </section>
+        <section>
+          <h2>Related</h2>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/en/index.html">Command reference index</a></li></ul>
+        </section>
+        <section>
+          <h2>Language</h2>
+          <ul><li><a class="link-card" href="#">Current: English</a></li><li><a class="link-card" href="../zh-TW/reference.html">Switch to 繁體中文</a></li></ul>
+        </section>
+      </aside>
+    </div>
+    <footer class="site-footer">Source: <code>docs/user-guide/en/reference.md</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script>
+(() => {
+  const storageKey = "grafana-util-docs-theme";
+  const root = document.documentElement;
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (value) => {
+    if (value === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", value);
+    }
+  };
+  applyTheme(saved);
+  if (select) {
+    select.value = saved;
+    select.addEventListener("change", (event) => {
+      const value = event.target.value;
+      localStorage.setItem(storageKey, value);
+      applyTheme(value);
+    });
+  }
+})();
+</script>
+</body>
+</html>

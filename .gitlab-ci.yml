@@ -1,7 +1,43 @@
+# ==========================================
+# CI/CD Pipeline 完整解析與架構說明
+# 
+# 【一、核心設計與觸發條件】
+# 整個 Pipeline 是為 Python 與 Rust 雙語言混合的專案 (grafana-utils) 所設計。
+# 為節省資源並防堵未預期發布，明確限定只有以下三種情境會觸發 CI：
+# 1. dev 分支 (開發預覽)
+# 2. main 分支 (穩定版)
+# 3. vX.Y.Z 格式的 Git Tag (正式釋出版)
+# 
+# 【二、階段一：Quality (品質管制與版本查核)】
+# 1. version-policy: 極為嚴謹的「雙語言版號同步」防呆機制。
+#    - dev 分支：強制 Python 版號帶有 .devN，Rust 帶有 -dev.N。
+#    - main 分支：強制兩者皆為純淨版號 (X.Y.Z)。
+#    - Git Tag：強制要求程式內定義的版本號必須與 Tag 號碼相同。
+# 2. python/rust-static-analysis: 分別針對兩種語言進行語法編譯檢查、排版 (black/fmt) 
+#    與 Linter (ruff/clippy)。Rust 甚至設定了只要有 Warning 就失敗 (-D warnings)。
+#    ⚠️ 關鍵注意點：此階段目前刻意「略過單元測試 (unittest/cargo test)」，僅作靜態分析。
+#
+# 【三、階段二：Package (建置與打包)】
+# 當 Quality 順利通過後，進行並行的打包作業：
+# 1. Python：使用 Poetry 與 build 產出 Sdist 與 Wheel。
+# 2. Rust：編譯產出 `grafana-util` 與 `grafana-access-utils` 兩支二進位檔。
+#
+# 依照觸發情境的不同，產物的儲存期限與命名有所差異：
+# - Preview 版 (dev/main 觸發)：Artifact 檔名結合 Commit SHA 防止覆蓋，保留 7 天供短期測試。
+# - Release 版 (Tag 觸發)：Artifact 直接以 Tag 命名，保留 30 天作為正式發布與歸檔使用。
+# ==========================================
 stages:
   - quality
   - package
 
+# ------------------------------------------
+# 品質管制與版本檢查階段 (Quality Stage)
+# ------------------------------------------
+
+# 防呆機制：嚴格確保 Python (pyproject.toml) 與 Rust (Cargo.toml) 版本號同步
+# - dev 分支: 強制要求 Python 為 .devN，Rust 為 -dev.N 後綴。
+# - main 分支: 強制要求純淨的 X.Y.Z 版本號。
+# - Tag: 確保專案內部定義的版號與 Tag 的版號 (vX.Y.Z) 完全吻合。
 version-policy:
   stage: quality
   image: python:3.12-slim
@@ -49,6 +85,16 @@ else:
 print(f"version-policy OK: python={python_version} rust={rust_version} branch={branch or '-'} tag={tag or '-'}")
 '
 
+# ------------------------------------------
+# Python 靜態分析 (Python Static Analysis)
+# ------------------------------------------
+# 目的：確保 Python 程式碼語法與風格符合規範。
+# 工具：
+#   - compileall: 檢查基本語法錯誤 (Syntax Errors)
+#   - ruff: 極速 lint 檢查
+#   - mypy: 靜態型別檢查 (Type Checking)
+#   - black: 強制程式碼排版風格
+# 注意：此階段僅作靜態代碼分析，並未包含自動化單元測試 (pytest/unittest)。
 python-static-analysis:
   stage: quality
   image: python:3.12-slim
@@ -66,6 +112,15 @@ python-static-analysis:
     - python3 -m mypy grafana_utils python
     - python3 -m black --check grafana_utils python
 
+# ------------------------------------------
+# Rust 靜態分析 (Rust Static Analysis)
+# ------------------------------------------
+# 目的：以官方工具鏈確保 Rust 程式碼品質與風格。
+# 工具：
+#   - cargo fmt: 檢查程式碼排版
+#   - cargo clippy: 進階 Linter。加上了 `-D warnings` 參數，
+#                   表示只要出現任何警告 (warning)，CI 就會直接標示為失敗 (Failed)。
+# 注意：此階段同樣未調用 `cargo test` 進行業務邏輯與單元測試。
 rust-static-analysis:
   stage: quality
   image: rust:1.80-slim
@@ -81,6 +136,14 @@ rust-static-analysis:
     - cargo fmt --check
     - cargo clippy --all-targets -- -D warnings
 
+# ------------------------------------------
+# 建置與打包階段 (Package Stage)
+# ------------------------------------------
+
+# Python Preview 版源碼與 Wheel 打包 (dev/main)
+# 目的：替開發分支建立可隨時安裝預覽的 .whl 及 .tar.gz (Sdist)。
+# 機制：使用 Poetry 與 build 套件，透過 --no-isolation 確保使用當下環境依賴。
+# 儲存：Artifacts 命名結合了分支名稱與 Commit SHA 以避免覆蓋，並設定存活時間為 7 天。
 python-package-preview:
   stage: package
   image: python:3.12-slim
@@ -103,6 +166,9 @@ python-package-preview:
       - dist/*.tar.gz
       - dist/*.whl
 
+# Python Release 版源碼與 Wheel 打包 (Tags)
+# 目的：針對正式釋出的 Tag 進行打包，供長期發布使用。
+# 儲存：Artifacts 命名採用正式的 Tag 版號，並設定較長的存活時間 (30 天)，方便後續手動部署或歸檔。
 python-package-release:
   stage: package
   image: python:3.12-slim
@@ -124,6 +190,10 @@ python-package-release:
       - dist/*.tar.gz
       - dist/*.whl
 
+# Rust Preview 版二進位打包 (dev/main)
+# 目的：透過 `cargo build --release` 編譯出效能最佳化的執行檔。
+# 產物：同時匯出 grafana-util 及 grafana-access-utils 兩支 CLI 應用。
+# 儲存：加上 Commit SHA 作為辨識，並保留 7 天。
 rust-package-preview:
   stage: package
   image: rust:1.80-slim
@@ -143,6 +213,9 @@ rust-package-preview:
       - rust/target/release/grafana-util
       - rust/target/release/grafana-access-utils
 
+# Rust Release 版二進位打包 (Tags)
+# 目的：針對正式發布產生穩定版本的二進位執行檔。
+# 儲存：以 Tag 直接命名 Artifacts，給予 30 天的保留期限，作為 Release 發布的最終產物。
 rust-package-release:
   stage: package
   image: rust:1.80-slim

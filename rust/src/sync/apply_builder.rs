@@ -3,9 +3,12 @@
 //! runnable operations that are safe to hand to the apply executor. It rejects plans
 //! that are unreviewed, unsupported, or missing explicit approval.
 
+use super::apply_contract::{
+    load_apply_intent_document, SyncApplyIntentDocument, SyncApplyOperation,
+};
 use super::json::{require_json_array_field, require_json_object};
 use super::workbench::{SYNC_APPLY_INTENT_KIND, SYNC_APPLY_INTENT_SCHEMA_VERSION, SYNC_PLAN_KIND};
-use crate::common::{message, tool_version, Result};
+use crate::common::{message, tool_version, GrafanaCliError, Result};
 use serde_json::Value;
 
 pub fn build_sync_apply_intent_document(plan_document: &Value, approve: bool) -> Result<Value> {
@@ -40,18 +43,32 @@ pub fn build_sync_apply_intent_document(plan_document: &Value, approve: bool) ->
                 Some("would-create" | "would-update" | "would-delete")
             )
         })
-        .collect::<Vec<Value>>();
-    Ok(serde_json::json!({
-        "kind": SYNC_APPLY_INTENT_KIND,
-        "schemaVersion": SYNC_APPLY_INTENT_SCHEMA_VERSION,
-        "toolVersion": tool_version(),
-        "mode": "apply",
-        "reviewed": plan.get("reviewed").cloned().unwrap_or(Value::Bool(false)),
-        "reviewRequired": plan.get("reviewRequired").cloned().unwrap_or(Value::Bool(true)),
-        "allowPrune": plan.get("allowPrune").cloned().unwrap_or(Value::Bool(false)),
-        "approved": true,
-        "summary": plan.get("summary").cloned().unwrap_or(Value::Null),
-        "alertAssessment": plan.get("alertAssessment").cloned().unwrap_or(Value::Null),
-        "operations": executable_operations,
-    }))
+        .map(serde_json::from_value::<SyncApplyOperation>)
+        .collect::<serde_json::Result<Vec<_>>>()?;
+
+    let document = serde_json::to_value(SyncApplyIntentDocument {
+        kind: SYNC_APPLY_INTENT_KIND.to_string(),
+        schema_version: SYNC_APPLY_INTENT_SCHEMA_VERSION,
+        tool_version: tool_version().to_string(),
+        mode: "apply".to_string(),
+        reviewed: plan
+            .get("reviewed")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        review_required: plan
+            .get("reviewRequired")
+            .and_then(Value::as_bool)
+            .unwrap_or(true),
+        allow_prune: plan
+            .get("allowPrune")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        approved: true,
+        summary: plan.get("summary").cloned().unwrap_or(Value::Null),
+        alert_assessment: plan.get("alertAssessment").cloned().unwrap_or(Value::Null),
+        operations: executable_operations,
+    })
+    .map_err(GrafanaCliError::from)?;
+    load_apply_intent_document(&document)?;
+    Ok(document)
 }

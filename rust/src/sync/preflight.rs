@@ -1,10 +1,9 @@
 //! Staged sync preflight helpers.
 //!
-//! Purpose:
-//! - Build one pure preflight document from desired sync resources and explicit
-//!   availability hints.
-//! - Keep staged dependency and alert live-apply policy checks isolated from
-//!   any Rust CLI or Grafana transport wiring.
+//! Build one pure preflight document from desired sync resources and explicit
+//! availability hints.
+//! Keep staged dependency and alert live-apply policy checks isolated from
+//! Rust CLI and Grafana transport wiring.
 
 use super::json::{require_json_object, require_json_object_field};
 use super::workbench::{normalize_resource_specs, SyncResourceSpec};
@@ -13,12 +12,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 
-/// Constant for sync preflight kind.
 pub const SYNC_PREFLIGHT_KIND: &str = "grafana-utils-sync-preflight";
-/// Constant for sync preflight schema version.
 pub const SYNC_PREFLIGHT_SCHEMA_VERSION: i64 = 1;
 
-/// Struct definition for SyncPreflightCheck.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SyncPreflightCheck {
     pub kind: String,
@@ -28,7 +24,6 @@ pub struct SyncPreflightCheck {
     pub blocking: bool,
 }
 
-/// Struct definition for SyncPreflightSummary.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct SyncPreflightSummary {
@@ -399,17 +394,10 @@ fn build_alert_checks(
     Ok(checks)
 }
 
-/// Purpose: implementation note.
-///
-/// Args: see function signature.
-/// Returns: see implementation.
 pub fn build_sync_preflight_document(
     desired_specs: &[Value],
     availability: Option<&Value>,
 ) -> Result<Value> {
-    // Normalize first so preflight checks stay a read-only overlay on the same
-    // staged resource contract used by plan and audit.
-
     let specs = normalize_resource_specs(desired_specs)?;
     let availability = match availability {
         None => Map::new(),
@@ -456,14 +444,7 @@ pub fn build_sync_preflight_document(
     }))
 }
 
-/// Purpose: implementation note.
-///
-/// Args: see function signature.
-/// Returns: see implementation.
 pub fn render_sync_preflight_text(document: &Value) -> Result<Vec<String>> {
-    // Keep the text renderer strict about the document kind so the CLI can
-    // switch between text and JSON without special-casing the payload shape.
-
     let kind = normalize_text(document.get("kind"));
     if kind != SYNC_PREFLIGHT_KIND {
         return Err(message("Sync preflight document kind is not supported."));

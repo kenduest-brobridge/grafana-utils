@@ -8,7 +8,8 @@ pub(crate) use crate::dashboard::cli_defs::{
     DashboardCommand, DashboardImportInputFormat, DiffArgs, ExportArgs, GovernanceGateArgs,
     GovernanceGateOutputFormat, GovernancePolicySource, ImpactArgs, ImpactOutputFormat, ImportArgs,
     InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat,
-    InspectVarsArgs, ListArgs, ScreenshotArgs, ScreenshotFullPageOutput, ScreenshotOutputFormat,
+    InspectVarsArgs, ListArgs, RawToPromptArgs, RawToPromptLogFormat, RawToPromptOutputFormat,
+    RawToPromptResolution, ScreenshotArgs, ScreenshotFullPageOutput, ScreenshotOutputFormat,
     ScreenshotTheme, SimpleOutputFormat, TopologyArgs, TopologyOutputFormat, ValidateExportArgs,
     ValidationOutputFormat,
 };
@@ -117,6 +118,7 @@ pub(crate) use crate::dashboard::prompt::{
     datasource_type_alias, is_builtin_datasource_ref, is_placeholder_string, lookup_datasource,
     resolve_datasource_type_alias,
 };
+pub(crate) use crate::dashboard::raw_to_prompt::run_raw_to_prompt;
 pub(crate) use crate::dashboard::screenshot::{
     build_dashboard_capture_url, infer_screenshot_output_format, resolve_manifest_title,
     validate_screenshot_args,

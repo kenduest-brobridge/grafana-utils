@@ -1,6 +1,7 @@
 import ast
 import importlib
 import io
+import tempfile
 import sys
 import unittest
 from contextlib import redirect_stdout
@@ -137,6 +138,77 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(
             args.forwarded_argv,
             ["inspect-live", "--url", "http://127.0.0.1:3000", "--report"],
+        )
+
+    def test_unified_parse_args_supports_dashboard_governance_gate_namespace(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args = unified_cli.parse_args(
+                [
+                    "dashboard",
+                    "governance-gate",
+                    "--policy",
+                    f"{tmpdir}/policy.json",
+                    "--governance",
+                    f"{tmpdir}/governance.json",
+                    "--queries",
+                    f"{tmpdir}/queries.json",
+                ]
+            )
+
+        self.assertEqual(args.entrypoint, "dashboard")
+        self.assertEqual(
+            args.forwarded_argv[0],
+            "governance-gate",
+        )
+
+    def test_unified_parse_args_supports_dashboard_topology_namespace(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args = unified_cli.parse_args(
+                [
+                    "dashboard",
+                    "topology",
+                    "--governance",
+                    f"{tmpdir}/governance.json",
+                    "--queries",
+                    f"{tmpdir}/queries.json",
+                ]
+            )
+
+        self.assertEqual(args.entrypoint, "dashboard")
+        self.assertEqual(
+            args.forwarded_argv,
+            [
+                "topology",
+                "--governance",
+                f"{tmpdir}/governance.json",
+                "--queries",
+                f"{tmpdir}/queries.json",
+            ],
+        )
+
+    def test_unified_parse_args_supports_dashboard_topology_alias(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args = unified_cli.parse_args(
+                [
+                    "dashboard",
+                    "graph",
+                    "--governance",
+                    f"{tmpdir}/governance.json",
+                    "--queries",
+                    f"{tmpdir}/queries.json",
+                ]
+            )
+
+        self.assertEqual(args.entrypoint, "dashboard")
+        self.assertEqual(
+            args.forwarded_argv,
+            [
+                "topology",
+                "--governance",
+                f"{tmpdir}/governance.json",
+                "--queries",
+                f"{tmpdir}/queries.json",
+            ],
         )
 
     def test_unified_parse_args_supports_alert_namespace(self):
@@ -291,6 +363,91 @@ class UnifiedCliTests(unittest.TestCase):
 
         self.assertEqual(result, 7)
         mocked.assert_called_once_with(["list-dashboard", "--json"])
+
+    def test_unified_main_dispatches_dashboard_governance_gate_namespace(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.object(
+                unified_cli.dashboard_cli, "main", return_value=9
+            ) as mocked:
+                result = unified_cli.main(
+                    [
+                        "dashboard",
+                        "governance-gate",
+                        "--policy",
+                        f"{tmpdir}/policy.json",
+                        "--governance",
+                        f"{tmpdir}/governance.json",
+                        "--queries",
+                        f"{tmpdir}/queries.json",
+                    ]
+                )
+
+        self.assertEqual(result, 9)
+        mocked.assert_called_once_with(
+            [
+                "governance-gate",
+                "--policy",
+                f"{tmpdir}/policy.json",
+                "--governance",
+                f"{tmpdir}/governance.json",
+                "--queries",
+                f"{tmpdir}/queries.json",
+            ]
+        )
+
+    def test_unified_main_dispatches_dashboard_topology_namespace(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.object(
+                unified_cli.dashboard_cli, "main", return_value=11
+            ) as mocked:
+                result = unified_cli.main(
+                    [
+                        "dashboard",
+                        "topology",
+                        "--governance",
+                        f"{tmpdir}/governance.json",
+                        "--queries",
+                        f"{tmpdir}/queries.json",
+                    ]
+                )
+
+        self.assertEqual(result, 11)
+        mocked.assert_called_once_with(
+            [
+                "topology",
+                "--governance",
+                f"{tmpdir}/governance.json",
+                "--queries",
+                f"{tmpdir}/queries.json",
+            ]
+        )
+
+    def test_unified_main_dispatches_dashboard_topology_alias(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with mock.patch.object(
+                unified_cli.dashboard_cli, "main", return_value=12
+            ) as mocked:
+                result = unified_cli.main(
+                    [
+                        "dashboard",
+                        "graph",
+                        "--governance",
+                        f"{tmpdir}/governance.json",
+                        "--queries",
+                        f"{tmpdir}/queries.json",
+                    ]
+                )
+
+        self.assertEqual(result, 12)
+        mocked.assert_called_once_with(
+            [
+                "topology",
+                "--governance",
+                f"{tmpdir}/governance.json",
+                "--queries",
+                f"{tmpdir}/queries.json",
+            ]
+        )
 
     def test_unified_main_dispatches_alert_passthrough(self):
         with mock.patch.object(unified_cli.alert_cli, "main", return_value=3) as mocked:

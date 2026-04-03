@@ -9,7 +9,7 @@ use super::{GovernanceGateArgs, GovernancePolicySource};
 
 const DEFAULT_BUILTIN_POLICY_JSON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../examples/dashboard-governance-policy.json"
+    "/src/dashboard/assets/builtin_governance_policy.json"
 ));
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

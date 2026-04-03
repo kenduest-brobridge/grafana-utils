@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>技術參考手冊 (Technical Reference) · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+    --panel: rgba(15, 23, 32, 0.86);
+    --panel-strong: rgba(15, 23, 32, 0.94);
+    --text: #d9e2ec;
+    --muted: #9fb3c8;
+    --heading: #f0f4f8;
+    --accent: #7bdcb5;
+    --accent-soft: rgba(18, 53, 40, 0.9);
+    --border: #243b53;
+    --code-bg: #1f2933;
+    --pre-bg: #081018;
+    --pre-text: #e6edf3;
+    --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+  }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+html[data-theme="light"] body {
+  --bg: linear-gradient(180deg, #f7f3eb 0%, #fcfbf8 100%);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --text: #1f2933;
+  --muted: #52606d;
+  --heading: #102a43;
+  --accent: #0b6e4f;
+  --accent-soft: #e8f1eb;
+  --border: #d9e2ec;
+  --code-bg: #f0f4f8;
+  --pre-bg: #0f1720;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(15, 23, 32, 0.08);
+}
+html[data-theme="dark"] body {
+  --bg: linear-gradient(180deg, #0b1220 0%, #111827 100%);
+  --panel: rgba(15, 23, 32, 0.86);
+  --panel-strong: rgba(15, 23, 32, 0.94);
+  --text: #d9e2ec;
+  --muted: #9fb3c8;
+  --heading: #f0f4f8;
+  --accent: #7bdcb5;
+  --accent-soft: rgba(18, 53, 40, 0.9);
+  --border: #243b53;
+  --code-bg: #1f2933;
+  --pre-bg: #081018;
+  --pre-text: #e6edf3;
+  --shadow: 0 18px 45px rgba(0, 0, 0, 0.32);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  color: var(--text);
+  background: var(--bg);
+}
+a { color: var(--accent); }
+code {
+  font: 0.92em ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  overflow-x: auto;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+}
+pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 22px 0;
+  font-size: 0.98rem;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  vertical-align: top;
+}
+th {
+  text-align: left;
+  background: var(--accent-soft);
+}
+.site {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 28px 22px 68px;
+}
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.topbar a {
+  color: inherit;
+  text-decoration: none;
+}
+.brand {
+  font: 700 0.96rem/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.themebar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font: 600 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.hero {
+  padding: 26px 28px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: 700 12px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+  color: var(--heading);
+}
+.hero p {
+  max-width: 74ch;
+  margin: 14px 0 0;
+  font-size: 1.06rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.breadcrumbs {
+  margin: 20px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  font-size: 0.96rem;
+  color: var(--muted);
+}
+.breadcrumbs li::after {
+  content: "/";
+  margin-left: 10px;
+}
+.breadcrumbs li:last-child::after {
+  content: "";
+  margin: 0;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 22px;
+  margin-top: 22px;
+}
+.panel {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article {
+  padding: 30px;
+}
+.article h1,
+.article h2,
+.article h3 {
+  color: var(--heading);
+}
+.article h1 {
+  margin-top: 0;
+}
+.article h2 {
+  margin-top: 40px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+.article h3 {
+  margin-top: 28px;
+}
+.article p,
+.article li {
+  font-size: 1.03rem;
+  line-height: 1.8;
+}
+.sidebar {
+  padding: 22px;
+}
+.sidebar section + section {
+  margin-top: 20px;
+}
+.sidebar h2 {
+  margin: 0 0 10px;
+  font-size: 0.96rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li + li {
+  margin-top: 8px;
+}
+.sidebar a {
+  text-decoration: none;
+}
+.link-card {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+}
+.footer-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.footer-nav .link-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.site-footer {
+  margin-top: 24px;
+  padding: 18px 22px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.94rem;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 22px;
+}
+.landing-card {
+  padding: 22px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.landing-card h2 {
+  margin-top: 0;
+  color: var(--heading);
+}
+.landing-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+@media (max-width: 980px) {
+  .layout,
+  .landing-grid,
+  .footer-nav {
+    grid-template-columns: 1fr;
+  }
+}</style>
+</head>
+<body>
+  <div class="site">
+    <div class="topbar">
+      <a class="brand" href="../../index.html">grafana-util docs</a>
+      <div class="themebar">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" aria-label="Theme">
+          <option value="auto">Auto</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </div>
+    </div>
+    <header class="hero">
+      <div class="eyebrow">Handbook · 繁體中文</div>
+      <h1>技術參考手冊 (Technical Reference)</h1>
+      <p>敘事式手冊頁面，適合照工作流閱讀，再跳到逐指令頁查精確命令面。</p>
+      <ol class="breadcrumbs"><li><a href="../../index.html">Home</a></li><li><a href="index.html">Handbook</a></li><li>繁體中文</li><li>技術參考手冊 (Technical Reference)</li></ol>
+    </header>
+    <div class="layout">
+      <article class="panel article">
+        <h1 id="技術參考手冊-technical-reference">技術參考手冊 (Technical Reference)</h1>
+<p>本章整理 <code>grafana-util</code> 目前的主要指令面，包括 profile 解析、輸出旗標，以及 staged/live 的 status 入口。</p>
+<p>如果您想逐條對照指令與旗標，請搭配 <a href="../../commands/zh-TW/profile.html">profile</a>、<a href="../../commands/zh-TW/status.html">status</a>、<a href="../../commands/zh-TW/overview.html">overview</a> 與 <a href="../../commands/zh-TW/access.html">access</a> 一起看。</p>
+<h2 id="profile-與驗證管理">🔐 Profile 與驗證管理</h2>
+<p>Profile 是 repo-local 的。<code>grafana-util profile</code> 會讀寫目前工作目錄中的 <code>grafana-util.yaml</code>，<code>--profile</code> 則是從這個檔案裡挑選一個命名 profile。</p>
+<h3 id="建議的驗證使用順序">建議的驗證使用順序</h3>
+<table><thead><tr><th>方法</th><th>最適合</th><th>優點</th><th>限制 / 注意事項</th></tr></thead><tbody><tr><td><code>--profile</code></td><td>可重複的日常維運、CI、長期 checkout</td><td>不必重複把秘密寫在命令列，支援 env 與 secret store</td><td>需要先做一次設定</td></tr><tr><td>直接 Basic auth</td><td>bootstrap、break-glass、全域管理員流程</td><td>直覺，也較適合跨 org 與 admin surface</td><td>不要把明文密碼留在 shell history；優先用 <code>--prompt-password</code></td></tr><tr><td>直接 token</td><td>權限較窄的腳本或單一 org API 操作</td><td>容易輪替，也容易做最小權限</td><td>權限範圍可能不足以支援 <code>--all-orgs</code>、org 管理或全域管理操作</td></tr></tbody></table>
+<p>這個 repo 建議的 steady-state 是：把連線預設放進 <code>grafana-util.yaml</code>，秘密用 <code>password_env</code>、<code>token_env</code> 或 secret store 承載，日常執行時用 <code>--profile</code>。</p>
+<h3 id="secret-保存模式它是什麼好處是什麼什麼時候該用">Secret 保存模式：它是什麼、好處是什麼、什麼時候該用</h3>
+<p><code>grafana-util</code> 不只支援一種 secret 存放方式，因為本機操作、CI 與長期維護的 checkout，需求和風險模型並不一樣。</p>
+<table><thead><tr><th>模式</th><th>它是什麼</th><th>好處</th><th>限制 / 注意事項</th></tr></thead><tbody><tr><td><code>file</code></td><td>直接把明文 secret 放在 <code>grafana-util.yaml</code></td><td>最直覺、最好手改</td><td>secret 就留在設定檔裡，不適合共享 repo 或日常管理流程</td></tr><tr><td><code>password_env</code> / <code>token_env</code></td><td>profile 只記環境變數名稱，真正 secret 仍留在 environment</td><td>很適合 CI、wrapper script、既有 env-injection 流程</td><td>還是要自己管理好 process environment</td></tr><tr><td><code>os</code></td><td>profile 只記 reference key，真正 secret 放在 macOS Keychain 或 Linux Secret Service</td><td>秘密不用留在 YAML，也不必每次重打</td><td>只支援 macOS / Linux；Linux 也要有可用的 secret-service session</td></tr><tr><td><code>encrypted-file</code></td><td>profile 只記 reference key，真正 secret 加密後放在 <code>.grafana-util.secrets.yaml</code></td><td>不依賴 OS secret service，也比明文檔安全</td><td>強度取決於 passphrase 或 local key 的管理方式</td></tr></tbody></table>
+<p>大多數團隊可用這個順序思考：</p>
+<p>1. CI 與自動化：優先用 <code>password_env</code> / <code>token_env</code> 2. macOS 或 Linux 桌面上的日常維運：優先用 <code>os</code> 3. 需要 repo-local 加密存放、但不想依賴 OS secret service：用 <code>encrypted-file</code> 4. <code>file</code> 明文模式只留給 demo、一次性 lab、或明確的 bootstrap 情境</p>
+<h3 id="macos-與-linux-的-os-secret-store-支援">macOS 與 Linux 的 OS secret store 支援</h3>
+<p><code>os</code> provider 目前是平台後端：</p>
+<ul><li>macOS：透過 <code>security</code> 寫入 Keychain</li><li>Linux：透過系統 keyring 整合寫入 Secret Service</li></ul>
+<p>這樣 profile YAML 只會留下像這樣的 reference：</p>
+<pre><code>password_store:
+  provider: os
+  key: grafana-util/profile/prod/password</code></pre>
+<p>真正的密碼不會放進 <code>grafana-util.yaml</code>。</p>
+<p>重要限制：</p>
+<ul><li><code>os</code> 只支援 macOS 與 Linux</li><li>Linux 的 server、container、CI shell 不一定有可用的 Secret Service session</li><li>如果 OS secret store 不可用，請改用 <code>password_env</code>、<code>token_env</code> 或 <code>encrypted-file</code></li></ul>
+<h3 id="1-選對-profile-工作流">1. 選對 profile 工作流</h3>
+<table><thead><tr><th>工作流</th><th>用途</th><th>什麼時候用</th></tr></thead><tbody><tr><td><code>profile init</code></td><td>產生最小版的 <code>grafana-util.yaml</code>。</td><td>想先有一份基本設定檔再慢慢改時。</td></tr><tr><td><code>profile add</code></td><td>直接建立或更新一個 named profile。</td><td>想用比較順手的一步式流程時。</td></tr><tr><td><code>profile example</code></td><td>輸出完整註解版範本。</td><td>想拿一份可直接修改的參考設定時。</td></tr></tbody></table>
+<p>如果你有設定 <code>GRAFANA_UTIL_CONFIG</code>，設定檔就會跟著那個路徑走。<code>encrypted-file</code> 模式用到的幫助檔也會放在同一個目錄：</p>
+<table><thead><tr><th>檔案</th><th>預設位置</th></tr></thead><tbody><tr><td><code>grafana-util.yaml</code></td><td>目前工作目錄，或 <code>GRAFANA_UTIL_CONFIG</code> 指定的路徑</td></tr><tr><td><code>.grafana-util.secrets.yaml</code></td><td>跟 <code>grafana-util.yaml</code> 放同一個目錄</td></tr><tr><td><code>.grafana-util.secrets.key</code></td><td>跟 <code>grafana-util.yaml</code> 放同一個目錄</td></tr></tbody></table>
+<h3 id="2-初始化新增並列出-profile">2. 初始化、新增並列出 profile</h3>
+<pre><code>grafana-util profile init --overwrite</code></pre>
+<pre><code>grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password</code></pre>
+<pre><code>grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN --store-secret os</code></pre>
+<pre><code>grafana-util profile list</code></pre>
+<pre><code>grafana-util profile example --mode full</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>Wrote grafana-util.yaml.
+dev
+prod</code></pre>
+<p><code>init</code> 會建立本機設定檔，<code>add</code> 可以一步直接建立可用 profile，<code>list</code> 會一行列出一個已解析的 profile 名稱，而 <code>example</code> 則會輸出完整註解版範本，方便你拿去改。</p>
+<h3 id="3-顯示已解析的-profile">3. 顯示已解析的 profile</h3>
+<pre><code>grafana-util profile show --profile prod --output-format yaml</code></pre>
+<pre><code>grafana-util profile show --profile prod --show-secrets --output-format yaml</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>name: prod
+source_path: grafana-util.yaml
+profile:
+  url: https://grafana.example.com
+  username: admin
+  password_env: GRAFANA_PROD_PASSWORD
+  verify_ssl: true</code></pre>
+<p>要確認最後解析結果時就用 <code>show</code>。<code>--profile</code> 會覆蓋預設選擇規則，而 <code>yaml</code> 最適合人工檢查連線設定。</p>
+<p><code>--show-secrets</code> 只適合本機除錯或檢查。它會把 secret-store 參照解成明文輸出。</p>
+<h3 id="4-註解版範例輸出">4. 註解版範例輸出</h3>
+<pre><code># 沒有指定 --profile 時，預設會用這個 profile。
+default_profile: dev
+
+profiles:
+  # 本機 demo profile，透過環境變數提供 Basic auth 密碼。
+  dev:
+    url: http://127.0.0.1:3000
+    username: admin
+    password_env: GRAFANA_DEV_PASSWORD
+    timeout: 30
+    verify_ssl: false
+
+  # 從環境變數取得 token。適合權限範圍較窄的自動化。
+  ci_token:
+    url: https://grafana.example.com
+    token_env: GRAFANA_CI_TOKEN
+    timeout: 30
+    verify_ssl: true
+
+  # 明文範例。好改，但密碼會直接留在 grafana-util.yaml 裡。
+  prod_plaintext:
+    url: https://grafana.example.com
+    username: admin
+    password: change-me
+    verify_ssl: true
+
+  # OS 密碼保管庫範例。密碼會放進 macOS Keychain 或 Linux Secret Service。
+  prod_os_store:
+    url: https://grafana.example.com
+    username: admin
+    password_store:
+      provider: os
+      key: grafana-util/profile/prod_os_store/password
+
+  # 有 passphrase 的加密秘密檔。secret file 預設會跟 grafana-util.yaml 放同一層。
+  prod_encrypted:
+    url: https://grafana.example.com
+    username: admin
+    password_store:
+      provider: encrypted-file
+      key: grafana-util/profile/prod_encrypted/password
+      path: .grafana-util.secrets.yaml
+
+  # 沒有 passphrase 的加密秘密檔。可減少直接看到明文，但不等於能抵擋本機帳號被入侵。
+  stage_encrypted_local_key:
+    url: https://grafana-stage.example.com
+    username: stage-bot
+    password_store:
+      provider: encrypted-file
+      key: grafana-util/profile/stage_encrypted_local_key/password
+      path: .grafana-util.secrets.yaml</code></pre>
+<h3 id="5-日常使用時的三種常見驗證範例">5. 日常使用時的三種常見驗證範例</h3>
+<pre><code>grafana-util status live --profile prod --output yaml</code></pre>
+<pre><code>grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output yaml</code></pre>
+<pre><code>grafana-util overview live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output json</code></pre>
+<p>預設請以 <code>--profile</code> 為主。直接 Basic auth 比較適合管理員型流程；token 則適合你已經很清楚權限邊界的 scoped automation。</p>
+<h3 id="6-完整的-secret-handling-範例">6. 完整的 secret-handling 範例</h3>
+<pre><code># 用環境變數承載密碼，建立可重複使用的本機 profile。</code></pre>
+<pre><code>export GRAFANA_PROD_PASSWORD=&#x27;change-me&#x27;</code></pre>
+<pre><code>grafana-util profile add prod --url https://grafana.example.com --basic-user admin --password-env GRAFANA_PROD_PASSWORD</code></pre>
+<pre><code>grafana-util status live --profile prod --output yaml</code></pre>
+<pre><code># 在 macOS 或 Linux 桌面上，把 secret 放進 OS secret store。</code></pre>
+<pre><code>grafana-util profile add prod-os --url https://grafana.example.com --basic-user admin --prompt-password --store-secret os</code></pre>
+<pre><code>grafana-util overview live --profile prod-os --output interactive</code></pre>
+<pre><code># 使用帶 passphrase 的加密 secret file。</code></pre>
+<pre><code>grafana-util profile add prod-encrypted --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file --prompt-secret-passphrase</code></pre>
+<pre><code>grafana-util status live --profile prod-encrypted --output yaml</code></pre>
+<pre><code># 在自動化流程中，以環境變數承載 scoped token。</code></pre>
+<pre><code>export GRAFANA_CI_TOKEN=&#x27;replace-me&#x27;</code></pre>
+<pre><code>grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN</code></pre>
+<pre><code>grafana-util overview live --profile ci --output json</code></pre>
+<p>這組範例的重點是：</p>
+<ul><li>用同一種 <code>--profile</code> 操作面，對應不同的 secret backend</li><li>讓日常執行不必每次都重貼密碼</li><li>把 env、OS secret store、encrypted-file 與 token 模式都完整交代</li></ul>
+<h3 id="7-多-org-與管理員範圍的注意事項">7. 多 org 與管理員範圍的注意事項</h3>
+<ul><li><code>--all-orgs</code> 最適合搭配管理員憑證支援的 <code>--profile</code> 或直接 Basic auth。</li><li>Token 只能看到它被授權看到的範圍。多 org inventory、org export/import、user 或 team 管理，都可能因 token 權限不足而只回傳部分資料或直接失敗。</li><li><code>access org</code>、<code>access user</code>、<code>access team</code> 與 service-account lifecycle 這類 surface，通常需要比窄權限 API token 更高的 Grafana 權限。</li></ul>
+<h3 id="8-secret-storage-常見排解">8. Secret storage 常見排解</h3>
+<p>先確認 <code>security</code> 工具有沒有正常可用，以及目前登入 session 能不能存取 Keychain。</p>
+<p>很可能目前環境沒有可用的 Secret Service session；這在 headless shell、container、精簡 server 上很常見。請改用 <code>password_env</code>、<code>token_env</code> 或 <code>encrypted-file</code>。</p>
+<p>請確認對應的 env var 仍存在、OS secret store 裡的 key 仍存在，或加密 secret file 與 passphrase/local key 還在。</p>
+<p>目標 checkout 必須同時有 <code>.grafana-util.secrets.yaml</code>，以及相同的 passphrase 或對應的 local key file。</p>
+<p>代表 credential 本身有效，但權限範圍不夠。請改用管理員等級的 Basic auth 或 admin-backed profile。</p>
+<ul><li><code>profile add --store-secret os</code> 在 macOS 失敗：</li><li><code>profile add --store-secret os</code> 在 Linux 失敗：</li><li><code>profile show --show-secrets</code> 無法解出 secret：</li><li><code>encrypted-file</code> 在一台機器可用、另一台不行：</li><li>profile 在一般 live 指令可用，但 <code>--all-orgs</code> 或 access-management 失敗：</li></ul>
+<h2 id="輸出格式對照">📊 輸出格式對照</h2>
+<p><code>grafana-util</code> 同時提供各格式旗標與單一 <code>--output-format</code> 選擇器。以 dashboard list 來說，目前可用的是 <code>--json</code>、<code>--table</code>、<code>--csv</code>、<code>--yaml</code> 與 <code>--output-format</code>。</p>
+<h3 id="1-表格或-json-的選擇">1. 表格或 JSON 的選擇</h3>
+<pre><code>grafana-util dashboard list -h</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>--text
+--table
+--csv
+--json
+--yaml
+--output-format &lt;OUTPUT_FORMAT&gt;</code></pre>
+<p><code>--json</code> 適合自動化，<code>--table</code> 適合快速人工檢查，而 <code>--output-format</code> 則適合想用單一旗標切換輸出格式的情境。舊版文件中的 <code>--limit</code> 範例已不符合現況，現在應該用 <code>--page-size</code> 控制抓取大小、用 <code>--output-columns</code> 控制欄位。</p>
+<h3 id="2-live-status-與-overview-的輸出選擇器">2. Live status 與 overview 的輸出選擇器</h3>
+<pre><code>grafana-util status live -h</code></pre>
+<pre><code>grafana-util overview live -h</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>Render project status from live Grafana read surfaces. Use current Grafana state plus optional staged context files.
+...
+--output &lt;OUTPUT&gt;
+    Render project status as table, csv, text, json, yaml, or interactive output.
+
+Render a live overview by delegating to the shared status live path.
+...
+--output &lt;OUTPUT&gt;
+    Render project status as table, csv, text, json, yaml, or interactive output.</code></pre>
+<p>這兩個 live 入口現在都用 <code>--output</code>，不是舊文件常見的 <code>--output-format</code> 寫法。</p>
+<h2 id="dashboard-路徑">🗂️ Dashboard 路徑</h2>
+<ul><li><code>raw/</code> 是給 API replay/import 使用的路徑。</li><li><code>prompt/</code> 是給 Grafana UI 匯入使用的路徑。</li><li><code>dashboard export</code> 會直接產生 prompt 路徑。</li><li><code>dashboard raw-to-prompt</code> 可以把一般或 raw 的 dashboard JSON 轉成 prompt JSON，方便修補或遷移成 Grafana UI 匯入格式。</li><li><code>dashboard import</code> 只吃 <code>raw/</code> 或 <code>provisioning/</code> 輸入，不吃 <code>prompt/</code>。</li></ul>
+<h2 id="自動化與腳本開發-cicd">🤖 自動化與腳本開發 (CI/CD)</h2>
+<h3 id="1-使用-jq-進行過濾-bashzsh">1. 使用 <code>jq</code> 進行過濾 (Bash/Zsh)</h3>
+<pre><code># 取得組織 ID 為 5 的所有 Dashboard UID</code></pre>
+<pre><code>grafana-util dashboard list --profile prod --json | jq -r &#x27;.[] | select(.orgId == 5) | .uid&#x27;</code></pre>
+<p>這是目前可用的 JSON 腳本路徑。如果需要更少或不同欄位，請改用 <code>--output-columns</code>，不要再假設舊版表格欄位還存在。</p>
+<h3 id="2-處理結束代碼-exit-codes">2. 處理結束代碼 (Exit Codes)</h3>
+<pre><code>grafana-util status live --profile prod --output json</code></pre>
+<pre><code>if [ $? -eq 2 ]; then</code></pre>
+<pre><code>  echo &quot;CRITICAL: Grafana 連線受阻！&quot;</code></pre>
+<pre><code>  exit 1</code></pre>
+<pre><code>fi</code></pre>
+<table><thead><tr><th>Exit Code</th><th>意義</th></tr></thead><tbody><tr><td><strong>0</strong></td><td><strong>成功 (Success)</strong>：任務完成。</td></tr><tr><td><strong>1</strong></td><td><strong>一般錯誤</strong>：檢查語法或本地檔案權限。</td></tr><tr><td><strong>2</strong></td><td><strong>連線受阻</strong>：目標 Grafana 故障或網路拒絕連線。</td></tr><tr><td><strong>3</strong></td><td><strong>驗證失敗</strong>：專案合約或 dashboard JSON 無效。</td></tr></tbody></table>
+<p><a href="scenarios.html">⬅️ 上一章：維運實戰場景</a> | <a href="index.html">🏠 回首頁</a> | <a href="recipes.html">➡️ 下一章：實戰錦囊與最佳實踐</a></p>
+        <nav class="footer-nav"><a class="link-card" href="recipes.html"><span>Previous</span>🍳 實戰錦囊與最佳實踐</a><a class="link-card" href="troubleshooting.html"><span>Next</span>🔍 疑難排解與名詞解釋</a></nav>
+      </article>
+      <aside class="panel sidebar">
+        <section>
+          <h2>On This Page</h2>
+          <ul><li><a class="link-card" href="#profile-與驗證管理">🔐 Profile 與驗證管理</a></li><li><a class="link-card" href="#建議的驗證使用順序">建議的驗證使用順序</a></li><li><a class="link-card" href="#secret-保存模式它是什麼好處是什麼什麼時候該用">Secret 保存模式：它是什麼、好處是什麼、什麼時候該用</a></li><li><a class="link-card" href="#macos-與-linux-的-os-secret-store-支援">macOS 與 Linux 的 OS secret store 支援</a></li><li><a class="link-card" href="#1-選對-profile-工作流">1. 選對 profile 工作流</a></li><li><a class="link-card" href="#2-初始化新增並列出-profile">2. 初始化、新增並列出 profile</a></li><li><a class="link-card" href="#3-顯示已解析的-profile">3. 顯示已解析的 profile</a></li><li><a class="link-card" href="#4-註解版範例輸出">4. 註解版範例輸出</a></li><li><a class="link-card" href="#5-日常使用時的三種常見驗證範例">5. 日常使用時的三種常見驗證範例</a></li><li><a class="link-card" href="#6-完整的-secret-handling-範例">6. 完整的 secret-handling 範例</a></li><li><a class="link-card" href="#7-多-org-與管理員範圍的注意事項">7. 多 org 與管理員範圍的注意事項</a></li><li><a class="link-card" href="#8-secret-storage-常見排解">8. Secret storage 常見排解</a></li><li><a class="link-card" href="#輸出格式對照">📊 輸出格式對照</a></li><li><a class="link-card" href="#1-表格或-json-的選擇">1. 表格或 JSON 的選擇</a></li><li><a class="link-card" href="#2-live-status-與-overview-的輸出選擇器">2. Live status 與 overview 的輸出選擇器</a></li><li><a class="link-card" href="#dashboard-路徑">🗂️ Dashboard 路徑</a></li><li><a class="link-card" href="#自動化與腳本開發-cicd">🤖 自動化與腳本開發 (CI/CD)</a></li><li><a class="link-card" href="#1-使用-jq-進行過濾-bashzsh">1. 使用 `jq` 進行過濾 (Bash/Zsh)</a></li><li><a class="link-card" href="#2-處理結束代碼-exit-codes">2. 處理結束代碼 (Exit Codes)</a></li></ul>
+        </section>
+        <section>
+          <h2>Related</h2>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/zh-TW/index.html">Command reference index</a></li></ul>
+        </section>
+        <section>
+          <h2>Language</h2>
+          <ul><li><a class="link-card" href="#">Current: 繁體中文</a></li><li><a class="link-card" href="../en/reference.html">Switch to English</a></li></ul>
+        </section>
+      </aside>
+    </div>
+    <footer class="site-footer">Source: <code>docs/user-guide/zh-TW/reference.md</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script>
+(() => {
+  const storageKey = "grafana-util-docs-theme";
+  const root = document.documentElement;
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (value) => {
+    if (value === "auto") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", value);
+    }
+  };
+  applyTheme(saved);
+  if (select) {
+    select.value = saved;
+    select.addEventListener("change", (event) => {
+      const value = event.target.value;
+      localStorage.setItem(storageKey, value);
+      applyTheme(value);
+    });
+  }
+})();
+</script>
+</body>
+</html>
