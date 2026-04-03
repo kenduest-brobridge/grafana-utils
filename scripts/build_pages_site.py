@@ -1,0 +1,272 @@
+#!/usr/bin/env python3
+"""Assemble a versioned GitHub Pages docs site from tags and branch refs."""
+
+from __future__ import annotations
+
+import argparse
+import html
+import re
+import shutil
+import subprocess
+import tarfile
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path
+
+from docgen_common import REPO_ROOT, write_outputs
+from generate_command_html import HtmlBuildConfig, VersionLink, generate_outputs, page_shell, html_list
+
+
+SEMVER_TAG_RE = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
+
+
+@dataclass(frozen=True, order=True)
+class SemverTag:
+    major: int
+    minor: int
+    patch: int
+    raw: str
+
+    @property
+    def minor_label(self) -> str:
+        return f"v{self.major}.{self.minor}"
+
+
+def run_git(args: list[str]) -> str:
+    completed = subprocess.run(
+        ["git", *args],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return completed.stdout.strip()
+
+
+def parse_semver_tag(text: str) -> SemverTag | None:
+    match = SEMVER_TAG_RE.fullmatch(text.strip())
+    if not match:
+        return None
+    return SemverTag(
+        major=int(match.group(1)),
+        minor=int(match.group(2)),
+        patch=int(match.group(3)),
+        raw=text.strip(),
+    )
+
+
+def list_release_tags() -> list[SemverTag]:
+    tags = [parse_semver_tag(line) for line in run_git(["tag", "--list", "v*"]).splitlines() if line.strip()]
+    return sorted((tag for tag in tags if tag is not None), reverse=True)
+
+
+def select_latest_tags_per_minor(tags: list[SemverTag]) -> list[SemverTag]:
+    by_minor: dict[tuple[int, int], SemverTag] = {}
+    for tag in tags:
+        key = (tag.major, tag.minor)
+        current = by_minor.get(key)
+        if current is None or tag.patch > current.patch:
+            by_minor[key] = tag
+    return sorted(by_minor.values(), reverse=True)
+
+
+def resolve_ref(candidates: list[str]) -> str | None:
+    for candidate in candidates:
+        if not candidate:
+            continue
+        result = subprocess.run(
+            ["git", "rev-parse", "--verify", candidate],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            return candidate
+    return None
+
+
+def export_ref_tree(ref: str, destination: Path) -> None:
+    destination.mkdir(parents=True, exist_ok=True)
+    archive_path = destination / "source.tar"
+    with archive_path.open("wb") as handle:
+        subprocess.run(["git", "archive", "--format=tar", ref], cwd=REPO_ROOT, check=True, stdout=handle)
+    with tarfile.open(archive_path) as tar:
+        tar.extractall(destination, filter="data")
+    archive_path.unlink()
+
+
+def has_modern_docs_source(source_root: Path) -> bool:
+    required_paths = (
+        source_root / "VERSION",
+        source_root / "docs" / "commands" / "en" / "dashboard.md",
+        source_root / "docs" / "commands" / "zh-TW" / "index.md",
+        source_root / "docs" / "user-guide" / "en" / "index.md",
+        source_root / "docs" / "user-guide" / "zh-TW" / "index.md",
+    )
+    return all(path.exists() for path in required_paths)
+
+
+def build_version_links(version_lanes: list[str]) -> tuple[VersionLink, ...]:
+    links = [
+        VersionLink("Version portal", "index.html"),
+        VersionLink("Latest release", "latest/index.html"),
+        VersionLink("Dev preview", "dev/index.html"),
+    ]
+    links.extend(VersionLink(label, f"{label}/index.html") for label in version_lanes)
+    return tuple(links)
+
+
+def lane_config(
+    *,
+    source_root: Path,
+    output_prefix: str,
+    version_label: str,
+    version_links: tuple[VersionLink, ...],
+) -> HtmlBuildConfig:
+    version_value = (source_root / "VERSION").read_text(encoding="utf-8").strip()
+    return HtmlBuildConfig(
+        source_root=source_root,
+        command_docs_root=source_root / "docs" / "commands",
+        handbook_root=source_root / "docs" / "user-guide",
+        output_prefix=output_prefix,
+        version=version_value,
+        version_label=version_label,
+        version_links=version_links,
+        raw_manpage_target_rel=f"{output_prefix}/man/grafana-util.1",
+        include_raw_manpages=True,
+    )
+
+
+def render_version_portal(
+    *,
+    latest_lane: str | None,
+    version_lanes: list[str],
+    has_dev: bool,
+) -> str:
+    body_sections: list[str] = []
+    quick_links: list[tuple[str, str]] = []
+    if latest_lane:
+        quick_links.append((f"Latest release ({latest_lane})", "latest/index.html"))
+    if has_dev:
+        quick_links.append(("Dev preview", "dev/index.html"))
+    body_sections.append(
+        "<section class=\"landing-card\"><div class=\"eyebrow\">Versions</div><h2>Choose a docs lane</h2>"
+        "<p>Release docs are versioned by minor line. Dev is the live preview of the development branch.</p>"
+        + html_list(quick_links + [(label, f"{label}/index.html") for label in version_lanes])
+        + "</section>"
+    )
+    body_sections.append(
+        "<section class=\"landing-card\"><div class=\"eyebrow\">Formats</div><h2>Available outputs</h2>"
+        "<ul><li>Handbook HTML</li><li>Command reference HTML</li><li>Manpage HTML mirrors</li></ul></section>"
+    )
+    body_html = '<div class="landing-grid">' + "".join(body_sections) + "</div>"
+    related_links = []
+    if latest_lane:
+        related_links.append((f"Latest release ({latest_lane})", "latest/index.html"))
+    if has_dev:
+        related_links.append(("Dev preview", "dev/index.html"))
+    related_links.extend((label, f"{label}/index.html") for label in version_lanes)
+    return page_shell(
+        page_title="grafana-util versioned docs",
+        html_lang="en",
+        home_href="index.html",
+        hero_title="grafana-util Versioned Docs",
+        hero_summary="Published release docs, development preview docs, and browser-readable manpage mirrors.",
+        eyebrow="Docs Portal",
+        breadcrumbs=[("Home", None)],
+        body_html=body_html,
+        toc_html="<p>Choose a release line or the dev preview.</p>",
+        related_html=html_list(related_links),
+        version_html="<p>This page routes between published versions.</p>",
+        locale_html="<p>Select a version first, then switch language inside that lane.</p>",
+        footer_nav_html="",
+        footer_html="Generated by <code>scripts/build_pages_site.py</code>.",
+    )
+
+
+def assemble_site(output_dir: Path) -> None:
+    release_tags = select_latest_tags_per_minor(list_release_tags())
+    outputs: dict[str, str] = {".nojekyll": ""}
+    supported_release_tags: list[SemverTag] = []
+    dev_ref = resolve_ref(["origin/dev", "dev"])
+
+    with tempfile.TemporaryDirectory(prefix="grafana-util-pages-") as tmp_root_text:
+        tmp_root = Path(tmp_root_text)
+
+        for tag in release_tags:
+            source_root = tmp_root / tag.raw
+            export_ref_tree(tag.raw, source_root)
+            if not has_modern_docs_source(source_root):
+                continue
+            supported_release_tags.append(tag)
+
+        version_lanes = [tag.minor_label for tag in supported_release_tags]
+        version_links = build_version_links(version_lanes)
+
+        for tag in supported_release_tags:
+            source_root = tmp_root / tag.raw
+            outputs.update(
+                generate_outputs(
+                    lane_config(
+                        source_root=source_root,
+                        output_prefix=tag.minor_label,
+                        version_label=tag.minor_label,
+                        version_links=version_links,
+                    )
+                )
+            )
+
+        if supported_release_tags:
+            latest_source_root = tmp_root / "latest"
+            export_ref_tree(supported_release_tags[0].raw, latest_source_root)
+            outputs.update(
+                generate_outputs(
+                    lane_config(
+                        source_root=latest_source_root,
+                        output_prefix="latest",
+                        version_label=f"Latest release ({supported_release_tags[0].minor_label})",
+                        version_links=version_links,
+                    )
+                )
+            )
+
+        if dev_ref:
+            dev_source_root = tmp_root / "dev"
+            export_ref_tree(dev_ref, dev_source_root)
+            if has_modern_docs_source(dev_source_root):
+                outputs.update(
+                    generate_outputs(
+                        lane_config(
+                            source_root=dev_source_root,
+                            output_prefix="dev",
+                            version_label="Dev preview",
+                            version_links=version_links,
+                        )
+                    )
+                )
+
+    outputs["index.html"] = render_version_portal(
+        latest_lane=supported_release_tags[0].minor_label if supported_release_tags else None,
+        version_lanes=version_lanes,
+        has_dev=dev_ref is not None and "dev/index.html" in outputs,
+    )
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    write_outputs(output_dir, outputs)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Assemble a multi-version GitHub Pages docs site.")
+    parser.add_argument("--output-dir", required=True, help="Directory to write the assembled Pages site into.")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    assemble_site(Path(args.output_dir).resolve())
+    print(f"Wrote versioned docs site to {args.output_dir}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

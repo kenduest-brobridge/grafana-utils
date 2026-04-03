@@ -234,6 +234,10 @@ th {
   font-size: 1.03rem;
   line-height: 1.8;
 }
+.article pre.manpage {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .sidebar {
   padding: 22px;
 }
@@ -342,7 +346,7 @@ th {
 <p>&gt; <strong>Goal</strong>: Ensure datasource configuration can be backed up, compared, and replayed safely using a <strong>Masked Recovery</strong> contract that protects sensitive credentials.</p>
 <h2 id="command-pages">🔗 Command Pages</h2>
 <p>Need the command-by-command surface instead of the workflow guide?</p>
-<ul><li><a href="../../commands/en/datasource.html">datasource command overview</a></li><li><a href="../../commands/en/datasource-export.html">datasource export</a></li><li><a href="../../commands/en/datasource-import.html">datasource import</a></li><li><a href="../../commands/en/datasource-diff.html">datasource diff</a></li><li><a href="../../commands/en/datasource-list.html">datasource list</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
+<ul><li><a href="../../commands/en/datasource.html">datasource command overview</a></li><li><a href="../../commands/en/datasource-types.html">datasource types</a></li><li><a href="../../commands/en/datasource-browse.html">datasource browse</a></li><li><a href="../../commands/en/datasource-inspect-export.html">datasource inspect-export</a></li><li><a href="../../commands/en/datasource-export.html">datasource export</a></li><li><a href="../../commands/en/datasource-import.html">datasource import</a></li><li><a href="../../commands/en/datasource-diff.html">datasource diff</a></li><li><a href="../../commands/en/datasource-list.html">datasource list</a></li><li><a href="../../commands/en/datasource-add.html">datasource add</a></li><li><a href="../../commands/en/datasource-modify.html">datasource modify</a></li><li><a href="../../commands/en/datasource-delete.html">datasource delete</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
 <h2 id="what-this-area-is-for">🛠️ What This Area Is For</h2>
 <p>Use the datasource area when you need to:</p>
 <ul><li><strong>Inventory</strong>: Audit which datasources exist, their types, and backend URLs.</li><li><strong>Recovery &amp; Replay</strong>: Maintain a recoverable export of datasource records.</li><li><strong>Provisioning Projection</strong>: Generate the YAML files required for Grafana&#x27;s file provisioning.</li><li><strong>Drift Review</strong>: Compare staged datasource files with live Grafana.</li><li><strong>Controlled Mutation</strong>: Add, modify, or delete live datasources with dry-run protection.</li></ul>
@@ -396,7 +400,11 @@ loki-prod   loki-prod          loki         create   missing</code></pre>
         </section>
         <section>
           <h2>Related</h2>
-          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/en/index.html">Command reference index</a></li></ul>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/en/index.html">Command reference index</a></li><li><a class="link-card" href="../../man/index.html">Manpages (HTML)</a></li></ul>
+        </section>
+        <section>
+          <h2>Version</h2>
+          <p>Current checkout</p>
         </section>
         <section>
           <h2>Language</h2>

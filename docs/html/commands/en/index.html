@@ -234,6 +234,10 @@ th {
   font-size: 1.03rem;
   line-height: 1.8;
 }
+.article pre.manpage {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .sidebar {
   padding: 22px;
 }
@@ -342,7 +346,7 @@ th {
 <ul><li>English command reference: <a href="index.html">current page</a></li><li>Traditional Chinese command reference: <a href="../zh-TW/index.html">繁體中文逐指令說明</a></li><li>English handbook: <a href="../../handbook/en/index.html">Operator Handbook</a></li><li>Traditional Chinese handbook: <a href="../../handbook/zh-TW/index.html">繁體中文手冊</a></li></ul>
 <p>These pages track the current Rust CLI help for the command tree exposed by <code>grafana-util</code>.</p>
 <p>Use these pages when you want one stable page per command or subcommand instead of a handbook chapter. The handbook explains workflow and intent; the command pages explain the concrete CLI surface.</p>
-<p>If you prefer <code>man</code> format, render <a href="../../../man/grafana-util.1">grafana-util(1)</a> locally with <code>man ./docs/man/grafana-util.1</code> on macOS or <code>man -l docs/man/grafana-util.1</code> on GNU/Linux. The checked-in <code>docs/man/<em>.1</code> files are generated from these English command pages via <code>python3 scripts/generate_manpages.py</code>. The checked-in <code>docs/html/commands/en/</em>.html</code> files are generated from the same source via <code>python3 scripts/generate_command_html.py</code>.</p>
+<p>If you prefer <code>man</code> format, render <a href="../../man/grafana-util.1">grafana-util(1)</a> locally with <code>man ./docs/man/grafana-util.1</code> on macOS or <code>man -l docs/man/grafana-util.1</code> on GNU/Linux. The checked-in <code>docs/man/<em>.1</code> files are generated from these English command pages via <code>python3 scripts/generate_manpages.py</code>. The checked-in <code>docs/html/commands/en/</em>.html</code> files are generated from the same source via <code>python3 scripts/generate_command_html.py</code>.</p>
 <h2 id="dashboard">Dashboard</h2>
 <ul><li><a href="dashboard.html">dashboard</a></li><li><a href="dashboard-browse.html">dashboard browse</a></li><li><a href="dashboard-get.html">dashboard get</a></li><li><a href="dashboard-clone-live.html">dashboard clone-live</a></li><li><a href="dashboard-list.html">dashboard list</a></li><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-raw-to-prompt.html">dashboard raw-to-prompt</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-patch-file.html">dashboard patch-file</a></li><li><a href="dashboard-review.html">dashboard review</a></li><li><a href="dashboard-publish.html">dashboard publish</a></li><li><a href="dashboard-delete.html">dashboard delete</a></li><li><a href="dashboard-diff.html">dashboard diff</a></li><li><a href="dashboard-inspect-export.html">dashboard inspect-export</a></li><li><a href="dashboard-inspect-live.html">dashboard inspect-live</a></li><li><a href="dashboard-inspect-vars.html">dashboard inspect-vars</a></li><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li><li><a href="dashboard-topology.html">dashboard topology</a></li><li><a href="dashboard-screenshot.html">dashboard screenshot</a></li></ul>
 <h2 id="datasource">Datasource</h2>
@@ -352,7 +356,7 @@ th {
 <h2 id="access">Access</h2>
 <ul><li><a href="access.html">access</a></li><li><a href="access-user.html">access user</a></li><li><a href="access-org.html">access org</a></li><li><a href="access-team.html">access team</a></li><li><a href="access-service-account.html">access service-account</a></li><li><a href="access-service-account-token.html">access service-account token</a></li></ul>
 <h2 id="shared-surfaces">Shared Surfaces</h2>
-<ul><li><a href="change.html">change</a></li><li><a href="overview.html">overview</a></li><li><a href="status.html">status</a></li><li><a href="profile.html">profile</a></li><li><a href="snapshot.html">snapshot</a></li></ul>
+<ul><li><a href="change.html">change</a></li><li><a href="change.html#summary">change summary</a></li><li><a href="change.html#plan">change plan</a></li><li><a href="change.html#review">change review</a></li><li><a href="change.html#apply">change apply</a></li><li><a href="change.html#audit">change audit</a></li><li><a href="change.html#preflight">change preflight</a></li><li><a href="change.html#assess-alerts">change assess-alerts</a></li><li><a href="change.html#bundle">change bundle</a></li><li><a href="change.html#bundle-preflight">change bundle-preflight</a></li><li><a href="change.html#promotion-preflight">change promotion-preflight</a></li><li><a href="overview.html">overview</a></li><li><a href="overview.html#live">overview live</a></li><li><a href="status.html">status</a></li><li><a href="status.html#staged">status staged</a></li><li><a href="status.html#live">status live</a></li><li><a href="profile.html">profile</a></li><li><a href="profile.html#list">profile list</a></li><li><a href="profile.html#show">profile show</a></li><li><a href="profile.html#add">profile add</a></li><li><a href="profile.html#example">profile example</a></li><li><a href="profile.html#init">profile init</a></li><li><a href="snapshot.html">snapshot</a></li><li><a href="snapshot.html#export">snapshot export</a></li><li><a href="snapshot.html#review">snapshot review</a></li></ul>
 <p>The matching manpages live under <code>docs/man/grafana-util-*.1</code>.</p>
         
       </article>
@@ -363,7 +367,11 @@ th {
         </section>
         <section>
           <h2>Related</h2>
-          <ul><li><a class="link-card" href="index.html">Command reference home</a></li><li><a class="link-card" href="../../handbook/en/index.html">Matching handbook chapter</a></li><li><a class="link-card" href="../../../man/grafana-util.1">Top-level manpage</a></li></ul>
+          <ul><li><a class="link-card" href="index.html">Command reference home</a></li><li><a class="link-card" href="../../handbook/en/index.html">Matching handbook chapter</a></li><li><a class="link-card" href="../../man/index.html">Manpages (HTML)</a></li></ul>
+        </section>
+        <section>
+          <h2>Version</h2>
+          <p>Current checkout</p>
         </section>
         <section>
           <h2>Language</h2>

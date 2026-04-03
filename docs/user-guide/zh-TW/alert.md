@@ -9,10 +9,24 @@
 如果您現在想看的是逐指令說明，而不是工作流章節，請直接使用逐指令頁面：
 
 - [alert 指令總覽](../../commands/zh-TW/alert.md)
+- [alert export](../../commands/zh-TW/alert-export.md)
+- [alert import](../../commands/zh-TW/alert-import.md)
+- [alert diff](../../commands/zh-TW/alert-diff.md)
 - [alert plan](../../commands/zh-TW/alert-plan.md)
 - [alert apply](../../commands/zh-TW/alert-apply.md)
-- [alert export](../../commands/zh-TW/alert-export.md)
+- [alert delete](../../commands/zh-TW/alert-delete.md)
+- [alert add-rule](../../commands/zh-TW/alert-add-rule.md)
+- [alert clone-rule](../../commands/zh-TW/alert-clone-rule.md)
+- [alert add-contact-point](../../commands/zh-TW/alert-add-contact-point.md)
+- [alert set-route](../../commands/zh-TW/alert-set-route.md)
 - [alert preview-route](../../commands/zh-TW/alert-preview-route.md)
+- [alert new-rule](../../commands/zh-TW/alert-new-rule.md)
+- [alert new-contact-point](../../commands/zh-TW/alert-new-contact-point.md)
+- [alert new-template](../../commands/zh-TW/alert-new-template.md)
+- [alert list-rules](../../commands/zh-TW/alert-list-rules.md)
+- [alert list-contact-points](../../commands/zh-TW/alert-list-contact-points.md)
+- [alert list-mute-timings](../../commands/zh-TW/alert-list-mute-timings.md)
+- [alert list-templates](../../commands/zh-TW/alert-list-templates.md)
 - [逐指令總索引](../../commands/zh-TW/index.md)
 
 ---

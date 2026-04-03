@@ -9,10 +9,16 @@
 如果您現在想看的是逐指令說明，而不是工作流章節，請直接使用逐指令頁面：
 
 - [datasource 指令總覽](../../commands/zh-TW/datasource.md)
+- [datasource types](../../commands/zh-TW/datasource-types.md)
+- [datasource browse](../../commands/zh-TW/datasource-browse.md)
+- [datasource inspect-export](../../commands/zh-TW/datasource-inspect-export.md)
 - [datasource export](../../commands/zh-TW/datasource-export.md)
 - [datasource import](../../commands/zh-TW/datasource-import.md)
 - [datasource diff](../../commands/zh-TW/datasource-diff.md)
 - [datasource list](../../commands/zh-TW/datasource-list.md)
+- [datasource add](../../commands/zh-TW/datasource-add.md)
+- [datasource modify](../../commands/zh-TW/datasource-modify.md)
+- [datasource delete](../../commands/zh-TW/datasource-delete.md)
 - [逐指令總索引](../../commands/zh-TW/index.md)
 
 ---

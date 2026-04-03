@@ -106,6 +106,16 @@ struct RawToPromptOutcome {
     warnings: Vec<String>,
 }
 
+struct RawToPromptLogEvent<'a> {
+    status: &'a str,
+    input_path: &'a Path,
+    output_path: Option<&'a Path>,
+    resolution: &'a str,
+    datasource_slots: usize,
+    warnings: &'a [String],
+    error: Option<&'a str>,
+}
+
 #[derive(Debug, Clone, Default)]
 struct DashboardScanContext {
     ref_families: BTreeMap<String, BTreeSet<String>>,
@@ -208,13 +218,15 @@ pub(crate) fn run_raw_to_prompt(args: &RawToPromptArgs) -> Result<()> {
                 write_log_event(
                     log_writer.as_mut(),
                     args.log_format,
-                    "ok",
-                    &item.input_path,
-                    Some(&item.output_path),
-                    outcome.resolution_string(),
-                    outcome.datasource_slots,
-                    &outcome.warnings,
-                    None,
+                    RawToPromptLogEvent {
+                        status: "ok",
+                        input_path: &item.input_path,
+                        output_path: Some(&item.output_path),
+                        resolution: outcome.resolution_string(),
+                        datasource_slots: outcome.datasource_slots,
+                        warnings: &outcome.warnings,
+                        error: None,
+                    },
                 )?;
                 if args.verbose {
                     println!(
@@ -239,13 +251,15 @@ pub(crate) fn run_raw_to_prompt(args: &RawToPromptArgs) -> Result<()> {
                 write_log_event(
                     log_writer.as_mut(),
                     args.log_format,
-                    "fail",
-                    &item.input_path,
-                    Some(&item.output_path),
-                    "failed",
-                    0,
-                    &[],
-                    Some(&error_text),
+                    RawToPromptLogEvent {
+                        status: "fail",
+                        input_path: &item.input_path,
+                        output_path: Some(&item.output_path),
+                        resolution: "failed",
+                        datasource_slots: 0,
+                        warnings: &[],
+                        error: Some(&error_text),
+                    },
                 )?;
                 if args.verbose {
                     println!(
@@ -473,13 +487,7 @@ fn build_log_writer(args: &RawToPromptArgs) -> Result<Option<File>> {
 fn write_log_event(
     log_writer: Option<&mut File>,
     log_format: RawToPromptLogFormat,
-    status: &str,
-    input_path: &Path,
-    output_path: Option<&Path>,
-    resolution: &str,
-    datasource_slots: usize,
-    warnings: &[String],
-    error: Option<&str>,
+    event: RawToPromptLogEvent<'_>,
 ) -> Result<()> {
     let Some(writer) = log_writer else {
         return Ok(());
@@ -488,18 +496,18 @@ fn write_log_event(
         RawToPromptLogFormat::Text => {
             let mut line = format!(
                 "{} input={} resolution={} slots={}",
-                status.to_uppercase(),
-                input_path.display(),
-                resolution,
-                datasource_slots
+                event.status.to_uppercase(),
+                event.input_path.display(),
+                event.resolution,
+                event.datasource_slots
             );
-            if let Some(output_path) = output_path {
+            if let Some(output_path) = event.output_path {
                 line.push_str(&format!(" output={}", output_path.display()));
             }
-            if !warnings.is_empty() {
-                line.push_str(&format!(" warnings={}", warnings.join("|")));
+            if !event.warnings.is_empty() {
+                line.push_str(&format!(" warnings={}", event.warnings.join("|")));
             }
-            if let Some(error) = error {
+            if let Some(error) = event.error {
                 line.push_str(&format!(" error={error}"));
             }
             writeln!(writer, "{line}")?;
@@ -509,13 +517,13 @@ fn write_log_event(
                 writer,
                 "{}",
                 serde_json::to_string(&json!({
-                    "status": status,
-                    "inputFile": input_path.display().to_string(),
-                    "outputFile": output_path.map(|path| path.display().to_string()),
-                    "resolution": resolution,
-                    "datasourceSlots": datasource_slots,
-                    "warnings": warnings,
-                    "error": error,
+                    "status": event.status,
+                    "inputFile": event.input_path.display().to_string(),
+                    "outputFile": event.output_path.map(|path| path.display().to_string()),
+                    "resolution": event.resolution,
+                    "datasourceSlots": event.datasource_slots,
+                    "warnings": event.warnings,
+                    "error": event.error,
                 }))?
             )?;
         }
@@ -823,7 +831,7 @@ fn collect_panel_reference_families(
             };
             let reference = target_object
                 .get("datasource")
-                .or_else(|| panel_datasource.as_ref());
+                .or(panel_datasource.as_ref());
             let Some(reference) = reference else {
                 continue;
             };

@@ -37,6 +37,32 @@ class GenerateCommandHtmlTests(unittest.TestCase):
         self.assertEqual(set(generated), set(checked_in))
         self.assertEqual(generated, checked_in)
 
+    def test_generate_outputs_supports_versioned_lane(self):
+        module = load_module()
+
+        config = module.HtmlBuildConfig(
+            source_root=REPO_ROOT,
+            command_docs_root=REPO_ROOT / "docs" / "commands",
+            handbook_root=REPO_ROOT / "docs" / "user-guide",
+            output_prefix="v9.9",
+            version="9.9.0",
+            version_label="v9.9",
+            version_links=(
+                module.VersionLink("Version portal", "index.html"),
+                module.VersionLink("Latest release", "latest/index.html"),
+            ),
+            raw_manpage_target_rel="v9.9/man/grafana-util.1",
+            include_raw_manpages=True,
+        )
+
+        generated = module.generate_outputs(config)
+
+        self.assertIn("v9.9/index.html", generated)
+        self.assertIn("v9.9/man/index.html", generated)
+        self.assertIn("v9.9/man/grafana-util.1", generated)
+        self.assertIn("Current: v9.9", generated["v9.9/commands/en/dashboard.html"])
+        self.assertIn("../index.html", generated["v9.9/commands/en/dashboard.html"])
+
 
 if __name__ == "__main__":
     unittest.main()

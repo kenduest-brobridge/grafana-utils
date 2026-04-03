@@ -234,6 +234,10 @@ th {
   font-size: 1.03rem;
   line-height: 1.8;
 }
+.article pre.manpage {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .sidebar {
   padding: 22px;
 }
@@ -342,7 +346,7 @@ th {
 <p>&gt; <strong>Operator Principle</strong>: Change alerts deliberately through a <strong>Plan -&gt; Review -&gt; Apply</strong> cycle to prevent accidental mutations in live environments.</p>
 <h2 id="command-pages">🔗 Command Pages</h2>
 <p>Need the command-by-command surface instead of the workflow guide?</p>
-<ul><li><a href="../../commands/en/alert.html">alert command overview</a></li><li><a href="../../commands/en/alert-plan.html">alert plan</a></li><li><a href="../../commands/en/alert-apply.html">alert apply</a></li><li><a href="../../commands/en/alert-export.html">alert export</a></li><li><a href="../../commands/en/alert-preview-route.html">alert preview-route</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
+<ul><li><a href="../../commands/en/alert.html">alert command overview</a></li><li><a href="../../commands/en/alert-export.html">alert export</a></li><li><a href="../../commands/en/alert-import.html">alert import</a></li><li><a href="../../commands/en/alert-diff.html">alert diff</a></li><li><a href="../../commands/en/alert-plan.html">alert plan</a></li><li><a href="../../commands/en/alert-apply.html">alert apply</a></li><li><a href="../../commands/en/alert-delete.html">alert delete</a></li><li><a href="../../commands/en/alert-add-rule.html">alert add-rule</a></li><li><a href="../../commands/en/alert-clone-rule.html">alert clone-rule</a></li><li><a href="../../commands/en/alert-add-contact-point.html">alert add-contact-point</a></li><li><a href="../../commands/en/alert-set-route.html">alert set-route</a></li><li><a href="../../commands/en/alert-preview-route.html">alert preview-route</a></li><li><a href="../../commands/en/alert-new-rule.html">alert new-rule</a></li><li><a href="../../commands/en/alert-new-contact-point.html">alert new-contact-point</a></li><li><a href="../../commands/en/alert-new-template.html">alert new-template</a></li><li><a href="../../commands/en/alert-list-rules.html">alert list-rules</a></li><li><a href="../../commands/en/alert-list-contact-points.html">alert list-contact-points</a></li><li><a href="../../commands/en/alert-list-mute-timings.html">alert list-mute-timings</a></li><li><a href="../../commands/en/alert-list-templates.html">alert list-templates</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
 <h2 id="what-this-area-is-for">🛠️ What This Area Is For</h2>
 <p>Use the alert area when the work is about Grafana alerting resources:</p>
 <ul><li><strong>Desired State</strong>: Build new alert configurations locally without touching live Grafana.</li><li><strong>Review delta</strong>: Compare your desired state against the live estate before approving changes.</li><li><strong>Controlled Apply</strong>: Execute only reviewed plans.</li><li><strong>Migration &amp; Replay</strong>: Use the legacy <code>raw/</code> lane for inventory snapshots and environment-wide moves.</li></ul>
@@ -405,7 +409,11 @@ th {
         </section>
         <section>
           <h2>Related</h2>
-          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/en/index.html">Command reference index</a></li></ul>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/en/index.html">Command reference index</a></li><li><a class="link-card" href="../../man/index.html">Manpages (HTML)</a></li></ul>
+        </section>
+        <section>
+          <h2>Version</h2>
+          <p>Current checkout</p>
         </section>
         <section>
           <h2>Language</h2>

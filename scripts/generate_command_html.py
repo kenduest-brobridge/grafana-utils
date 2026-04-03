@@ -5,16 +5,38 @@ from __future__ import annotations
 
 import argparse
 import html
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from docgen_command_docs import RenderedHeading, render_markdown_document
 from docgen_common import REPO_ROOT, VERSION, check_outputs, print_written_outputs, relative_href, write_outputs
 from docgen_handbook import HANDBOOK_LOCALES, LOCALE_LABELS, build_handbook_pages, handbook_language_href
+from generate_manpages import NAMESPACE_SPECS, generate_manpages
 
 
 HTML_ROOT_DIR = REPO_ROOT / "docs" / "html"
 COMMAND_DOCS_ROOT = REPO_ROOT / "docs" / "commands"
+HANDBOOK_ROOT = REPO_ROOT / "docs" / "user-guide"
 COMMAND_DOC_LOCALES = ("en", "zh-TW")
+
+
+@dataclass(frozen=True)
+class VersionLink:
+    label: str
+    target_rel: str
+
+
+@dataclass(frozen=True)
+class HtmlBuildConfig:
+    source_root: Path = REPO_ROOT
+    command_docs_root: Path = COMMAND_DOCS_ROOT
+    handbook_root: Path = HANDBOOK_ROOT
+    output_prefix: str = ""
+    version: str = VERSION
+    version_label: str | None = None
+    version_links: tuple[VersionLink, ...] = ()
+    raw_manpage_target_rel: str | None = None
+    include_raw_manpages: bool = False
 
 # Keep this mapping explicit so maintainers can see how command-reference pages
 # jump back to the handbook chapters that explain the broader workflow.
@@ -262,6 +284,10 @@ th {
   font-size: 1.03rem;
   line-height: 1.8;
 }
+.article pre.manpage {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .sidebar {
   padding: 22px;
 }
@@ -402,6 +428,23 @@ def render_toc(headings: tuple[RenderedHeading, ...]) -> str:
     return html_list(entries) if entries else "<p>This page has no subsection anchors.</p>"
 
 
+def prefixed_output_rel(config: HtmlBuildConfig, relative_path: str) -> str:
+    if not config.output_prefix:
+        return relative_path
+    return f"{config.output_prefix.strip('/')}/{relative_path}"
+
+
+def render_version_links(output_rel: str, config: HtmlBuildConfig) -> str:
+    if config.version_label is None and not config.version_links:
+        return "<p>Current checkout</p>"
+    items = []
+    if config.version_label is not None:
+        items.append((f"Current: {config.version_label}", "#"))
+    for link in config.version_links:
+        items.append((link.label, relative_href(output_rel, link.target_rel)))
+    return html_list(items)
+
+
 def page_shell(
     *,
     page_title: str,
@@ -414,6 +457,7 @@ def page_shell(
     body_html: str,
     toc_html: str,
     related_html: str,
+    version_html: str,
     locale_html: str,
     footer_nav_html: str,
     footer_html: str,
@@ -458,6 +502,10 @@ def page_shell(
         <section>
           <h2>Related</h2>
           {related_html}
+        </section>
+        <section>
+          <h2>Version</h2>
+          {version_html}
         </section>
         <section>
           <h2>Language</h2>
@@ -505,20 +553,94 @@ def render_language_links(current_label: str, switch_label: str | None, switch_h
     return html_list(items)
 
 
-def render_landing_page() -> str:
-    body_html = """
-<div class="landing-grid">
-  <section class="landing-card">
-    <div class="eyebrow">Language</div>
-    <h2>Start by language</h2>
-    <p>Choose the language lane first, then continue into the handbook, command reference, or role-specific entry pages.</p>
-    <ul>
-      <li><a href="./handbook/en/index.html">English handbook</a></li>
-      <li><a href="./commands/en/index.html">English command reference</a></li>
-      <li><a href="./handbook/zh-TW/index.html">繁體中文手冊</a></li>
-      <li><a href="./commands/zh-TW/index.html">繁體中文逐指令說明</a></li>
-    </ul>
-  </section>
+def command_reference_root_for_stem(stem: str, config: HtmlBuildConfig) -> str | None:
+    if stem == "grafana-util":
+        return prefixed_output_rel(config, "commands/en/index.html")
+    for spec in NAMESPACE_SPECS:
+        if spec.stem == stem:
+            return prefixed_output_rel(config, f"commands/en/{spec.root_doc[:-3]}.html")
+    return None
+
+
+def render_manpage_index_page(output_rel: str, manpage_names: list[str], config: HtmlBuildConfig) -> str:
+    body_html = (
+        "<p>This lane mirrors the checked-in generated manpages as browser-readable HTML for GitHub Pages and local HTML browsing.</p>"
+        "<ul>"
+        + "".join(
+            f'<li><a href="{html.escape(relative_href(output_rel, prefixed_output_rel(config, f"man/{Path(name).stem}.html")))}">{html.escape(name)}</a></li>'
+            for name in manpage_names
+        )
+        + "</ul>"
+    )
+    related_links = [
+        ("English command reference", relative_href(output_rel, prefixed_output_rel(config, "commands/en/index.html"))),
+        ("English handbook", relative_href(output_rel, prefixed_output_rel(config, "handbook/en/index.html"))),
+    ]
+    if config.raw_manpage_target_rel:
+        related_links.append(("Top-level roff manpage", relative_href(output_rel, config.raw_manpage_target_rel)))
+    return page_shell(
+        page_title="Manpages",
+        html_lang="en",
+        home_href=relative_href(output_rel, prefixed_output_rel(config, "index.html")),
+        hero_title="Generated Manpages",
+        hero_summary="Browser-readable HTML mirrors of the checked-in generated manpages.",
+        eyebrow=f"Manpages · grafana-util {html.escape(config.version)}",
+        breadcrumbs=[
+            ("Home", relative_href(output_rel, prefixed_output_rel(config, "index.html"))),
+            ("Manpages", None),
+        ],
+        body_html=body_html,
+        toc_html="<p>Open a generated manpage mirror or jump back to the command reference.</p>",
+        related_html=html_list(related_links),
+        version_html=render_version_links(output_rel, config),
+        locale_html="<p>Manpages are generated from the English command-reference source.</p>",
+        footer_nav_html="",
+        footer_html='Generated from <code>docs/man/*.1</code> via <code>scripts/generate_manpages.py</code>.',
+    )
+
+
+def render_manpage_page(output_rel: str, name: str, roff_text_body: str, config: HtmlBuildConfig) -> str:
+    stem = Path(name).stem
+    command_root = command_reference_root_for_stem(stem, config)
+    related_links = [
+        ("Manpage index", relative_href(output_rel, prefixed_output_rel(config, "man/index.html"))),
+    ]
+    if config.raw_manpage_target_rel:
+        related_links.append(("Raw roff source", relative_href(output_rel, prefixed_output_rel(config, f"man/{name}"))))
+    if command_root:
+        related_links.append(("Matching command reference", relative_href(output_rel, command_root)))
+    body_html = (
+        "<p>This page mirrors the generated roff manpage in HTML so it can be read from GitHub Pages. "
+        "For deeper per-subcommand detail, prefer the command-reference pages.</p>"
+        f'<pre class="manpage">{html.escape(roff_text_body)}</pre>'
+    )
+    return page_shell(
+        page_title=name,
+        html_lang="en",
+        home_href=relative_href(output_rel, prefixed_output_rel(config, "index.html")),
+        hero_title=name,
+        hero_summary="HTML mirror of a generated roff manpage.",
+        eyebrow=f"Manpage Mirror · {html.escape(config.version)}",
+        breadcrumbs=[
+            ("Home", relative_href(output_rel, prefixed_output_rel(config, "index.html"))),
+            ("Manpages", relative_href(output_rel, prefixed_output_rel(config, "man/index.html"))),
+            (name, None),
+        ],
+        body_html=body_html,
+        toc_html="<p>This mirror preserves the generated manpage content as preformatted text.</p>",
+        related_html=html_list(related_links),
+        version_html=render_version_links(output_rel, config),
+        locale_html="<p>English only. The manpage lane currently generates from English command docs.</p>",
+        footer_nav_html="",
+        footer_html=f'Source: <code>docs/man/{html.escape(name)}</code><br>Generated by <code>scripts/generate_command_html.py</code>.',
+    )
+
+
+def render_landing_page(config: HtmlBuildConfig) -> str:
+    manpage_link = (
+        f'<li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "man/index.html")))}">Manpages (HTML)</a></li>'
+    )
+    secondary_card_html = """
   <section class="landing-card">
     <div class="eyebrow">Maintainer</div>
     <h2>Repository and design docs</h2>
@@ -529,6 +651,34 @@ def render_landing_page() -> str:
       <li><a href="../internal/README.md">Internal docs index</a></li>
     </ul>
   </section>
+""".strip()
+    if config.output_prefix:
+        secondary_card_html = f"""
+  <section class="landing-card">
+    <div class="eyebrow">Version</div>
+    <h2>{html.escape(config.version_label or config.version)}</h2>
+    <p>This lane is a versioned snapshot for GitHub Pages. Use the version switcher to move between release and preview docs.</p>
+    <ul>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "commands/en/index.html")))}">English command reference</a></li>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "commands/zh-TW/index.html")))}">繁體中文逐指令說明</a></li>
+      {manpage_link}
+    </ul>
+  </section>
+""".strip()
+    body_html = f"""
+<div class="landing-grid">
+  <section class="landing-card">
+    <div class="eyebrow">Language</div>
+    <h2>Start by language</h2>
+    <p>Choose the language lane first, then continue into the handbook, command reference, or role-specific entry pages.</p>
+    <ul>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "handbook/en/index.html")))}">English handbook</a></li>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "commands/en/index.html")))}">English command reference</a></li>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "handbook/zh-TW/index.html")))}">繁體中文手冊</a></li>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "commands/zh-TW/index.html")))}">繁體中文逐指令說明</a></li>
+    </ul>
+  </section>
+  {secondary_card_html}
 </div>
 <div class="landing-grid">
   <section class="landing-card">
@@ -536,11 +686,12 @@ def render_landing_page() -> str:
     <h2>English handbook and reference</h2>
     <p>Use the English lane if you want the handbook, role guides, and one-page-per-command reference in English.</p>
     <ul>
-      <li><a href="./handbook/en/index.html">Handbook index</a></li>
-      <li><a href="./handbook/en/role-new-user.html">New user path</a></li>
-      <li><a href="./handbook/en/role-sre-ops.html">SRE / operator path</a></li>
-      <li><a href="./handbook/en/role-automation-ci.html">Automation / CI path</a></li>
-      <li><a href="./commands/en/index.html">Command reference</a></li>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "handbook/en/index.html")))}">Handbook index</a></li>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "handbook/en/role-new-user.html")))}">New user path</a></li>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "handbook/en/role-sre-ops.html")))}">SRE / operator path</a></li>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "handbook/en/role-automation-ci.html")))}">Automation / CI path</a></li>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "commands/en/index.html")))}">Command reference</a></li>
+      {manpage_link}
     </ul>
   </section>
   <section class="landing-card">
@@ -548,11 +699,12 @@ def render_landing_page() -> str:
     <h2>繁體中文手冊與逐指令說明</h2>
     <p>Use the Traditional Chinese lane if you want handbook chapters, role guides, and command pages without mixing locales in the same entry flow.</p>
     <ul>
-      <li><a href="./handbook/zh-TW/index.html">手冊目錄</a></li>
-      <li><a href="./handbook/zh-TW/role-new-user.html">新使用者路徑</a></li>
-      <li><a href="./handbook/zh-TW/role-sre-ops.html">SRE / 維運路徑</a></li>
-      <li><a href="./handbook/zh-TW/role-automation-ci.html">自動化 / CI 路徑</a></li>
-      <li><a href="./commands/zh-TW/index.html">逐指令說明</a></li>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "handbook/zh-TW/index.html")))}">手冊目錄</a></li>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "handbook/zh-TW/role-new-user.html")))}">新使用者路徑</a></li>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "handbook/zh-TW/role-sre-ops.html")))}">SRE / 維運路徑</a></li>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "handbook/zh-TW/role-automation-ci.html")))}">自動化 / CI 路徑</a></li>
+      <li><a href="{html.escape(relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "commands/zh-TW/index.html")))}">逐指令說明</a></li>
+      {manpage_link.replace("Manpages (HTML)", "Manpage HTML")}
     </ul>
   </section>
 </div>
@@ -561,90 +713,107 @@ def render_landing_page() -> str:
         "Source roots: <code>docs/user-guide/*</code> and <code>docs/commands/*</code>. "
         "Generated by <code>scripts/generate_command_html.py</code>."
     )
+    related_links = [
+        ("English handbook", relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "handbook/en/index.html"))),
+        ("繁體中文手冊", relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "handbook/zh-TW/index.html"))),
+        ("English command reference", relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "commands/en/index.html"))),
+        ("繁體中文逐指令說明", relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "commands/zh-TW/index.html"))),
+    ]
+    if config.version_links:
+        related_links.insert(0, ("Version portal", "#"))
+    if config.include_raw_manpages or config.raw_manpage_target_rel:
+        related_links.append(("Manpages (HTML)", relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "man/index.html"))))
+    if config.raw_manpage_target_rel:
+        related_links.append(("Top-level manpage source", relative_href(prefixed_output_rel(config, "index.html"), config.raw_manpage_target_rel)))
+    if not config.output_prefix:
+        related_links.append(("Maintainer entrypoint", "../DEVELOPER.md"))
     return page_shell(
         page_title="grafana-util HTML docs",
         html_lang="en",
-        home_href="./index.html",
+        home_href=relative_href(prefixed_output_rel(config, "index.html"), prefixed_output_rel(config, "index.html")),
         hero_title="grafana-util HTML Docs",
         hero_summary="Generated manual-style HTML with separate handbook and command-reference entrypoints.",
-        eyebrow=f"Generated HTML · grafana-util {html.escape(VERSION)}",
+        eyebrow=f"Generated HTML · grafana-util {html.escape(config.version)}",
         breadcrumbs=[("Home", None)],
         body_html=body_html,
         toc_html="<p>Start from one of the two main entrypoints.</p>",
-        related_html=html_list(
-            [
-                ("English handbook", "./handbook/en/index.html"),
-                ("繁體中文手冊", "./handbook/zh-TW/index.html"),
-                ("English command reference", "./commands/en/index.html"),
-                ("繁體中文逐指令說明", "./commands/zh-TW/index.html"),
-                ("Top-level manpage source", "../man/grafana-util.1"),
-                ("Maintainer entrypoint", "../DEVELOPER.md"),
-            ]
-        ),
+        related_html=html_list(related_links),
+        version_html=render_version_links(prefixed_output_rel(config, "index.html"), config),
         locale_html="<p>Choose a language first, then stay within that handbook or command-reference lane.</p>",
         footer_nav_html="",
         footer_html=footer_html,
     )
 
 
-def command_language_switch_href(output_rel: str, locale: str, source_name: str) -> tuple[str | None, str | None]:
+def command_language_switch_href(
+    output_rel: str,
+    locale: str,
+    source_name: str,
+    config: HtmlBuildConfig,
+) -> tuple[str | None, str | None]:
     other_locale = next((candidate for candidate in COMMAND_DOC_LOCALES if candidate != locale), None)
     if other_locale is None:
         return None, None
-    target_source = COMMAND_DOCS_ROOT / other_locale / source_name
+    target_source = config.command_docs_root / other_locale / source_name
     if not target_source.exists():
         return None, None
-    target_rel = f"commands/{other_locale}/{Path(source_name).with_suffix('.html').as_posix()}"
+    target_rel = prefixed_output_rel(config, f"commands/{other_locale}/{Path(source_name).with_suffix('.html').as_posix()}")
     return LOCALE_LABELS[other_locale], relative_href(output_rel, target_rel)
 
 
-def command_handbook_context(locale: str, output_rel: str, source_name: str) -> tuple[str, str] | None:
+def command_handbook_context(
+    locale: str,
+    output_rel: str,
+    source_name: str,
+    config: HtmlBuildConfig,
+) -> tuple[str, str] | None:
     stem = Path(source_name).stem
     root = stem.split("-", 1)[0]
     handbook_stem = HANDBOOK_CONTEXT_BY_COMMAND.get(stem) or HANDBOOK_CONTEXT_BY_COMMAND.get(root)
     if not handbook_stem:
         return None
-    target_rel = f"handbook/{locale}/{handbook_stem}.html"
+    target_rel = prefixed_output_rel(config, f"handbook/{locale}/{handbook_stem}.html")
     return ("Matching handbook chapter", relative_href(output_rel, target_rel))
 
 
-def rewrite_markdown_link(source_path: Path, output_rel: str, target: str) -> str:
+def rewrite_markdown_link(source_path: Path, output_rel: str, target: str, config: HtmlBuildConfig) -> str:
     """Rewrite source-relative Markdown links so they work from docs/html."""
     if target.startswith(("http://", "https://", "mailto:", "#")):
         return target
     bare_target, fragment = (target.split("#", 1) + [""])[:2]
     resolved = (source_path.parent / bare_target).resolve()
-    docs_root = REPO_ROOT / "docs"
+    docs_root = config.source_root / "docs"
     try:
         docs_rel = resolved.relative_to(docs_root).as_posix()
     except ValueError:
         return target
     if docs_rel.startswith("commands/") and docs_rel.endswith(".md"):
-        rewritten = relative_href(f"html/{output_rel}", f"html/{docs_rel[:-3]}.html")
+        rewritten = relative_href(output_rel, prefixed_output_rel(config, f"{docs_rel[:-3]}.html"))
         return f"{rewritten}#{fragment}" if fragment else rewritten
     if docs_rel.startswith("user-guide/") and docs_rel.endswith(".md"):
         docs_rel = docs_rel.replace("user-guide/", "handbook/", 1)
-        rewritten = relative_href(f"html/{output_rel}", f"html/{docs_rel[:-3]}.html")
+        rewritten = relative_href(output_rel, prefixed_output_rel(config, f"{docs_rel[:-3]}.html"))
         return f"{rewritten}#{fragment}" if fragment else rewritten
-    rewritten = relative_href(f"html/{output_rel}", docs_rel)
+    rewritten = relative_href(output_rel, docs_rel)
     return f"{rewritten}#{fragment}" if fragment else rewritten
 
 
-def render_handbook_page(page) -> str:
+def render_handbook_page(page, config: HtmlBuildConfig) -> str:
     document = render_markdown_document(
         page.source_path.read_text(encoding="utf-8"),
-        link_transform=lambda target: rewrite_markdown_link(page.source_path, page.output_rel, target),
+        link_transform=lambda target: rewrite_markdown_link(page.source_path, page.output_rel, target, config),
     )
     page_title = title_only(document.title or page.title)
     breadcrumbs = [
         ("Home", relative_href(page.output_rel, "index.html")),
-        ("Handbook", relative_href(page.output_rel, f"handbook/{page.locale}/index.html")),
+        ("Handbook", relative_href(page.output_rel, prefixed_output_rel(config, f"handbook/{page.locale}/index.html"))),
         (LOCALE_LABELS[page.locale], None),
         (page_title, None),
     ]
     related_links = [
-        ("Handbook home", relative_href(page.output_rel, f"handbook/{page.locale}/index.html")),
-        ("Command reference index", relative_href(page.output_rel, f"commands/{page.locale}/index.html")),
+        ("Handbook home", relative_href(page.output_rel, prefixed_output_rel(config, f"handbook/{page.locale}/index.html"))),
+        ("Command reference index", relative_href(page.output_rel, prefixed_output_rel(config, f"commands/{page.locale}/index.html"))),
+        ("Manpages (HTML)", relative_href(page.output_rel, prefixed_output_rel(config, "man/index.html"))),
     ]
     locale_href = handbook_language_href(page)
     locale_label = None
@@ -658,13 +827,13 @@ def render_handbook_page(page) -> str:
     if page.next_output_rel:
         next_link = (title_only(page.next_title or "Next"), relative_href(page.output_rel, page.next_output_rel))
     footer_html = (
-        f'Source: <code>{html.escape(page.source_path.relative_to(REPO_ROOT).as_posix())}</code><br>'
+        f'Source: <code>{html.escape(page.source_path.relative_to(config.source_root).as_posix())}</code><br>'
         'Generated by <code>scripts/generate_command_html.py</code>.'
     )
     return page_shell(
         page_title=page_title,
         html_lang=page.locale,
-        home_href=relative_href(page.output_rel, "index.html"),
+        home_href=relative_href(page.output_rel, prefixed_output_rel(config, "index.html")),
         hero_title=page_title,
         hero_summary=handbook_intro_text(page.locale),
         eyebrow=f"Handbook · {LOCALE_LABELS[page.locale]}",
@@ -672,41 +841,44 @@ def render_handbook_page(page) -> str:
         body_html=document.body_html,
         toc_html=render_toc(document.headings),
         related_html=html_list(related_links),
+        version_html=render_version_links(page.output_rel, config),
         locale_html=render_language_links(LOCALE_LABELS[page.locale], locale_label, locale_href),
         footer_nav_html=render_footer_nav(previous_link, next_link),
         footer_html=footer_html,
     )
 
 
-def render_command_page(locale: str, source_path: Path, output_rel: str) -> str:
+def render_command_page(locale: str, source_path: Path, output_rel: str, config: HtmlBuildConfig) -> str:
     document = render_markdown_document(
         source_path.read_text(encoding="utf-8"),
-        link_transform=lambda target: rewrite_markdown_link(source_path, output_rel, target),
+        link_transform=lambda target: rewrite_markdown_link(source_path, output_rel, target, config),
     )
     page_title = title_only(document.title or source_path.stem)
     breadcrumbs = [
-        ("Home", relative_href(output_rel, "index.html")),
-        ("Command Reference", relative_href(output_rel, f"commands/{locale}/index.html")),
+        ("Home", relative_href(output_rel, prefixed_output_rel(config, "index.html"))),
+        ("Command Reference", relative_href(output_rel, prefixed_output_rel(config, f"commands/{locale}/index.html"))),
         (LOCALE_LABELS[locale], None),
         (page_title, None),
     ]
     related_links = [
-        ("Command reference home", relative_href(output_rel, f"commands/{locale}/index.html")),
+        ("Command reference home", relative_href(output_rel, prefixed_output_rel(config, f"commands/{locale}/index.html"))),
     ]
-    handbook_link = command_handbook_context(locale, output_rel, source_path.name)
+    handbook_link = command_handbook_context(locale, output_rel, source_path.name, config)
     if handbook_link:
         related_links.append(handbook_link)
     if locale == "en":
-        related_links.append(("Top-level manpage", relative_href(f"html/{output_rel}", "man/grafana-util.1")))
-    switch_label, switch_href = command_language_switch_href(output_rel, locale, source_path.name)
+        related_links.append(("Manpages (HTML)", relative_href(output_rel, prefixed_output_rel(config, "man/index.html"))))
+        if config.raw_manpage_target_rel:
+            related_links.append(("Top-level manpage", relative_href(output_rel, config.raw_manpage_target_rel)))
+    switch_label, switch_href = command_language_switch_href(output_rel, locale, source_path.name, config)
     footer_html = (
-        f'Source: <code>{html.escape(source_path.relative_to(REPO_ROOT).as_posix())}</code><br>'
+        f'Source: <code>{html.escape(source_path.relative_to(config.source_root).as_posix())}</code><br>'
         'Generated by <code>scripts/generate_command_html.py</code>.'
     )
     return page_shell(
         page_title=page_title,
         html_lang=locale,
-        home_href=relative_href(output_rel, "index.html"),
+        home_href=relative_href(output_rel, prefixed_output_rel(config, "index.html")),
         hero_title=page_title,
         hero_summary=command_intro_text(locale),
         eyebrow=f"Command Reference · {LOCALE_LABELS[locale]}",
@@ -714,22 +886,42 @@ def render_command_page(locale: str, source_path: Path, output_rel: str) -> str:
         body_html=document.body_html,
         toc_html=render_toc(document.headings),
         related_html=html_list(related_links),
+        version_html=render_version_links(output_rel, config),
         locale_html=render_language_links(LOCALE_LABELS[locale], switch_label, switch_href),
         footer_nav_html="",
         footer_html=footer_html,
     )
 
 
-def generate_outputs() -> dict[str, str]:
+def generate_outputs(config: HtmlBuildConfig = HtmlBuildConfig()) -> dict[str, str]:
     """Return docs/html-relative output paths and generated HTML contents."""
-    outputs: dict[str, str] = {"index.html": render_landing_page(), ".nojekyll": ""}
+    lane_index_rel = prefixed_output_rel(config, "index.html")
+    outputs: dict[str, str] = {lane_index_rel: render_landing_page(config), ".nojekyll": ""}
+    manpage_outputs = generate_manpages(
+        command_docs_dir=config.command_docs_root / "en",
+        version=config.version,
+    )
+    man_index_rel = prefixed_output_rel(config, "man/index.html")
+    outputs[man_index_rel] = render_manpage_index_page(man_index_rel, sorted(manpage_outputs), config)
+    for name, roff_text_body in sorted(manpage_outputs.items()):
+        html_rel = prefixed_output_rel(config, f"man/{Path(name).stem}.html")
+        outputs[html_rel] = render_manpage_page(html_rel, name, roff_text_body, config)
+        if config.include_raw_manpages:
+            outputs[prefixed_output_rel(config, f"man/{name}")] = roff_text_body
     for locale in COMMAND_DOC_LOCALES:
-        for source_path in sorted((COMMAND_DOCS_ROOT / locale).glob("*.md")):
-            output_rel = f"commands/{locale}/{source_path.with_suffix('.html').name}"
-            outputs[output_rel] = render_command_page(locale, source_path, output_rel)
+        for source_path in sorted((config.command_docs_root / locale).glob("*.md")):
+            output_rel = prefixed_output_rel(config, f"commands/{locale}/{source_path.with_suffix('.html').name}")
+            outputs[output_rel] = render_command_page(locale, source_path, output_rel, config)
     for locale in HANDBOOK_LOCALES:
-        for page in build_handbook_pages(locale):
-            outputs[page.output_rel] = render_handbook_page(page)
+        for page in build_handbook_pages(locale, handbook_root=config.handbook_root):
+            page = replace(
+                page,
+                output_rel=prefixed_output_rel(config, page.output_rel),
+                previous_output_rel=prefixed_output_rel(config, page.previous_output_rel) if page.previous_output_rel else None,
+                next_output_rel=prefixed_output_rel(config, page.next_output_rel) if page.next_output_rel else None,
+                language_switch_rel=prefixed_output_rel(config, page.language_switch_rel) if page.language_switch_rel else None,
+            )
+            outputs[page.output_rel] = render_handbook_page(page, config)
     return outputs
 
 

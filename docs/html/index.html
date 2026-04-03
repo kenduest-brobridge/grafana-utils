@@ -234,6 +234,10 @@ th {
   font-size: 1.03rem;
   line-height: 1.8;
 }
+.article pre.manpage {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .sidebar {
   padding: 22px;
 }
@@ -319,7 +323,7 @@ th {
 <body>
   <div class="site">
     <div class="topbar">
-      <a class="brand" href="./index.html">grafana-util docs</a>
+      <a class="brand" href="index.html">grafana-util docs</a>
       <div class="themebar">
         <label for="theme-select">Theme</label>
         <select id="theme-select" aria-label="Theme">
@@ -330,7 +334,7 @@ th {
       </div>
     </div>
     <header class="hero">
-      <div class="eyebrow">Generated HTML · grafana-util 0.7.2</div>
+      <div class="eyebrow">Generated HTML · grafana-util 0.7.3</div>
       <h1>grafana-util HTML Docs</h1>
       <p>Generated manual-style HTML with separate handbook and command-reference entrypoints.</p>
       <ol class="breadcrumbs"><li>Home</li></ol>
@@ -343,10 +347,10 @@ th {
     <h2>Start by language</h2>
     <p>Choose the language lane first, then continue into the handbook, command reference, or role-specific entry pages.</p>
     <ul>
-      <li><a href="./handbook/en/index.html">English handbook</a></li>
-      <li><a href="./commands/en/index.html">English command reference</a></li>
-      <li><a href="./handbook/zh-TW/index.html">繁體中文手冊</a></li>
-      <li><a href="./commands/zh-TW/index.html">繁體中文逐指令說明</a></li>
+      <li><a href="handbook/en/index.html">English handbook</a></li>
+      <li><a href="commands/en/index.html">English command reference</a></li>
+      <li><a href="handbook/zh-TW/index.html">繁體中文手冊</a></li>
+      <li><a href="commands/zh-TW/index.html">繁體中文逐指令說明</a></li>
     </ul>
   </section>
   <section class="landing-card">
@@ -366,11 +370,12 @@ th {
     <h2>English handbook and reference</h2>
     <p>Use the English lane if you want the handbook, role guides, and one-page-per-command reference in English.</p>
     <ul>
-      <li><a href="./handbook/en/index.html">Handbook index</a></li>
-      <li><a href="./handbook/en/role-new-user.html">New user path</a></li>
-      <li><a href="./handbook/en/role-sre-ops.html">SRE / operator path</a></li>
-      <li><a href="./handbook/en/role-automation-ci.html">Automation / CI path</a></li>
-      <li><a href="./commands/en/index.html">Command reference</a></li>
+      <li><a href="handbook/en/index.html">Handbook index</a></li>
+      <li><a href="handbook/en/role-new-user.html">New user path</a></li>
+      <li><a href="handbook/en/role-sre-ops.html">SRE / operator path</a></li>
+      <li><a href="handbook/en/role-automation-ci.html">Automation / CI path</a></li>
+      <li><a href="commands/en/index.html">Command reference</a></li>
+      <li><a href="man/index.html">Manpages (HTML)</a></li>
     </ul>
   </section>
   <section class="landing-card">
@@ -378,11 +383,12 @@ th {
     <h2>繁體中文手冊與逐指令說明</h2>
     <p>Use the Traditional Chinese lane if you want handbook chapters, role guides, and command pages without mixing locales in the same entry flow.</p>
     <ul>
-      <li><a href="./handbook/zh-TW/index.html">手冊目錄</a></li>
-      <li><a href="./handbook/zh-TW/role-new-user.html">新使用者路徑</a></li>
-      <li><a href="./handbook/zh-TW/role-sre-ops.html">SRE / 維運路徑</a></li>
-      <li><a href="./handbook/zh-TW/role-automation-ci.html">自動化 / CI 路徑</a></li>
-      <li><a href="./commands/zh-TW/index.html">逐指令說明</a></li>
+      <li><a href="handbook/zh-TW/index.html">手冊目錄</a></li>
+      <li><a href="handbook/zh-TW/role-new-user.html">新使用者路徑</a></li>
+      <li><a href="handbook/zh-TW/role-sre-ops.html">SRE / 維運路徑</a></li>
+      <li><a href="handbook/zh-TW/role-automation-ci.html">自動化 / CI 路徑</a></li>
+      <li><a href="commands/zh-TW/index.html">逐指令說明</a></li>
+      <li><a href="man/index.html">Manpage HTML</a></li>
     </ul>
   </section>
 </div>
@@ -395,7 +401,11 @@ th {
         </section>
         <section>
           <h2>Related</h2>
-          <ul><li><a class="link-card" href="./handbook/en/index.html">English handbook</a></li><li><a class="link-card" href="./handbook/zh-TW/index.html">繁體中文手冊</a></li><li><a class="link-card" href="./commands/en/index.html">English command reference</a></li><li><a class="link-card" href="./commands/zh-TW/index.html">繁體中文逐指令說明</a></li><li><a class="link-card" href="../man/grafana-util.1">Top-level manpage source</a></li><li><a class="link-card" href="../DEVELOPER.md">Maintainer entrypoint</a></li></ul>
+          <ul><li><a class="link-card" href="handbook/en/index.html">English handbook</a></li><li><a class="link-card" href="handbook/zh-TW/index.html">繁體中文手冊</a></li><li><a class="link-card" href="commands/en/index.html">English command reference</a></li><li><a class="link-card" href="commands/zh-TW/index.html">繁體中文逐指令說明</a></li><li><a class="link-card" href="../DEVELOPER.md">Maintainer entrypoint</a></li></ul>
+        </section>
+        <section>
+          <h2>Version</h2>
+          <p>Current checkout</p>
         </section>
         <section>
           <h2>Language</h2>

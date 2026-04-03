@@ -36,3 +36,4 @@ grafana-util access service-account token add --url http://localhost:3000 --basi
 - [access org](./access-org.md)
 - [access team](./access-team.md)
 - [access service-account](./access-service-account.md)
+- [access service-account token](./access-service-account-token.md)

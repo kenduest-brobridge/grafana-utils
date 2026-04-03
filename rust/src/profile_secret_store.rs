@@ -88,11 +88,11 @@ impl OsSecretStore for SystemOsSecretStore {
                     "Failed to prepare OS secret entry for `{key}`: {error}"
                 ))
             })?;
-            return entry.set_password(value).map_err(|error| {
+            entry.set_password(value).map_err(|error| {
                 message(format!(
                     "Failed to store secret `{key}` in the OS secret store: {error}"
                 ))
-            });
+            })
         }
         #[cfg(not(any(target_os = "macos", target_os = "linux")))]
         {
@@ -141,11 +141,11 @@ impl OsSecretStore for SystemOsSecretStore {
                     "Failed to prepare OS secret entry for `{key}`: {error}"
                 ))
             })?;
-            return entry.get_password().map_err(|error| {
+            entry.get_password().map_err(|error| {
                 message(format!(
                     "Failed to read secret `{key}` from the OS secret store: {error}"
                 ))
-            });
+            })
         }
         #[cfg(not(any(target_os = "macos", target_os = "linux")))]
         {

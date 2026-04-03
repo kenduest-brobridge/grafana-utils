@@ -117,7 +117,7 @@ For a published browser-friendly copy, use the GitHub Pages site for this reposi
 *   **[Getting Started](./docs/user-guide/en/getting-started.md)**: Installation, profiles, and first commands.
 *   **[Architecture & Principles](./docs/user-guide/en/architecture.md)**: Operational model, lanes, and design boundaries.
 *   **[Real-World Recipes](./docs/user-guide/en/recipes.md)**: Common operational tasks and example flows.
-*   **[Command Docs](./docs/commands/en/index.md)**: One page per command and subcommand, aligned to the current Rust CLI help.
+*   **[Command Docs](./docs/commands/en/index.md)**: One page per command and subcommand, aligned to the current Rust CLI help, with command-map entrypoints for deeper surfaces such as `dashboard screenshot`, `access service-account token`, and `change bundle-preflight`.
 *   **[HTML Docs Entry](./docs/html/index.html)**: Local handbook and command-reference entrypoint after `make html`.
 *   **[Man Page](./docs/man/grafana-util.1)**: Top-level `man` format reference. View it locally with `man ./docs/man/grafana-util.1` on macOS or `man -l docs/man/grafana-util.1` on GNU/Linux.
 *   **[Troubleshooting](./docs/user-guide/en/troubleshooting.md)**: Diagnostics, limits, and recovery guidance.

@@ -234,6 +234,10 @@ th {
   font-size: 1.03rem;
   line-height: 1.8;
 }
+.article pre.manpage {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .sidebar {
   padding: 22px;
 }
@@ -344,23 +348,30 @@ th {
 <p>如果您是從繁體中文手冊進來，建議這樣使用：</p>
 <table><thead><tr><th>您要查什麼</th><th>建議閱讀順序</th></tr></thead><tbody><tr><td>先理解功能目的與操作流程</td><td>先讀 <code>docs/user-guide/zh-TW/</code> 對應章節</td></tr><tr><td>需要查某個 command 或 subcommand 怎麼用</td><td>直接進這裡的繁中逐指令頁</td></tr><tr><td>想核對目前 Rust CLI help 的精確形狀</td><td>以這裡的指令頁為主，必要時再對照英文頁</td></tr></tbody></table>
 <p>如果您偏好 <code>man</code> 格式閱讀頂層命令，macOS 可執行 <code>man ./docs/man/grafana-util.1</code>，GNU/Linux 可執行 <code>man -l docs/man/grafana-util.1</code>。</p>
-<h2 id="核心領域">核心領域</h2>
-<table><thead><tr><th>領域</th><th>入口</th></tr></thead><tbody><tr><td>Dashboard</td><td><a href="dashboard.html">dashboard</a></td></tr><tr><td>Datasource</td><td><a href="datasource.html">datasource</a></td></tr><tr><td>Alert</td><td><a href="alert.html">alert</a></td></tr><tr><td>Access</td><td><a href="access.html">access</a></td></tr></tbody></table>
-<p>常用的 dashboard 子命令：</p>
-<ul><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-raw-to-prompt.html">dashboard raw-to-prompt</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-inspect-export.html">dashboard inspect-export</a></li></ul>
-<p>如果您要把一般 raw dashboard JSON 轉成 Grafana UI prompt JSON，請直接看 <a href="dashboard-raw-to-prompt.html">dashboard raw-to-prompt</a>。</p>
+<h2 id="dashboard">Dashboard</h2>
+<ul><li><a href="dashboard.html">dashboard</a></li><li><a href="dashboard-browse.html">dashboard browse</a></li><li><a href="dashboard-get.html">dashboard get</a></li><li><a href="dashboard-clone-live.html">dashboard clone-live</a></li><li><a href="dashboard-list.html">dashboard list</a></li><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-raw-to-prompt.html">dashboard raw-to-prompt</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-patch-file.html">dashboard patch-file</a></li><li><a href="dashboard-review.html">dashboard review</a></li><li><a href="dashboard-publish.html">dashboard publish</a></li><li><a href="dashboard-delete.html">dashboard delete</a></li><li><a href="dashboard-diff.html">dashboard diff</a></li><li><a href="dashboard-inspect-export.html">dashboard inspect-export</a></li><li><a href="dashboard-inspect-live.html">dashboard inspect-live</a></li><li><a href="dashboard-inspect-vars.html">dashboard inspect-vars</a></li><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li><li><a href="dashboard-topology.html">dashboard topology</a></li><li><a href="dashboard-screenshot.html">dashboard screenshot</a></li></ul>
+<h2 id="datasource">Datasource</h2>
+<ul><li><a href="datasource.html">datasource</a></li><li><a href="datasource-types.html">datasource types</a></li><li><a href="datasource-list.html">datasource list</a></li><li><a href="datasource-browse.html">datasource browse</a></li><li><a href="datasource-inspect-export.html">datasource inspect-export</a></li><li><a href="datasource-export.html">datasource export</a></li><li><a href="datasource-import.html">datasource import</a></li><li><a href="datasource-diff.html">datasource diff</a></li><li><a href="datasource-add.html">datasource add</a></li><li><a href="datasource-modify.html">datasource modify</a></li><li><a href="datasource-delete.html">datasource delete</a></li></ul>
+<h2 id="alert">Alert</h2>
+<ul><li><a href="alert.html">alert</a></li><li><a href="alert-export.html">alert export</a></li><li><a href="alert-import.html">alert import</a></li><li><a href="alert-diff.html">alert diff</a></li><li><a href="alert-plan.html">alert plan</a></li><li><a href="alert-apply.html">alert apply</a></li><li><a href="alert-delete.html">alert delete</a></li><li><a href="alert-add-rule.html">alert add-rule</a></li><li><a href="alert-clone-rule.html">alert clone-rule</a></li><li><a href="alert-add-contact-point.html">alert add-contact-point</a></li><li><a href="alert-set-route.html">alert set-route</a></li><li><a href="alert-preview-route.html">alert preview-route</a></li><li><a href="alert-new-rule.html">alert new-rule</a></li><li><a href="alert-new-contact-point.html">alert new-contact-point</a></li><li><a href="alert-new-template.html">alert new-template</a></li><li><a href="alert-list-rules.html">alert list-rules</a></li><li><a href="alert-list-contact-points.html">alert list-contact-points</a></li><li><a href="alert-list-mute-timings.html">alert list-mute-timings</a></li><li><a href="alert-list-templates.html">alert list-templates</a></li></ul>
+<h2 id="access">Access</h2>
+<ul><li><a href="access.html">access</a></li><li><a href="access-user.html">access user</a></li><li><a href="access-org.html">access org</a></li><li><a href="access-team.html">access team</a></li><li><a href="access-service-account.html">access service-account</a></li><li><a href="access-service-account-token.html">access service-account token</a></li></ul>
 <h2 id="共用介面">共用介面</h2>
-<table><thead><tr><th>頁面</th><th>入口</th></tr></thead><tbody><tr><td>Change</td><td><a href="change.html">change</a></td></tr><tr><td>Overview</td><td><a href="overview.html">overview</a></td></tr><tr><td>Status</td><td><a href="status.html">status</a></td></tr><tr><td>Profile</td><td><a href="profile.html">profile</a></td></tr><tr><td>Snapshot</td><td><a href="snapshot.html">snapshot</a></td></tr></tbody></table>
+<ul><li><a href="change.html">change</a></li><li><a href="change.html#summary">change summary</a></li><li><a href="change.html#plan">change plan</a></li><li><a href="change.html#review">change review</a></li><li><a href="change.html#apply">change apply</a></li><li><a href="change.html#audit">change audit</a></li><li><a href="change.html#preflight">change preflight</a></li><li><a href="change.html#assess-alerts">change assess-alerts</a></li><li><a href="change.html#bundle">change bundle</a></li><li><a href="change.html#bundle-preflight">change bundle-preflight</a></li><li><a href="change.html#promotion-preflight">change promotion-preflight</a></li><li><a href="overview.html">overview</a></li><li><a href="overview.html#live">overview live</a></li><li><a href="status.html">status</a></li><li><a href="status.html#staged">status staged</a></li><li><a href="status.html#live">status live</a></li><li><a href="profile.html">profile</a></li><li><a href="profile.html#list">profile list</a></li><li><a href="profile.html#show">profile show</a></li><li><a href="profile.html#add">profile add</a></li><li><a href="profile.html#example">profile example</a></li><li><a href="profile.html#init">profile init</a></li><li><a href="snapshot.html">snapshot</a></li><li><a href="snapshot.html#export">snapshot export</a></li><li><a href="snapshot.html#review">snapshot review</a></li></ul>
         
       </article>
       <aside class="panel sidebar">
         <section>
           <h2>On This Page</h2>
-          <ul><li><a class="link-card" href="#語言切換">語言切換</a></li><li><a class="link-card" href="#核心領域">核心領域</a></li><li><a class="link-card" href="#共用介面">共用介面</a></li></ul>
+          <ul><li><a class="link-card" href="#語言切換">語言切換</a></li><li><a class="link-card" href="#dashboard">Dashboard</a></li><li><a class="link-card" href="#datasource">Datasource</a></li><li><a class="link-card" href="#alert">Alert</a></li><li><a class="link-card" href="#access">Access</a></li><li><a class="link-card" href="#共用介面">共用介面</a></li></ul>
         </section>
         <section>
           <h2>Related</h2>
           <ul><li><a class="link-card" href="index.html">Command reference home</a></li><li><a class="link-card" href="../../handbook/zh-TW/index.html">Matching handbook chapter</a></li></ul>
+        </section>
+        <section>
+          <h2>Version</h2>
+          <p>Current checkout</p>
         </section>
         <section>
           <h2>Language</h2>

@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+      - dev
+    tags:
+      - "v*"
   workflow_dispatch:
 
 permissions:
@@ -20,11 +23,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Generate HTML docs site
-        run: make html
+      - name: Fetch release and preview refs
+        run: git fetch --force --tags origin main dev
+      - name: Assemble versioned HTML docs site
+        run: python3 ./scripts/build_pages_site.py --output-dir ./build/docs-pages
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
         with:
@@ -32,10 +39,11 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: docs/html
+          path: build/docs-pages
 
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

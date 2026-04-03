@@ -11,6 +11,7 @@ Need the command-by-command surface instead of the workflow guide?
 - [access org](../../commands/en/access-org.md)
 - [access team](../../commands/en/access-team.md)
 - [access service-account](../../commands/en/access-service-account.md)
+- [access service-account token](../../commands/en/access-service-account-token.md)
 - [full command index](../../commands/en/index.md)
 
 ---

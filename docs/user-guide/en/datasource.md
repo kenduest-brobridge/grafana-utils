@@ -9,10 +9,16 @@ This guide covers `grafana-util datasource` as an operator workflow for inventor
 Need the command-by-command surface instead of the workflow guide?
 
 - [datasource command overview](../../commands/en/datasource.md)
+- [datasource types](../../commands/en/datasource-types.md)
+- [datasource browse](../../commands/en/datasource-browse.md)
+- [datasource inspect-export](../../commands/en/datasource-inspect-export.md)
 - [datasource export](../../commands/en/datasource-export.md)
 - [datasource import](../../commands/en/datasource-import.md)
 - [datasource diff](../../commands/en/datasource-diff.md)
 - [datasource list](../../commands/en/datasource-list.md)
+- [datasource add](../../commands/en/datasource-add.md)
+- [datasource modify](../../commands/en/datasource-modify.md)
+- [datasource delete](../../commands/en/datasource-delete.md)
 - [full command index](../../commands/en/index.md)
 
 ---

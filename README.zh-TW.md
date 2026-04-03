@@ -117,7 +117,7 @@ open ./docs/html/index.html
 *   **[開始使用](./docs/user-guide/zh-TW/getting-started.md)**：安裝、profile 設定與第一批常用命令。
 *   **[系統架構與設計原則](./docs/user-guide/zh-TW/architecture.md)**：維運模型、lane 設計與邊界。
 *   **[實戰範例](./docs/user-guide/zh-TW/recipes.md)**：常見維運任務與操作流程範例。
-*   **[指令詳細說明](./docs/commands/zh-TW/index.md)**：每個 command 與 subcommand 各有獨立頁面，可直接查目前 CLI 指令面。
+*   **[指令詳細說明](./docs/commands/zh-TW/index.md)**：每個 command 與 subcommand 各有獨立頁面，可直接查目前 CLI 指令面，並提供完整 command map 入口，像是 `dashboard screenshot`、`access service-account token`、`change bundle-preflight` 這類較深的子命令也能直接找到。
 *   **[HTML 文件入口](./docs/html/index.html)**：執行 `make html` 後可本機瀏覽的 handbook 與 command reference 入口。
 *   **[Man Page](./docs/man/grafana-util.1)**：頂層 `man` 格式參考；macOS 可用 `man ./docs/man/grafana-util.1`，GNU/Linux 可用 `man -l docs/man/grafana-util.1`。
 *   **[疑難排解](./docs/user-guide/zh-TW/troubleshooting.md)**：診斷、限制與恢復建議。

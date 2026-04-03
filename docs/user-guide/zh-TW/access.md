@@ -11,6 +11,7 @@
 - [access org](../../commands/zh-TW/access-org.md)
 - [access team](../../commands/zh-TW/access-team.md)
 - [access service-account](../../commands/zh-TW/access-service-account.md)
+- [access service-account token](../../commands/zh-TW/access-service-account-token.md)
 - [逐指令總索引](../../commands/zh-TW/index.md)
 
 ---

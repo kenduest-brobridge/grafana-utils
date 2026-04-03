@@ -234,6 +234,10 @@ th {
   font-size: 1.03rem;
   line-height: 1.8;
 }
+.article pre.manpage {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .sidebar {
   padding: 22px;
 }
@@ -342,7 +346,7 @@ th {
 <p>&gt; <strong>維運優先設計</strong>：本工具將 Dashboard 視為版本控制資產。目標是安全地搬移與治理 Dashboard 狀態，在變更觸及即時環境前提供清晰的可視化預覽。</p>
 <h2 id="逐指令頁面">🔗 逐指令頁面</h2>
 <p>如果您現在想看的是逐指令說明，而不是工作流章節，請直接使用逐指令頁面：</p>
-<ul><li><a href="../../commands/zh-TW/dashboard.html">dashboard 指令總覽</a></li><li><a href="../../commands/zh-TW/dashboard-export.html">dashboard export</a></li><li><a href="../../commands/zh-TW/dashboard-import.html">dashboard import</a></li><li><a href="../../commands/zh-TW/dashboard-raw-to-prompt.html">dashboard raw-to-prompt</a></li><li><a href="../../commands/zh-TW/dashboard-diff.html">dashboard diff</a></li><li><a href="../../commands/zh-TW/dashboard-inspect-export.html">dashboard inspect-export</a></li><li><a href="../../commands/zh-TW/index.html">逐指令總索引</a></li></ul>
+<ul><li><a href="../../commands/zh-TW/dashboard.html">dashboard 指令總覽</a></li><li><a href="../../commands/zh-TW/dashboard-browse.html">dashboard browse</a></li><li><a href="../../commands/zh-TW/dashboard-get.html">dashboard get</a></li><li><a href="../../commands/zh-TW/dashboard-clone-live.html">dashboard clone-live</a></li><li><a href="../../commands/zh-TW/dashboard-list.html">dashboard list</a></li><li><a href="../../commands/zh-TW/dashboard-export.html">dashboard export</a></li><li><a href="../../commands/zh-TW/dashboard-import.html">dashboard import</a></li><li><a href="../../commands/zh-TW/dashboard-raw-to-prompt.html">dashboard raw-to-prompt</a></li><li><a href="../../commands/zh-TW/dashboard-patch-file.html">dashboard patch-file</a></li><li><a href="../../commands/zh-TW/dashboard-review.html">dashboard review</a></li><li><a href="../../commands/zh-TW/dashboard-publish.html">dashboard publish</a></li><li><a href="../../commands/zh-TW/dashboard-delete.html">dashboard delete</a></li><li><a href="../../commands/zh-TW/dashboard-diff.html">dashboard diff</a></li><li><a href="../../commands/zh-TW/dashboard-inspect-export.html">dashboard inspect-export</a></li><li><a href="../../commands/zh-TW/dashboard-inspect-live.html">dashboard inspect-live</a></li><li><a href="../../commands/zh-TW/dashboard-inspect-vars.html">dashboard inspect-vars</a></li><li><a href="../../commands/zh-TW/dashboard-governance-gate.html">dashboard governance-gate</a></li><li><a href="../../commands/zh-TW/dashboard-topology.html">dashboard topology</a></li><li><a href="../../commands/zh-TW/dashboard-screenshot.html">dashboard screenshot</a></li><li><a href="../../commands/zh-TW/index.html">逐指令總索引</a></li></ul>
 <h2 id="核心工作流用途">🛠️ 核心工作流用途</h2>
 <p>Dashboard 領域專為大規模治理而設計：</p>
 <ul><li><strong>資產盤點</strong>：了解跨一個或多個組織的 Dashboard 現況。</li><li><strong>結構化匯出</strong>：使用專屬「路徑 (Lanes)」在環境間遷移 Dashboard。</li><li><strong>深度檢視</strong>：離線分析查詢 (Queries) 與資料來源 (Datasource) 依賴。</li><li><strong>差異審查 (Drift Review)</strong>：在套用變更前，比對本地暫存檔案與 live Grafana。</li><li><strong>受控變更</strong>：透過強制性的 Dry-run 執行匯入或刪除。</li></ul>
@@ -406,7 +410,11 @@ subfolder-chain-smoke  missing      create  Platform / Team / Apps / Prod  ./das
         </section>
         <section>
           <h2>Related</h2>
-          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/zh-TW/index.html">Command reference index</a></li></ul>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/zh-TW/index.html">Command reference index</a></li><li><a class="link-card" href="../../man/index.html">Manpages (HTML)</a></li></ul>
+        </section>
+        <section>
+          <h2>Version</h2>
+          <p>Current checkout</p>
         </section>
         <section>
           <h2>Language</h2>

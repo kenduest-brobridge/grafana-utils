@@ -24,6 +24,14 @@ command -v tar >/dev/null 2>&1 || fail "tar is required"
 command -v install >/dev/null 2>&1 || fail "install is required"
 command -v mktemp >/dev/null 2>&1 || fail "mktemp is required"
 
+resolve_artifact_suffix() {
+  case "$RUST_ARTIFACT_FLAVOR" in
+    standard) printf '%s\n' "" ;;
+    browser) printf '%s\n' "-browser" ;;
+    *) fail "unsupported RUST_ARTIFACT_FLAVOR: ${RUST_ARTIFACT_FLAVOR}; supported values: standard, browser" ;;
+  esac
+}
+
 normalize_tag() {
   case "$1" in
     v*) printf '%s\n' "$1" ;;

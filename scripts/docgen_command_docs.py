@@ -15,7 +15,11 @@ from pathlib import Path
 from docgen_common import REPO_ROOT
 
 
-COMMAND_DOCS_DIR = REPO_ROOT / "docs" / "commands" / "en"
+def get_command_docs_dir(repo_root: Path = REPO_ROOT) -> Path:
+    return repo_root / "docs" / "commands" / "en"
+
+
+COMMAND_DOCS_DIR = get_command_docs_dir()
 
 
 @dataclass(frozen=True)

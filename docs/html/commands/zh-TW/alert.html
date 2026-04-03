@@ -234,6 +234,10 @@ th {
   font-size: 1.03rem;
   line-height: 1.8;
 }
+.article pre.manpage {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .sidebar {
   padding: 22px;
 }
@@ -351,7 +355,7 @@ th {
 <pre><code>grafana-util alert export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./alerts --overwrite</code></pre>
 <pre><code>grafana-util alert export --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-dir ./alerts --flat</code></pre>
 <h2 id="相關命令">相關命令</h2>
-<ul><li><a href="alert-export.html">alert export</a></li><li><a href="alert-import.html">alert import</a></li><li><a href="alert-diff.html">alert diff</a></li><li><a href="alert-plan.html">alert plan</a></li><li><a href="alert-apply.html">alert apply</a></li><li><a href="alert-delete.html">alert delete</a></li><li><a href="access.html">access</a></li></ul>
+<ul><li><a href="alert-export.html">alert export</a></li><li><a href="alert-import.html">alert import</a></li><li><a href="alert-diff.html">alert diff</a></li><li><a href="alert-plan.html">alert plan</a></li><li><a href="alert-apply.html">alert apply</a></li><li><a href="alert-delete.html">alert delete</a></li><li><a href="alert-add-rule.html">alert add-rule</a></li><li><a href="alert-clone-rule.html">alert clone-rule</a></li><li><a href="alert-add-contact-point.html">alert add-contact-point</a></li><li><a href="alert-set-route.html">alert set-route</a></li><li><a href="alert-preview-route.html">alert preview-route</a></li><li><a href="alert-new-rule.html">alert new-rule</a></li><li><a href="alert-new-contact-point.html">alert new-contact-point</a></li><li><a href="alert-new-template.html">alert new-template</a></li><li><a href="alert-list-rules.html">alert list-rules</a></li><li><a href="alert-list-contact-points.html">alert list-contact-points</a></li><li><a href="alert-list-mute-timings.html">alert list-mute-timings</a></li><li><a href="alert-list-templates.html">alert list-templates</a></li><li><a href="access.html">access</a></li></ul>
         
       </article>
       <aside class="panel sidebar">
@@ -362,6 +366,10 @@ th {
         <section>
           <h2>Related</h2>
           <ul><li><a class="link-card" href="index.html">Command reference home</a></li><li><a class="link-card" href="../../handbook/zh-TW/alert.html">Matching handbook chapter</a></li></ul>
+        </section>
+        <section>
+          <h2>Version</h2>
+          <p>Current checkout</p>
         </section>
         <section>
           <h2>Language</h2>

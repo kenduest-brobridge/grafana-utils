@@ -234,6 +234,10 @@ th {
   font-size: 1.03rem;
   line-height: 1.8;
 }
+.article pre.manpage {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .sidebar {
   padding: 22px;
 }
@@ -341,7 +345,7 @@ th {
 <p>本章聚焦在治理關卡，也就是在執行變更前後的最後一層驗證。</p>
 <h2 id="指令詳細頁面">🔗 指令詳細頁面</h2>
 <p>如果您現在想看的是指令詳細說明，而不是工作流章節，請直接使用指令詳細頁面：</p>
-<ul><li><a href="../../commands/zh-TW/change.html">change</a></li><li><a href="../../commands/zh-TW/status.html">status</a></li><li><a href="../../commands/zh-TW/overview.html">overview</a></li><li><a href="../../commands/zh-TW/snapshot.html">snapshot</a></li><li><a href="../../commands/zh-TW/index.html">指令詳細總索引</a></li></ul>
+<ul><li><a href="../../commands/zh-TW/change.html">change</a></li><li><a href="../../commands/zh-TW/change.html#summary">change summary</a></li><li><a href="../../commands/zh-TW/change.html#plan">change plan</a></li><li><a href="../../commands/zh-TW/change.html#review">change review</a></li><li><a href="../../commands/zh-TW/change.html#apply">change apply</a></li><li><a href="../../commands/zh-TW/change.html#audit">change audit</a></li><li><a href="../../commands/zh-TW/change.html#preflight">change preflight</a></li><li><a href="../../commands/zh-TW/change.html#assess-alerts">change assess-alerts</a></li><li><a href="../../commands/zh-TW/change.html#bundle">change bundle</a></li><li><a href="../../commands/zh-TW/change.html#bundle-preflight">change bundle-preflight</a></li><li><a href="../../commands/zh-TW/change.html#promotion-preflight">change promotion-preflight</a></li><li><a href="../../commands/zh-TW/status.html">status</a></li><li><a href="../../commands/zh-TW/status.html#staged">status staged</a></li><li><a href="../../commands/zh-TW/status.html#live">status live</a></li><li><a href="../../commands/zh-TW/overview.html">overview</a></li><li><a href="../../commands/zh-TW/overview.html#live">overview live</a></li><li><a href="../../commands/zh-TW/snapshot.html">snapshot</a></li><li><a href="../../commands/zh-TW/snapshot.html#export">snapshot export</a></li><li><a href="../../commands/zh-TW/snapshot.html#review">snapshot review</a></li><li><a href="../../commands/zh-TW/profile.html">profile</a></li><li><a href="../../commands/zh-TW/profile.html#list">profile list</a></li><li><a href="../../commands/zh-TW/profile.html#show">profile show</a></li><li><a href="../../commands/zh-TW/profile.html#add">profile add</a></li><li><a href="../../commands/zh-TW/profile.html#example">profile example</a></li><li><a href="../../commands/zh-TW/profile.html#init">profile init</a></li><li><a href="../../commands/zh-TW/index.html">指令詳細總索引</a></li></ul>
 <h2 id="狀態介面-status-surfaces">🚦 狀態介面 (Status Surfaces)</h2>
 <p>我們區分 <strong>Live</strong> (實際運行中) 與 <strong>Staged</strong> (您打算部署的內容)。</p>
 <h3 id="1-即時整備度檢查-live-check">1. 即時整備度檢查 (Live Check)</h3>
@@ -405,7 +409,11 @@ Alerts       ok       無孤立規則</code></pre>
         </section>
         <section>
           <h2>Related</h2>
-          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/zh-TW/index.html">Command reference index</a></li></ul>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/zh-TW/index.html">Command reference index</a></li><li><a class="link-card" href="../../man/index.html">Manpages (HTML)</a></li></ul>
+        </section>
+        <section>
+          <h2>Version</h2>
+          <p>Current checkout</p>
         </section>
         <section>
           <h2>Language</h2>

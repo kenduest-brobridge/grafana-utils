@@ -1,4 +1,4 @@
-.PHONY: help print-version sync-version set-release-version set-dev-version poetry-install poetry-lock poetry-test poetry-quality-python man man-check html html-check build build-python build-rust build-rust-browser build-rust-native build-rust-native-browser build-rust-host build-rust-host-browser build-rust-macos-arm64 build-rust-macos-arm64-browser build-rust-linux-amd64 build-rust-linux-amd64-browser build-rust-linux-amd64-docker build-rust-linux-amd64-browser-docker build-rust-linux-amd64-zig validate-rust-linux-amd64-artifact validate-rust-linux-amd64-browser-artifact seed-grafana-sample-data destroy-grafana-sample-data reset-grafana-all-data test test-python test-rust fmt-rust-check lint-rust quality quality-python quality-rust quality-alert-rust quality-sync-rust test-rust-live test-sync-live test-alert-live test-alert-live-artifact test-alert-live-replay test-access-live test-python-datasource-live test-datasource-live
+.PHONY: help print-version sync-version set-release-version set-dev-version poetry-install poetry-lock poetry-test poetry-quality-python man man-check html html-check pages-site build build-python build-rust build-rust-browser build-rust-native build-rust-native-browser build-rust-host build-rust-host-browser build-rust-macos-arm64 build-rust-macos-arm64-browser build-rust-linux-amd64 build-rust-linux-amd64-browser build-rust-linux-amd64-docker build-rust-linux-amd64-browser-docker build-rust-linux-amd64-zig validate-rust-linux-amd64-artifact validate-rust-linux-amd64-browser-artifact seed-grafana-sample-data destroy-grafana-sample-data reset-grafana-all-data test test-python test-rust fmt-rust-check lint-rust quality quality-python quality-rust quality-alert-rust quality-sync-rust test-rust-live test-sync-live test-alert-live test-alert-live-artifact test-alert-live-replay test-access-live test-python-datasource-live test-datasource-live
 
 PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
@@ -37,6 +37,7 @@ help:
 	printf '  %b\n' "$${GREEN}make man-check$${RESET}  Fail if those checked-in docs/man/*.1 pages are out of date"; \
 	printf '  %b\n' "$${GREEN}make html$${RESET}  Regenerate the HTML docs site: handbook + command reference, with docs/html/index.html as the entrypoint"; \
 	printf '  %b\n' "$${GREEN}make html-check$${RESET}  Fail if checked-in docs/html/**/*.html is out of date"; \
+	printf '  %b\n' "$${GREEN}make pages-site$${RESET}  Assemble the multi-version GitHub Pages docs artifact into build/docs-pages/"; \
 	printf '\n'; \
 	printf '%b\n' "$${BLUE}$${BOLD}Rust build$${RESET}"; \
 	printf '  %b%s%b\n' "$${GREEN}make build-rust$${RESET}  Build the default native, host release artifact, and Linux amd64 Rust artifacts " "$${CYAN}(no browser feature)" "$${RESET}"; \
@@ -120,6 +121,9 @@ html:
 
 html-check:
 	$(PYTHON) ./scripts/generate_command_html.py --check
+
+pages-site:
+	$(PYTHON) ./scripts/build_pages_site.py --output-dir ./build/docs-pages
 
 build: build-python build-rust
 	@printf '%s\n' 'Build outputs:'

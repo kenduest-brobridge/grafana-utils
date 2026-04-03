@@ -234,6 +234,10 @@ th {
   font-size: 1.03rem;
   line-height: 1.8;
 }
+.article pre.manpage {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .sidebar {
   padding: 22px;
 }
@@ -369,7 +373,7 @@ th {
 <p>先看 <a href="role-sre-ops.html">SRE / 維運路徑</a>，再看 <a href="change-overview-status.html">變更與狀態</a>、<a href="dashboard.html">Dashboard 管理</a>、<a href="datasource.html">Datasource 管理</a>、<a href="troubleshooting.html">疑難排解</a>。</p>
 <p>先看 <a href="access.html">Access 管理</a>，再看 <a href="reference.html">技術參考手冊</a>，最後搭配 <a href="../../commands/zh-TW/index.html">指令詳細說明</a>。</p>
 <p>先看 <a href="role-automation-ci.html">自動化 / CI 路徑</a>，再看 <a href="reference.html">技術參考手冊</a>，如需終端機精確查詢可搭配 <code>docs/man/grafana-util.1</code>。</p>
-<p>先看 <a href="../../../DEVELOPER.md">docs/DEVELOPER.md</a>，再看 <a href="../../../internal/maintainer-role-map.md">maintainer-role-map.md</a> 與 <a href="../../../internal/README.md">docs/internal/README.md</a> 下面的設計與維護文件。</p>
+<p>先看 <a href="../../DEVELOPER.md">docs/DEVELOPER.md</a>，再看 <a href="../../internal/maintainer-role-map.md">maintainer-role-map.md</a> 與 <a href="../../internal/README.md">docs/internal/README.md</a> 下面的設計與維護文件。</p>
 <ul><li><strong>新使用者</strong></li><li><strong>SRE / 維運人員</strong></li><li><strong>身份 / 權限管理者</strong></li><li><strong>自動化 / CI 維護者</strong></li><li><strong>維護者 / 架構師</strong></li></ul>
 <h2 id="如何使用這份導航">🎯 如何使用這份導航？</h2>
 <p>如果您是新使用者，請從「<strong>開始使用</strong>」點入。每一頁的最下方都設有 <strong>「下一章」</strong> 的連結，讓您可以像讀一本書一樣循序漸進。</p>
@@ -383,7 +387,11 @@ th {
         </section>
         <section>
           <h2>Related</h2>
-          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/zh-TW/index.html">Command reference index</a></li></ul>
+          <ul><li><a class="link-card" href="index.html">Handbook home</a></li><li><a class="link-card" href="../../commands/zh-TW/index.html">Command reference index</a></li><li><a class="link-card" href="../../man/index.html">Manpages (HTML)</a></li></ul>
+        </section>
+        <section>
+          <h2>Version</h2>
+          <p>Current checkout</p>
         </section>
         <section>
           <h2>Language</h2>

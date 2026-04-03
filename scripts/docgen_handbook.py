@@ -12,7 +12,11 @@ from pathlib import Path
 from docgen_common import REPO_ROOT, relative_href
 
 
-HANDBOOK_ROOT = REPO_ROOT / "docs" / "user-guide"
+def get_handbook_root(repo_root: Path = REPO_ROOT) -> Path:
+    return repo_root / "docs" / "user-guide"
+
+
+HANDBOOK_ROOT = get_handbook_root()
 HANDBOOK_LOCALES = ("en", "zh-TW")
 HANDBOOK_ORDER = (
     "index.md",
@@ -58,11 +62,11 @@ def parse_title(path: Path) -> str:
     return path.stem.replace("-", " ").title()
 
 
-def build_handbook_pages(locale: str) -> list[HandbookPage]:
+def build_handbook_pages(locale: str, handbook_root: Path = HANDBOOK_ROOT) -> list[HandbookPage]:
     """Build the ordered handbook page list for one locale."""
     if locale not in HANDBOOK_LOCALES:
         raise ValueError(f"Unsupported handbook locale: {locale}")
-    locale_dir = HANDBOOK_ROOT / locale
+    locale_dir = handbook_root / locale
     output_rels = [f"handbook/{locale}/{Path(name).with_suffix('.html').as_posix()}" for name in HANDBOOK_ORDER]
     titles = [parse_title(locale_dir / filename) for filename in HANDBOOK_ORDER]
     pages: list[HandbookPage] = []

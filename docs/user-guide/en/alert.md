@@ -9,10 +9,24 @@ This guide covers `grafana-util alert` as an operator workflow for alert desired
 Need the command-by-command surface instead of the workflow guide?
 
 - [alert command overview](../../commands/en/alert.md)
+- [alert export](../../commands/en/alert-export.md)
+- [alert import](../../commands/en/alert-import.md)
+- [alert diff](../../commands/en/alert-diff.md)
 - [alert plan](../../commands/en/alert-plan.md)
 - [alert apply](../../commands/en/alert-apply.md)
-- [alert export](../../commands/en/alert-export.md)
+- [alert delete](../../commands/en/alert-delete.md)
+- [alert add-rule](../../commands/en/alert-add-rule.md)
+- [alert clone-rule](../../commands/en/alert-clone-rule.md)
+- [alert add-contact-point](../../commands/en/alert-add-contact-point.md)
+- [alert set-route](../../commands/en/alert-set-route.md)
 - [alert preview-route](../../commands/en/alert-preview-route.md)
+- [alert new-rule](../../commands/en/alert-new-rule.md)
+- [alert new-contact-point](../../commands/en/alert-new-contact-point.md)
+- [alert new-template](../../commands/en/alert-new-template.md)
+- [alert list-rules](../../commands/en/alert-list-rules.md)
+- [alert list-contact-points](../../commands/en/alert-list-contact-points.md)
+- [alert list-mute-timings](../../commands/en/alert-list-mute-timings.md)
+- [alert list-templates](../../commands/en/alert-list-templates.md)
 - [full command index](../../commands/en/index.md)
 
 ---

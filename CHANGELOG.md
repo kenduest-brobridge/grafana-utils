@@ -14,6 +14,44 @@ Format rule going forward:
 - keep older tagged releases below
 - use commit/tag history as the source of truth
 
+## [0.7.3] - 2026-04-03
+
+### Highlights
+
+- Command and handbook documentation entrypoints now expose the full command
+  and subcommand surface more consistently, so discoverability issues like
+  `dashboard screenshot` being hard to find are reduced across README, indexes,
+  and handbook pages.
+- GitHub Pages docs now support the multi-version site layout introduced on the
+  docs side, while `dev` branch pushes validate the site build without trying
+  to deploy through the protected Pages environment.
+- Release metadata and generated docs are aligned again for the `0.7.3` line,
+  including versioned manpage HTML mirrors and refreshed generated output.
+
+### Added
+
+- Versioned GitHub Pages site assembly for handbook, command reference, and
+  manpage HTML output, including `/latest/`, `/dev/`, and release-lane paths.
+- HTML mirrors for generated manpages so the published docs site can expose the
+  manpage content in browser-readable form.
+
+### Changed
+
+- Command index and handbook navigation now enumerate command/subcommand
+  entrypoints more completely in both English and Traditional Chinese.
+- `dev` branch Docs Pages runs now stop after the build artifact on CI, while
+  `main` remains the deploy path for the protected `github-pages` environment.
+- The main branch release line now reports `0.7.3` across canonical version
+  metadata and generated manpage output.
+
+### Fixed
+
+- The install script quality checks now match the current flavor-aware release
+  archive naming and no longer fail under plain `sh` due to helper definition
+  order.
+- Rust quality gates are green again after addressing the clippy violations in
+  dashboard raw-to-prompt logging and OS-backed profile secret storage.
+
 ## [0.7.2] - 2026-04-03
 
 ### Highlights

@@ -9,11 +9,24 @@ This guide covers `grafana-util dashboard` as an operator workflow for inventory
 Need the command-by-command surface instead of the workflow guide?
 
 - [dashboard command overview](../../commands/en/dashboard.md)
+- [dashboard browse](../../commands/en/dashboard-browse.md)
+- [dashboard get](../../commands/en/dashboard-get.md)
+- [dashboard clone-live](../../commands/en/dashboard-clone-live.md)
+- [dashboard list](../../commands/en/dashboard-list.md)
 - [dashboard export](../../commands/en/dashboard-export.md)
 - [dashboard import](../../commands/en/dashboard-import.md)
 - [dashboard raw-to-prompt](../../commands/en/dashboard-raw-to-prompt.md)
+- [dashboard patch-file](../../commands/en/dashboard-patch-file.md)
+- [dashboard review](../../commands/en/dashboard-review.md)
+- [dashboard publish](../../commands/en/dashboard-publish.md)
+- [dashboard delete](../../commands/en/dashboard-delete.md)
 - [dashboard diff](../../commands/en/dashboard-diff.md)
 - [dashboard inspect-export](../../commands/en/dashboard-inspect-export.md)
+- [dashboard inspect-live](../../commands/en/dashboard-inspect-live.md)
+- [dashboard inspect-vars](../../commands/en/dashboard-inspect-vars.md)
+- [dashboard governance-gate](../../commands/en/dashboard-governance-gate.md)
+- [dashboard topology](../../commands/en/dashboard-topology.md)
+- [dashboard screenshot](../../commands/en/dashboard-screenshot.md)
 - [full command index](../../commands/en/index.md)
 
 ---

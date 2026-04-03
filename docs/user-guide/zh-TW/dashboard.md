@@ -9,11 +9,24 @@
 如果您現在想看的是逐指令說明，而不是工作流章節，請直接使用逐指令頁面：
 
 - [dashboard 指令總覽](../../commands/zh-TW/dashboard.md)
+- [dashboard browse](../../commands/zh-TW/dashboard-browse.md)
+- [dashboard get](../../commands/zh-TW/dashboard-get.md)
+- [dashboard clone-live](../../commands/zh-TW/dashboard-clone-live.md)
+- [dashboard list](../../commands/zh-TW/dashboard-list.md)
 - [dashboard export](../../commands/zh-TW/dashboard-export.md)
 - [dashboard import](../../commands/zh-TW/dashboard-import.md)
 - [dashboard raw-to-prompt](../../commands/zh-TW/dashboard-raw-to-prompt.md)
+- [dashboard patch-file](../../commands/zh-TW/dashboard-patch-file.md)
+- [dashboard review](../../commands/zh-TW/dashboard-review.md)
+- [dashboard publish](../../commands/zh-TW/dashboard-publish.md)
+- [dashboard delete](../../commands/zh-TW/dashboard-delete.md)
 - [dashboard diff](../../commands/zh-TW/dashboard-diff.md)
 - [dashboard inspect-export](../../commands/zh-TW/dashboard-inspect-export.md)
+- [dashboard inspect-live](../../commands/zh-TW/dashboard-inspect-live.md)
+- [dashboard inspect-vars](../../commands/zh-TW/dashboard-inspect-vars.md)
+- [dashboard governance-gate](../../commands/zh-TW/dashboard-governance-gate.md)
+- [dashboard topology](../../commands/zh-TW/dashboard-topology.md)
+- [dashboard screenshot](../../commands/zh-TW/dashboard-screenshot.md)
 - [逐指令總索引](../../commands/zh-TW/index.md)
 
 ---
