@@ -24,7 +24,7 @@
 ### 1. 安裝 (全域 Binary)
 ```bash
 # 從原始碼儲存庫下載並安裝最新版本到本地 bin 目錄
-curl -sSL https://raw.githubusercontent.com/kendlee/grafana-utils/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
 ```
 
 ### 2. 確認安裝版本

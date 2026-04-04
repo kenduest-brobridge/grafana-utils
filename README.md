@@ -29,7 +29,7 @@ English | [繁體中文](./README.zh-TW.md)
 
 ```bash
 # 1. Install via One-Liner
-curl -sSL https://raw.githubusercontent.com/kendlee/grafana-utils/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
 
 # 2. Confirm the installed version
 grafana-util --version
@@ -37,6 +37,12 @@ grafana-util --version
 # 3. Inspect current Grafana status
 grafana-util overview live --url http://my-grafana:3000 --basic-user admin --prompt-password --output interactive
 ```
+
+Download and install notes:
+
+*   **Pinned install**: `VERSION=0.7.4 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh`
+*   **Release downloads**: <https://github.com/kenduest-brobridge/grafana-utils/releases>
+*   **Published binaries**: standard release binaries are published for `linux-amd64` and `macos-arm64`. If you need the browser-enabled screenshot build, download the `*-browser-*` archive from the same release.
 
 ---
 

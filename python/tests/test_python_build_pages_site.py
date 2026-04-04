@@ -55,6 +55,22 @@ class BuildPagesSiteTests(unittest.TestCase):
         self.assertEqual(links[2].target_rel, "dev/index.html")
         self.assertEqual(links[3].target_rel, "v0.7/index.html")
 
+    def test_render_version_portal_uses_landing_locale_switch_and_dual_language_copy(self):
+        module = load_module()
+
+        rendered = module.render_version_portal(
+            latest_lane="v0.7",
+            version_lanes=["v0.7", "v0.6"],
+            has_dev=True,
+        )
+
+        self.assertIn('id="locale-select"', rendered)
+        self.assertIn('id="landing-i18n"', rendered)
+        self.assertIn("grafana-util Versioned Docs", rendered)
+        self.assertIn("grafana-util 版本文件入口", rendered)
+        self.assertIn("Jump to a docs lane...", rendered)
+        self.assertIn("快速跳到版本線...", rendered)
+
 
 if __name__ == "__main__":
     unittest.main()

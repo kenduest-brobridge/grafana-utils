@@ -196,6 +196,34 @@ def render_toc(headings: tuple[RenderedHeading, ...]) -> str:
         )
     return '<ul class="toc-list">' + "".join(items) + "</ul>"
 
+
+def render_section_index(
+    headings: tuple[RenderedHeading, ...],
+    *,
+    title: str,
+    summary: str = "",
+    levels: tuple[int, ...] = (2,),
+) -> str:
+    entries = [
+        (strip_decorative_prefix(h.text), f"#{h.anchor}")
+        for h in headings
+        if h.level in levels
+    ]
+    if not entries:
+        return ""
+    intro_html = f'<p class="section-index-summary">{html.escape(summary)}</p>' if summary else ""
+    items_html = "".join(
+        f'<li><a href="{html.escape(href)}">{html.escape(label)}</a></li>'
+        for label, href in entries
+    )
+    return (
+        '<section class="section-index">'
+        f'<h2>{html.escape(title)}</h2>'
+        f"{intro_html}"
+        f'<ul class="section-index-list">{items_html}</ul>'
+        "</section>"
+    )
+
 def prefixed_output_rel(config: HtmlBuildConfig, rel: str) -> str:
     return f"{config.output_prefix.strip('/')}/{rel}" if config.output_prefix else rel
 
@@ -808,7 +836,13 @@ def render_developer_page(config):
     dev_path = config.source_root / "docs" / "DEVELOPER.md"
     if not dev_path.exists(): return ""
     doc = render_markdown_document(dev_path.read_text(encoding="utf-8"), link_transform=lambda t: t)
-    return page_shell(page_title="Developer Guide", html_lang="en", home_href=relative_href("developer.html", prefixed_output_rel(config, "index.html")), hero_title="Developer Guide", hero_summary="Maintainer and developer documentation.", breadcrumbs=[("Home", "index.html"), ("Developer Guide", None)], body_html=strip_heading_decorations(strip_leading_h1(doc.body_html)), toc_html=render_toc(doc.headings), related_html="", version_html="", locale_html="", footer_nav_html="", footer_html="Source: docs/DEVELOPER.md", jump_html=render_page_locale_select("English") + render_jump_select("developer.html", "en", config), nav_html="")
+    section_index = render_section_index(
+        doc.headings,
+        title="Guide Map",
+        summary="Jump straight to the repo concern you are touching instead of scanning the whole maintainer guide.",
+    )
+    body_html = section_index + strip_heading_decorations(strip_leading_h1(doc.body_html))
+    return page_shell(page_title="Developer Guide", html_lang="en", home_href=relative_href("developer.html", prefixed_output_rel(config, "index.html")), hero_title="Developer Guide", hero_summary="Maintainer routing for runtime, docs, contracts, and release work.", breadcrumbs=[("Home", "index.html"), ("Developer Guide", None)], body_html=body_html, toc_html=render_toc(doc.headings), related_html="", version_html="", locale_html="", footer_nav_html="", footer_html="Source: docs/DEVELOPER.md", jump_html=render_page_locale_select("English") + render_jump_select("developer.html", "en", config), nav_html="")
 
 def command_language_switch_href(output_rel, locale, source_name, config):
     other = "zh-TW" if locale == "en" else "en"

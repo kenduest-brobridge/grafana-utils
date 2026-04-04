@@ -244,6 +244,47 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 .hero-title-main { display: block; }
 .hero-title-secondary { display: block; margin-top: 6px; font-size: 0.68em; line-height: 1.2; color: var(--muted); font-weight: 560; letter-spacing: -0.012em; }
 .hero-summary { margin: 0 0 18px; max-width: 68ch; color: var(--text); font-size: 1rem; line-height: 1.72; font-weight: 450; }
+.section-index {
+  margin: 0 0 1.75rem;
+  padding: 1rem 1.1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.section-index h2 {
+  margin: 0 0 0.45rem;
+  padding: 0;
+  border: 0;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+.section-index-summary {
+  margin: 0 0 0.85rem;
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.68;
+}
+.section-index-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.4rem 1rem;
+}
+.section-index-list li {
+  margin: 0;
+}
+.section-index-list a {
+  display: block;
+  padding: 0.25rem 0;
+  color: var(--text);
+  font-weight: 560;
+}
+.section-index-list a:hover {
+  color: var(--heading);
+}
 .article blockquote { margin: 1.5rem 0; padding: 12px 16px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 4px; }
 .article blockquote p { margin: 0; font-size: 0.95rem; color: var(--heading); }
 .breadcrumbs {
@@ -655,7 +696,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>若要對照本章提到的旗標，請一併參考 <a href="../../commands/zh-TW/profile.html">profile</a>、<a href="../../commands/zh-TW/status.html">status</a> 與 <a href="../../commands/zh-TW/overview.html">overview</a>。</p>
 <h2 id="步驟-1安裝">步驟 1：安裝</h2>
 <h3 id="下載並安裝">下載並安裝</h3>
-<pre><code>curl -sSL https://raw.githubusercontent.com/kendlee/grafana-utils/main/scripts/install.sh | bash</code></pre>
+<pre><code>curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh</code></pre>
 <h3 id="檢查版本">檢查版本</h3>
 <pre><code>grafana-util --version</code></pre>
 <p><strong>預期輸出：</strong></p>

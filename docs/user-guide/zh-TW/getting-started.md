@@ -19,7 +19,7 @@ profile 的重點是讓日常操作少重打重複參數，不是代表一開始
 
 ### 下載並安裝
 ```bash
-curl -sSL https://raw.githubusercontent.com/kendlee/grafana-utils/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
 ```
 
 ### 檢查版本

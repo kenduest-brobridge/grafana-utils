@@ -29,7 +29,7 @@
 
 ```bash
 # 1. 一鍵安裝 (全域 Binary)
-curl -sSL https://raw.githubusercontent.com/kendlee/grafana-utils/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
 
 # 2. 確認安裝版本
 grafana-util --version
@@ -37,6 +37,12 @@ grafana-util --version
 # 3. 檢視目前 Grafana 狀態
 grafana-util overview live --url http://my-grafana:3000 --basic-user admin --prompt-password --output interactive
 ```
+
+安裝與下載資訊：
+
+*   **固定版本安裝**：`VERSION=0.7.4 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh`
+*   **Release 下載頁**：<https://github.com/kenduest-brobridge/grafana-utils/releases>
+*   **已發布 binary**：目前提供 `linux-amd64` 與 `macos-arm64` 的標準版。若需要支援瀏覽器截圖的版本，請到同一個 release 下載 `*-browser-*` 壓縮檔。
 
 ---
 

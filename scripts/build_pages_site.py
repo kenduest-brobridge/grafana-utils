@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import json
 import re
 import shutil
 import subprocess
@@ -15,6 +16,7 @@ from pathlib import Path
 
 from docgen_common import REPO_ROOT, write_outputs
 from generate_command_html import HtmlBuildConfig, VersionLink, generate_outputs, page_shell, html_list
+from generate_command_html import render_landing_locale_select, render_template
 
 
 SEMVER_TAG_RE = re.compile(r"^v(\d+)\.(\d+)\.(\d+)$")
@@ -143,43 +145,208 @@ def render_version_portal(
     version_lanes: list[str],
     has_dev: bool,
 ) -> str:
-    body_sections: list[str] = []
-    quick_links: list[tuple[str, str]] = []
+    lane_links_en: list[tuple[str, str]] = []
+    lane_links_zh: list[tuple[str, str]] = []
     if latest_lane:
-        quick_links.append((f"Latest release ({latest_lane})", "latest/index.html"))
+        lane_links_en.append((f"Latest release ({latest_lane})", "latest/index.html"))
+        lane_links_zh.append((f"最新版本（{latest_lane}）", "latest/index.html"))
     if has_dev:
-        quick_links.append(("Dev preview", "dev/index.html"))
-    body_sections.append(
-        "<section class=\"landing-card\"><div class=\"eyebrow\">Versions</div><h2>Choose a docs lane</h2>"
-        "<p>Release docs are versioned by minor line. Dev is the live preview of the development branch.</p>"
-        + html_list(quick_links + [(label, f"{label}/index.html") for label in version_lanes])
-        + "</section>"
+        lane_links_en.append(("Dev preview", "dev/index.html"))
+        lane_links_zh.append(("開發預覽", "dev/index.html"))
+    lane_links_en.extend((label, f"{label}/index.html") for label in version_lanes)
+    lane_links_zh.extend((label, f"{label}/index.html") for label in version_lanes)
+
+    def render_links(items: list[tuple[str, str]]) -> str:
+        return "".join(
+            f'<li><a href="{html.escape(href)}">{html.escape(label)}</a></li>'
+            for label, href in items
+        )
+
+    def render_panel(title: str, summary: str, links: list[tuple[str, str]]) -> str:
+        return render_template(
+            "landing_panel.html.tmpl",
+            title=html.escape(title),
+            summary=html.escape(summary),
+            links_html=render_links(links),
+        )
+
+    def render_section(title: str, summary: str, tasks: list[tuple[str, str, list[tuple[str, str]]]]) -> str:
+        tasks_html = "".join(
+            render_template(
+                "landing_task.html.tmpl",
+                title=html.escape(task_title),
+                summary=html.escape(task_summary),
+                links_html=render_links(task_links),
+            )
+            for task_title, task_summary, task_links in tasks
+        )
+        return render_template(
+            "landing_section.html.tmpl",
+            title=html.escape(title),
+            summary=html.escape(summary),
+            inline_html="",
+            tasks_html=tasks_html,
+        )
+
+    outputs_links_en = [
+        ("Handbook HTML", "#outputs"),
+        ("Command reference HTML", "#outputs"),
+        ("Manpage HTML mirrors", "#outputs"),
+    ]
+    outputs_links_zh = [
+        ("手冊 HTML", "#outputs"),
+        ("指令說明 HTML", "#outputs"),
+        ("Manpage HTML 鏡像", "#outputs"),
+    ]
+
+    portal_data = {
+        "en": {
+            "lang": "en",
+            "hero_title": "grafana-util Versioned Docs",
+            "hero_summary": "Pick the release line you need, switch into the right language, and open handbook, command, or manpage outputs from one portal.",
+            "search_heading": "Choose a docs lane",
+            "search_copy": "Use quick jump for the latest release, the dev preview, or a specific release line.",
+            "search_placeholder": "Jump to latest, dev, or a release line",
+            "search_button": "Open",
+            "sections_html": "".join(
+                [
+                    render_section(
+                        "Release lanes",
+                        "Published docs stay grouped by release line so you can read the right behavior for your deployed version.",
+                        [
+                            ("Latest release", "Open the latest published handbook, command docs, and manpage mirrors.", lane_links_en[:1] if latest_lane else []),
+                            ("Dev preview", "Open the current development docs before the next release ships.", lane_links_en[1:2] if has_dev and latest_lane else lane_links_en[:1] if has_dev else []),
+                            ("Older release lines", "Browse older published lines when you need version-specific behavior or migration context.", [(label, href) for label, href in lane_links_en if href not in {"latest/index.html", "dev/index.html"}]),
+                        ],
+                    ),
+                    render_section(
+                        "Available outputs",
+                        "Each lane exposes the same three generated surfaces so operators and maintainers can switch format without leaving the version context.",
+                        [
+                            ("Handbook HTML", "Task and workflow guidance for operators and maintainers.", [("Open a docs lane first", "latest/index.html" if latest_lane else "dev/index.html")]),
+                            ("Command reference HTML", "Per-command and per-subcommand reference pages.", [("Open a docs lane first", "latest/index.html" if latest_lane else "dev/index.html")]),
+                            ("Manpage HTML mirrors", "Browser-readable mirrors of the generated manpages.", [("Open a docs lane first", "latest/index.html" if latest_lane else "dev/index.html")]),
+                        ],
+                    ),
+                ]
+            ),
+            "meta_html": "".join(
+                [
+                    render_panel(
+                        "How to use this portal",
+                        "Choose a release line first. Once you enter that lane, use the built-in language switch and jump menu inside the versioned docs.",
+                        lane_links_en[:2],
+                    ),
+                    render_panel(
+                        "Formats",
+                        "All release lanes expose the same generated outputs.",
+                        outputs_links_en,
+                    ),
+                ]
+            ),
+            "jump_options_html": (
+                '<option value="" selected>Jump to a docs lane...</option>'
+                + "".join(
+                    f'<option value="{html.escape(href)}">{html.escape(label)}</option>'
+                    for label, href in lane_links_en
+                )
+            ),
+        },
+        "zh-TW": {
+            "lang": "zh-TW",
+            "hero_title": "grafana-util 版本文件入口",
+            "hero_summary": "先選版本線，再進入對應語言的手冊、指令說明或 manpage HTML，不用在首頁自己猜路徑。",
+            "search_heading": "選擇文件版本線",
+            "search_copy": "可直接跳到最新版本、開發預覽，或指定的 release line。",
+            "search_placeholder": "快速跳到最新版本、開發預覽或指定版本",
+            "search_button": "開啟",
+            "sections_html": "".join(
+                [
+                    render_section(
+                        "版本線",
+                        "已發佈文件會依版本線整理，方便你直接查看目前部署版本對應的行為與說明。",
+                        [
+                            ("最新版本", "直接開啟最新發佈的手冊、指令說明與 manpage HTML。", lane_links_zh[:1] if latest_lane else []),
+                            ("開發預覽", "查看下一個版本尚未發佈前的最新文件。", lane_links_zh[1:2] if has_dev and latest_lane else lane_links_zh[:1] if has_dev else []),
+                            ("舊版本線", "需要比對舊版行為、升級差異或回看舊文件時，從這裡進入。", [(label, href) for label, href in lane_links_zh if href not in {"latest/index.html", "dev/index.html"}]),
+                        ],
+                    ),
+                    render_section(
+                        "可用輸出",
+                        "每條版本線都提供同一組生成文件，方便依工作情境切換閱讀形式。",
+                        [
+                            ("手冊 HTML", "工作流程、操作順序與使用情境的完整說明。", [("先開啟任一版本線", "latest/index.html" if latest_lane else "dev/index.html")]),
+                            ("指令說明 HTML", "每個 command 與 subcommand 的參數、用途與範例。", [("先開啟任一版本線", "latest/index.html" if latest_lane else "dev/index.html")]),
+                            ("Manpage HTML", "可在瀏覽器閱讀的 manpage 鏡像。", [("先開啟任一版本線", "latest/index.html" if latest_lane else "dev/index.html")]),
+                        ],
+                    ),
+                ]
+            ),
+            "meta_html": "".join(
+                [
+                    render_panel(
+                        "如何使用這個入口",
+                        "先選版本線。進入該版本後，再用頁面內建的語言切換與快速跳轉找你要看的內容。",
+                        lane_links_zh[:2],
+                    ),
+                    render_panel(
+                        "輸出形式",
+                        "每條版本線都提供相同的生成輸出。",
+                        outputs_links_zh,
+                    ),
+                ]
+            ),
+            "jump_options_html": (
+                '<option value="" selected>快速跳到版本線...</option>'
+                + "".join(
+                    f'<option value="{html.escape(href)}">{html.escape(label)}</option>'
+                    for label, href in lane_links_zh
+                )
+            ),
+        },
+    }
+    default_locale = "en"
+    body_html = (
+        '<div class="landing-page portal-page">'
+        '<section class="landing-hero">'
+        '<div class="landing-hero-inner">'
+        f'<h1 id="landing-title" class="landing-title">{html.escape(portal_data[default_locale]["hero_title"])}</h1>'
+        f'<p id="landing-summary" class="landing-summary">{html.escape(portal_data[default_locale]["hero_summary"])}</p>'
+        '</div>'
+        '<section class="landing-search-panel">'
+        f'<h2 id="landing-search-heading">{html.escape(portal_data[default_locale]["search_heading"])}</h2>'
+        f'<p id="landing-search-copy">{html.escape(portal_data[default_locale]["search_copy"])}</p>'
+        '<form id="landing-search-form" class="landing-search-form">'
+        f'<input id="landing-search" class="landing-search-input" type="search" placeholder="{html.escape(portal_data[default_locale]["search_placeholder"])}" aria-label="{html.escape(portal_data[default_locale]["search_placeholder"])}" />'
+        f'<button id="landing-search-button" class="landing-search-button" type="submit">{html.escape(portal_data[default_locale]["search_button"])}</button>'
+        '</form>'
+        '</section>'
+        '</section>'
+        f'<div id="landing-sections" class="landing-sections">{portal_data[default_locale]["sections_html"]}</div>'
+        f'<div id="landing-meta" class="landing-meta">{portal_data[default_locale]["meta_html"]}</div>'
+        f'<script id="landing-i18n" type="application/json">{json.dumps(portal_data, ensure_ascii=False)}</script>'
+        '</div>'
     )
-    body_sections.append(
-        "<section class=\"landing-card\"><div class=\"eyebrow\">Formats</div><h2>Available outputs</h2>"
-        "<ul><li>Handbook HTML</li><li>Command reference HTML</li><li>Manpage HTML mirrors</li></ul></section>"
-    )
-    body_html = '<div class="landing-grid">' + "".join(body_sections) + "</div>"
-    related_links = []
-    if latest_lane:
-        related_links.append((f"Latest release ({latest_lane})", "latest/index.html"))
-    if has_dev:
-        related_links.append(("Dev preview", "dev/index.html"))
-    related_links.extend((label, f"{label}/index.html") for label in version_lanes)
     return page_shell(
         page_title="grafana-util versioned docs",
         html_lang="en",
         home_href="index.html",
-        hero_title="grafana-util Versioned Docs",
-        hero_summary="Published release docs, development preview docs, and browser-readable manpage mirrors.",
+        hero_title="",
+        hero_summary="",
         breadcrumbs=[("Home", None)],
         body_html=body_html,
-        toc_html="<p>Choose a release line or the dev preview.</p>",
-        related_html=html_list(related_links),
-        version_html="<p>This page routes between published versions.</p>",
-        locale_html="<p>Select a version first, then switch language inside that lane.</p>",
+        toc_html="",
+        related_html="",
+        version_html="",
+        locale_html="",
         footer_nav_html="",
         footer_html="Generated by <code>scripts/build_pages_site.py</code>.",
+        jump_html=render_landing_locale_select(default_locale) + '<select id="jump-select" aria-label="Jump"><option value="" selected>Jump to a docs lane...</option>' + "".join(
+            f'<option value="{html.escape(href)}">{html.escape(label)}</option>'
+            for label, href in lane_links_en
+        ) + "</select>",
+        nav_html="",
+        is_landing=True,
     )
 
 

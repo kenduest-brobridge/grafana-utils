@@ -166,6 +166,14 @@ class GenerateCommandHtmlTests(unittest.TestCase):
         self.assertIn("<code>status live</code>", rendered)
         self.assertNotIn("&lt;code&gt;status live&lt;/code&gt;", rendered)
 
+    def test_strip_heading_decorations_preserves_other_inline_markup_in_heading_html(self):
+        module = load_module()
+
+        rendered = module.strip_heading_decorations('<h3 id="jq">1. Filtering with <em>jq</em></h3>')
+
+        self.assertIn("<em>jq</em>", rendered)
+        self.assertNotIn("&lt;em&gt;jq&lt;/em&gt;", rendered)
+
     def test_render_toc_adds_hierarchy_classes_and_strips_emoji_labels(self):
         module = load_module()
 
@@ -302,6 +310,8 @@ class GenerateCommandHtmlTests(unittest.TestCase):
         rendered = module.render_developer_page(module.HtmlBuildConfig())
 
         self.assertIn('class="layout layout-no-nav"', rendered)
+        self.assertIn(">Guide Map<", rendered)
+        self.assertIn("Jump straight to the repo concern", rendered)
         self.assertNotIn("<h2>Related</h2>", rendered)
         self.assertNotIn("<h2>Version</h2>", rendered)
         self.assertNotIn("<h2>Language</h2>", rendered)

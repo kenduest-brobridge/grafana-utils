@@ -19,7 +19,7 @@ For the exact flags behind this chapter, keep [profile](../../commands/en/profil
 
 ### Download and Install
 ```bash
-curl -sSL https://raw.githubusercontent.com/kendlee/grafana-utils/main/scripts/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
 ```
 
 ### Verify Version
