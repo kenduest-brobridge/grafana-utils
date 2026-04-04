@@ -65,6 +65,7 @@ class BuildPagesSiteTests(unittest.TestCase):
         )
 
         self.assertIn('id="locale-select"', rendered)
+        self.assertIn('<option value="auto" selected>Auto</option>', rendered)
         self.assertIn('id="landing-i18n"', rendered)
         self.assertIn("grafana-util Versioned Docs", rendered)
         self.assertIn("grafana-util 版本文件入口", rendered)

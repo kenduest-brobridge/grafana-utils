@@ -81,6 +81,7 @@ class GenerateCommandHtmlTests(unittest.TestCase):
         self.assertIn('class="landing-hero"', rendered)
         self.assertIn('id="landing-search-form"', rendered)
         self.assertIn('id="locale-select"', rendered)
+        self.assertIn('<option value="auto" selected>Auto</option>', rendered)
         self.assertIn('id="landing-i18n"', rendered)
         self.assertIn("Quick Start", rendered)
         self.assertIn("Common Tasks", rendered)
@@ -268,6 +269,7 @@ class GenerateCommandHtmlTests(unittest.TestCase):
         self.assertIn('id="page-locale-select"', rendered)
         self.assertIn("Language: 繁體中文", rendered)
         self.assertIn("Switch to English", rendered)
+        self.assertNotIn('id="locale-select"', rendered)
 
     def test_render_command_page_includes_intro_panel_from_command_doc_metadata(self):
         module = load_module()
