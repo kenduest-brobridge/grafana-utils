@@ -28,7 +28,7 @@ grafana-util --version
 ```
 **預期輸出：**
 ```text
-grafana-util 0.7.3
+grafana-util 0.7.4
 ```
 這代表執行檔已在 `PATH` 上，而且版本與目前檢出的發行版一致。
 

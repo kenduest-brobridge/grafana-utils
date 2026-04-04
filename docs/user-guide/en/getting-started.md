@@ -28,7 +28,7 @@ grafana-util --version
 ```
 **Expected Output:**
 ```text
-grafana-util 0.7.3
+grafana-util 0.7.4
 ```
 This confirms that the binary is on your `PATH` and matches the checked-in release.
 
