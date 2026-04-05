@@ -8,6 +8,13 @@ Current AI-maintained status only.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-status-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-31.md).
 
+## 2026-04-05 - Verify repo-local smoke regression for the task-first change lane
+- State: Done
+- Scope: `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the repo already had a temp-workspace smoke that walks `inspect -> check -> preview -> apply` through one local staged workspace and checks the preview/apply handoff.
+- Current Update: re-validated that smoke against the current tree so the trace log still matches the existing task-first lane coverage and its local preview artifact flow.
+- Result: the task-first lane still has a repo-local smoke regression that catches workspace-discovery or preview/apply handoff breakage without needing a live Grafana instance.
+
 ## 2026-04-05 - Centralize Rust Grafana connection wiring behind a shared internal client layer
 - State: Done
 - Scope: `rust/src/grafana_api/**`, `rust/src/lib.rs`, `rust/src/dashboard/dashboard_runtime.rs`, `rust/src/alert.rs`, `rust/src/alert_client.rs`, `rust/src/alert_cli_defs.rs`, `rust/src/access/access_cli_runtime.rs`, `rust/src/project_status_support.rs`, `rust/src/sync/live.rs`, focused Rust tests, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

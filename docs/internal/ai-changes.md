@@ -8,6 +8,13 @@ Current AI change log only.
 - Keep this file limited to the latest active architecture and maintenance changes.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-changes-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-03-31.md).
 
+## 2026-04-05 - Verify repo-local smoke regression for the task-first change lane
+- Summary: re-validated the existing temp-workspace smoke regression that walks `change inspect -> check -> preview -> apply` through one local staged workspace. The smoke writes a preview artifact, verifies the preview file stays plain text, and reuses that artifact for apply so the repo still has one local handoff check for the task-first lane.
+- Tests: `cargo test --manifest-path rust/Cargo.toml --quiet task_first_change_lane_smoke_runs_from_repo_local_workspace -- --test-threads=1`; `git diff --check`
+- Impact: `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low. This is trace-only documentation and does not change runtime behavior, but the smoke should stay aligned with the workspace-discovery rules if those inputs evolve.
+- Follow-up: if the task-first lane grows additional first-run paths, add them to the same smoke fixture rather than creating a second overlapping end-to-end test.
+
 ## 2026-04-05 - Centralize Rust Grafana connection wiring behind a shared internal client layer
 - Summary: added a new internal `rust/src/grafana_api/` module that now owns shared profile/auth/header resolution (`GrafanaConnection`), root client construction (`GrafanaApiClient`), org-scoped client derivation, and thin resource wrappers for dashboard, datasource, access, and alerting APIs. The existing dashboard, access, alert, and project-status runtime builders now construct live clients through that shared layer instead of each rebuilding connection settings and `JsonHttpClient` wiring independently. As part of the same change, `GrafanaAlertClient` stopped owning its own raw HTTP setup and now delegates alerting endpoint methods through the shared alerting resource client.
 - Tests: added focused unit coverage for auth-mode detection, resolved-org header injection, and org-header replacement in the new `grafana_api` layer while keeping the existing alert and project-status regressions green after the runtime migration.
