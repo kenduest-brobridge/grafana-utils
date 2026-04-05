@@ -50,13 +50,7 @@ Primary lane：
 
 Advanced workflows：
 
-- [change advanced](../../commands/zh-TW/change.md#advanced)
-- [change review](../../commands/zh-TW/change.md#review)
-- [change audit](../../commands/zh-TW/change.md#audit)
-- [change assess-alerts](../../commands/zh-TW/change.md#assess-alerts)
-- [change bundle](../../commands/zh-TW/change.md#bundle)
-- [change bundle-preflight](../../commands/zh-TW/change.md#bundle-preflight)
-- [change promotion-preflight](../../commands/zh-TW/change.md#promotion-preflight)
+- 如果你需要較低階 staged contract，或要看 bundle / promotion handoff 文件，從 [change advanced](../../commands/zh-TW/change.md#advanced) 或 [指令詳細總索引](../../commands/zh-TW/index.md) 開始。
 - [snapshot](../../commands/zh-TW/snapshot.md)
 - [snapshot export](../../commands/zh-TW/snapshot.md#export)
 - [snapshot review](../../commands/zh-TW/snapshot.md#review)
@@ -66,7 +60,6 @@ Advanced workflows：
 - [profile add](../../commands/zh-TW/profile.md#add)
 - [profile example](../../commands/zh-TW/profile.md#example)
 - [profile init](../../commands/zh-TW/profile.md#init)
-- [指令詳細總索引](../../commands/zh-TW/index.md)
 
 ---
 

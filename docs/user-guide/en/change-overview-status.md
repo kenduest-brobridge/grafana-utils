@@ -52,16 +52,7 @@ Primary lane:
 
 Advanced workflows:
 
-- [change advanced](../../commands/en/change.md#advanced)
-- [change advanced summary](../../commands/en/change.md#summary)
-- [change advanced plan](../../commands/en/change.md#plan)
-- [change advanced review](../../commands/en/change.md#review)
-- [change advanced audit](../../commands/en/change.md#audit)
-- [change advanced preflight](../../commands/en/change.md#preflight)
-- [change advanced assess-alerts](../../commands/en/change.md#assess-alerts)
-- [change advanced bundle](../../commands/en/change.md#bundle)
-- [change advanced bundle-preflight](../../commands/en/change.md#bundle-preflight)
-- [change advanced promotion-preflight](../../commands/en/change.md#promotion-preflight)
+- Need lower-level staged contracts or bundle/promotion handoff docs? Start at [change advanced](../../commands/en/change.md#advanced) or the [full command index](../../commands/en/index.md).
 - [snapshot](../../commands/en/snapshot.md)
 - [snapshot export](../../commands/en/snapshot.md#export)
 - [snapshot review](../../commands/en/snapshot.md#review)
@@ -71,7 +62,6 @@ Advanced workflows:
 - [profile add](../../commands/en/profile.md#add)
 - [profile example](../../commands/en/profile.md#example)
 - [profile init](../../commands/en/profile.md#init)
-- [full command index](../../commands/en/index.md)
 
 ---
 

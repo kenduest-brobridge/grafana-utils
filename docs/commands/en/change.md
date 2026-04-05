@@ -141,7 +141,7 @@ grafana-util change preview --workspace . --fetch-live --profile prod
 grafana-util change preview --desired-file ./desired.json --live-file ./live.json --output-format json
 ```
 
-Related commands: `change apply`, `change advanced plan`, `change advanced bundle-preflight`.
+Related commands: `change apply`, `change advanced`.
 
 ## `advanced`
 
@@ -152,16 +152,13 @@ When to use: when you need explicit `summary`, `plan`, `review`, `preflight`, `a
 Examples:
 
 ```bash
-# Purpose: Expose lower-level staged contracts and specialized sync workflows.
-grafana-util change advanced review --plan-file ./sync-plan.json --review-note 'peer-reviewed'
-```
-
-```bash
-# Purpose: Expose lower-level staged contracts and specialized sync workflows.
+# Purpose: Enter lower-level staged contracts or specialized sync workflows only when the primary lane is not enough.
 grafana-util change advanced bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --output-format json
 ```
 
-### JSON contracts for CI and scripts
+### For CI and scripts only
+
+If you are reading this page as an operator, stop here and use the primary `inspect -> check -> preview -> apply` lane unless you know you need one of the lower-level contracts below.
 
 If you are automating around `change` outputs, treat `kind` plus `schemaVersion` as the contract guard before you inspect the rest of the payload.
 

@@ -139,7 +139,7 @@ grafana-util change preview --workspace . --fetch-live --profile prod
 grafana-util change preview --desired-file ./desired.json --live-file ./live.json --output-format json
 ```
 
-相關指令：`change apply`、`change advanced plan`、`change advanced bundle-preflight`。
+相關指令：`change apply`、`change advanced`。
 
 ## `advanced`
 
@@ -150,14 +150,13 @@ grafana-util change preview --desired-file ./desired.json --live-file ./live.jso
 範例：
 
 ```bash
-grafana-util change advanced review --plan-file ./sync-plan.json --review-note 'peer-reviewed'
-```
-
-```bash
+# 用途：只有在 primary lane 不夠用時，才進入較低階 contract 或特殊 sync workflow。
 grafana-util change advanced bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --output-format json
 ```
 
-### 給 CI / 腳本用的 JSON contract
+### 給 CI / 腳本用的區塊
+
+如果你是用這頁做一般維運操作，看到這裡就可以先停。除非你已經知道自己需要較低階 contract，否則先走 `inspect -> check -> preview -> apply` 的 primary lane。
 
 如果你要用 `change` 系列輸出給 CI、腳本或外部系統判斷，請先用 `kind` 與 `schemaVersion` 當成 contract 識別，再讀後面的欄位。
 
