@@ -189,6 +189,11 @@ Use these pages for the matching concern:
 - `change`, `status`, and `overview` are related surfaces, but they are not
   interchangeable. Read the current architecture notes before collapsing or
   renaming them.
+- When you add or refactor live Grafana workflow code, prefer one
+  workflow-level helper under `rust/src/grafana_api/` and keep raw
+  `"/api/..."` ownership there instead of reintroducing endpoint strings inside
+  command runtimes. Keep `with_request` seams for tests and adapters, not as a
+  second production main path.
 - Handbook content and command-reference content are separate source layers.
   Do not merge them into one doc family just because they cross-link.
 - Generated artifacts should not become the only place a change is made.

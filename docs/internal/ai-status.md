@@ -8,6 +8,13 @@ Current AI-maintained status only.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-status-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-31.md).
 
+## 2026-04-06 - Converge datasource and alert live workflow helpers and extend sync live smoke
+- State: Done
+- Scope: `rust/src/datasource_live_project_status.rs`, `rust/src/alert.rs`, `rust/src/alert_runtime_support.rs`, `rust/src/grafana_api/mod.rs`, `rust/src/grafana_api/datasource_live_project_status.rs`, `rust/src/grafana_api/alert_live.rs`, `scripts/test-rust-live-grafana.sh`, `docs/internal/maintainer-quickstart.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `project-status` and `sync` had already moved onto workflow-level shared live helpers, but datasource live project-status still owned raw `/api/datasources`, `/api/orgs`, and `/api/org` reads locally, alert runtime support still kept one large in-module provisioning request layer, and the maintained Docker smoke path did not yet assert the `change preview --fetch-live` contract from the repo-owned script.
+- Current Update: moved datasource live inventory gathering behind a dedicated `grafana_api::datasource_live_project_status` helper, extracted the alert provisioning request/apply helpers into `grafana_api::alert_live`, kept `alert_runtime_support.rs` focused on plan/build/apply orchestration, and extended `scripts/test-rust-live-grafana.sh` so the sync smoke now writes and validates a real `change preview --fetch-live` artifact. Also added a maintainer quickstart rule that new live workflow code should centralize raw Grafana path ownership in one workflow-level helper under `rust/src/grafana_api/` instead of reintroducing a second production request path inside command runtimes.
+- Result: datasource and alert live workflow code now follow the same shared-live ownership pattern as `project-status` and `sync`, and the repo-owned Docker smoke now covers the live sync preview contract instead of relying on one-off localhost checks.
+
 ## 2026-04-05 - Reuse resolved Grafana clients within one command to avoid repeated auth prompts
 - State: Done
 - Scope: `rust/src/dashboard/cli_defs.rs`, `rust/src/dashboard/dashboard_runtime.rs`, `rust/src/dashboard/list.rs`, `rust/src/dashboard/export.rs`, `rust/src/dashboard/mod.rs`, `rust/src/datasource.rs`, `rust/src/datasource_import_export.rs`, `rust/src/datasource_import_export_routed.rs`, `rust/src/grafana_api/tests.rs`
