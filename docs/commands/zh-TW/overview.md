@@ -13,12 +13,12 @@
 範例：
 
 ```bash
-# 用途：Root。
+# 用途：彙總 staged 的 dashboard、alert 與 access 產物。
 grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table
 ```
 
 ```bash
-# 用途：Root。
+# 用途：在 promotion 前先檢視 sync bundle 的輸入。
 grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output-format text
 ```
 

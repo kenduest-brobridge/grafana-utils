@@ -8,37 +8,54 @@ When to use: when you want to keep Grafana connection defaults in the current ch
 
 Description: open this page when you want to understand the full profile workflow before choosing one subcommand. The `profile` namespace is the entrypoint for repo-local connection defaults, secret handling, and non-interactive command reuse across local work, SRE tasks, and CI jobs.
 
+## Before / After
+
+- **Before**: connection settings live in scattered flags or ad hoc shell history, so the same live command is hard to repeat later.
+- **After**: a named profile keeps URL, auth, and secret handling in one place so live commands stay shorter and easier to reuse.
+
+## What success looks like
+
+- one profile name captures the connection setup you actually want to reuse
+- secret storage mode matches the environment instead of forcing every command to restate auth
+- downstream live commands can stay readable because the profile hides repeated boilerplate
+
+## Failure checks
+
+- if a command fails after switching profiles, verify the resolved `show` output before assuming the command is broken
+- if a secret is missing, check whether the profile is using `file`, `os`, or `encrypted-file` storage and whether that mode fits the current machine
+- if a live command still needs too many flags, reconsider whether the profile should carry the default URL or auth values instead
+
 Key flags: the root command is a namespace; operational flags live on subcommands. The shared root flag is `--color`.
 
 Examples:
 
 ```bash
-# Purpose: Root.
+# Purpose: List profiles available in the current checkout.
 grafana-util profile list
 ```
 
 ```bash
-# Purpose: Root.
+# Purpose: Inspect the resolved profile before running live commands.
 grafana-util profile show --profile prod --output-format yaml
 ```
 
 ```bash
-# Purpose: Root.
+# Purpose: Create a reusable production profile with prompt-based secrets.
 grafana-util profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file
 ```
 
 ```bash
-# Purpose: Root.
+# Purpose: Create a CI profile that reads the token from an environment variable.
 grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN --store-secret os
 ```
 
 ```bash
-# Purpose: Root.
+# Purpose: Print a fully annotated profile template.
 grafana-util profile example --mode full
 ```
 
 ```bash
-# Purpose: Root.
+# Purpose: Initialize a fresh grafana-util.yaml in the current checkout.
 grafana-util profile init --overwrite
 ```
 

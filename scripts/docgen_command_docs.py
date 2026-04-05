@@ -67,6 +67,29 @@ LABEL_ALIASES = {
     "說明": "Description",
 }
 
+COMMAND_SUBSECTION_LABELS = frozenset(
+    {
+        "Purpose",
+        "When to use",
+        "Key flags",
+        "Examples",
+        "Related commands",
+        "Auth notes",
+        "Description",
+    }
+)
+
+NON_COMMAND_SECTION_TITLES = frozenset(
+    {
+        "Before / After",
+        "What success looks like",
+        "Failure checks",
+        "採用前後對照",
+        "成功判準",
+        "失敗時先檢查",
+    }
+)
+
 
 @dataclass(frozen=True)
 class CommandDocPage:
@@ -237,7 +260,11 @@ def parse_inline_subcommands(path: Path, cli_path: str) -> list[CommandDocPage]:
     for heading, body in sections.items():
         if heading == "Root":
             continue
+        if clean_markdown(heading) in NON_COMMAND_SECTION_TITLES:
+            continue
         labels = parse_labeled_section(body)
+        if not COMMAND_SUBSECTION_LABELS.intersection(labels):
+            continue
         parsed.append(
             CommandDocPage(
                 title=clean_markdown(heading).strip('"'),

@@ -28,6 +28,23 @@ grafana-util datasource modify --url http://localhost:3000 --token "$GRAFANA_API
 grafana-util datasource modify --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --uid prom-main --set-default true --dry-run --table
 ```
 
+## 採用前後對照
+
+- **採用前**：更新 live datasource 常常得手動編 JSON 或跑過多個 UI 分頁。
+- **採用後**：一個指令就能先預覽實際會套用的 live 更新，讓變更在落地前先變成可審查內容。
+
+## 成功判準
+
+- 在 mutation 開始前，UID 就能對上正確的 datasource
+- `--dry-run` 顯示的 URL、驗證或 JSON 欄位符合預期
+- 預設值與 secret 更新在 live 變更前都看得見
+
+## 失敗時先檢查
+
+- 如果預覽碰到錯的 datasource，先確認 UID 再重跑
+- 如果 auth 或 TLS 變更不完整，先把預覽 payload 與目前 live 設定對照一次
+- 如果某個 secret 欄位沒有解開，先檢查 placeholder 對應或 profile 預設值
+
 ## 相關指令
 - [datasource add](./datasource-add.md)
 - [datasource list](./datasource-list.md)

@@ -11,6 +11,23 @@
 - 匯出與匯入使用者清單套件。
 - 從 org 成員關係或全域登錄中移除使用者。
 
+## 採用前後對照
+
+- **採用前**：使用者生命週期工作常常散在 org 設定、管理頁面與一次性的匯出或匯入腳本裡。
+- **採用後**：同一個命名空間就能處理 inventory、建立／更新、匯出／匯入，以及定點移除，而且認證方式一致。
+
+## 成功判準
+
+- 建立或修改後的使用者會有預期的 login、email 與 role
+- inventory 與套件可以在刪除或搬移前先比對
+- 成員關係的範圍一直很清楚，不會不小心動到錯的 org 或全域登錄
+
+## 失敗時先檢查
+
+- 如果 list、add 或 delete 看起來是空的或不對，先確認選到的 profile 或 token 具有正確的 org 或 admin scope
+- 如果建立或修改失敗，先核對 login / email 是否重複，以及目前範圍是 org 還是 global
+- 如果匯入的行為不如預期，先確認套件來源與目標範圍，再重試
+
 ## 主要旗標
 
 - `list`: `--scope`, `--all-orgs`, `--query`, `--login`, `--email`, `--org-role`, `--grafana-admin`, `--with-teams`, `--page`, `--per-page`, `--table`, `--csv`, `--json`, `--yaml`, `--output-format`
@@ -24,17 +41,17 @@
 ## 範例
 
 ```bash
-# 用途：列出、瀏覽、建立、修改、匯出、匯入、比對或刪除 Grafana 使用者。
+# 用途：在調整成員權限前，先看清楚單一 org 裡有哪些使用者。
 grafana-util access user list --profile prod --scope org --output-format text
 ```
 
 ```bash
-# 用途：列出、瀏覽、建立、修改、匯出、匯入、比對或刪除 Grafana 使用者。
+# 用途：用明確的認證與 org 範圍建立一個使用者。
 grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --email alice@example.com --name Alice --password secret
 ```
 
 ```bash
-# 用途：列出、瀏覽、建立、修改、匯出、匯入、比對或刪除 Grafana 使用者。
+# 用途：先看清楚目前 org 裡的使用者，再刪除這個帳號。
 grafana-util access user list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --scope org --json
 ```
 

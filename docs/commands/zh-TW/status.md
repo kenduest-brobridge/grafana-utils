@@ -13,12 +13,12 @@
 範例：
 
 ```bash
-# 用途：Root。
+# 用途：輸出 staged 狀態，來源是 dashboard 與 desired 產物。
 grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json
 ```
 
 ```bash
-# 用途：Root。
+# 用途：用可重複使用的 profile 輸出 live 狀態。
 grafana-util status live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format yaml
 ```
 

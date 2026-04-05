@@ -8,37 +8,54 @@
 
 說明：如果你想先理解整個 profile 工作流，再決定要進哪個子命令，先看這一頁最合適。`profile` 指令群組是 repo-local 連線預設、secret 處理，以及本機與 CI 重複執行方式的入口。
 
+## 採用前後對照
+
+- **採用前**：連線設定散在各種旗標或 shell 歷史裡，想重跑同一個 live 指令時很容易漏掉參數。
+- **採用後**：一個具名 profile 就能把 URL、驗證與 secret 處理收在一起，live 指令會短很多，也比較好重複使用。
+
+## 成功判準
+
+- 你想重複使用的連線設定可以被一個 profile 名稱完整代表
+- secret 保存模式符合目前環境，不需要每條命令都重複寫驗證資訊
+- 下游 live 指令因為 profile 接手重複參數，所以還維持得住可讀性
+
+## 失敗時先檢查
+
+- 如果切換 profile 後指令失敗，先看 `show` 的解析結果，再確認是不是命令本身有問題
+- 如果秘密值不見了，先確認目前 profile 使用的是 `file`、`os` 還是 `encrypted-file` 模式，以及這個模式是否適合目前機器
+- 如果 live 指令還是要帶一長串旗標，可能代表 profile 還沒把預設 URL 或 auth 值收進去
+
 主要旗標：root 指令本身只是指令群組；實際操作旗標都在子指令上。共用 root 旗標是 `--color`。
 
 範例：
 
 ```bash
-# 用途：Root。
+# 用途：列出目前 checkout 可用的 profile。
 grafana-util profile list
 ```
 
 ```bash
-# 用途：Root。
+# 用途：在執行 live 指令前，先查看解析後的 profile。
 grafana-util profile show --profile prod --output-format yaml
 ```
 
 ```bash
-# 用途：Root。
+# 用途：建立可重複使用的 production profile，並用互動式密碼保存 secret。
 grafana-util profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file
 ```
 
 ```bash
-# 用途：Root。
+# 用途：建立會從環境變數讀取 token 的 CI profile。
 grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN --store-secret os
 ```
 
 ```bash
-# 用途：Root。
+# 用途：輸出一份註解完整的 profile 範本。
 grafana-util profile example --mode full
 ```
 
 ```bash
-# 用途：Root。
+# 用途：在目前 checkout 初始化一份新的 grafana-util.yaml。
 grafana-util profile init --overwrite
 ```
 

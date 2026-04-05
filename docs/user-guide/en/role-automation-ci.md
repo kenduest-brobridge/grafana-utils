@@ -14,6 +14,23 @@ This page is for script authors, pipeline owners, and release engineers who need
 - Keep secrets in environment variables or a secret store, not in the command line.
 - Keep the command shape simple enough that failures are easy to triage.
 
+## Before / After
+
+- Before: every job had to rebuild the same auth and output wiring from scratch.
+- After: one env-backed profile can drive repeatable runs, readable output, and clear failure gates.
+
+## What success looks like
+
+- CI jobs run without prompting.
+- Outputs are stable enough for scripts, gates, or parsers.
+- Failures separate auth, scope, staged input, and connectivity problems.
+
+## Failure checks
+
+- If the job still prompts, the profile or env wiring is incomplete.
+- If output looks valid but too little data appears, suspect scope before suspecting rendering.
+- If a read-only gate passes but apply fails, verify the write or admin scope before changing the workflow.
+
 ## Typical Automation Tasks
 
 - Run readiness checks in CI before promotion or apply.

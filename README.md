@@ -25,6 +25,19 @@ English | [繁體中文](./README.zh-TW.md)
 
 ---
 
+## Before / After
+
+| Before | After with `grafana-util` |
+| :--- | :--- |
+| You click through Grafana UI screens or piece together raw API calls just to understand what exists. | Start with `overview live` or `status live`, then decide where to drill in. |
+| Export/import is a one-off action with weak review points. | Export to a reviewable tree, inspect dependencies, dry-run replay, then import. |
+| Alerting changes are hard to explain before apply. | Use `change summary`, `change preflight`, and `alert plan` before live mutation. |
+| Secrets get copied into shell history or flat files. | Keep auth in prompt flows, env variables, or repo-local profiles with explicit secret modes. |
+
+This is the main shift: the tool does not just give you commands. It gives you a safer operating sequence.
+
+---
+
 ## Quick Start
 
 ### Install
@@ -49,6 +62,7 @@ grafana-util overview live --url http://my-grafana:3000 --basic-user admin --pro
 Pinned release:
 
 ```bash
+# Install one pinned release.
 VERSION=0.7.4 \
   curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
 ```
@@ -56,6 +70,7 @@ VERSION=0.7.4 \
 Custom install directory:
 
 ```bash
+# Install into one explicit binary directory.
 BIN_DIR="$HOME/.local/bin" \
   curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
 ```
@@ -92,6 +107,15 @@ grafana-util overview live \
 
 Use this first when you need to answer: "What does this Grafana look like right now?" without clicking through the UI.
 
+Expected result:
+
+```text
+Live status: ready
+Dashboards: ...
+Alerts: ...
+Datasources: ...
+```
+
 ### 2. Export dashboards into a reviewable tree
 
 ```bash
@@ -111,6 +135,14 @@ grafana-util dashboard inspect-export \
 ```
 
 Use this before import when you want to catch broken datasource references or suspicious structure early.
+
+Expected result:
+
+```text
+Sources
+  prometheus-main
+  loki-prod
+```
 
 ### 4. Preview dashboard import behavior before applying it
 
@@ -161,6 +193,19 @@ grafana-util datasource import \
 ```
 
 This is the practical path for moving datasource configuration between environments without committing raw credentials.
+
+---
+
+## A First Operator Flow
+
+If you want one end-to-end path instead of isolated commands, use this sequence:
+
+1. `overview live` to confirm the target Grafana is reachable and worth inspecting
+2. `dashboard export` to create a reviewable tree
+3. `dashboard inspect-export` to find missing datasource dependencies before import
+4. `dashboard import --dry-run` to preview replay behavior before live mutation
+
+That sequence is the shortest public proof that the tool is doing more than wrapping a single endpoint.
 
 ---
 

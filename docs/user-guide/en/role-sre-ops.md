@@ -14,6 +14,23 @@ This page is for on-call operators and SREs who need a repeatable way to check r
 - Keep a reliable profile for routine checks and repeatable maintenance.
 - Choose an auth path that can actually see the scope you need.
 
+## Before / After
+
+- Before: SREs had to infer readiness, scope, and replay risk from a chain of ad hoc commands.
+- After: use a repeatable profile, then move through live checks, staged review, and apply only after preflight.
+
+## What success looks like
+
+- You can tell whether the credential really sees the scope you need.
+- You can separate live reads from staged review and apply paths.
+- You have a reliable operator path for dashboard, alert, and access workflows.
+
+## Failure checks
+
+- If the token scope is narrower than the task, stop and fetch a credential that can see the real estate you need.
+- If the live check passes but the apply path fails, verify write permissions and staged inputs before blaming the renderer.
+- If you cannot explain which lane the task belongs to, pause and open the workflow chapter first.
+
 ## Typical Operator Tasks
 
 - Run a live readiness check before a maintenance window.

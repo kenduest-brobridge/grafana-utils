@@ -11,6 +11,23 @@ List, browse, create, modify, export, import, diff, or delete Grafana teams.
 - Export or import team bundles.
 - Remove a team by id or exact name.
 
+## Before / After
+
+- **Before**: team membership changes often happen through UI side menus or scattered scripts.
+- **After**: one namespace handles inventory, membership updates, export/import, and deletion with the same auth model.
+
+## What success looks like
+
+- team membership changes stay tied to an exact team id or name
+- admin assignments are visible before you add or remove members
+- exported bundles can be reused in another environment without re-creating the team by hand
+
+## Failure checks
+
+- if list, add, modify, or delete fails, confirm the team exists in the selected org and the auth scope is correct
+- if membership looks incomplete, recheck the exact member names and whether `--with-members` was set
+- if an import behaves unexpectedly, verify the source bundle and the target environment before retrying
+
 ## Key flags
 
 - `list`: `--query`, `--name`, `--with-members`, `--page`, `--per-page`, `--table`, `--csv`, `--json`, `--yaml`, `--output-format`
@@ -24,17 +41,17 @@ List, browse, create, modify, export, import, diff, or delete Grafana teams.
 ## Examples
 
 ```bash
-# Purpose: List, browse, create, modify, export, import, diff, or delete Grafana teams.
+# Purpose: Inspect team membership before adding or removing people.
 grafana-util access team list --url http://localhost:3000 --basic-user admin --basic-password admin --output-format text
 ```
 
 ```bash
-# Purpose: List, browse, create, modify, export, import, diff, or delete Grafana teams.
+# Purpose: Create a team with explicit member and admin assignments.
 grafana-util access team add --url http://localhost:3000 --basic-user admin --basic-password admin --name platform-team --email platform@example.com --member alice --admin alice --json
 ```
 
 ```bash
-# Purpose: List, browse, create, modify, export, import, diff, or delete Grafana teams.
+# Purpose: Import a team bundle before switching environments.
 grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --yes
 ```
 

@@ -14,11 +14,32 @@ This chapter provides practical solutions for common Grafana operational headach
 - Show what “good output” looks like before you continue.
 - Call out when a lane or workflow is the wrong fit for the job.
 
+## Before / After
+
+- Before: operator examples looked like an unstructured command dump.
+- After: each recipe shows the problem, the safe path, the expected result, and the failure points to check first.
+
+## What success looks like
+
+- You can copy a recipe and understand which step is safe to try first.
+- You know what result would prove the workflow worked.
+- You know which failure should stop the flow before live mutation.
+
+## Failure checks
+
+- If the recipe assumes the wrong source lane, stop and adjust before continuing.
+- If the output or preview differs from the intended result, verify the staging inputs before you mutate live state.
+- If the example feels too thin for your task, switch to the command reference for exact flags.
+
 ---
 
 ## 🚀 Recipe 1: Promoting Dashboards (Dev -> Prod)
 
 **Problem**: Exporting from Dev and importing to Prod often fails due to hardcoded organization IDs, folder context, or source-environment datasource UIDs.
+
+**Before**: Promotion means manually cleaning export files, guessing which lane to use, and discovering environment-specific metadata problems during import.
+
+**After**: Promotion becomes a lane choice plus one replay path that is easier to review and explain.
 
 **Solution**: Use the **`prompt/` lane** for a clean promotion handoff.
 
@@ -52,6 +73,10 @@ This chapter provides practical solutions for common Grafana operational headach
 
 **Problem**: Importing a dashboard without its required datasource results in broken panels and misleading "successful" imports.
 
+**Before**: Import appears to succeed, but the first real signal is a broken dashboard after replay.
+
+**After**: Missing datasource dependencies are visible before import, while there is still time to fix mapping or target inventory.
+
 **Solution**: Run a **pre-import inspection**.
 
 ```bash
@@ -80,6 +105,10 @@ grafana-util dashboard inspect-export --import-dir ./backups/raw --output-format
 ## 🛠️ Recipe 3: Mass Tagging/Renaming (Surgical Patching)
 
 **Problem**: You need to add a tag such as `ManagedBySRE` to many dashboards at once without hand-editing every file.
+
+**Before**: A simple bulk change turns into manual JSON edits or a risky script with no preview.
+
+**After**: The patch stays mechanical, reviewable, and previewed before live replay.
 
 **Solution**: Use `patch-file` in a loop, then preview the result before replaying it.
 

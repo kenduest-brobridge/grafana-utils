@@ -28,6 +28,23 @@ Profiles matter because they remove repetition, not because direct flags are uns
 - Understand when direct flags are enough and when a profile becomes the cleaner choice.
 - Avoid pasting secrets into long command lines unless you are bootstrapping.
 
+## Before / After
+
+- Before: new users had to guess whether they should start with a profile, a token, or direct flags.
+- After: prove one direct read-only connection first, then move the repeatable parts into a profile.
+
+## What success looks like
+
+- You can run one safe live command and understand the output.
+- You know which auth form you are using and why.
+- You can explain when a profile is useful and when direct flags are enough.
+
+## Failure checks
+
+- If the first live read fails, stop and fix connection or auth before touching mutation workflows.
+- If you do not know which auth source is active, inspect the command line and profile file before proceeding.
+- If you are tempted to paste secrets into shell history, switch to env-backed or prompted auth first.
+
 ## Typical First-Day Tasks
 
 - Confirm the installed binary is on `PATH`.

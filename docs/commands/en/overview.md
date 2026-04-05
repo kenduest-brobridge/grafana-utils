@@ -13,12 +13,12 @@ Key flags: staged inputs such as `--dashboard-export-dir`, `--dashboard-provisio
 Examples:
 
 ```bash
-# Purpose: Root.
+# Purpose: Summarize staged dashboard, alert, and access artifacts.
 grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table
 ```
 
 ```bash
-# Purpose: Root.
+# Purpose: Review sync bundle inputs before promotion.
 grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output-format text
 ```
 

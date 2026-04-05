@@ -27,6 +27,23 @@ This page is for administrators who first need to choose the right access surfac
 - Org, user, team, and service-account lifecycle commands often need admin-level credentials; direct Basic auth is the most predictable fallback.
 - Token auth may be too narrow for org-wide administration even when read-only list commands work.
 
+## Before / After
+
+Before: access work is split across ad hoc UI clicks, one-off API calls, and hard-to-repeat shell commands.
+After: the same access surface is grouped into one CLI namespace, so inventory, lifecycle, token work, and snapshots can be repeated with the same settings.
+
+## What success looks like
+
+- you can tell whether the task belongs to `user`, `org`, `team`, or `service-account` before you touch production
+- inventory reads are repeatable because profile and auth defaults are explicit
+- token and lifecycle changes are auditable enough to hand off to another operator or to CI
+
+## Failure checks
+
+- if a list command returns less than you expect, confirm whether you need admin-level Basic auth instead of a narrower token
+- if a token or membership operation fails, verify that you are on the right org and the right access surface before retrying
+- if the output is going into automation, check the selected `--output-format` first so the parser knows what shape to expect
+
 ## Examples
 
 ```bash

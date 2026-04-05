@@ -23,6 +23,35 @@
 
 profile 的重點是讓日常操作少重打重複參數，不是代表一開始只能用 profile。
 
+## 採用前後對照
+
+- 以前：每條命令都要重打 Grafana 位址與驗證旗標。
+- 現在：你可以先用直接旗標證明連線沒問題，再把重複設定整理進 profile。
+
+## 成功判準
+
+- binary 已經安裝好，而且 shell 找得到。
+- 至少一條直接的 live 唯讀命令成功。
+- 你知道下一步是 `--profile`、環境變數，還是一次性的 bootstrap。
+
+## 失敗時先檢查
+
+- 如果 binary 不在 `PATH`，先修安裝，不要先跳到 profile。
+- 如果 direct live read 失敗，先停在這一步，不要繼續變更流程。
+- 如果 profile 沒有解析成你預期的欄位，先檢查 profile 檔與環境變數來源。
+
+## 前 10 分鐘完成後，應該長什麼樣
+
+讀完這一章後，理想狀態應該是：
+
+- binary 已經能從你的 shell 直接執行
+- 至少一條直接的 live 唯讀命令成功
+- 你知道自己現在是用 Basic auth、token、環境變數，還是 `--profile`
+- 你已經為同一個目標 Grafana 建好一個可重複使用的 profile
+- 你知道下一步該去看 dashboard、alert、access，還是自動化路線
+
+如果你還做不到這些，先停在第一個失敗的唯讀命令，搭配 [疑難排解與名詞解釋](troubleshooting.md) 找原因，不要急著往變更或匯入流程走。
+
 若要對照本章提到的旗標，請一併參考 [profile](../../commands/zh-TW/profile.md)、[status](../../commands/zh-TW/status.md) 與 [overview](../../commands/zh-TW/overview.md)。
 
 ---

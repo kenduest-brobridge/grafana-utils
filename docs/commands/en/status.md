@@ -13,12 +13,12 @@ Key flags: the root command is a namespace; staged and live inputs live on the s
 Examples:
 
 ```bash
-# Purpose: Root.
+# Purpose: Render staged status from dashboard and desired artifacts.
 grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json
 ```
 
 ```bash
-# Purpose: Root.
+# Purpose: Render live status from a reusable profile.
 grafana-util status live --profile prod --output-format yaml
 ```
 

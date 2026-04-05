@@ -16,6 +16,23 @@ This domain focuses on the governance gate: the final layer of validation before
 - Catch broken inputs before an apply path starts.
 - Give reviewers a stable summary of what changed and what still looks risky.
 
+## Before / After
+
+- Before: status, snapshots, and change reviews could feel like separate tools with overlapping names.
+- After: live checks, staged reviews, and snapshot-style summaries are grouped into one guided path.
+
+## What success looks like
+
+- You can tell whether the task is about readiness, snapshots, or review before change.
+- You know which command to open when a workflow moves from status into mutation.
+- You can explain what should happen before a change is applied.
+
+## Failure checks
+
+- If the staged and live surfaces disagree, stop and identify which lane is stale before applying anything.
+- If a snapshot or summary does not match your expectation, treat that as a workflow warning, not a cosmetic issue.
+- If you cannot say why you need this chapter, you may be in the wrong workflow lane.
+
 ## 🔗 Command Pages
 
 Need the command-by-command surface instead of the workflow guide?

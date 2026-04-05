@@ -278,6 +278,10 @@ export dashboard and datasource inventory into a local snapshot bundle. Use when
 review a local snapshot inventory without touching Grafana. Use when: Want to inspect an exported snapshot root as table, csv, text, json, yaml, or interactive output.
 .SS dashboard
 .TP
+.B grafana\-util\-dashboard\-impact(1)
+Estimate the blast radius of one datasource from dashboard governance artifacts. Use when: You are about to change, migrate, or troubleshoot one datasource and need to know which dashboards and alert resources depend on it before you touch the live system.
+.SS dashboard
+.TP
 .B grafana\-util\-dashboard\-raw\-to\-prompt(1)
 Convert ordinary dashboard JSON or raw/ lane files into Grafana UI prompt JSON with __inputs. Use when: Someone gives you a normal Grafana dashboard export, legacy raw JSON, or a raw/ lane file and you need a prompt\-safe file for the Grafana UI Upload JSON flow.
 .TP

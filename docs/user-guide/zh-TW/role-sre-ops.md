@@ -15,6 +15,23 @@
 - 先用 `--dry-run` 看匯入結果，再決定要不要真的套用
 - 需要時才用 direct Basic auth 做 break-glass
 
+## 採用前後對照
+
+- 以前：SRE 要靠一串零散指令自己拼出 readiness、scope 與 replay 風險。
+- 現在：先用可重複的 profile，接著走 live check、staged review，最後才進 apply。
+
+## 成功判準
+
+- 你能判斷憑證到底看不看得到你要處理的範圍。
+- 你能分清楚 live read、staged review 和 apply 是不同路徑。
+- 你有一條能穩定處理 dashboard、alert 與 access 的維運路線。
+
+## 失敗時先檢查
+
+- 如果 token scope 比任務還窄，先停下來換一張真的看得到該範圍的憑證。
+- 如果 live check 成功、apply 失敗，先檢查寫入權限與 staged input，不要先懷疑 renderer。
+- 如果你還說不出任務屬於哪條 lane，先回去看工作流章節，不要直接改 live。
+
 ## 典型維運任務
 
 - 維護前先做即時整備度檢查

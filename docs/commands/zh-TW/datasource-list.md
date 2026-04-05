@@ -29,6 +29,23 @@ grafana-util datasource list --url http://localhost:3000 --basic-user admin --ba
 grafana-util datasource list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --json
 ```
 
+## 採用前後對照
+
+- **採用前**：想看 datasource inventory 時，常常要在 Grafana UI、export bundle 或零散 API 呼叫之間來回切換。
+- **採用後**：一個 inventory 指令就能產生可審查的清單，輸出可用 text、table、CSV、JSON 或 YAML，也可限定單一 org 或所有可見 org。
+
+## 成功判準
+
+- 您可以把指令指到想看的 org，拿到預期中的 inventory
+- table 與 CSV 輸出能直接交給腳本或放進 PR 審查
+- 只有在真的要跨 org 檢視時，才使用 `--all-orgs`
+
+## 失敗時先檢查
+
+- 如果 inventory 是空的，先確認 org 範圍與驗證資訊是否真的看得到目標 org
+- 如果 `--all-orgs` 失敗，先改用 Basic auth，並檢查 token 是否只看得到單一 org
+- 如果欄位看起來不對，先確認輸出格式與指定欄位是否一致
+
 ## 相關指令
 - [datasource browse](./datasource-browse.md)
 - [datasource export](./datasource-export.md)

@@ -11,6 +11,23 @@ List, browse, create, modify, export, import, diff, or delete Grafana users.
 - Export and import user inventory bundles.
 - Remove users from the org membership or from the global registry.
 
+## Before / After
+
+- **Before**: user lifecycle work is often split across org settings, admin screens, and one-off export or import scripts.
+- **After**: one namespace covers inventory, create/update, export/import, and targeted removal with the same auth model.
+
+## What success looks like
+
+- created or modified users have the expected login, email, and role
+- inventory and bundles can be diffed before deletion or migration
+- membership scope stays explicit, so you do not accidentally manage the wrong org or global registry
+
+## Failure checks
+
+- if list, add, or delete looks empty or wrong, confirm the selected profile or auth token has the right org or admin scope
+- if create or modify fails, recheck login or email uniqueness and whether the selected scope is org or global
+- if an import does not behave as expected, verify the bundle source and the target scope before retrying
+
 ## Key flags
 
 - `list`: `--scope`, `--all-orgs`, `--query`, `--login`, `--email`, `--org-role`, `--grafana-admin`, `--with-teams`, `--page`, `--per-page`, `--table`, `--csv`, `--json`, `--yaml`, `--output-format`
@@ -24,17 +41,17 @@ List, browse, create, modify, export, import, diff, or delete Grafana users.
 ## Examples
 
 ```bash
-# Purpose: List, browse, create, modify, export, import, diff, or delete Grafana users.
+# Purpose: Inspect users in one org before changing membership or roles.
 grafana-util access user list --url http://localhost:3000 --basic-user admin --basic-password admin --scope org --output-format text
 ```
 
 ```bash
-# Purpose: List, browse, create, modify, export, import, diff, or delete Grafana users.
+# Purpose: Create one user with explicit auth and org scope.
 grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --email alice@example.com --name Alice --password secret
 ```
 
 ```bash
-# Purpose: List, browse, create, modify, export, import, diff, or delete Grafana users.
+# Purpose: Delete one account after checking the current org users.
 grafana-util access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --login temp-user --scope global --yes --json
 ```
 

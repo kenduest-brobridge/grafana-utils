@@ -16,14 +16,14 @@ Switch output between text, table, CSV, JSON, and YAML.
 .IP \(bu 2
 \-\-all\-orgs aggregates inventory across visible orgs.
 .IP \(bu 2
-\-\-text, \-\-table, \-\-csv, \-\-json, \-\-yaml, and \-\-output\-format control output.
+\-\-output\-format controls the output format, including text, table, csv, json, and yaml.
 .IP \(bu 2
 \-\-no\-header omits the header row.
 .SH EXAMPLES
 .PP
 List live Grafana alert contact points.
 .EX
-grafana-util alert list-contact-points --profile prod --table
+grafana-util alert list-contact-points --profile prod --output-format table
 .EE
 .SH SEE ALSO
 \fBgrafana-util\fR(1),

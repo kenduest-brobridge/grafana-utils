@@ -13,7 +13,7 @@ List live Grafana mute timings.
 
 - `--org-id` lists mute timings from one Grafana org ID.
 - `--all-orgs` aggregates inventory across visible orgs.
-- `--text`, `--table`, `--csv`, `--json`, `--yaml`, and `--output-format` control output.
+- `--output-format` controls the output format, including `text`, `table`, `csv`, `json`, and `yaml`.
 - `--no-header` omits the header row.
 
 ## Notes
@@ -21,16 +21,33 @@ List live Grafana mute timings.
 - Use `--profile` for repeatable single-org inventory.
 - For `--all-orgs`, prefer admin-backed `--profile` or direct Basic auth because token scope can return a partial view.
 
+## Before / After
+
+- Before: browse Grafana pages manually to check which mute timings exist.
+- After: list the inventory in one pass and compare it against the org or profile you need.
+
+## What success looks like
+
+- The mute timings you expect appear in the selected format.
+- The output matches the org or profile scope you intended to query.
+- The result is ready for a quick review or a CI check.
+
+## Failure checks
+
+- If the inventory looks partial, check token scope or use a broader profile.
+- If `--all-orgs` omits entries, switch to admin-backed credentials.
+- Make sure the org/profile matches the area you intended to inspect before treating an empty output as meaningful.
+
 ## Examples
 
 ```bash
 # Purpose: List live Grafana mute timings.
-grafana-util alert list-mute-timings --profile prod --table
+grafana-util alert list-mute-timings --profile prod --output-format table
 ```
 
 ```bash
 # Purpose: List live Grafana mute timings.
-grafana-util alert list-mute-timings --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --json
+grafana-util alert list-mute-timings --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 
 ```bash

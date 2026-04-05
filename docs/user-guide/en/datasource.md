@@ -14,6 +14,23 @@ This guide is for operators who need to inventory Grafana data sources, export a
 - Build a replayable bundle without leaking sensitive values.
 - Use dry-runs and diff views before making live changes.
 
+## Before / After
+
+- Before: datasource changes were often treated as one-off config edits with unclear recovery steps.
+- After: inventory, masked recovery, provisioning projection, and dry-run checks happen in a repeatable flow.
+
+## What success looks like
+
+- You know which fields belong in the recovery bundle and which ones must stay masked.
+- You can validate live inventory before mutating anything.
+- You can explain whether you are working with recovery, provisioning, or direct live mutation.
+
+## Failure checks
+
+- If the replay bundle contains secret values in cleartext, stop and fix the export path before storing it.
+- If the import preview does not match the live datasource you expected, check UID and type mapping before applying.
+- If the provisioning projection diverges from the recovery bundle, verify which lane you actually need.
+
 > **Goal**: Keep datasource configuration safe to back up, compare, and replay by using a **Masked Recovery** contract that protects sensitive credentials and still leaves enough structure to restore the estate later.
 
 ## 🔗 Command Pages

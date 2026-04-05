@@ -14,6 +14,23 @@ Use this chapter when identity and access are the task: org boundaries, users, t
 - Keep org, user, team, and service-account inventory reviewable.
 - Treat token rotation and access replay as controlled workflows instead of one-off edits.
 
+## Before / After
+
+- Before: identity and access work was spread across several command groups with different naming styles.
+- After: org, user, team, and service-account workflows share one guide, one glossary, and clearer entry points.
+
+## What success looks like
+
+- You can tell whether the task is org management, user management, team management, or service-account handling.
+- You can name the exact command family before you start mutating anything.
+- You know when you need a review step before applying a change.
+
+## Failure checks
+
+- If an identity change would affect more orgs than you intended, stop and verify the scope first.
+- If you are unsure whether a token or service account can perform the task, check the command page before mutation.
+- If the wording still feels split across team/org/user surfaces, return to the glossary and the command reference.
+
 ## Command Pages
 
 Need the command-by-command surface instead of the workflow guide?

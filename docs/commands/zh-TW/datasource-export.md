@@ -25,6 +25,23 @@ grafana-util datasource export --url http://localhost:3000 --basic-user admin --
 grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./datasources --overwrite
 ```
 
+## 採用前後對照
+
+- **採用前**：live datasource 狀態很容易散掉，因為匯出後的結構不夠標準，也不容易再利用。
+- **採用後**：一個匯出就能得到本地 bundle，後續檢視、比對或匯入都能直接沿用。
+
+## 成功判準
+
+- 匯出樹完整到可以日後不連 Grafana 也能檢查
+- 標準化 JSON 與 provisioning 檔案都能和來源 inventory 對得上
+- 這個 bundle 可以直接拿去做 diff 或 import，不需要再手動清理
+
+## 失敗時先檢查
+
+- 如果匯出樹少了 org 資料，先確認 org 範圍與驗證資訊是否真的看得到它
+- 如果 `--all-orgs` 失敗，先改用 Basic auth，並確認帳號是否能看見每個目標 org
+- 如果 bundle 看起來像舊資料，先確認匯出目錄與 `--overwrite` 是否有刻意使用
+
 ## 相關指令
 - [datasource inspect-export](./datasource-inspect-export.md)
 - [datasource import](./datasource-import.md)

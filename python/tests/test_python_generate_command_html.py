@@ -270,6 +270,8 @@ class GenerateCommandHtmlTests(unittest.TestCase):
         self.assertIn("Language: 繁體中文", rendered)
         self.assertIn("Switch to English", rendered)
         self.assertNotIn('id="locale-select"', rendered)
+        self.assertIn('class="sidebar-toggle sidebar-toggle-left"', rendered)
+        self.assertIn('class="sidebar-toggle sidebar-toggle-right"', rendered)
 
     def test_render_command_page_includes_intro_panel_from_command_doc_metadata(self):
         module = load_module()
@@ -317,6 +319,16 @@ class GenerateCommandHtmlTests(unittest.TestCase):
         self.assertNotIn("<h2>Related</h2>", rendered)
         self.assertNotIn("<h2>Version</h2>", rendered)
         self.assertNotIn("<h2>Language</h2>", rendered)
+        self.assertNotIn('class="sidebar-toggle sidebar-toggle-left"', rendered)
+        self.assertIn('class="sidebar-toggle sidebar-toggle-right"', rendered)
+
+    def test_render_landing_page_does_not_include_sidebar_toggles(self):
+        module = load_module()
+
+        rendered = module.render_landing_page(module.HtmlBuildConfig())
+
+        self.assertNotIn('class="sidebar-toggle sidebar-toggle-left"', rendered)
+        self.assertNotIn('class="sidebar-toggle sidebar-toggle-right"', rendered)
 
     def test_versioned_handbook_build_skips_missing_newer_chapters(self):
         module = load_module()

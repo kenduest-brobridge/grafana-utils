@@ -16,6 +16,23 @@ Understanding the architectural philosophy of `grafana-util` is key to managing 
 - Show how those tradeoffs affect day-to-day operator behavior.
 - Give enough context that you can explain the tool, not just run it.
 
+## Before / After
+
+- Before: it was easy to think the repo was just a collection of commands with the same shape.
+- After: the architecture chapter explains why the tool separates surfaces, lanes, and command families, so a reader can place each workflow in the right layer.
+
+## What success looks like
+
+- You can explain why the runtime and docs are split the way they are.
+- You can tell which workflows belong in a handbook, which belong in command docs, and which belong in internal maintainer notes.
+- You can choose the right surface for a new feature before you implement it.
+
+## Failure checks
+
+- If a workflow does not fit any existing surface, pause and decide whether it needs a new chapter or a new command family.
+- If the runtime shape and the docs shape drift apart, treat that as an architecture bug, not just a docs bug.
+- If you are not sure why the split exists, reread the surface and lane sections before adding new work.
+
 For the command surface behind these ideas, see [status](../../commands/en/status.md), [overview](../../commands/en/overview.md), [change](../../commands/en/change.md), and [dashboard](../../commands/en/dashboard.md).
 
 ---

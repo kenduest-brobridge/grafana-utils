@@ -12,6 +12,31 @@ If you regularly hit problems like these, this is the tool solving them:
 
 ---
 
+## Before / After
+
+| Before | After with `grafana-util` |
+| :--- | :--- |
+| "What changed?" means opening several Grafana screens or hand-rolling API calls. | Start with `overview`, `status`, or `change summary` and get one review surface first. |
+| Export/import is a fragile action with little context. | Export, inspect, dry-run, and replay in an explicit sequence. |
+| Alerting or access changes are hard to explain in review. | Plans, summaries, and structured output make the intended change visible before apply. |
+| Secrets and auth defaults get repeated across shell history and scripts. | Profiles and secret modes make repeated workflows cleaner and safer. |
+
+This is the main product difference: the tool is trying to improve the operating path, not just shorten one command.
+
+## What success looks like
+
+- You can point to one operational pain point this tool removes.
+- You can name the workflow lane you would use first: inventory, review, replay, or change control.
+- You know whether this repository should help you more than a one-off shell script or Grafana UI click path.
+
+## Failure checks
+
+- If the problem is a one-off UI edit, this tool is probably not the first thing you need.
+- If you cannot say which workflow lane you need, start from the role path pages before opening command docs.
+- If you only want exact syntax, switch to the command reference instead of expecting this page to be a command manual.
+
+---
+
 ## What it is
 
 `grafana-util` is best understood as a Grafana operations workflow tool, not a single-purpose CLI.
@@ -83,6 +108,19 @@ That usually means:
 - using `--profile` or env-backed auth cleanly
 - choosing stable output formats
 - keeping gates and review steps before mutation
+
+---
+
+## What a first successful path looks like
+
+If the tool is a good fit, a first successful session usually looks like this:
+
+1. confirm the binary and one safe live read
+2. export one reviewable asset tree
+3. inspect that tree before replay
+4. preview a change before apply
+
+That path proves the core value faster than reading every command page first.
 
 ---
 

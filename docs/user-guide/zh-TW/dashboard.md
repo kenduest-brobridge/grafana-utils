@@ -14,6 +14,23 @@
 - 再確認匯出樹、依賴與變數是不是合理
 - 最後才進入匯入、發佈或刪除
 
+## 採用前後對照
+
+- 以前：dashboard 工作常常是從零散 UI 點選、脆弱 JSON 處理、或看不清楚的依賴開始。
+- 現在：先盤點、再 inspect、再 diff，最後才 replay 或發佈，順序更清楚。
+
+## 成功判準
+
+- 你知道目前這個任務應該走 list、export、inspect、topology、screenshot 還是 import。
+- 你能在動 live state 前先說清楚自己走的是哪條 lane。
+- 你能證明 dashboard 已經適合 replay 或 publish，而不是只是「看起來差不多」。
+
+## 失敗時先檢查
+
+- 如果匯出樹不完整，先修 source path，再談 replay。
+- 如果 inspect 顯示查詢或變數缺失，先處理這些問題，再進入匯入流程。
+- 如果你說不出 screenshot 或 topology 在證明什麼，可能是開錯工作流了。
+
 > **維運優先設計**：本工具把 Dashboard 視為版本控制資產。目標是讓搬移、比對與審查流程更安全，並在變更碰到即時環境前先看清楚會發生什麼事。
 
 ## 🔗 指令頁面

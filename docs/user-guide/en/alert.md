@@ -16,6 +16,23 @@ This guide covers `grafana-util alert` as an operator workflow for alert desired
 - Review plan output before an apply path.
 - Use replay and migration flows without guessing what live resources will change.
 
+## Before / After
+
+- Before: alert changes often lived in a mixed UI and YAML path with little review context.
+- After: authoring, plan output, and apply become separate checkpoints with clearer evidence.
+
+## What success looks like
+
+- You can tell whether you are editing desired state, reviewing a plan, or applying a real change.
+- You can explain which part of the alerting chain is affected before touching live state.
+- You can read the output and know whether the plan is safe to proceed.
+
+## Failure checks
+
+- If the plan output is missing a contact point or route you expected, stop and verify the staged input first.
+- If the apply path would touch more than you intended, treat that as a review failure, not a rendering issue.
+- If you cannot explain the alert lane you are in, return to the workflow chapter before mutating anything.
+
 > **Operator Principle**: Change alerts deliberately through a **Plan -> Review -> Apply** cycle to prevent accidental mutations in live environments.
 
 ## 🔗 Command Pages

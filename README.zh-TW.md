@@ -25,6 +25,19 @@
 
 ---
 
+## 採用前後對照
+
+| 原本常見做法 | 改用 `grafana-util` 後 |
+| :--- | :--- |
+| 想看 Grafana 全貌時，只能一直切 UI 或自己拼 API。 | 先跑 `overview live` 或 `status live`，快速知道下一步該看哪裡。 |
+| 匯出/匯入像一次性動作，缺少中間檢查點。 | 先匯出、再盤點依賴、再 dry-run，最後才決定要不要回放。 |
+| 告警變更很難在套用前說清楚會改到什麼。 | 先看 `change summary`、`change preflight`、`alert plan`，再決定要不要套用。 |
+| 認證資訊容易散落在 shell history 或平面檔案裡。 | 改用 prompt、環境變數或 profile secret 模式整理起來。 |
+
+重點不是多幾個 command，而是把維運順序收斂成比較安全、可審查的流程。
+
+---
+
 ## 快速上手
 
 ### 安裝
@@ -49,6 +62,7 @@ grafana-util overview live --url http://my-grafana:3000 --basic-user admin --pro
 固定版本安裝：
 
 ```bash
+# 用途：安裝固定版本。
 VERSION=0.7.4 \
   curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
 ```
@@ -56,6 +70,7 @@ VERSION=0.7.4 \
 指定安裝目錄：
 
 ```bash
+# 用途：安裝到指定的 binary 目錄。
 BIN_DIR="$HOME/.local/bin" \
   curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
 ```
@@ -92,6 +107,15 @@ grafana-util overview live \
 
 當你只是想先知道「現在這套 Grafana 到底長什麼樣」時，這通常是最好的起點。
 
+預期你會先看到類似：
+
+```text
+Live status: ready
+Dashboards: ...
+Alerts: ...
+Datasources: ...
+```
+
 ### 2. 把 dashboards 匯出成可審查的目錄樹
 
 ```bash
@@ -111,6 +135,14 @@ grafana-util dashboard inspect-export \
 ```
 
 如果你想先抓出失效的 datasource 參照或可疑結構，這一步很有用。
+
+預期你會先看到像：
+
+```text
+Sources
+  prometheus-main
+  loki-prod
+```
 
 ### 4. 正式匯入前先預覽會發生什麼事
 
@@ -161,6 +193,19 @@ grafana-util datasource import \
 ```
 
 這是把 datasource 設定在環境間搬移，又不想把原始憑證直接寫進檔案時最實用的流程。
+
+---
+
+## 第一條實用工作流
+
+如果你現在只想知道這工具到底怎麼幫忙，先照這條順序走：
+
+1. 用 `overview live` 確認目標 Grafana 真的連得到
+2. 用 `dashboard export` 匯出成可審查的目錄樹
+3. 用 `dashboard inspect-export` 先抓出缺少的 datasource 依賴
+4. 用 `dashboard import --dry-run` 預覽回放結果，再決定要不要動 live
+
+這是最短、也最能感受到工具價值的一條公開工作流。
 
 ---
 

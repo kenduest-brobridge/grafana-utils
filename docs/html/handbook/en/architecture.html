@@ -145,36 +145,47 @@ pre:hover .code-controls { opacity: 1; }
 #font-select { width: 138px; }
 #theme-select { width: 128px; }
 
-.layout { display: grid; grid-template-columns: 232px minmax(0, 1fr) 244px; gap: 20px; align-items: start; }
-.layout.layout-no-nav { grid-template-columns: minmax(0, 1fr) 244px; }
-.layout.layout-no-sidebar { grid-template-columns: 232px minmax(0, 1fr); }
+.layout {
+  --nav-width: 232px;
+  --sidebar-width: 244px;
+  display: grid;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr) var(--sidebar-width);
+  gap: 20px;
+  align-items: start;
+}
+.layout.layout-no-nav { --nav-width: 0px; grid-template-columns: minmax(0, 1fr) var(--sidebar-width); }
+.layout.layout-no-sidebar { --sidebar-width: 0px; grid-template-columns: var(--nav-width) minmax(0, 1fr); }
 .layout.layout-no-nav.layout-no-sidebar { grid-template-columns: minmax(0, 1fr); }
+.layout.layout-collapsed-nav:not(.layout-no-nav) { --nav-width: 26px; }
+.layout.layout-collapsed-sidebar:not(.layout-no-sidebar) { --sidebar-width: 26px; }
 @media (max-width: 1280px) { .layout { grid-template-columns: 210px minmax(0, 1fr); gap: 18px; } .sidebar { display: none !important; } }
 @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } .nav-sidebar { display: none !important; } }
 
-.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 12px 0 0; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.nav-sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .nav-sidebar li { margin-bottom: 0; }
 .nav-sidebar h2 {
   margin: 0 0 12px;
-  padding-bottom: 8px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
-  font-size: 0.72rem;
-  font-weight: 620;
+  font-size: 0.68rem;
+  font-weight: 600;
   text-transform: none;
   color: var(--muted);
-  letter-spacing: 0.01em;
+  letter-spacing: 0.04em;
   line-height: 1.3;
+  opacity: 0.82;
 }
 .nav-section + .nav-section { margin-top: 18px; }
 .nav-group-block + .nav-group-block { margin-top: 14px; }
 .nav-group-title {
   margin: 0 0 6px;
-  font-size: 1.02rem;
-  font-weight: 720;
+  font-size: 0.92rem;
+  font-weight: 700;
   color: var(--heading);
-  letter-spacing: -0.01em;
-  line-height: 1.35;
+  letter-spacing: 0.01em;
+  line-height: 1.32;
 }
 .nav-tree,
 .nav-sub-list { list-style: none; margin: 0; padding: 0; position: relative; }
@@ -184,24 +195,67 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 .nav-tree-node + .nav-tree-node { margin-top: 2px; }
 .nav-tree-node::before { display: none; }
 .nav-group { margin: 0; position: relative; }
-.nav-group + .nav-group { margin-top: 4px; }
-.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.92rem; }
+.nav-group + .nav-group { margin-top: 2px; }
+.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.9rem; }
 .nav-group-header:hover { color: var(--heading); }
-.nav-group-link { flex: 1; display: block; padding: 5px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 610; line-height: 1.42; }
+.nav-group-link { flex: 1; display: block; padding: 4px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 600; line-height: 1.4; }
 .nav-group-link:hover { background: var(--panel-strong); }
-.nav-item { display: block; padding: 4px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 540; font-size: 0.84rem; line-height: 1.42; }
+.nav-item { display: block; padding: 4px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 530; font-size: 0.84rem; line-height: 1.4; }
 .nav-group-link,
 .nav-item,
 .nav-command-entry { white-space: nowrap; }
 .nav-item:hover { background: var(--panel-strong); color: var(--heading); }
 .nav-item.active,
-.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 82%, white); color: var(--heading); font-weight: 620; box-shadow: inset 2px 0 0 var(--accent); }
+.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 70%, white); color: var(--heading); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .nav-sub-list { margin-top: 4px; margin-left: 10px; }
 .nav-sub-list .nav-item { color: var(--muted); font-weight: 520; }
-.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 610; }
-.nav-command-entry { display: block; padding: 5px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.88rem; font-weight: 560; line-height: 1.4; transition: 0.15s; }
+.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 590; }
+.nav-command-entry { display: block; padding: 4px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.82rem; font-weight: 540; line-height: 1.38; transition: 0.15s; }
 .nav-command-entry:hover { color: var(--heading); background: var(--panel-strong); }
 .nav-command-entry.active { color: var(--heading); font-weight: 620; background: color-mix(in srgb, var(--accent-soft) 60%, white); box-shadow: inset 2px 0 0 var(--accent); }
+
+.sidebar-toggle {
+  position: absolute;
+  top: 18px;
+  width: 18px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 92%, white);
+  color: var(--muted);
+  font: 700 10px var(--font-sans);
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  z-index: 5;
+}
+.sidebar-toggle:hover {
+  color: var(--heading);
+  border-color: color-mix(in srgb, var(--border) 55%, var(--accent));
+  background: var(--panel);
+}
+.sidebar-toggle-left { right: 0; transform: translateX(50%); }
+.sidebar-toggle-right { left: 0; transform: translateX(-50%); }
+.layout.layout-collapsed-nav .nav-sidebar-content,
+.layout.layout-collapsed-sidebar .sidebar-content {
+  opacity: 0;
+  pointer-events: none;
+}
+.layout.layout-collapsed-nav .nav-sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-sidebar .sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-nav .nav-sidebar,
+.layout.layout-collapsed-sidebar .sidebar {
+  min-width: 0;
+}
+.layout.layout-collapsed-nav .sidebar-toggle-left {
+  right: 4px;
+  transform: none;
+}
+.layout.layout-collapsed-sidebar .sidebar-toggle-right {
+  left: 4px;
+  transform: none;
+}
 
 .article { min-width: 0; padding: 10px 0 24px; }
 .article p,
@@ -345,8 +399,9 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 }
 .command-intro-list li { margin: 0.18rem 0; }
 
-.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0 12px; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .sidebar li { margin-bottom: 0; }
 .sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.05em; }
 .sidebar-section + .sidebar-section { margin-top: 22px; }
@@ -697,13 +752,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 
       <div class="layout">
-  <aside class="nav-sidebar"><section class="nav-section"><h2>Guide Map</h2><div class="nav-group-block"><div class="nav-group-title">Start</div><ul class="nav-tree"><li class="nav-tree-node"><a href="index.html" class="nav-item">Overview</a></li><li class="nav-tree-node"><a href="what-is-grafana-util.html" class="nav-item">What grafana-util is for</a></li><li class="nav-tree-node"><a href="getting-started.html" class="nav-item">Getting Started</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Role Paths</div><ul class="nav-tree"><li class="nav-tree-node"><a href="role-new-user.html" class="nav-item">New User Handbook</a></li><li class="nav-tree-node"><a href="role-sre-ops.html" class="nav-item">SRE / Operator Handbook</a></li><li class="nav-tree-node"><a href="role-automation-ci.html" class="nav-item">Automation / CI Handbook</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Core Operations</div><ul class="nav-tree"><li class="nav-tree-node"><a href="dashboard.html" class="nav-item">Dashboard Operator Handbook</a></li><li class="nav-tree-node"><a href="datasource.html" class="nav-item">Datasource Operator Handbook</a></li><li class="nav-tree-node"><a href="alert.html" class="nav-item">Alert Operator Handbook</a></li><li class="nav-tree-node"><a href="access.html" class="nav-item">Access Management (Identity &amp; Access)</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Governance</div><ul class="nav-tree"><li class="nav-tree-node"><a href="architecture.html" class="nav-item active">Architecture &amp; Design Principles</a></li><li class="nav-tree-node"><a href="change-overview-status.html" class="nav-item">Project Status &amp; Change Overview</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Scenarios &amp; Reference</div><ul class="nav-tree"><li class="nav-tree-node"><a href="scenarios.html" class="nav-item">Operator Scenarios</a></li><li class="nav-tree-node"><a href="recipes.html" class="nav-item">Best Practices &amp; Real-World Recipes</a></li><li class="nav-tree-node"><a href="reference.html" class="nav-item">Technical Reference</a></li><li class="nav-tree-node"><a href="troubleshooting.html" class="nav-item">Troubleshooting &amp; Glossary</a></li></ul></div></section><section class="nav-section"><h2>Command Entry</h2><a href="../../commands/en/index.html" class="nav-command-entry">Open command docs</a></section></aside>
+  <aside class="nav-sidebar">
+  <button class="sidebar-toggle sidebar-toggle-left" type="button" aria-expanded="true" aria-label="Toggle handbook navigation">◀</button>
+  <div class="nav-sidebar-content"><section class="nav-section"><h2>Guide Map</h2><div class="nav-group-block"><div class="nav-group-title">Start</div><ul class="nav-tree"><li class="nav-tree-node"><a href="index.html" class="nav-item">Overview</a></li><li class="nav-tree-node"><a href="what-is-grafana-util.html" class="nav-item">What grafana-util is for</a></li><li class="nav-tree-node"><a href="getting-started.html" class="nav-item">Getting Started</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Role Paths</div><ul class="nav-tree"><li class="nav-tree-node"><a href="role-new-user.html" class="nav-item">New User Handbook</a></li><li class="nav-tree-node"><a href="role-sre-ops.html" class="nav-item">SRE / Operator Handbook</a></li><li class="nav-tree-node"><a href="role-automation-ci.html" class="nav-item">Automation / CI Handbook</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Core Operations</div><ul class="nav-tree"><li class="nav-tree-node"><a href="dashboard.html" class="nav-item">Dashboard Operator Handbook</a></li><li class="nav-tree-node"><a href="datasource.html" class="nav-item">Datasource Operator Handbook</a></li><li class="nav-tree-node"><a href="alert.html" class="nav-item">Alert Operator Handbook</a></li><li class="nav-tree-node"><a href="access.html" class="nav-item">Access Management (Identity &amp; Access)</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Governance</div><ul class="nav-tree"><li class="nav-tree-node"><a href="architecture.html" class="nav-item active">Architecture &amp; Design Principles</a></li><li class="nav-tree-node"><a href="change-overview-status.html" class="nav-item">Project Status &amp; Change Overview</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Scenarios &amp; Reference</div><ul class="nav-tree"><li class="nav-tree-node"><a href="scenarios.html" class="nav-item">Operator Scenarios</a></li><li class="nav-tree-node"><a href="recipes.html" class="nav-item">Best Practices &amp; Real-World Recipes</a></li><li class="nav-tree-node"><a href="reference.html" class="nav-item">Technical Reference</a></li><li class="nav-tree-node"><a href="troubleshooting.html" class="nav-item">Troubleshooting &amp; Glossary</a></li></ul></div></section><section class="nav-section"><h2>Command Entry</h2><a href="../../commands/en/index.html" class="nav-command-entry">Open command docs</a></section></div>
+</aside>
 
   <article class="article">
     <div class="breadcrumbs"><a href="../../index.html">Home</a> / Handbook / Architecture &amp; Design Principles</div>
 
-    <div class="hero-eyebrow">Docs</div>
-<h1><span class="hero-title-main">Architecture &amp; Design Principles</span></h1>
+    <h1><span class="hero-title-main">Architecture &amp; Design Principles</span></h1>
 
 
     <p>Use this chapter when you want to understand why the handbook and command surfaces are split the way they are, and how that split should change your day-to-day operator choices.</p>
@@ -712,6 +769,12 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <ul><li>Maintainers or operators who want to understand why the CLI is shaped this way.</li><li>Teams deciding how far to trust export, replay, review, and staged workflows.</li><li>Reviewers who need design context before changing docs, scripts, or operator process.</li></ul>
 <h2 id="primary-goals">Primary Goals</h2>
 <ul><li>Explain the design tradeoffs behind the command families and workflow lanes.</li><li>Show how those tradeoffs affect day-to-day operator behavior.</li><li>Give enough context that you can explain the tool, not just run it.</li></ul>
+<h2 id="before-after">Before / After</h2>
+<ul><li>Before: it was easy to think the repo was just a collection of commands with the same shape.</li><li>After: the architecture chapter explains why the tool separates surfaces, lanes, and command families, so a reader can place each workflow in the right layer.</li></ul>
+<h2 id="what-success-looks-like">What success looks like</h2>
+<ul><li>You can explain why the runtime and docs are split the way they are.</li><li>You can tell which workflows belong in a handbook, which belong in command docs, and which belong in internal maintainer notes.</li><li>You can choose the right surface for a new feature before you implement it.</li></ul>
+<h2 id="failure-checks">Failure checks</h2>
+<ul><li>If a workflow does not fit any existing surface, pause and decide whether it needs a new chapter or a new command family.</li><li>If the runtime shape and the docs shape drift apart, treat that as an architecture bug, not just a docs bug.</li><li>If you are not sure why the split exists, reread the surface and lane sections before adding new work.</li></ul>
 <p>For the command surface behind these ideas, see <a href="../../commands/en/status.html">status</a>, <a href="../../commands/en/overview.html">overview</a>, <a href="../../commands/en/change.html">change</a>, and <a href="../../commands/en/dashboard.html">dashboard</a>.</p>
 <h2 id="the-three-surfaces-pattern">The Three Surfaces Pattern</h2>
 <p><code>grafana-util</code> separates operational concerns into three distinct &quot;Surfaces.&quot; This prevents mixing human-facing data with machine-readable contracts.</p>
@@ -760,7 +823,10 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <nav class="footer-nav"><a class="link-card" href="role-automation-ci.html"><span>Previous</span>Automation / CI Handbook</a><a class="link-card" href="dashboard.html"><span>Next</span>Dashboard Operator Handbook</a></nav>
   </article>
   <aside class="sidebar">
-  <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#who-it-is-for"><span class="toc-label">Who It Is For</span></a></li><li class="toc-level-2"><a href="#primary-goals"><span class="toc-label">Primary Goals</span></a></li><li class="toc-level-2"><a href="#the-three-surfaces-pattern"><span class="toc-label">The Three Surfaces Pattern</span></a></li><li class="toc-level-3"><a href="#how-to-choose-the-right-surface"><span class="toc-label">How to choose the right surface</span></a></li><li class="toc-level-3"><a href="#why-the-split-matters"><span class="toc-label">Why the split matters</span></a></li><li class="toc-level-2"><a href="#lane-isolation-policy"><span class="toc-label">Lane Isolation Policy</span></a></li><li class="toc-level-3"><a href="#how-lane-isolation-changes-real-operator-behavior"><span class="toc-label">How lane isolation changes real operator behavior</span></a></li><li class="toc-level-3"><a href="#what-to-do-when-you-are-unsure-which-lane-to-use"><span class="toc-label">What to do when you are unsure which lane to use</span></a></li><li class="toc-level-2"><a href="#secret-governance-masked-recovery"><span class="toc-label">Secret Governance (Masked Recovery)</span></a></li><li class="toc-level-3"><a href="#why-this-matters-in-practice"><span class="toc-label">Why this matters in practice</span></a></li><li class="toc-level-2"><a href="#state-transition-model"><span class="toc-label">State Transition Model</span></a></li><li class="toc-level-3"><a href="#why-dashboards-and-alerts-are-intentionally-different"><span class="toc-label">Why dashboards and alerts are intentionally different</span></a></li><li class="toc-level-3"><a href="#decision-guide"><span class="toc-label">Decision guide</span></a></li><li class="toc-level-2"><a href="#what-good-looks-like"><span class="toc-label">What Good Looks Like</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/architecture.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
+  <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
+  <div class="sidebar-content">
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#who-it-is-for"><span class="toc-label">Who It Is For</span></a></li><li class="toc-level-2"><a href="#primary-goals"><span class="toc-label">Primary Goals</span></a></li><li class="toc-level-2"><a href="#before-after"><span class="toc-label">Before / After</span></a></li><li class="toc-level-2"><a href="#what-success-looks-like"><span class="toc-label">What success looks like</span></a></li><li class="toc-level-2"><a href="#failure-checks"><span class="toc-label">Failure checks</span></a></li><li class="toc-level-2"><a href="#the-three-surfaces-pattern"><span class="toc-label">The Three Surfaces Pattern</span></a></li><li class="toc-level-3"><a href="#how-to-choose-the-right-surface"><span class="toc-label">How to choose the right surface</span></a></li><li class="toc-level-3"><a href="#why-the-split-matters"><span class="toc-label">Why the split matters</span></a></li><li class="toc-level-2"><a href="#lane-isolation-policy"><span class="toc-label">Lane Isolation Policy</span></a></li><li class="toc-level-3"><a href="#how-lane-isolation-changes-real-operator-behavior"><span class="toc-label">How lane isolation changes real operator behavior</span></a></li><li class="toc-level-3"><a href="#what-to-do-when-you-are-unsure-which-lane-to-use"><span class="toc-label">What to do when you are unsure which lane to use</span></a></li><li class="toc-level-2"><a href="#secret-governance-masked-recovery"><span class="toc-label">Secret Governance (Masked Recovery)</span></a></li><li class="toc-level-3"><a href="#why-this-matters-in-practice"><span class="toc-label">Why this matters in practice</span></a></li><li class="toc-level-2"><a href="#state-transition-model"><span class="toc-label">State Transition Model</span></a></li><li class="toc-level-3"><a href="#why-dashboards-and-alerts-are-intentionally-different"><span class="toc-label">Why dashboards and alerts are intentionally different</span></a></li><li class="toc-level-3"><a href="#decision-guide"><span class="toc-label">Decision guide</span></a></li><li class="toc-level-2"><a href="#what-good-looks-like"><span class="toc-label">What Good Looks Like</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/architecture.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
+  </div>
 </aside>
 
 </div>
@@ -809,6 +875,26 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 
   document.querySelectorAll(".nav-group-header").forEach(header => {
     header.onclick = () => { header.closest(".nav-group").classList.toggle("collapsed"); };
+  });
+
+  document.querySelectorAll(".sidebar-toggle-left").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-nav");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "▶" : "◀";
+    });
+  });
+
+  document.querySelectorAll(".sidebar-toggle-right").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-sidebar");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "◀" : "▶";
+    });
   });
 
   const jumpSelect = document.getElementById("jump-select");

@@ -23,6 +23,35 @@ The most important design rule to understand up front is that the CLI supports s
 
 Profiles are there to simplify repeated work. They are not the only way to start, and they should not block a first connectivity check.
 
+## Before / After
+
+- Before: every command line had to repeat the Grafana URL and auth flags.
+- After: you can prove the connection directly once, then move the repeatable parts into a profile.
+
+## What success looks like
+
+- The binary is installed and reachable from your shell.
+- One direct live read succeeds.
+- You know whether the next step should be `--profile`, env-backed auth, or a one-off bootstrap command.
+
+## Failure checks
+
+- If the binary is not on `PATH`, fix the install step before trying to use profiles.
+- If a direct live read fails, do not move on to mutation workflows yet.
+- If the profile does not resolve the fields you expect, inspect the profile file and the env-backed secret source first.
+
+## What success looks like in the first 10 minutes
+
+By the end of this chapter, a first successful run should look like this:
+
+- the binary is on `PATH`
+- one direct live read succeeds
+- you know whether you are using Basic auth, token auth, env-backed auth, or `--profile`
+- one repo-local profile works for the same target
+- you know whether the next stop is dashboards, alerts, access, or automation
+
+If you cannot reach that state yet, stop at the first failing read-only command and use [Troubleshooting](troubleshooting.md) before moving into mutation workflows.
+
 For the exact flags behind this chapter, keep [profile](../../commands/en/profile.md), [status](../../commands/en/status.md), and [overview](../../commands/en/overview.md) open beside it.
 
 ---

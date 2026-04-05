@@ -95,6 +95,18 @@ class GenerateManpagesTests(unittest.TestCase):
             access_manpage,
         )
 
+    def test_inline_evidence_headings_do_not_generate_bogus_subcommand_manpages(self):
+        module = load_module()
+
+        generated = module.generate_manpages()
+
+        self.assertNotIn("grafana-util-profile-Before-/.1", generated)
+        self.assertNotIn("grafana-util-profile-What-success-looks-like.1", generated)
+        self.assertNotIn("grafana-util-profile-Failure-checks.1", generated)
+        self.assertNotIn("grafana-util-snapshot-Before-/.1", generated)
+        self.assertNotIn("grafana-util-snapshot-What-success-looks-like.1", generated)
+        self.assertNotIn("grafana-util-snapshot-Failure-checks.1", generated)
+
     def test_generated_manpages_match_checked_in_outputs(self):
         module = load_module()
 
