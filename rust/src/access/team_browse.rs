@@ -9,13 +9,13 @@ use reqwest::Method;
 use serde_json::Value;
 
 use crate::common::Result;
+use crate::access::TeamBrowseArgs;
 
 #[cfg(feature = "tui")]
 use super::browse_terminal::TerminalSession;
+use super::browse_support::BrowseSwitch;
 #[cfg(feature = "tui")]
-use super::{default_user_browse_args_from_team, BrowseSwitch, TeamBrowseArgs};
-#[cfg(not(feature = "tui"))]
-use super::{BrowseSwitch, TeamBrowseArgs};
+use super::browse_support::default_user_browse_args_from_team;
 #[cfg(feature = "tui")]
 #[path = "team_browse_dialog.rs"]
 mod team_browse_dialog;

@@ -8,6 +8,20 @@ Current AI-maintained status only.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-status-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-31.md).
 
+## 2026-04-06 - Converge project-status live reads onto shared workflow helpers
+- State: Done
+- Scope: `rust/src/grafana_api/project_status_live.rs`, `rust/src/grafana_api/datasource_live_project_status.rs`, `rust/src/access/live_project_status.rs`, `rust/src/grafana_api/tests.rs`, `rust/src/access/team_browse.rs`, `rust/src/access/user_browse.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: project-status already reused shared Grafana connection/client wiring, but datasource and access live-status producers still owned a couple of raw `/api/org` and `/api/orgs` reads locally, and the shared project-status helper module only exposed part of the workflow-level read surface.
+- Current Update: expanded `grafana_api::project_status_live` with shared current-org, visible-org-list, and alert-surface helpers for both client and request seams; switched datasource and access live-status producers onto those shared helpers; and tightened the access browse imports so `--no-default-features` stays warning-free.
+- Result: project-status-related live reads now reuse one workflow-level helper module for shared org and alert document reads, while the status scoring/aggregation logic stays in the runtime layer.
+
+## 2026-04-06 - Converge sync live workflow helpers onto shared Grafana resource clients
+- State: Done
+- Scope: `rust/src/grafana_api/dashboard.rs`, `rust/src/grafana_api/datasource.rs`, `rust/src/grafana_api/alerting.rs`, `rust/src/grafana_api/sync_live.rs`, `rust/src/grafana_api/tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: sync live fetch/apply had already been moved onto the shared `SyncLiveClient` workflow wrapper, but several concrete Grafana path contracts still lived directly in `sync_live.rs` instead of routing through the shared dashboard/datasource/alerting resource helpers.
+- Current Update: added shared folder/list/update helpers to `grafana_api::dashboard`, datasource CRUD helpers to `grafana_api::datasource`, and alert delete/policy helpers to `grafana_api::alerting`, then rewired `SyncLiveClient` to use those shared methods for folder, dashboard, datasource, and alert workflow actions.
+- Result: sync live now keeps the reviewed intent and guard logic in the sync workflow layer while the concrete Grafana endpoint ownership sits in the shared internal resource clients.
+
 ## 2026-04-06 - Converge datasource and alert live workflow helpers and extend sync live smoke
 - State: Done
 - Scope: `rust/src/datasource_live_project_status.rs`, `rust/src/alert.rs`, `rust/src/alert_runtime_support.rs`, `rust/src/grafana_api/mod.rs`, `rust/src/grafana_api/datasource_live_project_status.rs`, `rust/src/grafana_api/alert_live.rs`, `scripts/test-rust-live-grafana.sh`, `docs/internal/maintainer-quickstart.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

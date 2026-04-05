@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use std::collections::BTreeSet;
 
 use reqwest::Method;
@@ -27,6 +25,7 @@ impl<'a> DashboardResourceClient<'a> {
         self.http.request_json(method, path, params, payload)
     }
 
+    #[allow(dead_code)]
     pub(crate) fn search_dashboards(&self, query: &str) -> Result<Vec<Map<String, Value>>> {
         self.expect_object_list(
             self.request_json(
@@ -40,6 +39,13 @@ impl<'a> DashboardResourceClient<'a> {
                 None,
             )?,
             "Unexpected dashboard search response from Grafana.",
+        )
+    }
+
+    pub(crate) fn list_folders(&self) -> Result<Vec<Map<String, Value>>> {
+        self.expect_object_list(
+            self.request_json(Method::GET, "/api/folders", &[], None)?,
+            "Unexpected folder list response from Grafana.",
         )
     }
 
@@ -152,6 +158,7 @@ impl<'a> DashboardResourceClient<'a> {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn fetch_dashboard_permissions(&self, uid: &str) -> Result<Vec<Map<String, Value>>> {
         let path = format!("/api/dashboards/uid/{uid}/permissions");
         self.expect_object_list(
@@ -160,6 +167,7 @@ impl<'a> DashboardResourceClient<'a> {
         )
     }
 
+    #[allow(dead_code)]
     pub(crate) fn fetch_folder_permissions(&self, uid: &str) -> Result<Vec<Map<String, Value>>> {
         let path = format!("/api/folders/{uid}/permissions");
         self.expect_object_list(
@@ -199,6 +207,31 @@ impl<'a> DashboardResourceClient<'a> {
             }
             None => Err(message(format!(
                 "Unexpected empty folder create response for UID {uid}."
+            ))),
+        }
+    }
+
+    pub(crate) fn update_folder_request(
+        &self,
+        uid: &str,
+        payload: &Map<String, Value>,
+    ) -> Result<Map<String, Value>> {
+        let path = format!("/api/folders/{uid}");
+        match self.request_json(
+            Method::PUT,
+            &path,
+            &[],
+            Some(&Value::Object(payload.clone())),
+        )? {
+            Some(value) => {
+                let object = value_as_object(
+                    &value,
+                    &format!("Unexpected folder update response for UID {uid}."),
+                )?;
+                Ok(object.clone())
+            }
+            None => Err(message(format!(
+                "Unexpected empty folder update response for UID {uid}."
             ))),
         }
     }
@@ -245,6 +278,41 @@ impl<'a> DashboardResourceClient<'a> {
                 "Unexpected empty folder delete response for UID {uid}."
             ))),
         }
+    }
+
+    pub(crate) fn latest_dashboard_version_timestamp(
+        &self,
+        dashboard_summaries: &[Map<String, Value>],
+    ) -> Option<String> {
+        let uid = dashboard_summaries.iter().find_map(|summary| {
+            summary
+                .get("uid")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+        })?;
+        let path = format!("/api/dashboards/uid/{uid}/versions");
+        let params = vec![("limit".to_string(), "1".to_string())];
+        let response = self.request_json(Method::GET, &path, &params, None).ok().flatten()?;
+        let versions = match response {
+            Value::Array(items) => items,
+            Value::Object(object) => object
+                .get("versions")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default(),
+            _ => Vec::new(),
+        };
+        versions
+            .first()
+            .and_then(Value::as_object)
+            .and_then(|object| {
+                ["updated", "updatedAt", "modified", "createdAt", "created"]
+                    .into_iter()
+                    .find_map(|key| object.get(key).and_then(Value::as_str).map(str::trim))
+                    .filter(|value| !value.is_empty())
+            })
+            .map(str::to_string)
     }
 
     pub(crate) fn list_datasources(&self) -> Result<Vec<Map<String, Value>>> {

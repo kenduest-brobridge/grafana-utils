@@ -87,17 +87,7 @@ impl<'a> SyncLiveClient<'a> {
     }
 
     pub(crate) fn list_folders(&self) -> Result<Vec<Map<String, Value>>> {
-        match self.request_json(Method::GET, "/api/folders", &[], None)? {
-            Some(Value::Array(items)) => items
-                .into_iter()
-                .map(|item| match item {
-                    Value::Object(object) => Ok(object),
-                    _ => Err(message("Unexpected folder list response from Grafana.")),
-                })
-                .collect(),
-            Some(_) => Err(message("Unexpected folder list response from Grafana.")),
-            None => Ok(Vec::new()),
-        }
+        self.api.dashboard().list_folders()
     }
 
     pub(crate) fn list_dashboard_summaries(
@@ -169,23 +159,13 @@ impl<'a> SyncLiveClient<'a> {
         uid: &str,
         payload: &Map<String, Value>,
     ) -> Result<Map<String, Value>> {
-        match self.request_json(
-            Method::PUT,
-            &format!("/api/folders/{uid}"),
-            &[],
-            Some(&Value::Object(payload.clone())),
-        )? {
-            Some(Value::Object(object)) => Ok(object),
-            _ => Err(message(format!(
-                "Unexpected folder update response for UID {uid}."
-            ))),
-        }
+        self.api.dashboard().update_folder_request(uid, payload)
     }
 
     pub(crate) fn delete_folder(&self, uid: &str) -> Result<Value> {
-        Ok(self
-            .request_json(Method::DELETE, &format!("/api/folders/{uid}"), &[], None)?
-            .unwrap_or(Value::Null))
+        Ok(Value::Object(
+            self.api.dashboard().delete_folder_request(uid)?.into_iter().collect(),
+        ))
     }
 
     pub(crate) fn upsert_dashboard(
@@ -209,14 +189,13 @@ impl<'a> SyncLiveClient<'a> {
     }
 
     pub(crate) fn delete_dashboard(&self, uid: &str) -> Result<Value> {
-        Ok(self
-            .request_json(
-                Method::DELETE,
-                &format!("/api/dashboards/uid/{uid}"),
-                &[],
-                None,
-            )?
-            .unwrap_or(Value::Null))
+        Ok(Value::Object(
+            self.api
+                .dashboard()
+                .delete_dashboard_request(uid)?
+                .into_iter()
+                .collect(),
+        ))
     }
 
     pub(crate) fn resolve_datasource_target(
@@ -246,17 +225,7 @@ impl<'a> SyncLiveClient<'a> {
         &self,
         payload: &Map<String, Value>,
     ) -> Result<Map<String, Value>> {
-        match self.request_json(
-            Method::POST,
-            "/api/datasources",
-            &[],
-            Some(&Value::Object(payload.clone())),
-        )? {
-            Some(Value::Object(object)) => Ok(object),
-            _ => Err(message(
-                "Unexpected datasource create response from Grafana.",
-            )),
-        }
+        self.api.datasource().create_datasource(payload)
     }
 
     pub(crate) fn update_datasource(
@@ -264,28 +233,11 @@ impl<'a> SyncLiveClient<'a> {
         datasource_id: &str,
         payload: &Map<String, Value>,
     ) -> Result<Map<String, Value>> {
-        match self.request_json(
-            Method::PUT,
-            &format!("/api/datasources/{datasource_id}"),
-            &[],
-            Some(&Value::Object(payload.clone())),
-        )? {
-            Some(Value::Object(object)) => Ok(object),
-            _ => Err(message(
-                "Unexpected datasource update response from Grafana.",
-            )),
-        }
+        self.api.datasource().update_datasource(datasource_id, payload)
     }
 
     pub(crate) fn delete_datasource(&self, datasource_id: &str) -> Result<Value> {
-        Ok(self
-            .request_json(
-                Method::DELETE,
-                &format!("/api/datasources/{datasource_id}"),
-                &[],
-                None,
-            )?
-            .unwrap_or(Value::Null))
+        self.api.datasource().delete_datasource(datasource_id)
     }
 
     pub(crate) fn create_alert_rule(
@@ -304,14 +256,7 @@ impl<'a> SyncLiveClient<'a> {
     }
 
     pub(crate) fn delete_alert_rule(&self, uid: &str) -> Result<Value> {
-        Ok(self
-            .request_json(
-                Method::DELETE,
-                &format!("/api/v1/provisioning/alert-rules/{uid}"),
-                &[],
-                None,
-            )?
-            .unwrap_or(Value::Null))
+        self.api.alerting().delete_alert_rule(uid)
     }
 
     pub(crate) fn create_contact_point(
@@ -330,14 +275,7 @@ impl<'a> SyncLiveClient<'a> {
     }
 
     pub(crate) fn delete_contact_point(&self, uid: &str) -> Result<Value> {
-        Ok(self
-            .request_json(
-                Method::DELETE,
-                &format!("/api/v1/provisioning/contact-points/{uid}"),
-                &[],
-                None,
-            )?
-            .unwrap_or(Value::Null))
+        self.api.alerting().delete_contact_point(uid)
     }
 
     pub(crate) fn create_mute_timing(
@@ -356,14 +294,7 @@ impl<'a> SyncLiveClient<'a> {
     }
 
     pub(crate) fn delete_mute_timing(&self, name: &str) -> Result<Value> {
-        Ok(self
-            .request_json(
-                Method::DELETE,
-                &format!("/api/v1/provisioning/mute-timings/{name}"),
-                &[("version".to_string(), String::new())],
-                None,
-            )?
-            .unwrap_or(Value::Null))
+        self.api.alerting().delete_mute_timing(name)
     }
 
     pub(crate) fn update_notification_policies(
@@ -374,9 +305,7 @@ impl<'a> SyncLiveClient<'a> {
     }
 
     pub(crate) fn delete_notification_policies(&self) -> Result<Value> {
-        Ok(self
-            .request_json(Method::DELETE, "/api/v1/provisioning/policies", &[], None)?
-            .unwrap_or(Value::Null))
+        self.api.alerting().delete_notification_policies()
     }
 
     pub(crate) fn update_template(
@@ -388,14 +317,7 @@ impl<'a> SyncLiveClient<'a> {
     }
 
     pub(crate) fn delete_template(&self, name: &str) -> Result<Value> {
-        Ok(self
-            .request_json(
-                Method::DELETE,
-                &format!("/api/v1/provisioning/templates/{name}"),
-                &[("version".to_string(), String::new())],
-                None,
-            )?
-            .unwrap_or(Value::Null))
+        self.api.alerting().delete_template(name)
     }
 }
 

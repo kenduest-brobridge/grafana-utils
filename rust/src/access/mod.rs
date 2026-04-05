@@ -12,6 +12,10 @@ use crate::http::JsonHttpClient;
 // workflows can evolve independently while this file keeps only domain routing.
 #[path = "browse_terminal.rs"]
 mod browse_terminal;
+#[path = "browse_support.rs"]
+mod browse_support;
+#[path = "facade_support.rs"]
+mod facade_support;
 #[path = "cli_defs.rs"]
 mod cli_defs;
 #[path = "live_project_status.rs"]
@@ -55,51 +59,13 @@ pub use cli_defs::{
     ACCESS_USER_EXPORT_FILENAME, DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT, DEFAULT_URL,
 };
 #[allow(unused_imports)]
-pub(crate) use live_project_status::{
+pub(crate) use facade_support::{
     build_access_live_domain_status, build_access_live_domain_status_with_request,
 };
 pub use pending_delete::{
     GroupCommandStage, ServiceAccountDeleteArgs, ServiceAccountTokenDeleteArgs, TeamDeleteArgs,
 };
 pub(crate) use project_status::{build_access_domain_status, AccessDomainStatusInputs};
-
-#[cfg_attr(not(feature = "tui"), allow(dead_code))]
-#[derive(Clone, Debug)]
-enum BrowseSwitch {
-    Exit,
-    ToUser(UserBrowseArgs),
-    ToTeam(TeamBrowseArgs),
-}
-
-#[cfg_attr(not(feature = "tui"), allow(dead_code))]
-fn default_team_browse_args_from_user(args: &UserBrowseArgs) -> TeamBrowseArgs {
-    TeamBrowseArgs {
-        common: args.common.clone(),
-        query: None,
-        name: None,
-        with_members: true,
-        page: 1,
-        per_page: DEFAULT_PAGE_SIZE,
-    }
-}
-
-#[cfg_attr(not(feature = "tui"), allow(dead_code))]
-fn default_user_browse_args_from_team(args: &TeamBrowseArgs) -> UserBrowseArgs {
-    UserBrowseArgs {
-        common: args.common.clone(),
-        scope: Scope::Global,
-        all_orgs: false,
-        current_org: false,
-        query: None,
-        login: None,
-        email: None,
-        org_role: None,
-        grafana_admin: None,
-        with_teams: false,
-        page: 1,
-        per_page: DEFAULT_PAGE_SIZE,
-    }
-}
 
 fn request_object<F>(
     mut request_json: F,
@@ -336,20 +302,24 @@ where
                 #[cfg(feature = "tui")]
                 {
                     let mut session = browse_terminal::TerminalSession::enter()?;
-                    let mut next = BrowseSwitch::ToUser(args.clone());
+                    let mut next = browse_support::BrowseSwitch::ToUser(args.clone());
                     loop {
                         next = match next {
-                            BrowseSwitch::Exit => break,
-                            BrowseSwitch::ToUser(inner) => user_browse::browse_users_in_session(
-                                &mut session,
-                                &mut request_json,
-                                &inner,
-                            )?,
-                            BrowseSwitch::ToTeam(inner) => team_browse::browse_teams_in_session(
-                                &mut session,
-                                &mut request_json,
-                                &inner,
-                            )?,
+                            browse_support::BrowseSwitch::Exit => break,
+                            browse_support::BrowseSwitch::ToUser(inner) => {
+                                user_browse::browse_users_in_session(
+                                    &mut session,
+                                    &mut request_json,
+                                    &inner,
+                                )?
+                            }
+                            browse_support::BrowseSwitch::ToTeam(inner) => {
+                                team_browse::browse_teams_in_session(
+                                    &mut session,
+                                    &mut request_json,
+                                    &inner,
+                                )?
+                            }
                         };
                     }
                 }
@@ -408,20 +378,24 @@ where
                 #[cfg(feature = "tui")]
                 {
                     let mut session = browse_terminal::TerminalSession::enter()?;
-                    let mut next = BrowseSwitch::ToTeam(args.clone());
+                    let mut next = browse_support::BrowseSwitch::ToTeam(args.clone());
                     loop {
                         next = match next {
-                            BrowseSwitch::Exit => break,
-                            BrowseSwitch::ToUser(inner) => user_browse::browse_users_in_session(
-                                &mut session,
-                                &mut request_json,
-                                &inner,
-                            )?,
-                            BrowseSwitch::ToTeam(inner) => team_browse::browse_teams_in_session(
-                                &mut session,
-                                &mut request_json,
-                                &inner,
-                            )?,
+                            browse_support::BrowseSwitch::Exit => break,
+                            browse_support::BrowseSwitch::ToUser(inner) => {
+                                user_browse::browse_users_in_session(
+                                    &mut session,
+                                    &mut request_json,
+                                    &inner,
+                                )?
+                            }
+                            browse_support::BrowseSwitch::ToTeam(inner) => {
+                                team_browse::browse_teams_in_session(
+                                    &mut session,
+                                    &mut request_json,
+                                    &inner,
+                                )?
+                            }
                         };
                     }
                 }

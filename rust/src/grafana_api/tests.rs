@@ -7,7 +7,8 @@ use std::time::Duration;
 
 use crate::grafana_api::connection::auth_mode_from_headers;
 use crate::grafana_api::{
-    AccessResourceClient, AuthInputs, GrafanaApiClient, GrafanaConnection, SyncLiveClient,
+    AccessResourceClient, AlertingResourceClient, AuthInputs, DatasourceResourceClient,
+    GrafanaApiClient, GrafanaConnection, SyncLiveClient,
 };
 use crate::profile_config::ConnectionMergeInput;
 use crate::sync::live::{
@@ -397,6 +398,117 @@ fn dashboard_resource_client_builds_expected_dashboard_requests() {
     assert!(requests[12].contains("\"title\":\"Platform\""));
     assert!(requests[12].contains("\"parentUid\":\"ops\""));
     assert!(requests[13].starts_with("GET /api/datasources "));
+}
+
+#[test]
+fn dashboard_resource_client_lists_and_updates_folders() {
+    let responses = vec![
+        http_response(
+            "200 OK",
+            r#"[{"uid":"ops","title":"Operations"}]"#,
+        ),
+        http_response("200 OK", r#"{"uid":"ops","title":"Operations"}"#),
+    ];
+    let (base_url, requests, handle) = spawn_sequence_server(responses);
+    let api = build_test_api(base_url);
+    let dashboard = api.dashboard();
+
+    let folders = dashboard.list_folders().unwrap();
+    let updated = dashboard
+        .update_folder_request(
+            "ops",
+            &serde_json::json!({"title":"Operations","parentUid":"root"})
+                .as_object()
+                .unwrap()
+                .clone(),
+        )
+        .unwrap();
+
+    handle.join().unwrap();
+
+    assert_eq!(folders.len(), 1);
+    assert_eq!(folders[0]["uid"], "ops");
+    assert_eq!(updated["uid"], "ops");
+
+    let requests = requests.lock().unwrap().clone();
+    assert_eq!(requests.len(), 2);
+    assert!(requests[0].starts_with("GET /api/folders "));
+    assert!(requests[1].starts_with("PUT /api/folders/ops "));
+}
+
+#[test]
+fn datasource_resource_client_crud_requests() {
+    let responses = vec![
+        http_response("200 OK", r#"{"uid":"prom-main","name":"Prometheus"}"#),
+        http_response("200 OK", r#"{"uid":"prom-main","name":"Prometheus Updated"}"#),
+        http_response("200 OK", r#"{"status":"deleted"}"#),
+    ];
+    let (base_url, requests, handle) = spawn_sequence_server(responses);
+    let api = build_test_api(base_url);
+    let datasource = DatasourceResourceClient::new(api.http_client());
+
+    let created = datasource
+        .create_datasource(
+            &serde_json::json!({"uid":"prom-main","name":"Prometheus"})
+                .as_object()
+                .unwrap()
+                .clone(),
+        )
+        .unwrap();
+    let updated = datasource
+        .update_datasource(
+            "7",
+            &serde_json::json!({"uid":"prom-main","name":"Prometheus Updated"})
+                .as_object()
+                .unwrap()
+                .clone(),
+        )
+        .unwrap();
+    let deleted = datasource.delete_datasource("7").unwrap();
+
+    handle.join().unwrap();
+
+    assert_eq!(created["uid"], "prom-main");
+    assert_eq!(updated["name"], "Prometheus Updated");
+    assert_eq!(deleted["status"], "deleted");
+
+    let requests = requests.lock().unwrap().clone();
+    assert_eq!(requests.len(), 3);
+    assert!(requests[0].starts_with("POST /api/datasources "));
+    assert!(requests[1].starts_with("PUT /api/datasources/7 "));
+    assert!(requests[2].starts_with("DELETE /api/datasources/7 "));
+}
+
+#[test]
+fn alerting_resource_client_deletes_policies_and_resources() {
+    let responses = vec![
+        http_response("200 OK", r#"{"status":"deleted"}"#),
+        http_response("200 OK", r#"{"status":"deleted"}"#),
+        http_response("200 OK", r#"{"status":"deleted"}"#),
+        http_response("200 OK", r#"{"status":"deleted"}"#),
+    ];
+    let (base_url, requests, handle) = spawn_sequence_server(responses);
+    let api = build_test_api(base_url);
+    let alerting = AlertingResourceClient::new(api.http_client());
+
+    let alert_rule = alerting.delete_alert_rule("cpu-high").unwrap();
+    let contact_point = alerting.delete_contact_point("cp-main").unwrap();
+    let mute_timing = alerting.delete_mute_timing("off-hours").unwrap();
+    let policies = alerting.delete_notification_policies().unwrap();
+
+    handle.join().unwrap();
+
+    assert_eq!(alert_rule["status"], "deleted");
+    assert_eq!(contact_point["status"], "deleted");
+    assert_eq!(mute_timing["status"], "deleted");
+    assert_eq!(policies["status"], "deleted");
+
+    let requests = requests.lock().unwrap().clone();
+    assert_eq!(requests.len(), 4);
+    assert!(requests[0].starts_with("DELETE /api/v1/provisioning/alert-rules/cpu-high "));
+    assert!(requests[1].starts_with("DELETE /api/v1/provisioning/contact-points/cp-main "));
+    assert!(requests[2].starts_with("DELETE /api/v1/provisioning/mute-timings/off-hours"));
+    assert!(requests[3].starts_with("DELETE /api/v1/provisioning/policies "));
 }
 
 #[test]

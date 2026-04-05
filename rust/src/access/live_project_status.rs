@@ -12,6 +12,7 @@ use reqwest::Method;
 use serde_json::{Map, Value};
 
 use crate::common::Result;
+use crate::grafana_api::project_status_live as project_status_live_support;
 use crate::http::JsonHttpClient;
 use crate::project_status::{
     status_finding, ProjectDomainStatus, ProjectStatusFinding, PROJECT_STATUS_PARTIAL,
@@ -19,7 +20,7 @@ use crate::project_status::{
 };
 
 use super::render::{normalize_org_role, scalar_text, value_bool};
-use super::{request_array, request_object_list_field, DEFAULT_PAGE_SIZE};
+use super::{request_object_list_field, DEFAULT_PAGE_SIZE};
 use super::{
     team::iter_teams_with_request,
     user::{iter_global_users_with_request, list_org_users_with_request},
@@ -387,14 +388,7 @@ fn read_live_orgs_with_request<F>(request_json: &mut F) -> LiveScopeReading
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    match request_array(
-        &mut *request_json,
-        Method::GET,
-        "/api/orgs",
-        &[],
-        None,
-        "Unexpected organization list response from Grafana.",
-    ) {
+    match project_status_live_support::list_visible_orgs_with_request(request_json) {
         Ok(orgs) => LiveScopeReading::readable(
             "orgs",
             ACCESS_SOURCE_KIND_LIVE_ORGS,

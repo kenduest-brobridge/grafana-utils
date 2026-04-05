@@ -32,6 +32,7 @@ mod edit_external;
 mod edit_live;
 mod edit_prompt;
 mod export;
+mod facade_support;
 mod files;
 mod governance_gate;
 mod governance_gate_rules;
@@ -160,7 +161,15 @@ pub(crate) use files::{
     write_dashboard, write_json_document, ResolvedDashboardImportSource,
 };
 #[allow(unused_imports)]
-pub(crate) use governance_policy::{
+pub(crate) use facade_support::{
+    build_datasource_inventory_record, build_folder_path, collect_folder_inventory_with_request,
+    fetch_dashboard_if_exists_with_request, fetch_dashboard_permissions_with_request,
+    fetch_dashboard_with_request, fetch_folder_if_exists_with_request,
+    fetch_folder_permissions_with_request, format_folder_inventory_status_line,
+    import_dashboard_request_with_request, list_dashboard_summaries_with_request,
+    list_datasources_with_request, build_live_dashboard_domain_status,
+    build_live_dashboard_domain_status_from_inputs,
+    collect_live_dashboard_project_status_inputs_with_request, LiveDashboardProjectStatusInputs,
     load_builtin_governance_policy, load_governance_policy, load_governance_policy_file,
     load_governance_policy_source,
 };
@@ -169,20 +178,6 @@ pub(crate) use inspect_live::TempInspectDir;
 pub(crate) use inspect_report::ExportInspectionQueryRow;
 pub(crate) use inspect_summary::{
     build_export_inspection_summary_document, ExportInspectionSummary,
-};
-#[allow(unused_imports)]
-pub(crate) use live::{
-    build_datasource_inventory_record, build_folder_path, collect_folder_inventory_with_request,
-    fetch_dashboard_if_exists_with_request, fetch_dashboard_permissions_with_request,
-    fetch_dashboard_with_request, fetch_folder_if_exists_with_request,
-    fetch_folder_permissions_with_request, format_folder_inventory_status_line,
-    import_dashboard_request_with_request, list_dashboard_summaries_with_request,
-    list_datasources_with_request,
-};
-#[allow(unused_imports)]
-pub(crate) use live_project_status::{
-    build_live_dashboard_domain_status, build_live_dashboard_domain_status_from_inputs,
-    collect_live_dashboard_project_status_inputs_with_request, LiveDashboardProjectStatusInputs,
 };
 pub(crate) use models::{
     DashboardExportRootManifest, DashboardExportRootScopeKind, DashboardIndexItem,

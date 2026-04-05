@@ -211,6 +211,12 @@ impl<'a> AlertingResourceClient<'a> {
         )
     }
 
+    pub(crate) fn delete_notification_policies(&self) -> Result<Value> {
+        Ok(self
+            .request_json(Method::DELETE, "/api/v1/provisioning/policies", &[], None)?
+            .unwrap_or(Value::Null))
+    }
+
     pub(crate) fn list_templates(&self) -> Result<Vec<Map<String, Value>>> {
         parse_template_list_response(self.request_json(
             Method::GET,
@@ -248,6 +254,50 @@ impl<'a> AlertingResourceClient<'a> {
             )?,
             "Unexpected template update response from Grafana.",
         )
+    }
+
+    pub(crate) fn delete_alert_rule(&self, uid: &str) -> Result<Value> {
+        Ok(self
+            .request_json(
+                Method::DELETE,
+                &format!("/api/v1/provisioning/alert-rules/{uid}"),
+                &[],
+                None,
+            )?
+            .unwrap_or(Value::Null))
+    }
+
+    pub(crate) fn delete_contact_point(&self, uid: &str) -> Result<Value> {
+        Ok(self
+            .request_json(
+                Method::DELETE,
+                &format!("/api/v1/provisioning/contact-points/{uid}"),
+                &[],
+                None,
+            )?
+            .unwrap_or(Value::Null))
+    }
+
+    pub(crate) fn delete_mute_timing(&self, name: &str) -> Result<Value> {
+        Ok(self
+            .request_json(
+                Method::DELETE,
+                &format!("/api/v1/provisioning/mute-timings/{name}"),
+                &[("version".to_string(), String::new())],
+                None,
+            )?
+            .unwrap_or(Value::Null))
+    }
+
+    pub(crate) fn delete_template(&self, name: &str) -> Result<Value> {
+        Ok(self
+            .request_json(
+                Method::DELETE,
+                &format!("/api/v1/provisioning/templates/{name}"),
+                &[("version".to_string(), String::new())],
+                None,
+            )?
+            .unwrap_or(Value::Null))
     }
 }
 
