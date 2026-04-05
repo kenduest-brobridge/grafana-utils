@@ -46,6 +46,7 @@ mod alert_runtime_support;
 #[path = "alert_support.rs"]
 mod alert_support;
 
+#[cfg(test)]
 pub(crate) use crate::grafana_api::{expect_object_list, parse_template_list_response};
 pub use alert_cli_defs::{
     build_auth_context, cli_args_from_common, normalize_alert_group_command,

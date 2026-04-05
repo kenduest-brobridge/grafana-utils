@@ -5,11 +5,13 @@
 //! same `JsonHttpClient` wiring.
 
 mod access;
+pub(crate) mod alert_live;
 mod alerting;
 mod client;
 mod connection;
 mod dashboard;
 mod datasource;
+pub(crate) mod datasource_live_project_status;
 pub(crate) mod project_status_live;
 mod sync_live;
 

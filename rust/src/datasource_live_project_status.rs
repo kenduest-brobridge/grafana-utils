@@ -10,7 +10,8 @@
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
 
-use crate::common::{message, string_field, Result};
+use crate::common::{string_field, Result};
+use crate::grafana_api::datasource_live_project_status as datasource_live_project_status_support;
 use crate::project_status::{
     status_finding, ProjectDomainStatus, PROJECT_STATUS_PARTIAL, PROJECT_STATUS_READY,
 };
@@ -275,39 +276,9 @@ pub(crate) fn collect_live_datasource_project_status_inputs_with_request<F>(
 where
     F: FnMut(reqwest::Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    let datasource_list = match request_json(reqwest::Method::GET, "/api/datasources", &[], None)? {
-        Some(Value::Array(items)) => items
-            .iter()
-            .map(|item| {
-                item.as_object()
-                    .cloned()
-                    .ok_or_else(|| message("Unexpected datasource list response from Grafana."))
-            })
-            .collect::<Result<Vec<_>>>()?,
-        Some(_) => return Err(message("Unexpected datasource list response from Grafana.")),
-        None => Vec::new(),
-    };
-    let org_list = match request_json(reqwest::Method::GET, "/api/orgs", &[], None) {
-        Ok(Some(Value::Array(items))) => items
-            .iter()
-            .map(|item| {
-                item.as_object()
-                    .cloned()
-                    .ok_or_else(|| message("Unexpected /api/orgs payload from Grafana."))
-            })
-            .collect::<Result<Vec<_>>>()?,
-        Ok(Some(_)) => return Err(message("Unexpected /api/orgs payload from Grafana.")),
-        Ok(None) | Err(_) => Vec::new(),
-    };
-    let current_org = request_json(reqwest::Method::GET, "/api/org", &[], None)
-        .ok()
-        .flatten()
-        .and_then(|value| value.as_object().cloned());
-    Ok(LiveDatasourceProjectStatusInputs {
-        datasource_list,
-        org_list,
-        current_org,
-    })
+    datasource_live_project_status_support::collect_live_datasource_project_status_inputs_with_request(
+        request_json,
+    )
 }
 
 pub(crate) fn build_datasource_live_project_status_from_inputs(

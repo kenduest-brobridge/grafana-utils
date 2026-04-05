@@ -2662,6 +2662,8 @@ prepare_sync_smoke_fixture() {
 run_sync_smoke() {
   prepare_sync_smoke_fixture
 
+  local change_preview_fetch_live_json="${WORK_DIR}/change-preview-fetch-live.json"
+
   "$(sync_bin)" change advanced bundle \
     --dashboard-export-dir "${DASHBOARD_EXPORT_DIR}/raw" \
     --alert-export-dir "${ALERT_EXPORT_DIR}/raw" \
@@ -2687,6 +2689,23 @@ run_sync_smoke() {
     || fail "sync bundle-preflight did not emit the expected document kind"
   jq -e '.summary.resourceCount >= 2' "${SYNC_BUNDLE_PREFLIGHT_FILE}" >/dev/null \
     || fail "sync bundle-preflight did not count the bundled dashboard and datasource specs"
+
+  "$(sync_bin)" change preview \
+    --workspace "${WORK_DIR}" \
+    --fetch-live \
+    --url "${GRAFANA_URL}" \
+    --token "${GRAFANA_API_TOKEN}" \
+    --output-format json \
+    --output-file "${change_preview_fetch_live_json}" >/dev/null
+
+  [[ -f "${change_preview_fetch_live_json}" ]] || fail "change preview did not write a live preview artifact"
+  jq -e '
+    (.kind == "grafana-utils-sync-plan")
+    and (.reviewed == false)
+    and (.ordering.mode == "dependency-aware")
+    and ((.operations | length) >= 1)
+  ' "${change_preview_fetch_live_json}" >/dev/null \
+    || fail "change preview --fetch-live did not emit the expected sync plan contract"
 }
 
 main() {
