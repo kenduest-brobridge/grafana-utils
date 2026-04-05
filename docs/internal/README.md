@@ -15,6 +15,10 @@ backlogs, market analysis, and progress snapshots have been moved into
   - design map for the Markdown-to-manpage and Markdown-to-HTML pipeline
 - `generated-docs-playbook.md`
   - task-oriented maintainer recipes for common generated-docs changes
+- `ai-workflow-note.md`
+  - repo-specific workflow note for AI-assisted maintenance
+- `task-brief-template.md`
+  - reusable task brief shape for solo or collaborative AI-assisted work
 - `zh-tw-style-guide.md`
   - zh-TW terminology, tone, and product-name translation rules for docs review
 - `maintainer-quickstart.md`
@@ -41,6 +45,10 @@ backlogs, market analysis, and progress snapshots have been moved into
 - `ai-changes.md` -> condensed change ledger for meaningful behavior or architecture work
 - `generated-docs-architecture.md` -> source/output model, generator split, and generated-docs design rules
 - `generated-docs-playbook.md` -> maintainer cookbook for adding docs pages, locales, outputs, and manpage coverage
+- `ai-workflow-note.md` -> repo-shaped AI workflow, source-of-truth boundaries, and agent task-brief expectations
+- `task-brief-template.md` -> minimal task handoff template for chat prompts, issues, or PR descriptions
+- `.github/ISSUE_TEMPLATE/ai-task-brief.md` -> GitHub issue form for the same task brief fields
+- `.github/PULL_REQUEST_TEMPLATE.md` -> GitHub PR template for review-time task context
 - `zh-tw-style-guide.md` -> review rules for Taiwan-facing Traditional Chinese docs and product-object naming
 - `maintainer-quickstart.md` -> first-entry reading order, source-of-truth map, task routing, and safe validation commands
 - `profile-secret-storage-architecture.md` -> profile secret modes, macOS/Linux backend behavior, and secret-resolution design rules

@@ -1,4 +1,4 @@
-.PHONY: help print-version sync-version set-release-version set-dev-version poetry-install poetry-lock poetry-test poetry-quality-python man man-check html html-check pages-site build build-python build-rust build-rust-browser build-rust-native build-rust-native-browser build-rust-host build-rust-host-browser build-rust-macos-arm64 build-rust-macos-arm64-browser build-rust-linux-amd64 build-rust-linux-amd64-browser build-rust-linux-amd64-docker build-rust-linux-amd64-browser-docker build-rust-linux-amd64-zig validate-rust-linux-amd64-artifact validate-rust-linux-amd64-browser-artifact seed-grafana-sample-data destroy-grafana-sample-data reset-grafana-all-data test test-python test-rust fmt-rust-check lint-rust quality quality-python quality-rust quality-alert-rust quality-sync-rust test-rust-live test-sync-live test-alert-live test-alert-live-artifact test-alert-live-replay test-access-live test-python-datasource-live test-datasource-live
+.PHONY: help print-version sync-version set-release-version set-dev-version poetry-install poetry-lock poetry-test poetry-quality-python man man-check html html-check pages-site build build-python build-rust build-rust-browser build-rust-native build-rust-native-browser build-rust-host build-rust-host-browser build-rust-macos-arm64 build-rust-macos-arm64-browser build-rust-linux-amd64 build-rust-linux-amd64-browser build-rust-linux-amd64-docker build-rust-linux-amd64-browser-docker build-rust-linux-amd64-zig validate-rust-linux-amd64-artifact validate-rust-linux-amd64-browser-artifact seed-grafana-sample-data destroy-grafana-sample-data reset-grafana-all-data test test-python test-rust fmt-rust-check lint-rust quality quality-python quality-rust quality-ai-workflow quality-alert-rust quality-sync-rust test-rust-live test-sync-live test-alert-live test-alert-live-artifact test-alert-live-replay test-access-live test-python-datasource-live test-datasource-live
 
 PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
@@ -65,6 +65,7 @@ help:
 	printf '  %b\n' "$${GREEN}make quality$${RESET}  Run the repo quality gate scripts"; \
 	printf '  %b\n' "$${GREEN}make quality-python$${RESET}  Run the Python quality gate script"; \
 	printf '  %b\n' "$${GREEN}make quality-rust$${RESET}  Run the Rust quality gate script"; \
+	printf '  %b\n' "$${GREEN}make quality-ai-workflow$${RESET}  Run lightweight AI workflow drift checks for the current change set"; \
 	printf '  %b\n' "$${GREEN}make quality-alert-rust$${RESET}  Run focused Rust alert contract checks"; \
 	printf '  %b\n' "$${GREEN}make quality-sync-rust$${RESET}  Run focused Rust sync contract checks"; \
 	printf '\n'; \
@@ -231,6 +232,9 @@ quality-python:
 
 quality-rust:
 	./scripts/check-rust-quality.sh
+
+quality-ai-workflow:
+	$(PYTHON) ./scripts/check_ai_workflow.py
 
 quality-alert-rust:
 	cd $(RUST_DIR) && $(CARGO) test --quiet alert_

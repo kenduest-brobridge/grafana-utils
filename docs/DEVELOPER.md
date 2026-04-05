@@ -23,6 +23,8 @@ If you are working on:
   start with `Makefile` and the repo scripts under `scripts/`
 - change history or current AI-maintained status:
   start with `docs/internal/ai-status.md` and `docs/internal/ai-changes.md`
+- AI-assisted maintainer workflow:
+  start with `docs/internal/ai-workflow-note.md`
 
 If you prefer to route by maintainer persona instead of by subsystem, open `docs/internal/maintainer-role-map.md`.
 
@@ -132,6 +134,8 @@ GitHub Pages deployment lives in `.github/workflows/docs-pages.yml`. It runs `ma
 
 - `docs/internal/maintainer-quickstart.md`
   - first-entry routing for new maintainers and AI agents
+- `docs/internal/ai-workflow-note.md`
+  - repo-specific AI-assisted maintenance workflow
 - `docs/internal/contract-doc-map.md`
 - `docs/internal/export-root-output-layering-policy.md`
 - `docs/internal/dashboard-export-root-contract.md`

@@ -44,6 +44,9 @@ Then branch by task:
 - docs-generator change: open `docs/internal/generated-docs-architecture.md`
 - zh-TW doc copy review: open `docs/internal/zh-tw-style-guide.md`
 - secret/profile change: open `docs/internal/profile-secret-storage-architecture.md`
+- AI-assisted workflow or agent task shaping: open `docs/internal/ai-workflow-note.md`
+- task brief drafting for agent work: open `docs/internal/task-brief-template.md`
+- GitHub collaboration templates: open `.github/ISSUE_TEMPLATE/ai-task-brief.md` and `.github/PULL_REQUEST_TEMPLATE.md`
 - build or release change: open `python/pyproject.toml`, `rust/Cargo.toml`,
   `Makefile`, and `scripts/`
 
@@ -168,6 +171,14 @@ Use these pages for the matching concern:
   - generated-doc system design
 - `docs/internal/generated-docs-playbook.md`
   - generated-doc maintenance tasks
+- `docs/internal/ai-workflow-note.md`
+  - repo-specific AI-assisted maintenance workflow
+- `docs/internal/task-brief-template.md`
+  - reusable task brief template for agent work
+- `.github/ISSUE_TEMPLATE/ai-task-brief.md`
+  - GitHub issue template for AI task briefs
+- `.github/PULL_REQUEST_TEMPLATE.md`
+  - GitHub PR template for review-time task context
 - `docs/internal/zh-tw-style-guide.md`
   - zh-TW terminology, tone, and review rules
 - `docs/internal/profile-secret-storage-architecture.md`

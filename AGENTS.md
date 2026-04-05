@@ -13,6 +13,7 @@
 - Start Rust work in `rust/src/`, with crate settings in `rust/Cargo.toml`.
 - If Python context is required, start in `python/grafana_utils/`, `python/tests/`, and `python/pyproject.toml`.
 - First-entry maintainer routing lives in `docs/internal/maintainer-quickstart.md`.
+- Repo-specific AI workflow and task brief guidance live in `docs/internal/ai-workflow-note.md` and `docs/internal/task-brief-template.md`.
 - Put external/operator usage in `README.md`, `README.zh-TW.md`, `docs/user-guide/`, and `docs/commands/`.
 - Put maintainer behavior, internal mappings, and implementation tradeoffs in `docs/DEVELOPER.md`.
 - Treat `docs/user-guide/{en,zh-TW}/` as the handbook source layer.
@@ -43,10 +44,12 @@
 - Canonical Rust test command: `cd rust && cargo test --quiet`
 - Canonical Python test command: `cd python && PYTHONPATH=. poetry run python -m unittest -v tests`
 - Combined validation entry point: `make test`
+- AI workflow drift check entry point: `make quality-ai-workflow`
 - Generated-doc validation entry points: `make man-check` and `make html-check`
 - When changing handbook, command-reference, or docs-generator behavior, regenerate with `make man` and `make html` instead of editing generated output only.
 - Add or update tests for every user-visible behavior change.
 - For CLI UX changes, test parser behavior or `format_help()` output directly.
+- When touching generated docs or maintainer/contract/architecture workflow docs, run `make quality-ai-workflow` or the equivalent narrow script check.
 - Default commit message format:
   - first line is a short imperative title with a type prefix such as `feature:`, `bugfix:`, `refactor:`, `docs:`, or `test:`
   - blank line
