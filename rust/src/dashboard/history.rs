@@ -567,3 +567,62 @@ fn display_value(value: &Value) -> String {
         _ => value.to_string(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn restore_dashboard_history_version_keeps_live_dashboard_id_and_version() {
+        let payloads = std::sync::Arc::new(std::sync::Mutex::new(Vec::<Value>::new()));
+        let recorded = payloads.clone();
+
+        restore_dashboard_history_version_with_request(
+            move |method, path, _params, payload| match (method, path) {
+                (Method::GET, "/api/dashboards/uid/cpu-main") => Ok(Some(serde_json::json!({
+                    "dashboard": {
+                        "id": 42,
+                        "uid": "cpu-main",
+                        "title": "CPU Main",
+                        "version": 7
+                    },
+                    "meta": {
+                        "folderUid": "infra"
+                    }
+                }))),
+                (Method::GET, "/api/dashboards/uid/cpu-main/versions/5") => {
+                    Ok(Some(serde_json::json!({
+                        "version": 5,
+                        "data": {
+                            "id": 42,
+                            "version": 5,
+                            "uid": "cpu-main",
+                            "title": "CPU Old"
+                        }
+                    })))
+                }
+                (Method::POST, "/api/dashboards/db") => {
+                    recorded
+                        .lock()
+                        .unwrap()
+                        .push(payload.cloned().unwrap_or(Value::Null));
+                    Ok(Some(serde_json::json!({"status": "success"})))
+                }
+                _ => Err(message("unexpected request")),
+            },
+            "cpu-main",
+            5,
+        )
+        .unwrap();
+
+        let payloads = payloads.lock().unwrap();
+        assert_eq!(payloads.len(), 1);
+        let payload = payloads[0].as_object().unwrap();
+        assert_eq!(payload["overwrite"], serde_json::json!(true));
+        assert_eq!(payload["folderUid"], serde_json::json!("infra"));
+        assert_eq!(payload["dashboard"]["uid"], serde_json::json!("cpu-main"));
+        assert_eq!(payload["dashboard"]["id"], serde_json::json!(42));
+        assert_eq!(payload["dashboard"]["version"], serde_json::json!(7));
+        assert_eq!(payload["dashboard"]["title"], serde_json::json!("CPU Old"));
+    }
+}

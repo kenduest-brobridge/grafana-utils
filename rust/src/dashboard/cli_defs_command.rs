@@ -915,7 +915,7 @@ pub enum DashboardHistorySubcommand {
     List(HistoryListArgs),
     #[command(
         name = "restore",
-        about = "Restore one historical dashboard version as a new latest Grafana revision entry.",
+        about = "Restore one historical dashboard version as a new latest revision entry on the same dashboard.",
         after_help = "Examples:\n\n  Preview a restore without changing Grafana:\n    grafana-util dashboard history restore --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --version 17 --dry-run --output-format table\n\n  Restore a historical version and record a new revision message:\n    grafana-util dashboard history restore --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --version 17 --message 'Restore known good CPU dashboard after regression' --yes"
     )]
     Restore(HistoryRestoreArgs),
@@ -1062,6 +1062,21 @@ pub enum DashboardCommand {
         after_help = "Examples:\n\n  Capture a full dashboard from a browser URL and add an auto title/header block:\n    grafana-util dashboard screenshot --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --token \"$GRAFANA_API_TOKEN\" --output ./cpu-main.png --full-page --header-title --header-url --header-captured-at\n\n  Capture a solo panel with a vars-query fragment and custom header note:\n    grafana-util dashboard screenshot --url https://grafana.example.com --dashboard-uid rYdddlPWk --panel-id 20 --vars-query 'var-datasource=prom-main&var-job=node-exporter&var-node=host01:9100' --token \"$GRAFANA_API_TOKEN\" --output ./panel.png --header-title 'CPU Busy' --header-text 'Solo panel debug capture'"
     )]
     Screenshot(ScreenshotArgs),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::CommandFactory;
+
+    #[test]
+    fn dashboard_history_restore_help_mentions_same_dashboard() {
+        let command = DashboardCliArgs::command();
+        let history = command.find_subcommand("history").unwrap();
+        let restore = history.find_subcommand("restore").unwrap();
+        let about = restore.get_about().unwrap().to_string();
+        assert!(about.contains("same dashboard"));
+    }
 }
 
 #[derive(Debug, Clone, Parser)]
