@@ -240,15 +240,6 @@ render project status from live Grafana read surfaces. Use when: Need current Gr
 render the live overview by delegating to the shared status live path. Use when: Need the same live readout that status live uses, but want it under the overview namespace.
 .SS change
 .TP
-.B grafana\-util\-change\-inspect(1)
-inspect the staged package from discovered or explicit inputs. Use when: Want the shortest path to see what the staged package contains before any live comparison.
-.TP
-.B grafana\-util\-change\-check(1)
-check whether the staged package looks structurally safe to continue. Use when: Need one readiness gate before preview or apply.
-.TP
-.B grafana\-util\-change\-preview(1)
-preview what would change from discovered or explicit staged inputs. Use when: Want the actionable staged preview but do not want to think in terms of low\-level plan or bundle\-preflight builders.
-.TP
 .B grafana\-util\-change\-advanced(1)
 expose lower\-level staged contracts and specialized sync workflows. Use when: Need explicit summary, plan, review, preflight, audit, bundle, or promotion handoff documents instead of the task\-first lane.
 .TP
@@ -260,9 +251,6 @@ build a staged sync plan from desired and live state. Use when: Need a reviewabl
 .TP
 .B grafana\-util\-change\-review(1)
 mark a staged sync plan as reviewed. Use when: A plan has been inspected and should carry an explicit review token before apply.
-.TP
-.B grafana\-util\-change\-apply(1)
-build a gated apply intent from a reviewed sync plan, and optionally execute it live. Use when: A plan is already reviewed and you are ready to emit or execute the apply step.
 .TP
 .B grafana\-util\-change\-audit(1)
 audit managed Grafana resources against a checksum lock and current live state. Use when: Need a drift check or want to refresh a lock snapshot.
@@ -288,6 +276,22 @@ export dashboard and datasource inventory into a local snapshot bundle. Use when
 .TP
 .B grafana\-util\-snapshot\-review(1)
 review a local snapshot inventory without touching Grafana. Use when: Want to inspect an exported snapshot root as table, csv, text, json, yaml, or interactive output.
+.SS change
+.TP
+.B grafana\-util\-change\-apply(1)
+Turn a reviewed preview into a staged apply intent, or execute it live when you explicitly opt in. Use when: Use this after preview and review are already complete.; Choose the default staged form when you need approval evidence or a machine\-readable apply intent.; Add \-\-execute\-live only when you are ready to mutate Grafana for real.; \-\-preview\-file is the preferred input, while \-\-plan\-file still works as a compatibility alias for older staged workflows.
+.SS change
+.TP
+.B grafana\-util\-change\-check(1)
+Check whether the staged change package looks structurally safe to continue. Use when: Run this after change inspect when you need one readiness gate before preview.; Use this in CI when you want a fast staged readiness decision without building a full plan yet.; Prefer this over status staged when you want to stay in the task\-first change lane.
+.SS change
+.TP
+.B grafana\-util\-change\-inspect(1)
+Inspect the staged change package from discovered or explicit inputs. Use when: Start here when you need the shortest path to understand what the staged package contains.; Use this before change check or change preview when you want to size the package first.; Prefer this over lower\-level summary when the staged inputs may come from mixed workspace artifacts instead of only one desired.json.
+.SS change
+.TP
+.B grafana\-util\-change\-preview(1)
+Preview what would change from discovered or explicit staged inputs. Use when: You want the actionable review artifact for the current staged package.; This is the task\-first replacement for the common plan step.; Choose this when the operator question is “what will change?” rather than “which lower\-level builder should I run?”
 .SS dashboard
 .TP
 .B grafana\-util\-dashboard\-history(1)

@@ -109,10 +109,10 @@ The checked-in `docs/html/commands/en/*.html` files are generated from the same 
 ## Shared Surfaces
 
 - [change](./change.md)
-- [change inspect](./change.md#inspect)
-- [change check](./change.md#check)
-- [change preview](./change.md#preview)
-- [change apply](./change.md#apply)
+- [change inspect](./change-inspect.md)
+- [change check](./change-check.md)
+- [change preview](./change-preview.md)
+- [change apply](./change-apply.md)
 - [change advanced](./change.md#advanced)
 - [change advanced subcommands (summary, plan, review, audit, bundle, promotion handoff)](./change.md#advanced)
 - [overview](./overview.md)

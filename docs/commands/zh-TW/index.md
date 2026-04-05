@@ -117,10 +117,10 @@
 ## 共用介面
 
 - [change](./change.md)
-- [change inspect](./change.md#inspect)
-- [change check](./change.md#check)
-- [change preview](./change.md#preview)
-- [change apply](./change.md#apply)
+- [change inspect](./change-inspect.md)
+- [change check](./change-check.md)
+- [change preview](./change-preview.md)
+- [change apply](./change-apply.md)
 - [change advanced](./change.md#advanced)
 - [change advanced 子指令（summary、plan、review、audit、bundle、promotion handoff）](./change.md#advanced)
 - [overview](./overview.md)

@@ -38,10 +38,10 @@
 Primary lane：
 
 - [change](../../commands/zh-TW/change.md)
-- [change inspect](../../commands/zh-TW/change.md#inspect)
-- [change check](../../commands/zh-TW/change.md#check)
-- [change preview](../../commands/zh-TW/change.md#preview)
-- [change apply](../../commands/zh-TW/change.md#apply)
+- [change inspect](../../commands/zh-TW/change-inspect.md)
+- [change check](../../commands/zh-TW/change-check.md)
+- [change preview](../../commands/zh-TW/change-preview.md)
+- [change apply](../../commands/zh-TW/change-apply.md)
 - [status](../../commands/zh-TW/status.md)
 - [status staged](../../commands/zh-TW/status.md#staged)
 - [status live](../../commands/zh-TW/status.md#live)

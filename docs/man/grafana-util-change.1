@@ -10,15 +10,6 @@ task\-first staged change workflow with optional live Grafana preview and apply 
 when you need to inspect a staged package, check whether it looks safe to continue, preview what would change, apply an approved preview, or drop into lower\-level advanced review contracts.
 .SH SUBCOMMANDS
 .TP
-.B inspect
-inspect the staged package from discovered or explicit inputs. Use when: Want the shortest path to see what the staged package contains before any live comparison.
-.TP
-.B check
-check whether the staged package looks structurally safe to continue. Use when: Need one readiness gate before preview or apply.
-.TP
-.B preview
-preview what would change from discovered or explicit staged inputs. Use when: Want the actionable staged preview but do not want to think in terms of low\-level plan or bundle\-preflight builders.
-.TP
 .B advanced
 expose lower\-level staged contracts and specialized sync workflows. Use when: Need explicit summary, plan, review, preflight, audit, bundle, or promotion handoff documents instead of the task\-first lane.
 .TP
@@ -30,9 +21,6 @@ build a staged sync plan from desired and live state. Use when: Need a reviewabl
 .TP
 .B review
 mark a staged sync plan as reviewed. Use when: A plan has been inspected and should carry an explicit review token before apply.
-.TP
-.B apply
-build a gated apply intent from a reviewed sync plan, and optionally execute it live. Use when: A plan is already reviewed and you are ready to emit or execute the apply step.
 .TP
 .B audit
 audit managed Grafana resources against a checksum lock and current live state. Use when: Need a drift check or want to refresh a lock snapshot.

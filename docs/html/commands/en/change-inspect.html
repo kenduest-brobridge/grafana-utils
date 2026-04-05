@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Command Docs · grafana-util docs</title>
+  <title>grafana-util change inspect · grafana-util docs</title>
   <style>:root {
   color-scheme: light dark;
   --font-scale: 1;
@@ -736,7 +736,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
       <div class="topbar">
   <a class="brand" href="../../index.html">grafana-util docs</a>
   <div class="themebar">
-    <select id="page-locale-select" aria-label="Language switch"><option value="" selected>Language: English</option><option value="../zh-TW/index.html">Switch to 繁體中文</option></select><select id="jump-select" aria-label="Jump"><option value="" selected>Jump to...</option><optgroup label="Handbook"><option value="../../handbook/en/index.html">Overview</option><option value="../../handbook/en/what-is-grafana-util.html">What grafana-util is for</option><option value="../../handbook/en/getting-started.html">Getting Started</option><option value="../../handbook/en/role-new-user.html">New User Handbook</option><option value="../../handbook/en/role-sre-ops.html">SRE / Operator Handbook</option><option value="../../handbook/en/role-automation-ci.html">Automation / CI Handbook</option><option value="../../handbook/en/architecture.html">Architecture &amp; Design Principles</option><option value="../../handbook/en/dashboard.html">Dashboard Operator Handbook</option><option value="../../handbook/en/datasource.html">Datasource Operator Handbook</option><option value="../../handbook/en/alert.html">Alert Operator Handbook</option><option value="../../handbook/en/access.html">Access Management (Identity &amp; Access)</option><option value="../../handbook/en/change-overview-status.html">Project Status &amp; Change Overview</option><option value="../../handbook/en/scenarios.html">Operator Scenarios</option><option value="../../handbook/en/recipes.html">Best Practices &amp; Real-World Recipes</option><option value="../../handbook/en/reference.html">Technical Reference</option><option value="../../handbook/en/troubleshooting.html">Troubleshooting &amp; Glossary</option></optgroup><optgroup label="Commands"><option value="dashboard.html">Dashboard</option><option value="alert.html">Alert</option><option value="datasource.html">Datasource</option><option value="access.html">Access</option><option value="profile.html">Profile</option><option value="status.html">Status</option><option value="overview.html">Overview</option><option value="change.html">Change</option><option value="snapshot.html">Snapshot</option></optgroup></select>
+    <select id="page-locale-select" aria-label="Language switch"><option value="" selected>Language: English</option><option value="../zh-TW/change-inspect.html">Switch to 繁體中文</option></select><select id="jump-select" aria-label="Jump"><option value="" selected>Jump to...</option><optgroup label="Handbook"><option value="../../handbook/en/index.html">Overview</option><option value="../../handbook/en/what-is-grafana-util.html">What grafana-util is for</option><option value="../../handbook/en/getting-started.html">Getting Started</option><option value="../../handbook/en/role-new-user.html">New User Handbook</option><option value="../../handbook/en/role-sre-ops.html">SRE / Operator Handbook</option><option value="../../handbook/en/role-automation-ci.html">Automation / CI Handbook</option><option value="../../handbook/en/architecture.html">Architecture &amp; Design Principles</option><option value="../../handbook/en/dashboard.html">Dashboard Operator Handbook</option><option value="../../handbook/en/datasource.html">Datasource Operator Handbook</option><option value="../../handbook/en/alert.html">Alert Operator Handbook</option><option value="../../handbook/en/access.html">Access Management (Identity &amp; Access)</option><option value="../../handbook/en/change-overview-status.html">Project Status &amp; Change Overview</option><option value="../../handbook/en/scenarios.html">Operator Scenarios</option><option value="../../handbook/en/recipes.html">Best Practices &amp; Real-World Recipes</option><option value="../../handbook/en/reference.html">Technical Reference</option><option value="../../handbook/en/troubleshooting.html">Troubleshooting &amp; Glossary</option></optgroup><optgroup label="Commands"><option value="dashboard.html">Dashboard</option><option value="alert.html">Alert</option><option value="datasource.html">Datasource</option><option value="access.html">Access</option><option value="profile.html">Profile</option><option value="status.html">Status</option><option value="overview.html">Overview</option><option value="change.html">Change</option><option value="snapshot.html">Snapshot</option></optgroup></select>
     <select id="font-select" aria-label="Font Size">
       <option value="0.9">Font: Compact</option>
       <option value="1">Font: Default</option>
@@ -758,48 +758,76 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </aside>
 
   <article class="article">
-    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / Command Docs</div>
+    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / grafana-util change inspect</div>
 
-    <h1><span class="hero-title-main">Command Docs</span></h1>
+    <h1><span class="hero-title-main">grafana-util change inspect</span></h1>
 
 
-    <h2 id="language">Language</h2>
-<ul><li>English command reference: <a href="index.html">current page</a></li><li>Traditional Chinese command reference: <a href="../zh-TW/index.html">繁體中文逐指令說明</a></li><li>English handbook: <a href="../../handbook/en/index.html">Operator Handbook</a></li><li>Traditional Chinese handbook: <a href="../../handbook/zh-TW/index.html">繁體中文手冊</a></li></ul>
-<p>These pages track the current Rust CLI help for the command tree exposed by <code>grafana-util</code>.</p>
-<p>Use these pages when you want one stable page per command or subcommand instead of a handbook chapter. The handbook explains workflow and intent; the command pages explain the concrete CLI surface.</p>
-<h2 id="output-selector-conventions">Output selector conventions</h2>
-<p>Many list, review, and dry-run commands support both a long output selector and one or more direct shorthand flags.</p>
-<p>Typical patterns:</p>
-<ul><li><code>--output-format table</code> is usually equivalent to <code>--table</code></li><li><code>--output-format json</code> is usually equivalent to <code>--json</code></li><li><code>--output-format csv</code> is usually equivalent to <code>--csv</code></li><li><code>--output-format yaml</code> is usually equivalent to <code>--yaml</code></li><li><code>--output-format text</code> is usually equivalent to <code>--text</code></li></ul>
-<p>Use the long form when you want one explicit flag that is easy to templatize in scripts. Use the short form when you want a faster interactive command line.</p>
-<p>Important exceptions:</p>
-<ul><li>some commands only expose a subset of shortcuts</li><li><code>dashboard topology</code> is different: it supports <code>text</code>, <code>json</code>, <code>mermaid</code>, and <code>dot</code>, but it does not have shortcut flags such as <code>--table</code></li><li>destination-path flags such as <code>--output-file</code> or <code>--output</code> on draft/export commands are not render-format selectors</li></ul>
-<p>If you are unsure, treat the per-command page as authoritative for that exact command surface.</p>
-<p>If you prefer <code>man</code> format, render <a href="../../man/grafana-util.1">grafana-util(1)</a> locally with <code>man ./docs/man/grafana-util.1</code> on macOS or <code>man -l docs/man/grafana-util.1</code> on GNU/Linux. The checked-in <code>docs/man/<em>.1</code> files are generated from these English command pages via <code>python3 scripts/generate_manpages.py</code>. The checked-in <code>docs/html/commands/en/</em>.html</code> files are generated from the same source via <code>python3 scripts/generate_command_html.py</code>.</p>
-<h2 id="dashboard">Dashboard</h2>
-<ul><li><a href="dashboard.html">dashboard</a></li><li><a href="dashboard-browse.html">dashboard browse</a></li><li><a href="dashboard-get.html">dashboard get</a></li><li><a href="dashboard-clone-live.html">dashboard clone-live</a></li><li><a href="dashboard-list.html">dashboard list</a></li><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-raw-to-prompt.html">dashboard raw-to-prompt</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-patch-file.html">dashboard patch-file</a></li><li><a href="dashboard-review.html">dashboard review</a></li><li><a href="dashboard-publish.html">dashboard publish</a></li><li><a href="dashboard-delete.html">dashboard delete</a></li><li><a href="dashboard-diff.html">dashboard diff</a></li><li><a href="dashboard-inspect-export.html">dashboard inspect-export</a></li><li><a href="dashboard-inspect-live.html">dashboard inspect-live</a></li><li><a href="dashboard-inspect-vars.html">dashboard inspect-vars</a></li><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li><li><a href="dashboard-topology.html">dashboard topology</a></li><li><a href="dashboard-impact.html">dashboard impact</a></li><li><a href="dashboard-history.html">dashboard history</a></li><li><a href="dashboard-screenshot.html">dashboard screenshot</a></li></ul>
-<h2 id="datasource">Datasource</h2>
-<ul><li><a href="datasource.html">datasource</a></li><li><a href="datasource-types.html">datasource types</a></li><li><a href="datasource-list.html">datasource list</a></li><li><a href="datasource-browse.html">datasource browse</a></li><li><a href="datasource-inspect-export.html">datasource inspect-export</a></li><li><a href="datasource-export.html">datasource export</a></li><li><a href="datasource-import.html">datasource import</a></li><li><a href="datasource-diff.html">datasource diff</a></li><li><a href="datasource-add.html">datasource add</a></li><li><a href="datasource-modify.html">datasource modify</a></li><li><a href="datasource-delete.html">datasource delete</a></li></ul>
-<h2 id="alert">Alert</h2>
-<ul><li><a href="alert.html">alert</a></li><li><a href="alert-export.html">alert export</a></li><li><a href="alert-import.html">alert import</a></li><li><a href="alert-diff.html">alert diff</a></li><li><a href="alert-plan.html">alert plan</a></li><li><a href="alert-apply.html">alert apply</a></li><li><a href="alert-delete.html">alert delete</a></li><li><a href="alert-add-rule.html">alert add-rule</a></li><li><a href="alert-clone-rule.html">alert clone-rule</a></li><li><a href="alert-add-contact-point.html">alert add-contact-point</a></li><li><a href="alert-set-route.html">alert set-route</a></li><li><a href="alert-preview-route.html">alert preview-route</a></li><li><a href="alert-new-rule.html">alert new-rule</a></li><li><a href="alert-new-contact-point.html">alert new-contact-point</a></li><li><a href="alert-new-template.html">alert new-template</a></li><li><a href="alert-list-rules.html">alert list-rules</a></li><li><a href="alert-list-contact-points.html">alert list-contact-points</a></li><li><a href="alert-list-mute-timings.html">alert list-mute-timings</a></li><li><a href="alert-list-templates.html">alert list-templates</a></li></ul>
-<h2 id="access">Access</h2>
-<ul><li><a href="access.html">access</a></li><li><a href="access-user.html">access user</a></li><li><a href="access-org.html">access org</a></li><li><a href="access-team.html">access team</a></li><li><a href="access-service-account.html">access service-account</a></li><li><a href="access-service-account-token.html">access service-account token</a></li></ul>
-<h2 id="shared-surfaces">Shared Surfaces</h2>
-<ul><li><a href="change.html">change</a></li><li><a href="change-inspect.html">change inspect</a></li><li><a href="change-check.html">change check</a></li><li><a href="change-preview.html">change preview</a></li><li><a href="change-apply.html">change apply</a></li><li><a href="change.html#advanced">change advanced</a></li><li><a href="change.html#advanced">change advanced subcommands (summary, plan, review, audit, bundle, promotion handoff)</a></li><li><a href="overview.html">overview</a></li><li><a href="overview.html#live">overview live</a></li><li><a href="status.html">status</a></li><li><a href="status.html#staged">status staged</a></li><li><a href="status.html#live">status live</a></li><li><a href="profile.html">profile</a></li><li><a href="profile.html#list">profile list</a></li><li><a href="profile.html#show">profile show</a></li><li><a href="profile.html#add">profile add</a></li><li><a href="profile.html#example">profile example</a></li><li><a href="profile.html#init">profile init</a></li><li><a href="snapshot.html">snapshot</a></li><li><a href="snapshot.html#export">snapshot export</a></li><li><a href="snapshot.html#review">snapshot review</a></li></ul>
-<p>The matching manpages live under <code>docs/man/grafana-util-*.1</code>.</p>
+    <section class="command-intro">
+  <div class="command-intro-grid"><div class="command-intro-block">
+  <p class="command-intro-label">What this page covers</p>
+  <p class="command-intro-text">Inspect the staged change package from discovered or explicit inputs.</p>
+</div>
+<div class="command-intro-block">
+  <p class="command-intro-label">When to open this page</p>
+  <ul class="command-intro-list"><li>Start here when you need the shortest path to understand what the staged package contains.</li><li>Use this before change check or change preview when you want to size the package first.</li><li>Prefer this over lower-level summary when the staged inputs may come from mixed workspace artifacts instead of only one desired.json.</li></ul>
+</div>
+<div class="command-intro-block">
+  <p class="command-intro-label">Who this page is for</p>
+  <p class="command-intro-text">Best for review-first workflows where you want summary, preflight, plan, and apply to stay explicit.</p>
+</div>
+</div>
+</section>
+<h2 id="purpose">Purpose</h2>
+<p>Inspect the staged change package from discovered or explicit inputs.</p>
+<h2 id="when-to-use">When to use</h2>
+<ul><li>Start here when you need the shortest path to understand what the staged package contains.</li><li>Use this before <code>change check</code> or <code>change preview</code> when you want to size the package first.</li><li>Prefer this over lower-level <code>summary</code> when the staged inputs may come from mixed workspace artifacts instead of only one <code>desired.json</code>.</li></ul>
+<h2 id="before-after">Before / After</h2>
+<ul><li><strong>Before</strong>: the change package is still just a set of directories, files, or staged contracts on disk.</li><li><strong>After</strong>: you have one overview-style document that tells you which sections were discovered and how large the change appears to be.</li></ul>
+<h2 id="key-flags">Key flags</h2>
+<ul><li><code>--workspace</code>: auto-discover common staged inputs from the current repo, export tree, or provisioning tree.</li><li><code>--desired-file</code>: inspect one explicit desired change file.</li><li><code>--dashboard-export-dir</code>, <code>--dashboard-provisioning-dir</code>: inspect dashboard staged inputs directly.</li><li><code>--alert-export-dir</code>, <code>--datasource-provisioning-file</code>: add alert and datasource staged inputs explicitly.</li><li><code>--source-bundle</code>: inspect an existing source bundle instead of per-surface directories.</li><li><code>--output-format</code>: render as <code>text</code> or <code>json</code>.</li><li><code>--output-file</code>, <code>--also-stdout</code>: persist the rendered output if you want a review artifact.</li></ul>
+<h2 id="examples">Examples</h2>
+<pre><code># Purpose: Inspect the staged package from repo-local inputs.
+grafana-util change inspect --workspace .</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>CHANGE PACKAGE SUMMARY:
+- dashboards: 5 modified, 2 added
+- alerts: 3 modified
+- datasources: 1 referenced inventory
+- total impact: 11 operations</code></pre>
+<pre><code># Purpose: Inspect the staged package directly from an export tree.
+grafana-util change inspect --workspace ./dashboards/raw --output-format json</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-overview&quot;,
+  &quot;schemaVersion&quot;: 1,
+  &quot;sections&quot;: [
+    {
+      &quot;title&quot;: &quot;Dashboards&quot;
+    }
+  ],
+  &quot;projectStatus&quot;: {}
+}</code></pre>
+<p>This confirms that inspect found staged inputs and rendered the shared overview-style document instead of failing discovery.</p>
+<h2 id="what-success-looks-like">What success looks like</h2>
+<ul><li>the command tells you what staged surfaces were discovered</li><li>the package size looks plausible before you spend time on preview or apply</li><li>the JSON output is stable enough to hand to another operator or attach to review notes</li></ul>
+<h2 id="failure-checks">Failure checks</h2>
+<ul><li>if discovery finds nothing, retry with an explicit input flag before assuming the files are broken</li><li>if the package looks unexpectedly small or large, verify that <code>--workspace</code> points at the right export tree or repo root</li><li>if JSON consumers read the result, validate <code>kind</code> and <code>schemaVersion</code> before deeper parsing</li></ul>
+<h2 id="related-commands">Related commands</h2>
+<ul><li><a href="change.html">change</a></li><li><a href="change-check.html">change check</a></li><li><a href="change-preview.html">change preview</a></li><li><a href="overview.html">overview</a></li></ul>
     
   </article>
   <aside class="sidebar">
   <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
   <div class="sidebar-content">
-    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#language"><span class="toc-label">Language</span></a></li><li class="toc-level-2"><a href="#output-selector-conventions"><span class="toc-label">Output selector conventions</span></a></li><li class="toc-level-2"><a href="#dashboard"><span class="toc-label">Dashboard</span></a></li><li class="toc-level-2"><a href="#datasource"><span class="toc-label">Datasource</span></a></li><li class="toc-level-2"><a href="#alert"><span class="toc-label">Alert</span></a></li><li class="toc-level-2"><a href="#access"><span class="toc-label">Access</span></a></li><li class="toc-level-2"><a href="#shared-surfaces"><span class="toc-label">Shared Surfaces</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/en/index.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/index.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#purpose"><span class="toc-label">Purpose</span></a></li><li class="toc-level-2"><a href="#when-to-use"><span class="toc-label">When to use</span></a></li><li class="toc-level-2"><a href="#before-after"><span class="toc-label">Before / After</span></a></li><li class="toc-level-2"><a href="#key-flags"><span class="toc-label">Key flags</span></a></li><li class="toc-level-2"><a href="#examples"><span class="toc-label">Examples</span></a></li><li class="toc-level-2"><a href="#what-success-looks-like"><span class="toc-label">What success looks like</span></a></li><li class="toc-level-2"><a href="#failure-checks"><span class="toc-label">Failure checks</span></a></li><li class="toc-level-2"><a href="#related-commands"><span class="toc-label">Related commands</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/en/change-overview-status.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/change-inspect.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
   </div>
 </aside>
 
 </div>
 
     </div>
-    <footer class="site-footer">Source: index.md</footer>
+    <footer class="site-footer">Source: change-inspect.md</footer>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js" async></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" async></script>

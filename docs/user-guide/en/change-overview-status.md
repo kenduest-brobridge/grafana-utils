@@ -40,10 +40,10 @@ Need the command-by-command surface instead of the workflow guide?
 Primary lane:
 
 - [change](../../commands/en/change.md)
-- [change inspect](../../commands/en/change.md#inspect)
-- [change check](../../commands/en/change.md#check)
-- [change preview](../../commands/en/change.md#preview)
-- [change apply](../../commands/en/change.md#apply)
+- [change inspect](../../commands/en/change-inspect.md)
+- [change check](../../commands/en/change-check.md)
+- [change preview](../../commands/en/change-preview.md)
+- [change apply](../../commands/en/change-apply.md)
 - [status](../../commands/en/status.md)
 - [status staged](../../commands/en/status.md#staged)
 - [status live](../../commands/en/status.md#live)

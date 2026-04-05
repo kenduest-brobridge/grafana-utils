@@ -79,67 +79,16 @@ grafana-util change apply \
 
 相關指令：`grafana-util overview`、`grafana-util status`、`grafana-util snapshot`。
 
-## `inspect`
+## 主要子指令
 
-用途：從常見 repo-local 或明確指定的輸入檢視 staged package。
+先用 root 頁了解整體 lane，再依你現在正在做的步驟打開對應的子頁：
 
-適用時機：當你想先看 staged package 內容，而不想先進入 live 比對或低階 contract。
+- [change inspect](./change-inspect.md)：確認 staged package 裡到底有什麼
+- [change check](./change-check.md)：確認 staged package 在結構上是否適合往下走
+- [change preview](./change-preview.md)：建立可審查的變更預覽
+- [change apply](./change-apply.md)：把已審核的 preview 轉成 apply intent，或真的套用到 live
 
-主要旗標：`--workspace`、`--desired-file`、`--dashboard-export-dir`、`--dashboard-provisioning-dir`、`--alert-export-dir`、`--datasource-provisioning-file`、`--source-bundle`、`--output-format`、`--output-file`、`--also-stdout`。
-
-範例：
-
-```bash
-# 用途：從 repo-local staged 輸入開始檢視。
-grafana-util change inspect --workspace .
-```
-
-```bash
-# 用途：用明確 staged 輸入建立 inspection 輸出。
-grafana-util change inspect --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-format json
-```
-
-相關指令：`change check`、`change preview`、`overview`。
-
-## `check`
-
-用途：檢查 staged package 是否在結構上適合繼續往下走。
-
-適用時機：當你需要一個 readiness gate，再決定是否 preview 或 apply。
-
-主要旗標：`--workspace`、`--availability-file`、`--target-inventory`、`--mapping-file`、`--fetch-live`、`--output-format`。
-
-範例：
-
-```bash
-grafana-util change check --workspace . --output-format json
-```
-
-```bash
-grafana-util change check --workspace . --fetch-live --availability-file ./availability.json
-```
-
-相關指令：`change inspect`、`change preview`、`status staged`。
-
-## `preview`
-
-用途：從常見 repo-local 或明確 staged 輸入預覽這次會改到什麼。
-
-適用時機：當你想看可操作的 staged preview，但不想先把自己切進低階 plan 或 bundle-preflight builder 思維。
-
-主要旗標：`--workspace`、`--desired-file`、`--source-bundle`、`--target-inventory`、`--mapping-file`、`--availability-file`、`--live-file`、`--fetch-live`、`--allow-prune`、`--trace-id`、`--output-format`、`--output-file`。
-
-範例：
-
-```bash
-grafana-util change preview --workspace . --fetch-live --profile prod
-```
-
-```bash
-grafana-util change preview --desired-file ./desired.json --live-file ./live.json --output-format json
-```
-
-相關指令：`change apply`、`change advanced`。
+這樣拆是刻意的。`change` 本身是 namespace，下面同時有一條 primary lane 和一組 advanced contracts；真正逐步操作的 manual，應該看各個子指令頁，而不是把所有細節都塞回 root。
 
 ## `advanced`
 
@@ -217,6 +166,20 @@ grafana-util change summary --desired-file ./desired.json
 grafana-util change summary --desired-file ./desired.json --output-format json
 ```
 
+**預期輸出：**
+```json
+{
+  "kind": "grafana-utils-sync-summary",
+  "summary": {
+    "resourceCount": 8,
+    "dashboardCount": 5,
+    "datasourceCount": 1
+  },
+  "resources": []
+}
+```
+這是最快的「這包變更到底多大」摘要，適合在進 preflight 或 plan 前先看一眼。
+
 相關指令：`change plan`、`change preflight`。
 
 ## `plan`
@@ -273,6 +236,21 @@ grafana-util change plan \
   --output-format json
 ```
 
+**預期輸出：**
+```json
+{
+  "kind": "grafana-utils-sync-plan",
+  "reviewed": false,
+  "summary": {
+    "would_create": 1,
+    "would_update": 4,
+    "would_delete": 0
+  },
+  "operations": []
+}
+```
+這通常就是團隊真正拿來審查的主文件。先看 `summary` 的計數，再看這份 plan 是否仍然是未審核狀態。
+
 ```bash
 # 用途：plan。
 grafana-util change plan \
@@ -323,6 +301,18 @@ grafana-util change review --plan-file ./sync-plan.json
 grafana-util change review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output-format json
 ```
 
+**預期輸出：**
+```json
+{
+  "kind": "grafana-utils-sync-plan",
+  "reviewed": true,
+  "stage": "review",
+  "stepIndex": 2,
+  "reviewNote": "peer-reviewed"
+}
+```
+review 成功後，apply 不需要再靠檔名或口頭交接去猜這份 plan 是否已經審核。
+
 成功判準：
 
 - 已審核的 plan 會變成一份明確可交接的產物，而不是只靠口頭批准
@@ -336,80 +326,6 @@ grafana-util change review --plan-file ./sync-plan.json --review-note 'peer-revi
 - 如果後續步驟拒收 reviewed plan，先看 `stage`、`stepIndex` 和 review 欄位，不要先假設 apply 壞掉
 
 相關指令：`change plan`、`change apply`。
-
-## `apply`
-
-用途：根據已審核的同步 plan 產生受控的 apply intent，並可選擇直接執行到 live。
-
-適用時機：當 plan 已經審核完成，而你準備輸出或執行 apply 步驟時。
-
-採用前後對照：
-
-- **採用前**：review 完到真正動手套用之間，常常還是模糊的一步，只知道「接下來要 apply」。
-- **採用後**：apply 會把這一步拆成可保存的 staged intent，或明確的 live 執行結果，並留下核准證據。
-
-主要旗標：`--plan-file`、`--preflight-file`、`--bundle-preflight-file`、`--approve`、`--execute-live`、`--allow-folder-delete`、`--allow-policy-reset`、`--org-id`、`--output-format`、`--applied-by`、`--applied-at`、`--approval-reason`、`--apply-note`。
-
-JSON shape：
-
-- 預設 `change apply --output-format json`
-  - `kind`：`grafana-utils-sync-apply-intent`
-  - `schemaVersion`、`toolVersion`
-  - `mode: apply`
-  - `reviewed`、`reviewRequired`、`allowPrune`、`approved`
-  - `summary`、`alertAssessment`、`operations`
-  - 可選 `preflightSummary`
-  - 可選 `bundlePreflightSummary`
-  - `appliedBy`、`appliedAt`、`approvalReason`、`applyNote`
-  - `traceId`、`stage`、`stepIndex`、`parentTraceId`
-- `change apply --execute-live --output-format json`
-  - `mode: live-apply`
-  - `appliedCount`
-  - `results`
-    - 每筆包含 `kind`、`identity`、`action`、`response`
-
-範例：
-
-```bash
-# 用途：apply。
-grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve
-```
-
-```bash
-# 用途：apply。
-grafana-util change apply \
-  --plan-file ./sync-plan-reviewed.json \
-  --approve \
-  --execute-live \
-  --url http://localhost:3000 \
-  --basic-user admin \
-  --basic-password admin
-```
-
-```bash
-# 用途：apply。
-grafana-util change apply \
-  --plan-file ./sync-plan-reviewed.json \
-  --approve \
-  --execute-live \
-  --allow-folder-delete \
-  --url http://localhost:3000 \
-  --token "$GRAFANA_API_TOKEN"
-```
-
-成功判準：
-
-- 已審核的 plan 能順利進入受控 apply 步驟，不會在最後一段丟失 review lineage
-- staged apply intent JSON 足夠拿去跑核准流程或變更單
-- live apply 輸出會明確告訴你實際執行了幾筆操作，以及每筆結果
-
-失敗時先檢查：
-
-- 如果 apply 不讓你繼續，先確認輸入 plan 已經 reviewed，而且有帶 `--approve`
-- 如果 live 執行結果和 staged intent 差很多，先比對 plan、本次 preflight 與目標環境，再決定要不要重跑
-- 如果自動化在吃 apply JSON，先分清楚這是 staged `grafana-utils-sync-apply-intent` 還是 live `mode: live-apply` 輸出，再去讀欄位
-
-相關指令：`change review`、`change preflight`、`change bundle-preflight`。
 
 ## `audit`
 
@@ -462,6 +378,19 @@ grafana-util change audit \
   --output-format json
 ```
 
+**預期輸出：**
+```json
+{
+  "kind": "grafana-utils-sync-audit",
+  "summary": {
+    "inSyncCount": 12,
+    "driftCount": 1
+  },
+  "drifts": []
+}
+```
+這裡最重要的頂層訊號是 `driftCount`。只要大於 0，就代表 managed state 和 live Grafana 已經開始分離。
+
 ```bash
 # 用途：audit。
 grafana-util change audit \
@@ -512,6 +441,20 @@ grafana-util change preflight \
   --profile prod \
   --output-format json
 ```
+
+**預期輸出：**
+```json
+{
+  "kind": "grafana-utils-sync-preflight",
+  "summary": {
+    "checkCount": 6,
+    "okCount": 6,
+    "blockingCount": 0
+  },
+  "checks": []
+}
+```
+這是結構性 gate。只要 `blockingCount` 不是 0，就應該先停在這裡修輸入，而不是往下做 plan 或 apply。
 
 ```bash
 # 用途：preflight。
@@ -577,6 +520,20 @@ grafana-util change assess-alerts --alerts-file ./alerts.json
 grafana-util change assess-alerts --alerts-file ./alerts.json --output-format json
 ```
 
+**預期輸出：**
+```json
+{
+  "kind": "grafana-utils-alert-sync-plan",
+  "summary": {
+    "alertCount": 3,
+    "candidateCount": 2,
+    "blockedCount": 1
+  },
+  "alerts": []
+}
+```
+如果你覺得整份 sync plan 對 alert 太寬，這個指令就是把 alert 那一塊單獨拉出來看。
+
 相關指令：`change bundle`、`change bundle-preflight`、`overview`。
 
 ## `bundle`
@@ -610,6 +567,21 @@ grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-expor
 # 用途：bundle。
 grafana-util change bundle --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json
 ```
+
+**預期輸出：**
+```json
+{
+  "kind": "grafana-utils-sync-source-bundle",
+  "summary": {
+    "dashboardCount": 5,
+    "datasourceCount": 1,
+    "alertCount": 3
+  },
+  "dashboards": [],
+  "alerts": []
+}
+```
+不管是寫到檔案還是印到 stdout，這都是後續 bundle / promotion 檢查會接手的 packaging artifact。
 
 相關指令：`change bundle-preflight`、`change promotion-preflight`、`snapshot export`。
 
@@ -649,6 +621,20 @@ grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json -
 # 用途：bundle-preflight。
 grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --output-format json
 ```
+
+**預期輸出：**
+```json
+{
+  "kind": "grafana-utils-sync-bundle-preflight",
+  "summary": {
+    "resourceCount": 9,
+    "syncBlockingCount": 0,
+    "providerBlockingCount": 0
+  },
+  "syncPreflight": {}
+}
+```
+當你想先回答「這包東西整體能不能進下一步」時，bundle-preflight 比單純 plan 更貼近 promotion / handoff 場景。
 
 相關指令：`change bundle`、`change promotion-preflight`、`status staged`。
 
@@ -690,5 +676,21 @@ grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.jso
 # 用途：promotion-preflight。
 grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --availability-file ./availability.json --output-format json
 ```
+
+**預期輸出：**
+```json
+{
+  "kind": "grafana-utils-sync-promotion-preflight",
+  "summary": {
+    "resourceCount": 9,
+    "directMatchCount": 6,
+    "mappedCount": 3,
+    "blockingCount": 0
+  },
+  "mappingSummary": {},
+  "blockingChecks": []
+}
+```
+這份文件要回答的不是「會改什麼」，而是「在目前 mapping 下，這包 source bundle 能不能安全 promotion 到目標環境」。
 
 相關指令：`change bundle-preflight`、`change apply`、`status live`。
