@@ -12,6 +12,11 @@ Create a new rule under a desired\-state alert tree.
 Attach labels, annotations, severity, and threshold logic in one command.
 .IP \(bu 2
 Generate a route for the rule unless you explicitly skip it.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: adding a rule often means hand\-assembling YAML, then separately fixing routing or metadata gaps.
+.IP \(bu 2
+After: one CLI step can create the rule, wire its route, and leave a staged artifact that is easier to review later.
 .SH COMMON OPTIONS
 .IP \(bu 2
 \-\-desired\-dir points to the staged alert tree.
@@ -23,6 +28,20 @@ Generate a route for the rule unless you explicitly skip it.
 \-\-label, \-\-annotation, \-\-severity, \-\-for, \-\-expr, \-\-threshold, \-\-above, and \-\-below shape the rule.
 .IP \(bu 2
 \-\-dry\-run previews the planned file output.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+the rule name, folder, rule group, thresholds, and route are created together
+.IP \(bu 2
+the staged alert tree is readable enough for another operator to review
+.IP \(bu 2
+\-\-dry\-run shows the shape of the files before you commit them
+.SH FAILURE CHECKS
+.IP \(bu 2
+if rule creation fails, confirm that \-\-desired\-dir points at the correct staged alert tree
+.IP \(bu 2
+if the route is missing, check whether \-\-no\-route was used or whether \-\-receiver was omitted
+.IP \(bu 2
+if you plan to hand the output to a later apply step, inspect the \-\-dry\-run result or the generated files first
 .SH EXAMPLES
 .PP
 Author a staged alert rule from the higher\-level authoring surface.

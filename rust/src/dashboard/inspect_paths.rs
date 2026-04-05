@@ -5,9 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::common::{
-    message, object_field, should_print_stdout, write_plain_output_file, Result,
-};
+use crate::common::{message, object_field, should_print_stdout, write_plain_output_file, Result};
 
 use super::super::files::{load_datasource_inventory, load_folder_inventory};
 use super::super::inspect_live::load_variant_index_entries;

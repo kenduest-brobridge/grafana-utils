@@ -8,6 +8,20 @@ grafana\-util\-change\-apply \- build a gated apply intent from a reviewed sync 
 build a gated apply intent from a reviewed sync plan, and optionally execute it live.
 .PP
 when a plan is already reviewed and you are ready to emit or execute the apply step.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+a reviewed plan can move into a gated apply step without losing the review lineage
+.IP \(bu 2
+staged apply intent JSON is explicit enough for approval workflows or change tickets
+.IP \(bu 2
+live apply output shows exactly how many operations ran and what each result was
+.SH FAILURE CHECKS
+.IP \(bu 2
+if apply refuses to proceed, confirm the input plan was reviewed and that approval flags such as \-\-approve are present
+.IP \(bu 2
+if live execution behaves differently from the staged intent, compare the plan, optional preflight, and live target before retrying
+.IP \(bu 2
+if automation reads apply JSON, distinguish staged grafana\-utils\-sync\-apply\-intent from live mode: live\-apply output before parsing fields
 .SH SEE ALSO
 \fBgrafana-util\fR(1),
 \fBgrafana-util-change\fR(1)

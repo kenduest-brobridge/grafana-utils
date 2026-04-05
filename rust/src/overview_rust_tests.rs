@@ -381,7 +381,10 @@ fn build_overview_artifacts_rejects_empty_inputs() {
 fn overview_args_parse_and_help_expose_output_mode() {
     let default_args = OverviewCliArgs::parse_from(["grafana-util"]);
     assert!(default_args.command.is_none());
-    assert_eq!(default_args.staged.output_format, OverviewOutputFormat::Text);
+    assert_eq!(
+        default_args.staged.output_format,
+        OverviewOutputFormat::Text
+    );
 
     let table_args = OverviewCliArgs::parse_from(["grafana-util", "--output-format", "table"]);
     assert_eq!(table_args.staged.output_format, OverviewOutputFormat::Table);
@@ -409,9 +412,12 @@ fn overview_args_parse_and_help_expose_output_mode() {
     }
     #[cfg(not(feature = "tui"))]
     {
-        assert!(
-            OverviewCliArgs::try_parse_from(["grafana-util", "--output-format", "interactive"]).is_err()
-        );
+        assert!(OverviewCliArgs::try_parse_from([
+            "grafana-util",
+            "--output-format",
+            "interactive"
+        ])
+        .is_err());
     }
 
     let help = OverviewCliArgs::command().render_long_help().to_string();

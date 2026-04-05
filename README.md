@@ -1,9 +1,9 @@
 # grafana-util
 ### A Rust CLI for Grafana Operations and Administration
 
-[![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-utils/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-utils/actions)
-[![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-utils)](LICENSE)
-[![Version](https://img.shields.io/github/v/tag/kenduest-brobridge/grafana-utils)](https://github.com/kenduest-brobridge/grafana-utils/tags)
+[![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-util/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-util/actions)
+[![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-util)](LICENSE)
+[![Version](https://img.shields.io/github/v/tag/kenduest-brobridge/grafana-util)](https://github.com/kenduest-brobridge/grafana-util/tags)
 
 English | [繁體中文](./README.zh-TW.md)
 
@@ -52,7 +52,7 @@ This is the main shift: the tool does not just give you commands. It gives you a
 
 ```bash
 # 1. Install via one-liner
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 ```bash
@@ -72,7 +72,7 @@ Pinned release:
 ```bash
 # Install one pinned release.
 VERSION=0.8.0 \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 Custom install directory:
@@ -80,7 +80,7 @@ Custom install directory:
 ```bash
 # Install into one explicit binary directory.
 BIN_DIR="$HOME/.local/bin" \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 Show installer help first:
@@ -89,7 +89,7 @@ Show installer help first:
 sh ./scripts/install.sh --help
 ```
 
-- Release downloads: <https://github.com/kenduest-brobridge/grafana-utils/releases>
+- Release downloads: <https://github.com/kenduest-brobridge/grafana-util/releases>
 - Published binaries: standard release binaries are published for `linux-amd64` and `macos-arm64`. If you need the browser-enabled screenshot build, download the `*-browser-*` archive from the same release.
 - Default install location: the script uses `BIN_DIR` when you set it, otherwise `/usr/local/bin` if writable, and otherwise falls back to `$HOME/.local/bin`.
 - PATH setup: if the chosen install directory is not on `PATH`, the script prints the exact `zsh` / `bash` snippet to add it.

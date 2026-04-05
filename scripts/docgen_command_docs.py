@@ -41,6 +41,16 @@ SECTION_ALIASES = {
     "說明": "Description",
     "Description": "Description",
     "Workflow notes": "Workflow notes",
+    "Workflow lanes": "Workflow lanes",
+    "這一頁對應的工作流": "Workflow lanes",
+    "Choose this page when": "Choose this page when",
+    "從這裡開始": "Choose this page when",
+    "Before / After": "Before / After",
+    "採用前後對照": "Before / After",
+    "What success looks like": "What success looks like",
+    "成功判準": "What success looks like",
+    "Failure checks": "Failure checks",
+    "失敗時先檢查": "Failure checks",
     "Datasource resolution": "Datasource resolution",
     "Placeholder model": "Placeholder model",
     "Root": "Root",
@@ -65,6 +75,16 @@ LABEL_ALIASES = {
     "驗證說明": "Auth notes",
     "Description": "Description",
     "說明": "Description",
+    "Workflow lanes": "Workflow lanes",
+    "這一頁對應的工作流": "Workflow lanes",
+    "Choose this page when": "Choose this page when",
+    "從這裡開始": "Choose this page when",
+    "Before / After": "Before / After",
+    "採用前後對照": "Before / After",
+    "What success looks like": "What success looks like",
+    "成功判準": "What success looks like",
+    "Failure checks": "Failure checks",
+    "失敗時先檢查": "Failure checks",
 }
 
 COMMAND_SUBSECTION_LABELS = frozenset(
@@ -97,8 +117,13 @@ class CommandDocPage:
     purpose: str
     when: str
     when_lines: tuple[str, ...]
+    workflow_lines: tuple[str, ...]
+    choose_lines: tuple[str, ...]
+    before_after_lines: tuple[str, ...]
     key_flags: tuple[str, ...]
     examples: tuple[str, ...]
+    success_lines: tuple[str, ...]
+    failure_lines: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -248,8 +273,13 @@ def parse_command_page(path: Path, cli_path: str) -> CommandDocPage:
         purpose=extract_paragraph(purpose_source.get("Purpose", [])),
         when=extract_paragraph(purpose_source.get("When to use", [])),
         when_lines=tuple(extract_text_lines(purpose_source.get("When to use", []))),
+        workflow_lines=tuple(extract_text_lines(sections.get("Workflow lanes", []))),
+        choose_lines=tuple(extract_text_lines(sections.get("Choose this page when", []))),
+        before_after_lines=tuple(extract_text_lines(sections.get("Before / After", []))),
         key_flags=tuple(extract_bullets(purpose_source.get("Key flags", []))),
         examples=tuple(extract_codeblock(purpose_source.get("Examples", []))),
+        success_lines=tuple(extract_text_lines(sections.get("What success looks like", []))),
+        failure_lines=tuple(extract_text_lines(sections.get("Failure checks", []))),
     )
 
 
@@ -271,8 +301,13 @@ def parse_inline_subcommands(path: Path, cli_path: str) -> list[CommandDocPage]:
                 purpose=extract_paragraph(labels.get("Purpose", [])),
                 when=extract_paragraph(labels.get("When to use", [])),
                 when_lines=tuple(extract_text_lines(labels.get("When to use", []))),
+                workflow_lines=tuple(extract_text_lines(labels.get("Workflow lanes", []))),
+                choose_lines=tuple(extract_text_lines(labels.get("Choose this page when", []))),
+                before_after_lines=tuple(extract_text_lines(labels.get("Before / After", []))),
                 key_flags=tuple(extract_bullets(labels.get("Key flags", []))),
                 examples=tuple(extract_codeblock(labels.get("Examples", []))),
+                success_lines=tuple(extract_text_lines(labels.get("What success looks like", []))),
+                failure_lines=tuple(extract_text_lines(labels.get("Failure checks", []))),
             )
         )
     return parsed

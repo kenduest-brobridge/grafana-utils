@@ -10,6 +10,11 @@ List live Grafana alert rules.
 Inspect alert rule inventory from one org or from all visible orgs.
 .IP \(bu 2
 Render the list in text, table, CSV, JSON, or YAML form.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: inspect alert rules through the UI and manually cross\-check which org they belong to.
+.IP \(bu 2
+After: collect one inventory output that is easier to compare, diff, or hand off to CI.
 .SH COMMON OPTIONS
 .IP \(bu 2
 \-\-org\-id lists rules from one Grafana org ID.
@@ -19,6 +24,20 @@ Render the list in text, table, CSV, JSON, or YAML form.
 \-\-output\-format controls the output format, including text, table, csv, json, and yaml.
 .IP \(bu 2
 \-\-no\-header omits the header row.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+The alert rules you expect appear in the requested output format.
+.IP \(bu 2
+The org or profile scope matches what you meant to inspect.
+.IP \(bu 2
+The output is easy to feed into a review or audit step if needed.
+.SH FAILURE CHECKS
+.IP \(bu 2
+If the list looks incomplete, verify token scope or switch to a broader profile.
+.IP \(bu 2
+If \-\-all\-orgs does not show everything you expect, use admin\-backed credentials.
+.IP \(bu 2
+Check the org/profile context before assuming the inventory is empty.
 .SH EXAMPLES
 .PP
 List live Grafana alert rules.

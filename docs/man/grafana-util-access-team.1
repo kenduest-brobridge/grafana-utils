@@ -14,6 +14,11 @@ Create or update team membership and admin assignments.
 Export or import team bundles.
 .IP \(bu 2
 Remove a team by id or exact name.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: team membership changes often happen through UI side menus or scattered scripts.
+.IP \(bu 2
+After: one namespace handles inventory, membership updates, export/import, and deletion with the same auth model.
 .SH COMMON OPTIONS
 .TP
 .B list
@@ -36,6 +41,20 @@ Remove a team by id or exact name.
 .TP
 .B delete
 \-\-team\-id, \-\-name, \-\-yes, \-\-json
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+team membership changes stay tied to an exact team id or name
+.IP \(bu 2
+admin assignments are visible before you add or remove members
+.IP \(bu 2
+exported bundles can be reused in another environment without re\-creating the team by hand
+.SH FAILURE CHECKS
+.IP \(bu 2
+if list, add, modify, or delete fails, confirm the team exists in the selected org and the auth scope is correct
+.IP \(bu 2
+if membership looks incomplete, recheck the exact member names and whether \-\-with\-members was set
+.IP \(bu 2
+if an import behaves unexpectedly, verify the source bundle and the target environment before retrying
 .SH EXAMPLES
 .PP
 List, browse, create, modify, export, import, diff, or delete Grafana teams.

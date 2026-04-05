@@ -8,6 +8,11 @@ grafana\-util\-dashboard\-inspect\-export \- Analyze dashboard export directorie
 Analyze dashboard export directories with operator\-summary and report\-contract views.
 .PP
 Use this when you want to read a local export tree, inspect its structure, or render governance and dependency reports without contacting Grafana.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: an export tree is just a folder of JSON files, and you still have to guess which dashboards, variables, or policy checks matter.
+.IP \(bu 2
+After: one inspect pass turns that tree into operator views you can review, hand to CI, or feed into later checks such as topology and governance\-gate.
 .SH COMMON OPTIONS
 .TP
 .B \-\-import\-dir
@@ -33,6 +38,20 @@ write the result to disk.
 .TP
 .B \-\-no\-header
 suppress table\-like headers.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+you can explain what is inside an export tree without manually opening dozens of dashboard files
+.IP \(bu 2
+governance or dependency output is stable enough to hand to CI or a second operator
+.IP \(bu 2
+later checks such as dashboard topology, dashboard impact, or dashboard governance\-gate can start from the inspect artifacts instead of re\-reading the raw tree
+.SH FAILURE CHECKS
+.IP \(bu 2
+if the export tree looks incomplete, confirm whether you are pointing at raw or provisioning content before you trust the report
+.IP \(bu 2
+if a later command cannot consume the result, check whether you emitted governance\-json or another report shape by mistake
+.IP \(bu 2
+if the tree came from an older export, rerun dashboard export first so you do not analyze stale files
 .SH EXAMPLES
 .PP
 Analyze dashboard export directories with operator\-summary and report\-contract views.

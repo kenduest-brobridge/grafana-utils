@@ -10,6 +10,22 @@ grafana\-util\-dashboard \- dashboard browse, export, import, inspection, govern
 grafana\-util dashboard is the namespace for live dashboard workflows, local draft handling, export/import review, inspection, topology, and screenshots. The same namespace is also available as grafana\-util db.
 .PP
 Use this namespace when you need to browse live dashboards, fetch or clone a live dashboard into a local JSON draft, compare local files with Grafana, inspect export or live metadata, convert raw dashboards into prompt JSON, or publish a prepared dashboard back to Grafana.
+.SH WORKFLOW LANES
+.PP
+\- Inspect: browse, list, get, inspect\-live, inspect\-export, inspect\-vars, and topology checks.
+.PP
+\- Move: export, import, clone\-live, raw\-to\-prompt, diff, and publish paths.
+.PP
+\- Review Before Mutate: review, governance\-gate, and impact analysis.
+.PP
+\- Capture: screenshot flows for reproducible visual proof.
+.PP
+Choose this page when the task is dashboard work but you are still deciding whether the next step is to inspect, move, review, or capture.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: dashboard work is often split across UI browsing, one\-off exports, local JSON edits, and ad hoc screenshot or review steps.
+.IP \(bu 2
+After: the dashboard namespace keeps browse, inspect, move, review, and capture in one place, so you can pick the lane first and then jump to the matching subcommand.
 .SH SUBCOMMANDS
 .TP
 .B browse
@@ -75,6 +91,20 @@ load repo\-local defaults from grafana\-util.yaml.
 .TP
 .B \-\-color
 control JSON color output for the namespace.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+you can tell whether the task is inspect, move, review, or capture before opening a subcommand
+.IP \(bu 2
+inventory reads, export/import flows, and review surfaces share the same auth and bundle conventions
+.IP \(bu 2
+screenshot and topology paths stay available when you need proof instead of only a final JSON blob
+.SH FAILURE CHECKS
+.IP \(bu 2
+if browse output looks incomplete, verify the profile, auth flags, and target org before retrying
+.IP \(bu 2
+if live inspect or topology output looks stale, confirm you are pointing at the current Grafana and not at an older local export
+.IP \(bu 2
+if a result is going into automation, set \-\-output\-format explicitly so the downstream step knows the contract
 .SH WORKFLOW NOTES
 .PP
 Dashboard export intentionally separates output lanes for different workflows. Treat the raw export tree as the canonical replay or import source unless a command explicitly asks for another lane.

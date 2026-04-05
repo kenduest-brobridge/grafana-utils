@@ -8,6 +8,11 @@ grafana\-util\-datasource\-diff \- Compare datasource inventory from a local bun
 Compare datasource inventory from a local bundle against live Grafana and print an operator\-summary diff report.
 .PP
 Use this when you want a concise live\-versus\-local difference report before import.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: you had to inspect local and live datasource JSON by hand to find drift.
+.IP \(bu 2
+After: one diff command shows what changed between the bundle and Grafana before you import anything.
 .SH COMMON OPTIONS
 .TP
 .B \-\-diff\-dir
@@ -15,6 +20,20 @@ local datasource bundle to compare.
 .TP
 .B \-\-input\-format
 choose inventory or provisioning.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+you can explain the change set before import
+.IP \(bu 2
+inventory and provisioning inputs both produce a readable summary
+.IP \(bu 2
+the output makes it obvious whether the bundle or the live side changed
+.SH FAILURE CHECKS
+.IP \(bu 2
+if the diff is unexpectedly empty, verify the bundle path and \-\-input\-format
+.IP \(bu 2
+if the live side looks wrong, confirm the target Grafana and org scope before trusting the report
+.IP \(bu 2
+if the diff is noisy, make sure you are comparing the intended inventory bundle rather than an older provisioning tree
 .SH EXAMPLES
 .PP
 Compare datasource inventory from a local bundle against live Grafana and print an operator\-summary diff report.

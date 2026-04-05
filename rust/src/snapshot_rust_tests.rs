@@ -187,7 +187,10 @@ fn snapshot_review_builds_overview_args_for_interactive_output() {
         overview_args.datasource_export_dir,
         Some(PathBuf::from("./snapshot/datasources"))
     );
-    assert_eq!(overview_args.output_format, OverviewOutputFormat::Interactive);
+    assert_eq!(
+        overview_args.output_format,
+        OverviewOutputFormat::Interactive
+    );
 
     let document = json!({
         "kind": "grafana-utils-snapshot-review",

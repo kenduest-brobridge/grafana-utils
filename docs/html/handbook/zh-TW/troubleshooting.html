@@ -801,7 +801,7 @@ grafana-util dashboard list -v</code></pre>
 <h2 id="名詞解釋">名詞解釋</h2>
 <table><thead><tr><th>術語</th><th>定義</th></tr></thead><tbody><tr><td><strong>Surface</strong></td><td>高階操作面分類，例如 <code>Status</code>、<code>Overview</code>、<code>Change</code></td></tr><tr><td><strong>Lane</strong></td><td>資料路徑，例如 <code>raw/</code>、<code>prompt/</code>、<code>provisioning/</code></td></tr><tr><td><strong>Contract</strong></td><td>用來定義 readiness 或 compatibility 的結構化 JSON 文件</td></tr><tr><td><strong>Masked Recovery</strong></td><td>匯出時先把 secrets 遮蔽，匯入或 replay 時再補回</td></tr><tr><td><strong>Desired State</strong></td><td>儲存在 Git 中、CLI 拿來對照 live Grafana 的目標設定</td></tr><tr><td><strong>Drift</strong></td><td>live Grafana 與本地 staged / desired 輸出物之間的差距</td></tr></tbody></table>
 <h2 id="取得更多協助">取得更多協助</h2>
-<ul><li><strong>先確認版本</strong>：回報問題時先執行 <code>grafana-util --version</code></li><li><strong>專案儲存庫</strong>：請在 <a href="https://github.com/kendlee/grafana-utils/issues">GitHub Issues</a> 回報 Bug 或提需求</li></ul>
+<ul><li><strong>先確認版本</strong>：回報問題時先執行 <code>grafana-util --version</code></li><li><strong>專案儲存庫</strong>：請在 <a href="https://github.com/kenduest-brobridge/grafana-util/issues">GitHub Issues</a> 回報 Bug 或提需求</li></ul>
 <p>回報問題時，盡量附上：</p>
 <ul><li>完整指令</li><li>這次是 live 還是 staged</li><li>使用的是 <code>--profile</code>、direct Basic auth，還是 token auth</li><li>問題比較像語法、連線、scope，還是 staged input shape</li></ul>
 <p><a href="recipes.html">⬅️ 上一章：實戰錦囊與最佳實踐</a> | <a href="index.html">🏠 回首頁</a></p>

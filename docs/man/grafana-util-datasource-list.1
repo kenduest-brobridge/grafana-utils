@@ -8,6 +8,11 @@ grafana\-util\-datasource\-list \- List live Grafana datasource inventory.
 List live Grafana datasource inventory.
 .PP
 Use this when you need a non\-interactive inventory of datasources, either for the current org, one explicit org, or across all visible orgs.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: datasource inventory was easy to read only after jumping between Grafana UI, export bundles, or ad hoc API calls.
+.IP \(bu 2
+After: one inventory command can give you a reviewable snapshot in text, table, CSV, JSON, or YAML for either one org or all visible orgs.
 .SH COMMON OPTIONS
 .TP
 .B \-\-org\-id
@@ -24,6 +29,20 @@ choose the displayed columns.
 .TP
 .B \-\-no\-header
 suppress table headers.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+you can point the command at the org you care about and get the inventory you expected
+.IP \(bu 2
+table and CSV output are easy to hand to a script or review in a pull request
+.IP \(bu 2
+all\-org inventory only happens when you really want a cross\-org read
+.SH FAILURE CHECKS
+.IP \(bu 2
+if the inventory is empty, confirm the org scope and whether the credentials can see the target org
+.IP \(bu 2
+if \-\-all\-orgs fails, fall back to Basic auth and check whether the token is limited to one org
+.IP \(bu 2
+if column selection looks wrong, verify the output format and requested columns together
 .SH EXAMPLES
 .PP
 List live Grafana datasource inventory.

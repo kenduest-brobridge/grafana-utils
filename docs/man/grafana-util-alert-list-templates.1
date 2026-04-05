@@ -10,6 +10,11 @@ List live Grafana notification templates.
 Inspect template inventory from one org or from all visible orgs.
 .IP \(bu 2
 Render the list in text, table, CSV, JSON, or YAML form.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: open template pages one by one to see what notification templates exist.
+.IP \(bu 2
+After: list the inventory once and compare it against the org or profile you care about.
 .SH COMMON OPTIONS
 .IP \(bu 2
 \-\-org\-id lists templates from one Grafana org ID.
@@ -19,6 +24,20 @@ Render the list in text, table, CSV, JSON, or YAML form.
 \-\-output\-format controls the output format, including text, table, csv, json, and yaml.
 .IP \(bu 2
 \-\-no\-header omits the header row.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+The templates you expect are present in the chosen format.
+.IP \(bu 2
+The output scope matches the org or profile you intended to inspect.
+.IP \(bu 2
+The format is ready for human review or scripting if needed.
+.SH FAILURE CHECKS
+.IP \(bu 2
+If the list is unexpectedly small, verify token scope or switch to a broader profile.
+.IP \(bu 2
+If \-\-all\-orgs misses entries, try admin\-backed credentials instead of a narrow token.
+.IP \(bu 2
+Confirm the org/profile before interpreting an empty response as a real absence.
 .SH EXAMPLES
 .PP
 List live Grafana notification templates.

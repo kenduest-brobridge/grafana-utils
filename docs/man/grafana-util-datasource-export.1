@@ -8,6 +8,11 @@ grafana\-util\-datasource\-export \- Export live Grafana datasource inventory as
 Export live Grafana datasource inventory as normalized JSON plus provisioning files.
 .PP
 Use this when you need a local datasource bundle for later inspection, diff, or import.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: live datasource state was easy to lose because the export shape was not normalized or easy to reuse later.
+.IP \(bu 2
+After: one export gives you a local bundle that is stable enough for inspection, diff, and import.
 .SH COMMON OPTIONS
 .TP
 .B \-\-export\-dir
@@ -27,6 +32,20 @@ skip the provisioning variant.
 .TP
 .B \-\-dry\-run
 preview what would be written.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+the export tree is complete enough to inspect later without Grafana
+.IP \(bu 2
+normalized JSON and provisioning files stay aligned with the source inventory
+.IP \(bu 2
+the bundle is ready for diff or import without extra hand cleanup
+.SH FAILURE CHECKS
+.IP \(bu 2
+if the export tree is missing org data, confirm the org scope and whether the credentials can see it
+.IP \(bu 2
+if \-\-all\-orgs fails, use Basic auth and verify that the account can see each target org
+.IP \(bu 2
+if the bundle looks stale, verify the export directory and whether \-\-overwrite was used intentionally
 .SH EXAMPLES
 .PP
 Export live Grafana datasource inventory as normalized JSON plus provisioning files.

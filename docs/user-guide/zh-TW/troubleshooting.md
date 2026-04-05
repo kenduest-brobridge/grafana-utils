@@ -126,7 +126,7 @@ grafana-util dashboard list -v
 ## 🆘 取得更多協助
 
 - **先確認版本**：回報問題時先執行 `grafana-util --version`
-- **專案儲存庫**：請在 [GitHub Issues](https://github.com/kendlee/grafana-utils/issues) 回報 Bug 或提需求
+- **專案儲存庫**：請在 [GitHub Issues](https://github.com/kenduest-brobridge/grafana-util/issues) 回報 Bug 或提需求
 
 回報問題時，盡量附上：
 

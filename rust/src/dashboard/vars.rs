@@ -8,8 +8,8 @@ use serde_json::{Map, Value};
 use std::path::PathBuf;
 
 use crate::common::{
-    message, object_field, render_json_value, should_print_stdout, string_field,
-    value_as_object, write_plain_output_file, Result,
+    message, object_field, render_json_value, should_print_stdout, string_field, value_as_object,
+    write_plain_output_file, Result,
 };
 use crate::http::JsonHttpClient;
 use crate::tabular_output::render_yaml;

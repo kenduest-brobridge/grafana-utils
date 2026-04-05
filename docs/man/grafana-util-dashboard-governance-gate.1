@@ -8,6 +8,11 @@ grafana\-util\-dashboard\-governance\-gate \- Evaluate governance policy against
 Evaluate governance policy against dashboard inspect JSON artifacts.
 .PP
 Use this when you already have governance\-json and query\-report artifacts and want a policy pass or fail result before promotion.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: teams can export dashboards and inspect them, but policy violations still need a human to spot them one by one.
+.IP \(bu 2
+After: governance\-gate turns those artifacts into an explicit pass/fail decision with machine\-readable findings for CI or review.
 .SH COMMON OPTIONS
 .TP
 .B \-\-policy\-source
@@ -33,6 +38,20 @@ optionally write the normalized result JSON.
 .TP
 .B \-\-interactive
 open the interactive terminal browser over findings.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+policy checks fail before promotion, not after a dashboard lands in the wrong environment
+.IP \(bu 2
+text output is readable enough for manual review, while JSON output is stable enough for CI gates
+.IP \(bu 2
+the same artifacts can be rechecked after a policy change without rerunning export or inspect from scratch
+.SH FAILURE CHECKS
+.IP \(bu 2
+if the command fails immediately, confirm the policy source and whether the policy file path or builtin policy name is valid
+.IP \(bu 2
+if the gate result seems incomplete, verify that governance and queries came from the same inspect run
+.IP \(bu 2
+if automation reads the result, prefer \-\-output\-format json and validate the contract before treating a pass/fail as final
 .SH EXAMPLES
 .PP
 Evaluate governance policy against dashboard inspect JSON artifacts.

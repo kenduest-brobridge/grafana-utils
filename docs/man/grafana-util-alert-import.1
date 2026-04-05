@@ -12,6 +12,11 @@ Recreate an exported alert bundle in Grafana.
 Update existing alert resources with \-\-replace\-existing.
 .IP \(bu 2
 Preview import actions before making changes.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: recreate alert resources manually or paste JSON back into Grafana one object at a time.
+.IP \(bu 2
+After: import one export bundle and let the command handle the resource set as a unit.
 .SH COMMON OPTIONS
 .IP \(bu 2
 \-\-import\-dir points at the raw/ export directory.
@@ -23,6 +28,20 @@ Preview import actions before making changes.
 \-\-json renders dry\-run output as structured JSON.
 .IP \(bu 2
 \-\-dashboard\-uid\-map and \-\-panel\-id\-map repair linked alert rules during import.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+Dry\-run output matches the resources you intended to import.
+.IP \(bu 2
+Live import restores the expected rules, contact points, mute timings, templates, and policies.
+.IP \(bu 2
+Dashboard\-linked alert rules still point at the right dashboards or panels after mapping.
+.SH FAILURE CHECKS
+.IP \(bu 2
+Make sure \-\-import\-dir points at the raw/ directory, not the parent export folder.
+.IP \(bu 2
+If dashboard\-linked rules move, supply the dashboard and panel mapping flags before importing.
+.IP \(bu 2
+Use \-\-replace\-existing only when you expect to overwrite matching live resources.
 .SH EXAMPLES
 .PP
 Import alerting resource JSON files through the Grafana API.

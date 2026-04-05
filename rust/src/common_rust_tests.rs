@@ -76,8 +76,8 @@ fn structured_local_parse_and_transport_helpers_include_context() {
 
 #[test]
 fn context_preserves_error_identity_and_status_code() {
-    let parse_error = parse_error("dashboard file", "invalid JSON")
-        .with_context("Failed to load dashboard");
+    let parse_error =
+        parse_error("dashboard file", "invalid JSON").with_context("Failed to load dashboard");
 
     assert_eq!(parse_error.kind(), "context");
     assert_eq!(

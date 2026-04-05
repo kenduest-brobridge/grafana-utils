@@ -262,8 +262,8 @@ fn snapshot_live_dashboard_export_with_fetcher_retries_rate_limited_dashboard_fe
 
     assert_eq!(count, 1);
     assert_eq!(attempts.load(Ordering::SeqCst), 3);
-    let staged = fs::read_to_string(temp.path().join("General").join("CPU_Main__cpu-main.json"))
-        .unwrap();
+    let staged =
+        fs::read_to_string(temp.path().join("General").join("CPU_Main__cpu-main.json")).unwrap();
     assert!(staged.contains("\"uid\": \"cpu-main\""));
 }
 
@@ -285,28 +285,34 @@ fn snapshot_live_dashboard_export_with_fetcher_caps_worker_parallelism() {
         })
         .collect::<Vec<_>>();
 
-    test_support::snapshot_live_dashboard_export_with_fetcher(temp.path(), &summaries, 128, false, |uid| {
-        let in_flight = current.fetch_add(1, Ordering::SeqCst) + 1;
-        let mut seen = peak.load(Ordering::SeqCst);
-        while in_flight > seen
-            && peak
-                .compare_exchange(seen, in_flight, Ordering::SeqCst, Ordering::SeqCst)
-                .is_err()
-        {
-            seen = peak.load(Ordering::SeqCst);
-        }
-        std::thread::sleep(std::time::Duration::from_millis(20));
-        current.fetch_sub(1, Ordering::SeqCst);
-        Ok(serde_json::json!({
-            "dashboard": {
-                "id": 11,
-                "uid": uid,
-                "title": uid,
-                "panels": []
-            },
-            "meta": {}
-        }))
-    })
+    test_support::snapshot_live_dashboard_export_with_fetcher(
+        temp.path(),
+        &summaries,
+        128,
+        false,
+        |uid| {
+            let in_flight = current.fetch_add(1, Ordering::SeqCst) + 1;
+            let mut seen = peak.load(Ordering::SeqCst);
+            while in_flight > seen
+                && peak
+                    .compare_exchange(seen, in_flight, Ordering::SeqCst, Ordering::SeqCst)
+                    .is_err()
+            {
+                seen = peak.load(Ordering::SeqCst);
+            }
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            current.fetch_sub(1, Ordering::SeqCst);
+            Ok(serde_json::json!({
+                "dashboard": {
+                    "id": 11,
+                    "uid": uid,
+                    "title": uid,
+                    "panels": []
+                },
+                "meta": {}
+            }))
+        },
+    )
     .unwrap();
 
     assert!(peak.load(Ordering::SeqCst) <= 16);

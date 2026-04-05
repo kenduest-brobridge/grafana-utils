@@ -4,8 +4,7 @@ use serde_json::Value;
 use std::path::Path;
 
 use crate::common::{
-    load_json_object_file, render_json_value, should_print_stdout, write_plain_output_file,
-    Result,
+    load_json_object_file, render_json_value, should_print_stdout, write_plain_output_file, Result,
 };
 
 use super::{

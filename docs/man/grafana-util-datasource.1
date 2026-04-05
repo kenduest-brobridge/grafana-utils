@@ -10,6 +10,20 @@ grafana\-util\-datasource \- datasource catalog, export, import, diff, browse, a
 grafana\-util datasource is the namespace for catalog lookup, live browsing, export/import, diff, and live create/modify/delete workflows. The same namespace is also available as grafana\-util ds.
 .PP
 Use this namespace when you want to inspect supported datasource types, browse live inventory, export a datasource bundle, compare a local bundle with Grafana, or create and maintain live datasources.
+.SH WORKFLOW LANES
+.PP
+\- Inspect: types, browse, list, and inspect\-export paths.
+.PP
+\- Move: export, import, and diff paths when you are carrying datasource state between environments.
+.PP
+\- Review Before Mutate: add, modify, and delete flows before a live datasource changes.
+.PP
+Choose this page when the work might turn into inventory, migration, or a reviewed datasource change and you want to decide the lane first.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: data source work is split across Grafana UI edits, API calls, and one\-off shell snippets that are hard to review later.
+.IP \(bu 2
+After: the same lifecycle is grouped into one namespace, so browse, export, diff, and mutation flows can share the same auth and review habits.
 .SH SUBCOMMANDS
 .TP
 .B types
@@ -54,6 +68,20 @@ load repo\-local defaults from grafana\-util.yaml.
 .TP
 .B \-\-color
 control JSON color output for the namespace.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+you can tell whether the next step is inventory, export/import, diff, or live mutation before touching a production data source
+.IP \(bu 2
+repeatable auth and profile settings keep the same commands usable across daily operations and CI
+.IP \(bu 2
+export and diff flows give you a safer path than editing a live data source first and asking questions later
+.SH FAILURE CHECKS
+.IP \(bu 2
+if browse or list output looks incomplete, confirm whether the token or profile can actually see the target org
+.IP \(bu 2
+if export or diff results look stale, verify that you are pointing at the correct Grafana and not at an older local bundle
+.IP \(bu 2
+if a live mutation fails, compare the intended input with the current live data source before retrying the same command
 .SH WORKFLOW NOTES
 .PP
 Datasource export follows a masked recovery contract. Treat the canonical export JSON as the replay source. Treat provisioning output as a derived projection for Grafana provisioning workflows.

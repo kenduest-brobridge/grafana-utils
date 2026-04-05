@@ -1823,11 +1823,9 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
 
 #[test]
 fn maybe_render_unified_help_from_os_args_supports_change_schema_root() {
-    let help = maybe_render_unified_help_from_os_args(
-        ["grafana-util", "change", "--help-schema"],
-        false,
-    )
-    .unwrap();
+    let help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "change", "--help-schema"], false)
+            .unwrap();
     assert!(help.contains("Change JSON schema guide"));
     assert!(help.contains("grafana-utils-sync-summary"));
     assert!(help.contains("grafana-utils-sync-plan"));

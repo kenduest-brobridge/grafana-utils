@@ -280,6 +280,19 @@ def emit_when(lines: list[str], page: CommandDocPage) -> None:
         lines.extend([".PP", roff_text(page.when)])
 
 
+def emit_line_section(lines: list[str], title: str, entries: tuple[str, ...]) -> None:
+    if not entries:
+        return
+    lines.append(f".SH {title}")
+    bullet_lines = [line[2:] for line in entries if line.startswith("- ")]
+    if bullet_lines and len(bullet_lines) == len(entries):
+        for bullet in bullet_lines:
+            lines.extend([".IP \\(bu 2", roff_text(bullet)])
+        return
+    for entry in entries:
+        lines.extend([".PP", roff_text(entry)])
+
+
 def emit_common_options(lines: list[str], key_flags: tuple[str, ...]) -> None:
     if not key_flags:
         return
@@ -387,10 +400,15 @@ def generate_namespace_manpage(
         lines.extend([".PP", rf".B {alias} [\fISUBCOMMAND\fR] [\fIOPTIONS\fR]"])
     lines.extend([".SH DESCRIPTION", roff_text(root_page.purpose)])
     emit_when(lines, root_page)
+    emit_line_section(lines, "WORKFLOW LANES", root_page.workflow_lines)
+    emit_line_section(lines, "WHEN TO START HERE", root_page.choose_lines)
+    emit_line_section(lines, "BEFORE / AFTER", root_page.before_after_lines)
     lines.append(".SH SUBCOMMANDS")
     for page in subcommands:
         lines.extend([".TP", rf".B {roff_text(page.title)}", roff_text(render_listing_summary(page))])
     emit_common_options(lines, root_page.key_flags)
+    emit_line_section(lines, "SUCCESS CRITERIA", root_page.success_lines)
+    emit_line_section(lines, "FAILURE CHECKS", root_page.failure_lines)
     if spec.workflow_notes:
         lines.append(".SH WORKFLOW NOTES")
         for note in spec.workflow_notes:
@@ -431,7 +449,12 @@ def generate_command_doc_manpage(
     lines.extend([".SH SYNOPSIS", rf".B {full_cli_path} [\fIOPTIONS\fR]"])
     lines.extend([".SH DESCRIPTION", roff_text(page.purpose)])
     emit_when(lines, page)
+    emit_line_section(lines, "WORKFLOW LANES", page.workflow_lines)
+    emit_line_section(lines, "WHEN TO START HERE", page.choose_lines)
+    emit_line_section(lines, "BEFORE / AFTER", page.before_after_lines)
     emit_common_options(lines, page.key_flags)
+    emit_line_section(lines, "SUCCESS CRITERIA", page.success_lines)
+    emit_line_section(lines, "FAILURE CHECKS", page.failure_lines)
     emit_example_entries(lines, [(page.purpose, example) for example in page.examples])
     emit_see_also(lines, see_also)
     return f"{stem}.1", "\n".join(lines) + "\n"
@@ -524,8 +547,8 @@ def generate_top_level_manpage(*, command_docs_dir: Path, version: str = VERSION
     lines.extend(
         [
             ".TP",
-            ".B sync",
-            "Declarative sync planning and gated apply workflows. Use command-local --help because this repo does not yet carry a generated sync namespace manpage.",
+            ".B change",
+            "Declarative sync planning and gated apply workflows. Sync is the workflow family; the public CLI surface and generated manpages live under grafana-util change and the grafana-util-change*(1) pages.",
             ".SH COMMON CONNECTION AND AUTH PATTERN",
             "Many live Grafana commands accept a shared connection pattern. Prefer repo-local profiles for repeatable work, use direct Basic auth for bootstrap or admin-heavy flows, and use direct tokens for scoped automation where the permission envelope is already understood.",
         ]

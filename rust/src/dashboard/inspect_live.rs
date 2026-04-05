@@ -122,17 +122,17 @@ where
         attempt += 1;
         match fetch_dashboard(uid) {
             Ok(payload) => return Ok(payload),
-            Err(error) if is_retryable_live_fetch_error(&error) && attempt < LIVE_INSPECT_RETRY_LIMIT => {
+            Err(error)
+                if is_retryable_live_fetch_error(&error) && attempt < LIVE_INSPECT_RETRY_LIMIT =>
+            {
                 thread::sleep(Duration::from_millis(
                     LIVE_INSPECT_RETRY_BACKOFF_MS * attempt as u64,
                 ));
             }
             Err(error) => {
-                return Err(
-                    error.with_context(format!(
-                        "Failed to fetch live dashboard uid={uid} during inspect-live"
-                    )),
-                )
+                return Err(error.with_context(format!(
+                    "Failed to fetch live dashboard uid={uid} during inspect-live"
+                )))
             }
         }
     }

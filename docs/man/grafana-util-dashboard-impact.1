@@ -8,6 +8,11 @@ grafana\-util\-dashboard\-impact \- Estimate the blast radius of one datasource 
 Estimate the blast radius of one datasource from dashboard governance artifacts.
 .PP
 Use this when you are about to change, migrate, or troubleshoot one datasource and need to know which dashboards and alert resources depend on it before you touch the live system.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: datasource risk is inferred from memory, naming conventions, or manual Grafana searches.
+.IP \(bu 2
+After: one impact run tells you which dashboards and alert\-linked resources are downstream of a datasource UID.
 .SH COMMON OPTIONS
 .TP
 .B \-\-governance
@@ -24,6 +29,20 @@ render text or json.
 .TP
 .B \-\-interactive
 open the interactive terminal browser.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+you can name the dashboards affected by one datasource change before you modify the datasource itself
+.IP \(bu 2
+alert resources appear in the same report when alert contract data is available
+.IP \(bu 2
+the result is concrete enough to use in a review ticket, migration plan, or incident response handoff
+.SH FAILURE CHECKS
+.IP \(bu 2
+if the result is empty, confirm the datasource UID matches the governance artifact instead of the display name you remember from Grafana
+.IP \(bu 2
+if alert\-linked resources are missing, check whether you supplied \-\-alert\-contract
+.IP \(bu 2
+if the JSON is going into CI or an external tool, validate the top\-level shape before you assume a zero\-impact result is real
 .SH EXAMPLES
 .PP
 Estimate the blast radius of one datasource from dashboard governance artifacts.

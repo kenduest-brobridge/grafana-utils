@@ -1,9 +1,9 @@
 # grafana-util
 ### 專為 Grafana 維運與管理設計的 Rust CLI
 
-[![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-utils/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-utils/actions)
-[![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-utils)](LICENSE)
-[![Version](https://img.shields.io/github/v/tag/kenduest-brobridge/grafana-utils)](https://github.com/kenduest-brobridge/grafana-utils/tags)
+[![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-util/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-util/actions)
+[![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-util)](LICENSE)
+[![Version](https://img.shields.io/github/v/tag/kenduest-brobridge/grafana-util)](https://github.com/kenduest-brobridge/grafana-util/tags)
 
 [English](./README.md) | 繁體中文
 
@@ -52,7 +52,7 @@
 
 ```bash
 # 1. 一鍵安裝 (全域 Binary)
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 ```bash
@@ -72,7 +72,7 @@ grafana-util overview live --url http://my-grafana:3000 --basic-user admin --pro
 ```bash
 # 用途：安裝固定版本。
 VERSION=0.8.0 \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 指定安裝目錄：
@@ -80,7 +80,7 @@ VERSION=0.8.0 \
 ```bash
 # 用途：安裝到指定的 binary 目錄。
 BIN_DIR="$HOME/.local/bin" \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 先看安裝腳本說明：
@@ -89,7 +89,7 @@ BIN_DIR="$HOME/.local/bin" \
 sh ./scripts/install.sh --help
 ```
 
-- Release 下載頁：<https://github.com/kenduest-brobridge/grafana-utils/releases>
+- Release 下載頁：<https://github.com/kenduest-brobridge/grafana-util/releases>
 - 已發布 binary：目前提供 `linux-amd64` 與 `macos-arm64` 的標準版。若需要支援瀏覽器截圖的版本，請到同一個 release 下載 `*-browser-*` 壓縮檔。
 - 預設安裝位置：若有設定 `BIN_DIR` 就優先使用；否則會先嘗試可寫入的 `/usr/local/bin`，再退回 `$HOME/.local/bin`。
 - PATH 設定提醒：如果安裝目錄還沒在 `PATH` 內，安裝腳本會印出對應 `zsh` / `bash` 可直接使用的設定方式。

@@ -8,6 +8,11 @@ grafana\-util\-datasource\-inspect\-export \- Inspect a local masked recovery bu
 Inspect a local masked recovery bundle without connecting to Grafana.
 .PP
 Use this when you want to read datasource export artifacts from disk and review them with text, table, CSV, JSON, YAML, or interactive output.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: reading a datasource bundle meant opening raw files and guessing which part belonged to inventory or provisioning.
+.IP \(bu 2
+After: one local inspection command can mask secrets and show the bundle in text, table, CSV, JSON, YAML, or interactive form.
 .SH COMMON OPTIONS
 .TP
 .B \-\-input\-dir
@@ -21,6 +26,20 @@ open the local export inspection workbench.
 .TP
 .B \-\-table, \-\-csv, \-\-text, \-\-json, \-\-yaml, \-\-output\-format
 output mode controls.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+you can review a local export bundle without touching Grafana
+.IP \(bu 2
+masked secrets stay masked while the structure stays readable
+.IP \(bu 2
+the output format is good enough for both manual review and scripts
+.SH FAILURE CHECKS
+.IP \(bu 2
+if the bundle does not open, confirm the input directory and whether it is inventory or provisioning
+.IP \(bu 2
+if the masked fields look wrong, verify whether the export source actually contains the data you expect
+.IP \(bu 2
+if interactive mode is unavailable, fall back to a text or JSON output first
 .SH EXAMPLES
 .PP
 Inspect a local masked recovery bundle without connecting to Grafana.

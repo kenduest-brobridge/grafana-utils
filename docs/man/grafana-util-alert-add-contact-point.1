@@ -10,6 +10,11 @@ Author a staged alert contact point from the higher\-level authoring surface.
 Create a new contact point under a desired\-state alert tree.
 .IP \(bu 2
 Preview the generated file before writing it.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: hand\-build the contact point file and remember the authoring shape yourself.
+.IP \(bu 2
+After: create one staged contact point file from the higher\-level authoring surface.
 .SH COMMON OPTIONS
 .IP \(bu 2
 \-\-desired\-dir points to the staged alert tree.
@@ -17,6 +22,18 @@ Preview the generated file before writing it.
 \-\-name sets the contact point name.
 .IP \(bu 2
 \-\-dry\-run previews the planned output.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+The contact point file appears in the desired\-state tree with the expected name.
+.IP \(bu 2
+A dry\-run shows the receiver details you intended to write.
+.SH FAILURE CHECKS
+.IP \(bu 2
+Verify \-\-desired\-dir before writing into the tree.
+.IP \(bu 2
+Check for duplicate contact point names if the scaffold looks reused.
+.IP \(bu 2
+Remember that this command authors the contact point; it does not wire the route tree by itself.
 .SH EXAMPLES
 .PP
 Author a staged alert contact point from the higher\-level authoring surface.

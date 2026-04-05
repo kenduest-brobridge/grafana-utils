@@ -130,7 +130,7 @@ This is one of the most common operator mistakes.
 ## 🆘 Getting More Help
 
 - **Check the version**: always run `grafana-util --version` when reporting issues.
-- **Project repository**: report bugs or request features on the [GitHub Issues](https://github.com/kendlee/grafana-utils/issues) page.
+- **Project repository**: report bugs or request features on the [GitHub Issues](https://github.com/kenduest-brobridge/grafana-util/issues) page.
 
 When escalating an issue, include:
 

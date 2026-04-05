@@ -280,10 +280,7 @@ pub struct InspectVarsArgs {
         help = "Do not print table or CSV headers when rendering inspect-vars output."
     )]
     pub no_header: bool,
-    #[arg(
-        long,
-        help = "Write inspect-vars output to this file."
-    )]
+    #[arg(long, help = "Write inspect-vars output to this file.")]
     pub output_file: Option<PathBuf>,
     #[arg(
         long,
@@ -395,10 +392,7 @@ pub struct InspectExportArgs {
         help = "Do not print table headers when rendering the table summary, table-like --report output, or compatible --output-format values."
     )]
     pub no_header: bool,
-    #[arg(
-        long,
-        help = "Write inspect output to this file."
-    )]
+    #[arg(long, help = "Write inspect output to this file.")]
     pub output_file: Option<PathBuf>,
     #[arg(
         long,
@@ -527,10 +521,7 @@ pub struct InspectLiveArgs {
         help = "Do not print headers when rendering table, csv, or tree-table inspection output, including compatible --output-format values."
     )]
     pub no_header: bool,
-    #[arg(
-        long,
-        help = "Write inspect output to this file."
-    )]
+    #[arg(long, help = "Write inspect output to this file.")]
     pub output_file: Option<PathBuf>,
     #[arg(
         long,

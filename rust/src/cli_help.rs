@@ -6,8 +6,8 @@
 use clap::{ColorChoice, CommandFactory};
 
 use crate::access::root_command as access_root_command;
-use crate::alert_sync::ALERT_SYNC_KIND;
 use crate::alert::root_command as alert_root_command;
+use crate::alert_sync::ALERT_SYNC_KIND;
 use crate::cli::CliArgs;
 use crate::cli_help_examples::{
     colorize_help_examples, inject_help_full_hint, ACCESS_HELP_FULL_TEXT, ALERT_HELP_FULL_TEXT,

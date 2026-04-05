@@ -285,8 +285,8 @@ Estimate the blast radius of one datasource from dashboard governance artifacts.
 .B grafana\-util\-dashboard\-raw\-to\-prompt(1)
 Convert ordinary dashboard JSON or raw/ lane files into Grafana UI prompt JSON with __inputs. Use when: Someone gives you a normal Grafana dashboard export, legacy raw JSON, or a raw/ lane file and you need a prompt\-safe file for the Grafana UI Upload JSON flow.
 .TP
-.B sync
-Declarative sync planning and gated apply workflows. Use command-local --help because this repo does not yet carry a generated sync namespace manpage.
+.B change
+Declarative sync planning and gated apply workflows. Sync is the workflow family; the public CLI surface and generated manpages live under grafana-util change and the grafana-util-change*(1) pages.
 .SH COMMON CONNECTION AND AUTH PATTERN
 Many live Grafana commands accept a shared connection pattern. Prefer repo-local profiles for repeatable work, use direct Basic auth for bootstrap or admin-heavy flows, and use direct tokens for scoped automation where the permission envelope is already understood.
 .TP

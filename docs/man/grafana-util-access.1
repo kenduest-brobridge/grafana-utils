@@ -12,6 +12,20 @@ List or browse access inventory.
 Create, modify, export, import, diff, or delete access resources.
 .IP \(bu 2
 Manage service\-account tokens.
+.SH WORKFLOW LANES
+.PP
+\- Inspect: user, org, team, service\-account, and token inventory reads.
+.PP
+\- Move: export, import, diff, and snapshot paths for moving or comparing access state.
+.PP
+\- Review Before Mutate: lifecycle changes, membership edits, and service\-account token rotation.
+.PP
+Choose this page when you need to decide whether the next access task is inventory, migration, or a reviewed mutation.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: access work is split across ad hoc UI clicks, one\-off API calls, and hard\-to\-repeat shell commands.
+.IP \(bu 2
+After: the same access surface is grouped into one CLI namespace, so inventory, lifecycle, token work, and snapshots can share the same defaults and review flow.
 .SH SUBCOMMANDS
 .TP
 .B user
@@ -35,6 +49,20 @@ Add or delete tokens for a Grafana service account. Use when: Create a new servi
 \-\-prompt\-password, \-\-prompt\-token, \-\-timeout, \-\-verify\-ssl, \-\-insecure, \-\-ca\-cert
 .IP \(bu 2
 Use the nested subcommands for user, org, team or group, and service\-account.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+you can tell whether the task belongs to user, org, team, or service\-account before you touch production
+.IP \(bu 2
+inventory reads are repeatable because profile and auth defaults are explicit
+.IP \(bu 2
+token and lifecycle changes are auditable enough to hand off to another operator or to CI
+.SH FAILURE CHECKS
+.IP \(bu 2
+if a list command returns less than you expect, confirm whether you need admin\-level Basic auth instead of a narrower token
+.IP \(bu 2
+if a token or membership operation fails, verify that you are on the right org and the right access surface before retrying
+.IP \(bu 2
+if the output is going into automation, check the selected \-\-output\-format first so the parser knows what shape to expect
 .SH EXAMPLES
 .PP
 user: List, browse, create, modify, export, import, diff, or delete Grafana users.

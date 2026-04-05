@@ -228,7 +228,11 @@ fn run_sync_review(args: SyncReviewArgs) -> Result<()> {
         args.reviewed_at.as_deref(),
         args.review_note.as_deref(),
     )?;
-    emit_text_or_json(&document, &render_sync_plan_text(&document)?, args.output_format)
+    emit_text_or_json(
+        &document,
+        &render_sync_plan_text(&document)?,
+        args.output_format,
+    )
 }
 
 fn run_sync_apply(args: SyncApplyArgs) -> Result<()> {

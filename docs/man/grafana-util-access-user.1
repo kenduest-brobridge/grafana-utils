@@ -14,6 +14,11 @@ Create or update users with login, email, role, and admin settings.
 Export and import user inventory bundles.
 .IP \(bu 2
 Remove users from the org membership or from the global registry.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: user lifecycle work is often split across org settings, admin screens, and one\-off export or import scripts.
+.IP \(bu 2
+After: one namespace covers inventory, create/update, export/import, and targeted removal with the same auth model.
 .SH COMMON OPTIONS
 .TP
 .B list
@@ -36,6 +41,20 @@ Remove users from the org membership or from the global registry.
 .TP
 .B delete
 \-\-user\-id, \-\-login, \-\-email, \-\-scope, \-\-yes, \-\-json
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+created or modified users have the expected login, email, and role
+.IP \(bu 2
+inventory and bundles can be diffed before deletion or migration
+.IP \(bu 2
+membership scope stays explicit, so you do not accidentally manage the wrong org or global registry
+.SH FAILURE CHECKS
+.IP \(bu 2
+if list, add, or delete looks empty or wrong, confirm the selected profile or auth token has the right org or admin scope
+.IP \(bu 2
+if create or modify fails, recheck login or email uniqueness and whether the selected scope is org or global
+.IP \(bu 2
+if an import does not behave as expected, verify the bundle source and the target scope before retrying
 .SH EXAMPLES
 .PP
 List, browse, create, modify, export, import, diff, or delete Grafana users.
