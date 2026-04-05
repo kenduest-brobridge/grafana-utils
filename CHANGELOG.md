@@ -14,6 +14,49 @@ Format rule going forward:
 - keep older tagged releases below
 - use commit/tag history as the source of truth
 
+## [0.8.0] - 2026-04-05
+
+### Highlights
+
+- Public docs now explain value more clearly through `Before / After`,
+  success criteria, and failure checks across the README, handbook, and
+  high-value command pages.
+- The generated HTML docs now have a cleaner navigation hierarchy, improved
+  entry labels, and better browser reading flow for handbook, command, and
+  maintainer pages.
+- Automation-facing output contracts were tightened so JSON-producing flows
+  are easier to consume in CI and release workflows.
+
+### Added
+
+- New public command-reference coverage for `dashboard impact`, including the
+  generated HTML and manpage surfaces.
+- New validation coverage for public-doc evidence sections and release-driven
+  generated-manpage updates.
+
+### Changed
+
+- `README.md` and `README.zh-TW.md` now read more like GitHub entry pages,
+  with clearer install/auth setup, more purposeful workflow examples, and less
+  duplicated handbook-style routing.
+- High-value handbook and command pages now consistently explain who a page is
+  for, when to use the workflow, what success looks like, and what to check
+  first when it fails.
+- Generated docs navigation and page chrome were refined so handbook,
+  command-reference, and maintainer entry pages are easier to scan and use.
+- Release metadata and install examples now consistently point at `0.8.0`
+  across the version file, package metadata, install help, and getting-started
+  examples.
+
+### Fixed
+
+- Generated manpages no longer misinterpret evidence headings such as
+  `Before / After` or `Failure checks` as bogus subcommands.
+- Release/version updates now regenerate manpage output without tripping the
+  AI workflow drift guard when the only source change is the release version.
+- Generated command/manpage outputs were refreshed so the browser docs and
+  manpage lane match the current source docs and CLI help.
+
 ## [0.7.3] - 2026-04-03
 
 ### Highlights
