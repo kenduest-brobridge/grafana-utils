@@ -6,62 +6,15 @@ use crate::alert::{
     normalize_compare_payload, CONTACT_POINT_KIND, MUTE_TIMING_KIND, POLICIES_KIND, RULE_KIND,
     TEMPLATE_KIND,
 };
-use crate::common::{message, string_field, value_as_object, Result};
+use crate::common::{message, string_field, Result};
+pub(crate) use crate::grafana_api::alerting::{
+    request_array_with_request, request_optional_object_with_request,
+};
+#[cfg(test)]
+pub(crate) use crate::grafana_api::alerting::request_object_with_request;
 use crate::grafana_api::parse_template_list_response;
 use reqwest::Method;
 use serde_json::{Map, Value};
-
-#[allow(dead_code)]
-#[cfg(test)]
-pub(crate) fn request_object_with_request<F>(
-    mut request_json: F,
-    method: Method,
-    path: &str,
-    payload: Option<&Value>,
-    error_message: &str,
-) -> Result<Map<String, Value>>
-where
-    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
-{
-    let value = request_json(method, path, &[], payload)?
-        .ok_or_else(|| message(error_message.to_string()))?;
-    Ok(value_as_object(&value, error_message)?.clone())
-}
-
-pub(crate) fn request_array_with_request<F>(
-    mut request_json: F,
-    method: Method,
-    path: &str,
-    payload: Option<&Value>,
-    error_message: &str,
-) -> Result<Vec<Map<String, Value>>>
-where
-    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
-{
-    crate::grafana_api::expect_object_list(request_json(method, path, &[], payload)?, error_message)
-}
-
-pub(crate) fn request_optional_object_with_request<F>(
-    mut request_json: F,
-    method: Method,
-    path: &str,
-    payload: Option<&Value>,
-) -> Result<Option<Map<String, Value>>>
-where
-    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
-{
-    let value = match request_json(method, path, &[], payload) {
-        Ok(value) => value,
-        Err(error) if error.status_code() == Some(404) => return Ok(None),
-        Err(error) => return Err(error),
-    };
-    let Some(value) = value else {
-        return Ok(None);
-    };
-    Ok(Some(
-        value_as_object(&value, "Unexpected alert request object response.")?.clone(),
-    ))
-}
 
 fn request_template_list_with_request<F>(request_json: &mut F) -> Result<Vec<Map<String, Value>>>
 where

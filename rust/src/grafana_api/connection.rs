@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::common::{resolve_auth_headers, Result};
 use crate::http::{JsonHttpClient, JsonHttpClientConfig};
@@ -128,9 +128,4 @@ pub(crate) fn auth_mode_from_headers(headers: &[(String, String)]) -> String {
 fn upsert_org_header(headers: &mut Vec<(String, String)>, org_id: i64) {
     headers.retain(|(name, _)| !name.eq_ignore_ascii_case("X-Grafana-Org-Id"));
     headers.push(("X-Grafana-Org-Id".to_string(), org_id.to_string()));
-}
-
-#[allow(dead_code)]
-fn _path_arg(path: Option<&Path>) -> Option<&Path> {
-    path
 }

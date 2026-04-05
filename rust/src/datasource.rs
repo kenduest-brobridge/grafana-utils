@@ -13,14 +13,13 @@
 //! Caveats:
 //! - Keep API-field compatibility logic in `datasource_diff.rs` and import/export helpers.
 //! - Avoid side effects in normalization helpers; keep them as pure value transforms.
-use reqwest::Method;
 use serde_json::{Map, Value};
 use std::path::Path;
 
 use crate::common::{message, render_json_value, string_field, write_json_file, Result};
 use crate::dashboard::{
     build_api_client, build_auth_context, build_http_client, build_http_client_for_org,
-    build_http_client_for_org_from_api, list_datasources, CommonCliArgs, SimpleOutputFormat,
+    build_http_client_for_org_from_api, CommonCliArgs, SimpleOutputFormat,
 };
 use crate::datasource::datasource_diff::{
     build_datasource_diff_report, normalize_export_records, normalize_live_records,
@@ -34,6 +33,7 @@ use crate::datasource_catalog::{
 #[cfg(any(feature = "tui", test))]
 use crate::interactive_browser::run_interactive_browser;
 use crate::tabular_output::render_yaml;
+use crate::grafana_api::DatasourceResourceClient;
 
 #[path = "datasource_browse.rs"]
 mod datasource_browse;
@@ -271,8 +271,9 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                 }
                 let admin_api = build_api_client(&args.common)?;
                 let admin_client = admin_api.http_client();
+                let admin_datasource = DatasourceResourceClient::new(admin_client);
                 let mut rows = Vec::new();
-                for org in list_orgs(admin_client)? {
+                for org in admin_datasource.list_orgs()? {
                     let org_id = org
                         .get("id")
                         .and_then(Value::as_i64)
@@ -298,7 +299,7 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                 build_list_records(&client)?
             } else {
                 let client = build_http_client(&args.common)?;
-                list_datasources(&client)?
+                DatasourceResourceClient::new(&client).list_datasources()?
             };
             if args.json {
                 print!(
@@ -382,7 +383,8 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
             )?;
             let payload = build_add_payload(&args)?;
             let client = build_http_client(&args.common)?;
-            let live = list_datasources(&client)?;
+            let datasource_client = DatasourceResourceClient::new(&client);
+            let live = datasource_client.list_datasources()?;
             let matching =
                 resolve_live_mutation_match(args.uid.as_deref(), Some(&args.name), &live);
             let row = vec![
@@ -426,7 +428,11 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                     matching.action
                 )));
             }
-            client.request_json(Method::POST, "/api/datasources", &[], Some(&payload))?;
+            datasource_client.create_datasource(
+                payload
+                    .as_object()
+                    .ok_or_else(|| message("Datasource add payload must be an object."))?,
+            )?;
             println!(
                 "Created datasource uid={} name={}",
                 args.uid.unwrap_or_default(),
@@ -444,6 +450,7 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
             )?;
             let updates = build_modify_updates(&args)?;
             let client = build_http_client(&args.common)?;
+            let datasource_client = DatasourceResourceClient::new(&client);
             let existing = fetch_datasource_by_uid_if_exists(&client, &args.uid)?;
             let (action, destination, payload, name, datasource_type, target_id) =
                 if let Some(existing) = existing {
@@ -502,11 +509,11 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                 payload.ok_or_else(|| message("Datasource modify did not build a payload."))?;
             let target_id = target_id
                 .ok_or_else(|| message("Datasource modify requires a live datasource id."))?;
-            client.request_json(
-                Method::PUT,
-                &format!("/api/datasources/{target_id}"),
-                &[],
-                Some(&payload),
+            datasource_client.update_datasource(
+                &target_id.to_string(),
+                payload
+                    .as_object()
+                    .ok_or_else(|| message("Datasource modify payload must be an object."))?,
             )?;
             println!(
                 "Modified datasource uid={} name={} id={}",
@@ -523,7 +530,8 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                 "delete",
             )?;
             let client = build_http_client(&args.common)?;
-            let live = list_datasources(&client)?;
+            let datasource_client = DatasourceResourceClient::new(&client);
+            let live = datasource_client.list_datasources()?;
             let matching = resolve_delete_match(args.uid.as_deref(), args.name.as_deref(), &live);
             let row = vec![
                 "delete".to_string(),
@@ -585,12 +593,7 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
             let target_id = matching
                 .target_id
                 .ok_or_else(|| message("Datasource delete requires a live datasource id."))?;
-            client.request_json(
-                Method::DELETE,
-                &format!("/api/datasources/{target_id}"),
-                &[],
-                None,
-            )?;
+            datasource_client.delete_datasource(&target_id.to_string())?;
             println!(
                 "Deleted datasource uid={} name={} id={}",
                 if matching.target_uid.is_empty() {
@@ -617,11 +620,12 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                 }
                 let admin_api = build_api_client(&args.common)?;
                 let admin_client = admin_api.http_client();
+                let admin_datasource = DatasourceResourceClient::new(admin_client);
                 let mut total = 0usize;
                 let mut org_count = 0usize;
                 let mut root_items = Vec::new();
                 let mut root_records = Vec::new();
-                for org in list_orgs(admin_client)? {
+                for org in admin_datasource.list_orgs()? {
                     let org_id = org
                         .get("id")
                         .and_then(Value::as_i64)
@@ -777,7 +781,8 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
         }
         DatasourceGroupCommand::Diff(args) => {
             let client = build_http_client(&args.common)?;
-            let live = list_datasources(&client)?;
+            let datasource_client = DatasourceResourceClient::new(&client);
+            let live = datasource_client.list_datasources()?;
             let (compared_count, differences) =
                 diff_datasources_with_live(&args.diff_dir, args.input_format, &live)?;
             if differences > 0 {

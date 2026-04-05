@@ -237,6 +237,47 @@ fn access_resource_client_lists_orgs_and_current_org() {
 }
 
 #[test]
+fn access_resource_client_lists_users_teams_and_service_accounts() {
+    let responses = vec![
+        http_response("200 OK", r#"[{"id":1,"login":"alice","email":"alice@example.com"}]"#),
+        http_response(
+            "200 OK",
+            r#"[{"id":1,"login":"alice","email":"alice@example.com"},{"id":2,"login":"bob","email":"bob@example.com"}]"#,
+        ),
+        http_response(
+            "200 OK",
+            r#"{"teams":[{"id":11,"name":"Ops","email":"ops@example.com","memberCount":2}]}"#,
+        ),
+        http_response(
+            "200 OK",
+            r#"{"serviceAccounts":[{"id":21,"name":"ci","role":"Viewer","isDisabled":false,"tokens":1}]}"#,
+        ),
+    ];
+    let (base_url, requests, handle) = spawn_sequence_server(responses);
+    let api = build_test_api(base_url);
+    let access = AccessResourceClient::new(api.http_client());
+
+    let org_users = access.list_org_users().unwrap();
+    let global_users = access.iter_global_users(3).unwrap();
+    let teams = access.iter_teams(None, 3).unwrap();
+    let service_accounts = access.list_service_accounts(3).unwrap();
+
+    handle.join().unwrap();
+
+    assert_eq!(org_users.len(), 1);
+    assert_eq!(global_users.len(), 2);
+    assert_eq!(teams.len(), 1);
+    assert_eq!(service_accounts.len(), 1);
+
+    let requests = requests.lock().unwrap().clone();
+    assert_eq!(requests.len(), 4);
+    assert!(requests[0].starts_with("GET /api/org/users "));
+    assert!(requests[1].starts_with("GET /api/users?page=1&perpage=3 "));
+    assert!(requests[2].starts_with("GET /api/teams/search?query=&page=1&perpage=3 "));
+    assert!(requests[3].starts_with("GET /api/serviceaccounts/search?query=&page=1&perpage=3 "));
+}
+
+#[test]
 fn sync_live_client_fetches_availability_with_shared_transport() {
     let responses = vec![
         http_response(
@@ -476,6 +517,42 @@ fn datasource_resource_client_crud_requests() {
     assert!(requests[0].starts_with("POST /api/datasources "));
     assert!(requests[1].starts_with("PUT /api/datasources/7 "));
     assert!(requests[2].starts_with("DELETE /api/datasources/7 "));
+}
+
+#[test]
+fn datasource_resource_client_lists_orgs_current_org_and_creates_org() {
+    let responses = vec![
+        http_response("200 OK", r#"{"id":7,"name":"Main Org."}"#),
+        http_response(
+            "200 OK",
+            r#"[{"id":1,"name":"Alpha"},{"id":2,"name":"Beta"}]"#,
+        ),
+        http_response("200 OK", r#"{"orgId":9,"name":"Gamma"}"#),
+    ];
+    let (base_url, requests, handle) = spawn_sequence_server(responses);
+    let api = build_test_api(base_url);
+    let datasource = api.datasource();
+
+    let current_org = datasource.fetch_current_org().unwrap();
+    let orgs = datasource.list_orgs().unwrap();
+    let created = datasource.create_org("Gamma").unwrap();
+
+    handle.join().unwrap();
+
+    assert_eq!(current_org["id"], 7);
+    assert_eq!(current_org["name"], "Main Org.");
+    assert_eq!(orgs.len(), 2);
+    assert_eq!(orgs[0]["name"], "Alpha");
+    assert_eq!(orgs[1]["name"], "Beta");
+    assert_eq!(created["orgId"], 9);
+    assert_eq!(created["name"], "Gamma");
+
+    let requests = requests.lock().unwrap().clone();
+    assert_eq!(requests.len(), 3);
+    assert!(requests[0].starts_with("GET /api/org "));
+    assert!(requests[1].starts_with("GET /api/orgs "));
+    assert!(requests[2].starts_with("POST /api/orgs "));
+    assert!(requests[2].contains("\"name\":\"Gamma\""));
 }
 
 #[test]

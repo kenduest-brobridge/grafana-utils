@@ -13,7 +13,7 @@ use std::path::Path;
 
 use crate::common::{message, render_json_value, Result};
 use crate::dashboard::{
-    build_api_client, build_http_client_for_org_from_api, list_datasources, DEFAULT_ORG_ID,
+    build_api_client, build_http_client_for_org_from_api, DEFAULT_ORG_ID,
 };
 use crate::datasource::{
     render_import_table, resolve_match, DatasourceImportArgs, DatasourceImportInputFormat,
@@ -23,6 +23,7 @@ use crate::datasource_secret::{
     inline_secret_provider_contract, resolve_secret_placeholders,
     summarize_secret_placeholder_plan, summarize_secret_provider_contract,
 };
+use crate::grafana_api::DatasourceResourceClient;
 use crate::http::JsonHttpClient;
 
 #[path = "datasource_export_support.rs"]
@@ -204,7 +205,7 @@ pub(crate) fn collect_datasource_import_dry_run_report(
     let replace_existing = args.replace_existing || args.update_existing_only;
     let (metadata, records) = load_import_records(&args.import_dir, args.input_format)?;
     validate_matching_export_org(client, args, &records)?;
-    let live = list_datasources(client)?;
+    let live = DatasourceResourceClient::new(client).list_datasources()?;
     let target_org = fetch_current_org(client)?;
     let target_org_id = target_org
         .get("id")
@@ -495,7 +496,7 @@ pub(crate) fn import_datasources_with_client(
     let (_metadata, records) = load_import_records(&args.import_dir, args.input_format)?;
     let secret_values = parse_secret_values_argument(args.secret_values.as_deref())?;
     validate_matching_export_org(client, args, &records)?;
-    let live = list_datasources(client)?;
+    let live = DatasourceResourceClient::new(client).list_datasources()?;
     // Build the full request set first so match errors or missing secrets do not
     // leave the destination half-mutated.
     let plan = prepare_datasource_import_plan(

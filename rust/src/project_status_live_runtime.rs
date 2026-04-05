@@ -13,10 +13,7 @@ use std::path::PathBuf;
 use crate::access::build_access_live_domain_status;
 use crate::alert::{build_alert_live_project_status_domain, AlertLiveProjectStatusInputs};
 use crate::common::{load_json_object_file, message, Result};
-use crate::dashboard::{
-    build_live_dashboard_domain_status_from_inputs,
-    collect_live_dashboard_project_status_inputs_with_request,
-};
+use crate::dashboard::{build_live_dashboard_domain_status_from_inputs, DEFAULT_PAGE_SIZE};
 use crate::datasource_live_project_status::{
     build_datasource_live_project_status_from_inputs,
     collect_live_datasource_project_status_inputs_with_request,
@@ -40,7 +37,6 @@ use crate::sync::{
     build_live_sync_domain_status, build_live_sync_domain_status_transport,
     LivePromotionProjectStatusInputs, SyncLiveProjectStatusInputs,
 };
-use reqwest::Method;
 
 const PROJECT_STATUS_LIVE_SCOPE: &str = "live";
 const PROJECT_STATUS_LIVE_ALL_ORGS_MODE_SUFFIX: &str = "-all-orgs";
@@ -89,44 +85,6 @@ fn load_optional_project_status_document_with_metadata(
     .transpose()
 }
 
-fn project_status_freshness_samples_from_value<'a>(
-    source: &'static str,
-    value: &'a Value,
-) -> Vec<ProjectStatusFreshnessSample<'a>> {
-    match value {
-        Value::Array(items) => items
-            .iter()
-            .flat_map(|item| project_status_freshness_samples_from_value(source, item))
-            .collect(),
-        Value::Object(object) => project_status_live::project_status_timestamp_from_object(object)
-            .map(|observed_at| {
-                vec![ProjectStatusFreshnessSample::ObservedAtRfc3339 {
-                    source,
-                    observed_at,
-                }]
-            })
-            .unwrap_or_default(),
-        _ => Vec::new(),
-    }
-}
-
-fn project_status_freshness_samples_from_records<'a>(
-    source: &'static str,
-    records: &'a [Map<String, Value>],
-) -> Vec<ProjectStatusFreshnessSample<'a>> {
-    records
-        .iter()
-        .filter_map(|record| {
-            project_status_live::project_status_timestamp_from_object(record).map(|observed_at| {
-                ProjectStatusFreshnessSample::ObservedAtRfc3339 {
-                    source,
-                    observed_at,
-                }
-            })
-        })
-        .collect()
-}
-
 fn stamp_live_domain_freshness(
     mut domain: ProjectDomainStatus,
     samples: &[ProjectStatusFreshnessSample<'_>],
@@ -154,26 +112,22 @@ fn build_live_overall_freshness(domains: &[ProjectDomainStatus]) -> ProjectStatu
     build_live_project_status_freshness(source_count, &ages)
 }
 
-fn build_live_dashboard_status_with_request<F>(mut request_json: F) -> ProjectDomainStatus
-where
-    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
-{
-    match collect_live_dashboard_project_status_inputs_with_request(&mut request_json) {
+fn build_live_dashboard_status(client: &JsonHttpClient) -> ProjectDomainStatus {
+    match project_status_live::collect_live_dashboard_project_status_inputs(client, DEFAULT_PAGE_SIZE)
+    {
         Ok(inputs) => {
             let status = build_live_dashboard_domain_status_from_inputs(&inputs);
-            let mut freshness_samples = project_status_freshness_samples_from_records(
-                "dashboard-search",
-                &inputs.dashboard_summaries,
-            );
-            freshness_samples.extend(project_status_freshness_samples_from_records(
+            let mut freshness_samples =
+                project_status_live::project_status_freshness_samples_from_records(
+                    "dashboard-search",
+                    &inputs.dashboard_summaries,
+                );
+            freshness_samples.extend(project_status_live::project_status_freshness_samples_from_records(
                 "datasource-list",
                 &inputs.datasources,
             ));
             let dashboard_version_timestamp = if freshness_samples.is_empty() {
-                project_status_live::latest_dashboard_version_timestamp_with_request(
-                    &mut request_json,
-                    &inputs.dashboard_summaries,
-                )
+                project_status_live::latest_dashboard_version_timestamp(client, &inputs.dashboard_summaries)
             } else {
                 None
             };
@@ -193,12 +147,6 @@ where
             "restore dashboard search access, then re-run live status",
         ),
     }
-}
-
-fn build_live_dashboard_status(client: &JsonHttpClient) -> ProjectDomainStatus {
-    build_live_dashboard_status_with_request(|method, path, params, payload| {
-        client.request_json(method, path, params, payload)
-    })
 }
 
 fn build_live_datasource_status(client: &JsonHttpClient) -> ProjectDomainStatus {
@@ -247,31 +195,31 @@ fn build_live_alert_status(client: &JsonHttpClient) -> ProjectDomainStatus {
     });
     let mut freshness_samples = Vec::new();
     if let Some(document) = documents.rules.as_ref() {
-        freshness_samples.extend(project_status_freshness_samples_from_value(
+        freshness_samples.extend(project_status_live::project_status_freshness_samples_from_value(
             "alert-rules",
             document,
         ));
     }
     if let Some(document) = documents.contact_points.as_ref() {
-        freshness_samples.extend(project_status_freshness_samples_from_value(
+        freshness_samples.extend(project_status_live::project_status_freshness_samples_from_value(
             "alert-contact-points",
             document,
         ));
     }
     if let Some(document) = documents.mute_timings.as_ref() {
-        freshness_samples.extend(project_status_freshness_samples_from_value(
+        freshness_samples.extend(project_status_live::project_status_freshness_samples_from_value(
             "alert-mute-timings",
             document,
         ));
     }
     if let Some(document) = documents.policies.as_ref() {
-        freshness_samples.extend(project_status_freshness_samples_from_value(
+        freshness_samples.extend(project_status_live::project_status_freshness_samples_from_value(
             "alert-policies",
             document,
         ));
     }
     if let Some(document) = documents.templates.as_ref() {
-        freshness_samples.extend(project_status_freshness_samples_from_value(
+        freshness_samples.extend(project_status_live::project_status_freshness_samples_from_value(
             "alert-templates",
             document,
         ));
@@ -671,15 +619,15 @@ pub(crate) fn build_live_project_status(args: &ProjectStatusLiveArgs) -> Result<
 #[cfg(test)]
 mod tests {
     use super::{
-        build_live_dashboard_status_with_request, build_live_multi_org_domain_status_with_orgs,
-        build_live_promotion_status, build_live_sync_status,
-        project_status_freshness_samples_from_value,
+        build_live_multi_org_domain_status_with_orgs, build_live_promotion_status,
+        build_live_sync_status,
     };
     use crate::project_status::{
         status_finding, ProjectDomainStatus, ProjectStatusFreshness, PROJECT_STATUS_BLOCKED,
         PROJECT_STATUS_PARTIAL, PROJECT_STATUS_READY, PROJECT_STATUS_UNKNOWN,
     };
     use crate::project_status_freshness::build_live_project_status_freshness_from_samples;
+    use crate::project_status_support::project_status_live;
     use chrono::{DateTime, Utc};
     use reqwest::Method;
     use serde_json::json;
@@ -758,8 +706,9 @@ mod tests {
     fn build_live_dashboard_status_uses_dashboard_version_history_for_freshness() {
         let created =
             DateTime::<Utc>::from(SystemTime::now() - Duration::from_secs(60)).to_rfc3339();
-        let status = build_live_dashboard_status_with_request(|method, path, params, _payload| {
-            match (method, path) {
+        let status = project_status_live::build_live_dashboard_status_with_request(
+            |method, path, params: &[(String, String)], _payload| {
+                match (method, path) {
                 (Method::GET, "/api/search") => {
                     assert!(params
                         .iter()
@@ -795,8 +744,9 @@ mod tests {
                     ])))
                 }
                 _ => Err(crate::common::message(format!("unexpected request {path}"))),
+                }
             }
-        });
+        );
 
         assert_eq!(status.status, "ready");
         assert_eq!(status.freshness.status, "current");
@@ -821,7 +771,8 @@ mod tests {
             }
         ]);
 
-        let samples = project_status_freshness_samples_from_value("alert-rules", &document);
+        let samples =
+            project_status_live::project_status_freshness_samples_from_value("alert-rules", &document);
         let freshness = build_live_project_status_freshness_from_samples(&samples);
 
         assert_eq!(samples.len(), 2);

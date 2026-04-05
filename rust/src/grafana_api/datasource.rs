@@ -37,6 +37,40 @@ impl<'a> DatasourceResourceClient<'a> {
         }
     }
 
+    pub(crate) fn fetch_current_org(&self) -> Result<Map<String, Value>> {
+        match self.request_json(Method::GET, "/api/org", &[], None)? {
+            Some(Value::Object(object)) => Ok(object),
+            Some(_) => Err(message("Unexpected current-org payload from Grafana.")),
+            None => Err(message("Grafana did not return current-org metadata.")),
+        }
+    }
+
+    pub(crate) fn list_orgs(&self) -> Result<Vec<Map<String, Value>>> {
+        match self.request_json(Method::GET, "/api/orgs", &[], None)? {
+            Some(Value::Array(items)) => items
+                .into_iter()
+                .map(|item| match item {
+                    Value::Object(object) => Ok(object),
+                    _ => Err(message("Unexpected org entry in /api/orgs response.")),
+                })
+                .collect(),
+            Some(_) => Err(message("Unexpected /api/orgs payload from Grafana.")),
+            None => Ok(Vec::new()),
+        }
+    }
+
+    pub(crate) fn create_org(&self, org_name: &str) -> Result<Map<String, Value>> {
+        let payload = Value::Object(Map::from_iter(vec![(
+            "name".to_string(),
+            Value::String(org_name.to_string()),
+        )]));
+        match self.request_json(Method::POST, "/api/orgs", &[], Some(&payload))? {
+            Some(Value::Object(object)) => Ok(object),
+            Some(_) => Err(message("Unexpected create-org payload from Grafana.")),
+            None => Err(message("Grafana did not return create-org metadata.")),
+        }
+    }
+
     pub(crate) fn create_datasource(&self, payload: &Map<String, Value>) -> Result<Map<String, Value>> {
         match self.request_json(
             Method::POST,

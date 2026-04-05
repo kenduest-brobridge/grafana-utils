@@ -8,6 +8,20 @@ Current AI-maintained status only.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-status-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-31.md).
 
+## 2026-04-06 - Keep alert runtime orchestration local while shared alert helpers own request seams
+- State: Done
+- Scope: `rust/src/grafana_api/alert_live.rs`, `rust/src/grafana_api/alerting.rs`, `rust/src/alert_runtime_support.rs`, `rust/src/alert_rust_tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the alert workflow already used shared live helpers, but one request helper was still surfaced through a narrower path and the shared helper exports were noisy enough to trigger compile/test hygiene warnings when the alert layer was validated alone.
+- Current Update: aligned `grafana_api::alert_live` to use the shared alert request helper directly, adjusted `request_optional_object_with_request` so the existing test seams keep their current calling shape, and kept `alert_runtime_support.rs` focused on plan/build/apply orchestration rather than re-owning raw request construction.
+- Result: alert runtime/support remains orchestration-local while the shared alert request/read/apply seams stay centralized under `grafana_api`.
+
+## 2026-04-06 - Converge project-status and datasource live workflow ownership onto shared helpers
+- State: Done
+- Scope: `rust/src/project_status_live_runtime.rs`, `rust/src/grafana_api/project_status_live.rs`, `rust/src/access/live_project_status.rs`, `rust/src/dashboard/live_project_status.rs`, `rust/src/grafana_api/access.rs`, `rust/src/datasource.rs`, `rust/src/datasource_import_export.rs`, `rust/src/datasource_import_export_support.rs`, `rust/src/grafana_api/datasource.rs`, `rust/src/grafana_api/tests.rs`, `rust/src/grafana_api/connection.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: project-status, access live-status, dashboard live-status, and datasource import/export had already started reusing shared transport and a few shared clients, but they still owned overlapping live inventory and org helper contracts locally. `project_status_live_runtime.rs` still assembled dashboard live inputs itself, access live-status still held org/user/team/service-account reads, and datasource import/export still owned org create/read and datasource mutation request ownership outside the shared datasource client.
+- Current Update: moved dashboard live project-status input collection into `grafana_api::project_status_live`, added shared access readers for org users/global users/teams/service accounts, rewired access and dashboard project-status consumers onto those shared helpers, and routed datasource add/modify/delete plus org read/create helpers through `DatasourceResourceClient`. Also removed one leftover dead-code helper in `grafana_api::connection` and expanded shared-layer regression coverage.
+- Result: project-status and datasource import/export now rely more consistently on one internal live-contract layer, while workflow scoring, rendering, and orchestration remain in their domain/runtime modules instead of being split into finer SDK-style pieces.
+
 ## 2026-04-06 - Converge project-status live reads onto shared workflow helpers
 - State: Done
 - Scope: `rust/src/grafana_api/project_status_live.rs`, `rust/src/grafana_api/datasource_live_project_status.rs`, `rust/src/access/live_project_status.rs`, `rust/src/grafana_api/tests.rs`, `rust/src/access/team_browse.rs`, `rust/src/access/user_browse.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

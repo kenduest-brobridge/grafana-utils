@@ -301,6 +301,72 @@ impl<'a> AlertingResourceClient<'a> {
     }
 }
 
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) fn request_object_with_request<F>(
+    request_json: &mut F,
+    method: Method,
+    path: &str,
+    payload: Option<&Value>,
+    error_message: &str,
+) -> Result<Map<String, Value>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    match request_json(method, path, &[], payload)? {
+        Some(Value::Object(object)) => Ok(object),
+        _ => Err(message(error_message)),
+    }
+}
+
+pub(crate) fn request_array_with_request<F>(
+    request_json: &mut F,
+    method: Method,
+    path: &str,
+    payload: Option<&Value>,
+    error_message: &str,
+) -> Result<Vec<Map<String, Value>>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    match request_json(method, path, &[], payload)? {
+        Some(Value::Array(items)) => items
+            .iter()
+            .map(|item| {
+                item.as_object()
+                    .cloned()
+                    .ok_or_else(|| message(error_message))
+            })
+            .collect(),
+        Some(_) => Err(message(error_message)),
+        None => Ok(Vec::new()),
+    }
+}
+
+pub(crate) fn request_optional_object_with_request<F>(
+    mut request_json: F,
+    method: Method,
+    path: &str,
+    payload: Option<&Value>,
+) -> Result<Option<Map<String, Value>>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let value = match request_json(method, path, &[], payload) {
+        Ok(value) => value,
+        Err(error) if error.status_code() == Some(404) => return Ok(None),
+        Err(error) => return Err(error),
+    };
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    Ok(Some(
+        value
+            .as_object()
+            .cloned()
+            .ok_or_else(|| message("Unexpected alert request object response."))?,
+    ))
+}
+
 pub(crate) fn expect_object(
     value: Option<Value>,
     error_message: &str,

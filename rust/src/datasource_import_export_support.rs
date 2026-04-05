@@ -7,7 +7,6 @@
 //!   falls back to `org_<id>_<name>` directory names only when the bundle lacks
 //!   stable org fields.
 
-use reqwest::Method;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
@@ -16,7 +15,7 @@ use std::path::{Path, PathBuf};
 
 use crate::common::{message, string_field, Result};
 use crate::dashboard::DEFAULT_ORG_ID;
-use crate::grafana_api::DashboardResourceClient;
+use crate::grafana_api::DatasourceResourceClient;
 use crate::http::JsonHttpClient;
 
 use super::datasource_export_support::{
@@ -337,23 +336,15 @@ struct ProvisioningImportDatasource {
 }
 
 pub(crate) fn fetch_current_org(client: &JsonHttpClient) -> Result<Map<String, Value>> {
-    DashboardResourceClient::new(client).fetch_current_org()
+    DatasourceResourceClient::new(client).fetch_current_org()
 }
 
 pub(crate) fn list_orgs(client: &JsonHttpClient) -> Result<Vec<Map<String, Value>>> {
-    DashboardResourceClient::new(client).list_orgs()
+    DatasourceResourceClient::new(client).list_orgs()
 }
 
 pub(crate) fn create_org(client: &JsonHttpClient, org_name: &str) -> Result<Map<String, Value>> {
-    let payload = Value::Object(Map::from_iter(vec![(
-        "name".to_string(),
-        Value::String(org_name.to_string()),
-    )]));
-    match client.request_json(Method::POST, "/api/orgs", &[], Some(&payload))? {
-        Some(Value::Object(object)) => Ok(object),
-        Some(_) => Err(message("Unexpected create-org payload from Grafana.")),
-        None => Err(message("Grafana did not return create-org metadata.")),
-    }
+    DatasourceResourceClient::new(client).create_org(org_name)
 }
 
 pub(crate) fn org_id_string_from_value(value: Option<&Value>) -> String {
