@@ -7,10 +7,10 @@ use crate::common::{message, render_json_value, Result};
 use crate::http::JsonHttpClient;
 
 use super::{
-    build_datasource_import_dry_run_json_value, build_http_client, build_http_client_for_org,
-    collect_datasource_import_dry_run_report, create_org, describe_datasource_import_mode,
-    list_orgs, load_import_records, org_id_string_from_value, DatasourceExportOrgScope,
-    DatasourceExportOrgTargetPlan, DatasourceImportArgs,
+    build_api_client, build_datasource_import_dry_run_json_value,
+    build_http_client_for_org_from_api, collect_datasource_import_dry_run_report, create_org,
+    describe_datasource_import_mode, list_orgs, load_import_records, org_id_string_from_value,
+    DatasourceExportOrgScope, DatasourceExportOrgTargetPlan, DatasourceImportArgs,
 };
 
 pub(crate) fn resolve_export_org_target_plan(
@@ -156,7 +156,8 @@ pub(crate) fn render_routed_datasource_import_org_table(
 pub(crate) fn build_routed_datasource_import_dry_run_json(
     args: &DatasourceImportArgs,
 ) -> Result<String> {
-    let admin_client = build_http_client(&args.common)?;
+    let admin_api = build_api_client(&args.common)?;
+    let admin_client = admin_api.http_client();
     let scopes = super::discover_export_org_import_scopes(args)?;
     let mut orgs = Vec::new();
     let mut imports = Vec::new();
@@ -180,7 +181,7 @@ pub(crate) fn build_routed_datasource_import_dry_run_json(
             scoped_args.only_org_id = Vec::new();
             scoped_args.create_missing_orgs = false;
             scoped_args.import_dir = plan.import_dir.clone();
-            let scoped_client = build_http_client_for_org(&args.common, target_org_id)?;
+            let scoped_client = build_http_client_for_org_from_api(&admin_api, target_org_id)?;
             build_datasource_import_dry_run_json_value(&collect_datasource_import_dry_run_report(
                 &scoped_client,
                 &scoped_args,

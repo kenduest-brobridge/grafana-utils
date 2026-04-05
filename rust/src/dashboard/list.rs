@@ -11,12 +11,12 @@ use crate::http::JsonHttpClient;
 use crate::tabular_output::render_yaml;
 
 use super::{
-    build_datasource_catalog, build_folder_path, build_http_client, build_http_client_for_org,
-    datasource_type_alias, extract_dashboard_object, fetch_dashboard_with_request,
-    fetch_folder_if_exists_with_request, is_builtin_datasource_ref, is_placeholder_string,
-    list_dashboard_summaries_with_request, list_datasources_with_request, lookup_datasource,
-    resolve_datasource_type_alias, ListArgs, DEFAULT_DASHBOARD_TITLE, DEFAULT_FOLDER_TITLE,
-    DEFAULT_FOLDER_UID, DEFAULT_UNKNOWN_UID,
+    build_api_client, build_datasource_catalog, build_folder_path, build_http_client_for_org,
+    build_http_client_for_org_from_api, datasource_type_alias, extract_dashboard_object,
+    fetch_dashboard_with_request, fetch_folder_if_exists_with_request, is_builtin_datasource_ref,
+    is_placeholder_string, list_dashboard_summaries_with_request, list_datasources_with_request,
+    lookup_datasource, resolve_datasource_type_alias, ListArgs, DEFAULT_DASHBOARD_TITLE,
+    DEFAULT_FOLDER_TITLE, DEFAULT_FOLDER_UID, DEFAULT_UNKNOWN_UID,
 };
 
 #[path = "list_render.rs"]
@@ -541,9 +541,10 @@ pub fn list_dashboards_with_client(client: &JsonHttpClient, args: &ListArgs) -> 
 
 /// Purpose: implementation note.
 pub(crate) fn list_dashboards_with_org_clients(args: &ListArgs) -> Result<usize> {
-    let admin_client = build_http_client(&args.common)?;
+    let admin_api = build_api_client(&args.common)?;
+    let admin_client = admin_api.http_client();
     let orgs = if args.all_orgs {
-        DashboardResourceClient::new(&admin_client).list_orgs()?
+        DashboardResourceClient::new(admin_client).list_orgs()?
     } else {
         Vec::new()
     };
@@ -551,7 +552,7 @@ pub(crate) fn list_dashboards_with_org_clients(args: &ListArgs) -> Result<usize>
     if args.all_orgs {
         for org in orgs {
             let org_id = org_id_value(&org)?;
-            let org_client = build_http_client_for_org(&args.common, org_id)?;
+            let org_client = build_http_client_for_org_from_api(&admin_api, org_id)?;
             let mut scoped = collect_list_dashboards_with_client(&org_client, args, Some(&org))?;
             summaries.append(&mut scoped);
         }
@@ -559,8 +560,7 @@ pub(crate) fn list_dashboards_with_org_clients(args: &ListArgs) -> Result<usize>
         let org_client = build_http_client_for_org(&args.common, org_id)?;
         summaries = collect_list_dashboards_with_client(&org_client, args, None)?;
     } else {
-        let client = build_http_client(&args.common)?;
-        summaries = collect_list_dashboards_with_client(&client, args, None)?;
+        summaries = collect_list_dashboards_with_client(admin_client, args, None)?;
     }
     render_dashboard_list_output(&summaries, args)
 }

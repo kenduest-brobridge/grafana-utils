@@ -13,6 +13,7 @@ mod dashboard_runtime;
 pub use cli_defs_command::*;
 pub use cli_defs_inspect::*;
 pub use cli_defs_shared::*;
+pub(crate) use dashboard_runtime::{build_api_client, build_http_client_for_org_from_api};
 pub use dashboard_runtime::{
     build_auth_context, build_http_client, build_http_client_for_org, normalize_dashboard_cli_args,
     parse_cli_from, DashboardAuthContext,

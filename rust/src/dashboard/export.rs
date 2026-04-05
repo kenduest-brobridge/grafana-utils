@@ -21,8 +21,9 @@ use super::list::{
     fetch_current_org_with_request, list_orgs_with_request, org_id_value,
 };
 use super::{
-    build_datasource_catalog, build_datasource_inventory_record, build_export_metadata,
-    build_external_export_document, build_http_client, build_http_client_for_org,
+    build_api_client, build_datasource_catalog, build_datasource_inventory_record,
+    build_export_metadata, build_external_export_document, build_http_client,
+    build_http_client_for_org, build_http_client_for_org_from_api,
     build_preserved_web_import_document, build_root_export_index, build_variant_index,
     fetch_dashboard_with_request, list_dashboard_summaries_with_request,
     list_datasources_with_request, write_dashboard, write_json_document, DashboardIndexItem,
@@ -638,15 +639,15 @@ pub fn export_dashboards_with_client(client: &JsonHttpClient, args: &ExportArgs)
 
 pub(crate) fn export_dashboards_with_org_clients(args: &ExportArgs) -> Result<usize> {
     if args.all_orgs {
-        let admin_client = build_http_client(&args.common)?;
-        let admin_dashboard = DashboardResourceClient::new(&admin_client);
+        let admin_api = build_api_client(&args.common)?;
+        let admin_dashboard = DashboardResourceClient::new(admin_api.http_client());
         let mut total = 0usize;
         let mut root_items = Vec::new();
         let mut root_folders = Vec::new();
         let mut org_summaries = Vec::new();
         for org in admin_dashboard.list_orgs()? {
             let org_id = org_id_value(&org)?;
-            let org_client = build_http_client_for_org(&args.common, org_id)?;
+            let org_client = build_http_client_for_org_from_api(&admin_api, org_id)?;
             let scope_result = export_dashboards_in_scope_with_request(
                 &mut |method, path, params, payload| {
                     org_client.request_json(method, path, params, payload)

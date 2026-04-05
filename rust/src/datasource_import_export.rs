@@ -13,7 +13,7 @@ use std::path::Path;
 
 use crate::common::{message, render_json_value, Result};
 use crate::dashboard::{
-    build_http_client, build_http_client_for_org, list_datasources, DEFAULT_ORG_ID,
+    build_api_client, build_http_client_for_org_from_api, list_datasources, DEFAULT_ORG_ID,
 };
 use crate::datasource::{
     render_import_table, resolve_match, DatasourceImportArgs, DatasourceImportInputFormat,
@@ -525,7 +525,8 @@ pub(crate) fn import_datasources_with_client(
 }
 
 pub(crate) fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> Result<usize> {
-    let admin_client = build_http_client(&args.common)?;
+    let admin_api = build_api_client(&args.common)?;
+    let admin_client = admin_api.http_client();
     let scopes = discover_export_org_import_scopes(args)?;
     if args.dry_run && args.json {
         println!("{}", build_routed_datasource_import_dry_run_json(args)?);
@@ -581,7 +582,7 @@ pub(crate) fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> R
         scoped_args.only_org_id = Vec::new();
         scoped_args.create_missing_orgs = false;
         scoped_args.import_dir = plan.import_dir.clone();
-        let scoped_client = build_http_client_for_org(&args.common, target_org_id)?;
+        let scoped_client = build_http_client_for_org_from_api(&admin_api, target_org_id)?;
         imported_count +=
             import_datasources_with_client(&scoped_client, &scoped_args).map_err(|error| {
                 message(format!(

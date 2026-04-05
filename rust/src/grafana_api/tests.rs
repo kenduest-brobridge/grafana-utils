@@ -146,6 +146,32 @@ fn grafana_connection_with_org_id_replaces_existing_header() {
 }
 
 #[test]
+fn grafana_api_client_scoped_to_org_reuses_existing_auth_headers() {
+    let api = GrafanaApiClient::from_connection(GrafanaConnection::new(
+        "http://localhost:3000".to_string(),
+        vec![("Authorization".to_string(), "Basic abc".to_string())],
+        30,
+        false,
+        None,
+        "basic".to_string(),
+    ))
+    .unwrap();
+
+    let scoped = api.scoped_to_org(12).unwrap();
+    let headers = &scoped.connection().headers;
+
+    assert!(headers
+        .iter()
+        .any(|(name, value)| name == "Authorization" && value == "Basic abc"));
+    let org_headers = headers
+        .iter()
+        .filter(|(name, _)| name == "X-Grafana-Org-Id")
+        .collect::<Vec<_>>();
+    assert_eq!(org_headers.len(), 1);
+    assert_eq!(org_headers[0].1, "12");
+}
+
+#[test]
 fn dashboard_resource_client_lists_orgs_and_current_org() {
     let responses = vec![
         http_response("200 OK", r#"{"id":7,"name":"Main Org."}"#),

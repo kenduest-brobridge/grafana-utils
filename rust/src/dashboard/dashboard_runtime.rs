@@ -216,15 +216,25 @@ pub fn build_auth_context(common: &CommonCliArgs) -> Result<DashboardAuthContext
 }
 
 pub fn build_http_client(common: &CommonCliArgs) -> Result<JsonHttpClient> {
-    let connection = build_connection(common)?;
-    Ok(GrafanaApiClient::from_connection(connection)?.into_http_client())
+    Ok(build_api_client(common)?.into_http_client())
 }
 
 pub fn build_http_client_for_org(common: &CommonCliArgs, org_id: i64) -> Result<JsonHttpClient> {
-    let connection = build_connection(common)?;
-    Ok(GrafanaApiClient::from_connection(connection)?
+    Ok(build_api_client(common)?
         .scoped_to_org(org_id)?
         .into_http_client())
+}
+
+pub(crate) fn build_api_client(common: &CommonCliArgs) -> Result<GrafanaApiClient> {
+    let connection = build_connection(common)?;
+    GrafanaApiClient::from_connection(connection)
+}
+
+pub(crate) fn build_http_client_for_org_from_api(
+    api: &GrafanaApiClient,
+    org_id: i64,
+) -> Result<JsonHttpClient> {
+    Ok(api.scoped_to_org(org_id)?.into_http_client())
 }
 
 fn build_connection(common: &CommonCliArgs) -> Result<GrafanaConnection> {

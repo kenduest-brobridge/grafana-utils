@@ -8,6 +8,13 @@ Current AI-maintained status only.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-status-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-31.md).
 
+## 2026-04-05 - Reuse resolved Grafana clients within one command to avoid repeated auth prompts
+- State: Done
+- Scope: `rust/src/dashboard/cli_defs.rs`, `rust/src/dashboard/dashboard_runtime.rs`, `rust/src/dashboard/list.rs`, `rust/src/dashboard/export.rs`, `rust/src/dashboard/mod.rs`, `rust/src/datasource.rs`, `rust/src/datasource_import_export.rs`, `rust/src/datasource_import_export_routed.rs`, `rust/src/grafana_api/tests.rs`
+- Baseline: several dashboard and datasource command paths built a root client and then rebuilt scoped org clients from `CommonCliArgs`, which re-ran auth resolution and could prompt for `--prompt-password` multiple times within one command.
+- Current Update: added shared dashboard runtime helpers that derive org-scoped clients from an already-resolved root API client, then rewired dashboard list/export and datasource list/export/routed-import paths to reuse that root client instead of resolving auth again for each org scope. Added a shared-client regression in `grafana_api/tests.rs`, reran focused slices, and live-validated `dashboard list --prompt-password` against localhost Grafana.
+- Result: the fixed command paths now resolve prompt-based auth once per command and reuse the same root connection/client when they need additional org-scoped HTTP clients.
+
 ## 2026-04-05 - Add generic resource queries plus dashboard serve/edit-live authoring surfaces
 - State: Done
 - Scope: `rust/src/resource.rs`, `rust/src/cli.rs`, `rust/src/cli_rust_tests.rs`, `rust/src/dashboard/serve.rs`, `rust/src/dashboard/edit_live.rs`, `rust/src/dashboard/cli_defs_command.rs`, `rust/src/dashboard/dashboard_cli_parser_help_rust_tests.rs`, `rust/src/sync/plan_builder.rs`, `rust/src/sync/staged_documents_render.rs`, `rust/src/sync/rust_tests.rs`, `docs/commands/en/*.md`, `docs/commands/zh-TW/*.md`, `docs/user-guide/en/dashboard.md`, `docs/user-guide/zh-TW/dashboard.md`, `docs/user-guide/en/reference.md`, `docs/user-guide/zh-TW/reference.md`, generated man/html, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

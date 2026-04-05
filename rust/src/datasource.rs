@@ -19,8 +19,8 @@ use std::path::Path;
 
 use crate::common::{message, render_json_value, string_field, write_json_file, Result};
 use crate::dashboard::{
-    build_auth_context, build_http_client, build_http_client_for_org, list_datasources,
-    CommonCliArgs, SimpleOutputFormat,
+    build_api_client, build_auth_context, build_http_client, build_http_client_for_org,
+    build_http_client_for_org_from_api, list_datasources, CommonCliArgs, SimpleOutputFormat,
 };
 use crate::datasource::datasource_diff::{
     build_datasource_diff_report, normalize_export_records, normalize_live_records,
@@ -269,14 +269,15 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                         "Datasource list with --all-orgs requires Basic auth (--basic-user / --basic-password).",
                     ));
                 }
-                let admin_client = build_http_client(&args.common)?;
+                let admin_api = build_api_client(&args.common)?;
+                let admin_client = admin_api.http_client();
                 let mut rows = Vec::new();
-                for org in list_orgs(&admin_client)? {
+                for org in list_orgs(admin_client)? {
                     let org_id = org
                         .get("id")
                         .and_then(Value::as_i64)
                         .ok_or_else(|| message("Grafana org list entry is missing numeric id."))?;
-                    let org_client = build_http_client_for_org(&args.common, org_id)?;
+                    let org_client = build_http_client_for_org_from_api(&admin_api, org_id)?;
                     rows.extend(build_list_records(&org_client)?);
                 }
                 rows.sort_by(|left, right| {
@@ -614,17 +615,18 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                         "Datasource export with --all-orgs requires Basic auth (--basic-user / --basic-password).",
                     ));
                 }
-                let admin_client = build_http_client(&args.common)?;
+                let admin_api = build_api_client(&args.common)?;
+                let admin_client = admin_api.http_client();
                 let mut total = 0usize;
                 let mut org_count = 0usize;
                 let mut root_items = Vec::new();
                 let mut root_records = Vec::new();
-                for org in list_orgs(&admin_client)? {
+                for org in list_orgs(admin_client)? {
                     let org_id = org
                         .get("id")
                         .and_then(Value::as_i64)
                         .ok_or_else(|| message("Grafana org list entry is missing numeric id."))?;
-                    let org_client = build_http_client_for_org(&args.common, org_id)?;
+                    let org_client = build_http_client_for_org_from_api(&admin_api, org_id)?;
                     let records = build_export_records(&org_client)?;
                     let scoped_output_dir = build_all_orgs_output_dir(&args.export_dir, &org);
                     let datasources_path = scoped_output_dir.join(DATASOURCE_EXPORT_FILENAME);

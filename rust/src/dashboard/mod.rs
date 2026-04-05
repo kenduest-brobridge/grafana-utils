@@ -96,6 +96,7 @@ pub(crate) use authoring::{
     render_dashboard_review_json, render_dashboard_review_table, render_dashboard_review_text,
     render_dashboard_review_yaml, review_dashboard_file as build_dashboard_review,
 };
+pub(crate) use cli_defs::{build_api_client, build_http_client_for_org_from_api};
 pub use cli_defs::{
     build_auth_context, build_http_client, build_http_client_for_org, normalize_dashboard_cli_args,
     parse_cli_from, BrowseArgs, CloneLiveArgs, CommonCliArgs, DashboardAuthContext,
@@ -269,13 +270,14 @@ fn rendered_output_to_lines(output: String) -> Vec<String> {
 pub(crate) fn collect_dashboard_list_summaries(args: &ListArgs) -> Result<Vec<Map<String, Value>>> {
     let mut summaries = Vec::new();
     if args.all_orgs {
-        let admin_client = build_http_client(&args.common)?;
+        let admin_api = build_api_client(&args.common)?;
+        let admin_client = admin_api.http_client();
         let orgs = list::list_orgs_with_request(|method, path, params, payload| {
             admin_client.request_json(method, path, params, payload)
         })?;
         for org in orgs {
             let org_id = list::org_id_value(&org)?;
-            let org_client = build_http_client_for_org(&args.common, org_id)?;
+            let org_client = build_http_client_for_org_from_api(&admin_api, org_id)?;
             let mut scoped = list::collect_list_dashboards_with_request(
                 &mut |method, path, params, payload| {
                     org_client.request_json(method, path, params, payload)
