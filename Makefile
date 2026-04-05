@@ -9,81 +9,116 @@ PYTHON_DIST_DIR ?= dist
 DEV_ITERATION ?= 1
 RUST_RELEASE_RUSTFLAGS ?= -C debuginfo=0
 HOST_OS := $(shell uname -s)
+ESC := \033
+BOLD := $(ESC)[1m
+RESET := $(ESC)[0m
+BLUE := $(ESC)[34m
+GREEN := $(ESC)[32m
+CYAN := $(ESC)[36m
+YELLOW := $(ESC)[33m
+define NL
+
+
+endef
+
+define HELP_TITLE
+$(BOLD)Available targets$(RESET)
+
+endef
+
+define HELP_VERSIONING
+$(BLUE)$(BOLD)Versioning$(RESET)
+  $(GREEN)make print-version$(RESET)  Show VERSION plus Python/Rust package versions
+  $(GREEN)make sync-version$(RESET)  Sync python/pyproject.toml, rust/Cargo.toml, and rust/Cargo.lock from VERSION
+  $(GREEN)make set-release-version VERSION=X.Y.Z$(RESET)  Set VERSION and package metadata to a release version
+  $(GREEN)make set-dev-version VERSION=X.Y.Z DEV_ITERATION=N$(RESET)  Optionally set VERSION and package metadata to a preview version
+
+endef
+
+define HELP_PYTHON
+$(BLUE)$(BOLD)Python$(RESET)
+  $(GREEN)make poetry-install$(RESET)  Install the Poetry-managed development environment
+  $(GREEN)make poetry-lock$(RESET)  Refresh python/poetry.lock from python/pyproject.toml
+  $(GREEN)make poetry-test$(RESET)  Run the Python unittest suite inside Poetry
+  $(GREEN)make poetry-quality-python$(RESET)  Run Python quality checks inside Poetry
+  $(GREEN)make build-python$(RESET)  Build the Python wheel and sdist into dist/
+
+endef
+
+define HELP_DOCS
+$(BLUE)$(BOLD)Docs$(RESET)
+  $(GREEN)make man$(RESET)  Regenerate grafana-util, dashboard, alert, datasource, access, profile, status, overview, change, and snapshot manpages
+  $(GREEN)make man-check$(RESET)  Fail if those checked-in docs/man/*.1 pages are out of date
+  $(GREEN)make html$(RESET)  Regenerate the HTML docs site: handbook + command reference, with docs/html/index.html as the entrypoint
+  $(GREEN)make html-check$(RESET)  Fail if checked-in docs/html/**/*.html is out of date
+  $(GREEN)make pages-site$(RESET)  Assemble the multi-version GitHub Pages docs artifact into build/docs-pages/
+
+endef
+
+define HELP_RUST_BUILD
+$(BLUE)$(BOLD)Rust build$(RESET)
+  $(GREEN)make build-rust$(RESET)  Build the default native, host release artifact, and Linux amd64 Rust artifacts $(CYAN)(no browser feature)$(RESET)
+  $(GREEN)make build-rust-browser$(RESET)  Build the browser-enabled native, host release artifact, and Linux amd64 Rust artifacts
+  $(GREEN)make build-rust-native$(RESET)  Build the default native Rust release binary in rust/target/release/
+  $(GREEN)make build-rust-native-browser$(RESET)  Build the browser-enabled native Rust release binary in rust/target/release/
+  $(GREEN)make build-rust-macos-arm64$(RESET)  Build the default macOS Apple Silicon artifact into dist/macos-arm64/
+  $(GREEN)make build-rust-macos-arm64-browser$(RESET)  Build the browser-enabled macOS Apple Silicon artifact into dist/macos-arm64-browser/
+  $(GREEN)make build-rust-linux-amd64$(RESET)  Build the default Linux amd64 artifact with local zig into dist/linux-amd64/ $(CYAN)(preferred; defaults to LTO off and codegen-units=1 for cross-link stability)$(RESET)
+  $(GREEN)make build-rust-linux-amd64-browser$(RESET)  Build the browser-enabled Linux amd64 artifact with local zig into dist/linux-amd64-browser/
+  $(GREEN)make build-rust-linux-amd64-docker$(RESET)  Build the default Linux amd64 artifact with Docker into dist/linux-amd64/ $(CYAN)(fallback)$(RESET)
+  $(GREEN)make build-rust-linux-amd64-browser-docker$(RESET)  Build the browser-enabled Linux amd64 artifact with Docker into dist/linux-amd64-browser/ $(CYAN)(fallback)$(RESET)
+  $(GREEN)make build-rust-linux-amd64-zig$(RESET)  Alias for the preferred local zig Linux amd64 build path $(CYAN)(same as build-rust-linux-amd64)$(RESET)
+
+endef
+
+define HELP_ARTIFACT_VALIDATION
+$(BLUE)$(BOLD)Artifact validation$(RESET)
+  $(GREEN)make validate-rust-linux-amd64-artifact$(RESET)  Run the default Linux amd64 artifact in a fixed-name Linux Docker container
+  $(GREEN)make validate-rust-linux-amd64-browser-artifact$(RESET)  Run the browser-enabled Linux amd64 artifact in a fixed-name Linux Docker container
+
+endef
+
+define HELP_QUALITY
+$(BLUE)$(BOLD)Quality and tests$(RESET)
+  $(GREEN)make test$(RESET)  Run both Python and Rust test suites
+  $(GREEN)make test-python$(RESET)  Run the Python unittest suite
+  $(GREEN)make test-rust$(RESET)  Run the Rust cargo test suite
+  $(GREEN)make fmt-rust-check$(RESET)  Run cargo fmt --check
+  $(GREEN)make lint-rust$(RESET)  Run cargo clippy with warnings denied
+  $(GREEN)make quality$(RESET)  Run the repo quality gate scripts
+  $(GREEN)make quality-python$(RESET)  Run the Python quality gate script
+  $(GREEN)make quality-rust$(RESET)  Run the Rust quality gate script
+  $(GREEN)make quality-ai-workflow$(RESET)  Run lightweight AI workflow drift checks for the current change set
+  $(GREEN)make quality-alert-rust$(RESET)  Run focused Rust alert contract checks
+  $(GREEN)make quality-sync-rust$(RESET)  Run focused Rust sync contract checks
+
+endef
+
+define HELP_LIVE
+$(BLUE)$(BOLD)Live smoke and sample data$(RESET)
+  $(GREEN)make seed-grafana-sample-data$(RESET)  Seed a local Grafana with reusable developer sample orgs, datasources, folders, and dashboards
+  $(GREEN)make destroy-grafana-sample-data$(RESET)  Remove the developer sample orgs, datasources, folders, and dashboards seeded by the repo script
+  $(GREEN)make reset-grafana-all-data$(RESET)  $(YELLOW)Danger:$(RESET) delete repo-relevant test data from a disposable local Grafana instance
+  $(GREEN)make test-rust-live$(RESET)  Start Grafana in Docker and run the Rust live smoke test, including dashboard stdin/watch authoring
+  $(GREEN)make test-sync-live$(RESET)  Start Grafana in Docker and run the Rust sync live smoke path
+  $(GREEN)make test-alert-live$(RESET)  Start Grafana in Docker and run the Rust alert live smoke path
+  $(GREEN)make test-alert-live-artifact$(RESET)  Start Grafana in Docker and run the Rust alert artifact live smoke path
+  $(GREEN)make test-alert-live-replay$(RESET)  Start Grafana in Docker and run the Rust alert replay live smoke path
+  $(GREEN)make test-access-live$(RESET)  Start Grafana in Docker and run the Python access live smoke test
+  $(GREEN)make test-python-datasource-live$(RESET)  Start Grafana in Docker and run the Python datasource live smoke test
+  $(GREEN)make test-datasource-live$(RESET)  Start Grafana in Docker and run the Rust and Python datasource live smoke tests
+
+endef
+
+define HELP_META
+$(BLUE)$(BOLD)Meta$(RESET)
+  $(GREEN)make build$(RESET)  Build both Python and Rust artifacts
+endef
+
+HELP_ALL := $(HELP_TITLE)$(HELP_VERSIONING)$(HELP_PYTHON)$(HELP_DOCS)$(HELP_RUST_BUILD)$(HELP_ARTIFACT_VALIDATION)$(HELP_QUALITY)$(HELP_LIVE)$(HELP_META)
 
 help:
-	@BOLD="$$(printf '\033[1m')"; \
-	RESET="$$(printf '\033[0m')"; \
-	BLUE="$$(printf '\033[34m')"; \
-	GREEN="$$(printf '\033[32m')"; \
-	CYAN="$$(printf '\033[36m')"; \
-	YELLOW="$$(printf '\033[33m')"; \
-	printf '%b\n' "$${BOLD}Available targets$${RESET}"; \
-	printf '\n'; \
-	printf '%b\n' "$${BLUE}$${BOLD}Versioning$${RESET}"; \
-	printf '  %b\n' "$${GREEN}make print-version$${RESET}  Show VERSION plus Python/Rust package versions"; \
-	printf '  %b\n' "$${GREEN}make sync-version$${RESET}  Sync python/pyproject.toml, rust/Cargo.toml, and rust/Cargo.lock from VERSION"; \
-	printf '  %b\n' "$${GREEN}make set-release-version VERSION=X.Y.Z$${RESET}  Set VERSION and package metadata to a release version"; \
-	printf '  %b\n' "$${GREEN}make set-dev-version VERSION=X.Y.Z DEV_ITERATION=N$${RESET}  Optionally set VERSION and package metadata to a preview version"; \
-	printf '\n'; \
-	printf '%b\n' "$${BLUE}$${BOLD}Python$${RESET}"; \
-	printf '  %b\n' "$${GREEN}make poetry-install$${RESET}  Install the Poetry-managed development environment"; \
-	printf '  %b\n' "$${GREEN}make poetry-lock$${RESET}  Refresh python/poetry.lock from python/pyproject.toml"; \
-	printf '  %b\n' "$${GREEN}make poetry-test$${RESET}  Run the Python unittest suite inside Poetry"; \
-	printf '  %b\n' "$${GREEN}make poetry-quality-python$${RESET}  Run Python quality checks inside Poetry"; \
-	printf '  %b\n' "$${GREEN}make build-python$${RESET}  Build the Python wheel and sdist into dist/"; \
-	printf '\n'; \
-	printf '%b\n' "$${BLUE}$${BOLD}Docs$${RESET}"; \
-	printf '  %b\n' "$${GREEN}make man$${RESET}  Regenerate grafana-util, dashboard, alert, datasource, access, profile, status, overview, change, and snapshot manpages"; \
-	printf '  %b\n' "$${GREEN}make man-check$${RESET}  Fail if those checked-in docs/man/*.1 pages are out of date"; \
-	printf '  %b\n' "$${GREEN}make html$${RESET}  Regenerate the HTML docs site: handbook + command reference, with docs/html/index.html as the entrypoint"; \
-	printf '  %b\n' "$${GREEN}make html-check$${RESET}  Fail if checked-in docs/html/**/*.html is out of date"; \
-	printf '  %b\n' "$${GREEN}make pages-site$${RESET}  Assemble the multi-version GitHub Pages docs artifact into build/docs-pages/"; \
-	printf '\n'; \
-	printf '%b\n' "$${BLUE}$${BOLD}Rust build$${RESET}"; \
-	printf '  %b%s%b\n' "$${GREEN}make build-rust$${RESET}  Build the default native, host release artifact, and Linux amd64 Rust artifacts " "$${CYAN}(no browser feature)" "$${RESET}"; \
-	printf '  %b\n' "$${GREEN}make build-rust-browser$${RESET}  Build the browser-enabled native, host release artifact, and Linux amd64 Rust artifacts"; \
-	printf '  %b\n' "$${GREEN}make build-rust-native$${RESET}  Build the default native Rust release binary in rust/target/release/"; \
-	printf '  %b\n' "$${GREEN}make build-rust-native-browser$${RESET}  Build the browser-enabled native Rust release binary in rust/target/release/"; \
-	printf '  %b\n' "$${GREEN}make build-rust-macos-arm64$${RESET}  Build the default macOS Apple Silicon artifact into dist/macos-arm64/"; \
-	printf '  %b\n' "$${GREEN}make build-rust-macos-arm64-browser$${RESET}  Build the browser-enabled macOS Apple Silicon artifact into dist/macos-arm64-browser/"; \
-	printf '  %b%s%b\n' "$${GREEN}make build-rust-linux-amd64$${RESET}  Build the default Linux amd64 artifact with local zig into dist/linux-amd64/ " "$${CYAN}(preferred; defaults to LTO off and codegen-units=1 for cross-link stability)" "$${RESET}"; \
-	printf '  %b\n' "$${GREEN}make build-rust-linux-amd64-browser$${RESET}  Build the browser-enabled Linux amd64 artifact with local zig into dist/linux-amd64-browser/"; \
-	printf '  %b%s%b\n' "$${GREEN}make build-rust-linux-amd64-docker$${RESET}  Build the default Linux amd64 artifact with Docker into dist/linux-amd64/ " "$${CYAN}(fallback)" "$${RESET}"; \
-	printf '  %b%s%b\n' "$${GREEN}make build-rust-linux-amd64-browser-docker$${RESET}  Build the browser-enabled Linux amd64 artifact with Docker into dist/linux-amd64-browser/ " "$${CYAN}(fallback)" "$${RESET}"; \
-	printf '  %b%s%b\n' "$${GREEN}make build-rust-linux-amd64-zig$${RESET}  Alias for the preferred local zig Linux amd64 build path " "$${CYAN}(same as build-rust-linux-amd64)" "$${RESET}"; \
-	printf '\n'; \
-	printf '%b\n' "$${BLUE}$${BOLD}Artifact validation$${RESET}"; \
-	printf '  %b\n' "$${GREEN}make validate-rust-linux-amd64-artifact$${RESET}  Run the default Linux amd64 artifact in a fixed-name Linux Docker container"; \
-	printf '  %b\n' "$${GREEN}make validate-rust-linux-amd64-browser-artifact$${RESET}  Run the browser-enabled Linux amd64 artifact in a fixed-name Linux Docker container"; \
-	printf '\n'; \
-	printf '%b\n' "$${BLUE}$${BOLD}Quality and tests$${RESET}"; \
-	printf '  %b\n' "$${GREEN}make test$${RESET}  Run both Python and Rust test suites"; \
-	printf '  %b\n' "$${GREEN}make test-python$${RESET}  Run the Python unittest suite"; \
-	printf '  %b\n' "$${GREEN}make test-rust$${RESET}  Run the Rust cargo test suite"; \
-	printf '  %b\n' "$${GREEN}make fmt-rust-check$${RESET}  Run cargo fmt --check"; \
-	printf '  %b\n' "$${GREEN}make lint-rust$${RESET}  Run cargo clippy with warnings denied"; \
-	printf '  %b\n' "$${GREEN}make quality$${RESET}  Run the repo quality gate scripts"; \
-	printf '  %b\n' "$${GREEN}make quality-python$${RESET}  Run the Python quality gate script"; \
-	printf '  %b\n' "$${GREEN}make quality-rust$${RESET}  Run the Rust quality gate script"; \
-	printf '  %b\n' "$${GREEN}make quality-ai-workflow$${RESET}  Run lightweight AI workflow drift checks for the current change set"; \
-	printf '  %b\n' "$${GREEN}make quality-alert-rust$${RESET}  Run focused Rust alert contract checks"; \
-	printf '  %b\n' "$${GREEN}make quality-sync-rust$${RESET}  Run focused Rust sync contract checks"; \
-	printf '\n'; \
-	printf '%b\n' "$${BLUE}$${BOLD}Live smoke and sample data$${RESET}"; \
-	printf '  %b\n' "$${GREEN}make seed-grafana-sample-data$${RESET}  Seed a local Grafana with reusable developer sample orgs, datasources, folders, and dashboards"; \
-	printf '  %b\n' "$${GREEN}make destroy-grafana-sample-data$${RESET}  Remove the developer sample orgs, datasources, folders, and dashboards seeded by the repo script"; \
-	printf '  %b%s%b%s\n' "$${GREEN}make reset-grafana-all-data$${RESET}  " "$${YELLOW}Danger:$${RESET}" " " "delete repo-relevant test data from a disposable local Grafana instance"; \
-	printf '  %b\n' "$${GREEN}make test-rust-live$${RESET}  Start Grafana in Docker and run the Rust live smoke test, including dashboard stdin/watch authoring"; \
-	printf '  %b\n' "$${GREEN}make test-sync-live$${RESET}  Start Grafana in Docker and run the Rust sync live smoke path"; \
-	printf '  %b\n' "$${GREEN}make test-alert-live$${RESET}  Start Grafana in Docker and run the Rust alert live smoke path"; \
-	printf '  %b\n' "$${GREEN}make test-alert-live-artifact$${RESET}  Start Grafana in Docker and run the Rust alert artifact live smoke path"; \
-	printf '  %b\n' "$${GREEN}make test-alert-live-replay$${RESET}  Start Grafana in Docker and run the Rust alert replay live smoke path"; \
-	printf '  %b\n' "$${GREEN}make test-access-live$${RESET}  Start Grafana in Docker and run the Python access live smoke test"; \
-	printf '  %b\n' "$${GREEN}make test-python-datasource-live$${RESET}  Start Grafana in Docker and run the Python datasource live smoke test"; \
-	printf '  %b\n' "$${GREEN}make test-datasource-live$${RESET}  Start Grafana in Docker and run the Rust and Python datasource live smoke tests"; \
-	printf '\n'; \
-	printf '%b\n' "$${BLUE}$${BOLD}Meta$${RESET}"; \
-	printf '  %b\n' "$${GREEN}make build$${RESET}  Build both Python and Rust artifacts"
+	@printf '%b' '$(subst $(NL),\n,$(HELP_ALL))'
 
 print-version:
 	bash ./scripts/set-version.sh --print-current
@@ -92,11 +127,11 @@ sync-version:
 	bash ./scripts/set-version.sh --sync-from-file
 
 set-release-version:
-	@test -n "$(VERSION)" || { echo "Usage: make set-release-version VERSION=X.Y.Z"; exit 1; }
+	@test -n "$(VERSION)" || { printf '%s\n' "Usage: make set-release-version VERSION=X.Y.Z"; exit 1; }
 	bash ./scripts/set-version.sh --version "$(VERSION)"
 
 set-dev-version:
-	@test -n "$(VERSION)" || { echo "Usage: make set-dev-version VERSION=X.Y.Z DEV_ITERATION=N"; exit 1; }
+	@test -n "$(VERSION)" || { printf '%s\n' "Usage: make set-dev-version VERSION=X.Y.Z DEV_ITERATION=N"; exit 1; }
 	bash ./scripts/set-version.sh --version "$(VERSION).dev$(DEV_ITERATION)"
 
 poetry-install:
