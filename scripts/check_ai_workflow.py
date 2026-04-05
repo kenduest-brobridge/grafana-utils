@@ -36,6 +36,7 @@ HTML_SOURCE_FILES = {
 MAN_SOURCE_PREFIXES = ("docs/commands/en/",)
 
 MAN_SOURCE_FILES = {
+    "VERSION",
     "scripts/generate_manpages.py",
     "scripts/docgen_command_docs.py",
     "scripts/docgen_common.py",

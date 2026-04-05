@@ -788,7 +788,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh</code></pre>
 <p>若您想固定版本，或想指定安裝到哪個 binary 目錄，也可以直接這樣裝：</p>
 <pre><code># 用途：把固定版本安裝到指定的 binary 目錄。
-VERSION=0.7.4 BIN_DIR=&quot;$HOME/.local/bin&quot; \
+VERSION=0.8.0 BIN_DIR=&quot;$HOME/.local/bin&quot; \
   curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh</code></pre>
 <p>安裝腳本會優先使用您指定的 <code>BIN_DIR</code>。若沒有設定，會先嘗試可寫入的 <code>/usr/local/bin</code>，再退回 <code>$HOME/.local/bin</code>。</p>
 <p>如果最後選到的安裝目錄尚未加入 <code>PATH</code>，安裝腳本會直接印出對應 <code>zsh</code> 或 <code>bash</code> 可貼上的設定方式。若想先看完整安裝說明，也可以先執行：</p>
@@ -798,7 +798,7 @@ sh ./scripts/install.sh --help</code></pre>
 <pre><code># 用途：檢查版本。
 grafana-util --version</code></pre>
 <p><strong>預期輸出：</strong></p>
-<pre><code>grafana-util 0.7.4</code></pre>
+<pre><code>grafana-util 0.8.0</code></pre>
 <p>這代表執行檔已在 <code>PATH</code> 上，而且版本與目前檢出的發行版一致。</p>
 <h2 id="步驟-2連線方式與-profile-設定檔">步驟 2：連線方式與 Profile 設定檔</h2>
 <p>Profile 這套流程是以「專案本地設定」為中心。<code>grafana-util profile</code> 預設會讀寫目前工作目錄中的 <code>grafana-util.yaml</code>，若有設定 <code>GRAFANA_UTIL_CONFIG</code>，則會優先讀取該路徑。</p>

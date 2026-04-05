@@ -68,7 +68,7 @@ curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/mai
 
 ```bash
 # 用途：把固定版本安裝到指定的 binary 目錄。
-VERSION=0.7.4 BIN_DIR="$HOME/.local/bin" \
+VERSION=0.8.0 BIN_DIR="$HOME/.local/bin" \
   curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
 ```
 
@@ -88,7 +88,7 @@ grafana-util --version
 ```
 **預期輸出：**
 ```text
-grafana-util 0.7.4
+grafana-util 0.8.0
 ```
 這代表執行檔已在 `PATH` 上，而且版本與目前檢出的發行版一致。
 

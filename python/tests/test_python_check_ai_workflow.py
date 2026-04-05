@@ -49,6 +49,18 @@ class CheckAiWorkflowTests(unittest.TestCase):
         self.assertEqual(len(errors), 1)
         self.assertIn("docs/man output", errors[0])
 
+    def test_man_output_allows_version_bump(self):
+        module = load_module()
+
+        errors = module.validate_paths(
+            [
+                "VERSION",
+                "docs/man/grafana-util-dashboard.1",
+            ]
+        )
+
+        self.assertEqual(errors, [])
+
     def test_meaningful_internal_doc_requires_both_trace_files(self):
         module = load_module()
 
