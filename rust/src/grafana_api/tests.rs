@@ -7,13 +7,12 @@ use std::time::Duration;
 
 use crate::grafana_api::connection::auth_mode_from_headers;
 use crate::grafana_api::{
+    execute_sync_live_apply_with_client, fetch_sync_live_availability_with_client,
     AccessResourceClient, AlertingResourceClient, AuthInputs, DatasourceResourceClient,
     GrafanaApiClient, GrafanaConnection, SyncLiveClient,
 };
 use crate::profile_config::ConnectionMergeInput;
-use crate::sync::live::{
-    execute_live_apply_with_client, fetch_live_availability_with_client, SyncApplyOperation,
-};
+use crate::sync::live::SyncApplyOperation;
 use serde_json::json;
 
 fn http_response(status: &str, body: &str) -> String {
@@ -254,7 +253,7 @@ fn sync_live_client_fetches_availability_with_shared_transport() {
     let api = build_test_api(base_url);
     let client = SyncLiveClient::new(&api);
 
-    let availability = fetch_live_availability_with_client(&client).unwrap();
+    let availability = fetch_sync_live_availability_with_client(&client).unwrap();
 
     handle.join().unwrap();
 
@@ -298,7 +297,7 @@ fn sync_live_client_applies_alert_create_with_shared_transport() {
         .clone(),
     }];
 
-    let result = execute_live_apply_with_client(&client, &operations, false, false).unwrap();
+    let result = execute_sync_live_apply_with_client(&client, &operations, false, false).unwrap();
 
     handle.join().unwrap();
 

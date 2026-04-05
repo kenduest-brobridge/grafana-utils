@@ -15,6 +15,20 @@ Current AI-maintained status only.
 - Current Update: expanded `grafana_api::project_status_live` with shared current-org, visible-org-list, and alert-surface helpers for both client and request seams; switched datasource and access live-status producers onto those shared helpers; and tightened the access browse imports so `--no-default-features` stays warning-free.
 - Result: project-status-related live reads now reuse one workflow-level helper module for shared org and alert document reads, while the status scoring/aggregation logic stays in the runtime layer.
 
+## 2026-04-06 - Split sync live workflow helpers into read/apply siblings
+- State: Done
+- Scope: `rust/src/grafana_api/sync_live.rs`, `rust/src/grafana_api/sync_live_read.rs`, `rust/src/grafana_api/sync_live_apply.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: sync live still had a single large module that mixed shared client facade wiring, live read collection, request-based test seams, plugin availability, and live apply logic in one file.
+- Current Update: split the sync live workflow into a thin facade plus dedicated read/apply sibling modules, keeping `SyncLiveClient` as the shared internal wrapper while moving plugin availability, live spec collection, and apply request seams into the sibling files.
+- Result: sync live is now easier to navigate and maintain without turning the workflow layer into a finer-grained SDK.
+
+## 2026-04-06 - Split datasource live project-status analysis from input collection
+- State: Done
+- Scope: `rust/src/datasource_live_project_status.rs`, `rust/src/datasource_live_project_status_analysis.rs`, `rust/src/grafana_api/datasource_live_project_status.rs`
+- Baseline: datasource live project-status still mixed request collection, status/risk calculation, and render-neutral status assembly in one large module.
+- Current Update: moved the live request collection into the shared `grafana_api` datasource helper, extracted datasource status/risk calculation plus `ProjectDomainStatus` assembly into `datasource_live_project_status_analysis.rs`, and left `datasource_live_project_status.rs` as the thin orchestration and test wrapper.
+- Result: datasource live project-status now has a clearer workflow-level split without changing the live behavior or adding a deeper abstraction layer.
+
 ## 2026-04-06 - Converge sync live workflow helpers onto shared Grafana resource clients
 - State: Done
 - Scope: `rust/src/grafana_api/dashboard.rs`, `rust/src/grafana_api/datasource.rs`, `rust/src/grafana_api/alerting.rs`, `rust/src/grafana_api/sync_live.rs`, `rust/src/grafana_api/tests.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

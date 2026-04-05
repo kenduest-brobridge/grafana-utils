@@ -1,30 +1,25 @@
 //! Request-backed sync transport wiring.
 //!
-//! This layer chooses the Grafana client once and then forwards the request
-//! function into the testable live fetch/apply helpers. Apply-intent parsing
+//! This layer chooses the Grafana client once and then forwards work into the
+//! shared `grafana_api::sync_live_*` workflow helpers. Apply-intent parsing
 //! lives in `live_intent.rs` so this module stays transport-focused.
-
-#[path = "live_apply.rs"]
-mod live_apply;
-#[path = "live_fetch.rs"]
-mod live_fetch;
 
 use crate::common::Result;
 use crate::dashboard::{CommonCliArgs, DEFAULT_TIMEOUT, DEFAULT_URL};
-use crate::grafana_api::{AuthInputs, GrafanaApiClient, GrafanaConnection, SyncLiveClient};
+use crate::grafana_api::{
+    execute_sync_live_apply_with_client, fetch_sync_live_availability_with_client,
+    fetch_sync_live_resource_specs_with_client, merge_sync_live_availability, AuthInputs,
+    GrafanaApiClient, GrafanaConnection, SyncLiveClient,
+};
 use crate::profile_config::ConnectionMergeInput;
 use serde_json::Value;
 
 pub(crate) use super::apply_contract::{load_apply_intent_operations, SyncApplyOperation};
-pub(crate) use live_apply::execute_live_apply_with_client;
 #[cfg(test)]
-pub(crate) use live_apply::execute_live_apply_with_request;
-pub(crate) use live_fetch::{
-    fetch_live_availability_with_client, fetch_live_resource_specs_with_client, merge_availability,
-};
-#[cfg(test)]
-pub(crate) use live_fetch::{
-    fetch_live_availability_with_request, fetch_live_resource_specs_with_request,
+pub(crate) use crate::grafana_api::{
+    execute_sync_live_apply_with_request as execute_live_apply_with_request,
+    fetch_sync_live_availability_with_request as fetch_live_availability_with_request,
+    fetch_sync_live_resource_specs_with_request as fetch_live_resource_specs_with_request,
 };
 
 fn build_sync_api_client(common: &CommonCliArgs) -> Result<GrafanaApiClient> {
@@ -73,7 +68,7 @@ pub(crate) fn fetch_live_resource_specs(
 ) -> Result<Vec<Value>> {
     let api = build_sync_scoped_api_client(common, org_id)?;
     let client = SyncLiveClient::new(&api);
-    fetch_live_resource_specs_with_client(&client, page_size)
+    fetch_sync_live_resource_specs_with_client(&client, page_size)
 }
 
 pub(crate) fn fetch_live_availability(
@@ -82,7 +77,7 @@ pub(crate) fn fetch_live_availability(
 ) -> Result<Value> {
     let api = build_sync_scoped_api_client(common, org_id)?;
     let client = SyncLiveClient::new(&api);
-    fetch_live_availability_with_client(&client)
+    fetch_sync_live_availability_with_client(&client)
 }
 
 pub(crate) fn execute_live_apply(
@@ -94,5 +89,9 @@ pub(crate) fn execute_live_apply(
 ) -> Result<Value> {
     let api = build_sync_scoped_api_client(common, org_id)?;
     let client = SyncLiveClient::new(&api);
-    execute_live_apply_with_client(&client, operations, allow_folder_delete, allow_policy_reset)
+    execute_sync_live_apply_with_client(&client, operations, allow_folder_delete, allow_policy_reset)
+}
+
+pub(crate) fn merge_availability(base: Option<Value>, extra: &Value) -> Result<Value> {
+    merge_sync_live_availability(base, extra)
 }

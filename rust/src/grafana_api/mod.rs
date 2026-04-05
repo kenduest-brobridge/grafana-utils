@@ -29,7 +29,13 @@ pub(crate) use sync_live::{
     fetch_live_availability_with_request as fetch_sync_live_availability_with_request,
     fetch_live_resource_specs_with_request as fetch_sync_live_resource_specs_with_request,
 };
-pub(crate) use sync_live::{merge_availability as merge_sync_live_availability, SyncLiveClient};
+pub(crate) use sync_live::{
+    execute_live_apply_with_client as execute_sync_live_apply_with_client,
+    fetch_live_availability_with_client as fetch_sync_live_availability_with_client,
+    fetch_live_resource_specs_with_client as fetch_sync_live_resource_specs_with_client,
+    merge_availability as merge_sync_live_availability,
+    SyncLiveClient,
+};
 
 #[cfg(test)]
 #[path = "tests.rs"]
