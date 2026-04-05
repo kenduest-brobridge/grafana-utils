@@ -45,26 +45,11 @@ fn first_existing(paths: &[PathBuf]) -> Option<PathBuf> {
     paths.iter().find(|path| path.exists()).cloned()
 }
 
-fn ensure_any_discovered(discovered: &DiscoveredChangeInputs) -> Result<()> {
-    if discovered == &DiscoveredChangeInputs::default() {
-        return Err(message(
-            "Change input discovery did not find staged inputs in the current directory. Provide explicit flags such as --desired-file, --dashboard-export-dir, or --source-bundle.",
-        ));
-    }
-    Ok(())
-}
-
-pub(crate) fn discover_change_staged_inputs(
-    base_dir: Option<&Path>,
-) -> Result<DiscoveredChangeInputs> {
-    let base_dir = match base_dir {
-        Some(path) => path.to_path_buf(),
-        None => current_repo_dir()?,
-    };
+fn discover_from_workspace_root(base_dir: &Path) -> DiscoveredChangeInputs {
     let dashboards_dir = base_dir.join("dashboards");
     let datasources_dir = base_dir.join("datasources");
     let alerts_dir = base_dir.join("alerts");
-    Ok(DiscoveredChangeInputs {
+    DiscoveredChangeInputs {
         dashboard_export_dir: first_existing(&[dashboards_dir.join("raw")]),
         dashboard_provisioning_dir: first_existing(&[dashboards_dir.join("provisioning")]),
         datasource_provisioning_file: first_existing(&[datasources_dir
@@ -91,7 +76,125 @@ pub(crate) fn discover_change_staged_inputs(
             base_dir.join("reviewed-plan.json"),
             base_dir.join("sync-plan.json"),
         ]),
-    })
+    }
+}
+
+fn infer_workspace_root(base_dir: &Path) -> PathBuf {
+    let Some(name) = base_dir.file_name().and_then(|name| name.to_str()) else {
+        return base_dir.to_path_buf();
+    };
+    if base_dir.is_file() {
+        if name == "datasources.yaml" {
+            let parent = base_dir.parent();
+            let grandparent = parent.and_then(Path::parent);
+            let great_grandparent = grandparent.and_then(Path::parent);
+            if parent.and_then(Path::file_name).and_then(|v| v.to_str()) == Some("provisioning")
+                && grandparent.and_then(Path::file_name).and_then(|v| v.to_str())
+                    == Some("datasources")
+            {
+                return great_grandparent.unwrap_or(base_dir).to_path_buf();
+            }
+        }
+        return base_dir.parent().unwrap_or(base_dir).to_path_buf();
+    }
+    let parent = base_dir.parent();
+    let grandparent = parent.and_then(Path::parent);
+    match name {
+        "dashboards" | "alerts" | "datasources" => parent.unwrap_or(base_dir).to_path_buf(),
+        "raw" | "provisioning" => grandparent.unwrap_or(base_dir).to_path_buf(),
+        _ => base_dir.to_path_buf(),
+    }
+}
+
+fn overlay_direct_workspace_input(discovered: &mut DiscoveredChangeInputs, base_dir: &Path) {
+    let Some(name) = base_dir.file_name().and_then(|name| name.to_str()) else {
+        return;
+    };
+    if base_dir.is_file() {
+        if name == "desired.json" {
+            discovered.desired_file = Some(base_dir.to_path_buf());
+        } else if matches!(name, "sync-source-bundle.json" | "bundle.json") {
+            discovered.source_bundle = Some(base_dir.to_path_buf());
+        } else if matches!(name, "target-inventory.json" | "target.json") {
+            discovered.target_inventory = Some(base_dir.to_path_buf());
+        } else if name == "availability.json" {
+            discovered.availability_file = Some(base_dir.to_path_buf());
+        } else if matches!(
+            name,
+            "promotion-map.json" | "promotion-mapping.json" | "mapping.json"
+        ) {
+            discovered.mapping_file = Some(base_dir.to_path_buf());
+        } else if matches!(
+            name,
+            "sync-plan-reviewed.json" | "reviewed-plan.json" | "sync-plan.json"
+        ) {
+            discovered.reviewed_plan_file = Some(base_dir.to_path_buf());
+        } else if name == "datasources.yaml" {
+            let parent = base_dir.parent();
+            let grandparent = parent.and_then(Path::parent);
+            if parent.and_then(Path::file_name).and_then(|v| v.to_str()) == Some("provisioning")
+                && grandparent.and_then(Path::file_name).and_then(|v| v.to_str())
+                    == Some("datasources")
+            {
+                discovered.datasource_provisioning_file = Some(base_dir.to_path_buf());
+            }
+        }
+        return;
+    }
+    let parent_name = base_dir
+        .parent()
+        .and_then(Path::file_name)
+        .and_then(|name| name.to_str());
+    match (parent_name, name) {
+        (Some("dashboards"), "raw") => {
+            discovered.dashboard_export_dir = Some(base_dir.to_path_buf());
+        }
+        (Some("dashboards"), "provisioning") => {
+            discovered.dashboard_provisioning_dir = Some(base_dir.to_path_buf());
+        }
+        (Some("alerts"), "raw") => {
+            discovered.alert_export_dir = Some(base_dir.to_path_buf());
+        }
+        (Some("datasources"), "provisioning") => {
+            discovered.datasource_provisioning_file =
+                first_existing(&[base_dir.join("datasources.yaml")]);
+        }
+        (_, "dashboards") => {
+            discovered.dashboard_export_dir = first_existing(&[base_dir.join("raw")]);
+            discovered.dashboard_provisioning_dir =
+                first_existing(&[base_dir.join("provisioning")]);
+        }
+        (_, "alerts") => {
+            discovered.alert_export_dir = first_existing(&[base_dir.join("raw"), base_dir.into()]);
+        }
+        (_, "datasources") => {
+            discovered.datasource_provisioning_file =
+                first_existing(&[base_dir.join("provisioning").join("datasources.yaml")]);
+        }
+        _ => {}
+    }
+}
+
+fn ensure_any_discovered(discovered: &DiscoveredChangeInputs) -> Result<()> {
+    if discovered == &DiscoveredChangeInputs::default() {
+        return Err(message(
+            "Change input discovery did not find staged inputs in the current directory. Provide explicit flags such as --desired-file, --dashboard-export-dir, or --source-bundle.",
+        ));
+    }
+    Ok(())
+}
+
+pub(crate) fn discover_change_staged_inputs(
+    base_dir: Option<&Path>,
+) -> Result<DiscoveredChangeInputs> {
+    let base_dir = match base_dir {
+        Some(path) => path.to_path_buf(),
+        None => current_repo_dir()?,
+    };
+    let workspace_root = infer_workspace_root(&base_dir);
+    let mut discovered = discover_from_workspace_root(&workspace_root);
+    overlay_direct_workspace_input(&mut discovered, &base_dir);
+    Ok(discovered)
 }
 
 fn build_overview_args(
@@ -485,6 +588,7 @@ pub(crate) fn run_sync_preview(args: ChangePreviewArgs) -> Result<()> {
 #[cfg(test)]
 mod guided_rust_tests {
     use super::*;
+    use tempfile::tempdir;
 
     fn staged_inputs(
         dashboard_export_dir: Option<&str>,
@@ -542,6 +646,81 @@ mod guided_rust_tests {
         assert_eq!(
             error.to_string(),
             "Change preview accepts only one dashboard source: --dashboard-export-dir or --dashboard-provisioning-dir."
+        );
+    }
+
+    #[test]
+    fn discover_change_staged_inputs_accepts_dashboards_tree_as_workspace() {
+        let temp = tempdir().unwrap();
+        let workspace = temp.path();
+        std::fs::create_dir_all(workspace.join("dashboards/raw")).unwrap();
+        std::fs::create_dir_all(workspace.join("alerts/raw")).unwrap();
+        std::fs::create_dir_all(workspace.join("datasources/provisioning")).unwrap();
+        std::fs::write(
+            workspace.join("datasources/provisioning/datasources.yaml"),
+            "apiVersion: 1\n",
+        )
+        .unwrap();
+
+        let discovered = discover_change_staged_inputs(Some(&workspace.join("dashboards"))).unwrap();
+
+        assert_eq!(
+            discovered.dashboard_export_dir,
+            Some(workspace.join("dashboards/raw"))
+        );
+        assert_eq!(discovered.alert_export_dir, Some(workspace.join("alerts/raw")));
+        assert_eq!(
+            discovered.datasource_provisioning_file,
+            Some(workspace.join("datasources/provisioning/datasources.yaml"))
+        );
+    }
+
+    #[test]
+    fn discover_change_staged_inputs_accepts_dashboard_raw_tree_as_workspace() {
+        let temp = tempdir().unwrap();
+        let workspace = temp.path();
+        std::fs::create_dir_all(workspace.join("dashboards/raw")).unwrap();
+        std::fs::create_dir_all(workspace.join("dashboards/provisioning")).unwrap();
+        std::fs::create_dir_all(workspace.join("alerts/raw")).unwrap();
+
+        let discovered =
+            discover_change_staged_inputs(Some(&workspace.join("dashboards/raw"))).unwrap();
+
+        assert_eq!(
+            discovered.dashboard_export_dir,
+            Some(workspace.join("dashboards/raw"))
+        );
+        assert_eq!(
+            discovered.dashboard_provisioning_dir,
+            Some(workspace.join("dashboards/provisioning"))
+        );
+        assert_eq!(discovered.alert_export_dir, Some(workspace.join("alerts/raw")));
+    }
+
+    #[test]
+    fn discover_change_staged_inputs_accepts_datasource_provisioning_tree_as_workspace() {
+        let temp = tempdir().unwrap();
+        let workspace = temp.path();
+        std::fs::create_dir_all(workspace.join("dashboards/raw")).unwrap();
+        std::fs::create_dir_all(workspace.join("datasources/provisioning")).unwrap();
+        std::fs::write(
+            workspace.join("datasources/provisioning/datasources.yaml"),
+            "apiVersion: 1\n",
+        )
+        .unwrap();
+
+        let discovered = discover_change_staged_inputs(Some(
+            &workspace.join("datasources/provisioning"),
+        ))
+        .unwrap();
+
+        assert_eq!(
+            discovered.datasource_provisioning_file,
+            Some(workspace.join("datasources/provisioning/datasources.yaml"))
+        );
+        assert_eq!(
+            discovered.dashboard_export_dir,
+            Some(workspace.join("dashboards/raw"))
         );
     }
 }

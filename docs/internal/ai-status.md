@@ -8,6 +8,20 @@ Current AI-maintained status only.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-status-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-31.md).
 
+## 2026-04-05 - Centralize Rust Grafana connection wiring behind a shared internal client layer
+- State: Done
+- Scope: `rust/src/grafana_api/**`, `rust/src/lib.rs`, `rust/src/dashboard/dashboard_runtime.rs`, `rust/src/alert.rs`, `rust/src/alert_client.rs`, `rust/src/alert_cli_defs.rs`, `rust/src/access/access_cli_runtime.rs`, `rust/src/project_status_support.rs`, `rust/src/sync/live.rs`, focused Rust tests, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: Rust already shares a low-level `JsonHttpClient`, but profile resolution, auth header selection, org scoping, CA-cert propagation, and per-domain client construction are still duplicated across dashboard, alert, access, sync, and project-status runtime helpers. Alert also owns a thin domain-local client wrapper instead of building from one shared root client layer.
+- Current Update: added a new internal `grafana_api` module that owns connection resolution, root client construction, org scoping, and resource wrappers. Dashboard, access, alert, and project-status runtime builders now resolve their live clients through the same shared connection path, and the alert thin client now delegates its endpoint methods through the new shared alerting resource client instead of building its own raw transport wrapper.
+- Result: the repo now has one internal Grafana connection/client layer for live runtime paths, with focused Rust regressions covering auth-mode resolution, org-header injection, and the migrated alert/project-status paths. CLI behavior stayed unchanged, and the staged dashboard/datasource/access resource wrappers are in place for future endpoint migration without forcing more command-flow churn in this change.
+
+## 2026-04-05 - Accept common export-tree roots in task-first `change --workspace` discovery
+- State: Done
+- Scope: `rust/src/sync/guided.rs`, focused Rust tests in `rust/src/sync/guided.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: task-first `change` discovery already worked from a repo/workspace root, but pointing `--workspace` at common subtree roots such as `dashboards/`, `dashboards/raw/`, or `datasources/provisioning/` still failed or felt inconsistent even though operators naturally land there after export commands.
+- Current Update: refactored staged-input discovery into a workspace-root pass plus a direct-input overlay so `change` can infer the real workspace root from common export/provisioning subtrees while still honoring the exact subtree the operator pointed at. Added tempfile regressions for `dashboards/`, `dashboards/raw/`, and `datasources/provisioning/`, then live-validated `change inspect` and `change preview` against a local Grafana export tree rooted under `dashboards/raw/`.
+- Result: `change --workspace` now tolerates the common export-tree entrypoints operators actually have on disk instead of forcing them back to a higher repo root before inspect/check/preview can work.
+
 ## 2026-04-05 - Harden dashboard authoring around watch UX, General folder publish semantics, and live smoke coverage
 - State: Done
 - Scope: `rust/src/dashboard/files.rs`, `rust/src/dashboard/authoring.rs`, `rust/src/dashboard/dashboard_export_import_inventory_rust_tests.rs`, `rust/src/dashboard/dashboard_authoring_rust_tests.rs`, `scripts/test-rust-live-grafana.sh`, `README.md`, `README.zh-TW.md`, `docs/commands/en/dashboard-publish.md`, `docs/commands/zh-TW/dashboard-publish.md`, `docs/user-guide/en/dashboard.md`, `docs/user-guide/zh-TW/dashboard.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
