@@ -34,6 +34,7 @@ fn inspect_live_dashboards_with_request_reports_live_json_via_temp_raw_export() 
         help_full: false,
         no_header: false,
         output_file: None,
+        also_stdout: false,
         interactive: false,
     };
 
@@ -334,6 +335,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         help_full: false,
         no_header: false,
         output_file: Some(export_report_output.clone()),
+        also_stdout: false,
         interactive: false,
     };
     let export_report_count = test_support::analyze_export_dir(&export_report_args).unwrap();
@@ -359,6 +361,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         help_full: false,
         no_header: false,
         output_file: Some(live_report_output.clone()),
+        also_stdout: false,
         interactive: false,
     };
 
@@ -410,6 +413,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         help_full: false,
         no_header: false,
         output_file: Some(export_governance_output.clone()),
+        also_stdout: false,
         interactive: false,
     };
     let export_governance_count =
@@ -437,6 +441,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         help_full: false,
         no_header: false,
         output_file: Some(live_governance_output.clone()),
+        also_stdout: false,
         interactive: false,
     };
     let live_governance_count = test_support::inspect_live_dashboards_with_request(
@@ -467,6 +472,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         help_full: false,
         no_header: false,
         output_file: Some(export_dependency_output.clone()),
+        also_stdout: false,
         interactive: false,
     };
     let export_dependency_count =
@@ -494,6 +500,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         help_full: false,
         no_header: false,
         output_file: Some(live_dependency_output.clone()),
+        also_stdout: false,
         interactive: false,
     };
     let live_dependency_count = test_support::inspect_live_dashboards_with_request(

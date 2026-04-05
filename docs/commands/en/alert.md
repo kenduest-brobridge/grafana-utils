@@ -29,12 +29,37 @@ This is the right entrypoint for SREs, platform operators, and anyone who wants 
 - Use Basic auth when you need broader org visibility or admin-backed inventory.
 - Token auth works best for scoped single-org reads or automation where the token permissions are already well understood.
 
+## Before / After
+
+- **Before**: alert operations often happen as isolated list, export, or UI edits with no single path from inventory to reviewed apply.
+- **After**: the `alert` namespace keeps inventory, authoring, diff, planning, and apply under one workflow so you can review first and then change.
+
+## What success looks like
+
+- you can tell whether an alert change belongs to export/import, authoring, route design, or review/apply before you start
+- a plan or export can move through review without losing the policy or routing context
+- the same flow can be repeated in CI or during incident follow-up
+
+## Failure checks
+
+- if an inventory command returns less than expected, confirm whether the auth scope is wide enough for the org or folder you need
+- if a review or apply step behaves strangely, inspect the alert plan JSON before assuming the CLI is wrong
+- if the result is going to automation, set the output format explicitly so the downstream step knows the contract
+
 ## Examples
 
 ```bash
 # Purpose: Run the alerting command surface for exporting, importing, diffing, planning, applying, deleting, authoring, and listing Grafana alert resources.
 grafana-util alert list-rules --profile prod --json
+```
+
+```bash
+# Purpose: Run the alerting command surface for exporting, importing, diffing, planning, applying, deleting, authoring, and listing Grafana alert resources.
 grafana-util alert export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./alerts --overwrite
+```
+
+```bash
+# Purpose: Run the alerting command surface for exporting, importing, diffing, planning, applying, deleting, authoring, and listing Grafana alert resources.
 grafana-util alert export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-dir ./alerts --flat
 ```
 

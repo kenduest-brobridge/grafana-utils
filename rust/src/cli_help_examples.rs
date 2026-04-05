@@ -39,17 +39,17 @@ pub(crate) const OVERVIEW_HELP_FULL_TEXT: &str = help_block!(
     (
         "[Overview Staged]",
         "Summarize staged dashboard, alert, and sync exports into one overview:",
-        "grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --desired-file ./desired.json --output json"
+        "grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --desired-file ./desired.json --output-format json"
     ),
     (
         "[Overview Live]",
         "Open the live project-home overview through the shared status live path:",
-        "grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output interactive"
+        "grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format interactive"
     ),
     (
         "[Overview Bundle]",
         "Build an overview from staged bundle and promotion inputs:",
-        "grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output text"
+        "grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output-format text"
     )
 );
 
@@ -58,12 +58,12 @@ pub(crate) const PROJECT_STATUS_HELP_FULL_TEXT: &str = help_block!(
     (
         "[Status Staged]",
         "Inspect staged artifacts with a machine-readable summary:",
-        "grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output json"
+        "grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json"
     ),
     (
         "[Status Live]",
         "Check live Grafana status while layering staged sync context:",
-        "grafana-util status live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output json"
+        "grafana-util status live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output-format json"
     )
 );
 
@@ -142,7 +142,7 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
     (
         "[Snapshot Review]",
         "Review a local snapshot inventory as JSON:",
-        "grafana-util snapshot review --input-dir ./snapshot --output json"
+        "grafana-util snapshot review --input-dir ./snapshot --output-format json"
     ),
     (
         "[Change Planning]",
@@ -226,17 +226,17 @@ pub(crate) const UNIFIED_HELP_FULL_TEXT: &str = help_block!(
     (
         "[Change Review]",
         "Stamp a plan as reviewed before apply:",
-        "grafana-util change review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output json"
+        "grafana-util change review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output-format json"
     ),
     (
         "[Overview Staged]",
         "Summarize staged dashboard, alert, and sync exports into one overview:",
-        "grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --desired-file ./desired.json --output json"
+        "grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --desired-file ./desired.json --output-format json"
     ),
     (
         "[Status Staged]",
         "Inspect staged artifacts with a machine-readable summary:",
-        "grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output json"
+        "grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json"
     ),
     (
         "[Snapshot Review]",
@@ -265,7 +265,7 @@ pub(crate) const ALERT_HELP_FULL_TEXT: &str = help_block!(
     (
         "[Alert Plan]",
         "Build a staged alert plan from desired files with linkage maps:",
-        "grafana-util alert plan --desired-dir ./alerts/desired --prune --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json --output json"
+        "grafana-util alert plan --desired-dir ./alerts/desired --prune --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json --output-format json"
     ),
     (
         "[Alert Apply]",
@@ -392,12 +392,12 @@ pub(crate) const SYNC_HELP_FULL_TEXT: &str = help_block!(
     (
         "[Change Summary]",
         "Render the desired resource summary as JSON:",
-        "grafana-util change summary --desired-file ./desired.json --output json"
+        "grafana-util change summary --desired-file ./desired.json --output-format json"
     ),
     (
         "[Change Audit]",
         "Compare the current live state against a staged checksum lock:",
-        r#"grafana-util change audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --fail-on-drift --output json"#
+        r#"grafana-util change audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --fail-on-drift --output-format json"#
     ),
     (
         "[Change Bundle]",
@@ -407,17 +407,17 @@ pub(crate) const SYNC_HELP_FULL_TEXT: &str = help_block!(
     (
         "[Change Bundle Preflight]",
         "Compare a source bundle against a target inventory snapshot:",
-        "grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output json"
+        "grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output-format json"
     ),
     (
         "[Change Plan]",
         "Build a live-backed plan with prune candidates:",
-        r#"grafana-util change plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --allow-prune --output json"#
+        r#"grafana-util change plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --allow-prune --output-format json"#
     ),
     (
         "[Change Review]",
         "Stamp a reviewed plan with reviewer metadata:",
-        "grafana-util change review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --reviewed-by ops-user --output json"
+        "grafana-util change review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --reviewed-by ops-user --output-format json"
     ),
     (
         "[Change Apply]",

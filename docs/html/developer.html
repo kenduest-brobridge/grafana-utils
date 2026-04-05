@@ -145,20 +145,48 @@ pre:hover .code-controls { opacity: 1; }
 #font-select { width: 138px; }
 #theme-select { width: 128px; }
 
-.layout { display: grid; grid-template-columns: 232px minmax(0, 1fr) 244px; gap: 20px; align-items: start; }
-.layout.layout-no-nav { grid-template-columns: minmax(0, 1fr) 244px; }
-.layout.layout-no-sidebar { grid-template-columns: 232px minmax(0, 1fr); }
+.layout {
+  --nav-width: 232px;
+  --sidebar-width: 244px;
+  display: grid;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr) var(--sidebar-width);
+  gap: 20px;
+  align-items: start;
+}
+.layout.layout-no-nav { --nav-width: 0px; grid-template-columns: minmax(0, 1fr) var(--sidebar-width); }
+.layout.layout-no-sidebar { --sidebar-width: 0px; grid-template-columns: var(--nav-width) minmax(0, 1fr); }
 .layout.layout-no-nav.layout-no-sidebar { grid-template-columns: minmax(0, 1fr); }
+.layout.layout-collapsed-nav:not(.layout-no-nav) { --nav-width: 26px; }
+.layout.layout-collapsed-sidebar:not(.layout-no-sidebar) { --sidebar-width: 26px; }
 @media (max-width: 1280px) { .layout { grid-template-columns: 210px minmax(0, 1fr); gap: 18px; } .sidebar { display: none !important; } }
 @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } .nav-sidebar { display: none !important; } }
 
-.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 12px 0 0; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.nav-sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .nav-sidebar li { margin-bottom: 0; }
-.nav-sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; letter-spacing: 0.04em; }
+.nav-sidebar h2 {
+  margin: 0 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: none;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  opacity: 0.82;
+}
 .nav-section + .nav-section { margin-top: 18px; }
 .nav-group-block + .nav-group-block { margin-top: 14px; }
-.nav-group-title { margin: 0 0 6px; font-size: 0.76rem; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+.nav-group-title {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--heading);
+  letter-spacing: 0.01em;
+  line-height: 1.32;
+}
 .nav-tree,
 .nav-sub-list { list-style: none; margin: 0; padding: 0; position: relative; }
 .nav-tree::before,
@@ -167,24 +195,67 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 .nav-tree-node + .nav-tree-node { margin-top: 2px; }
 .nav-tree-node::before { display: none; }
 .nav-group { margin: 0; position: relative; }
-.nav-group + .nav-group { margin-top: 4px; }
-.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.92rem; }
+.nav-group + .nav-group { margin-top: 2px; }
+.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.9rem; }
 .nav-group-header:hover { color: var(--heading); }
-.nav-group-link { flex: 1; display: block; padding: 5px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 610; line-height: 1.42; }
+.nav-group-link { flex: 1; display: block; padding: 4px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 600; line-height: 1.4; }
 .nav-group-link:hover { background: var(--panel-strong); }
-.nav-item { display: block; padding: 5px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 550; font-size: 0.9rem; line-height: 1.44; }
+.nav-item { display: block; padding: 4px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 530; font-size: 0.84rem; line-height: 1.4; }
 .nav-group-link,
 .nav-item,
 .nav-command-entry { white-space: nowrap; }
 .nav-item:hover { background: var(--panel-strong); color: var(--heading); }
 .nav-item.active,
-.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 82%, white); color: var(--heading); font-weight: 620; box-shadow: inset 2px 0 0 var(--accent); }
+.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 70%, white); color: var(--heading); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .nav-sub-list { margin-top: 4px; margin-left: 10px; }
 .nav-sub-list .nav-item { color: var(--muted); font-weight: 520; }
-.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 610; }
-.nav-command-entry { display: block; padding: 5px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.88rem; font-weight: 560; line-height: 1.4; transition: 0.15s; }
+.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 590; }
+.nav-command-entry { display: block; padding: 4px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.82rem; font-weight: 540; line-height: 1.38; transition: 0.15s; }
 .nav-command-entry:hover { color: var(--heading); background: var(--panel-strong); }
 .nav-command-entry.active { color: var(--heading); font-weight: 620; background: color-mix(in srgb, var(--accent-soft) 60%, white); box-shadow: inset 2px 0 0 var(--accent); }
+
+.sidebar-toggle {
+  position: absolute;
+  top: 18px;
+  width: 18px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 92%, white);
+  color: var(--muted);
+  font: 700 10px var(--font-sans);
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  z-index: 5;
+}
+.sidebar-toggle:hover {
+  color: var(--heading);
+  border-color: color-mix(in srgb, var(--border) 55%, var(--accent));
+  background: var(--panel);
+}
+.sidebar-toggle-left { right: 0; transform: translateX(50%); }
+.sidebar-toggle-right { left: 0; transform: translateX(-50%); }
+.layout.layout-collapsed-nav .nav-sidebar-content,
+.layout.layout-collapsed-sidebar .sidebar-content {
+  opacity: 0;
+  pointer-events: none;
+}
+.layout.layout-collapsed-nav .nav-sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-sidebar .sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-nav .nav-sidebar,
+.layout.layout-collapsed-sidebar .sidebar {
+  min-width: 0;
+}
+.layout.layout-collapsed-nav .sidebar-toggle-left {
+  right: 4px;
+  transform: none;
+}
+.layout.layout-collapsed-sidebar .sidebar-toggle-right {
+  left: 4px;
+  transform: none;
+}
 
 .article { min-width: 0; padding: 10px 0 24px; }
 .article p,
@@ -328,8 +399,9 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 }
 .command-intro-list li { margin: 0.18rem 0; }
 
-.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0 12px; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .sidebar li { margin-bottom: 0; }
 .sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.05em; }
 .sidebar-section + .sidebar-section { margin-top: 22px; }
@@ -684,8 +756,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
   <article class="article">
     <div class="breadcrumbs"><a href="index.html">Home</a> / Developer Guide</div>
 
-    <div class="hero-eyebrow">Docs</div>
-<h1><span class="hero-title-main">Developer Guide</span></h1>
+    <h1><span class="hero-title-main">Developer Guide</span></h1>
 <p class="hero-summary">Maintainer routing for runtime, docs, contracts, and release work.</p>
 
     <section class="section-index"><h2>Guide Map</h2><p class="section-index-summary">Jump straight to the repo concern you are touching instead of scanning the whole maintainer guide.</p><ul class="section-index-list"><li><a href="#start-here">Start Here</a></li><li><a href="#repo-priorities">Repo Priorities</a></li><li><a href="#user-facing-cli-surface">User-Facing CLI Surface</a></li><li><a href="#code-architecture-map">Code Architecture Map</a></li><li><a href="#documentation-map">Documentation Map</a></li><li><a href="#validation-and-build-guide">Validation And Build Guide</a></li><li><a href="#high-signal-project-rules">High-Signal Project Rules</a></li><li><a href="#maintainer-personas">Maintainer Personas</a></li><li><a href="#quick-routing-table">Quick Routing Table</a></li><li><a href="#maintenance-standard">Maintenance Standard</a></li></ul></section><p>This page is the maintainer entrypoint for the repo.</p>
@@ -699,7 +770,8 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>start with <code>docs/internal/contract-doc-map.md</code></p>
 <p>start with <code>Makefile</code> and the repo scripts under <code>scripts/</code></p>
 <p>start with <code>docs/internal/ai-status.md</code> and <code>docs/internal/ai-changes.md</code></p>
-<ul><li>runtime and CLI behavior:</li><li>command or handbook docs:</li><li>generated <code>man</code> or HTML docs:</li><li>contract or schema changes:</li><li>validation, build, or release workflow:</li><li>change history or current AI-maintained status:</li></ul>
+<p>start with <code>docs/internal/ai-workflow-note.md</code></p>
+<ul><li>runtime and CLI behavior:</li><li>command or handbook docs:</li><li>generated <code>man</code> or HTML docs:</li><li>contract or schema changes:</li><li>validation, build, or release workflow:</li><li>change history or current AI-maintained status:</li><li>AI-assisted maintainer workflow:</li></ul>
 <p>If you prefer to route by maintainer persona instead of by subsystem, open <code>docs/internal/maintainer-role-map.md</code>.</p>
 <h2 id="repo-priorities">Repo Priorities</h2>
 <ul><li>Supported implementation surface: Rust under <code>rust/src/</code></li><li>Legacy reference surface: Python under <code>python/grafana_utils/</code></li><li>Operator-facing docs: <code>README.md</code>, <code>README.zh-TW.md</code>, <code>docs/user-guide/</code></li><li>Command-reference docs: <code>docs/commands/</code></li><li>Generated artifact docs: <code>docs/man/</code>, <code>docs/html/</code></li></ul>
@@ -733,7 +805,7 @@ make html
 make html-check</code></pre>
 <p>GitHub Pages deployment lives in <code>.github/workflows/docs-pages.yml</code>. It runs <code>make html</code>, uploads <code>docs/html/</code>, and publishes the site rooted at <code>docs/html/index.html</code>.</p>
 <h3 id="contract-and-policy-docs">Contract And Policy Docs</h3>
-<ul><li><code>docs/internal/maintainer-quickstart.md</code></li><li>first-entry routing for new maintainers and AI agents</li><li><code>docs/internal/contract-doc-map.md</code></li><li><code>docs/internal/export-root-output-layering-policy.md</code></li><li><code>docs/internal/dashboard-export-root-contract.md</code></li><li><code>docs/internal/datasource-masked-recovery-contract.md</code></li><li><code>docs/internal/alert-access-contract-policy.md</code></li><li><code>docs/internal/profile-secret-storage-architecture.md</code></li><li><code>docs/internal/maintainer-role-map.md</code></li></ul>
+<ul><li><code>docs/internal/maintainer-quickstart.md</code></li><li>first-entry routing for new maintainers and AI agents</li><li><code>docs/internal/ai-workflow-note.md</code></li><li>repo-specific AI-assisted maintenance workflow</li><li><code>docs/internal/contract-doc-map.md</code></li><li><code>docs/internal/export-root-output-layering-policy.md</code></li><li><code>docs/internal/dashboard-export-root-contract.md</code></li><li><code>docs/internal/datasource-masked-recovery-contract.md</code></li><li><code>docs/internal/alert-access-contract-policy.md</code></li><li><code>docs/internal/profile-secret-storage-architecture.md</code></li><li><code>docs/internal/maintainer-role-map.md</code></li></ul>
 <p>Use these for typed contract details, compatibility rules, stable field inventories, and policy boundaries. Do not duplicate that level of detail in this file.</p>
 <h3 id="trace-and-change-history">Trace And Change History</h3>
 <ul><li><code>docs/internal/ai-status.md</code></li><li><code>docs/internal/ai-changes.md</code></li><li><code>docs/internal/archive/</code></li></ul>
@@ -781,7 +853,10 @@ make html-check</code></pre>
     
   </article>
   <aside class="sidebar">
-  <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#start-here"><span class="toc-label">Start Here</span></a></li><li class="toc-level-2"><a href="#repo-priorities"><span class="toc-label">Repo Priorities</span></a></li><li class="toc-level-2"><a href="#user-facing-cli-surface"><span class="toc-label">User-Facing CLI Surface</span></a></li><li class="toc-level-2"><a href="#code-architecture-map"><span class="toc-label">Code Architecture Map</span></a></li><li class="toc-level-2"><a href="#documentation-map"><span class="toc-label">Documentation Map</span></a></li><li class="toc-level-3"><a href="#public-operator-docs"><span class="toc-label">Public Operator Docs</span></a></li><li class="toc-level-3"><a href="#command-reference-source"><span class="toc-label">Command Reference Source</span></a></li><li class="toc-level-3"><a href="#generated-docs-design-and-maintenance"><span class="toc-label">Generated Docs Design And Maintenance</span></a></li><li class="toc-level-3"><a href="#contract-and-policy-docs"><span class="toc-label">Contract And Policy Docs</span></a></li><li class="toc-level-3"><a href="#trace-and-change-history"><span class="toc-label">Trace And Change History</span></a></li><li class="toc-level-2"><a href="#validation-and-build-guide"><span class="toc-label">Validation And Build Guide</span></a></li><li class="toc-level-2"><a href="#high-signal-project-rules"><span class="toc-label">High-Signal Project Rules</span></a></li><li class="toc-level-2"><a href="#maintainer-personas"><span class="toc-label">Maintainer Personas</span></a></li><li class="toc-level-2"><a href="#quick-routing-table"><span class="toc-label">Quick Routing Table</span></a></li><li class="toc-level-2"><a href="#maintenance-standard"><span class="toc-label">Maintenance Standard</span></a></li></ul></section>
+  <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
+  <div class="sidebar-content">
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#start-here"><span class="toc-label">Start Here</span></a></li><li class="toc-level-2"><a href="#repo-priorities"><span class="toc-label">Repo Priorities</span></a></li><li class="toc-level-2"><a href="#user-facing-cli-surface"><span class="toc-label">User-Facing CLI Surface</span></a></li><li class="toc-level-2"><a href="#code-architecture-map"><span class="toc-label">Code Architecture Map</span></a></li><li class="toc-level-2"><a href="#documentation-map"><span class="toc-label">Documentation Map</span></a></li><li class="toc-level-3"><a href="#public-operator-docs"><span class="toc-label">Public Operator Docs</span></a></li><li class="toc-level-3"><a href="#command-reference-source"><span class="toc-label">Command Reference Source</span></a></li><li class="toc-level-3"><a href="#generated-docs-design-and-maintenance"><span class="toc-label">Generated Docs Design And Maintenance</span></a></li><li class="toc-level-3"><a href="#contract-and-policy-docs"><span class="toc-label">Contract And Policy Docs</span></a></li><li class="toc-level-3"><a href="#trace-and-change-history"><span class="toc-label">Trace And Change History</span></a></li><li class="toc-level-2"><a href="#validation-and-build-guide"><span class="toc-label">Validation And Build Guide</span></a></li><li class="toc-level-2"><a href="#high-signal-project-rules"><span class="toc-label">High-Signal Project Rules</span></a></li><li class="toc-level-2"><a href="#maintainer-personas"><span class="toc-label">Maintainer Personas</span></a></li><li class="toc-level-2"><a href="#quick-routing-table"><span class="toc-label">Quick Routing Table</span></a></li><li class="toc-level-2"><a href="#maintenance-standard"><span class="toc-label">Maintenance Standard</span></a></li></ul></section>
+  </div>
 </aside>
 
 </div>
@@ -830,6 +905,26 @@ make html-check</code></pre>
 
   document.querySelectorAll(".nav-group-header").forEach(header => {
     header.onclick = () => { header.closest(".nav-group").classList.toggle("collapsed"); };
+  });
+
+  document.querySelectorAll(".sidebar-toggle-left").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-nav");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "▶" : "◀";
+    });
+  });
+
+  document.querySelectorAll(".sidebar-toggle-right").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-sidebar");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "◀" : "▶";
+    });
   });
 
   const jumpSelect = document.getElementById("jump-select");

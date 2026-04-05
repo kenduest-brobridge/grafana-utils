@@ -282,9 +282,16 @@ pub struct InspectVarsArgs {
     pub no_header: bool,
     #[arg(
         long,
-        help = "Write inspect-vars output to this file while still printing to stdout."
+        help = "Write inspect-vars output to this file."
     )]
     pub output_file: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = false,
+        requires = "output_file",
+        help = "When --output-file is set, also print inspect-vars output to stdout."
+    )]
+    pub also_stdout: bool,
 }
 
 /// Struct definition for InspectExportArgs.
@@ -390,9 +397,16 @@ pub struct InspectExportArgs {
     pub no_header: bool,
     #[arg(
         long,
-        help = "Write inspect output to this file while still printing to stdout."
+        help = "Write inspect output to this file."
     )]
     pub output_file: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = false,
+        requires = "output_file",
+        help = "When --output-file is set, also print inspect output to stdout."
+    )]
+    pub also_stdout: bool,
     #[arg(
         long,
         default_value_t = false,
@@ -515,9 +529,16 @@ pub struct InspectLiveArgs {
     pub no_header: bool,
     #[arg(
         long,
-        help = "Write inspect output to this file while still printing to stdout."
+        help = "Write inspect output to this file."
     )]
     pub output_file: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = false,
+        requires = "output_file",
+        help = "When --output-file is set, also print inspect output to stdout."
+    )]
+    pub also_stdout: bool,
     #[arg(
         long,
         default_value_t = false,
@@ -578,7 +599,7 @@ pub struct TopologyArgs {
     pub governance: PathBuf,
     #[arg(
         long,
-        help = "Optional path to dashboard query-report JSON so the graph can include variables and panels."
+        help = "Optional reserved compatibility input. Topology currently renders from governance JSON and optional alert-contract data."
     )]
     pub queries: Option<PathBuf>,
     #[arg(
@@ -601,6 +622,13 @@ pub struct TopologyArgs {
     #[arg(
         long,
         default_value_t = false,
+        requires = "output_file",
+        help = "When --output-file is set, also print the rendered topology to stdout."
+    )]
+    pub also_stdout: bool,
+    #[arg(
+        long,
+        default_value_t = false,
         help = "Open an interactive terminal browser over topology nodes and edges."
     )]
     pub interactive: bool,
@@ -613,7 +641,7 @@ pub struct ImpactArgs {
     pub governance: PathBuf,
     #[arg(
         long,
-        help = "Optional path to dashboard query-report JSON so blast radius can include variables and panels."
+        help = "Optional reserved compatibility input. Impact currently derives blast radius from governance JSON and optional alert-contract data."
     )]
     pub queries: Option<PathBuf>,
     #[arg(
@@ -682,4 +710,11 @@ pub struct ValidateExportArgs {
     pub output_format: ValidationOutputFormat,
     #[arg(long, help = "Optional path to also write the validation JSON result.")]
     pub output_file: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = false,
+        requires = "output_file",
+        help = "When --output-file is set, also print the validation result to stdout."
+    )]
+    pub also_stdout: bool,
 }

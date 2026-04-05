@@ -25,149 +25,233 @@ English | [繁體中文](./README.zh-TW.md)
 
 ---
 
+## Before / After
+
+| Before | After with `grafana-util` |
+| :--- | :--- |
+| You click through Grafana UI screens or piece together raw API calls just to understand what exists. | Start with `overview live` or `status live`, then decide where to drill in. |
+| Export/import is a one-off action with weak review points. | Export to a reviewable tree, inspect dependencies, dry-run replay, then import. |
+| Alerting changes are hard to explain before apply. | Use `change summary`, `change preflight`, and `alert plan` before live mutation. |
+| Secrets get copied into shell history or flat files. | Keep auth in prompt flows, env variables, or repo-local profiles with explicit secret modes. |
+
+This is the main shift: the tool does not just give you commands. It gives you a safer operating sequence.
+
+---
+
 ## Quick Start
 
-```bash
-# 1. Install via One-Liner
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+### Install
 
+```bash
+# 1. Install via one-liner
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+```
+
+```bash
 # 2. Confirm the installed version
 grafana-util --version
+```
 
+```bash
 # 3. Inspect current Grafana status
-grafana-util overview live --url http://my-grafana:3000 --basic-user admin --prompt-password --output interactive
+grafana-util overview live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
-Download and install notes:
+### Install options
 
-*   **Pinned install**: `VERSION=0.7.4 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh`
-*   **Custom install directory**: `BIN_DIR="$HOME/.local/bin" curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh`
-*   **Release downloads**: <https://github.com/kenduest-brobridge/grafana-utils/releases>
-*   **Published binaries**: standard release binaries are published for `linux-amd64` and `macos-arm64`. If you need the browser-enabled screenshot build, download the `*-browser-*` archive from the same release.
-*   **Default install location**: the script uses `BIN_DIR` when you set it, otherwise `/usr/local/bin` if writable, and otherwise falls back to `$HOME/.local/bin`.
-*   **PATH setup**: if the chosen install directory is not on `PATH`, the script prints the exact `zsh` / `bash` snippet to add it. You can also preview the install contract with `sh ./scripts/install.sh --help`.
+Pinned release:
+
+```bash
+# Install one pinned release.
+VERSION=0.8.0 \
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+```
+
+Custom install directory:
+
+```bash
+# Install into one explicit binary directory.
+BIN_DIR="$HOME/.local/bin" \
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+```
+
+Show installer help first:
+
+```bash
+sh ./scripts/install.sh --help
+```
+
+- Release downloads: <https://github.com/kenduest-brobridge/grafana-utils/releases>
+- Published binaries: standard release binaries are published for `linux-amd64` and `macos-arm64`. If you need the browser-enabled screenshot build, download the `*-browser-*` archive from the same release.
+- Default install location: the script uses `BIN_DIR` when you set it, otherwise `/usr/local/bin` if writable, and otherwise falls back to `$HOME/.local/bin`.
+- PATH setup: if the chosen install directory is not on `PATH`, the script prints the exact `zsh` / `bash` snippet to add it.
 
 ---
 
-## Key Workflows
+## Useful Examples
 
-### Dashboard: Export, Review, and Migration
+These are the examples most people actually look for first: inspect the current environment, export a safe reviewable tree, preview changes before apply, and recover datasource secrets without hand-editing JSON.
+
+Most examples below focus on the workflow itself, so repeated connection flags are omitted after the first few samples. In practice you can supply Grafana connection details with `--url`, `--basic-user`, `--basic-password`, `--prompt-password`, `--token`, or `--profile`. Environment variables such as `GRAFANA_USERNAME`, `GRAFANA_PASSWORD`, and `GRAFANA_API_TOKEN` also work where supported. If you need the full connection setup first, start with [Getting Started](./docs/user-guide/en/getting-started.md).
+
+### 1. Get a live operational overview before changing anything
+
 ```bash
-# 1. Export dashboards across all organizations
+# Open the interactive overview for the current Grafana environment.
+grafana-util overview live \
+  --url http://my-grafana:3000 \
+  --basic-user admin \
+  --prompt-password \
+  --output-format interactive
+```
+
+Use this first when you need to answer: "What does this Grafana look like right now?" without clicking through the UI.
+
+Expected result:
+
+```text
+Live status: ready
+Dashboards: ...
+Alerts: ...
+Datasources: ...
+```
+
+### 2. Export dashboards into a reviewable tree
+
+```bash
+# Export dashboards across all organizations into a local backup tree.
 grafana-util dashboard export --all-orgs --export-dir ./backup --progress
-
-# 2. Convert ordinary/raw dashboard JSON into Grafana UI prompt JSON
-grafana-util dashboard raw-to-prompt --input-dir ./backup/raw --output-dir ./backup/prompt --overwrite --progress
-
-# 3. Preview dashboard import behavior before committing
-grafana-util dashboard import --import-dir ./backup/raw --replace-existing --dry-run --table
-
-# 4. Audit datasource dependencies in an export tree
-grafana-util dashboard inspect-export --import-dir ./backup/raw --output-format report-table
-
-# 5. Browse and search live dashboards in the terminal
-grafana-util dashboard browse
 ```
 
-### Alerting: Review Before Apply
-```bash
-# 1. Build a change plan from local desired state vs live server
-grafana-util alert plan --desired-dir ./alerts/desired --prune --output json
+This is the starting point for backup, migration, review, and CI-style inspection.
 
-# 2. Preview alert routing before apply
-grafana-util alert preview-route --desired-dir ./alerts/desired --label team=sre --severity critical
+### 3. Check whether an export tree is safe to import
+
+```bash
+# Audit datasource dependencies and structural issues in an exported dashboard tree.
+grafana-util dashboard inspect-export \
+  --import-dir ./backup/raw \
+  --output-format report-table
 ```
 
-### Datasources: Export and Secret Recovery
+Use this before import when you want to catch broken datasource references or suspicious structure early.
+
+Expected result:
+
+```text
+Sources
+  prometheus-main
+  loki-prod
+```
+
+### 4. Preview dashboard import behavior before applying it
+
 ```bash
-# Export datasources with secrets masked for review or version control
+# Dry-run a dashboard import and render the result as a table.
+grafana-util dashboard import \
+  --import-dir ./backup/raw \
+  --replace-existing \
+  --dry-run \
+  --table
+```
+
+This is useful when you want to see what would change before touching the live server.
+
+### 5. Review alerting changes before apply
+
+```bash
+# Build a reviewable alert plan from desired state versus the live server.
+grafana-util alert plan \
+  --desired-dir ./alerts/desired \
+  --prune \
+  --output-format json
+```
+
+```bash
+# Preview where a critical alert would route before applying the change.
+grafana-util alert preview-route \
+  --desired-dir ./alerts/desired \
+  --label team=sre \
+  --severity critical
+```
+
+Use these together when you need a review surface instead of mutating Grafana alerting blindly.
+
+### 6. Export and re-import datasources with secret recovery
+
+```bash
+# Export datasources with secrets masked for review or version control.
 grafana-util datasource export --export-dir ./datasources --overwrite
-
-# Import with secret re-injection when credentials are required again
-grafana-util datasource import --import-dir ./datasources --replace-existing --prompt-password
 ```
 
-### Project Health: Unified Runtime Review
 ```bash
-# Interactive TUI for environment-wide Grafana review
-grafana-util overview live --output interactive
+# Re-import datasources and recover required secrets interactively.
+grafana-util datasource import \
+  --import-dir ./datasources \
+  --replace-existing \
+  --prompt-password
 ```
 
----
-
-## Core Capabilities
-
-*   **Dashboards**: Export, import, inspect, patch, review, and raw-to-prompt conversion workflows.
-*   **Alerting**: Desired-state management, route preview, plan/apply review, and controlled pruning.
-*   **Datasources**: Export/import, masked recovery, provisioning projections, and inspection support.
-*   **Access**: Audit and replay organizations, users, teams, and service accounts.
-*   **Status & Readiness**: Structured output for CI/CD gates plus interactive and table-based operator views.
+This is the practical path for moving datasource configuration between environments without committing raw credentials.
 
 ---
 
-## Operator Handbook
+## A First Operator Flow
 
-Use the handbook and command reference together: the handbook explains workflow and operational intent, while the command pages stay close to the current CLI surface.
+If you want one end-to-end path instead of isolated commands, use this sequence:
+
+1. `overview live` to confirm the target Grafana is reachable and worth inspecting
+2. `dashboard export` to create a reviewable tree
+3. `dashboard inspect-export` to find missing datasource dependencies before import
+4. `dashboard import --dry-run` to preview replay behavior before live mutation
+
+That sequence is the shortest public proof that the tool is doing more than wrapping a single endpoint.
+
+---
+
+## At a Glance
+
+*   **Inspect before you change anything**: `overview`, `status`, export inspection, governance checks, and review surfaces for dashboards and alerts.
+*   **Move Grafana assets safely between environments**: reviewable export/import workflows for dashboards, alerts, datasources, and access resources.
+*   **Automate repeatable operations**: table/JSON-oriented output, non-interactive paths, and safer secret handling for CI/CD and batch jobs.
+
+---
+
+## Docs & Guides
+
+Use the handbook for workflow and operational context, and the command pages when you need exact CLI syntax. The goal here is quick routing, not a second full manual.
 
 If plain Markdown is awkward to read, generate the local HTML docs site and open the entrypoint:
 
 ```bash
-# Purpose: If plain Markdown is awkward to read, generate the local HTML docs site and open the entrypoint.
+# Purpose: Build the local HTML docs site and open the main entrypoint.
 make html
 open ./docs/html/index.html
 ```
 
-On Linux, replace `open` with `xdg-open`. The checked-in HTML files are meant for local browsing from the repo checkout; GitHub itself does not present them as a fully navigable static docs site.
+On Linux, replace `open` with `xdg-open`. For a published browser-friendly copy, use <https://kenduest-brobridge.github.io/grafana-utils/>.
 
-For a published browser-friendly copy, use the GitHub Pages site for this repository:
+Open by need:
 
-*   **Published HTML Docs**: <https://kenduest-brobridge.github.io/grafana-utils/>
-*   The site is generated from `docs/commands/*/*.md` and `docs/user-guide/*/*.md` and deployed from `main` by `.github/workflows/docs-pages.yml`.
+*   **Getting started**: [docs/user-guide/en/getting-started.md](./docs/user-guide/en/getting-started.md)
+*   **Full handbook**: [docs/user-guide/en/index.md](./docs/user-guide/en/index.md)
+*   **Command reference**: [docs/commands/en/index.md](./docs/commands/en/index.md)
+*   **Troubleshooting**: [docs/user-guide/en/troubleshooting.md](./docs/user-guide/en/troubleshooting.md)
+*   **Manpage**: [docs/man/grafana-util.1](./docs/man/grafana-util.1)
 
-*   **[Getting Started](./docs/user-guide/en/getting-started.md)**: Installation, profiles, and first commands.
-*   **[Architecture & Principles](./docs/user-guide/en/architecture.md)**: Operational model, lanes, and design boundaries.
-*   **[Real-World Recipes](./docs/user-guide/en/recipes.md)**: Common operational tasks and example flows.
-*   **[Command Docs](./docs/commands/en/index.md)**: One page per command and subcommand, aligned to the current Rust CLI help, with command-map entrypoints for deeper surfaces such as `dashboard screenshot`, `access service-account token`, and `change bundle-preflight`.
-*   **[HTML Docs Entry](./docs/html/index.html)**: Local handbook and command-reference entrypoint after `make html`.
-*   **[Man Page](./docs/man/grafana-util.1)**: Top-level `man` format reference. View it locally with `man ./docs/man/grafana-util.1` on macOS or `man -l docs/man/grafana-util.1` on GNU/Linux.
-*   **[Troubleshooting](./docs/user-guide/en/troubleshooting.md)**: Diagnostics, limits, and recovery guidance.
+Open by role:
 
-**[Full Handbook Table of Contents →](./docs/user-guide/en/index.md)**
-
----
-
-## Documentation Map
-
-If you are not sure which document to open first, use this map:
-
-*   **Operator handbook**: [docs/user-guide/en/](./docs/user-guide/en/index.md) for workflow, concepts, and guided reading order.
-*   **Command reference**: [docs/commands/en/](./docs/commands/en/index.md) for one page per command and subcommand.
-*   **Browsable HTML docs**: [docs/html/index.html](./docs/html/index.html) locally after `make html`, or <https://kenduest-brobridge.github.io/grafana-utils/> remotely.
-*   **Terminal manpage**: [docs/man/grafana-util.1](./docs/man/grafana-util.1) for `man`-style lookup.
-*   **Maintainer entrypoint**: [docs/DEVELOPER.md](./docs/DEVELOPER.md) for code architecture, docs routing, build/validation flow, and maintainer pointers.
-*   **Maintainer quickstart**: [docs/internal/maintainer-quickstart.md](./docs/internal/maintainer-quickstart.md) for the shortest first-day reading order, source-of-truth map, generated-file boundaries, and safe validation commands.
-*   **Generated docs design**: [docs/internal/generated-docs-architecture.md](./docs/internal/generated-docs-architecture.md) for the Markdown-to-HTML/manpage system design.
-*   **Generated docs playbook**: [docs/internal/generated-docs-playbook.md](./docs/internal/generated-docs-playbook.md) for step-by-step maintainer tasks.
-*   **Secret storage architecture**: [docs/internal/profile-secret-storage-architecture.md](./docs/internal/profile-secret-storage-architecture.md) for profile secret modes, macOS/Linux support, limits, and maintainer rules.
-*   **Internal docs index**: [docs/internal/README.md](./docs/internal/README.md) for the current internal spec, architecture, and trace inventory.
+*   **New user**: [docs/user-guide/en/role-new-user.md](./docs/user-guide/en/role-new-user.md)
+*   **SRE / operator**: [docs/user-guide/en/role-sre-ops.md](./docs/user-guide/en/role-sre-ops.md)
+*   **Automation / CI owner**: [docs/user-guide/en/role-automation-ci.md](./docs/user-guide/en/role-automation-ci.md)
+*   **Maintainer / developer**: [docs/DEVELOPER.md](./docs/DEVELOPER.md) and [docs/internal/maintainer-quickstart.md](./docs/internal/maintainer-quickstart.md)
 
 ---
 
-## Choose Your Path
-
-Read by role instead of by file tree if that is easier:
-
-*   **New user**: start with the dedicated [New User path](./docs/user-guide/en/role-new-user.md), then [Getting Started](./docs/user-guide/en/getting-started.md), then [Technical Reference](./docs/user-guide/en/reference.md).
-*   **SRE / operator**: start with the dedicated [SRE / Ops path](./docs/user-guide/en/role-sre-ops.md), then [Change & Status](./docs/user-guide/en/change-overview-status.md), [Dashboard Management](./docs/user-guide/en/dashboard.md), [Datasource Management](./docs/user-guide/en/datasource.md), and [Troubleshooting](./docs/user-guide/en/troubleshooting.md).
-*   **Automation / CI owner**: start with the dedicated [Automation / CI path](./docs/user-guide/en/role-automation-ci.md), then [Technical Reference](./docs/user-guide/en/reference.md), [Command Docs](./docs/commands/en/index.md), and the top-level [manpage](./docs/man/grafana-util.1).
-*   **Platform architect / maintainer**: start with [Maintainer quickstart](./docs/internal/maintainer-quickstart.md), then [docs/DEVELOPER.md](./docs/DEVELOPER.md), [Maintainer Role Map](./docs/internal/maintainer-role-map.md), [generated docs architecture](./docs/internal/generated-docs-architecture.md), [generated docs playbook](./docs/internal/generated-docs-playbook.md), [secret storage architecture](./docs/internal/profile-secret-storage-architecture.md), and [docs/internal/README.md](./docs/internal/README.md).
-
----
-
-## Technical Foundation
-*   **Rust Engine**: Single-binary CLI with a Rust-first implementation.
-*   **Validated**: Exercised against **Grafana 12.4.1** in Docker-based environments.
-*   **Automation-Friendly**: Predictable exit codes and structured output for CI/CD and batch workflows.
+## Project Notes
+*   **Rust-first CLI**: the primary implementation lives under `rust/src/`.
+*   **Validated against Grafana 12.4.1** in Docker-based environments.
+*   **Automation-friendly**: predictable exit codes and structured output for CI/CD and batch workflows.
 
 ---
 

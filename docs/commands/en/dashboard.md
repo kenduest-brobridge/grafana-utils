@@ -27,10 +27,30 @@ If you are an SRE, Grafana operator, or responder, this page should help you dec
 ```bash
 # Purpose: `grafana-util dashboard` is the namespace for live dashboard workflows, local draft handling, export/import review, inspection, topology, and screenshots. The same namespace is also available as `grafana-util db`.
 grafana-util dashboard --help
+```
+
+```bash
+# Purpose: `grafana-util dashboard` is the namespace for live dashboard workflows, local draft handling, export/import review, inspection, topology, and screenshots. The same namespace is also available as `grafana-util db`.
 grafana-util dashboard browse --profile prod
+```
+
+```bash
+# Purpose: `grafana-util dashboard` is the namespace for live dashboard workflows, local draft handling, export/import review, inspection, topology, and screenshots. The same namespace is also available as `grafana-util db`.
 grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --basic-password admin
+```
+
+```bash
+# Purpose: `grafana-util dashboard` is the namespace for live dashboard workflows, local draft handling, export/import review, inspection, topology, and screenshots. The same namespace is also available as `grafana-util db`.
 grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu-main.json --profile prod --org-id 2
+```
+
+```bash
+# Purpose: `grafana-util dashboard` is the namespace for live dashboard workflows, local draft handling, export/import review, inspection, topology, and screenshots. The same namespace is also available as `grafana-util db`.
 grafana-util dashboard inspect-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format governance-json
+```
+
+```bash
+# Purpose: `grafana-util dashboard` is the namespace for live dashboard workflows, local draft handling, export/import review, inspection, topology, and screenshots. The same namespace is also available as `grafana-util db`.
 grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin --basic-password admin --interactive
 ```
 

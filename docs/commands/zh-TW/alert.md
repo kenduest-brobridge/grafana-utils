@@ -29,12 +29,37 @@
 - 需要更廣 org 可見度或管理員盤點時，Basic auth 會更穩定。
 - Token 驗證較適合單一 org 或權限範圍已知的自動化。
 
+## 採用前後對照
+
+- **採用前**：alert 工作常常分散在 list、export 或 UI 手動修改，沒有一條從盤點到審核套用的完整路徑。
+- **採用後**：`alert` 命令群組把 inventory、撰寫、diff、規劃與套用放在一起，先 review 再改動會比較一致。
+
+## 成功判準
+
+- 你在開始前就能判斷這次 alert 變更屬於 export/import、撰寫、路由設計，還是 review/apply
+- plan 或 export 可以一路走到 review，而不會把 policy 或 routing context 弄丟
+- 同一條流程也能在 CI 或事故回顧時重跑
+
+## 失敗時先檢查
+
+- 如果 inventory 指令抓到的東西比預期少，先確認 auth scope 是否涵蓋需要的 org 或 folder
+- 如果 review 或 apply 步驟怪怪的，先看 alert plan JSON，再決定是不是 CLI 真有問題
+- 如果結果要交給自動化，請把輸出格式寫清楚，讓下游步驟知道 contract
+
 ## 範例
 
 ```bash
 # 用途：執行 alerting 指令介面，用來匯出、匯入、比對、規劃、套用、刪除、撰寫與列出 Grafana alert 資源。
 grafana-util alert list-rules --profile prod --json
+```
+
+```bash
+# 用途：執行 alerting 指令介面，用來匯出、匯入、比對、規劃、套用、刪除、撰寫與列出 Grafana alert 資源。
 grafana-util alert export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./alerts --overwrite
+```
+
+```bash
+# 用途：執行 alerting 指令介面，用來匯出、匯入、比對、規劃、套用、刪除、撰寫與列出 Grafana alert 資源。
 grafana-util alert export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-dir ./alerts --flat
 ```
 

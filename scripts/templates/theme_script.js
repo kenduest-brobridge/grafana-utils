@@ -39,6 +39,26 @@
     header.onclick = () => { header.closest(".nav-group").classList.toggle("collapsed"); };
   });
 
+  document.querySelectorAll(".sidebar-toggle-left").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-nav");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "▶" : "◀";
+    });
+  });
+
+  document.querySelectorAll(".sidebar-toggle-right").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-sidebar");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "◀" : "▶";
+    });
+  });
+
   const jumpSelect = document.getElementById("jump-select");
   if(jumpSelect) jumpSelect.onchange = (e) => { if(e.target.value) window.location.href = e.target.value; };
   const pageLocaleSelect = document.getElementById("page-locale-select");

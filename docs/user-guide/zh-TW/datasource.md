@@ -14,6 +14,23 @@
 - 再建立可回放的輸出樹
 - 最後才進行匯入、修改或刪除
 
+## 採用前後對照
+
+- 以前：data source 變更常被當成單次設定修改，回復方式與還原層級不夠清楚。
+- 現在：先盤點、再做遮蔽式還原、再投影到 provisioning，最後才做 dry-run 或實際變更。
+
+## 成功判準
+
+- 你知道哪些欄位要放進恢復包，哪些欄位一定要遮蔽。
+- 你能先確認 live inventory，再決定要不要動它。
+- 你能分清楚自己是在處理 recovery、provisioning，還是直接 live mutation。
+
+## 失敗時先檢查
+
+- 如果回放包裡出現明文 secret，先停下來修匯出路徑，不要先存檔。
+- 如果匯入預覽跟你以為的 live data source 對不上，先檢查 UID 與 type mapping。
+- 如果 provisioning 投影跟恢復包不一致，先確認你到底要的是哪一條 lane。
+
 > **維運目標**：確保 data source 設定可以安全地備份、比對與回放，並透過 **Masked Recovery（遮蔽式還原）** 保護敏感憑證。
 
 ## 🔗 指令頁面

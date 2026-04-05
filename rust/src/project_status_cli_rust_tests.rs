@@ -345,7 +345,7 @@ fn staged_args(desired_file: PathBuf) -> ProjectStatusStagedArgs {
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: ProjectStatusOutputFormat::Text,
+        output_format: ProjectStatusOutputFormat::Text,
     }
 }
 
@@ -588,7 +588,7 @@ fn project_status_cli_help_and_parse_support_datasource_provisioning_file() {
         "staged",
         "--datasource-provisioning-file",
         "./datasources/provisioning/datasources.yaml",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -617,7 +617,7 @@ fn project_status_cli_supports_all_output_modes_for_staged_and_live_commands() {
             "staged",
             "--desired-file",
             "./desired.json",
-            "--output",
+            "--output-format",
             output,
         ]);
         let live_args = ProjectStatusCliArgs::parse_from([
@@ -625,20 +625,20 @@ fn project_status_cli_supports_all_output_modes_for_staged_and_live_commands() {
             "live",
             "--url",
             "http://127.0.0.1:3000",
-            "--output",
+            "--output-format",
             output,
         ]);
 
         match staged_args.command {
             ProjectStatusSubcommand::Staged(inner) => {
-                assert_eq!(inner.output, expected);
+                assert_eq!(inner.output_format, expected);
             }
             _ => panic!("expected staged"),
         }
 
         match live_args.command {
             ProjectStatusSubcommand::Live(inner) => {
-                assert_eq!(inner.output, expected);
+                assert_eq!(inner.output_format, expected);
             }
             _ => panic!("expected live"),
         }
@@ -651,7 +651,7 @@ fn project_status_cli_supports_all_output_modes_for_staged_and_live_commands() {
             "staged",
             "--desired-file",
             "./desired.json",
-            "--output",
+            "--output-format",
             "interactive",
         ]);
         let live_args = ProjectStatusCliArgs::parse_from([
@@ -659,20 +659,20 @@ fn project_status_cli_supports_all_output_modes_for_staged_and_live_commands() {
             "live",
             "--url",
             "http://127.0.0.1:3000",
-            "--output",
+            "--output-format",
             "interactive",
         ]);
 
         match staged_args.command {
             ProjectStatusSubcommand::Staged(inner) => {
-                assert_eq!(inner.output, ProjectStatusOutputFormat::Interactive);
+                assert_eq!(inner.output_format, ProjectStatusOutputFormat::Interactive);
             }
             _ => panic!("expected staged"),
         }
 
         match live_args.command {
             ProjectStatusSubcommand::Live(inner) => {
-                assert_eq!(inner.output, ProjectStatusOutputFormat::Interactive);
+                assert_eq!(inner.output_format, ProjectStatusOutputFormat::Interactive);
             }
             _ => panic!("expected live"),
         }
@@ -686,7 +686,7 @@ fn project_status_cli_supports_dashboard_provisioning_dir() {
         "staged",
         "--dashboard-provisioning-dir",
         "./dashboards/provisioning",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -726,7 +726,7 @@ fn project_status_cli_supports_combined_dashboard_and_datasource_export_roots() 
         dashboard_export_dir.to_str().unwrap(),
         "--datasource-export-dir",
         datasource_export_dir.to_str().unwrap(),
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -787,7 +787,7 @@ fn project_status_staged_rejects_dashboard_root_for_dashboard_export_input() {
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: ProjectStatusOutputFormat::Text,
+        output_format: ProjectStatusOutputFormat::Text,
     })
     .unwrap_err()
     .to_string();
@@ -825,7 +825,7 @@ fn project_status_staged_accepts_workspace_root_datasource_manifest() {
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: ProjectStatusOutputFormat::Json,
+        output_format: ProjectStatusOutputFormat::Json,
     })
     .unwrap();
 

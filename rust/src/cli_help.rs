@@ -6,6 +6,7 @@
 use clap::{ColorChoice, CommandFactory};
 
 use crate::access::root_command as access_root_command;
+use crate::alert_sync::ALERT_SYNC_KIND;
 use crate::alert::root_command as alert_root_command;
 use crate::cli::CliArgs;
 use crate::cli_help_examples::{
@@ -41,13 +42,213 @@ pub(crate) const DASHBOARD_DIFF_HELP_TEXT: &str = "Examples:\n\n  grafana-util d
 pub(crate) const DASHBOARD_INSPECT_EXPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard inspect-export --import-dir ./dashboards/raw --input-format raw --table\n  grafana-util dashboard inspect-export --import-dir ./dashboards/raw --input-format raw --interactive\n  grafana-util dashboard inspect-export --import-dir ./dashboards/raw --input-format raw --report governance-json\n  grafana-util dashboard inspect-export --import-dir ./dashboards/provisioning --input-format provisioning --report tree-table";
 pub(crate) const DASHBOARD_INSPECT_LIVE_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format governance-json\n  grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin --basic-password admin --interactive";
 pub(crate) const DASHBOARD_INSPECT_VARS_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard inspect-vars --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --token \"$GRAFANA_API_TOKEN\" --output-format table\n  grafana-util dashboard inspect-vars --url https://grafana.example.com --dashboard-uid cpu-main --vars-query 'var-cluster=prod-a&var-instance=node01' --token \"$GRAFANA_API_TOKEN\" --output-format json";
-pub(crate) const DASHBOARD_GOVERNANCE_GATE_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard governance-gate --policy-source file --policy ./policy.yaml --governance ./governance.json --queries ./queries.json\n  grafana-util dashboard governance-gate --policy-source builtin --builtin-policy default --governance ./governance.json --queries ./queries.json --output-format json --json-output ./governance-check.json";
-pub(crate) const DASHBOARD_TOPOLOGY_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard topology --governance ./governance.json --queries ./queries.json --alert-contract ./alert-contract.json --output-format mermaid\n  grafana-util dashboard graph --governance ./governance.json --queries ./queries.json --alert-contract ./alert-contract.json --output-format dot --output-file ./dashboard-topology.dot";
+pub(crate) const DASHBOARD_GOVERNANCE_GATE_HELP_TEXT: &str = "Examples:\n\n  Build artifacts first with inspect-live or inspect-export, then evaluate governance policy:\n    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format governance-json --output-file ./governance.json\n    grafana-util dashboard governance-gate --policy-source file --policy ./policy.yaml --governance ./governance.json --queries ./queries.json\n\n  Use the builtin policy and emit a machine-readable report:\n    grafana-util dashboard governance-gate --policy-source builtin --builtin-policy default --governance ./governance.json --queries ./queries.json --output-format json --json-output ./governance-check.json";
+pub(crate) const DASHBOARD_TOPOLOGY_HELP_TEXT: &str = "Examples:\n\n  Build artifacts first with inspect-live or inspect-export, then render topology as Mermaid:\n    grafana-util dashboard inspect-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format governance-json --output-file ./governance.json\n    grafana-util dashboard topology --governance ./governance.json --queries ./queries.json --alert-contract ./alert-contract.json --output-format mermaid\n\n  Render Graphviz DOT with the graph alias:\n    grafana-util dashboard graph --governance ./governance.json --queries ./queries.json --alert-contract ./alert-contract.json --output-format dot --output-file ./dashboard-topology.dot";
 pub(crate) const DASHBOARD_SCREENSHOT_HELP_TEXT: &str = "Examples:\n\n  grafana-util dashboard screenshot --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --token \"$GRAFANA_API_TOKEN\" --output ./cpu-main.png --full-page --header-title --header-url --header-captured-at\n  grafana-util dashboard screenshot --url https://grafana.example.com --dashboard-uid rYdddlPWk --panel-id 20 --vars-query 'var-datasource=prom-main&var-job=node-exporter&var-node=host01:9100' --token \"$GRAFANA_API_TOKEN\" --output ./panel.png --header-title 'CPU Busy' --header-text 'Solo panel debug capture'";
-pub(crate) const SNAPSHOT_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot --overwrite\n  grafana-util snapshot review --input-dir ./snapshot --output text\n  grafana-util snapshot review --input-dir ./snapshot --output json\n  grafana-util snapshot review --input-dir ./snapshot --interactive";
+pub(crate) const SNAPSHOT_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot --overwrite\n  grafana-util snapshot review --input-dir ./snapshot --output-format text\n  grafana-util snapshot review --input-dir ./snapshot --output-format json\n  grafana-util snapshot review --input-dir ./snapshot --interactive";
 
 const OVERVIEW_HELP_SHAPE_NOTE: &str =
     "\nStaged overview is the default. Use `grafana-util overview live` to route into shared live status.\n";
+
+const CHANGE_SCHEMA_ROOT_HELP_TEXT: &str = "Change JSON schema guide\n\nUse this help surface when CI, scripts, or external tooling need to understand which JSON document each `change` subcommand emits.\n\nGeneral rule:\n- Branch on `kind` plus `schemaVersion` before reading nested fields.\n- `--output-format json` is the machine-readable path.\n- `change bundle` writes a bundle contract through `--output-file`; it does not use `--output-format`.\n\nSubcommand contracts:\n- summary -> grafana-utils-sync-summary
+  top-level keys: kind, schemaVersion, toolVersion, summary, resources
+- plan -> grafana-utils-sync-plan
+  top-level keys: kind, schemaVersion, toolVersion, dryRun, reviewRequired, reviewed, allowPrune, summary, alertAssessment, operations, traceId, stage, stepIndex, parentTraceId
+- review -> grafana-utils-sync-plan
+  same base shape as plan, plus reviewedBy, reviewedAt, reviewNote; lineage moves to stage=review
+- apply -> grafana-utils-sync-apply-intent
+  top-level keys: kind, schemaVersion, toolVersion, mode, reviewed, reviewRequired, allowPrune, approved, summary, alertAssessment, operations, optional preflightSummary, optional bundlePreflightSummary, appliedBy, appliedAt, approvalReason, applyNote, traceId, stage, stepIndex, parentTraceId
+- apply --execute-live -> live apply result
+  top-level keys: mode, appliedCount, results
+- audit -> grafana-utils-sync-audit
+  top-level keys: kind, schemaVersion, toolVersion, summary, currentLock, baselineLock, drifts
+- preflight -> grafana-utils-sync-preflight
+  top-level keys: kind, schemaVersion, toolVersion, summary, checks
+- assess-alerts -> ";
+const CHANGE_SCHEMA_ROOT_HELP_TAIL: &str = "
+  top-level keys: kind, schemaVersion, toolVersion, summary, alerts
+- bundle-preflight -> grafana-utils-sync-bundle-preflight
+  top-level keys: kind, schemaVersion, summary, syncPreflight, alertArtifactAssessment, secretPlaceholderAssessment, providerAssessment
+- promotion-preflight -> grafana-utils-sync-promotion-preflight
+  top-level keys: kind, schemaVersion, toolVersion, summary, bundlePreflight, mappingSummary, checkSummary, handoffSummary, continuationSummary, checks, resolvedChecks, blockingChecks
+
+Quick lookups:
+- grafana-util change --help-schema
+- grafana-util change plan --help-schema
+- grafana-util change apply --help-schema";
+const CHANGE_SUMMARY_SCHEMA_HELP_TEXT: &str = "Change summary JSON schema\n\nCommand:\n  grafana-util change summary --desired-file ./desired.json --output-format json\n\nkind:\n  grafana-utils-sync-summary\n\nTop-level keys:
+- kind
+- schemaVersion
+- toolVersion
+- summary
+  - resourceCount
+  - dashboardCount
+  - datasourceCount
+  - folderCount
+  - alertCount
+- resources[]
+  - kind
+  - identity
+  - title
+  - managedFields
+  - bodyFieldCount
+  - sourcePath";
+const CHANGE_PLAN_SCHEMA_HELP_TEXT: &str = "Change plan JSON schema\n\nCommand:\n  grafana-util change plan --desired-file ./desired.json --fetch-live --profile prod --output-format json\n\nkind:\n  grafana-utils-sync-plan\n\nTop-level keys:
+- kind
+- schemaVersion
+- toolVersion
+- dryRun
+- reviewRequired
+- reviewed
+- allowPrune
+- traceId
+- stage
+- stepIndex
+- parentTraceId
+- summary
+  - would_create
+  - would_update
+  - would_delete
+  - noop
+  - unmanaged
+  - alert_candidate
+  - alert_plan_only
+  - alert_blocked
+- alertAssessment
+- operations[]
+  - kind
+  - identity
+  - title
+  - action
+  - reason
+  - changedFields
+  - managedFields
+  - desired
+  - live
+  - sourcePath";
+const CHANGE_REVIEW_SCHEMA_HELP_TEXT: &str = "Change review JSON schema\n\nCommand:\n  grafana-util change review --plan-file ./sync-plan.json --output-format json\n\nkind:\n  grafana-utils-sync-plan\n\nBase shape:
+- same JSON envelope as `change plan`
+\nReview additions:
+- reviewed = true
+- stage = review
+- stepIndex = 2
+- reviewedBy
+- reviewedAt
+- reviewNote";
+const CHANGE_APPLY_SCHEMA_HELP_TEXT: &str = "Change apply JSON schema\n\nCommands:\n  grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --output-format json
+  grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --profile prod --output-format json\n\nDefault apply-intent kind:
+  grafana-utils-sync-apply-intent
+\nApply-intent top-level keys:
+- kind
+- schemaVersion
+- toolVersion
+- mode
+- reviewed
+- reviewRequired
+- allowPrune
+- approved
+- summary
+- alertAssessment
+- operations
+- optional preflightSummary
+- optional bundlePreflightSummary
+- appliedBy
+- appliedAt
+- approvalReason
+- applyNote
+- traceId
+- stage
+- stepIndex
+- parentTraceId
+\nLive execute shape (`--execute-live`):
+- mode = live-apply
+- appliedCount
+- results[]
+  - kind
+  - identity
+  - action
+  - response";
+const CHANGE_AUDIT_SCHEMA_HELP_TEXT: &str = "Change audit JSON schema\n\nCommand:\n  grafana-util change audit --lock-file ./sync-lock.json --fetch-live --profile prod --output-format json\n\nkind:\n  grafana-utils-sync-audit\n\nTop-level keys:
+- kind
+- schemaVersion
+- toolVersion
+- summary
+  - managedCount
+  - baselineCount
+  - currentPresentCount
+  - currentMissingCount
+  - inSyncCount
+  - driftCount
+  - missingLockCount
+  - missingLiveCount
+- currentLock
+- baselineLock
+- drifts[]
+  - kind
+  - identity
+  - title
+  - status
+  - baselineStatus
+  - currentStatus
+  - baselineChecksum
+  - currentChecksum
+  - driftedFields
+  - sourcePath";
+const CHANGE_PREFLIGHT_SCHEMA_HELP_TEXT: &str = "Change preflight JSON schema\n\nCommand:\n  grafana-util change preflight --desired-file ./desired.json --fetch-live --profile prod --output-format json\n\nkind:\n  grafana-utils-sync-preflight\n\nTop-level keys:
+- kind
+- schemaVersion
+- toolVersion
+- summary
+  - checkCount
+  - okCount
+  - blockingCount
+- checks[]
+  - kind
+  - identity
+  - status
+  - detail
+  - blocking";
+const CHANGE_ASSESS_ALERTS_SCHEMA_HELP_TEXT_HEAD: &str = "Change assess-alerts JSON schema\n\nCommand:\n  grafana-util change assess-alerts --alerts-file ./alerts.json --output-format json\n\nkind:\n  ";
+const CHANGE_ASSESS_ALERTS_SCHEMA_HELP_TEXT_TAIL: &str = "\n\nTop-level keys:
+- kind
+- schemaVersion
+- toolVersion
+- summary
+- alerts[]";
+const CHANGE_BUNDLE_PREFLIGHT_SCHEMA_HELP_TEXT: &str = "Change bundle-preflight JSON schema\n\nCommand:\n  grafana-util change bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --output-format json\n\nkind:\n  grafana-utils-sync-bundle-preflight\n\nTop-level keys:
+- kind
+- schemaVersion
+- summary
+- syncPreflight
+- alertArtifactAssessment
+- secretPlaceholderAssessment
+- providerAssessment";
+const CHANGE_PROMOTION_PREFLIGHT_SCHEMA_HELP_TEXT: &str = "Change promotion-preflight JSON schema\n\nCommand:\n  grafana-util change promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json --mapping-file ./promotion-map.json --output-format json\n\nkind:\n  grafana-utils-sync-promotion-preflight\n\nTop-level keys:
+- kind
+- schemaVersion
+- toolVersion
+- summary
+- bundlePreflight
+- mappingSummary
+- checkSummary
+- handoffSummary
+- continuationSummary
+- checks[]
+- resolvedChecks[]
+- blockingChecks[]";
+const CHANGE_BUNDLE_SCHEMA_HELP_TEXT: &str = "Change bundle JSON contract\n\nCommand:\n  grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n\nNotes:
+- `change bundle` writes the contract to `--output-file`.
+- It does not switch render modes with `--output-format`.
+- Add `--also-stdout` only when you intentionally want both file output and stdout.\n\nkind:
+  grafana-utils-sync-source-bundle\n\nTop-level keys:
+- kind
+- schemaVersion
+- toolVersion
+- summary
+- resources
+- providers
+- secretPlaceholders
+- alertArtifacts";
 
 fn render_long_help_with_color_choice(command: &mut clap::Command, colorize: bool) -> String {
     let configured = std::mem::take(command).color(if colorize {
@@ -127,6 +328,33 @@ pub fn render_unified_version_text() -> String {
     format!("grafana-util {}\n", crate::common::TOOL_VERSION)
 }
 
+fn render_change_schema_help(target: Option<&str>) -> Option<String> {
+    match target {
+        None => Some(format!(
+            "{}{}{}",
+            CHANGE_SCHEMA_ROOT_HELP_TEXT, ALERT_SYNC_KIND, CHANGE_SCHEMA_ROOT_HELP_TAIL
+        )),
+        Some("summary") => Some(CHANGE_SUMMARY_SCHEMA_HELP_TEXT.to_string()),
+        Some("plan") => Some(CHANGE_PLAN_SCHEMA_HELP_TEXT.to_string()),
+        Some("review") => Some(CHANGE_REVIEW_SCHEMA_HELP_TEXT.to_string()),
+        Some("apply") => Some(CHANGE_APPLY_SCHEMA_HELP_TEXT.to_string()),
+        Some("audit") => Some(CHANGE_AUDIT_SCHEMA_HELP_TEXT.to_string()),
+        Some("preflight") => Some(CHANGE_PREFLIGHT_SCHEMA_HELP_TEXT.to_string()),
+        Some("assess-alerts") => Some(format!(
+            "{}{}{}",
+            CHANGE_ASSESS_ALERTS_SCHEMA_HELP_TEXT_HEAD,
+            ALERT_SYNC_KIND,
+            CHANGE_ASSESS_ALERTS_SCHEMA_HELP_TEXT_TAIL
+        )),
+        Some("bundle-preflight") => Some(CHANGE_BUNDLE_PREFLIGHT_SCHEMA_HELP_TEXT.to_string()),
+        Some("promotion-preflight") => {
+            Some(CHANGE_PROMOTION_PREFLIGHT_SCHEMA_HELP_TEXT.to_string())
+        }
+        Some("bundle") => Some(CHANGE_BUNDLE_SCHEMA_HELP_TEXT.to_string()),
+        _ => None,
+    }
+}
+
 pub fn maybe_render_unified_help_from_os_args<I, T>(iter: I, colorize: bool) -> Option<String>
 where
     I: IntoIterator<Item = T>,
@@ -136,6 +364,16 @@ where
         .into_iter()
         .map(|value| value.into().to_string_lossy().into_owned())
         .collect::<Vec<_>>();
+    if args.len() >= 3
+        && args.get(1).map(String::as_str) == Some("change")
+        && args.iter().any(|value| value == "--help-schema")
+    {
+        let target = args
+            .get(2)
+            .filter(|value| !value.starts_with('-'))
+            .map(String::as_str);
+        return render_change_schema_help(target);
+    }
     match args.as_slice() {
         [_binary] => Some(render_unified_help_text(colorize)),
         [_binary, flag] if flag == "--help" || flag == "-h" => {

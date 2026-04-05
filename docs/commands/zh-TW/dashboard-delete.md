@@ -18,7 +18,15 @@
 ```bash
 # 用途：依 UID 或資料夾路徑刪除線上儀表板。
 grafana-util dashboard delete --profile prod --uid cpu-main --dry-run --json
+```
+
+```bash
+# 用途：依 UID 或資料夾路徑刪除線上儀表板。
 grafana-util dashboard delete --url http://localhost:3000 --basic-user admin --basic-password admin --path 'Platform / Infra' --yes
+```
+
+```bash
+# 用途：依 UID 或資料夾路徑刪除線上儀表板。
 grafana-util dashboard delete --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --uid cpu-main --dry-run --json
 ```
 

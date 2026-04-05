@@ -438,6 +438,7 @@ pub fn execute_dashboard_inspect_live(args: &InspectLiveArgs) -> Result<Dashboar
         help_full: args.help_full,
         no_header: args.no_header,
         output_file: None,
+        also_stdout: false,
         interactive: false,
     };
     execute_dashboard_inspect_at_path(&inspect_args, &inspect_args.import_dir, RAW_EXPORT_SUBDIR)

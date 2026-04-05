@@ -16,7 +16,15 @@
 ```bash
 # 用途：在互動式終端機 UI 中開啟線上儀表板樹狀結構。
 grafana-util dashboard browse --profile prod
+```
+
+```bash
+# 用途：在互動式終端機 UI 中開啟線上儀表板樹狀結構。
 grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --basic-password admin --path 'Platform / Infra'
+```
+
+```bash
+# 用途：在互動式終端機 UI 中開啟線上儀表板樹狀結構。
 grafana-util dashboard browse --url http://localhost:3000 --token "$GRAFANA_API_TOKEN"
 ```
 

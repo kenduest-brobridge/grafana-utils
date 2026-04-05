@@ -70,8 +70,8 @@ pub const OVERVIEW_ARTIFACT_SYNC_SUMMARY_KIND: &str = "sync-summary";
 pub const OVERVIEW_ARTIFACT_BUNDLE_PREFLIGHT_KIND: &str = "bundle-preflight";
 pub const OVERVIEW_ARTIFACT_PROMOTION_PREFLIGHT_KIND: &str = "promotion-preflight";
 pub const DATASOURCE_EXPORT_METADATA_FILENAME: &str = "export-metadata.json";
-const OVERVIEW_HELP_TEXT: &str = "Examples:\n\n  Summarize staged exports as a summary table from raw dashboard artifacts:\n    grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output table\n\n  Summarize staged exports from dashboard provisioning artifacts:\n    grafana-util overview --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output csv\n\n  Summarize datasource provisioning YAML instead of datasources.json:\n    grafana-util overview --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output yaml\n\n  Summarize bundle and promotion context as text:\n    grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output text\n\n  Open the live overview through the shared status live path:\n    grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output interactive";
-const OVERVIEW_LIVE_HELP_TEXT: &str = "Examples:\n\n  Render the live overview as YAML:\n    grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output yaml\n\n  Open the live overview in the interactive workbench:\n    grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output interactive";
+const OVERVIEW_HELP_TEXT: &str = "Examples:\n\n  Summarize staged exports as a summary table from raw dashboard artifacts:\n    grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table\n\n  Summarize staged exports from dashboard provisioning artifacts:\n    grafana-util overview --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format csv\n\n  Summarize datasource provisioning YAML instead of datasources.json:\n    grafana-util overview --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output-format yaml\n\n  Summarize bundle and promotion context as text:\n    grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output-format text\n\n  Open the live overview through the shared status live path:\n    grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format interactive";
+const OVERVIEW_LIVE_HELP_TEXT: &str = "Examples:\n\n  Render the live overview as YAML:\n    grafana-util overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format yaml\n\n  Open the live overview in the interactive workbench:\n    grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive";
 
 /// Output formats for the overview renderer.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
@@ -178,13 +178,13 @@ pub struct OverviewArgs {
     )]
     pub mapping_file: Option<PathBuf>,
     #[arg(
-        long,
+        long = "output-format",
         value_enum,
         default_value_t = OverviewOutputFormat::Text,
         help = "Render the overview document as table, csv, text, json, yaml, or interactive output.",
         help_heading = "Output Options"
     )]
-    pub output: OverviewOutputFormat,
+    pub output_format: OverviewOutputFormat,
 }
 
 /// CLI shape for `grafana-util overview`.
@@ -448,7 +448,7 @@ pub(crate) fn run_overview_interactive(_document: OverviewDocument) -> Result<()
 /// Run the overview command using staged artifact inputs and the requested output format.
 pub fn run_overview(args: OverviewArgs) -> Result<()> {
     let document = execute_overview(&args)?;
-    match args.output {
+    match args.output_format {
         OverviewOutputFormat::Table => {
             print_lines(&render_summary_table(&build_overview_summary_rows(
                 &document,

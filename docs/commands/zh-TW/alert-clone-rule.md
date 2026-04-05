@@ -22,6 +22,10 @@
 ```bash
 # 用途：將既有的暫存 alert 規則複製到新的撰寫目標。
 grafana-util alert clone-rule --desired-dir ./alerts/desired --source cpu-high --name cpu-high-staging --folder staging-alerts --rule-group cpu --receiver slack-platform
+```
+
+```bash
+# 用途：將既有的暫存 alert 規則複製到新的撰寫目標。
 grafana-util alert clone-rule --desired-dir ./alerts/desired --source cpu-high --name cpu-high-staging --dry-run
 ```
 

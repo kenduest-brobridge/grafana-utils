@@ -145,20 +145,48 @@ pre:hover .code-controls { opacity: 1; }
 #font-select { width: 138px; }
 #theme-select { width: 128px; }
 
-.layout { display: grid; grid-template-columns: 232px minmax(0, 1fr) 244px; gap: 20px; align-items: start; }
-.layout.layout-no-nav { grid-template-columns: minmax(0, 1fr) 244px; }
-.layout.layout-no-sidebar { grid-template-columns: 232px minmax(0, 1fr); }
+.layout {
+  --nav-width: 232px;
+  --sidebar-width: 244px;
+  display: grid;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr) var(--sidebar-width);
+  gap: 20px;
+  align-items: start;
+}
+.layout.layout-no-nav { --nav-width: 0px; grid-template-columns: minmax(0, 1fr) var(--sidebar-width); }
+.layout.layout-no-sidebar { --sidebar-width: 0px; grid-template-columns: var(--nav-width) minmax(0, 1fr); }
 .layout.layout-no-nav.layout-no-sidebar { grid-template-columns: minmax(0, 1fr); }
+.layout.layout-collapsed-nav:not(.layout-no-nav) { --nav-width: 26px; }
+.layout.layout-collapsed-sidebar:not(.layout-no-sidebar) { --sidebar-width: 26px; }
 @media (max-width: 1280px) { .layout { grid-template-columns: 210px minmax(0, 1fr); gap: 18px; } .sidebar { display: none !important; } }
 @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } .nav-sidebar { display: none !important; } }
 
-.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 12px 0 0; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.nav-sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .nav-sidebar li { margin-bottom: 0; }
-.nav-sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; letter-spacing: 0.04em; }
+.nav-sidebar h2 {
+  margin: 0 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: none;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  opacity: 0.82;
+}
 .nav-section + .nav-section { margin-top: 18px; }
 .nav-group-block + .nav-group-block { margin-top: 14px; }
-.nav-group-title { margin: 0 0 6px; font-size: 0.76rem; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+.nav-group-title {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--heading);
+  letter-spacing: 0.01em;
+  line-height: 1.32;
+}
 .nav-tree,
 .nav-sub-list { list-style: none; margin: 0; padding: 0; position: relative; }
 .nav-tree::before,
@@ -167,24 +195,67 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 .nav-tree-node + .nav-tree-node { margin-top: 2px; }
 .nav-tree-node::before { display: none; }
 .nav-group { margin: 0; position: relative; }
-.nav-group + .nav-group { margin-top: 4px; }
-.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.92rem; }
+.nav-group + .nav-group { margin-top: 2px; }
+.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.9rem; }
 .nav-group-header:hover { color: var(--heading); }
-.nav-group-link { flex: 1; display: block; padding: 5px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 610; line-height: 1.42; }
+.nav-group-link { flex: 1; display: block; padding: 4px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 600; line-height: 1.4; }
 .nav-group-link:hover { background: var(--panel-strong); }
-.nav-item { display: block; padding: 5px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 550; font-size: 0.9rem; line-height: 1.44; }
+.nav-item { display: block; padding: 4px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 530; font-size: 0.84rem; line-height: 1.4; }
 .nav-group-link,
 .nav-item,
 .nav-command-entry { white-space: nowrap; }
 .nav-item:hover { background: var(--panel-strong); color: var(--heading); }
 .nav-item.active,
-.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 82%, white); color: var(--heading); font-weight: 620; box-shadow: inset 2px 0 0 var(--accent); }
+.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 70%, white); color: var(--heading); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .nav-sub-list { margin-top: 4px; margin-left: 10px; }
 .nav-sub-list .nav-item { color: var(--muted); font-weight: 520; }
-.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 610; }
-.nav-command-entry { display: block; padding: 5px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.88rem; font-weight: 560; line-height: 1.4; transition: 0.15s; }
+.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 590; }
+.nav-command-entry { display: block; padding: 4px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.82rem; font-weight: 540; line-height: 1.38; transition: 0.15s; }
 .nav-command-entry:hover { color: var(--heading); background: var(--panel-strong); }
 .nav-command-entry.active { color: var(--heading); font-weight: 620; background: color-mix(in srgb, var(--accent-soft) 60%, white); box-shadow: inset 2px 0 0 var(--accent); }
+
+.sidebar-toggle {
+  position: absolute;
+  top: 18px;
+  width: 18px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 92%, white);
+  color: var(--muted);
+  font: 700 10px var(--font-sans);
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  z-index: 5;
+}
+.sidebar-toggle:hover {
+  color: var(--heading);
+  border-color: color-mix(in srgb, var(--border) 55%, var(--accent));
+  background: var(--panel);
+}
+.sidebar-toggle-left { right: 0; transform: translateX(50%); }
+.sidebar-toggle-right { left: 0; transform: translateX(-50%); }
+.layout.layout-collapsed-nav .nav-sidebar-content,
+.layout.layout-collapsed-sidebar .sidebar-content {
+  opacity: 0;
+  pointer-events: none;
+}
+.layout.layout-collapsed-nav .nav-sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-sidebar .sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-nav .nav-sidebar,
+.layout.layout-collapsed-sidebar .sidebar {
+  min-width: 0;
+}
+.layout.layout-collapsed-nav .sidebar-toggle-left {
+  right: 4px;
+  transform: none;
+}
+.layout.layout-collapsed-sidebar .sidebar-toggle-right {
+  left: 4px;
+  transform: none;
+}
 
 .article { min-width: 0; padding: 10px 0 24px; }
 .article p,
@@ -328,8 +399,9 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 }
 .command-intro-list li { margin: 0.18rem 0; }
 
-.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0 12px; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .sidebar li { margin-bottom: 0; }
 .sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.05em; }
 .sidebar-section + .sidebar-section { margin-top: 22px; }
@@ -680,13 +752,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 
       <div class="layout">
-  <aside class="nav-sidebar"><section class="nav-section"><h2>使用手冊</h2><div class="nav-group-block"><div class="nav-group-title">開始</div><ul class="nav-tree"><li class="nav-tree-node"><a href="index.html" class="nav-item">概觀</a></li><li class="nav-tree-node"><a href="what-is-grafana-util.html" class="nav-item">這個工具是做什麼的</a></li><li class="nav-tree-node"><a href="getting-started.html" class="nav-item">開始使用</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">角色路徑</div><ul class="nav-tree"><li class="nav-tree-node"><a href="role-new-user.html" class="nav-item">新手快速入門</a></li><li class="nav-tree-node"><a href="role-sre-ops.html" class="nav-item">SRE / 維運角色導讀</a></li><li class="nav-tree-node"><a href="role-automation-ci.html" class="nav-item">自動化 / CI 角色導讀</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">核心操作</div><ul class="nav-tree"><li class="nav-tree-node"><a href="dashboard.html" class="nav-item">Dashboard 維運人員手冊</a></li><li class="nav-tree-node"><a href="datasource.html" class="nav-item">Data source 維運手冊</a></li><li class="nav-tree-node"><a href="alert.html" class="nav-item">Alert 維運人員手冊</a></li><li class="nav-tree-node"><a href="access.html" class="nav-item">身分與存取管理</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">治理</div><ul class="nav-tree"><li class="nav-tree-node"><a href="architecture.html" class="nav-item">系統架構與設計原則</a></li><li class="nav-tree-node"><a href="change-overview-status.html" class="nav-item">專案狀態與變更總覽</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">實戰與參考</div><ul class="nav-tree"><li class="nav-tree-node"><a href="scenarios.html" class="nav-item">維運情境手冊</a></li><li class="nav-tree-node"><a href="recipes.html" class="nav-item">實戰錦囊與最佳實踐</a></li><li class="nav-tree-node"><a href="reference.html" class="nav-item active">技術參考手冊</a></li><li class="nav-tree-node"><a href="troubleshooting.html" class="nav-item">疑難排解與名詞解釋</a></li></ul></div></section><section class="nav-section"><h2>指令參考</h2><a href="../../commands/zh-TW/index.html" class="nav-command-entry">開啟指令參考</a></section></aside>
+  <aside class="nav-sidebar">
+  <button class="sidebar-toggle sidebar-toggle-left" type="button" aria-expanded="true" aria-label="Toggle handbook navigation">◀</button>
+  <div class="nav-sidebar-content"><section class="nav-section"><h2>手冊導覽</h2><div class="nav-group-block"><div class="nav-group-title">開始</div><ul class="nav-tree"><li class="nav-tree-node"><a href="index.html" class="nav-item">概觀</a></li><li class="nav-tree-node"><a href="what-is-grafana-util.html" class="nav-item">這個工具是做什麼的</a></li><li class="nav-tree-node"><a href="getting-started.html" class="nav-item">開始使用</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">角色路徑</div><ul class="nav-tree"><li class="nav-tree-node"><a href="role-new-user.html" class="nav-item">新手快速入門</a></li><li class="nav-tree-node"><a href="role-sre-ops.html" class="nav-item">SRE / 維運角色導讀</a></li><li class="nav-tree-node"><a href="role-automation-ci.html" class="nav-item">自動化 / CI 角色導讀</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">核心操作</div><ul class="nav-tree"><li class="nav-tree-node"><a href="dashboard.html" class="nav-item">Dashboard 維運人員手冊</a></li><li class="nav-tree-node"><a href="datasource.html" class="nav-item">Data source 維運手冊</a></li><li class="nav-tree-node"><a href="alert.html" class="nav-item">Alert 維運人員手冊</a></li><li class="nav-tree-node"><a href="access.html" class="nav-item">身分與存取管理</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">治理</div><ul class="nav-tree"><li class="nav-tree-node"><a href="architecture.html" class="nav-item">系統架構與設計原則</a></li><li class="nav-tree-node"><a href="change-overview-status.html" class="nav-item">專案狀態與變更總覽</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">實戰與參考</div><ul class="nav-tree"><li class="nav-tree-node"><a href="scenarios.html" class="nav-item">維運情境手冊</a></li><li class="nav-tree-node"><a href="recipes.html" class="nav-item">實戰錦囊與最佳實踐</a></li><li class="nav-tree-node"><a href="reference.html" class="nav-item active">技術參考手冊</a></li><li class="nav-tree-node"><a href="troubleshooting.html" class="nav-item">疑難排解與名詞解釋</a></li></ul></div></section><section class="nav-section"><h2>指令入口</h2><a href="../../commands/zh-TW/index.html" class="nav-command-entry">開啟指令參考</a></section></div>
+</aside>
 
   <article class="article">
     <div class="breadcrumbs"><a href="../../index.html">Home</a> / Handbook / 技術參考手冊 (Technical Reference)</div>
 
-    <div class="hero-eyebrow">Docs</div>
-<h1><span class="hero-title-main">技術參考手冊</span><span class="hero-title-secondary">Technical Reference</span></h1>
+    <h1><span class="hero-title-main">技術參考手冊</span><span class="hero-title-secondary">Technical Reference</span></h1>
 
 
     <p>本章整理 <code>grafana-util</code> 目前常用的指令、共用旗標，以及 profile 解析、輸出格式與 staged / live 的 status 用法。</p>
@@ -695,6 +769,24 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <ul><li>已經知道自己大概要跑哪個 command，但想確認旗標與輸出格式的人</li><li>要把 <code>grafana-util</code> 接進腳本、pipeline 或審查流程的人</li><li>想先了解 profile、secret、輸出格式與 live/staged 差異的人</li></ul>
 <h2 id="主要目標">主要目標</h2>
 <ul><li>先把連線與 secret 規則講清楚</li><li>再整理常見輸出格式與共用旗標</li><li>最後讓你在查 help 之前就知道大概該看哪一段</li></ul>
+<h2 id="輸出旗標規則">輸出旗標規則</h2>
+<p><code>grafana-util</code> 現在把畫面 / 表格 / JSON / YAML 這類格式選擇統一收斂到 <code>--output-format</code>。</p>
+<h3 id="標準格式旗標-output-format">標準格式旗標：<code>--output-format</code></h3>
+<p>很多 list、review、inspect、dry-run 類指令都用 <code>--output-format</code>。</p>
+<p>常見對應關係：</p>
+<ul><li><code>--output-format table</code> = <code>--table</code></li><li><code>--output-format json</code> = <code>--json</code></li><li><code>--output-format csv</code> = <code>--csv</code></li><li><code>--output-format yaml</code> = <code>--yaml</code></li><li><code>--output-format text</code> = <code>--text</code></li></ul>
+<p>如果你是在腳本、CI 或可重複使用的範本裡，通常建議用完整寫法。 如果你是在終端直接操作，短旗標會比較順手。</p>
+<h3 id="幾個常見例外">幾個常見例外</h3>
+<ul><li>不是每個 command 都會把所有短旗標都做齊</li><li>有些指令只支援一兩種輸出形態</li><li><code>dashboard topology</code> 是特例：它支援 <code>text</code>、<code>json</code>、<code>mermaid</code>、<code>dot</code>，但沒有 <code>--table</code> 這類快捷旗標</li><li><code>--output-file</code>，或某些匯出 / draft 指令裡的 <code>--output</code>，代表的是輸出檔案路徑，不是輸出格式</li></ul>
+<p>如果你不確定某個 command 到底支援哪些格式，最準的還是該 command 的獨立說明頁。</p>
+<h3 id="給-ci-用的-change-json-文件">給 CI 用的 <code>change</code> JSON 文件</h3>
+<p><code>change</code> 指令群組會輸出多種 JSON contract。最穩妥的判斷順序是：</p>
+<ol><li>先看 <code>kind</code></li><li>再確認 <code>schemaVersion</code></li><li>最後才根據 <code>summary</code>、<code>operations</code>、<code>checks</code>、<code>drifts</code> 等欄位往下判斷</li></ol>
+<p>CLI 內建快速查詢：</p>
+<ul><li><code>grafana-util change --help-schema</code></li><li><code>grafana-util change plan --help-schema</code></li><li><code>grafana-util change apply --help-schema</code></li><li><code>grafana-util change audit --help-schema</code></li></ul>
+<p>常見對應：</p>
+<ul><li><code>change summary --output-format json</code> -&gt; <code>grafana-utils-sync-summary</code></li><li><code>change plan --output-format json</code> -&gt; <code>grafana-utils-sync-plan</code></li><li><code>change review --output-format json</code> -&gt; <code>grafana-utils-sync-plan</code></li><li><code>change apply --output-format json</code> -&gt; <code>grafana-utils-sync-apply-intent</code></li><li><code>change apply --execute-live --output-format json</code> -&gt; live apply result</li><li><code>change audit --output-format json</code> -&gt; <code>grafana-utils-sync-audit</code></li><li><code>change preflight --output-format json</code> -&gt; <code>grafana-utils-sync-preflight</code></li><li><code>change assess-alerts --output-format json</code> -&gt; <code>grafana-utils-alert-sync-plan</code></li><li><code>change bundle-preflight --output-format json</code> -&gt; <code>grafana-utils-sync-bundle-preflight</code></li><li><code>change promotion-preflight --output-format json</code> -&gt; <code>grafana-utils-sync-promotion-preflight</code></li></ul>
+<p>如果你需要每種文件的 top-level 欄位細節，直接看 <a href="../../commands/zh-TW/change.html">change 指令頁</a> 會最快。</p>
 <h2 id="profile連線與-secret-處理">Profile、連線與 secret 處理</h2>
 <p>Profile 是專案本地的設定。<code>grafana-util profile</code> 會讀寫目前工作目錄中的 <code>grafana-util.yaml</code>，<code>--profile</code> 則是從這個檔案裡挑選一個命名 profile。</p>
 <h3 id="建議的使用順序">建議的使用順序</h3>
@@ -721,10 +813,14 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <table><thead><tr><th>檔案</th><th>預設位置</th></tr></thead><tbody><tr><td><code>grafana-util.yaml</code></td><td>目前工作目錄，或 <code>GRAFANA_UTIL_CONFIG</code> 指定的路徑</td></tr><tr><td><code>.grafana-util.secrets.yaml</code></td><td>跟 <code>grafana-util.yaml</code> 放同一個目錄</td></tr><tr><td><code>.grafana-util.secrets.key</code></td><td>跟 <code>grafana-util.yaml</code> 放同一個目錄</td></tr></tbody></table>
 <h3 id="2-初始化新增並列出-profile">2. 初始化、新增並列出 profile</h3>
 <pre><code># 用途：2. 初始化、新增並列出 profile。
-grafana-util profile init --overwrite
-grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password
-grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN --store-secret os
-grafana-util profile list
+grafana-util profile init --overwrite</code></pre>
+<pre><code># 用途：2. 初始化、新增並列出 profile。
+grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password</code></pre>
+<pre><code># 用途：2. 初始化、新增並列出 profile。
+grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN --store-secret os</code></pre>
+<pre><code># 用途：2. 初始化、新增並列出 profile。
+grafana-util profile list</code></pre>
+<pre><code># 用途：2. 初始化、新增並列出 profile。
 grafana-util profile example --mode full</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>Wrote grafana-util.yaml.
@@ -733,7 +829,8 @@ prod</code></pre>
 <p><code>init</code> 會建立本機設定檔，<code>add</code> 可以一步直接建立可用 profile，<code>list</code> 會一行列出一個已解析的 profile 名稱，而 <code>example</code> 則會輸出完整註解版範本，方便你拿去改。</p>
 <h3 id="3-顯示已解析的-profile">3. 顯示已解析的 profile</h3>
 <pre><code># 用途：3. 顯示已解析的 profile。
-grafana-util profile show --profile prod --output-format yaml
+grafana-util profile show --profile prod --output-format yaml</code></pre>
+<pre><code># 用途：3. 顯示已解析的 profile。
 grafana-util profile show --profile prod --show-secrets --output-format yaml</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>name: prod
@@ -799,28 +896,31 @@ profiles:
       path: .grafana-util.secrets.yaml</code></pre>
 <h3 id="5-日常使用時的三種常見驗證範例">5. 日常使用時的三種常見驗證範例</h3>
 <pre><code># 用途：5. 日常使用時的三種常見驗證範例。
-grafana-util status live --profile prod --output yaml
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output yaml
-grafana-util overview live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output json</code></pre>
+grafana-util status live --profile prod --output-format yaml</code></pre>
+<pre><code># 用途：5. 日常使用時的三種常見驗證範例。
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml</code></pre>
+<pre><code># 用途：5. 日常使用時的三種常見驗證範例。
+grafana-util overview live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
 <p>預設請以 <code>--profile</code> 為主。直接 Basic auth 比較適合管理員型流程；token 則適合你已經很清楚權限邊界的 scoped automation。</p>
 <h3 id="6-完整的-secret-handling-範例">6. 完整的 secret-handling 範例</h3>
 <pre><code># 用環境變數承載密碼，建立可重複使用的本機 profile。
 export GRAFANA_PROD_PASSWORD=&#x27;change-me&#x27;
-grafana-util profile add prod --url https://grafana.example.com --basic-user admin --password-env GRAFANA_PROD_PASSWORD
-grafana-util status live --profile prod --output yaml
-
-# 在 macOS 或 Linux 桌面上，把 secret 放進 OS secret store。
-grafana-util profile add prod-os --url https://grafana.example.com --basic-user admin --prompt-password --store-secret os
-grafana-util overview live --profile prod-os --output interactive
-
-# 使用帶 passphrase 的加密 secret file。
-grafana-util profile add prod-encrypted --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file --prompt-secret-passphrase
-grafana-util status live --profile prod-encrypted --output yaml
-
-# 在自動化流程中，以環境變數承載 scoped token。
+grafana-util profile add prod --url https://grafana.example.com --basic-user admin --password-env GRAFANA_PROD_PASSWORD</code></pre>
+<pre><code># 用環境變數承載密碼，建立可重複使用的本機 profile。
+grafana-util status live --profile prod --output-format yaml</code></pre>
+<pre><code># 在 macOS 或 Linux 桌面上，把 secret 放進 OS secret store。
+grafana-util profile add prod-os --url https://grafana.example.com --basic-user admin --prompt-password --store-secret os</code></pre>
+<pre><code># 在 macOS 或 Linux 桌面上，把 secret 放進 OS secret store。
+grafana-util overview live --profile prod-os --output-format interactive</code></pre>
+<pre><code># 使用帶 passphrase 的加密 secret file。
+grafana-util profile add prod-encrypted --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file --prompt-secret-passphrase</code></pre>
+<pre><code># 使用帶 passphrase 的加密 secret file。
+grafana-util status live --profile prod-encrypted --output-format yaml</code></pre>
+<pre><code># 在自動化流程中，以環境變數承載 scoped token。
 export GRAFANA_CI_TOKEN=&#x27;replace-me&#x27;
-grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN
-grafana-util overview live --profile ci --output json</code></pre>
+grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN</code></pre>
+<pre><code># 在自動化流程中，以環境變數承載 scoped token。
+grafana-util overview live --profile ci --output-format json</code></pre>
 <p>這組範例的重點是：</p>
 <ul><li>用同一種 <code>--profile</code> 操作面，對應不同的 secret backend</li><li>讓日常執行不必每次都重貼密碼</li><li>把 env、OS secret store、encrypted-file 與 token 模式都完整交代</li></ul>
 <h3 id="7-多-org-與管理員範圍的注意事項">7. 多 org 與管理員範圍的注意事項</h3>
@@ -835,7 +935,7 @@ grafana-util overview live --profile ci --output json</code></pre>
 <h2 id="輸出格式對照">輸出格式對照</h2>
 <p><code>grafana-util</code> 同時提供各格式旗標與單一 <code>--output-format</code> 選擇器。以 dashboard list 來說，目前可用的是 <code>--json</code>、<code>--table</code>、<code>--csv</code>、<code>--yaml</code> 與 <code>--output-format</code>。</p>
 <h3 id="0-先看這張旗標對照表">0. 先看這張旗標對照表</h3>
-<table><thead><tr><th>情境</th><th>寫法</th><th>常見值</th><th>補充</th></tr></thead><tbody><tr><td>直接切換常見格式</td><td><code>--text</code>、<code>--table</code>、<code>--csv</code>、<code>--json</code>、<code>--yaml</code></td><td><code>text</code> / <code>table</code> / <code>csv</code> / <code>json</code> / <code>yaml</code></td><td>適合 list、review、inspect、部分 import / delete dry-run 這類輸出面。</td></tr><tr><td>用單一旗標切換格式</td><td><code>--output-format &lt;FORMAT&gt;</code></td><td><code>text</code> / <code>table</code> / <code>csv</code> / <code>json</code> / <code>yaml</code></td><td>也可能出現 command 專用值，例如 <code>report-table</code>、<code>governance-json</code>、<code>mermaid</code>、<code>dot</code>。</td></tr><tr><td>live status / overview 類入口</td><td><code>--output &lt;FORMAT&gt;</code></td><td><code>table</code> / <code>csv</code> / <code>text</code> / <code>json</code> / <code>yaml</code> / <code>interactive</code></td><td>這條路徑不是 <code>--output-format</code>。</td></tr><tr><td>將結果另外寫入檔案</td><td><code>--output-file &lt;PATH&gt;</code> 或 command 專用旗標</td><td>視指令而定</td><td>常見於 topology、governance gate、screenshot 這類輸出型指令。</td></tr></tbody></table>
+<table><thead><tr><th>情境</th><th>寫法</th><th>常見值</th><th>補充</th></tr></thead><tbody><tr><td>直接切換常見格式</td><td><code>--text</code>、<code>--table</code>、<code>--csv</code>、<code>--json</code>、<code>--yaml</code></td><td><code>text</code> / <code>table</code> / <code>csv</code> / <code>json</code> / <code>yaml</code></td><td>適合 list、review、inspect、部分 import / delete dry-run 這類輸出面。</td></tr><tr><td>用單一旗標切換格式</td><td><code>--output-format &lt;FORMAT&gt;</code></td><td><code>text</code> / <code>table</code> / <code>csv</code> / <code>json</code> / <code>yaml</code></td><td>也可能出現 command 專用值，例如 <code>report-table</code>、<code>governance-json</code>、<code>mermaid</code>、<code>dot</code>。</td></tr><tr><td>live status / overview 類入口</td><td><code>--output-format &lt;FORMAT&gt;</code></td><td><code>table</code> / <code>csv</code> / <code>text</code> / <code>json</code> / <code>yaml</code> / <code>interactive</code></td><td>這條路徑現在也統一使用 <code>--output-format</code>。</td></tr><tr><td>將結果另外寫入檔案</td><td><code>--output-file &lt;PATH&gt;</code> 或 command 專用旗標</td><td>視指令而定</td><td>常見於 topology、governance gate、screenshot 這類輸出型指令。</td></tr></tbody></table>
 <h3 id="1-表格或-json-的選擇">1. 表格或 JSON 的選擇</h3>
 <pre><code># 用途：1. 表格或 JSON 的選擇。
 grafana-util dashboard list -h</code></pre>
@@ -849,19 +949,20 @@ grafana-util dashboard list -h</code></pre>
 <p><code>--json</code> 適合自動化，<code>--table</code> 適合快速人工檢查，而 <code>--output-format</code> 則適合想用單一旗標切換輸出格式的情境。舊版文件中的 <code>--limit</code> 範例已不符合現況，現在應該用 <code>--page-size</code> 控制抓取大小、用 <code>--output-columns</code> 控制欄位。</p>
 <h3 id="2-live-status-與-overview-的輸出選擇器">2. Live status 與 overview 的輸出選擇器</h3>
 <pre><code># 用途：2. Live status 與 overview 的輸出選擇器。
-grafana-util status live -h
+grafana-util status live -h</code></pre>
+<pre><code># 用途：2. Live status 與 overview 的輸出選擇器。
 grafana-util overview live -h</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>Render project status from live Grafana read surfaces. Use current Grafana state plus optional staged context files.
 ...
---output &lt;OUTPUT&gt;
+--output-format &lt;OUTPUT_FORMAT&gt;
     Render project status as table, csv, text, json, yaml, or interactive output.
 
 Render a live overview by delegating to the shared status live path.
 ...
---output &lt;OUTPUT&gt;
+--output-format &lt;OUTPUT_FORMAT&gt;
     Render project status as table, csv, text, json, yaml, or interactive output.</code></pre>
-<p>這兩個 live 入口現在都用 <code>--output</code>，不是舊文件常見的 <code>--output-format</code> 寫法。</p>
+<p>這兩個 live 入口現在都用 <code>--output-format</code>。</p>
 <h2 id="dashboard-路徑">Dashboard 路徑</h2>
 <ul><li><code>raw/</code> 是給 API replay/import 使用的路徑。</li><li><code>prompt/</code> 是給 Grafana UI 匯入使用的路徑。</li><li><code>dashboard export</code> 會直接產生 prompt 路徑。</li><li><code>dashboard raw-to-prompt</code> 可以把一般或 raw 的 dashboard JSON 轉成 prompt JSON，方便修補或遷移成 Grafana UI 匯入格式。</li><li><code>dashboard import</code> 只吃 <code>raw/</code> 或 <code>provisioning/</code> 輸入，不吃 <code>prompt/</code>。</li></ul>
 <h2 id="自動化與腳本開發-cicd">自動化與腳本開發 (CI/CD)</h2>
@@ -871,7 +972,7 @@ grafana-util dashboard list --profile prod --json | jq -r &#x27;.[] | select(.or
 <p>這是目前可用的 JSON 腳本路徑。如果需要更少或不同欄位，請改用 <code>--output-columns</code>，不要再假設舊版表格欄位還存在。</p>
 <h3 id="2-處理結束代碼-exit-codes">2. 處理結束代碼 (Exit Codes)</h3>
 <pre><code># 用途：2. 處理結束代碼 (Exit Codes)。
-grafana-util status live --profile prod --output json
+grafana-util status live --profile prod --output-format json
 if [ $? -eq 2 ]; then
   echo &quot;CRITICAL: Grafana 連線受阻！&quot;
   exit 1
@@ -881,7 +982,10 @@ fi</code></pre>
     <nav class="footer-nav"><a class="link-card" href="recipes.html"><span>Previous</span>實戰錦囊與最佳實踐</a><a class="link-card" href="troubleshooting.html"><span>Next</span>疑難排解與名詞解釋</a></nav>
   </article>
   <aside class="sidebar">
-  <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#適用對象"><span class="toc-label">適用對象</span></a></li><li class="toc-level-2"><a href="#主要目標"><span class="toc-label">主要目標</span></a></li><li class="toc-level-2"><a href="#profile連線與-secret-處理"><span class="toc-label">Profile、連線與 secret 處理</span></a></li><li class="toc-level-3"><a href="#建議的使用順序"><span class="toc-label">建議的使用順序</span></a></li><li class="toc-level-3"><a href="#secret-保存模式差別與適用情境"><span class="toc-label">Secret 保存模式：差別與適用情境</span></a></li><li class="toc-level-3"><a href="#macos-與-linux-的-os-secret-store-支援"><span class="toc-label">macOS 與 Linux 的 OS secret store 支援</span></a></li><li class="toc-level-3"><a href="#1-選對-profile-工作流"><span class="toc-label">1. 選對 profile 工作流</span></a></li><li class="toc-level-3"><a href="#2-初始化新增並列出-profile"><span class="toc-label">2. 初始化、新增並列出 profile</span></a></li><li class="toc-level-3"><a href="#3-顯示已解析的-profile"><span class="toc-label">3. 顯示已解析的 profile</span></a></li><li class="toc-level-3"><a href="#4-註解版範例輸出"><span class="toc-label">4. 註解版範例輸出</span></a></li><li class="toc-level-3"><a href="#5-日常使用時的三種常見驗證範例"><span class="toc-label">5. 日常使用時的三種常見驗證範例</span></a></li><li class="toc-level-3"><a href="#6-完整的-secret-handling-範例"><span class="toc-label">6. 完整的 secret-handling 範例</span></a></li><li class="toc-level-3"><a href="#7-多-org-與管理員範圍的注意事項"><span class="toc-label">7. 多 org 與管理員範圍的注意事項</span></a></li><li class="toc-level-3"><a href="#8-secret-storage-常見排解"><span class="toc-label">8. Secret storage 常見排解</span></a></li><li class="toc-level-2"><a href="#輸出格式對照"><span class="toc-label">輸出格式對照</span></a></li><li class="toc-level-3"><a href="#0-先看這張旗標對照表"><span class="toc-label">0. 先看這張旗標對照表</span></a></li><li class="toc-level-3"><a href="#1-表格或-json-的選擇"><span class="toc-label">1. 表格或 JSON 的選擇</span></a></li><li class="toc-level-3"><a href="#2-live-status-與-overview-的輸出選擇器"><span class="toc-label">2. Live status 與 overview 的輸出選擇器</span></a></li><li class="toc-level-2"><a href="#dashboard-路徑"><span class="toc-label">Dashboard 路徑</span></a></li><li class="toc-level-2"><a href="#自動化與腳本開發-cicd"><span class="toc-label">自動化與腳本開發 (CI/CD)</span></a></li><li class="toc-level-3"><a href="#1-使用-jq-進行過濾-bashzsh"><span class="toc-label">1. 使用 `jq` 進行過濾 (Bash/Zsh)</span></a></li><li class="toc-level-3"><a href="#2-處理結束代碼-exit-codes"><span class="toc-label">2. 處理結束代碼 (Exit Codes)</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/reference.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+  <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
+  <div class="sidebar-content">
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#適用對象"><span class="toc-label">適用對象</span></a></li><li class="toc-level-2"><a href="#主要目標"><span class="toc-label">主要目標</span></a></li><li class="toc-level-2"><a href="#輸出旗標規則"><span class="toc-label">輸出旗標規則</span></a></li><li class="toc-level-3"><a href="#標準格式旗標-output-format"><span class="toc-label">標準格式旗標：`--output-format`</span></a></li><li class="toc-level-3"><a href="#幾個常見例外"><span class="toc-label">幾個常見例外</span></a></li><li class="toc-level-3"><a href="#給-ci-用的-change-json-文件"><span class="toc-label">給 CI 用的 `change` JSON 文件</span></a></li><li class="toc-level-2"><a href="#profile連線與-secret-處理"><span class="toc-label">Profile、連線與 secret 處理</span></a></li><li class="toc-level-3"><a href="#建議的使用順序"><span class="toc-label">建議的使用順序</span></a></li><li class="toc-level-3"><a href="#secret-保存模式差別與適用情境"><span class="toc-label">Secret 保存模式：差別與適用情境</span></a></li><li class="toc-level-3"><a href="#macos-與-linux-的-os-secret-store-支援"><span class="toc-label">macOS 與 Linux 的 OS secret store 支援</span></a></li><li class="toc-level-3"><a href="#1-選對-profile-工作流"><span class="toc-label">1. 選對 profile 工作流</span></a></li><li class="toc-level-3"><a href="#2-初始化新增並列出-profile"><span class="toc-label">2. 初始化、新增並列出 profile</span></a></li><li class="toc-level-3"><a href="#3-顯示已解析的-profile"><span class="toc-label">3. 顯示已解析的 profile</span></a></li><li class="toc-level-3"><a href="#4-註解版範例輸出"><span class="toc-label">4. 註解版範例輸出</span></a></li><li class="toc-level-3"><a href="#5-日常使用時的三種常見驗證範例"><span class="toc-label">5. 日常使用時的三種常見驗證範例</span></a></li><li class="toc-level-3"><a href="#6-完整的-secret-handling-範例"><span class="toc-label">6. 完整的 secret-handling 範例</span></a></li><li class="toc-level-3"><a href="#7-多-org-與管理員範圍的注意事項"><span class="toc-label">7. 多 org 與管理員範圍的注意事項</span></a></li><li class="toc-level-3"><a href="#8-secret-storage-常見排解"><span class="toc-label">8. Secret storage 常見排解</span></a></li><li class="toc-level-2"><a href="#輸出格式對照"><span class="toc-label">輸出格式對照</span></a></li><li class="toc-level-3"><a href="#0-先看這張旗標對照表"><span class="toc-label">0. 先看這張旗標對照表</span></a></li><li class="toc-level-3"><a href="#1-表格或-json-的選擇"><span class="toc-label">1. 表格或 JSON 的選擇</span></a></li><li class="toc-level-3"><a href="#2-live-status-與-overview-的輸出選擇器"><span class="toc-label">2. Live status 與 overview 的輸出選擇器</span></a></li><li class="toc-level-2"><a href="#dashboard-路徑"><span class="toc-label">Dashboard 路徑</span></a></li><li class="toc-level-2"><a href="#自動化與腳本開發-cicd"><span class="toc-label">自動化與腳本開發 (CI/CD)</span></a></li><li class="toc-level-3"><a href="#1-使用-jq-進行過濾-bashzsh"><span class="toc-label">1. 使用 `jq` 進行過濾 (Bash/Zsh)</span></a></li><li class="toc-level-3"><a href="#2-處理結束代碼-exit-codes"><span class="toc-label">2. 處理結束代碼 (Exit Codes)</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/reference.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+  </div>
 </aside>
 
 </div>
@@ -930,6 +1034,26 @@ fi</code></pre>
 
   document.querySelectorAll(".nav-group-header").forEach(header => {
     header.onclick = () => { header.closest(".nav-group").classList.toggle("collapsed"); };
+  });
+
+  document.querySelectorAll(".sidebar-toggle-left").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-nav");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "▶" : "◀";
+    });
+  });
+
+  document.querySelectorAll(".sidebar-toggle-right").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-sidebar");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "◀" : "▶";
+    });
   });
 
   const jumpSelect = document.getElementById("jump-select");

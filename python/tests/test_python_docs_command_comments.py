@@ -26,6 +26,7 @@ COMMAND_MARKERS = (
     "git ",
     "export ",
 )
+SIMPLE_SHELL_CONTROL_RE = re.compile(r"^\s*(for|do|done|if|then|fi|while|case)\b")
 
 
 def iter_markdown_files():
@@ -57,6 +58,30 @@ class MarkdownCommandCommentTests(unittest.TestCase):
             missing,
             [],
             "Command-style shell fences must start with a '# ...' purpose comment.",
+        )
+
+    def test_simple_multi_command_fences_repeat_purpose_comments(self):
+        offenders = []
+        for path in sorted(iter_markdown_files()):
+            text = path.read_text()
+            for match in COMMAND_FENCE_RE.finditer(text):
+                body = match.group(2)
+                lines = body.splitlines()
+                if any(SIMPLE_SHELL_CONTROL_RE.match(line) for line in lines):
+                    continue
+                command_count = sum(
+                    1 for line in lines if line.lstrip().startswith("grafana-util ")
+                )
+                comment_count = sum(1 for line in lines if line.lstrip().startswith("# "))
+                if command_count > 1 and comment_count < command_count:
+                    line_no = text[: match.start()].count("\n") + 1
+                    offenders.append(
+                        f"{path.relative_to(REPO_ROOT)}:{line_no} commands={command_count} comments={comment_count}"
+                    )
+        self.assertEqual(
+            offenders,
+            [],
+            "Simple multi-command shell fences must give each grafana-util command its own '# ...' purpose comment.",
         )
 
 

@@ -90,6 +90,7 @@ fn change_bundle_help_includes_examples_and_output_heading() {
     assert!(help.contains("--dashboard-export-dir"));
     assert!(help.contains("--dashboard-provisioning-dir"));
     assert!(help.contains("--output-file"));
+    assert!(help.contains("--also-stdout"));
     assert!(help.contains("--datasource-provisioning-file"));
 }
 
@@ -118,14 +119,14 @@ fn parse_change_cli_supports_summary_command() {
         "summary",
         "--desired-file",
         "./desired.json",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
     match args.command {
         SyncGroupCommand::Summary(inner) => {
             assert_eq!(inner.desired_file, Path::new("./desired.json"));
-            assert_eq!(inner.output, SyncOutputFormat::Json);
+            assert_eq!(inner.output_format, SyncOutputFormat::Json);
         }
         _ => panic!("expected summary"),
     }
@@ -138,14 +139,14 @@ fn parse_change_cli_supports_assess_alerts_command() {
         "assess-alerts",
         "--alerts-file",
         "./alerts.json",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
     match args.command {
         SyncGroupCommand::AssessAlerts(inner) => {
             assert_eq!(inner.alerts_file, Path::new("./alerts.json"));
-            assert_eq!(inner.output, SyncOutputFormat::Json);
+            assert_eq!(inner.output_format, SyncOutputFormat::Json);
         }
         _ => panic!("expected assess-alerts"),
     }
@@ -162,7 +163,7 @@ fn parse_change_cli_supports_promotion_preflight_command() {
         "./target.json",
         "--mapping-file",
         "./promotion-map.json",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -174,7 +175,7 @@ fn parse_change_cli_supports_promotion_preflight_command() {
                 inner.mapping_file,
                 Some(Path::new("./promotion-map.json").to_path_buf())
             );
-            assert_eq!(inner.output, SyncOutputFormat::Json);
+            assert_eq!(inner.output_format, SyncOutputFormat::Json);
         }
         _ => panic!("expected promotion-preflight"),
     }
@@ -195,7 +196,7 @@ fn parse_change_cli_supports_audit_command() {
         "./next-lock.json",
         "--fail-on-drift",
         "--interactive",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -207,7 +208,7 @@ fn parse_change_cli_supports_audit_command() {
             assert_eq!(inner.write_lock.unwrap(), Path::new("./next-lock.json"));
             assert!(inner.fail_on_drift);
             assert!(inner.interactive);
-            assert_eq!(inner.output, SyncOutputFormat::Json);
+            assert_eq!(inner.output_format, SyncOutputFormat::Json);
         }
         _ => panic!("expected audit"),
     }
@@ -225,7 +226,7 @@ fn parse_change_cli_supports_plan_command() {
         "--allow-prune",
         "--trace-id",
         "trace-explicit",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -237,7 +238,7 @@ fn parse_change_cli_supports_plan_command() {
                 Some(Path::new("./live.json").to_path_buf())
             );
             assert!(inner.allow_prune);
-            assert_eq!(inner.output, SyncOutputFormat::Json);
+            assert_eq!(inner.output_format, SyncOutputFormat::Json);
             assert_eq!(inner.trace_id, Some("trace-explicit".to_string()));
         }
         _ => panic!("expected plan"),
@@ -279,7 +280,7 @@ fn parse_change_cli_supports_review_command() {
         "review",
         "--plan-file",
         "./plan.json",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -287,7 +288,7 @@ fn parse_change_cli_supports_review_command() {
         SyncGroupCommand::Review(inner) => {
             assert_eq!(inner.plan_file, Path::new("./plan.json"));
             assert_eq!(inner.review_token, DEFAULT_REVIEW_TOKEN);
-            assert_eq!(inner.output, SyncOutputFormat::Json);
+            assert_eq!(inner.output_format, SyncOutputFormat::Json);
             assert_eq!(inner.reviewed_by, None);
             assert_eq!(inner.reviewed_at, None);
             assert_eq!(inner.review_note, None);
@@ -330,7 +331,7 @@ fn parse_change_cli_supports_apply_command() {
         "--bundle-preflight-file",
         "./bundle-preflight.json",
         "--approve",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -346,7 +347,7 @@ fn parse_change_cli_supports_apply_command() {
                 Some(Path::new("./bundle-preflight.json").to_path_buf())
             );
             assert!(inner.approve);
-            assert_eq!(inner.output, SyncOutputFormat::Json);
+            assert_eq!(inner.output_format, SyncOutputFormat::Json);
             assert!(!inner.execute_live);
             assert!(!inner.allow_folder_delete);
             assert!(!inner.allow_policy_reset);
@@ -476,7 +477,7 @@ fn parse_change_cli_supports_bundle_command() {
         "./metadata.json",
         "--output-file",
         "./bundle.json",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -503,7 +504,32 @@ fn parse_change_cli_supports_bundle_command() {
                 inner.output_file,
                 Some(Path::new("./bundle.json").to_path_buf())
             );
-            assert_eq!(inner.output, SyncOutputFormat::Json);
+            assert!(!inner.also_stdout);
+            assert_eq!(inner.output_format, SyncOutputFormat::Json);
+        }
+        _ => panic!("expected bundle"),
+    }
+}
+
+#[test]
+fn parse_change_cli_supports_bundle_also_stdout() {
+    let args = SyncCliArgs::parse_from([
+        "grafana-util",
+        "bundle",
+        "--dashboard-export-dir",
+        "./dashboards/raw",
+        "--output-file",
+        "./bundle.json",
+        "--also-stdout",
+    ]);
+
+    match args.command {
+        SyncGroupCommand::Bundle(inner) => {
+            assert_eq!(
+                inner.output_file,
+                Some(Path::new("./bundle.json").to_path_buf())
+            );
+            assert!(inner.also_stdout);
         }
         _ => panic!("expected bundle"),
     }
@@ -518,7 +544,7 @@ fn parse_change_cli_supports_bundle_provisioning_file() {
         "./dashboards/raw",
         "--datasource-provisioning-file",
         "./dashboards/provisioning/datasources.yaml",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -541,7 +567,7 @@ fn parse_change_cli_supports_bundle_provisioning_dir() {
         "bundle",
         "--dashboard-provisioning-dir",
         "./dashboards/provisioning",
-        "--output",
+        "--output-format",
         "json",
     ]);
 

@@ -101,6 +101,26 @@ where
     }
 }
 
+/// Remove ANSI escape sequences so persisted output files remain plain text.
+pub fn strip_ansi_codes(text: &str) -> String {
+    let ansi_re = Regex::new(r"\x1b\[[0-9;?]*[ -/]*[@-~]").expect("valid ANSI regex");
+    ansi_re.replace_all(text, "").into_owned()
+}
+
+/// Write user-facing rendered output to disk without ANSI color codes.
+pub fn write_plain_output_file(path: &Path, output: &str) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let normalized = strip_ansi_codes(output).trim_end_matches('\n').to_string();
+    fs::write(path, format!("{normalized}\n"))?;
+    Ok(())
+}
+
+pub fn should_print_stdout(output_file: Option<&Path>, also_stdout: bool) -> bool {
+    output_file.is_none() || also_stdout
+}
+
 fn colorize_json_pretty(rendered: &str) -> String {
     let mut colored = String::with_capacity(rendered.len() + 32);
     let mut chars = rendered.chars().peekable();

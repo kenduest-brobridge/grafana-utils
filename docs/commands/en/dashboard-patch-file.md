@@ -19,6 +19,10 @@ Use this when you need to rewrite dashboard metadata locally before review or pu
 ```bash
 # Purpose: Patch one local dashboard JSON file in place or write it to a new path.
 grafana-util dashboard patch-file --input ./dashboards/raw/cpu-main.json --name 'CPU Overview' --folder-uid infra --tag prod --tag sre
+```
+
+```bash
+# Purpose: Patch one local dashboard JSON file in place or write it to a new path.
 grafana-util dashboard patch-file --input ./drafts/cpu-main.json --output ./drafts/cpu-main-patched.json --uid cpu-main --message 'Add folder metadata before publish'
 ```
 

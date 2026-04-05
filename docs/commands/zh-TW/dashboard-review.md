@@ -15,6 +15,10 @@
 ```bash
 # 用途：檢視一個本地儀表板 JSON 檔，但不會碰到 Grafana。
 grafana-util dashboard review --input ./drafts/cpu-main.json
+```
+
+```bash
+# 用途：檢視一個本地儀表板 JSON 檔，但不會碰到 Grafana。
 grafana-util dashboard review --input ./drafts/cpu-main.json --output-format yaml
 ```
 

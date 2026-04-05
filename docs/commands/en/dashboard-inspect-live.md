@@ -18,6 +18,10 @@ Use this when you need the same inspection views as `inspect-export`, but source
 ```bash
 # Purpose: Analyze live Grafana dashboards via a temporary raw-export snapshot.
 grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format governance-json
+```
+
+```bash
+# Purpose: Analyze live Grafana dashboards via a temporary raw-export snapshot.
 grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin --basic-password admin --interactive
 ```
 

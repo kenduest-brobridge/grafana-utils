@@ -145,20 +145,48 @@ pre:hover .code-controls { opacity: 1; }
 #font-select { width: 138px; }
 #theme-select { width: 128px; }
 
-.layout { display: grid; grid-template-columns: 232px minmax(0, 1fr) 244px; gap: 20px; align-items: start; }
-.layout.layout-no-nav { grid-template-columns: minmax(0, 1fr) 244px; }
-.layout.layout-no-sidebar { grid-template-columns: 232px minmax(0, 1fr); }
+.layout {
+  --nav-width: 232px;
+  --sidebar-width: 244px;
+  display: grid;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr) var(--sidebar-width);
+  gap: 20px;
+  align-items: start;
+}
+.layout.layout-no-nav { --nav-width: 0px; grid-template-columns: minmax(0, 1fr) var(--sidebar-width); }
+.layout.layout-no-sidebar { --sidebar-width: 0px; grid-template-columns: var(--nav-width) minmax(0, 1fr); }
 .layout.layout-no-nav.layout-no-sidebar { grid-template-columns: minmax(0, 1fr); }
+.layout.layout-collapsed-nav:not(.layout-no-nav) { --nav-width: 26px; }
+.layout.layout-collapsed-sidebar:not(.layout-no-sidebar) { --sidebar-width: 26px; }
 @media (max-width: 1280px) { .layout { grid-template-columns: 210px minmax(0, 1fr); gap: 18px; } .sidebar { display: none !important; } }
 @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } .nav-sidebar { display: none !important; } }
 
-.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 12px 0 0; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.nav-sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .nav-sidebar li { margin-bottom: 0; }
-.nav-sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; letter-spacing: 0.04em; }
+.nav-sidebar h2 {
+  margin: 0 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: none;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  opacity: 0.82;
+}
 .nav-section + .nav-section { margin-top: 18px; }
 .nav-group-block + .nav-group-block { margin-top: 14px; }
-.nav-group-title { margin: 0 0 6px; font-size: 0.76rem; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+.nav-group-title {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--heading);
+  letter-spacing: 0.01em;
+  line-height: 1.32;
+}
 .nav-tree,
 .nav-sub-list { list-style: none; margin: 0; padding: 0; position: relative; }
 .nav-tree::before,
@@ -167,24 +195,67 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 .nav-tree-node + .nav-tree-node { margin-top: 2px; }
 .nav-tree-node::before { display: none; }
 .nav-group { margin: 0; position: relative; }
-.nav-group + .nav-group { margin-top: 4px; }
-.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.92rem; }
+.nav-group + .nav-group { margin-top: 2px; }
+.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.9rem; }
 .nav-group-header:hover { color: var(--heading); }
-.nav-group-link { flex: 1; display: block; padding: 5px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 610; line-height: 1.42; }
+.nav-group-link { flex: 1; display: block; padding: 4px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 600; line-height: 1.4; }
 .nav-group-link:hover { background: var(--panel-strong); }
-.nav-item { display: block; padding: 5px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 550; font-size: 0.9rem; line-height: 1.44; }
+.nav-item { display: block; padding: 4px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 530; font-size: 0.84rem; line-height: 1.4; }
 .nav-group-link,
 .nav-item,
 .nav-command-entry { white-space: nowrap; }
 .nav-item:hover { background: var(--panel-strong); color: var(--heading); }
 .nav-item.active,
-.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 82%, white); color: var(--heading); font-weight: 620; box-shadow: inset 2px 0 0 var(--accent); }
+.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 70%, white); color: var(--heading); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .nav-sub-list { margin-top: 4px; margin-left: 10px; }
 .nav-sub-list .nav-item { color: var(--muted); font-weight: 520; }
-.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 610; }
-.nav-command-entry { display: block; padding: 5px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.88rem; font-weight: 560; line-height: 1.4; transition: 0.15s; }
+.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 590; }
+.nav-command-entry { display: block; padding: 4px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.82rem; font-weight: 540; line-height: 1.38; transition: 0.15s; }
 .nav-command-entry:hover { color: var(--heading); background: var(--panel-strong); }
 .nav-command-entry.active { color: var(--heading); font-weight: 620; background: color-mix(in srgb, var(--accent-soft) 60%, white); box-shadow: inset 2px 0 0 var(--accent); }
+
+.sidebar-toggle {
+  position: absolute;
+  top: 18px;
+  width: 18px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 92%, white);
+  color: var(--muted);
+  font: 700 10px var(--font-sans);
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  z-index: 5;
+}
+.sidebar-toggle:hover {
+  color: var(--heading);
+  border-color: color-mix(in srgb, var(--border) 55%, var(--accent));
+  background: var(--panel);
+}
+.sidebar-toggle-left { right: 0; transform: translateX(50%); }
+.sidebar-toggle-right { left: 0; transform: translateX(-50%); }
+.layout.layout-collapsed-nav .nav-sidebar-content,
+.layout.layout-collapsed-sidebar .sidebar-content {
+  opacity: 0;
+  pointer-events: none;
+}
+.layout.layout-collapsed-nav .nav-sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-sidebar .sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-nav .nav-sidebar,
+.layout.layout-collapsed-sidebar .sidebar {
+  min-width: 0;
+}
+.layout.layout-collapsed-nav .sidebar-toggle-left {
+  right: 4px;
+  transform: none;
+}
+.layout.layout-collapsed-sidebar .sidebar-toggle-right {
+  left: 4px;
+  transform: none;
+}
 
 .article { min-width: 0; padding: 10px 0 24px; }
 .article p,
@@ -328,8 +399,9 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 }
 .command-intro-list li { margin: 0.18rem 0; }
 
-.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0 12px; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .sidebar li { margin-bottom: 0; }
 .sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.05em; }
 .sidebar-section + .sidebar-section { margin-top: 22px; }
@@ -680,13 +752,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 
       <div class="layout">
-  <aside class="nav-sidebar"><section class="nav-section"><h2>使用手冊</h2><div class="nav-group-block"><div class="nav-group-title">開始</div><ul class="nav-tree"><li class="nav-tree-node"><a href="index.html" class="nav-item">概觀</a></li><li class="nav-tree-node"><a href="what-is-grafana-util.html" class="nav-item">這個工具是做什麼的</a></li><li class="nav-tree-node"><a href="getting-started.html" class="nav-item">開始使用</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">角色路徑</div><ul class="nav-tree"><li class="nav-tree-node"><a href="role-new-user.html" class="nav-item">新手快速入門</a></li><li class="nav-tree-node"><a href="role-sre-ops.html" class="nav-item">SRE / 維運角色導讀</a></li><li class="nav-tree-node"><a href="role-automation-ci.html" class="nav-item">自動化 / CI 角色導讀</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">核心操作</div><ul class="nav-tree"><li class="nav-tree-node"><a href="dashboard.html" class="nav-item">Dashboard 維運人員手冊</a></li><li class="nav-tree-node"><a href="datasource.html" class="nav-item">Data source 維運手冊</a></li><li class="nav-tree-node"><a href="alert.html" class="nav-item">Alert 維運人員手冊</a></li><li class="nav-tree-node"><a href="access.html" class="nav-item">身分與存取管理</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">治理</div><ul class="nav-tree"><li class="nav-tree-node"><a href="architecture.html" class="nav-item">系統架構與設計原則</a></li><li class="nav-tree-node"><a href="change-overview-status.html" class="nav-item">專案狀態與變更總覽</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">實戰與參考</div><ul class="nav-tree"><li class="nav-tree-node"><a href="scenarios.html" class="nav-item active">維運情境手冊</a></li><li class="nav-tree-node"><a href="recipes.html" class="nav-item">實戰錦囊與最佳實踐</a></li><li class="nav-tree-node"><a href="reference.html" class="nav-item">技術參考手冊</a></li><li class="nav-tree-node"><a href="troubleshooting.html" class="nav-item">疑難排解與名詞解釋</a></li></ul></div></section><section class="nav-section"><h2>指令參考</h2><a href="../../commands/zh-TW/index.html" class="nav-command-entry">開啟指令參考</a></section></aside>
+  <aside class="nav-sidebar">
+  <button class="sidebar-toggle sidebar-toggle-left" type="button" aria-expanded="true" aria-label="Toggle handbook navigation">◀</button>
+  <div class="nav-sidebar-content"><section class="nav-section"><h2>手冊導覽</h2><div class="nav-group-block"><div class="nav-group-title">開始</div><ul class="nav-tree"><li class="nav-tree-node"><a href="index.html" class="nav-item">概觀</a></li><li class="nav-tree-node"><a href="what-is-grafana-util.html" class="nav-item">這個工具是做什麼的</a></li><li class="nav-tree-node"><a href="getting-started.html" class="nav-item">開始使用</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">角色路徑</div><ul class="nav-tree"><li class="nav-tree-node"><a href="role-new-user.html" class="nav-item">新手快速入門</a></li><li class="nav-tree-node"><a href="role-sre-ops.html" class="nav-item">SRE / 維運角色導讀</a></li><li class="nav-tree-node"><a href="role-automation-ci.html" class="nav-item">自動化 / CI 角色導讀</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">核心操作</div><ul class="nav-tree"><li class="nav-tree-node"><a href="dashboard.html" class="nav-item">Dashboard 維運人員手冊</a></li><li class="nav-tree-node"><a href="datasource.html" class="nav-item">Data source 維運手冊</a></li><li class="nav-tree-node"><a href="alert.html" class="nav-item">Alert 維運人員手冊</a></li><li class="nav-tree-node"><a href="access.html" class="nav-item">身分與存取管理</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">治理</div><ul class="nav-tree"><li class="nav-tree-node"><a href="architecture.html" class="nav-item">系統架構與設計原則</a></li><li class="nav-tree-node"><a href="change-overview-status.html" class="nav-item">專案狀態與變更總覽</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">實戰與參考</div><ul class="nav-tree"><li class="nav-tree-node"><a href="scenarios.html" class="nav-item active">維運情境手冊</a></li><li class="nav-tree-node"><a href="recipes.html" class="nav-item">實戰錦囊與最佳實踐</a></li><li class="nav-tree-node"><a href="reference.html" class="nav-item">技術參考手冊</a></li><li class="nav-tree-node"><a href="troubleshooting.html" class="nav-item">疑難排解與名詞解釋</a></li></ul></div></section><section class="nav-section"><h2>指令入口</h2><a href="../../commands/zh-TW/index.html" class="nav-command-entry">開啟指令參考</a></section></div>
+</aside>
 
   <article class="article">
     <div class="breadcrumbs"><a href="../../index.html">Home</a> / Handbook / 維運情境手冊 (Operator Scenarios)</div>
 
-    <div class="hero-eyebrow">Docs</div>
-<h1><span class="hero-title-main">維運情境手冊</span><span class="hero-title-secondary">Operator Scenarios</span></h1>
+    <h1><span class="hero-title-main">維運情境手冊</span><span class="hero-title-secondary">Operator Scenarios</span></h1>
 
 
     <p>本章把分散的指令整理成幾個常見的實際操作流程。</p>
@@ -694,13 +768,23 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <ul><li>已經知道自己要做哪一類維運流程的人</li><li>想看端到端操作順序，而不是單一 command 的人</li><li>需要把 dashboard、access、alert、change 串在一起的人</li></ul>
 <h2 id="主要目標">主要目標</h2>
 <ul><li>把零散指令串成完整流程</li><li>讓你先知道哪一步該先看、哪一步該先檢查</li><li>在真正套用前先做可重播的準備</li></ul>
+<h2 id="採用前後對照">採用前後對照</h2>
+<ul><li>以前：讀者得從很多獨立 command 頁自己拼出完整的維運故事。</li><li>現在：每個情境都先交代問題、lane 和預期證據，再進入實際命令。</li></ul>
+<h2 id="成功判準">成功判準</h2>
+<ul><li>你能直接選到跟眼前問題最接近的情境。</li><li>你知道下一步是盤點、回放、審查還是排障。</li><li>你在執行前就能說出預期輸出長什麼樣。</li></ul>
+<h2 id="失敗時先檢查">失敗時先檢查</h2>
+<ul><li>如果情境一開始就走錯 lane，先停下來切到真正符合工作流的章節。</li><li>如果預期輸出跟目前階段對不上，先修正差異再繼續。</li><li>如果你其實更需要精確旗標，請改看指令詳細說明，不要硬靠情境頁猜。</li></ul>
 <p>如果要對照每個工作流對應的精確旗標，請搭配 <a href="../../commands/zh-TW/dashboard.html">dashboard</a>、<a href="../../commands/zh-TW/access.html">access</a>、<a href="../../commands/zh-TW/alert.html">alert</a>、<a href="../../commands/zh-TW/change.html">change</a>、<a href="../../commands/zh-TW/status.html">status</a> 與 <a href="../../commands/zh-TW/overview.html">overview</a> 一起看。</p>
 <h2 id="1-變更前環境驗證">1. 變更前環境驗證</h2>
 <p>在執行任何變更前，先確認連線正確，而且版本沒搞錯。</p>
+<p><strong>採用前</strong>：你還不知道 CLI 連的是哪一套 Grafana、目前憑證到底吃到哪組、live 狀態是否真的適合往下做。</p>
+<p><strong>採用後</strong>：你會先得到一個可驗證的 live 目標、一個可讀的 readiness 結果，以及一個可瀏覽的 overview，再進入後續流程。</p>
 <pre><code># 用途：在執行任何變更前，先確認連線正確，而且版本沒搞錯。
-grafana-util profile list
-grafana-util status live --profile prod --output table
-grafana-util overview live --profile prod --output interactive</code></pre>
+grafana-util profile list</code></pre>
+<pre><code># 用途：在執行任何變更前，先確認連線正確，而且版本沒搞錯。
+grafana-util status live --profile prod --output-format table</code></pre>
+<pre><code># 用途：在執行任何變更前，先確認連線正確，而且版本沒搞錯。
+grafana-util overview live --profile prod --output-format interactive</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>PROFILES:
   * prod (預設) -&gt; http://grafana.internal
@@ -709,11 +793,14 @@ OVERALL: status=ready
 
 Project overview
 Live status: ready</code></pre>
-<p>先用 <code>profile list</code> 確認專案本地的預設值，再用 <code>status live</code> 做驗證，最後用 <code>overview live --output interactive</code> 看同一個 live 操作面的可瀏覽版本。</p>
+<p>先用 <code>profile list</code> 確認專案本地的預設值，再用 <code>status live</code> 做驗證，最後用 <code>overview live --output-format interactive</code> 看同一個 live 操作面的可瀏覽版本。</p>
 <h2 id="2-全資產稽核-estate-wide-audit">2. 全資產稽核 (Estate-Wide Audit)</h2>
 <p>盤點跨 org 的資產。</p>
+<p><strong>採用前</strong>：你知道環境裡有 dashboard、org、使用者，但很難快速回答「現在到底有哪些東西」。</p>
+<p><strong>採用後</strong>：你可以用 dashboard inventory 搭配 access inventory，把目前 estate 狀態先講清楚，再決定要不要匯出、回放或整理。</p>
 <pre><code># 用途：盤點跨 org 的資產。
-grafana-util dashboard list --profile prod --all-orgs --with-sources --table
+grafana-util dashboard list --profile prod --all-orgs --with-sources --table</code></pre>
+<pre><code># 用途：盤點跨 org 的資產。
 grafana-util access org list --basic-user admin --basic-password admin --with-users --output-format yaml</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>UID        TITLE             FOLDER    ORG   SOURCES
@@ -727,9 +814,13 @@ users:
 <p>Dashboard 與 access inventory 一起看，才比較能在動手前回答「目前到底有哪些東西」。</p>
 <h2 id="3-可靠的備份-dashboard-export">3. 可靠的備份 (Dashboard Export)</h2>
 <p>把 live dashboard 匯出成可長期保存的目錄結構。</p>
+<p><strong>採用前</strong>：所謂備份常常只是 UI 匯出或一批零散檔案，之後很難 review、比對或 replay。</p>
+<p><strong>採用後</strong>：你會得到一份可審查、可回放、也能接後續 inspect 與 migration 的匯出樹。</p>
 <pre><code># 用途：把 live dashboard 匯出成可長期保存的目錄結構。
-grafana-util dashboard export --export-dir ./backups --overwrite --progress
-grafana-util access org export --export-dir ./access-orgs
+grafana-util dashboard export --export-dir ./backups --overwrite --progress</code></pre>
+<pre><code># 用途：把 live dashboard 匯出成可長期保存的目錄結構。
+grafana-util access org export --export-dir ./access-orgs</code></pre>
+<pre><code># 用途：把 live dashboard 匯出成可長期保存的目錄結構。
 grafana-util access service-account export --export-dir ./access-service-accounts</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>Exporting dashboard 1/32: cpu-metrics
@@ -742,8 +833,11 @@ Exported service account inventory -&gt; access-service-accounts/service-account
 <p>如果目標是建立可重播的環境快照，dashboard、org 與 service account 的匯出最好一起保留。</p>
 <h2 id="4-受控的恢復-dashboard-import">4. 受控的恢復 (Dashboard Import)</h2>
 <p>把備份回放到 live Grafana 實例。</p>
+<p><strong>採用前</strong>：回放常常是先執行再看結果，直到覆寫到不該動的東西才發現問題。</p>
+<p><strong>採用後</strong>：你會先看 dry-run 的表格化結果，再決定這次回放是否安全、是否會覆蓋既有資產。</p>
 <pre><code># 用途：把備份回放到 live Grafana 實例。
-grafana-util dashboard import --import-dir ./backups/raw --replace-existing --dry-run --table
+grafana-util dashboard import --import-dir ./backups/raw --replace-existing --dry-run --table</code></pre>
+<pre><code># 用途：把備份回放到 live Grafana 實例。
 grafana-util access team import --import-dir ./access-teams --replace-existing --dry-run --table</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>UID        TITLE          ACTION   DESTINATION
@@ -757,9 +851,11 @@ ops-user    Viewer  create   missing</code></pre>
 <h2 id="5-告警治理流程-planapply">5. 告警治理流程 (Plan/Apply)</h2>
 <p>告警變更應遵循受審查的生命週期。</p>
 <pre><code># 用途：告警變更應遵循受審查的生命週期。
-grafana-util change summary --desired-file ./desired.json
-grafana-util change preflight --desired-file ./desired.json --output json
-grafana-util alert plan --profile prod --desired-dir ./alerts/desired --output json</code></pre>
+grafana-util change summary --desired-file ./desired.json</code></pre>
+<pre><code># 用途：告警變更應遵循受審查的生命週期。
+grafana-util change preflight --desired-file ./desired.json --output-format json</code></pre>
+<pre><code># 用途：告警變更應遵循受審查的生命週期。
+grafana-util alert plan --profile prod --desired-dir ./alerts/desired --output-format json</code></pre>
 <p><strong>預期輸出 (摘要片段)：</strong></p>
 <pre><code>CHANGE PACKAGE SUMMARY:
 - dashboards: 5 modified, 2 added
@@ -777,8 +873,10 @@ PREFLIGHT CHECK:
 <h2 id="6-身份快照回放-access-management">6. 身份快照回放 (Access Management)</h2>
 <p>透過快照管理使用者、team 與 service account。</p>
 <pre><code># 用途：透過快照管理使用者、team 與 service account。
-grafana-util access user import --import-dir ./access-users --dry-run --table
-grafana-util access service-account token add --service-account-id 15 --token-name nightly --seconds-to-live 3600 --json
+grafana-util access user import --import-dir ./access-users --dry-run --table</code></pre>
+<pre><code># 用途：透過快照管理使用者、team 與 service account。
+grafana-util access service-account token add --service-account-id 15 --token-name nightly --seconds-to-live 3600 --json</code></pre>
+<pre><code># 用途：透過快照管理使用者、team 與 service account。
 grafana-util access service-account token delete --service-account-id 15 --token-name nightly --yes --json</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>LOGIN       ROLE    ACTION   STATUS
@@ -796,7 +894,10 @@ ops-user    Viewer  create   missing
     <nav class="footer-nav"><a class="link-card" href="change-overview-status.html"><span>Previous</span>專案狀態與變更總覽 (Change &amp; Status)</a><a class="link-card" href="recipes.html"><span>Next</span>實戰錦囊與最佳實踐</a></nav>
   </article>
   <aside class="sidebar">
-  <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#適用對象"><span class="toc-label">適用對象</span></a></li><li class="toc-level-2"><a href="#主要目標"><span class="toc-label">主要目標</span></a></li><li class="toc-level-2"><a href="#1-變更前環境驗證"><span class="toc-label">1. 變更前環境驗證</span></a></li><li class="toc-level-2"><a href="#2-全資產稽核-estate-wide-audit"><span class="toc-label">2. 全資產稽核 (Estate-Wide Audit)</span></a></li><li class="toc-level-2"><a href="#3-可靠的備份-dashboard-export"><span class="toc-label">3. 可靠的備份 (Dashboard Export)</span></a></li><li class="toc-level-2"><a href="#4-受控的恢復-dashboard-import"><span class="toc-label">4. 受控的恢復 (Dashboard Import)</span></a></li><li class="toc-level-2"><a href="#5-告警治理流程-planapply"><span class="toc-label">5. 告警治理流程 (Plan/Apply)</span></a></li><li class="toc-level-2"><a href="#6-身份快照回放-access-management"><span class="toc-label">6. 身份快照回放 (Access Management)</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/scenarios.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+  <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
+  <div class="sidebar-content">
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#適用對象"><span class="toc-label">適用對象</span></a></li><li class="toc-level-2"><a href="#主要目標"><span class="toc-label">主要目標</span></a></li><li class="toc-level-2"><a href="#採用前後對照"><span class="toc-label">採用前後對照</span></a></li><li class="toc-level-2"><a href="#成功判準"><span class="toc-label">成功判準</span></a></li><li class="toc-level-2"><a href="#失敗時先檢查"><span class="toc-label">失敗時先檢查</span></a></li><li class="toc-level-2"><a href="#1-變更前環境驗證"><span class="toc-label">1. 變更前環境驗證</span></a></li><li class="toc-level-2"><a href="#2-全資產稽核-estate-wide-audit"><span class="toc-label">2. 全資產稽核 (Estate-Wide Audit)</span></a></li><li class="toc-level-2"><a href="#3-可靠的備份-dashboard-export"><span class="toc-label">3. 可靠的備份 (Dashboard Export)</span></a></li><li class="toc-level-2"><a href="#4-受控的恢復-dashboard-import"><span class="toc-label">4. 受控的恢復 (Dashboard Import)</span></a></li><li class="toc-level-2"><a href="#5-告警治理流程-planapply"><span class="toc-label">5. 告警治理流程 (Plan/Apply)</span></a></li><li class="toc-level-2"><a href="#6-身份快照回放-access-management"><span class="toc-label">6. 身份快照回放 (Access Management)</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/scenarios.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+  </div>
 </aside>
 
 </div>
@@ -845,6 +946,26 @@ ops-user    Viewer  create   missing
 
   document.querySelectorAll(".nav-group-header").forEach(header => {
     header.onclick = () => { header.closest(".nav-group").classList.toggle("collapsed"); };
+  });
+
+  document.querySelectorAll(".sidebar-toggle-left").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-nav");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "▶" : "◀";
+    });
+  });
+
+  document.querySelectorAll(".sidebar-toggle-right").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-sidebar");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "◀" : "▶";
+    });
   });
 
   const jumpSelect = document.getElementById("jump-select");

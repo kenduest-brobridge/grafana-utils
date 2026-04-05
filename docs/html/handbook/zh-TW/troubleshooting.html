@@ -145,20 +145,48 @@ pre:hover .code-controls { opacity: 1; }
 #font-select { width: 138px; }
 #theme-select { width: 128px; }
 
-.layout { display: grid; grid-template-columns: 232px minmax(0, 1fr) 244px; gap: 20px; align-items: start; }
-.layout.layout-no-nav { grid-template-columns: minmax(0, 1fr) 244px; }
-.layout.layout-no-sidebar { grid-template-columns: 232px minmax(0, 1fr); }
+.layout {
+  --nav-width: 232px;
+  --sidebar-width: 244px;
+  display: grid;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr) var(--sidebar-width);
+  gap: 20px;
+  align-items: start;
+}
+.layout.layout-no-nav { --nav-width: 0px; grid-template-columns: minmax(0, 1fr) var(--sidebar-width); }
+.layout.layout-no-sidebar { --sidebar-width: 0px; grid-template-columns: var(--nav-width) minmax(0, 1fr); }
 .layout.layout-no-nav.layout-no-sidebar { grid-template-columns: minmax(0, 1fr); }
+.layout.layout-collapsed-nav:not(.layout-no-nav) { --nav-width: 26px; }
+.layout.layout-collapsed-sidebar:not(.layout-no-sidebar) { --sidebar-width: 26px; }
 @media (max-width: 1280px) { .layout { grid-template-columns: 210px minmax(0, 1fr); gap: 18px; } .sidebar { display: none !important; } }
 @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } .nav-sidebar { display: none !important; } }
 
-.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 12px 0 0; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.nav-sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .nav-sidebar li { margin-bottom: 0; }
-.nav-sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; letter-spacing: 0.04em; }
+.nav-sidebar h2 {
+  margin: 0 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: none;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  opacity: 0.82;
+}
 .nav-section + .nav-section { margin-top: 18px; }
 .nav-group-block + .nav-group-block { margin-top: 14px; }
-.nav-group-title { margin: 0 0 6px; font-size: 0.76rem; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+.nav-group-title {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--heading);
+  letter-spacing: 0.01em;
+  line-height: 1.32;
+}
 .nav-tree,
 .nav-sub-list { list-style: none; margin: 0; padding: 0; position: relative; }
 .nav-tree::before,
@@ -167,24 +195,67 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 .nav-tree-node + .nav-tree-node { margin-top: 2px; }
 .nav-tree-node::before { display: none; }
 .nav-group { margin: 0; position: relative; }
-.nav-group + .nav-group { margin-top: 4px; }
-.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.92rem; }
+.nav-group + .nav-group { margin-top: 2px; }
+.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.9rem; }
 .nav-group-header:hover { color: var(--heading); }
-.nav-group-link { flex: 1; display: block; padding: 5px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 610; line-height: 1.42; }
+.nav-group-link { flex: 1; display: block; padding: 4px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 600; line-height: 1.4; }
 .nav-group-link:hover { background: var(--panel-strong); }
-.nav-item { display: block; padding: 5px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 550; font-size: 0.9rem; line-height: 1.44; }
+.nav-item { display: block; padding: 4px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 530; font-size: 0.84rem; line-height: 1.4; }
 .nav-group-link,
 .nav-item,
 .nav-command-entry { white-space: nowrap; }
 .nav-item:hover { background: var(--panel-strong); color: var(--heading); }
 .nav-item.active,
-.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 82%, white); color: var(--heading); font-weight: 620; box-shadow: inset 2px 0 0 var(--accent); }
+.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 70%, white); color: var(--heading); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .nav-sub-list { margin-top: 4px; margin-left: 10px; }
 .nav-sub-list .nav-item { color: var(--muted); font-weight: 520; }
-.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 610; }
-.nav-command-entry { display: block; padding: 5px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.88rem; font-weight: 560; line-height: 1.4; transition: 0.15s; }
+.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 590; }
+.nav-command-entry { display: block; padding: 4px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.82rem; font-weight: 540; line-height: 1.38; transition: 0.15s; }
 .nav-command-entry:hover { color: var(--heading); background: var(--panel-strong); }
 .nav-command-entry.active { color: var(--heading); font-weight: 620; background: color-mix(in srgb, var(--accent-soft) 60%, white); box-shadow: inset 2px 0 0 var(--accent); }
+
+.sidebar-toggle {
+  position: absolute;
+  top: 18px;
+  width: 18px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 92%, white);
+  color: var(--muted);
+  font: 700 10px var(--font-sans);
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  z-index: 5;
+}
+.sidebar-toggle:hover {
+  color: var(--heading);
+  border-color: color-mix(in srgb, var(--border) 55%, var(--accent));
+  background: var(--panel);
+}
+.sidebar-toggle-left { right: 0; transform: translateX(50%); }
+.sidebar-toggle-right { left: 0; transform: translateX(-50%); }
+.layout.layout-collapsed-nav .nav-sidebar-content,
+.layout.layout-collapsed-sidebar .sidebar-content {
+  opacity: 0;
+  pointer-events: none;
+}
+.layout.layout-collapsed-nav .nav-sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-sidebar .sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-nav .nav-sidebar,
+.layout.layout-collapsed-sidebar .sidebar {
+  min-width: 0;
+}
+.layout.layout-collapsed-nav .sidebar-toggle-left {
+  right: 4px;
+  transform: none;
+}
+.layout.layout-collapsed-sidebar .sidebar-toggle-right {
+  left: 4px;
+  transform: none;
+}
 
 .article { min-width: 0; padding: 10px 0 24px; }
 .article p,
@@ -328,8 +399,9 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 }
 .command-intro-list li { margin: 0.18rem 0; }
 
-.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0 12px; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .sidebar li { margin-bottom: 0; }
 .sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.05em; }
 .sidebar-section + .sidebar-section { margin-top: 22px; }
@@ -680,13 +752,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 
       <div class="layout">
-  <aside class="nav-sidebar"><section class="nav-section"><h2>使用手冊</h2><div class="nav-group-block"><div class="nav-group-title">開始</div><ul class="nav-tree"><li class="nav-tree-node"><a href="index.html" class="nav-item">概觀</a></li><li class="nav-tree-node"><a href="what-is-grafana-util.html" class="nav-item">這個工具是做什麼的</a></li><li class="nav-tree-node"><a href="getting-started.html" class="nav-item">開始使用</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">角色路徑</div><ul class="nav-tree"><li class="nav-tree-node"><a href="role-new-user.html" class="nav-item">新手快速入門</a></li><li class="nav-tree-node"><a href="role-sre-ops.html" class="nav-item">SRE / 維運角色導讀</a></li><li class="nav-tree-node"><a href="role-automation-ci.html" class="nav-item">自動化 / CI 角色導讀</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">核心操作</div><ul class="nav-tree"><li class="nav-tree-node"><a href="dashboard.html" class="nav-item">Dashboard 維運人員手冊</a></li><li class="nav-tree-node"><a href="datasource.html" class="nav-item">Data source 維運手冊</a></li><li class="nav-tree-node"><a href="alert.html" class="nav-item">Alert 維運人員手冊</a></li><li class="nav-tree-node"><a href="access.html" class="nav-item">身分與存取管理</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">治理</div><ul class="nav-tree"><li class="nav-tree-node"><a href="architecture.html" class="nav-item">系統架構與設計原則</a></li><li class="nav-tree-node"><a href="change-overview-status.html" class="nav-item">專案狀態與變更總覽</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">實戰與參考</div><ul class="nav-tree"><li class="nav-tree-node"><a href="scenarios.html" class="nav-item">維運情境手冊</a></li><li class="nav-tree-node"><a href="recipes.html" class="nav-item">實戰錦囊與最佳實踐</a></li><li class="nav-tree-node"><a href="reference.html" class="nav-item">技術參考手冊</a></li><li class="nav-tree-node"><a href="troubleshooting.html" class="nav-item active">疑難排解與名詞解釋</a></li></ul></div></section><section class="nav-section"><h2>指令參考</h2><a href="../../commands/zh-TW/index.html" class="nav-command-entry">開啟指令參考</a></section></aside>
+  <aside class="nav-sidebar">
+  <button class="sidebar-toggle sidebar-toggle-left" type="button" aria-expanded="true" aria-label="Toggle handbook navigation">◀</button>
+  <div class="nav-sidebar-content"><section class="nav-section"><h2>手冊導覽</h2><div class="nav-group-block"><div class="nav-group-title">開始</div><ul class="nav-tree"><li class="nav-tree-node"><a href="index.html" class="nav-item">概觀</a></li><li class="nav-tree-node"><a href="what-is-grafana-util.html" class="nav-item">這個工具是做什麼的</a></li><li class="nav-tree-node"><a href="getting-started.html" class="nav-item">開始使用</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">角色路徑</div><ul class="nav-tree"><li class="nav-tree-node"><a href="role-new-user.html" class="nav-item">新手快速入門</a></li><li class="nav-tree-node"><a href="role-sre-ops.html" class="nav-item">SRE / 維運角色導讀</a></li><li class="nav-tree-node"><a href="role-automation-ci.html" class="nav-item">自動化 / CI 角色導讀</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">核心操作</div><ul class="nav-tree"><li class="nav-tree-node"><a href="dashboard.html" class="nav-item">Dashboard 維運人員手冊</a></li><li class="nav-tree-node"><a href="datasource.html" class="nav-item">Data source 維運手冊</a></li><li class="nav-tree-node"><a href="alert.html" class="nav-item">Alert 維運人員手冊</a></li><li class="nav-tree-node"><a href="access.html" class="nav-item">身分與存取管理</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">治理</div><ul class="nav-tree"><li class="nav-tree-node"><a href="architecture.html" class="nav-item">系統架構與設計原則</a></li><li class="nav-tree-node"><a href="change-overview-status.html" class="nav-item">專案狀態與變更總覽</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">實戰與參考</div><ul class="nav-tree"><li class="nav-tree-node"><a href="scenarios.html" class="nav-item">維運情境手冊</a></li><li class="nav-tree-node"><a href="recipes.html" class="nav-item">實戰錦囊與最佳實踐</a></li><li class="nav-tree-node"><a href="reference.html" class="nav-item">技術參考手冊</a></li><li class="nav-tree-node"><a href="troubleshooting.html" class="nav-item active">疑難排解與名詞解釋</a></li></ul></div></section><section class="nav-section"><h2>指令入口</h2><a href="../../commands/zh-TW/index.html" class="nav-command-entry">開啟指令參考</a></section></div>
+</aside>
 
   <article class="article">
     <div class="breadcrumbs"><a href="../../index.html">Home</a> / Handbook / 疑難排解與名詞解釋</div>
 
-    <div class="hero-eyebrow">Docs</div>
-<h1><span class="hero-title-main">疑難排解與名詞解釋</span></h1>
+    <h1><span class="hero-title-main">疑難排解與名詞解釋</span></h1>
 
 
     <p>本章不是只列錯誤訊息，而是幫你分辨問題到底屬於哪一類：</p>
@@ -696,6 +770,12 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <ul><li>遇到錯誤訊息，但不確定是語法、權限還是 scope 的人</li><li>想先分辨 live / staged / profile 問題的人</li><li>需要把常見錯誤整理成可重複排查流程的人</li></ul>
 <h2 id="主要目標">主要目標</h2>
 <ul><li>先分辨問題類型</li><li>再決定要看哪一頁、跑哪個檢查</li><li>最後才進到修正或回報</li></ul>
+<h2 id="採用前後對照">採用前後對照</h2>
+<ul><li>以前：看到錯誤時，很難分辨是語法、scope，還是工作流選錯。</li><li>現在：把連線、範圍、staged input 與輸出格式問題拆開來看，排障會快很多。</li></ul>
+<h2 id="成功判準">成功判準</h2>
+<ul><li>你可以在看完整份 command 頁之前，就先判斷問題大概屬於哪一類。</li><li>你知道該先修驗證、範圍、staged input，還是輸出格式。</li><li>你能判斷這個問題是不是應該回到工作流章節，而不是只留在這裡。</li></ul>
+<h2 id="失敗時先檢查">失敗時先檢查</h2>
+<ul><li>如果看完第一步還是不清楚症狀，先不要繼續動 live。</li><li>如果語法錯誤蓋掉真正問題，先確認 lane 與 auth source。</li><li>如果輸出形狀怪，但命令其實正常結束，先回文件確認 contract，不要直接懷疑 renderer。</li></ul>
 <h2 id="cli-診斷與調修">CLI 診斷與調修</h2>
 <h3 id="1-啟用-verbose-日誌">1. 啟用 verbose 日誌</h3>
 <p><code>grafana-util</code> 使用標準 Rust logging。你可以提高日誌等級來看實際 API request / response。</p>
@@ -717,7 +797,7 @@ grafana-util dashboard list -v</code></pre>
 <h3 id="5-profile-與-secret-問題">5. profile 與 secret 問題</h3>
 <table><thead><tr><th>症狀</th><th>常見原因</th><th>建議修補方式</th></tr></thead><tbody><tr><td><code>profile show --show-secrets</code> 解不出來</td><td>env var 不存在、OS store entry 不見，或 encrypted secret file / key 不見</td><td>回頭檢查 profile 指到的 secret source</td></tr><tr><td>本機可跑、CI 跑不起來</td><td>env 注入或 config path 不同</td><td>檢查 <code>GRAFANA_UTIL_CONFIG</code>、env vars 與必要的 secret files</td></tr><tr><td><code>--store-secret os</code> 在 macOS 可用，但 Linux 不行</td><td>Linux runner 沒有可用的 Secret Service session</td><td>改用 <code>password_env</code>、<code>token_env</code> 或 <code>encrypted-file</code></td></tr></tbody></table>
 <h3 id="6-輸出格式用錯">6. 輸出格式用錯</h3>
-<table><thead><tr><th>症狀</th><th>常見原因</th><th>建議修補方式</th></tr></thead><tbody><tr><td>CI parser 突然壞掉</td><td>用到了給人看的輸出模式</td><td>改用 <code>json</code>、<code>yaml</code> 或其他適合腳本處理的結構化輸出</td></tr><tr><td>指令不接受 <code>--output-format</code></td><td>這個指令實際上使用 <code>--output</code></td><td>直接查該 command help 或指令頁</td></tr><tr><td>第一次檢查時互動式輸出太複雜</td><td>畫面雖然好看，但資訊不夠直接</td><td>先切成 <code>yaml</code> 或 <code>json</code></td></tr></tbody></table>
+<table><thead><tr><th>症狀</th><th>常見原因</th><th>建議修補方式</th></tr></thead><tbody><tr><td>CI parser 突然壞掉</td><td>用到了給人看的輸出模式</td><td>改用 <code>json</code>、<code>yaml</code> 或其他適合腳本處理的結構化輸出</td></tr><tr><td>指令不接受某個 <code>--output-format</code> 值</td><td>這個指令只支援較少的輸出格式</td><td>直接查該 command help 或指令頁</td></tr><tr><td>第一次檢查時互動式輸出太複雜</td><td>畫面雖然好看，但資訊不夠直接</td><td>先切成 <code>yaml</code> 或 <code>json</code></td></tr></tbody></table>
 <h2 id="名詞解釋">名詞解釋</h2>
 <table><thead><tr><th>術語</th><th>定義</th></tr></thead><tbody><tr><td><strong>Surface</strong></td><td>高階操作面分類，例如 <code>Status</code>、<code>Overview</code>、<code>Change</code></td></tr><tr><td><strong>Lane</strong></td><td>資料路徑，例如 <code>raw/</code>、<code>prompt/</code>、<code>provisioning/</code></td></tr><tr><td><strong>Contract</strong></td><td>用來定義 readiness 或 compatibility 的結構化 JSON 文件</td></tr><tr><td><strong>Masked Recovery</strong></td><td>匯出時先把 secrets 遮蔽，匯入或 replay 時再補回</td></tr><tr><td><strong>Desired State</strong></td><td>儲存在 Git 中、CLI 拿來對照 live Grafana 的目標設定</td></tr><tr><td><strong>Drift</strong></td><td>live Grafana 與本地 staged / desired 輸出物之間的差距</td></tr></tbody></table>
 <h2 id="取得更多協助">取得更多協助</h2>
@@ -728,7 +808,10 @@ grafana-util dashboard list -v</code></pre>
     <nav class="footer-nav"><a class="link-card" href="reference.html"><span>Previous</span>技術參考手冊 (Technical Reference)</a></nav>
   </article>
   <aside class="sidebar">
-  <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#適用對象"><span class="toc-label">適用對象</span></a></li><li class="toc-level-2"><a href="#主要目標"><span class="toc-label">主要目標</span></a></li><li class="toc-level-2"><a href="#cli-診斷與調修"><span class="toc-label">CLI 診斷與調修</span></a></li><li class="toc-level-3"><a href="#1-啟用-verbose-日誌"><span class="toc-label">1. 啟用 verbose 日誌</span></a></li><li class="toc-level-3"><a href="#2-常見錯誤與快速修補"><span class="toc-label">2. 常見錯誤與快速修補</span></a></li><li class="toc-level-3"><a href="#3-權限範圍與驗證方式不匹配"><span class="toc-label">3. 權限範圍與驗證方式不匹配</span></a></li><li class="toc-level-3"><a href="#4-staged-與-live-搞混"><span class="toc-label">4. staged 與 live 搞混</span></a></li><li class="toc-level-3"><a href="#5-profile-與-secret-問題"><span class="toc-label">5. profile 與 secret 問題</span></a></li><li class="toc-level-3"><a href="#6-輸出格式用錯"><span class="toc-label">6. 輸出格式用錯</span></a></li><li class="toc-level-2"><a href="#名詞解釋"><span class="toc-label">名詞解釋</span></a></li><li class="toc-level-2"><a href="#取得更多協助"><span class="toc-label">取得更多協助</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/troubleshooting.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+  <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
+  <div class="sidebar-content">
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#適用對象"><span class="toc-label">適用對象</span></a></li><li class="toc-level-2"><a href="#主要目標"><span class="toc-label">主要目標</span></a></li><li class="toc-level-2"><a href="#採用前後對照"><span class="toc-label">採用前後對照</span></a></li><li class="toc-level-2"><a href="#成功判準"><span class="toc-label">成功判準</span></a></li><li class="toc-level-2"><a href="#失敗時先檢查"><span class="toc-label">失敗時先檢查</span></a></li><li class="toc-level-2"><a href="#cli-診斷與調修"><span class="toc-label">CLI 診斷與調修</span></a></li><li class="toc-level-3"><a href="#1-啟用-verbose-日誌"><span class="toc-label">1. 啟用 verbose 日誌</span></a></li><li class="toc-level-3"><a href="#2-常見錯誤與快速修補"><span class="toc-label">2. 常見錯誤與快速修補</span></a></li><li class="toc-level-3"><a href="#3-權限範圍與驗證方式不匹配"><span class="toc-label">3. 權限範圍與驗證方式不匹配</span></a></li><li class="toc-level-3"><a href="#4-staged-與-live-搞混"><span class="toc-label">4. staged 與 live 搞混</span></a></li><li class="toc-level-3"><a href="#5-profile-與-secret-問題"><span class="toc-label">5. profile 與 secret 問題</span></a></li><li class="toc-level-3"><a href="#6-輸出格式用錯"><span class="toc-label">6. 輸出格式用錯</span></a></li><li class="toc-level-2"><a href="#名詞解釋"><span class="toc-label">名詞解釋</span></a></li><li class="toc-level-2"><a href="#取得更多協助"><span class="toc-label">取得更多協助</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/troubleshooting.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+  </div>
 </aside>
 
 </div>
@@ -777,6 +860,26 @@ grafana-util dashboard list -v</code></pre>
 
   document.querySelectorAll(".nav-group-header").forEach(header => {
     header.onclick = () => { header.closest(".nav-group").classList.toggle("collapsed"); };
+  });
+
+  document.querySelectorAll(".sidebar-toggle-left").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-nav");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "▶" : "◀";
+    });
+  });
+
+  document.querySelectorAll(".sidebar-toggle-right").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-sidebar");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "◀" : "▶";
+    });
   });
 
   const jumpSelect = document.getElementById("jump-select");

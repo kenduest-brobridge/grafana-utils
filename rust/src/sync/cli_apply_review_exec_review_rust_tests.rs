@@ -38,7 +38,7 @@ fn run_sync_cli_review_marks_plan_reviewed() {
     let result = run_sync_cli(SyncGroupCommand::Review(SyncReviewArgs {
         plan_file,
         review_token: DEFAULT_REVIEW_TOKEN.to_string(),
-        output: SyncOutputFormat::Json,
+        output_format: SyncOutputFormat::Json,
         reviewed_by: Some("alice".to_string()),
         reviewed_at: Some("manual-review".to_string()),
         review_note: Some("peer-reviewed".to_string()),
@@ -77,7 +77,7 @@ fn run_sync_cli_review_rejects_wrong_review_token() {
     let error = run_sync_cli(SyncGroupCommand::Review(SyncReviewArgs {
         plan_file,
         review_token: "wrong-token".to_string(),
-        output: SyncOutputFormat::Json,
+        output_format: SyncOutputFormat::Json,
         reviewed_by: None,
         reviewed_at: None,
         review_note: None,
@@ -117,7 +117,7 @@ fn run_sync_cli_review_rejects_missing_trace_id() {
     let error = run_sync_cli(SyncGroupCommand::Review(SyncReviewArgs {
         plan_file,
         review_token: DEFAULT_REVIEW_TOKEN.to_string(),
-        output: SyncOutputFormat::Json,
+        output_format: SyncOutputFormat::Json,
         reviewed_by: None,
         reviewed_at: None,
         review_note: None,
@@ -145,7 +145,7 @@ fn run_sync_cli_plan_accepts_explicit_trace_id() {
         org_id: None,
         page_size: 500,
         allow_prune: false,
-        output: SyncOutputFormat::Json,
+        output_format: SyncOutputFormat::Json,
         trace_id: Some("plan-trace-123".to_string()),
     }));
 
@@ -190,7 +190,7 @@ fn run_sync_cli_apply_rejects_missing_trace_id() {
         execute_live: false,
         allow_folder_delete: false,
         allow_policy_reset: false,
-        output: SyncOutputFormat::Json,
+        output_format: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
         approval_reason: None,
@@ -244,7 +244,7 @@ fn run_sync_cli_apply_rejects_plan_with_non_review_lineage() {
         execute_live: false,
         allow_folder_delete: false,
         allow_policy_reset: false,
-        output: SyncOutputFormat::Json,
+        output_format: SyncOutputFormat::Json,
         applied_by: None,
         applied_at: None,
         approval_reason: None,
@@ -285,7 +285,7 @@ fn run_sync_cli_review_accepts_explicit_audit_metadata() {
     let result = run_sync_cli(SyncGroupCommand::Review(SyncReviewArgs {
         plan_file,
         review_token: DEFAULT_REVIEW_TOKEN.to_string(),
-        output: SyncOutputFormat::Json,
+        output_format: SyncOutputFormat::Json,
         reviewed_by: Some("alice".to_string()),
         reviewed_at: Some("manual-review".to_string()),
         review_note: Some("peer-reviewed".to_string()),

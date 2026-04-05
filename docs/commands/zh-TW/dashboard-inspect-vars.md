@@ -18,7 +18,15 @@
 ```bash
 # 用途：列出線上 Grafana 的儀表板模板變數與類似 datasource 的選項。
 grafana-util dashboard inspect-vars --profile prod --dashboard-uid cpu-main --vars-query 'var-cluster=prod-a&var-instance=node01' --output-format json
+```
+
+```bash
+# 用途：列出線上 Grafana 的儀表板模板變數與類似 datasource 的選項。
 grafana-util dashboard inspect-vars --url https://grafana.example.com --dashboard-uid cpu-main --vars-query 'var-cluster=prod-a&var-instance=node01' --basic-user admin --prompt-password --output-format json
+```
+
+```bash
+# 用途：列出線上 Grafana 的儀表板模板變數與類似 datasource 的選項。
 grafana-util dashboard inspect-vars --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --token "$GRAFANA_API_TOKEN" --output-format table
 ```
 

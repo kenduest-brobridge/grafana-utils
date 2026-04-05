@@ -17,7 +17,15 @@
 ```bash
 # 用途：將一個線上儀表板複製成本地草稿，並可選擇覆寫部分欄位。
 grafana-util dashboard clone-live --profile prod --source-uid cpu-main --output ./cpu-main-clone.json
+```
+
+```bash
+# 用途：將一個線上儀表板複製成本地草稿，並可選擇覆寫部分欄位。
 grafana-util dashboard clone-live --url http://localhost:3000 --basic-user admin --basic-password admin --source-uid cpu-main --name 'CPU Clone' --uid cpu-main-clone --folder-uid infra --output ./cpu-main-clone.json
+```
+
+```bash
+# 用途：將一個線上儀表板複製成本地草稿，並可選擇覆寫部分欄位。
 grafana-util dashboard clone-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --source-uid cpu-main --output ./cpu-main-clone.json
 ```
 

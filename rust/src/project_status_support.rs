@@ -125,7 +125,7 @@ mod tests {
             promotion_summary_file: None,
             mapping_file: None,
             availability_file: None,
-            output: ProjectStatusOutputFormat::Text,
+            output_format: ProjectStatusOutputFormat::Text,
         };
 
         let headers = resolve_live_project_status_headers(&args, args.org_id).unwrap();

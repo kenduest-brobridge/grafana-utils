@@ -174,7 +174,7 @@ fn snapshot_review_builds_overview_args_for_interactive_output() {
     let review_args = SnapshotReviewArgs {
         input_dir: PathBuf::from("./snapshot"),
         interactive: false,
-        output: OverviewOutputFormat::Interactive,
+        output_format: OverviewOutputFormat::Interactive,
     };
 
     let overview_args = build_snapshot_overview_args(&review_args);
@@ -187,7 +187,7 @@ fn snapshot_review_builds_overview_args_for_interactive_output() {
         overview_args.datasource_export_dir,
         Some(PathBuf::from("./snapshot/datasources"))
     );
-    assert_eq!(overview_args.output, OverviewOutputFormat::Interactive);
+    assert_eq!(overview_args.output_format, OverviewOutputFormat::Interactive);
 
     let document = json!({
         "kind": "grafana-utils-snapshot-review",
@@ -251,23 +251,23 @@ fn snapshot_review_parses_all_supported_output_modes() {
         let review_args = SnapshotReviewArgs {
             input_dir: PathBuf::from("./snapshot"),
             interactive: false,
-            output: expected,
+            output_format: expected,
         };
         let overview_args = build_snapshot_overview_args(&review_args);
 
-        assert_eq!(overview_args.output, expected);
+        assert_eq!(overview_args.output_format, expected);
         assert_eq!(
             match SnapshotCliArgs::parse_from([
                 "grafana-util",
                 "review",
                 "--input-dir",
                 "./snapshot",
-                "--output",
+                "--output-format",
                 output,
             ])
             .command
             {
-                crate::snapshot::SnapshotCommand::Review(review) => review.output,
+                crate::snapshot::SnapshotCommand::Review(review) => review.output_format,
                 other => panic!("expected snapshot review, got {:?}", other),
             },
             expected
@@ -864,7 +864,7 @@ fn snapshot_review_wrapper_normalizes_combined_datasource_root_before_building_d
     let review_args = SnapshotReviewArgs {
         input_dir: snapshot_root,
         interactive: false,
-        output: OverviewOutputFormat::Text,
+        output_format: OverviewOutputFormat::Text,
     };
     let seen_args = Rc::clone(&seen);
     run_snapshot_review_document_with_handler(review_args, move |document| {
@@ -996,7 +996,7 @@ fn snapshot_review_document_reports_observational_warnings_for_org_mismatch() {
     let review_args = SnapshotReviewArgs {
         input_dir: snapshot_root,
         interactive: false,
-        output: OverviewOutputFormat::Text,
+        output_format: OverviewOutputFormat::Text,
     };
     let seen_args = Rc::clone(&seen);
     run_snapshot_review_document_with_handler(review_args, move |document| {

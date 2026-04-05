@@ -145,20 +145,48 @@ pre:hover .code-controls { opacity: 1; }
 #font-select { width: 138px; }
 #theme-select { width: 128px; }
 
-.layout { display: grid; grid-template-columns: 232px minmax(0, 1fr) 244px; gap: 20px; align-items: start; }
-.layout.layout-no-nav { grid-template-columns: minmax(0, 1fr) 244px; }
-.layout.layout-no-sidebar { grid-template-columns: 232px minmax(0, 1fr); }
+.layout {
+  --nav-width: 232px;
+  --sidebar-width: 244px;
+  display: grid;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr) var(--sidebar-width);
+  gap: 20px;
+  align-items: start;
+}
+.layout.layout-no-nav { --nav-width: 0px; grid-template-columns: minmax(0, 1fr) var(--sidebar-width); }
+.layout.layout-no-sidebar { --sidebar-width: 0px; grid-template-columns: var(--nav-width) minmax(0, 1fr); }
 .layout.layout-no-nav.layout-no-sidebar { grid-template-columns: minmax(0, 1fr); }
+.layout.layout-collapsed-nav:not(.layout-no-nav) { --nav-width: 26px; }
+.layout.layout-collapsed-sidebar:not(.layout-no-sidebar) { --sidebar-width: 26px; }
 @media (max-width: 1280px) { .layout { grid-template-columns: 210px minmax(0, 1fr); gap: 18px; } .sidebar { display: none !important; } }
 @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } .nav-sidebar { display: none !important; } }
 
-.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 12px 0 0; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.nav-sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .nav-sidebar li { margin-bottom: 0; }
-.nav-sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; letter-spacing: 0.04em; }
+.nav-sidebar h2 {
+  margin: 0 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: none;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  opacity: 0.82;
+}
 .nav-section + .nav-section { margin-top: 18px; }
 .nav-group-block + .nav-group-block { margin-top: 14px; }
-.nav-group-title { margin: 0 0 6px; font-size: 0.76rem; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+.nav-group-title {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--heading);
+  letter-spacing: 0.01em;
+  line-height: 1.32;
+}
 .nav-tree,
 .nav-sub-list { list-style: none; margin: 0; padding: 0; position: relative; }
 .nav-tree::before,
@@ -167,24 +195,67 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 .nav-tree-node + .nav-tree-node { margin-top: 2px; }
 .nav-tree-node::before { display: none; }
 .nav-group { margin: 0; position: relative; }
-.nav-group + .nav-group { margin-top: 4px; }
-.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.92rem; }
+.nav-group + .nav-group { margin-top: 2px; }
+.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.9rem; }
 .nav-group-header:hover { color: var(--heading); }
-.nav-group-link { flex: 1; display: block; padding: 5px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 610; line-height: 1.42; }
+.nav-group-link { flex: 1; display: block; padding: 4px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 600; line-height: 1.4; }
 .nav-group-link:hover { background: var(--panel-strong); }
-.nav-item { display: block; padding: 5px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 550; font-size: 0.9rem; line-height: 1.44; }
+.nav-item { display: block; padding: 4px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 530; font-size: 0.84rem; line-height: 1.4; }
 .nav-group-link,
 .nav-item,
 .nav-command-entry { white-space: nowrap; }
 .nav-item:hover { background: var(--panel-strong); color: var(--heading); }
 .nav-item.active,
-.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 82%, white); color: var(--heading); font-weight: 620; box-shadow: inset 2px 0 0 var(--accent); }
+.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 70%, white); color: var(--heading); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .nav-sub-list { margin-top: 4px; margin-left: 10px; }
 .nav-sub-list .nav-item { color: var(--muted); font-weight: 520; }
-.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 610; }
-.nav-command-entry { display: block; padding: 5px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.88rem; font-weight: 560; line-height: 1.4; transition: 0.15s; }
+.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 590; }
+.nav-command-entry { display: block; padding: 4px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.82rem; font-weight: 540; line-height: 1.38; transition: 0.15s; }
 .nav-command-entry:hover { color: var(--heading); background: var(--panel-strong); }
 .nav-command-entry.active { color: var(--heading); font-weight: 620; background: color-mix(in srgb, var(--accent-soft) 60%, white); box-shadow: inset 2px 0 0 var(--accent); }
+
+.sidebar-toggle {
+  position: absolute;
+  top: 18px;
+  width: 18px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 92%, white);
+  color: var(--muted);
+  font: 700 10px var(--font-sans);
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  z-index: 5;
+}
+.sidebar-toggle:hover {
+  color: var(--heading);
+  border-color: color-mix(in srgb, var(--border) 55%, var(--accent));
+  background: var(--panel);
+}
+.sidebar-toggle-left { right: 0; transform: translateX(50%); }
+.sidebar-toggle-right { left: 0; transform: translateX(-50%); }
+.layout.layout-collapsed-nav .nav-sidebar-content,
+.layout.layout-collapsed-sidebar .sidebar-content {
+  opacity: 0;
+  pointer-events: none;
+}
+.layout.layout-collapsed-nav .nav-sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-sidebar .sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-nav .nav-sidebar,
+.layout.layout-collapsed-sidebar .sidebar {
+  min-width: 0;
+}
+.layout.layout-collapsed-nav .sidebar-toggle-left {
+  right: 4px;
+  transform: none;
+}
+.layout.layout-collapsed-sidebar .sidebar-toggle-right {
+  left: 4px;
+  transform: none;
+}
 
 .article { min-width: 0; padding: 10px 0 24px; }
 .article p,
@@ -328,8 +399,9 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 }
 .command-intro-list li { margin: 0.18rem 0; }
 
-.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0 12px; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .sidebar li { margin-bottom: 0; }
 .sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.05em; }
 .sidebar-section + .sidebar-section { margin-top: 22px; }
@@ -680,13 +752,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 
       <div class="layout">
-  <aside class="nav-sidebar"><section class="nav-section"><h2>使用手冊</h2><div class="nav-group-block"><div class="nav-group-title">開始</div><ul class="nav-tree"><li class="nav-tree-node"><a href="index.html" class="nav-item">概觀</a></li><li class="nav-tree-node"><a href="what-is-grafana-util.html" class="nav-item">這個工具是做什麼的</a></li><li class="nav-tree-node"><a href="getting-started.html" class="nav-item">開始使用</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">角色路徑</div><ul class="nav-tree"><li class="nav-tree-node"><a href="role-new-user.html" class="nav-item active">新手快速入門</a></li><li class="nav-tree-node"><a href="role-sre-ops.html" class="nav-item">SRE / 維運角色導讀</a></li><li class="nav-tree-node"><a href="role-automation-ci.html" class="nav-item">自動化 / CI 角色導讀</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">核心操作</div><ul class="nav-tree"><li class="nav-tree-node"><a href="dashboard.html" class="nav-item">Dashboard 維運人員手冊</a></li><li class="nav-tree-node"><a href="datasource.html" class="nav-item">Data source 維運手冊</a></li><li class="nav-tree-node"><a href="alert.html" class="nav-item">Alert 維運人員手冊</a></li><li class="nav-tree-node"><a href="access.html" class="nav-item">身分與存取管理</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">治理</div><ul class="nav-tree"><li class="nav-tree-node"><a href="architecture.html" class="nav-item">系統架構與設計原則</a></li><li class="nav-tree-node"><a href="change-overview-status.html" class="nav-item">專案狀態與變更總覽</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">實戰與參考</div><ul class="nav-tree"><li class="nav-tree-node"><a href="scenarios.html" class="nav-item">維運情境手冊</a></li><li class="nav-tree-node"><a href="recipes.html" class="nav-item">實戰錦囊與最佳實踐</a></li><li class="nav-tree-node"><a href="reference.html" class="nav-item">技術參考手冊</a></li><li class="nav-tree-node"><a href="troubleshooting.html" class="nav-item">疑難排解與名詞解釋</a></li></ul></div></section><section class="nav-section"><h2>指令參考</h2><a href="../../commands/zh-TW/index.html" class="nav-command-entry">開啟指令參考</a></section></aside>
+  <aside class="nav-sidebar">
+  <button class="sidebar-toggle sidebar-toggle-left" type="button" aria-expanded="true" aria-label="Toggle handbook navigation">◀</button>
+  <div class="nav-sidebar-content"><section class="nav-section"><h2>手冊導覽</h2><div class="nav-group-block"><div class="nav-group-title">開始</div><ul class="nav-tree"><li class="nav-tree-node"><a href="index.html" class="nav-item">概觀</a></li><li class="nav-tree-node"><a href="what-is-grafana-util.html" class="nav-item">這個工具是做什麼的</a></li><li class="nav-tree-node"><a href="getting-started.html" class="nav-item">開始使用</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">角色路徑</div><ul class="nav-tree"><li class="nav-tree-node"><a href="role-new-user.html" class="nav-item active">新手快速入門</a></li><li class="nav-tree-node"><a href="role-sre-ops.html" class="nav-item">SRE / 維運角色導讀</a></li><li class="nav-tree-node"><a href="role-automation-ci.html" class="nav-item">自動化 / CI 角色導讀</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">核心操作</div><ul class="nav-tree"><li class="nav-tree-node"><a href="dashboard.html" class="nav-item">Dashboard 維運人員手冊</a></li><li class="nav-tree-node"><a href="datasource.html" class="nav-item">Data source 維運手冊</a></li><li class="nav-tree-node"><a href="alert.html" class="nav-item">Alert 維運人員手冊</a></li><li class="nav-tree-node"><a href="access.html" class="nav-item">身分與存取管理</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">治理</div><ul class="nav-tree"><li class="nav-tree-node"><a href="architecture.html" class="nav-item">系統架構與設計原則</a></li><li class="nav-tree-node"><a href="change-overview-status.html" class="nav-item">專案狀態與變更總覽</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">實戰與參考</div><ul class="nav-tree"><li class="nav-tree-node"><a href="scenarios.html" class="nav-item">維運情境手冊</a></li><li class="nav-tree-node"><a href="recipes.html" class="nav-item">實戰錦囊與最佳實踐</a></li><li class="nav-tree-node"><a href="reference.html" class="nav-item">技術參考手冊</a></li><li class="nav-tree-node"><a href="troubleshooting.html" class="nav-item">疑難排解與名詞解釋</a></li></ul></div></section><section class="nav-section"><h2>指令入口</h2><a href="../../commands/zh-TW/index.html" class="nav-command-entry">開啟指令參考</a></section></div>
+</aside>
 
   <article class="article">
     <div class="breadcrumbs"><a href="../../index.html">Home</a> / Handbook / 新手快速入門</div>
 
-    <div class="hero-eyebrow">Docs</div>
-<h1><span class="hero-title-main">新手快速入門</span></h1>
+    <h1><span class="hero-title-main">新手快速入門</span></h1>
 
 
     <p>這一頁是給第一次接觸 <code>grafana-util</code> 的人。目標不是一開始就背完所有指令，而是先把連線、驗證方式、profile 與唯讀檢查流程搞清楚。</p>
@@ -698,6 +772,12 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <ul><li>第一次接觸這個工具的工程師或維運人員。</li><li>需要先確認連線、版本與 profile 是否正常的人。</li><li>還不需要執行匯入、套用或跨 org 作業的使用者。</li></ul>
 <h2 id="主要目標">主要目標</h2>
 <ul><li>先確認執行檔、Grafana 連線與唯讀檢查都正常。</li><li>了解這個工具支援哪些連線與驗證方式。</li><li>釐清何時直接帶旗標就夠，何時應該改用 profile 簡化。</li><li>熟悉 <code>status live</code> 與 <code>overview live</code> 的差異。</li><li>了解 token 比較適合權限範圍明確的單一 org 自動化作業。</li></ul>
+<h2 id="採用前後對照">採用前後對照</h2>
+<ul><li>以前：新手一開始很容易卡在 profile、token、Basic auth 要先選哪個。</li><li>現在：先用一次直接唯讀命令證明連得上，再把重複設定整理進 profile。</li></ul>
+<h2 id="成功判準">成功判準</h2>
+<ul><li>你能跑出一條安全的 live 唯讀命令，而且看得懂輸出。</li><li>你知道目前使用的是哪一種驗證方式，也知道為什麼。</li><li>你能判斷什麼時候適合用 profile，什麼時候直接帶旗標就夠。</li></ul>
+<h2 id="失敗時先檢查">失敗時先檢查</h2>
+<ul><li>如果第一條 live read 失敗，先停下來修連線或驗證，不要直接進入變更流程。</li><li>如果你不確定目前是從哪個 auth source 取值，先檢查命令列和 profile 檔。</li><li>如果你正準備把密碼直接打進 shell 歷史，先改用 env-backed 或 prompt 方式。</li></ul>
 <h2 id="典型新手任務">典型新手任務</h2>
 <ul><li>確認執行檔已加入 <code>PATH</code> 環境變數。</li><li>先對本地實驗環境或開發用 Grafana 跑一次直接的唯讀檢查。</li><li>確認沒問題後，再為同一個 Grafana 建立 profile。</li><li>執行一次安全的即時讀取 (Live Read)，並區分 <code>status live</code> 與 <code>overview live</code> 的差異。</li><li>瞭解後續進行儀表板、告警或存取權限管理時應參考的說明文件。</li></ul>
 <h2 id="先搞懂連線與驗證是怎麼運作的">先搞懂連線與驗證是怎麼運作的</h2>
@@ -708,24 +788,28 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <ol><li><strong>第一次連線先用直接旗標驗證</strong>：例如 <code>--url</code> 加上 Basic auth，先確定這台 Grafana 真的連得到。</li><li><strong>日常重複工作改用 <code>--profile</code></strong>：連線確認後，把 URL、帳號與 secret 來源整理進 profile，之後就不用每次重打。</li><li><strong>本機引導或臨時檢查可用 Basic auth</strong>：若還沒建 profile，可先用 <code>--basic-user</code> 搭配 <code>--prompt-password</code>。</li><li><strong>特定自動化場景才直接用 token</strong>：只有在你很清楚 token 權限範圍時，才建議直接拿來跑命令。</li><li><strong>secret 優先放在環境變數或 secret store</strong>：像 <code>password_env</code>、<code>token_env</code>、<code>os</code> 或 <code>encrypted-file</code> 都比把敏感值直接打在命令列上安全。</li></ol>
 <h2 id="建議先執行的-5-個指令">建議先執行的 5 個指令</h2>
 <pre><code># 用途：建議先執行的 5 個指令。
-grafana-util --version
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output yaml
-grafana-util profile init --overwrite
-grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password
-grafana-util status live --profile dev --output yaml</code></pre>
+grafana-util --version</code></pre>
+<pre><code># 用途：建議先執行的 5 個指令。
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml</code></pre>
+<pre><code># 用途：建議先執行的 5 個指令。
+grafana-util profile init --overwrite</code></pre>
+<pre><code># 用途：建議先執行的 5 個指令。
+grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password</code></pre>
+<pre><code># 用途：建議先執行的 5 個指令。
+grafana-util status live --profile dev --output-format yaml</code></pre>
 <p>這個順序不是隨便排的：</p>
 <ul><li>先看 binary 有沒有裝好</li><li>再用一次直接旗標確認 Grafana 真的連得通</li><li>確認沒問題後再初始化設定檔</li><li>把同一組連線整理成 profile</li><li>最後再用 <code>--profile</code> 跑同一種唯讀檢查</li></ul>
 <p>如果你暫時還沒有 profile，這就是最短的安全起手式：</p>
 <pre><code># 用途：如果你暫時還沒有 profile，這就是最短的安全起手式。
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output yaml</code></pre>
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml</code></pre>
 <p>如果你手邊已有範圍明確的 token，也可以直接做同一類唯讀檢查：</p>
 <pre><code># 用途：如果你手邊已有範圍明確的 token，也可以直接做同一類唯讀檢查。
-grafana-util overview live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output json</code></pre>
+grafana-util overview live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
 <p>如果你的 shell 已經有環境變數，也可以不先建 profile，直接這樣跑：</p>
 <pre><code># 用途：如果你的 shell 已經有環境變數，也可以不先建 profile，直接這樣跑。
 export GRAFANA_USERNAME=admin
 export GRAFANA_PASSWORD=admin
-grafana-util status live --url http://localhost:3000 --output yaml</code></pre>
+grafana-util status live --url http://localhost:3000 --output-format yaml</code></pre>
 <h2 id="學習進度檢核">學習進度檢核</h2>
 <p>當你符合以下幾點時，就可以進到後續章節：</p>
 <ul><li>可在常用的終端機環境中正常執行 <code>grafana-util --version</code>。</li><li>至少有一個直接的唯讀指令能穩定連到目標 Grafana。</li><li><code>profile show --profile dev</code> 解析出的欄位符合預期。</li><li><code>status live --profile dev</code> 能穩定回傳可讀的結果。</li><li>已清楚後續要進行 dashboard、alert 或 access 管理的操作流程。</li></ul>
@@ -742,7 +826,10 @@ grafana-util status live --url http://localhost:3000 --output yaml</code></pre>
     <nav class="footer-nav"><a class="link-card" href="getting-started.html"><span>Previous</span>開始使用 (Getting Started)</a><a class="link-card" href="role-sre-ops.html"><span>Next</span>SRE / 維運角色導讀</a></nav>
   </article>
   <aside class="sidebar">
-  <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#適用對象"><span class="toc-label">適用對象</span></a></li><li class="toc-level-2"><a href="#主要目標"><span class="toc-label">主要目標</span></a></li><li class="toc-level-2"><a href="#典型新手任務"><span class="toc-label">典型新手任務</span></a></li><li class="toc-level-2"><a href="#先搞懂連線與驗證是怎麼運作的"><span class="toc-label">先搞懂連線與驗證是怎麼運作的</span></a></li><li class="toc-level-2"><a href="#身分驗證與秘密資料處理建議"><span class="toc-label">身分驗證與秘密資料處理建議</span></a></li><li class="toc-level-2"><a href="#建議先執行的-5-個指令"><span class="toc-label">建議先執行的 5 個指令</span></a></li><li class="toc-level-2"><a href="#學習進度檢核"><span class="toc-label">學習進度檢核</span></a></li><li class="toc-level-2"><a href="#後續閱讀建議"><span class="toc-label">後續閱讀建議</span></a></li><li class="toc-level-2"><a href="#推薦搭配參考的指令頁面"><span class="toc-label">推薦搭配參考的指令頁面</span></a></li><li class="toc-level-2"><a href="#常見錯誤與限制"><span class="toc-label">常見錯誤與限制</span></a></li><li class="toc-level-2"><a href="#何時切換至深度文件"><span class="toc-label">何時切換至深度文件</span></a></li><li class="toc-level-2"><a href="#下一步"><span class="toc-label">下一步</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/role-new-user.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+  <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
+  <div class="sidebar-content">
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#適用對象"><span class="toc-label">適用對象</span></a></li><li class="toc-level-2"><a href="#主要目標"><span class="toc-label">主要目標</span></a></li><li class="toc-level-2"><a href="#採用前後對照"><span class="toc-label">採用前後對照</span></a></li><li class="toc-level-2"><a href="#成功判準"><span class="toc-label">成功判準</span></a></li><li class="toc-level-2"><a href="#失敗時先檢查"><span class="toc-label">失敗時先檢查</span></a></li><li class="toc-level-2"><a href="#典型新手任務"><span class="toc-label">典型新手任務</span></a></li><li class="toc-level-2"><a href="#先搞懂連線與驗證是怎麼運作的"><span class="toc-label">先搞懂連線與驗證是怎麼運作的</span></a></li><li class="toc-level-2"><a href="#身分驗證與秘密資料處理建議"><span class="toc-label">身分驗證與秘密資料處理建議</span></a></li><li class="toc-level-2"><a href="#建議先執行的-5-個指令"><span class="toc-label">建議先執行的 5 個指令</span></a></li><li class="toc-level-2"><a href="#學習進度檢核"><span class="toc-label">學習進度檢核</span></a></li><li class="toc-level-2"><a href="#後續閱讀建議"><span class="toc-label">後續閱讀建議</span></a></li><li class="toc-level-2"><a href="#推薦搭配參考的指令頁面"><span class="toc-label">推薦搭配參考的指令頁面</span></a></li><li class="toc-level-2"><a href="#常見錯誤與限制"><span class="toc-label">常見錯誤與限制</span></a></li><li class="toc-level-2"><a href="#何時切換至深度文件"><span class="toc-label">何時切換至深度文件</span></a></li><li class="toc-level-2"><a href="#下一步"><span class="toc-label">下一步</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/role-new-user.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+  </div>
 </aside>
 
 </div>
@@ -791,6 +878,26 @@ grafana-util status live --url http://localhost:3000 --output yaml</code></pre>
 
   document.querySelectorAll(".nav-group-header").forEach(header => {
     header.onclick = () => { header.closest(".nav-group").classList.toggle("collapsed"); };
+  });
+
+  document.querySelectorAll(".sidebar-toggle-left").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-nav");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "▶" : "◀";
+    });
+  });
+
+  document.querySelectorAll(".sidebar-toggle-right").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-sidebar");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "◀" : "▶";
+    });
   });
 
   const jumpSelect = document.getElementById("jump-select");

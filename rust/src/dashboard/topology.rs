@@ -1,10 +1,12 @@
 //! Artifact-driven topology and impact analysis for dashboards and alert contracts.
 use serde::Serialize;
 use serde_json::Value;
-use std::fs;
 use std::path::Path;
 
-use crate::common::{load_json_object_file, render_json_value, Result};
+use crate::common::{
+    load_json_object_file, render_json_value, should_print_stdout, write_plain_output_file,
+    Result,
+};
 
 use super::{
     write_json_document, ImpactArgs, ImpactOutputFormat, TopologyArgs, TopologyOutputFormat,
@@ -371,10 +373,12 @@ pub(crate) fn run_dashboard_topology(args: &TopologyArgs) -> Result<()> {
         if matches!(args.output_format, TopologyOutputFormat::Json) {
             write_json_document(&document, output_file)?;
         } else {
-            fs::write(output_file, &rendered)?;
+            write_plain_output_file(output_file, &rendered)?;
         }
     }
-    println!("{rendered}");
+    if should_print_stdout(args.output_file.as_deref(), args.also_stdout) {
+        println!("{rendered}");
+    }
     Ok(())
 }
 

@@ -15,6 +15,23 @@
 - 先在 `status staged` 與 `change preflight` 擋掉有問題的變更
 - 只在確定 scope 合理時才用 token 或 service account token
 
+## 採用前後對照
+
+- 以前：每個 job 都要自己重建同一套驗證與輸出接線。
+- 現在：用一個環境變數驅動的 profile，就能讓重複跑的流程更穩定、更好排查。
+
+## 成功判準
+
+- CI 跑起來不會一直等 prompt。
+- 輸出穩定到可以讓 script、gate 或 parser 直接處理。
+- 失敗時能分清楚是驗證、權限範圍、staged input 還是連線問題。
+
+## 失敗時先檢查
+
+- 如果 job 還會跳 prompt，代表 profile 或 env 接線還沒設好。
+- 如果輸出看起來正常，但資料太少，先懷疑 scope，不要先懷疑 renderer。
+- 如果唯讀 gate 成功、apply 卻失敗，先確認寫入或管理員權限，不要先改流程。
+
 ## 典型自動化任務
 
 - 在 promotion 或 apply 前先跑 readiness gate
@@ -34,10 +51,26 @@
 ```bash
 # 用途：建議先跑的 5 個指令。
 grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN
+```
+
+```bash
+# 用途：建議先跑的 5 個指令。
 grafana-util profile show --profile ci --output-format yaml
-grafana-util status staged --desired-file ./desired.json --output json
-grafana-util change preflight --desired-file ./desired.json --fetch-live --output json
-grafana-util overview live --profile ci --output yaml
+```
+
+```bash
+# 用途：建議先跑的 5 個指令。
+grafana-util status staged --desired-file ./desired.json --output-format json
+```
+
+```bash
+# 用途：建議先跑的 5 個指令。
+grafana-util change preflight --desired-file ./desired.json --fetch-live --output-format json
+```
+
+```bash
+# 用途：建議先跑的 5 個指令。
+grafana-util overview live --profile ci --output-format yaml
 ```
 
 如果 pipeline 只需要驗證某個 live 操作面，可把最後一行換成 direct Basic auth 或單一 org token 的等價查詢，但不要把查詢範圍開得比權限更大。

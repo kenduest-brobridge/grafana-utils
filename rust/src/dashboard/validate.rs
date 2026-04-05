@@ -3,10 +3,12 @@
 //! plugin usage before GitOps-style import or sync.
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
-use std::fs;
 use std::path::Path;
 
-use crate::common::{message, render_json_value, string_field, value_as_object, Result};
+use crate::common::{
+    message, render_json_value, should_print_stdout, string_field, value_as_object,
+    write_plain_output_file, Result,
+};
 
 use super::{
     discover_dashboard_files, extract_dashboard_object, load_json_file, ValidateExportArgs,
@@ -381,9 +383,11 @@ pub(crate) fn run_dashboard_validate_export(args: &ValidateExportArgs) -> Result
         super::ValidationOutputFormat::Json => render_validation_result_json(&result)?,
     };
     if let Some(path) = args.output_file.as_ref() {
-        fs::write(path, &output)?;
+        write_plain_output_file(path, &output)?;
     }
-    print!("{output}");
+    if should_print_stdout(args.output_file.as_deref(), args.also_stdout) {
+        print!("{output}");
+    }
     if result.error_count > 0 {
         return Err(message(format!(
             "Dashboard validation found {} blocking issue(s).",
@@ -437,6 +441,7 @@ mod tests {
             target_schema_version: Some(39),
             output_format: ValidationOutputFormat::Json,
             output_file: Some(output_file.clone()),
+            also_stdout: false,
         })
         .unwrap();
 
@@ -466,6 +471,7 @@ mod tests {
             target_schema_version: None,
             output_format: ValidationOutputFormat::Json,
             output_file: Some(output_file.clone()),
+            also_stdout: false,
         })
         .unwrap();
 

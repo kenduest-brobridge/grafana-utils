@@ -15,7 +15,15 @@
 ```bash
 # 用途：將一個線上儀表板抓取成 API 安全的本地 JSON 草稿。
 grafana-util dashboard get --profile prod --dashboard-uid cpu-main --output ./cpu-main.json
+```
+
+```bash
+# 用途：將一個線上儀表板抓取成 API 安全的本地 JSON 草稿。
 grafana-util dashboard get --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --output ./cpu-main.json
+```
+
+```bash
+# 用途：將一個線上儀表板抓取成 API 安全的本地 JSON 草稿。
 grafana-util dashboard get --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --dashboard-uid cpu-main --output ./cpu-main.json
 ```
 

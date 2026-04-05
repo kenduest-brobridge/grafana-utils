@@ -22,6 +22,10 @@ Clone an existing staged alert rule into a new authoring target.
 ```bash
 # Purpose: Clone an existing staged alert rule into a new authoring target.
 grafana-util alert clone-rule --desired-dir ./alerts/desired --source cpu-high --name cpu-high-staging --folder staging-alerts --rule-group cpu --receiver slack-platform
+```
+
+```bash
+# Purpose: Clone an existing staged alert rule into a new authoring target.
 grafana-util alert clone-rule --desired-dir ./alerts/desired --source cpu-high --name cpu-high-staging --dry-run
 ```
 

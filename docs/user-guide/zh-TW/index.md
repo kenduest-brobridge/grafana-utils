@@ -15,6 +15,23 @@
 
 - [這個工具是做什麼的](what-is-grafana-util.md)
 
+## 採用前後對照
+
+- 以前：要先猜應該開哪一章，才能知道從哪裡開始讀。
+- 現在：先看用途頁，再依照角色選路線，就不容易迷路。
+
+## 成功判準
+
+- 你知道目前這個任務該看哪一章。
+- 你能把手冊章節和精確指令說明分開。
+- 你能從第一次唯讀檢查，順利走到對應的工作流。
+
+## 失敗時先檢查
+
+- 如果還不知道自己該看 dashboard、alert、access 還是 change，先回到用途頁和角色路線圖。
+- 如果第一條即時唯讀命令失敗，先修連線或驗證，不要先往變更章節走。
+- 如果你只是在找精確旗標，請直接切到指令詳細說明，不要硬從手冊猜。
+
 ---
 
 ## 適用對象
@@ -50,7 +67,7 @@ grafana-util --version
 ### 3. 執行第一次完整巡檢
 ```bash
 # 產生整個 Grafana Estate 的高階健康度與資產盤點報告
-grafana-util overview live --url http://localhost:3000 --basic-user admin --prompt-password --output interactive
+grafana-util overview live --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
 **為什麼這很重要？** 30 秒內，你就能先確認連線正常，快速看 Dashboard、Alert 和 data source 的狀態，也能先看出哪些設定可能已經失效。

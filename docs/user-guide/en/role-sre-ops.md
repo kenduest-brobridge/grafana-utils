@@ -14,6 +14,23 @@ This page is for on-call operators and SREs who need a repeatable way to check r
 - Keep a reliable profile for routine checks and repeatable maintenance.
 - Choose an auth path that can actually see the scope you need.
 
+## Before / After
+
+- Before: SREs had to infer readiness, scope, and replay risk from a chain of ad hoc commands.
+- After: use a repeatable profile, then move through live checks, staged review, and apply only after preflight.
+
+## What success looks like
+
+- You can tell whether the credential really sees the scope you need.
+- You can separate live reads from staged review and apply paths.
+- You have a reliable operator path for dashboard, alert, and access workflows.
+
+## Failure checks
+
+- If the token scope is narrower than the task, stop and fetch a credential that can see the real estate you need.
+- If the live check passes but the apply path fails, verify write permissions and staged inputs before blaming the renderer.
+- If you cannot explain which lane the task belongs to, pause and open the workflow chapter first.
+
 ## Typical Operator Tasks
 
 - Run a live readiness check before a maintenance window.
@@ -33,10 +50,26 @@ Use a profile backed by admin-capable credentials for day-to-day work.
 
 ```bash
 # Purpose: First commands to run.
-grafana-util status live --profile prod --output table
-grafana-util overview live --profile prod --output interactive
+grafana-util status live --profile prod --output-format table
+```
+
+```bash
+# Purpose: First commands to run.
+grafana-util overview live --profile prod --output-format interactive
+```
+
+```bash
+# Purpose: First commands to run.
 grafana-util change summary --desired-file ./desired.json
-grafana-util change preflight --desired-file ./desired.json --fetch-live --output json
+```
+
+```bash
+# Purpose: First commands to run.
+grafana-util change preflight --desired-file ./desired.json --fetch-live --output-format json
+```
+
+```bash
+# Purpose: First commands to run.
 grafana-util dashboard export --export-dir ./backups --overwrite --progress
 ```
 
@@ -51,14 +84,14 @@ If you are checking a host directly, Basic auth is the safest fallback for broad
 
 ```bash
 # Purpose: If you are checking a host directly, Basic auth is the safest fallback for broad visibility.
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --all-orgs --output table
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --all-orgs --output-format table
 ```
 
 Use token auth only when the scope matches the work:
 
 ```bash
 # Purpose: Use token auth only when the scope matches the work.
-grafana-util overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output json
+grafana-util overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 
 ## What good operator posture looks like

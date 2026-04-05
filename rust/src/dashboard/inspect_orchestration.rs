@@ -643,8 +643,9 @@ fn analyze_export_dir_at_path(
     if args.interactive {
         return run_interactive_export_workbench(import_dir, expected_variant);
     }
-    let write_output =
-        |output: &str| -> Result<()> { write_inspect_output(output, args.output_file.as_ref()) };
+    let write_output = |output: &str| -> Result<()> {
+        write_inspect_output(output, args.output_file.as_ref(), args.also_stdout)
+    };
 
     if let Some(report_format) = effective_inspect_report_format(args) {
         let report = apply_query_report_filters(

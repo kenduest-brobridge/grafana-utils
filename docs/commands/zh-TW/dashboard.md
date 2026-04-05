@@ -27,9 +27,25 @@
 ```bash
 # 用途：`grafana-util dashboard` 是處理即時儀表板工作流程、在地草稿管理、匯出 / 匯入檢視、檢查、拓樸、截圖，以及 raw 轉 prompt JSON 的指令群組。這個指令群組也可用 `grafana-util db` 呼叫。
 grafana-util dashboard --help
+```
+
+```bash
+# 用途：`grafana-util dashboard` 是處理即時儀表板工作流程、在地草稿管理、匯出 / 匯入檢視、檢查、拓樸、截圖，以及 raw 轉 prompt JSON 的指令群組。這個指令群組也可用 `grafana-util db` 呼叫。
 grafana-util dashboard browse --profile prod
+```
+
+```bash
+# 用途：`grafana-util dashboard` 是處理即時儀表板工作流程、在地草稿管理、匯出 / 匯入檢視、檢查、拓樸、截圖，以及 raw 轉 prompt JSON 的指令群組。這個指令群組也可用 `grafana-util db` 呼叫。
 grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu-main.json --profile prod --org-id 2
+```
+
+```bash
+# 用途：`grafana-util dashboard` 是處理即時儀表板工作流程、在地草稿管理、匯出 / 匯入檢視、檢查、拓樸、截圖，以及 raw 轉 prompt JSON 的指令群組。這個指令群組也可用 `grafana-util db` 呼叫。
 grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin --basic-password admin --interactive
+```
+
+```bash
+# 用途：`grafana-util dashboard` 是處理即時儀表板工作流程、在地草稿管理、匯出 / 匯入檢視、檢查、拓樸、截圖，以及 raw 轉 prompt JSON 的指令群組。這個指令群組也可用 `grafana-util db` 呼叫。
 grafana-util dashboard inspect-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format governance-json
 ```
 

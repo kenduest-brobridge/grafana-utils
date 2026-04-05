@@ -16,6 +16,10 @@
 ```bash
 # 用途：比較本地儀表板檔案與線上 Grafana 儀表板的差異。
 grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw
+```
+
+```bash
+# 用途：比較本地儀表板檔案與線上 Grafana 儀表板的差異。
 grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --org-id 2 --import-dir ./dashboards/raw --json
 ```
 

@@ -313,8 +313,8 @@ def render_page_locale_select(current_label: str, switch_label: str | None = Non
 
 def render_global_nav(output_rel: str, locale: str, config: HtmlBuildConfig) -> str:
     if not output_rel or "index.html" in output_rel and "/" not in output_rel.replace("index.html", ""): return ""
-    handbook_label = "Handbook" if locale == "en" else "使用手冊"
-    commands_label = "Command Reference" if locale == "en" else "指令參考"
+    handbook_label = "Guide Map" if locale == "en" else "手冊導覽"
+    commands_label = "Command Entry" if locale == "en" else "指令入口"
     sections = []
     group_html: list[str] = []
     for group_label, items in handbook_nav_groups(locale, config):

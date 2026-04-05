@@ -84,6 +84,33 @@ fn parse_inspect_vars_args_supports_output_file() {
         args.output_file,
         Some(PathBuf::from("/tmp/inspect-vars.json"))
     );
+    assert!(!args.also_stdout);
+}
+
+#[test]
+fn parse_inspect_vars_args_supports_also_stdout() {
+    let args = match parse_cli_from([
+        "grafana-util",
+        "inspect-vars",
+        "--dashboard-uid",
+        "infra-main",
+        "--output-file",
+        "/tmp/inspect-vars.json",
+        "--also-stdout",
+        "--token",
+        "secret",
+    ])
+    .command
+    {
+        DashboardCommand::InspectVars(args) => args,
+        other => panic!("expected inspect-vars args, got {other:?}"),
+    };
+
+    assert_eq!(
+        args.output_file,
+        Some(PathBuf::from("/tmp/inspect-vars.json"))
+    );
+    assert!(args.also_stdout);
 }
 
 #[test]
@@ -206,6 +233,7 @@ fn render_dashboard_variable_output_supports_text_yaml_and_json() {
         output_format: None,
         no_header: false,
         output_file: None,
+        also_stdout: false,
     };
 
     let text_output = render_dashboard_variable_output(

@@ -17,6 +17,10 @@ Use this when you want to start from an existing live dashboard but give the loc
 ```bash
 # Purpose: Clone one live dashboard into a local draft with optional overrides.
 grafana-util dashboard clone-live --url http://localhost:3000 --basic-user admin --basic-password admin --source-uid cpu-main --output ./cpu-main-clone.json
+```
+
+```bash
+# Purpose: Clone one live dashboard into a local draft with optional overrides.
 grafana-util dashboard clone-live --profile prod --source-uid cpu-main --name 'CPU Clone' --uid cpu-main-clone --folder-uid infra --output ./cpu-main-clone.json
 ```
 

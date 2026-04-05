@@ -8,7 +8,7 @@ This manual provides the current command surface for `grafana-util`, including p
 
 - Operators who know which command family they need and want exact flags or output behavior.
 - Script and CI authors who need stable formatting and secret-handling rules.
-- Reviewers checking whether a workflow expects `--output` or `--output-format`.
+- Reviewers checking which `--output-format` value fits a workflow.
 
 ## Primary Goals
 
@@ -17,6 +17,65 @@ This manual provides the current command surface for `grafana-util`, including p
 - Reduce time spent jumping between individual command pages for shared behavior.
 
 Use this chapter alongside [profile](../../commands/en/profile.md), [status](../../commands/en/status.md), [overview](../../commands/en/overview.md), and [access](../../commands/en/access.md) when you want the command-by-command surface.
+
+---
+
+## Output selector rules
+
+`grafana-util` now standardizes render-format selection on `--output-format`, so it helps to learn the common patterns first.
+
+### Standard selector: `--output-format`
+
+Many list, review, inspect, and dry-run commands use `--output-format`.
+
+Typical equivalents:
+
+- `--output-format table` = `--table`
+- `--output-format json` = `--json`
+- `--output-format csv` = `--csv`
+- `--output-format yaml` = `--yaml`
+- `--output-format text` = `--text`
+
+The long form is usually better for scripts and reusable snippets. The short form is convenient for interactive shell usage.
+
+### Exceptions worth remembering
+
+- not every command exposes every shorthand flag
+- some commands only support one or two output shapes
+- `dashboard topology` is intentionally different: it supports `text`, `json`, `mermaid`, and `dot`, and does not have shortcut flags such as `--table`
+- file-writing flags such as `--output-file` or `--output` on draft/export commands mean destination paths, not render formats
+
+If you are unsure, always trust the per-command reference page over a generic rule of thumb.
+
+### `change` JSON documents for CI
+
+The `change` family emits several different JSON contracts. The safest routing rule is:
+
+1. inspect `kind`
+2. confirm `schemaVersion`
+3. only then branch on nested fields such as `summary`, `operations`, `checks`, or `drifts`
+
+Fast lookups from the CLI:
+
+- `grafana-util change --help-schema`
+- `grafana-util change plan --help-schema`
+- `grafana-util change apply --help-schema`
+- `grafana-util change audit --help-schema`
+
+Practical mapping:
+
+- `change summary --output-format json` -> `grafana-utils-sync-summary`
+- `change plan --output-format json` -> `grafana-utils-sync-plan`
+- `change review --output-format json` -> `grafana-utils-sync-plan`
+- `change apply --output-format json` -> `grafana-utils-sync-apply-intent`
+- `change apply --execute-live --output-format json` -> live apply result
+- `change audit --output-format json` -> `grafana-utils-sync-audit`
+- `change preflight --output-format json` -> `grafana-utils-sync-preflight`
+- `change assess-alerts --output-format json` -> `grafana-utils-alert-sync-plan`
+- `change bundle-preflight --output-format json` -> `grafana-utils-sync-bundle-preflight`
+- `change promotion-preflight --output-format json` -> `grafana-utils-sync-promotion-preflight`
+
+Use the dedicated [change command reference](../../commands/en/change.md) when you need the exact top-level keys for each document.
 
 ---
 
@@ -94,9 +153,25 @@ If you set `GRAFANA_UTIL_CONFIG`, the config file moves with that path. The help
 ```bash
 # Purpose: 2. Initialize, add, and list profiles.
 grafana-util profile init --overwrite
+```
+
+```bash
+# Purpose: 2. Initialize, add, and list profiles.
 grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password
+```
+
+```bash
+# Purpose: 2. Initialize, add, and list profiles.
 grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN --store-secret os
+```
+
+```bash
+# Purpose: 2. Initialize, add, and list profiles.
 grafana-util profile list
+```
+
+```bash
+# Purpose: 2. Initialize, add, and list profiles.
 grafana-util profile example --mode full
 ```
 **Expected Output:**
@@ -111,6 +186,10 @@ prod
 ```bash
 # Purpose: 3. Show the resolved profile.
 grafana-util profile show --profile prod --output-format yaml
+```
+
+```bash
+# Purpose: 3. Show the resolved profile.
 grafana-util profile show --profile prod --show-secrets --output-format yaml
 ```
 **Expected Output:**
@@ -185,9 +264,17 @@ profiles:
 ### 5. Daily-use examples in the common auth styles
 ```bash
 # Purpose: 5. Daily-use examples in the common auth styles.
-grafana-util status live --profile prod --output yaml
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output yaml
-grafana-util overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output json
+grafana-util status live --profile prod --output-format yaml
+```
+
+```bash
+# Purpose: 5. Daily-use examples in the common auth styles.
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
+```
+
+```bash
+# Purpose: 5. Daily-use examples in the common auth styles.
+grafana-util overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 Use the `--profile` form by default. Keep direct Basic auth for admin-heavy workflows and token auth for scoped automation where you understand the permission envelope.
 
@@ -197,20 +284,42 @@ Use the `--profile` form by default. Keep direct Basic auth for admin-heavy work
 # Environment-backed password for a repeatable local profile.
 export GRAFANA_PROD_PASSWORD='change-me'
 grafana-util profile add prod --url https://grafana.example.com --basic-user admin --password-env GRAFANA_PROD_PASSWORD
-grafana-util status live --profile prod --output yaml
+```
 
+```bash
+# Environment-backed password for a repeatable local profile.
+grafana-util status live --profile prod --output-format yaml
+```
+
+```bash
 # OS secret store for a desktop operator workflow on macOS or Linux.
 grafana-util profile add prod-os --url https://grafana.example.com --basic-user admin --prompt-password --store-secret os
-grafana-util overview live --profile prod-os --output interactive
+```
 
+```bash
+# OS secret store for a desktop operator workflow on macOS or Linux.
+grafana-util overview live --profile prod-os --output-format interactive
+```
+
+```bash
 # Encrypted file with a prompted passphrase.
 grafana-util profile add prod-encrypted --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file --prompt-secret-passphrase
-grafana-util status live --profile prod-encrypted --output yaml
+```
 
+```bash
+# Encrypted file with a prompted passphrase.
+grafana-util status live --profile prod-encrypted --output-format yaml
+```
+
+```bash
 # Scoped token from the environment for automation.
 export GRAFANA_CI_TOKEN='replace-me'
 grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN
-grafana-util overview live --profile ci --output json
+```
+
+```bash
+# Scoped token from the environment for automation.
+grafana-util overview live --profile ci --output-format json
 ```
 
 Why these examples matter:
@@ -250,7 +359,7 @@ Why these examples matter:
 | :--- | :--- | :--- | :--- |
 | Direct format selectors | `--text`, `--table`, `--csv`, `--json`, `--yaml` | `text` / `table` / `csv` / `json` / `yaml` | Common on list, review, inspect, and some dry-run mutation surfaces. |
 | Single selector for common formats | `--output-format <FORMAT>` | `text` / `table` / `csv` / `json` / `yaml` | Some commands also define command-specific values such as `report-table`, `governance-json`, `mermaid`, or `dot`. |
-| Live `status` / `overview` entrypoints | `--output <FORMAT>` | `table` / `csv` / `text` / `json` / `yaml` / `interactive` | These live entrypoints do not use `--output-format`. |
+| Live `status` / `overview` entrypoints | `--output-format <FORMAT>` | `table` / `csv` / `text` / `json` / `yaml` / `interactive` | These live entrypoints now use the same standard selector. |
 | Write the rendered result to a file | `--output-file <PATH>` or a command-specific flag | command-specific | Common on topology, governance-gate, screenshot, and similar output-producing commands. |
 
 ### 1. Table or JSON selection
@@ -273,21 +382,25 @@ Use `--json` for automation, `--table` for quick human review, and `--output-for
 ```bash
 # Purpose: 2. Live status and overview output selectors.
 grafana-util status live -h
+```
+
+```bash
+# Purpose: 2. Live status and overview output selectors.
 grafana-util overview live -h
 ```
 **Expected Output:**
 ```text
 Render project status from live Grafana read surfaces. Use current Grafana state plus optional staged context files.
 ...
---output <OUTPUT>
+--output-format <OUTPUT_FORMAT>
     Render project status as table, csv, text, json, yaml, or interactive output.
 
 Render a live overview by delegating to the shared status live path.
 ...
---output <OUTPUT>
+--output-format <OUTPUT_FORMAT>
     Render project status as table, csv, text, json, yaml, or interactive output.
 ```
-Both live entrypoints use `--output`; they do not accept the older `--output-format` spelling.
+Both live entrypoints now use `--output-format`.
 
 ---
 
@@ -313,7 +426,7 @@ This is the current JSON path for scripting. If you need fewer or different fiel
 ### 2. Handling Exit Codes
 ```bash
 # Purpose: 2. Handling Exit Codes.
-grafana-util status live --profile prod --output json
+grafana-util status live --profile prod --output-format json
 if [ $? -eq 2 ]; then
   echo "CRITICAL: Grafana connection blocked!"
   exit 1

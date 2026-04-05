@@ -18,8 +18,29 @@ Use this when you have a local datasource bundle or provisioning tree and want t
 ```bash
 # Purpose: Import datasource inventory through the Grafana API.
 grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --dry-run --table
+```
+
+```bash
+# Purpose: Import datasource inventory through the Grafana API.
 grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --use-export-org --only-org-id 2 --create-missing-orgs --dry-run --json
 ```
+
+## Before / After
+
+- **Before**: importing datasource bundles usually meant manually reconciling files, orgs, and secrets before touching Grafana.
+- **After**: one import command can preview the plan, reconcile org routing, and then push the bundle with the right guardrails.
+
+## What success looks like
+
+- the import preview shows which orgs and datasources will change
+- provisioning and inventory inputs both route correctly
+- secrets are resolved before the live import, not after the damage is done
+
+## Failure checks
+
+- if the import touches the wrong org, verify the routing flags before trying again
+- if the plan is incomplete, confirm the `--input-format` and whether the bundle is inventory or provisioning
+- if secrets stay unresolved, check the placeholder map and the provided secret values
 
 ## Related commands
 - [datasource export](./datasource-export.md)

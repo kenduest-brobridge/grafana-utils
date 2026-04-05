@@ -214,7 +214,7 @@ fn run_sync_cli_audit_builds_lock_and_allows_clean_write() {
         page_size: 100,
         write_lock: Some(lock_file.clone()),
         fail_on_drift: false,
-        output: SyncOutputFormat::Json,
+        output_format: SyncOutputFormat::Json,
         interactive: false,
     }));
 
@@ -275,7 +275,7 @@ fn run_sync_cli_audit_rejects_drift_when_fail_on_drift_is_set() {
         page_size: 100,
         write_lock: None,
         fail_on_drift: true,
-        output: SyncOutputFormat::Json,
+        output_format: SyncOutputFormat::Json,
         interactive: false,
     }))
     .unwrap_err()
@@ -324,7 +324,7 @@ fn run_sync_cli_apply_accepts_explicit_audit_metadata() {
         execute_live: false,
         allow_folder_delete: false,
         allow_policy_reset: false,
-        output: SyncOutputFormat::Json,
+        output_format: SyncOutputFormat::Json,
         applied_by: Some("bob".to_string()),
         applied_at: Some("manual-apply".to_string()),
         approval_reason: Some("approved-change".to_string()),
@@ -355,7 +355,7 @@ fn run_sync_cli_preflight_rejects_non_object_availability_file() {
         fetch_live: false,
         common: sync_common_args(),
         org_id: None,
-        output: SyncOutputFormat::Text,
+        output_format: SyncOutputFormat::Text,
     }))
     .unwrap_err()
     .to_string();

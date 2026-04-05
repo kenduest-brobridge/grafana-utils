@@ -1,7 +1,7 @@
 //! Render helpers for dashboard delete plan and preview outputs.
 //!
 //! Responsibilities:
-//! - Convert delete plans into text output consumed by `--output text`.
+//! - Convert delete plans into text output consumed by `--output-format text`.
 //! - Serialize dry-run and execution preview payloads for downstream consumers.
 
 use serde_json::json;

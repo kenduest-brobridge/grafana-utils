@@ -5,7 +5,7 @@
 //! documents so they remain reusable from tests and offline inputs.
 
 use super::*;
-use crate::common::render_json_value;
+use crate::common::{render_json_value, should_print_stdout, write_plain_output_file};
 use crate::sync::live::load_apply_intent_operations;
 
 fn emit_text_or_json(document: &Value, lines: &[String], output: SyncOutputFormat) -> Result<()> {
@@ -183,7 +183,7 @@ fn run_sync_audit(args: SyncAuditArgs) -> Result<()> {
     if args.interactive {
         return run_sync_audit_interactive(&audit);
     }
-    emit_text_or_json(&audit, &render_sync_audit_text(&audit)?, args.output)
+    emit_text_or_json(&audit, &render_sync_audit_text(&audit)?, args.output_format)
 }
 
 fn execute_sync_plan(args: &SyncPlanArgs) -> Result<SyncCommandOutput> {
@@ -228,7 +228,7 @@ fn run_sync_review(args: SyncReviewArgs) -> Result<()> {
         args.reviewed_at.as_deref(),
         args.review_note.as_deref(),
     )?;
-    emit_text_or_json(&document, &render_sync_plan_text(&document)?, args.output)
+    emit_text_or_json(&document, &render_sync_plan_text(&document)?, args.output_format)
 }
 
 fn run_sync_apply(args: SyncApplyArgs) -> Result<()> {
@@ -269,13 +269,13 @@ fn run_sync_apply(args: SyncApplyArgs) -> Result<()> {
                         .unwrap_or(0)
                 ),
             ],
-            args.output,
+            args.output_format,
         )
     } else {
         emit_text_or_json(
             &document,
             &render_sync_apply_intent_text(&document)?,
-            args.output,
+            args.output_format,
         )
     }
 }
@@ -483,40 +483,44 @@ pub fn run_sync_cli(command: SyncGroupCommand) -> Result<()> {
     match command {
         SyncGroupCommand::Plan(args) => {
             let output = execute_sync_plan(&args)?;
-            emit_text_or_json(&output.document, &output.text_lines, args.output)
+            emit_text_or_json(&output.document, &output.text_lines, args.output_format)
         }
         SyncGroupCommand::Review(args) => run_sync_review(args),
         SyncGroupCommand::Apply(args) => run_sync_apply(args),
         SyncGroupCommand::Audit(args) => run_sync_audit(args),
         SyncGroupCommand::Summary(args) => {
             let output = execute_sync_summary(&args)?;
-            emit_text_or_json(&output.document, &output.text_lines, args.output)
+            emit_text_or_json(&output.document, &output.text_lines, args.output_format)
         }
         SyncGroupCommand::Preflight(args) => {
             let output = execute_sync_preflight(&args)?;
-            emit_text_or_json(&output.document, &output.text_lines, args.output)
+            emit_text_or_json(&output.document, &output.text_lines, args.output_format)
         }
         SyncGroupCommand::AssessAlerts(args) => {
             let output = execute_sync_assess_alerts(&args)?;
-            emit_text_or_json(&output.document, &output.text_lines, args.output)
+            emit_text_or_json(&output.document, &output.text_lines, args.output_format)
         }
         SyncGroupCommand::BundlePreflight(args) => {
             let output = execute_sync_bundle_preflight(&args)?;
-            emit_text_or_json(&output.document, &output.text_lines, args.output)
+            emit_text_or_json(&output.document, &output.text_lines, args.output_format)
         }
         SyncGroupCommand::PromotionPreflight(args) => {
             let output = execute_sync_promotion_preflight(&args)?;
-            emit_text_or_json(&output.document, &output.text_lines, args.output)
+            emit_text_or_json(&output.document, &output.text_lines, args.output_format)
         }
         SyncGroupCommand::Bundle(args) => {
             let output = execute_sync_bundle(&args)?;
             if let Some(output_file) = args.output_file.as_ref() {
-                fs::write(
+                write_plain_output_file(
                     output_file,
-                    format!("{}\n", serde_json::to_string_pretty(&output.document)?),
+                    &serde_json::to_string_pretty(&output.document)?,
                 )?;
             }
-            emit_text_or_json(&output.document, &output.text_lines, args.output)
+            if should_print_stdout(args.output_file.as_deref(), args.also_stdout) {
+                emit_text_or_json(&output.document, &output.text_lines, args.output_format)
+            } else {
+                Ok(())
+            }
         }
     }
 }

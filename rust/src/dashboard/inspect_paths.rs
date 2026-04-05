@@ -5,7 +5,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::common::{message, object_field, Result};
+use crate::common::{
+    message, object_field, should_print_stdout, write_plain_output_file, Result,
+};
 
 use super::super::files::{load_datasource_inventory, load_folder_inventory};
 use super::super::inspect_live::load_variant_index_entries;
@@ -28,19 +30,22 @@ fn normalize_index_entry_path(path: &str) -> String {
         .unwrap_or(normalized)
 }
 
-pub(crate) fn write_inspect_output(output: &str, output_file: Option<&PathBuf>) -> Result<()> {
+pub(crate) fn write_inspect_output(
+    output: &str,
+    output_file: Option<&PathBuf>,
+    also_stdout: bool,
+) -> Result<()> {
     let normalized = output.trim_end_matches('\n');
     if normalized.is_empty() {
         return Ok(());
     }
     if let Some(output_path) = output_file {
-        if let Some(parent) = output_path.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        fs::write(output_path, format!("{normalized}\n"))?;
+        write_plain_output_file(output_path, normalized)?;
     }
-    print!("{normalized}");
-    println!();
+    if should_print_stdout(output_file.map(PathBuf::as_path), also_stdout) {
+        print!("{normalized}");
+        println!();
+    }
     Ok(())
 }
 

@@ -13,9 +13,9 @@ use super::{ALERT_HELP_TEXT, DEFAULT_OUTPUT_DIR, DEFAULT_TIMEOUT, DEFAULT_URL};
 const ALERT_EXPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n  grafana-util alert export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./alerts --flat";
 const ALERT_IMPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing\n  grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dry-run --json\n  grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json";
 const ALERT_DIFF_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert diff --url http://localhost:3000 --diff-dir ./alerts/raw\n  grafana-util alert diff --url http://localhost:3000 --diff-dir ./alerts/raw --json";
-const ALERT_PLAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert plan --desired-dir ./alerts/desired\n  grafana-util alert plan --desired-dir ./alerts/desired --prune --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json --output json";
-const ALERT_APPLY_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert apply --plan-file ./alert-plan-reviewed.json --approve\n  grafana-util alert apply --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --plan-file ./alert-plan-reviewed.json --approve";
-const ALERT_DELETE_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert delete --kind rule --identity cpu-main\n  grafana-util alert delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --kind policy-tree --identity default --allow-policy-reset";
+const ALERT_PLAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert plan --desired-dir ./alerts/desired\n  grafana-util alert plan --desired-dir ./alerts/desired --prune --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json --output-format json";
+const ALERT_APPLY_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert apply --plan-file ./alert-plan-reviewed.json --approve\n  grafana-util alert apply --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --plan-file ./alert-plan-reviewed.json --approve --output-format json";
+const ALERT_DELETE_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert delete --kind rule --identity cpu-main\n  grafana-util alert delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --kind policy-tree --identity default --allow-policy-reset --output-format json";
 const ALERT_INIT_HELP_TEXT: &str =
     "Examples:\n\n  grafana-util alert init --desired-dir ./alerts/desired";
 const ALERT_ADD_RULE_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert add-rule --desired-dir ./alerts/desired --name cpu-high --folder platform-alerts --rule-group cpu --receiver pagerduty-primary --severity critical --expr 'A' --threshold 80 --above --for 5m --label team=platform --annotation summary='CPU high'\n  grafana-util alert add-rule --desired-dir ./alerts/desired --name cpu-high --folder platform-alerts --rule-group cpu --receiver pagerduty-primary --dry-run";
@@ -418,12 +418,12 @@ pub struct AlertPlanArgs {
     )]
     pub panel_id_map: Option<PathBuf>,
     #[arg(
-        long,
+        long = "output-format",
         value_enum,
         default_value_t = AlertCommandOutputFormat::Text,
         help = "Render plan output as text or json."
     )]
-    pub output: AlertCommandOutputFormat,
+    pub output_format: AlertCommandOutputFormat,
 }
 
 /// Arguments for applying a reviewed alert plan.
@@ -441,12 +441,12 @@ pub struct AlertApplyArgs {
     )]
     pub approve: bool,
     #[arg(
-        long,
+        long = "output-format",
         value_enum,
         default_value_t = AlertCommandOutputFormat::Text,
         help = "Render apply output as text or json."
     )]
-    pub output: AlertCommandOutputFormat,
+    pub output_format: AlertCommandOutputFormat,
 }
 
 /// Arguments for deleting one managed alert resource.
@@ -468,12 +468,12 @@ pub struct AlertDeleteArgs {
     )]
     pub allow_policy_reset: bool,
     #[arg(
-        long,
+        long = "output-format",
         value_enum,
         default_value_t = AlertCommandOutputFormat::Text,
         help = "Render delete preview or execution output as text or json."
     )]
-    pub output: AlertCommandOutputFormat,
+    pub output_format: AlertCommandOutputFormat,
 }
 
 /// Arguments for initializing a staged alert desired-state layout.
@@ -1020,8 +1020,8 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
             args.prune = inner.prune;
             args.dashboard_uid_map = inner.dashboard_uid_map;
             args.panel_id_map = inner.panel_id_map;
-            args.command_output = Some(inner.output);
-            args.json = matches!(inner.output, AlertCommandOutputFormat::Json);
+            args.command_output = Some(inner.output_format);
+            args.json = matches!(inner.output_format, AlertCommandOutputFormat::Json);
             args
         }
         Some(AlertGroupCommand::Apply(inner)) => {
@@ -1029,8 +1029,8 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
             args.command_kind = Some(AlertCommandKind::Apply);
             args.plan_file = Some(inner.plan_file);
             args.approve = inner.approve;
-            args.command_output = Some(inner.output);
-            args.json = matches!(inner.output, AlertCommandOutputFormat::Json);
+            args.command_output = Some(inner.output_format);
+            args.json = matches!(inner.output_format, AlertCommandOutputFormat::Json);
             args
         }
         Some(AlertGroupCommand::Delete(inner)) => {
@@ -1039,8 +1039,8 @@ pub fn normalize_alert_namespace_args(args: AlertNamespaceArgs) -> AlertCliArgs 
             args.resource_kind = Some(inner.kind);
             args.resource_identity = Some(inner.identity);
             args.allow_policy_reset = inner.allow_policy_reset;
-            args.command_output = Some(inner.output);
-            args.json = matches!(inner.output, AlertCommandOutputFormat::Json);
+            args.command_output = Some(inner.output_format);
+            args.json = matches!(inner.output_format, AlertCommandOutputFormat::Json);
             args
         }
         Some(AlertGroupCommand::Init(inner)) => {

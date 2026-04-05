@@ -15,6 +15,10 @@ Use this when you want a local read-only check of a dashboard draft before publi
 ```bash
 # Purpose: Review one local dashboard JSON file without touching Grafana.
 grafana-util dashboard review --input ./drafts/cpu-main.json
+```
+
+```bash
+# Purpose: Review one local dashboard JSON file without touching Grafana.
 grafana-util dashboard review --input ./drafts/cpu-main.json --output-format yaml
 ```
 

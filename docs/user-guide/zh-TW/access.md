@@ -14,6 +14,23 @@
 - 再把盤點、匯出、匯入與 diff 做成可重複流程
 - 需要時才對 token 做輪替或刪除
 
+## 採用前後對照
+
+- 以前：身分與存取的工作分散在不同 command 群組，命名風格也不一致。
+- 現在：org、user、team 與 service account 放在同一份導引，入口與術語都更清楚。
+
+## 成功判準
+
+- 你一眼就能分辨任務是 org 管理、user 管理、team 管理，還是 service account 處理。
+- 你在動手前就知道自己要進哪一組 command。
+- 你知道什麼時候需要先看審查步驟，再做變更。
+
+## 失敗時先檢查
+
+- 如果這次身分變更會影響到比預期更多的 org，先停下來確認範圍。
+- 如果不確定 token 或 service account 能不能做這件事，先看指令頁，不要直接 mutate。
+- 如果你還覺得 team / org / user 的說法不一致，先回 glossary 和 command reference。
+
 ## 🔗 指令頁面
 
 如果你現在要查的是指令細節，而不是工作流程章節，可以直接看下面這些指令頁：
@@ -36,7 +53,15 @@
 ```bash
 # 用途：1. 列出、匯出與回放 org。
 grafana-util access org list --table
+```
+
+```bash
+# 用途：1. 列出、匯出與回放 org。
 grafana-util access org export --export-dir ./access-orgs
+```
+
+```bash
+# 用途：1. 列出、匯出與回放 org。
 grafana-util access org import --import-dir ./access-orgs --dry-run
 ```
 **預期輸出：**
@@ -83,7 +108,15 @@ No user differences across 12 user(s).
 ```bash
 # 用途：2. team 盤點與同步。
 grafana-util access team list --org-id 1 --table
+```
+
+```bash
+# 用途：2. team 盤點與同步。
 grafana-util access team export --export-dir ./access-teams --with-members
+```
+
+```bash
+# 用途：2. team 盤點與同步。
 grafana-util access team import --import-dir ./access-teams --replace-existing --dry-run --table
 ```
 **預期輸出：**
@@ -110,6 +143,10 @@ service account 是自動化流程常見的基礎元件。
 ```bash
 # 用途：1. 列出與匯出 service account。
 grafana-util access service-account list --json
+```
+
+```bash
+# 用途：1. 列出與匯出 service account。
 grafana-util access service-account export --export-dir ./access-sa
 ```
 **預期輸出：**
@@ -172,7 +209,15 @@ Created service-account token nightly -> serviceAccountId=15
 ```bash
 # 用途：比較本機快照與 live Grafana 之間的差異。
 grafana-util access user diff --import-dir ./access-users
+```
+
+```bash
+# 用途：比較本機快照與 live Grafana 之間的差異。
 grafana-util access team diff --diff-dir ./access-teams
+```
+
+```bash
+# 用途：比較本機快照與 live Grafana 之間的差異。
 grafana-util access service-account diff --diff-dir ./access-sa
 ```
 **預期輸出：**

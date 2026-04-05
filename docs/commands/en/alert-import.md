@@ -18,11 +18,32 @@ Import alerting resource JSON files through the Grafana API.
 - `--json` renders dry-run output as structured JSON.
 - `--dashboard-uid-map` and `--panel-id-map` repair linked alert rules during import.
 
+## Before / After
+
+- Before: recreate alert resources manually or paste JSON back into Grafana one object at a time.
+- After: import one export bundle and let the command handle the resource set as a unit.
+
+## What success looks like
+
+- Dry-run output matches the resources you intended to import.
+- Live import restores the expected rules, contact points, mute timings, templates, and policies.
+- Dashboard-linked alert rules still point at the right dashboards or panels after mapping.
+
+## Failure checks
+
+- Make sure `--import-dir` points at the `raw/` directory, not the parent export folder.
+- If dashboard-linked rules move, supply the dashboard and panel mapping flags before importing.
+- Use `--replace-existing` only when you expect to overwrite matching live resources.
+
 ## Examples
 
 ```bash
 # Purpose: Import alerting resource JSON files through the Grafana API.
 grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing
+```
+
+```bash
+# Purpose: Import alerting resource JSON files through the Grafana API.
 grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dry-run --json
 ```
 

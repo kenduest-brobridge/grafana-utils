@@ -13,6 +13,28 @@ These pages track the current Rust CLI help for the command tree exposed by `gra
 
 Use these pages when you want one stable page per command or subcommand instead of a handbook chapter. The handbook explains workflow and intent; the command pages explain the concrete CLI surface.
 
+## Output selector conventions
+
+Many list, review, and dry-run commands support both a long output selector and one or more direct shorthand flags.
+
+Typical patterns:
+
+- `--output-format table` is usually equivalent to `--table`
+- `--output-format json` is usually equivalent to `--json`
+- `--output-format csv` is usually equivalent to `--csv`
+- `--output-format yaml` is usually equivalent to `--yaml`
+- `--output-format text` is usually equivalent to `--text`
+
+Use the long form when you want one explicit flag that is easy to templatize in scripts. Use the short form when you want a faster interactive command line.
+
+Important exceptions:
+
+- some commands only expose a subset of shortcuts
+- `dashboard topology` is different: it supports `text`, `json`, `mermaid`, and `dot`, but it does not have shortcut flags such as `--table`
+- destination-path flags such as `--output-file` or `--output` on draft/export commands are not render-format selectors
+
+If you are unsure, treat the per-command page as authoritative for that exact command surface.
+
 If you prefer `man` format, render [grafana-util(1)](../../man/grafana-util.1) locally with `man ./docs/man/grafana-util.1` on macOS or `man -l docs/man/grafana-util.1` on GNU/Linux.
 The checked-in `docs/man/*.1` files are generated from these English command pages via `python3 scripts/generate_manpages.py`.
 The checked-in `docs/html/commands/en/*.html` files are generated from the same source via `python3 scripts/generate_command_html.py`.
@@ -36,6 +58,7 @@ The checked-in `docs/html/commands/en/*.html` files are generated from the same 
 - [dashboard inspect-vars](./dashboard-inspect-vars.md)
 - [dashboard governance-gate](./dashboard-governance-gate.md)
 - [dashboard topology](./dashboard-topology.md)
+- [dashboard impact](./dashboard-impact.md)
 - [dashboard screenshot](./dashboard-screenshot.md)
 
 ## Datasource

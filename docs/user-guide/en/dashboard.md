@@ -14,6 +14,23 @@ This guide is for operators who need to inventory dashboards, export or import t
 - Understand the export and inspect lanes before replaying files.
 - Review drift and dependency shape before import, publish, or delete.
 
+## Before / After
+
+- Before: dashboard work usually started from ad hoc UI clicks, fragile JSON handling, or unclear dependencies.
+- After: inventory, inspect, diff, and replay happen in a clearer sequence with reviewable outputs.
+
+## What success looks like
+
+- You know whether the current task belongs in list, export, inspect, topology, screenshot, or import.
+- You can explain which lane you are using before mutating anything.
+- You can prove the dashboard is ready to replay or publish before you touch live state.
+
+## Failure checks
+
+- If the export tree is incomplete, fix the source path before replaying.
+- If inspect output shows missing queries or variables, stop and resolve that before import.
+- If you cannot explain what a screenshot or topology output is proving, you are probably in the wrong workflow lane.
+
 > **Operator-First Design**: This tool treats dashboards as version-controlled assets. The goal is to move and govern dashboard state safely, with enough visibility to decide whether a file is ready to replay, patch, or promote.
 
 ## 🔗 Command Pages

@@ -18,11 +18,31 @@ Use this when you need a local datasource bundle for later inspection, diff, or 
 ```bash
 # Purpose: Export live Grafana datasource inventory as normalized JSON plus provisioning files.
 grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./datasources --overwrite
+```
+
+```bash
+# Purpose: Export live Grafana datasource inventory as normalized JSON plus provisioning files.
 grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./datasources --overwrite
 ```
+
+## Before / After
+
+- **Before**: live datasource state was easy to lose because the export shape was not normalized or easy to reuse later.
+- **After**: one export gives you a local bundle that is stable enough for inspection, diff, and import.
+
+## What success looks like
+
+- the export tree is complete enough to inspect later without Grafana
+- normalized JSON and provisioning files stay aligned with the source inventory
+- the bundle is ready for diff or import without extra hand cleanup
+
+## Failure checks
+
+- if the export tree is missing org data, confirm the org scope and whether the credentials can see it
+- if `--all-orgs` fails, use Basic auth and verify that the account can see each target org
+- if the bundle looks stale, verify the export directory and whether `--overwrite` was used intentionally
 
 ## Related commands
 - [datasource inspect-export](./datasource-inspect-export.md)
 - [datasource import](./datasource-import.md)
 - [datasource diff](./datasource-diff.md)
-

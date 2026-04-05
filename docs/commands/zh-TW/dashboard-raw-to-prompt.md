@@ -50,10 +50,30 @@
 ```bash
 # 用途：把一般 dashboard JSON 或 `raw/` lane 檔案轉成帶有 `__inputs` 的 Grafana UI prompt JSON。
 grafana-util dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json
+```
+
+```bash
+# 用途：把一般 dashboard JSON 或 `raw/` lane 檔案轉成帶有 `__inputs` 的 Grafana UI prompt JSON。
 grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu.json --input-file ./legacy/logs.json --progress
+```
+
+```bash
+# 用途：把一般 dashboard JSON 或 `raw/` lane 檔案轉成帶有 `__inputs` 的 Grafana UI prompt JSON。
 grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --overwrite
+```
+
+```bash
+# 用途：把一般 dashboard JSON 或 `raw/` lane 檔案轉成帶有 `__inputs` 的 Grafana UI prompt JSON。
 grafana-util dashboard raw-to-prompt --input-dir ./legacy-json --output-dir ./converted/prompt --output-format table
+```
+
+```bash
+# 用途：把一般 dashboard JSON 或 `raw/` lane 檔案轉成帶有 `__inputs` 的 Grafana UI prompt JSON。
 grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu.json --datasource-map ./datasource-map.yaml --resolution exact --log-file ./raw-to-prompt.log --log-format json
+```
+
+```bash
+# 用途：把一般 dashboard JSON 或 `raw/` lane 檔案轉成帶有 `__inputs` 的 Grafana UI prompt JSON。
 grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu.json --profile prod --org-id 2 --resolution exact
 ```
 

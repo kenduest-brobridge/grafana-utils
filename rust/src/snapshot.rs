@@ -34,9 +34,9 @@ pub const SNAPSHOT_DATASOURCE_ROOT_INDEX_KIND: &str = "grafana-utils-datasource-
 pub const SNAPSHOT_DATASOURCE_TOOL_SCHEMA_VERSION: i64 = 1;
 const SNAPSHOT_REVIEW_KIND: &str = "grafana-utils-snapshot-review";
 const SNAPSHOT_REVIEW_SCHEMA_VERSION: i64 = 1;
-const SNAPSHOT_ROOT_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot --overwrite\n\n  grafana-util snapshot review --input-dir ./snapshot --output table\n\n  grafana-util snapshot review --input-dir ./snapshot --interactive";
+const SNAPSHOT_ROOT_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot --overwrite\n\n  grafana-util snapshot review --input-dir ./snapshot --output-format table\n\n  grafana-util snapshot review --input-dir ./snapshot --interactive";
 const SNAPSHOT_EXPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot --overwrite";
-const SNAPSHOT_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot review --input-dir ./snapshot --output table\n  grafana-util snapshot review --input-dir ./snapshot --output csv\n  grafana-util snapshot review --input-dir ./snapshot --output text\n  grafana-util snapshot review --input-dir ./snapshot --output json\n  grafana-util snapshot review --input-dir ./snapshot --output yaml\n  grafana-util snapshot review --input-dir ./snapshot --interactive";
+const SNAPSHOT_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot review --input-dir ./snapshot --output-format table\n  grafana-util snapshot review --input-dir ./snapshot --output-format csv\n  grafana-util snapshot review --input-dir ./snapshot --output-format text\n  grafana-util snapshot review --input-dir ./snapshot --output-format json\n  grafana-util snapshot review --input-dir ./snapshot --output-format yaml\n  grafana-util snapshot review --input-dir ./snapshot --interactive";
 
 fn export_scope_kind_from_metadata_value(metadata: &Value) -> &str {
     metadata
@@ -123,17 +123,17 @@ pub struct SnapshotReviewArgs {
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with = "output",
-        help = "Shortcut for --output interactive."
+        conflicts_with = "output_format",
+        help = "Shortcut for --output-format interactive."
     )]
     pub interactive: bool,
     #[arg(
-        long,
+        long = "output-format",
         value_enum,
         default_value_t = OverviewOutputFormat::Text,
         help = SNAPSHOT_REVIEW_OUTPUT_HELP
     )]
-    pub output: OverviewOutputFormat,
+    pub output_format: OverviewOutputFormat,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -216,7 +216,7 @@ pub fn build_snapshot_overview_args(args: &SnapshotReviewArgs) -> OverviewArgs {
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: args.output,
+        output_format: args.output_format,
     }
 }
 
@@ -1982,7 +1982,7 @@ pub fn run_snapshot_review(args: SnapshotReviewArgs) -> Result<()> {
     let output = if args.interactive {
         OverviewOutputFormat::Interactive
     } else {
-        args.output
+        args.output_format
     };
     run_snapshot_review_document_with_handler(args, move |document| {
         emit_snapshot_review_output(&document, output)

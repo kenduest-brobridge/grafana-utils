@@ -102,10 +102,35 @@ fn parse_cli_supports_inspect_live_output_file() {
                 inspect_args.output_file,
                 Some(PathBuf::from("/tmp/inspect-live.txt"))
             );
+            assert!(!inspect_args.also_stdout);
             assert_eq!(
                 inspect_args.output_format,
                 Some(InspectOutputFormat::ReportTree)
             );
+        }
+        _ => panic!("expected inspect-live command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_inspect_live_also_stdout_with_output_file() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "inspect-live",
+        "--url",
+        "https://grafana.example.com",
+        "--output-file",
+        "/tmp/inspect-live.txt",
+        "--also-stdout",
+    ]);
+
+    match args.command {
+        DashboardCommand::InspectLive(inspect_args) => {
+            assert_eq!(
+                inspect_args.output_file,
+                Some(PathBuf::from("/tmp/inspect-live.txt"))
+            );
+            assert!(inspect_args.also_stdout);
         }
         _ => panic!("expected inspect-live command"),
     }
@@ -257,6 +282,7 @@ fn parse_cli_supports_dashboard_validate_export_command() {
                 validate_args.output_file,
                 Some(PathBuf::from("./dashboard-validation.json"))
             );
+            assert!(!validate_args.also_stdout);
         }
         _ => panic!("expected validate-export command"),
     }
@@ -310,6 +336,7 @@ fn inspect_live_help_mentions_report_and_panel_filter_flags() {
     assert!(help.contains("--concurrency"));
     assert!(help.contains("--progress"));
     assert!(help.contains("--help-full"));
+    assert!(help.contains("--also-stdout"));
     assert!(help.contains("tree"));
     assert!(help.contains("tree-table"));
     assert!(!help.contains("Extended Examples:"));

@@ -145,20 +145,48 @@ pre:hover .code-controls { opacity: 1; }
 #font-select { width: 138px; }
 #theme-select { width: 128px; }
 
-.layout { display: grid; grid-template-columns: 232px minmax(0, 1fr) 244px; gap: 20px; align-items: start; }
-.layout.layout-no-nav { grid-template-columns: minmax(0, 1fr) 244px; }
-.layout.layout-no-sidebar { grid-template-columns: 232px minmax(0, 1fr); }
+.layout {
+  --nav-width: 232px;
+  --sidebar-width: 244px;
+  display: grid;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr) var(--sidebar-width);
+  gap: 20px;
+  align-items: start;
+}
+.layout.layout-no-nav { --nav-width: 0px; grid-template-columns: minmax(0, 1fr) var(--sidebar-width); }
+.layout.layout-no-sidebar { --sidebar-width: 0px; grid-template-columns: var(--nav-width) minmax(0, 1fr); }
 .layout.layout-no-nav.layout-no-sidebar { grid-template-columns: minmax(0, 1fr); }
+.layout.layout-collapsed-nav:not(.layout-no-nav) { --nav-width: 26px; }
+.layout.layout-collapsed-sidebar:not(.layout-no-sidebar) { --sidebar-width: 26px; }
 @media (max-width: 1280px) { .layout { grid-template-columns: 210px minmax(0, 1fr); gap: 18px; } .sidebar { display: none !important; } }
 @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } .nav-sidebar { display: none !important; } }
 
-.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 12px 0 0; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.nav-sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .nav-sidebar li { margin-bottom: 0; }
-.nav-sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; letter-spacing: 0.04em; }
+.nav-sidebar h2 {
+  margin: 0 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: none;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  opacity: 0.82;
+}
 .nav-section + .nav-section { margin-top: 18px; }
 .nav-group-block + .nav-group-block { margin-top: 14px; }
-.nav-group-title { margin: 0 0 6px; font-size: 0.76rem; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+.nav-group-title {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--heading);
+  letter-spacing: 0.01em;
+  line-height: 1.32;
+}
 .nav-tree,
 .nav-sub-list { list-style: none; margin: 0; padding: 0; position: relative; }
 .nav-tree::before,
@@ -167,24 +195,67 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 .nav-tree-node + .nav-tree-node { margin-top: 2px; }
 .nav-tree-node::before { display: none; }
 .nav-group { margin: 0; position: relative; }
-.nav-group + .nav-group { margin-top: 4px; }
-.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.92rem; }
+.nav-group + .nav-group { margin-top: 2px; }
+.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.9rem; }
 .nav-group-header:hover { color: var(--heading); }
-.nav-group-link { flex: 1; display: block; padding: 5px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 610; line-height: 1.42; }
+.nav-group-link { flex: 1; display: block; padding: 4px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 600; line-height: 1.4; }
 .nav-group-link:hover { background: var(--panel-strong); }
-.nav-item { display: block; padding: 5px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 550; font-size: 0.9rem; line-height: 1.44; }
+.nav-item { display: block; padding: 4px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 530; font-size: 0.84rem; line-height: 1.4; }
 .nav-group-link,
 .nav-item,
 .nav-command-entry { white-space: nowrap; }
 .nav-item:hover { background: var(--panel-strong); color: var(--heading); }
 .nav-item.active,
-.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 82%, white); color: var(--heading); font-weight: 620; box-shadow: inset 2px 0 0 var(--accent); }
+.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 70%, white); color: var(--heading); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .nav-sub-list { margin-top: 4px; margin-left: 10px; }
 .nav-sub-list .nav-item { color: var(--muted); font-weight: 520; }
-.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 610; }
-.nav-command-entry { display: block; padding: 5px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.88rem; font-weight: 560; line-height: 1.4; transition: 0.15s; }
+.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 590; }
+.nav-command-entry { display: block; padding: 4px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.82rem; font-weight: 540; line-height: 1.38; transition: 0.15s; }
 .nav-command-entry:hover { color: var(--heading); background: var(--panel-strong); }
 .nav-command-entry.active { color: var(--heading); font-weight: 620; background: color-mix(in srgb, var(--accent-soft) 60%, white); box-shadow: inset 2px 0 0 var(--accent); }
+
+.sidebar-toggle {
+  position: absolute;
+  top: 18px;
+  width: 18px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 92%, white);
+  color: var(--muted);
+  font: 700 10px var(--font-sans);
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  z-index: 5;
+}
+.sidebar-toggle:hover {
+  color: var(--heading);
+  border-color: color-mix(in srgb, var(--border) 55%, var(--accent));
+  background: var(--panel);
+}
+.sidebar-toggle-left { right: 0; transform: translateX(50%); }
+.sidebar-toggle-right { left: 0; transform: translateX(-50%); }
+.layout.layout-collapsed-nav .nav-sidebar-content,
+.layout.layout-collapsed-sidebar .sidebar-content {
+  opacity: 0;
+  pointer-events: none;
+}
+.layout.layout-collapsed-nav .nav-sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-sidebar .sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-nav .nav-sidebar,
+.layout.layout-collapsed-sidebar .sidebar {
+  min-width: 0;
+}
+.layout.layout-collapsed-nav .sidebar-toggle-left {
+  right: 4px;
+  transform: none;
+}
+.layout.layout-collapsed-sidebar .sidebar-toggle-right {
+  left: 4px;
+  transform: none;
+}
 
 .article { min-width: 0; padding: 10px 0 24px; }
 .article p,
@@ -328,8 +399,9 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 }
 .command-intro-list li { margin: 0.18rem 0; }
 
-.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0 12px; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .sidebar li { margin-bottom: 0; }
 .sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.05em; }
 .sidebar-section + .sidebar-section { margin-top: 22px; }
@@ -680,13 +752,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 
       <div class="layout">
-  <aside class="nav-sidebar"><section class="nav-section"><h2>使用手冊</h2><div class="nav-group-block"><div class="nav-group-title">開始</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/zh-TW/index.html" class="nav-item">概觀</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/what-is-grafana-util.html" class="nav-item">這個工具是做什麼的</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/getting-started.html" class="nav-item">開始使用</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">角色路徑</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/zh-TW/role-new-user.html" class="nav-item">新手快速入門</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/role-sre-ops.html" class="nav-item">SRE / 維運角色導讀</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/role-automation-ci.html" class="nav-item">自動化 / CI 角色導讀</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">核心操作</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/zh-TW/dashboard.html" class="nav-item">Dashboard 維運人員手冊</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/datasource.html" class="nav-item">Data source 維運手冊</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/alert.html" class="nav-item">Alert 維運人員手冊</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/access.html" class="nav-item">身分與存取管理</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">治理</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/zh-TW/architecture.html" class="nav-item">系統架構與設計原則</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/change-overview-status.html" class="nav-item">專案狀態與變更總覽</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">實戰與參考</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/zh-TW/scenarios.html" class="nav-item">維運情境手冊</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/recipes.html" class="nav-item">實戰錦囊與最佳實踐</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/reference.html" class="nav-item">技術參考手冊</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/troubleshooting.html" class="nav-item">疑難排解與名詞解釋</a></li></ul></div></section><section class="nav-section"><h2>指令參考</h2><a href="index.html" class="nav-command-entry active">開啟指令參考</a></section></aside>
+  <aside class="nav-sidebar">
+  <button class="sidebar-toggle sidebar-toggle-left" type="button" aria-expanded="true" aria-label="Toggle handbook navigation">◀</button>
+  <div class="nav-sidebar-content"><section class="nav-section"><h2>手冊導覽</h2><div class="nav-group-block"><div class="nav-group-title">開始</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/zh-TW/index.html" class="nav-item">概觀</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/what-is-grafana-util.html" class="nav-item">這個工具是做什麼的</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/getting-started.html" class="nav-item">開始使用</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">角色路徑</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/zh-TW/role-new-user.html" class="nav-item">新手快速入門</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/role-sre-ops.html" class="nav-item">SRE / 維運角色導讀</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/role-automation-ci.html" class="nav-item">自動化 / CI 角色導讀</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">核心操作</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/zh-TW/dashboard.html" class="nav-item">Dashboard 維運人員手冊</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/datasource.html" class="nav-item">Data source 維運手冊</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/alert.html" class="nav-item">Alert 維運人員手冊</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/access.html" class="nav-item">身分與存取管理</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">治理</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/zh-TW/architecture.html" class="nav-item">系統架構與設計原則</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/change-overview-status.html" class="nav-item">專案狀態與變更總覽</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">實戰與參考</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/zh-TW/scenarios.html" class="nav-item">維運情境手冊</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/recipes.html" class="nav-item">實戰錦囊與最佳實踐</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/reference.html" class="nav-item">技術參考手冊</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/troubleshooting.html" class="nav-item">疑難排解與名詞解釋</a></li></ul></div></section><section class="nav-section"><h2>指令入口</h2><a href="index.html" class="nav-command-entry active">開啟指令參考</a></section></div>
+</aside>
 
   <article class="article">
     <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / grafana-util access user</div>
 
-    <div class="hero-eyebrow">Docs</div>
-<h1><span class="hero-title-main">grafana-util access user</span></h1>
+    <h1><span class="hero-title-main">grafana-util access user</span></h1>
 
 
     <section class="command-intro">
@@ -708,19 +782,30 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>列出、瀏覽、建立、修改、匯出、匯入、比對或刪除 Grafana 使用者。</p>
 <h2 id="使用時機">使用時機</h2>
 <ul><li>檢視目前 org 或全域管理範圍內的使用者。</li><li>以登入名、電子郵件、角色與管理員設定建立或更新使用者。</li><li>匯出與匯入使用者清單套件。</li><li>從 org 成員關係或全域登錄中移除使用者。</li></ul>
+<h2 id="採用前後對照">採用前後對照</h2>
+<ul><li><strong>採用前</strong>：使用者生命週期工作常常散在 org 設定、管理頁面與一次性的匯出或匯入腳本裡。</li><li><strong>採用後</strong>：同一個命名空間就能處理 inventory、建立／更新、匯出／匯入，以及定點移除，而且認證方式一致。</li></ul>
+<h2 id="成功判準">成功判準</h2>
+<ul><li>建立或修改後的使用者會有預期的 login、email 與 role</li><li>inventory 與套件可以在刪除或搬移前先比對</li><li>成員關係的範圍一直很清楚，不會不小心動到錯的 org 或全域登錄</li></ul>
+<h2 id="失敗時先檢查">失敗時先檢查</h2>
+<ul><li>如果 list、add 或 delete 看起來是空的或不對，先確認選到的 profile 或 token 具有正確的 org 或 admin scope</li><li>如果建立或修改失敗，先核對 login / email 是否重複，以及目前範圍是 org 還是 global</li><li>如果匯入的行為不如預期，先確認套件來源與目標範圍，再重試</li></ul>
 <h2 id="主要旗標">主要旗標</h2>
 <ul><li><code>list</code>: <code>--scope</code>, <code>--all-orgs</code>, <code>--query</code>, <code>--login</code>, <code>--email</code>, <code>--org-role</code>, <code>--grafana-admin</code>, <code>--with-teams</code>, <code>--page</code>, <code>--per-page</code>, <code>--table</code>, <code>--csv</code>, <code>--json</code>, <code>--yaml</code>, <code>--output-format</code></li><li><code>browse</code>: <code>--scope</code>, <code>--all-orgs</code>, <code>--current-org</code>, <code>--query</code>, <code>--login</code>, <code>--email</code>, <code>--org-role</code>, <code>--grafana-admin</code>, <code>--page</code>, <code>--per-page</code></li><li><code>add</code>: <code>--login</code>, <code>--email</code>, <code>--name</code>, <code>--password</code> 或 <code>--password-file</code> 或 <code>--prompt-user-password</code>, <code>--org-role</code>, <code>--grafana-admin</code>, <code>--json</code></li><li><code>modify</code>: <code>--user-id</code>, <code>--login</code>, <code>--email</code>, <code>--set-login</code>, <code>--set-email</code>, <code>--set-name</code>, <code>--set-password</code> 或 <code>--set-password-file</code> 或 <code>--prompt-set-password</code>, <code>--set-org-role</code>, <code>--set-grafana-admin</code>, <code>--json</code></li><li><code>export</code> 與 <code>diff</code>: <code>--export-dir</code> 或 <code>--diff-dir</code>, <code>--overwrite</code>, <code>--dry-run</code>, <code>--scope</code>, <code>--with-teams</code></li><li><code>import</code>: <code>--import-dir</code>, <code>--scope</code>, <code>--replace-existing</code>, <code>--dry-run</code>, <code>--table</code>, <code>--json</code>, <code>--output-format</code>, <code>--yes</code></li><li><code>delete</code>: <code>--user-id</code>, <code>--login</code>, <code>--email</code>, <code>--scope</code>, <code>--yes</code>, <code>--json</code></li></ul>
 <h2 id="範例">範例</h2>
-<pre><code># 用途：列出、瀏覽、建立、修改、匯出、匯入、比對或刪除 Grafana 使用者。
-grafana-util access user list --profile prod --scope org --output-format text
-grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --email alice@example.com --name Alice --password secret
+<pre><code># 用途：在調整成員權限前，先看清楚單一 org 裡有哪些使用者。
+grafana-util access user list --profile prod --scope org --output-format text</code></pre>
+<pre><code># 用途：用明確的認證與 org 範圍建立一個使用者。
+grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --email alice@example.com --name Alice --password secret</code></pre>
+<pre><code># 用途：先看清楚目前 org 裡的使用者，再刪除這個帳號。
 grafana-util access user list --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --scope org --json</code></pre>
 <h2 id="相關命令">相關命令</h2>
 <ul><li><a href="access.html">access</a></li><li><a href="access-org.html">access org</a></li><li><a href="access-team.html">access team</a></li><li><a href="access-service-account.html">access service-account</a></li></ul>
     
   </article>
   <aside class="sidebar">
-  <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#目的"><span class="toc-label">目的</span></a></li><li class="toc-level-2"><a href="#使用時機"><span class="toc-label">使用時機</span></a></li><li class="toc-level-2"><a href="#主要旗標"><span class="toc-label">主要旗標</span></a></li><li class="toc-level-2"><a href="#範例"><span class="toc-label">範例</span></a></li><li class="toc-level-2"><a href="#相關命令"><span class="toc-label">相關命令</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/zh-TW/access.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/access-user.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+  <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
+  <div class="sidebar-content">
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#目的"><span class="toc-label">目的</span></a></li><li class="toc-level-2"><a href="#使用時機"><span class="toc-label">使用時機</span></a></li><li class="toc-level-2"><a href="#採用前後對照"><span class="toc-label">採用前後對照</span></a></li><li class="toc-level-2"><a href="#成功判準"><span class="toc-label">成功判準</span></a></li><li class="toc-level-2"><a href="#失敗時先檢查"><span class="toc-label">失敗時先檢查</span></a></li><li class="toc-level-2"><a href="#主要旗標"><span class="toc-label">主要旗標</span></a></li><li class="toc-level-2"><a href="#範例"><span class="toc-label">範例</span></a></li><li class="toc-level-2"><a href="#相關命令"><span class="toc-label">相關命令</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/zh-TW/access.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/access-user.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+  </div>
 </aside>
 
 </div>
@@ -769,6 +854,26 @@ grafana-util access user list --url http://localhost:3000 --token &quot;$GRAFANA
 
   document.querySelectorAll(".nav-group-header").forEach(header => {
     header.onclick = () => { header.closest(".nav-group").classList.toggle("collapsed"); };
+  });
+
+  document.querySelectorAll(".sidebar-toggle-left").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-nav");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "▶" : "◀";
+    });
+  });
+
+  document.querySelectorAll(".sidebar-toggle-right").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-sidebar");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "◀" : "▶";
+    });
   });
 
   const jumpSelect = document.getElementById("jump-select");

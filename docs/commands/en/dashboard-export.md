@@ -6,6 +6,10 @@ Export dashboards to `raw/`, `prompt/`, and `provisioning/` files.
 ## When to use
 Use this when you need a local export tree for later import, review, diff, or file-provisioning workflows. The `prompt/` lane is for Grafana UI import, not dashboard API import; use `dashboard raw-to-prompt` when you need to convert ordinary or raw dashboard JSON into prompt JSON.
 
+## Before / After
+- **Before**: export is a one-off action, and you only discover later whether the tree is reviewable or reusable.
+- **After**: export becomes the first artifact in a repeatable workflow that can feed inspect, diff, dry-run import, and Git review.
+
 ## Key flags
 - `--export-dir`: target directory for the export tree.
 - `--org-id`: export one explicit Grafana org.
@@ -21,11 +25,29 @@ Use this when you need a local export tree for later import, review, diff, or fi
 - Use `--profile` for normal single-org export flows.
 - For `--all-orgs`, prefer admin-backed `--profile` or direct Basic auth because token visibility may not cover every org you expect.
 
+## What success looks like
+- a `raw/` tree exists for API replay and deeper inspection
+- a `prompt/` tree exists when you need a cleaner handoff for UI-style import
+- the export tree is stable enough to commit, diff, or inspect before mutation
+
+## Failure checks
+- if dashboards are missing, check org scope before suspecting the exporter
+- if multi-org output looks partial, check whether the credential can really see every org
+- if the next step is import, confirm whether you should continue from `raw/` or `prompt/`
+
 ## Examples
 ```bash
 # Purpose: Export dashboards to `raw/`, `prompt/`, and `provisioning/` files.
 grafana-util dashboard export --profile prod --export-dir ./dashboards --overwrite
+```
+
+```bash
+# Purpose: Export dashboards to `raw/`, `prompt/`, and `provisioning/` files.
 grafana-util dashboard export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --export-dir ./dashboards --overwrite
+```
+
+```bash
+# Purpose: Export dashboards to `raw/`, `prompt/`, and `provisioning/` files.
 grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./dashboards --overwrite
 ```
 

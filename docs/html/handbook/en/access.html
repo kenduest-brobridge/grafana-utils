@@ -145,20 +145,48 @@ pre:hover .code-controls { opacity: 1; }
 #font-select { width: 138px; }
 #theme-select { width: 128px; }
 
-.layout { display: grid; grid-template-columns: 232px minmax(0, 1fr) 244px; gap: 20px; align-items: start; }
-.layout.layout-no-nav { grid-template-columns: minmax(0, 1fr) 244px; }
-.layout.layout-no-sidebar { grid-template-columns: 232px minmax(0, 1fr); }
+.layout {
+  --nav-width: 232px;
+  --sidebar-width: 244px;
+  display: grid;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr) var(--sidebar-width);
+  gap: 20px;
+  align-items: start;
+}
+.layout.layout-no-nav { --nav-width: 0px; grid-template-columns: minmax(0, 1fr) var(--sidebar-width); }
+.layout.layout-no-sidebar { --sidebar-width: 0px; grid-template-columns: var(--nav-width) minmax(0, 1fr); }
 .layout.layout-no-nav.layout-no-sidebar { grid-template-columns: minmax(0, 1fr); }
+.layout.layout-collapsed-nav:not(.layout-no-nav) { --nav-width: 26px; }
+.layout.layout-collapsed-sidebar:not(.layout-no-sidebar) { --sidebar-width: 26px; }
 @media (max-width: 1280px) { .layout { grid-template-columns: 210px minmax(0, 1fr); gap: 18px; } .sidebar { display: none !important; } }
 @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } .nav-sidebar { display: none !important; } }
 
-.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 12px 0 0; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.nav-sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .nav-sidebar li { margin-bottom: 0; }
-.nav-sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; letter-spacing: 0.04em; }
+.nav-sidebar h2 {
+  margin: 0 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: none;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  opacity: 0.82;
+}
 .nav-section + .nav-section { margin-top: 18px; }
 .nav-group-block + .nav-group-block { margin-top: 14px; }
-.nav-group-title { margin: 0 0 6px; font-size: 0.76rem; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+.nav-group-title {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--heading);
+  letter-spacing: 0.01em;
+  line-height: 1.32;
+}
 .nav-tree,
 .nav-sub-list { list-style: none; margin: 0; padding: 0; position: relative; }
 .nav-tree::before,
@@ -167,24 +195,67 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 .nav-tree-node + .nav-tree-node { margin-top: 2px; }
 .nav-tree-node::before { display: none; }
 .nav-group { margin: 0; position: relative; }
-.nav-group + .nav-group { margin-top: 4px; }
-.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.92rem; }
+.nav-group + .nav-group { margin-top: 2px; }
+.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.9rem; }
 .nav-group-header:hover { color: var(--heading); }
-.nav-group-link { flex: 1; display: block; padding: 5px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 610; line-height: 1.42; }
+.nav-group-link { flex: 1; display: block; padding: 4px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 600; line-height: 1.4; }
 .nav-group-link:hover { background: var(--panel-strong); }
-.nav-item { display: block; padding: 5px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 550; font-size: 0.9rem; line-height: 1.44; }
+.nav-item { display: block; padding: 4px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 530; font-size: 0.84rem; line-height: 1.4; }
 .nav-group-link,
 .nav-item,
 .nav-command-entry { white-space: nowrap; }
 .nav-item:hover { background: var(--panel-strong); color: var(--heading); }
 .nav-item.active,
-.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 82%, white); color: var(--heading); font-weight: 620; box-shadow: inset 2px 0 0 var(--accent); }
+.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 70%, white); color: var(--heading); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .nav-sub-list { margin-top: 4px; margin-left: 10px; }
 .nav-sub-list .nav-item { color: var(--muted); font-weight: 520; }
-.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 610; }
-.nav-command-entry { display: block; padding: 5px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.88rem; font-weight: 560; line-height: 1.4; transition: 0.15s; }
+.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 590; }
+.nav-command-entry { display: block; padding: 4px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.82rem; font-weight: 540; line-height: 1.38; transition: 0.15s; }
 .nav-command-entry:hover { color: var(--heading); background: var(--panel-strong); }
 .nav-command-entry.active { color: var(--heading); font-weight: 620; background: color-mix(in srgb, var(--accent-soft) 60%, white); box-shadow: inset 2px 0 0 var(--accent); }
+
+.sidebar-toggle {
+  position: absolute;
+  top: 18px;
+  width: 18px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 92%, white);
+  color: var(--muted);
+  font: 700 10px var(--font-sans);
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  z-index: 5;
+}
+.sidebar-toggle:hover {
+  color: var(--heading);
+  border-color: color-mix(in srgb, var(--border) 55%, var(--accent));
+  background: var(--panel);
+}
+.sidebar-toggle-left { right: 0; transform: translateX(50%); }
+.sidebar-toggle-right { left: 0; transform: translateX(-50%); }
+.layout.layout-collapsed-nav .nav-sidebar-content,
+.layout.layout-collapsed-sidebar .sidebar-content {
+  opacity: 0;
+  pointer-events: none;
+}
+.layout.layout-collapsed-nav .nav-sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-sidebar .sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-nav .nav-sidebar,
+.layout.layout-collapsed-sidebar .sidebar {
+  min-width: 0;
+}
+.layout.layout-collapsed-nav .sidebar-toggle-left {
+  right: 4px;
+  transform: none;
+}
+.layout.layout-collapsed-sidebar .sidebar-toggle-right {
+  left: 4px;
+  transform: none;
+}
 
 .article { min-width: 0; padding: 10px 0 24px; }
 .article p,
@@ -328,8 +399,9 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 }
 .command-intro-list li { margin: 0.18rem 0; }
 
-.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0 12px; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .sidebar li { margin-bottom: 0; }
 .sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.05em; }
 .sidebar-section + .sidebar-section { margin-top: 22px; }
@@ -680,13 +752,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 
       <div class="layout">
-  <aside class="nav-sidebar"><section class="nav-section"><h2>Handbook</h2><div class="nav-group-block"><div class="nav-group-title">Start</div><ul class="nav-tree"><li class="nav-tree-node"><a href="index.html" class="nav-item">Overview</a></li><li class="nav-tree-node"><a href="what-is-grafana-util.html" class="nav-item">What grafana-util is for</a></li><li class="nav-tree-node"><a href="getting-started.html" class="nav-item">Getting Started</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Role Paths</div><ul class="nav-tree"><li class="nav-tree-node"><a href="role-new-user.html" class="nav-item">New User Handbook</a></li><li class="nav-tree-node"><a href="role-sre-ops.html" class="nav-item">SRE / Operator Handbook</a></li><li class="nav-tree-node"><a href="role-automation-ci.html" class="nav-item">Automation / CI Handbook</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Core Operations</div><ul class="nav-tree"><li class="nav-tree-node"><a href="dashboard.html" class="nav-item">Dashboard Operator Handbook</a></li><li class="nav-tree-node"><a href="datasource.html" class="nav-item">Datasource Operator Handbook</a></li><li class="nav-tree-node"><a href="alert.html" class="nav-item">Alert Operator Handbook</a></li><li class="nav-tree-node"><a href="access.html" class="nav-item active">Access Management (Identity &amp; Access)</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Governance</div><ul class="nav-tree"><li class="nav-tree-node"><a href="architecture.html" class="nav-item">Architecture &amp; Design Principles</a></li><li class="nav-tree-node"><a href="change-overview-status.html" class="nav-item">Project Status &amp; Change Overview</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Scenarios &amp; Reference</div><ul class="nav-tree"><li class="nav-tree-node"><a href="scenarios.html" class="nav-item">Operator Scenarios</a></li><li class="nav-tree-node"><a href="recipes.html" class="nav-item">Best Practices &amp; Real-World Recipes</a></li><li class="nav-tree-node"><a href="reference.html" class="nav-item">Technical Reference</a></li><li class="nav-tree-node"><a href="troubleshooting.html" class="nav-item">Troubleshooting &amp; Glossary</a></li></ul></div></section><section class="nav-section"><h2>Command Reference</h2><a href="../../commands/en/index.html" class="nav-command-entry">Open command docs</a></section></aside>
+  <aside class="nav-sidebar">
+  <button class="sidebar-toggle sidebar-toggle-left" type="button" aria-expanded="true" aria-label="Toggle handbook navigation">◀</button>
+  <div class="nav-sidebar-content"><section class="nav-section"><h2>Guide Map</h2><div class="nav-group-block"><div class="nav-group-title">Start</div><ul class="nav-tree"><li class="nav-tree-node"><a href="index.html" class="nav-item">Overview</a></li><li class="nav-tree-node"><a href="what-is-grafana-util.html" class="nav-item">What grafana-util is for</a></li><li class="nav-tree-node"><a href="getting-started.html" class="nav-item">Getting Started</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Role Paths</div><ul class="nav-tree"><li class="nav-tree-node"><a href="role-new-user.html" class="nav-item">New User Handbook</a></li><li class="nav-tree-node"><a href="role-sre-ops.html" class="nav-item">SRE / Operator Handbook</a></li><li class="nav-tree-node"><a href="role-automation-ci.html" class="nav-item">Automation / CI Handbook</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Core Operations</div><ul class="nav-tree"><li class="nav-tree-node"><a href="dashboard.html" class="nav-item">Dashboard Operator Handbook</a></li><li class="nav-tree-node"><a href="datasource.html" class="nav-item">Datasource Operator Handbook</a></li><li class="nav-tree-node"><a href="alert.html" class="nav-item">Alert Operator Handbook</a></li><li class="nav-tree-node"><a href="access.html" class="nav-item active">Access Management (Identity &amp; Access)</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Governance</div><ul class="nav-tree"><li class="nav-tree-node"><a href="architecture.html" class="nav-item">Architecture &amp; Design Principles</a></li><li class="nav-tree-node"><a href="change-overview-status.html" class="nav-item">Project Status &amp; Change Overview</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Scenarios &amp; Reference</div><ul class="nav-tree"><li class="nav-tree-node"><a href="scenarios.html" class="nav-item">Operator Scenarios</a></li><li class="nav-tree-node"><a href="recipes.html" class="nav-item">Best Practices &amp; Real-World Recipes</a></li><li class="nav-tree-node"><a href="reference.html" class="nav-item">Technical Reference</a></li><li class="nav-tree-node"><a href="troubleshooting.html" class="nav-item">Troubleshooting &amp; Glossary</a></li></ul></div></section><section class="nav-section"><h2>Command Entry</h2><a href="../../commands/en/index.html" class="nav-command-entry">Open command docs</a></section></div>
+</aside>
 
   <article class="article">
     <div class="breadcrumbs"><a href="../../index.html">Home</a> / Handbook / Access Management (Identity &amp; Access)</div>
 
-    <div class="hero-eyebrow">Docs</div>
-<h1><span class="hero-title-main">Access Management (Identity &amp; Access)</span></h1>
+    <h1><span class="hero-title-main">Access Management (Identity &amp; Access)</span></h1>
 
 
     <p>Use this chapter when identity and access are the task: org boundaries, users, teams, service accounts, and the tokens that let automation act safely.</p>
@@ -694,6 +768,12 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <ul><li>Administrators managing org, user, team, or service-account lifecycle work.</li><li>Operators exporting or replaying identity state across environments.</li><li>Teams rotating service-account tokens or auditing access drift.</li></ul>
 <h2 id="primary-goals">Primary Goals</h2>
 <ul><li>Clarify which access surface matches the task before running mutations.</li><li>Keep org, user, team, and service-account inventory reviewable.</li><li>Treat token rotation and access replay as controlled workflows instead of one-off edits.</li></ul>
+<h2 id="before-after">Before / After</h2>
+<ul><li>Before: identity and access work was spread across several command groups with different naming styles.</li><li>After: org, user, team, and service-account workflows share one guide, one glossary, and clearer entry points.</li></ul>
+<h2 id="what-success-looks-like">What success looks like</h2>
+<ul><li>You can tell whether the task is org management, user management, team management, or service-account handling.</li><li>You can name the exact command family before you start mutating anything.</li><li>You know when you need a review step before applying a change.</li></ul>
+<h2 id="failure-checks">Failure checks</h2>
+<ul><li>If an identity change would affect more orgs than you intended, stop and verify the scope first.</li><li>If you are unsure whether a token or service account can perform the task, check the command page before mutation.</li><li>If the wording still feels split across team/org/user surfaces, return to the glossary and the command reference.</li></ul>
 <h2 id="command-pages">Command Pages</h2>
 <p>Need the command-by-command surface instead of the workflow guide?</p>
 <ul><li><a href="../../commands/en/access.html">access command overview</a></li><li><a href="../../commands/en/access-user.html">access user</a></li><li><a href="../../commands/en/access-org.html">access org</a></li><li><a href="../../commands/en/access-team.html">access team</a></li><li><a href="../../commands/en/access-service-account.html">access service-account</a></li><li><a href="../../commands/en/access-service-account-token.html">access service-account token</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
@@ -701,8 +781,10 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>Use <code>access org</code> when you need Basic-auth-backed inventory, export, or replay for orgs, especially when you need to verify which orgs exist before a cross-org change.</p>
 <h3 id="1-list-export-and-replay-orgs">1. List, Export, and Replay orgs</h3>
 <pre><code># Purpose: 1. List, Export, and Replay orgs.
-grafana-util access org list --table
-grafana-util access org export --export-dir ./access-orgs
+grafana-util access org list --table</code></pre>
+<pre><code># Purpose: 1. List, Export, and Replay orgs.
+grafana-util access org export --export-dir ./access-orgs</code></pre>
+<pre><code># Purpose: 1. List, Export, and Replay orgs.
 grafana-util access org import --import-dir ./access-orgs --dry-run</code></pre>
 <p><strong>Expected Output:</strong></p>
 <pre><code>ID   NAME        IS_MAIN   QUOTA
@@ -734,8 +816,10 @@ No user differences across 12 user(s).</code></pre>
 <p>Use <code>--prompt-password</code> when you do not want a password in shell history. <code>--scope global</code> requires Basic auth.</p>
 <h3 id="2-discover-and-sync-teams">2. Discover and Sync Teams</h3>
 <pre><code># Purpose: 2. Discover and Sync Teams.
-grafana-util access team list --org-id 1 --table
-grafana-util access team export --export-dir ./access-teams --with-members
+grafana-util access team list --org-id 1 --table</code></pre>
+<pre><code># Purpose: 2. Discover and Sync Teams.
+grafana-util access team export --export-dir ./access-teams --with-members</code></pre>
+<pre><code># Purpose: 2. Discover and Sync Teams.
 grafana-util access team import --import-dir ./access-teams --replace-existing --dry-run --table</code></pre>
 <p><strong>Expected Output:</strong></p>
 <pre><code>ID   NAME           MEMBERS   EMAIL
@@ -752,7 +836,8 @@ ops-user    Viewer  create   missing</code></pre>
 <p>Service accounts are the foundation of repeatable automation, CI jobs, and scoped integrations.</p>
 <h3 id="1-list-and-export-service-accounts">1. List and Export Service Accounts</h3>
 <pre><code># Purpose: 1. List and Export Service Accounts.
-grafana-util access service-account list --json
+grafana-util access service-account list --json</code></pre>
+<pre><code># Purpose: 1. List and Export Service Accounts.
 grafana-util access service-account export --export-dir ./access-sa</code></pre>
 <p><strong>Expected Output:</strong></p>
 <pre><code>[
@@ -800,8 +885,10 @@ grafana-util access service-account token delete --service-account-id 15 --token
 <h2 id="drift-detection-diff">Drift Detection (Diff)</h2>
 <p>Compare your local identity snapshots against the live Grafana server.</p>
 <pre><code># Purpose: Compare your local identity snapshots against the live Grafana server.
-grafana-util access user diff --import-dir ./access-users
-grafana-util access team diff --diff-dir ./access-teams
+grafana-util access user diff --import-dir ./access-users</code></pre>
+<pre><code># Purpose: Compare your local identity snapshots against the live Grafana server.
+grafana-util access team diff --diff-dir ./access-teams</code></pre>
+<pre><code># Purpose: Compare your local identity snapshots against the live Grafana server.
 grafana-util access service-account diff --diff-dir ./access-sa</code></pre>
 <p><strong>Expected Output:</strong></p>
 <pre><code>--- Live Users
@@ -816,7 +903,10 @@ No service account differences across 2 service account(s).</code></pre>
     <nav class="footer-nav"><a class="link-card" href="alert.html"><span>Previous</span>Alert Operator Handbook</a><a class="link-card" href="change-overview-status.html"><span>Next</span>Project Status &amp; Change Overview</a></nav>
   </article>
   <aside class="sidebar">
-  <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#who-it-is-for"><span class="toc-label">Who It Is For</span></a></li><li class="toc-level-2"><a href="#primary-goals"><span class="toc-label">Primary Goals</span></a></li><li class="toc-level-2"><a href="#command-pages"><span class="toc-label">Command Pages</span></a></li><li class="toc-level-2"><a href="#org-management"><span class="toc-label">org Management</span></a></li><li class="toc-level-3"><a href="#1-list-export-and-replay-orgs"><span class="toc-label">1. List, Export, and Replay orgs</span></a></li><li class="toc-level-2"><a href="#user-and-team-management"><span class="toc-label">User and team management</span></a></li><li class="toc-level-3"><a href="#1-add-modify-and-diff-users"><span class="toc-label">1. Add, Modify, and Diff Users</span></a></li><li class="toc-level-3"><a href="#2-discover-and-sync-teams"><span class="toc-label">2. Discover and Sync Teams</span></a></li><li class="toc-level-2"><a href="#service-account-management"><span class="toc-label">service account management</span></a></li><li class="toc-level-3"><a href="#1-list-and-export-service-accounts"><span class="toc-label">1. List and Export Service Accounts</span></a></li><li class="toc-level-3"><a href="#2-create-and-delete-tokens"><span class="toc-label">2. Create and Delete Tokens</span></a></li><li class="toc-level-2"><a href="#drift-detection-diff"><span class="toc-label">Drift Detection (Diff)</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/access.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
+  <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
+  <div class="sidebar-content">
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#who-it-is-for"><span class="toc-label">Who It Is For</span></a></li><li class="toc-level-2"><a href="#primary-goals"><span class="toc-label">Primary Goals</span></a></li><li class="toc-level-2"><a href="#before-after"><span class="toc-label">Before / After</span></a></li><li class="toc-level-2"><a href="#what-success-looks-like"><span class="toc-label">What success looks like</span></a></li><li class="toc-level-2"><a href="#failure-checks"><span class="toc-label">Failure checks</span></a></li><li class="toc-level-2"><a href="#command-pages"><span class="toc-label">Command Pages</span></a></li><li class="toc-level-2"><a href="#org-management"><span class="toc-label">org Management</span></a></li><li class="toc-level-3"><a href="#1-list-export-and-replay-orgs"><span class="toc-label">1. List, Export, and Replay orgs</span></a></li><li class="toc-level-2"><a href="#user-and-team-management"><span class="toc-label">User and team management</span></a></li><li class="toc-level-3"><a href="#1-add-modify-and-diff-users"><span class="toc-label">1. Add, Modify, and Diff Users</span></a></li><li class="toc-level-3"><a href="#2-discover-and-sync-teams"><span class="toc-label">2. Discover and Sync Teams</span></a></li><li class="toc-level-2"><a href="#service-account-management"><span class="toc-label">service account management</span></a></li><li class="toc-level-3"><a href="#1-list-and-export-service-accounts"><span class="toc-label">1. List and Export Service Accounts</span></a></li><li class="toc-level-3"><a href="#2-create-and-delete-tokens"><span class="toc-label">2. Create and Delete Tokens</span></a></li><li class="toc-level-2"><a href="#drift-detection-diff"><span class="toc-label">Drift Detection (Diff)</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/access.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
+  </div>
 </aside>
 
 </div>
@@ -865,6 +955,26 @@ No service account differences across 2 service account(s).</code></pre>
 
   document.querySelectorAll(".nav-group-header").forEach(header => {
     header.onclick = () => { header.closest(".nav-group").classList.toggle("collapsed"); };
+  });
+
+  document.querySelectorAll(".sidebar-toggle-left").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-nav");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "▶" : "◀";
+    });
+  });
+
+  document.querySelectorAll(".sidebar-toggle-right").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-sidebar");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "◀" : "▶";
+    });
   });
 
   const jumpSelect = document.getElementById("jump-select");

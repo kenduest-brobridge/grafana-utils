@@ -18,6 +18,10 @@ Use this when a local draft is ready to go live and you want the command to stag
 ```bash
 # Purpose: Publish one local dashboard JSON file through the existing dashboard import pipeline.
 grafana-util dashboard publish --url http://localhost:3000 --basic-user admin --basic-password admin --input ./drafts/cpu-main.json --folder-uid infra --message 'Promote CPU dashboard'
+```
+
+```bash
+# Purpose: Publish one local dashboard JSON file through the existing dashboard import pipeline.
 grafana-util dashboard publish --url http://localhost:3000 --basic-user admin --basic-password admin --input ./drafts/cpu-main.json --dry-run --table
 ```
 

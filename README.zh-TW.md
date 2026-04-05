@@ -25,147 +25,231 @@
 
 ---
 
+## 採用前後對照
+
+| 原本常見做法 | 改用 `grafana-util` 後 |
+| :--- | :--- |
+| 想看 Grafana 全貌時，只能一直切 UI 或自己拼 API。 | 先跑 `overview live` 或 `status live`，快速知道下一步該看哪裡。 |
+| 匯出/匯入像一次性動作，缺少中間檢查點。 | 先匯出、再盤點依賴、再 dry-run，最後才決定要不要回放。 |
+| 告警變更很難在套用前說清楚會改到什麼。 | 先看 `change summary`、`change preflight`、`alert plan`，再決定要不要套用。 |
+| 認證資訊容易散落在 shell history 或平面檔案裡。 | 改用 prompt、環境變數或 profile secret 模式整理起來。 |
+
+重點不是多幾個 command，而是把維運順序收斂成比較安全、可審查的流程。
+
+---
+
 ## 快速上手
+
+### 安裝
 
 ```bash
 # 1. 一鍵安裝 (全域 Binary)
 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+```
 
+```bash
 # 2. 確認安裝版本
 grafana-util --version
+```
 
+```bash
 # 3. 檢視目前 Grafana 狀態
-grafana-util overview live --url http://my-grafana:3000 --basic-user admin --prompt-password --output interactive
+grafana-util overview live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
-安裝與下載資訊：
+### 安裝選項
 
-*   **固定版本安裝**：`VERSION=0.7.4 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh`
-*   **指定安裝目錄**：`BIN_DIR="$HOME/.local/bin" curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh`
-*   **Release 下載頁**：<https://github.com/kenduest-brobridge/grafana-utils/releases>
-*   **已發布 binary**：目前提供 `linux-amd64` 與 `macos-arm64` 的標準版。若需要支援瀏覽器截圖的版本，請到同一個 release 下載 `*-browser-*` 壓縮檔。
-*   **預設安裝位置**：若有設定 `BIN_DIR` 就優先使用；否則會先嘗試可寫入的 `/usr/local/bin`，再退回 `$HOME/.local/bin`。
-*   **PATH 設定提醒**：如果安裝目錄還沒在 `PATH` 內，安裝腳本會印出對應 `zsh` / `bash` 可直接使用的設定方式。也可以先執行 `sh ./scripts/install.sh --help` 看完整說明。
+固定版本安裝：
+
+```bash
+# 用途：安裝固定版本。
+VERSION=0.8.0 \
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+```
+
+指定安裝目錄：
+
+```bash
+# 用途：安裝到指定的 binary 目錄。
+BIN_DIR="$HOME/.local/bin" \
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+```
+
+先看安裝腳本說明：
+
+```bash
+sh ./scripts/install.sh --help
+```
+
+- Release 下載頁：<https://github.com/kenduest-brobridge/grafana-utils/releases>
+- 已發布 binary：目前提供 `linux-amd64` 與 `macos-arm64` 的標準版。若需要支援瀏覽器截圖的版本，請到同一個 release 下載 `*-browser-*` 壓縮檔。
+- 預設安裝位置：若有設定 `BIN_DIR` 就優先使用；否則會先嘗試可寫入的 `/usr/local/bin`，再退回 `$HOME/.local/bin`。
+- PATH 設定提醒：如果安裝目錄還沒在 `PATH` 內，安裝腳本會印出對應 `zsh` / `bash` 可直接使用的設定方式。
 
 ---
 
-## 核心操作流程
+## 實用範例
 
-### Dashboard：匯出、審查與遷移
+這裡放的是大多數人第一次真的會用到的例子：先看 live 狀況、再匯出成可審查的目錄、匯入前先檢查、告警先看計畫、最後再處理 datasource 的 secret 恢復。
+
+以下範例重點放在工作流程本身，所以後面不會每次都重複把連線參數寫滿。實際操作時，你可以用 `--url`、`--basic-user`、`--basic-password`、`--prompt-password`、`--token` 或 `--profile` 提供 Grafana 連線資訊；部分命令也支援 `GRAFANA_USERNAME`、`GRAFANA_PASSWORD`、`GRAFANA_API_TOKEN` 等環境變數。如果你要先把連線與認證方式弄清楚，請先看 [開始使用](./docs/user-guide/zh-TW/getting-started.md)。
+
+### 1. 變更前先看 live 環境全貌
+
 ```bash
-# 1. 跨組織匯出 dashboard
+# 在終端機中打開目前 Grafana 環境的互動式總覽。
+grafana-util overview live \
+  --url http://my-grafana:3000 \
+  --basic-user admin \
+  --prompt-password \
+  --output-format interactive
+```
+
+當你只是想先知道「現在這套 Grafana 到底長什麼樣」時，這通常是最好的起點。
+
+預期你會先看到類似：
+
+```text
+Live status: ready
+Dashboards: ...
+Alerts: ...
+Datasources: ...
+```
+
+### 2. 把 dashboards 匯出成可審查的目錄樹
+
+```bash
+# 跨組織匯出 dashboard，建立本地備份與審查基礎。
 grafana-util dashboard export --all-orgs --export-dir ./backup --progress
-
-# 2. 將一般/raw dashboard JSON 轉成 Grafana UI prompt JSON
-grafana-util dashboard raw-to-prompt --input-dir ./backup/raw --output-dir ./backup/prompt --overwrite --progress
-
-# 3. 在正式匯入前先預覽 dashboard 變更
-grafana-util dashboard import --import-dir ./backup/raw --replace-existing --dry-run --table
-
-# 4. 在匯入前盤點匯出目錄中的 datasource 相依性
-grafana-util dashboard inspect-export --import-dir ./backup/raw --output-format report-table
-
-# 5. 在終端機內搜尋與瀏覽 live dashboards
-grafana-util dashboard browse
 ```
 
-### Alerting：先審查，再套用
-```bash
-# 1. 比對 desired state 與 live server 建立變更計畫
-grafana-util alert plan --desired-dir ./alerts/desired --prune --output json
+這是做備份、搬移、審查和 CI 檢查的起點。
 
-# 2. 在 apply 前先預覽告警路由
-grafana-util alert preview-route --desired-dir ./alerts/desired --label team=sre --severity critical
+### 3. 匯入前先檢查 export tree 是否安全
+
+```bash
+# 盤點匯出目錄中的 datasource 相依性與結構問題。
+grafana-util dashboard inspect-export \
+  --import-dir ./backup/raw \
+  --output-format report-table
 ```
 
-### Datasources：匯出與機密資訊恢復
+如果你想先抓出失效的 datasource 參照或可疑結構，這一步很有用。
+
+預期你會先看到像：
+
+```text
+Sources
+  prometheus-main
+  loki-prod
+```
+
+### 4. 正式匯入前先預覽會發生什麼事
+
 ```bash
-# 匯出 data source 時自動遮蔽密鑰，方便審查或納入版本控制
+# 先 dry-run dashboard 匯入，表格化顯示預計變更。
+grafana-util dashboard import \
+  --import-dir ./backup/raw \
+  --replace-existing \
+  --dry-run \
+  --table
+```
+
+適合在真正碰 live Grafana 之前，先看會新增、覆蓋或變動哪些項目。
+
+### 5. 告警變更先審查，再套用
+
+```bash
+# 依 desired state 與 live server 建立可審查的 alert 計畫。
+grafana-util alert plan \
+  --desired-dir ./alerts/desired \
+  --prune \
+  --output-format json
+```
+
+```bash
+# 在 apply 前先預覽某組 critical 告警實際會怎麼路由。
+grafana-util alert preview-route \
+  --desired-dir ./alerts/desired \
+  --label team=sre \
+  --severity critical
+```
+
+這兩步適合用在你不想直接改 live 告警，而是想先有 review surface 的情境。
+
+### 6. 匯出 datasource，之後再恢復 secret 匯回
+
+```bash
+# 匯出 data source，secret 會遮蔽，方便審查或納入版本控制。
 grafana-util datasource export --export-dir ./datasources --overwrite
-
-# 匯入時重新補齊必要的 secret 資訊
-grafana-util datasource import --import-dir ./datasources --replace-existing --prompt-password
 ```
 
-### 專案健康度：統一檢視介面
 ```bash
-# 互動式 TUI：在終端機內檢視整體 Grafana 狀態
-grafana-util overview live --output interactive
+# 匯回時再互動式補回必要 secret。
+grafana-util datasource import \
+  --import-dir ./datasources \
+  --replace-existing \
+  --prompt-password
 ```
 
----
-
-## 核心功能
-
-*   **Dashboards**：匯出、匯入、檢查、修補、審查與 raw-to-prompt 轉換流程。
-*   **Alerting**：desired-state 管理、路由預覽、plan/apply 審查與審慎清理。
-*   **Datasources**：匯出/匯入、遮蔽式恢復、provisioning 投影與 inspection 支援。
-*   **Access**：稽核與重建 organizations、users、teams、service accounts。
-*   **Status & Readiness**：提供 CI/CD 可讀的結構化輸出，以及互動式與表格式維運檢視。
+這是把 datasource 設定在環境間搬移，又不想把原始憑證直接寫進檔案時最實用的流程。
 
 ---
 
-## 維運導引手冊 (Operator Handbook)
+## 第一條實用工作流
 
-手冊與指令詳細手冊各自扮演不同角色：手冊負責說明操作流程與維運脈絡，指令說明頁面則緊貼目前 CLI 介面。
+如果你現在只想知道這工具到底怎麼幫忙，先照這條順序走：
+
+1. 用 `overview live` 確認目標 Grafana 真的連得到
+2. 用 `dashboard export` 匯出成可審查的目錄樹
+3. 用 `dashboard inspect-export` 先抓出缺少的 datasource 依賴
+4. 用 `dashboard import --dry-run` 預覽回放結果，再決定要不要動 live
+
+這是最短、也最能感受到工具價值的一條公開工作流。
+
+---
+
+## 快速掌握
+
+*   **先看清楚，再決定要不要動**：`overview`、`status`、匯出檢查與 governance 檢查，讓你先知道環境現況與風險。
+*   **把 Grafana 資產安全搬移與回放**：針對 dashboard、alert、data source、access 資源提供可審查的匯出/匯入流程。
+*   **讓維運流程可重複、可自動化**：提供表格/JSON 導向輸出、非互動操作路徑與較安全的 secret 處理方式。
+
+---
+
+## 文件入口
+
+手冊負責說明工作流程與維運脈絡，指令頁則負責提供目前 CLI 的精確語法。這裡只做快速導引，不再把 README 寫成第二份完整手冊。
 
 如果直接讀 Markdown 不方便，請先產生本機 HTML 文件站，再開啟入口頁：
 
 ```bash
-# 用途：如果直接讀 Markdown 不方便，請先產生本機 HTML 文件站，再開啟入口頁。
+# 用途：產生本機 HTML 文件站並開啟主入口頁。
 make html
 open ./docs/html/index.html
 ```
 
-在 Linux 上請把 `open` 換成 `xdg-open`。這批已簽入的 HTML 檔案主要是給 repo 本機閱讀；GitHub 本身不會把它當成完整靜態文件站來瀏覽。
+在 Linux 上請把 `open` 換成 `xdg-open`。如果要直接用瀏覽器看公開版，請使用 <https://kenduest-brobridge.github.io/grafana-utils/>。
 
-如果要直接用瀏覽器看公開版，請使用這個 repo 的 GitHub Pages 站點：
+依需求進入：
 
-*   **公開 HTML 文件站**：<https://kenduest-brobridge.github.io/grafana-utils/>
-*   站點內容由 `docs/commands/*/*.md` 與 `docs/user-guide/*/*.md` 生成，並由 `.github/workflows/docs-pages.yml` 從 `main` 分支部署。
+*   **開始使用**：[docs/user-guide/zh-TW/getting-started.md](./docs/user-guide/zh-TW/getting-started.md)
+*   **完整手冊**：[docs/user-guide/zh-TW/index.md](./docs/user-guide/zh-TW/index.md)
+*   **指令詳細說明**：[docs/commands/zh-TW/index.md](./docs/commands/zh-TW/index.md)
+*   **疑難排解**：[docs/user-guide/zh-TW/troubleshooting.md](./docs/user-guide/zh-TW/troubleshooting.md)
+*   **Man Page**：[docs/man/grafana-util.1](./docs/man/grafana-util.1)
 
-*   **[開始使用](./docs/user-guide/zh-TW/getting-started.md)**：安裝、profile 設定與第一批常用命令。
-*   **[系統架構與設計原則](./docs/user-guide/zh-TW/architecture.md)**：維運模型、lane 設計與邊界。
-*   **[實戰範例](./docs/user-guide/zh-TW/recipes.md)**：常見維運任務與操作流程範例。
-*   **[指令詳細說明](./docs/commands/zh-TW/index.md)**：每個 command 與 subcommand 都有獨立頁面，可直接查目前 CLI 的實際語法與旗標；像 `dashboard screenshot`、`access service-account token`、`change bundle-preflight` 這類較深的子命令也能直接找到。
-*   **[HTML 文件入口](./docs/html/index.html)**：執行 `make html` 後可在本機瀏覽的手冊與指令索引入口。
-*   **[Man Page](./docs/man/grafana-util.1)**：頂層 `man` 格式參考；macOS 可用 `man ./docs/man/grafana-util.1`，GNU/Linux 可用 `man -l docs/man/grafana-util.1`。
-*   **[疑難排解](./docs/user-guide/zh-TW/troubleshooting.md)**：診斷、限制與恢復建議。
+依角色進入：
 
-**[完整手冊目錄入口 →](./docs/user-guide/zh-TW/index.md)**
-
----
-
-## 文件導覽地圖
-
-如果你不確定該先看哪一份文件，可以直接從這裡判斷：
-
-*   **維運手冊**：[docs/user-guide/zh-TW/](./docs/user-guide/zh-TW/index.md) 適合看完整操作流程、觀念與閱讀順序。
-*   **指令詳細參考**：[docs/commands/zh-TW/](./docs/commands/zh-TW/index.md) 適合逐頁查 command 與 subcommand。
-*   **可瀏覽 HTML 文件站**：本機可看 [docs/html/index.html](./docs/html/index.html)，或直接使用公開站點 <https://kenduest-brobridge.github.io/grafana-utils/>。
-*   **終端機 manpage**：[docs/man/grafana-util.1](./docs/man/grafana-util.1) 適合 `man` 風格查詢。
-*   **維護者入口**：[docs/DEVELOPER.md](./docs/DEVELOPER.md) 適合看程式架構、文件分層、build/test 路線與 maintainer 引導。
-*   **維護者快速上手**：[docs/internal/maintainer-quickstart.md](./docs/internal/maintainer-quickstart.md) 提供第一次進 repo 的最短閱讀順序、事實來源地圖、產出的檔案邊界與安全驗證命令。
-*   **generated docs 設計說明**：[docs/internal/generated-docs-architecture.md](./docs/internal/generated-docs-architecture.md) 說明 Markdown 轉 HTML/manpage 的整體設計。
-*   **generated docs 操作手冊**：[docs/internal/generated-docs-playbook.md](./docs/internal/generated-docs-playbook.md) 提供常見維護工作的步驟。
-*   **Secret storage 架構說明**：[docs/internal/profile-secret-storage-architecture.md](./docs/internal/profile-secret-storage-architecture.md) 說明 profile secret 模式、macOS/Linux 支援、限制與維護規則。
-*   **內部文件總索引**：[docs/internal/README.md](./docs/internal/README.md) 彙整目前有效的內部規格、架構與 trace 文件。
+*   **新使用者**：[新手快速入門](./docs/user-guide/zh-TW/role-new-user.md)
+*   **SRE / 維運人員**：[SRE / 維運角色導讀](./docs/user-guide/zh-TW/role-sre-ops.md)
+*   **自動化 / CI 維護者**：[自動化 / CI 角色導讀](./docs/user-guide/zh-TW/role-automation-ci.md)
+*   **維護者 / 開發者**：[docs/DEVELOPER.md](./docs/DEVELOPER.md) 與 [docs/internal/maintainer-quickstart.md](./docs/internal/maintainer-quickstart.md)
 
 ---
 
-## 依角色選擇閱讀路徑
-
-如果你覺得照檔案類型找文件不直覺，也可以直接依角色進入：
-
-*   **新使用者**：先看專用的 [新手快速入門](./docs/user-guide/zh-TW/role-new-user.md)，再看 [開始使用](./docs/user-guide/zh-TW/getting-started.md) 與 [技術參考手冊](./docs/user-guide/zh-TW/reference.md)。
-*   **SRE / 維運人員**：先看專用的 [SRE / 維運角色導讀](./docs/user-guide/zh-TW/role-sre-ops.md)，再看 [變更與狀態](./docs/user-guide/zh-TW/change-overview-status.md)、[Dashboard 管理](./docs/user-guide/zh-TW/dashboard.md)、[Datasource 管理](./docs/user-guide/zh-TW/datasource.md)、[疑難排解](./docs/user-guide/zh-TW/troubleshooting.md)。
-*   **自動化 / CI 維護者**：先看專用的 [自動化 / CI 角色導讀](./docs/user-guide/zh-TW/role-automation-ci.md)，再看 [技術參考手冊](./docs/user-guide/zh-TW/reference.md)、[指令詳細說明](./docs/commands/zh-TW/index.md)，再搭配頂層 [manpage](./docs/man/grafana-util.1)。
-*   **平台架構師 / maintainer**：先看 [維護者快速上手](./docs/internal/maintainer-quickstart.md)，再看 [docs/DEVELOPER.md](./docs/DEVELOPER.md)、[Maintainer Role Map](./docs/internal/maintainer-role-map.md)、[generated docs 設計說明](./docs/internal/generated-docs-architecture.md)、[generated docs 操作手冊](./docs/internal/generated-docs-playbook.md)、[secret storage 架構說明](./docs/internal/profile-secret-storage-architecture.md)、[docs/internal/README.md](./docs/internal/README.md)。
-
----
-
-## 技術基礎
-*   **Rust 引擎**：以 Rust 為主體的單一 CLI binary。
+## 專案說明
+*   **Rust 為主體**：主要實作位於 `rust/src/`。
 *   **驗證環境**：在 Docker 環境下針對 **Grafana 12.4.1** 進行驗證。
 *   **自動化友善**：提供可預測的 exit code 與結構化輸出，便於 CI/CD 與批次流程整合。
 

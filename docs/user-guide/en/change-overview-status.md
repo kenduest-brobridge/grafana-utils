@@ -16,6 +16,23 @@ This domain focuses on the governance gate: the final layer of validation before
 - Catch broken inputs before an apply path starts.
 - Give reviewers a stable summary of what changed and what still looks risky.
 
+## Before / After
+
+- Before: status, snapshots, and change reviews could feel like separate tools with overlapping names.
+- After: live checks, staged reviews, and snapshot-style summaries are grouped into one guided path.
+
+## What success looks like
+
+- You can tell whether the task is about readiness, snapshots, or review before change.
+- You know which command to open when a workflow moves from status into mutation.
+- You can explain what should happen before a change is applied.
+
+## Failure checks
+
+- If the staged and live surfaces disagree, stop and identify which lane is stale before applying anything.
+- If a snapshot or summary does not match your expectation, treat that as a workflow warning, not a cosmetic issue.
+- If you cannot say why you need this chapter, you may be in the wrong workflow lane.
+
 ## 🔗 Command Pages
 
 Need the command-by-command surface instead of the workflow guide?
@@ -56,8 +73,12 @@ We distinguish between **Live** (what is actually running) and **Staged** (what 
 ### 1. Live Readiness Check
 ```bash
 # Purpose: 1. Live Readiness Check.
-grafana-util status live --output table
-grafana-util status live --profile prod --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output json
+grafana-util status live --output-format table
+```
+
+```bash
+# Purpose: 1. Live Readiness Check.
+grafana-util status live --profile prod --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output-format json
 ```
 **Expected Output:**
 ```text
@@ -74,8 +95,12 @@ Use `status live` when you want the shared live status path to tell you whether 
 Use this as a mandatory CI/CD gate before running `apply`.
 ```bash
 # Purpose: Use this as a mandatory CI/CD gate before running apply.
-grafana-util status staged --desired-file ./desired.json --output json
-grafana-util status staged --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output table
+grafana-util status staged --desired-file ./desired.json --output-format json
+```
+
+```bash
+# Purpose: Use this as a mandatory CI/CD gate before running apply.
+grafana-util status staged --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table
 ```
 **Expected Output:**
 ```json
@@ -98,7 +123,11 @@ Get a high-level summary of your current change package.
 ```bash
 # Purpose: Get a high-level summary of your current change package.
 grafana-util change summary --desired-file ./desired.json
-grafana-util change summary --desired-file ./desired.json --output json
+```
+
+```bash
+# Purpose: Get a high-level summary of your current change package.
+grafana-util change summary --desired-file ./desired.json --output-format json
 ```
 **Expected Output:**
 ```text
@@ -115,7 +144,11 @@ Verify the structural integrity of your export/import trees.
 ```bash
 # Purpose: Verify the structural integrity of your export/import trees.
 grafana-util change preflight --desired-file ./desired.json --availability-file ./availability.json
-grafana-util change preflight --desired-file ./desired.json --fetch-live --output json
+```
+
+```bash
+# Purpose: Verify the structural integrity of your export/import trees.
+grafana-util change preflight --desired-file ./desired.json --fetch-live --output-format json
 ```
 **Expected Output:**
 ```text
@@ -130,11 +163,11 @@ Use preflight when you need a structural gate before planning or applying. A cle
 
 ## 🖥️ Interactive Mode (TUI) Semantics
 
-`overview live --output interactive` opens the live project overview through the shared status live path.
+`overview live --output-format interactive` opens the live project overview through the shared status live path.
 
 ```bash
-# Purpose: overview live --output interactive opens the live project overview through the shared status live path.
-grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output interactive
+# Purpose: overview live --output-format interactive opens the live project overview through the shared status live path.
+grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive
 ```
 
 The TUI uses the following visual language:

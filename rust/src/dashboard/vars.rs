@@ -5,11 +5,11 @@
 use reqwest::Url;
 use serde::Serialize;
 use serde_json::{Map, Value};
-use std::fs;
 use std::path::PathBuf;
 
 use crate::common::{
-    message, object_field, render_json_value, string_field, value_as_object, Result,
+    message, object_field, render_json_value, should_print_stdout, string_field,
+    value_as_object, write_plain_output_file, Result,
 };
 use crate::http::JsonHttpClient;
 use crate::tabular_output::render_yaml;
@@ -45,18 +45,21 @@ pub(crate) struct DashboardVariableDocument {
     pub variables: Vec<DashboardVariableRow>,
 }
 
-fn write_inspect_vars_output(output: &str, output_file: Option<&PathBuf>) -> Result<()> {
+fn write_inspect_vars_output(
+    output: &str,
+    output_file: Option<&PathBuf>,
+    also_stdout: bool,
+) -> Result<()> {
     let normalized = output.trim_end_matches('\n');
     if normalized.is_empty() {
         return Ok(());
     }
     if let Some(output_path) = output_file {
-        if let Some(parent) = output_path.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        fs::write(output_path, format!("{normalized}\n"))?;
+        write_plain_output_file(output_path, normalized)?;
     }
-    println!("{normalized}");
+    if should_print_stdout(output_file.map(PathBuf::as_path), also_stdout) {
+        println!("{normalized}");
+    }
     Ok(())
 }
 
@@ -162,7 +165,7 @@ pub(crate) fn execute_dashboard_variable_inspection(
 pub(crate) fn inspect_dashboard_variables(args: &InspectVarsArgs) -> Result<()> {
     let document = execute_dashboard_variable_inspection(args)?;
     let output = render_dashboard_variable_output(args, &document)?;
-    write_inspect_vars_output(&output, args.output_file.as_ref())?;
+    write_inspect_vars_output(&output, args.output_file.as_ref(), args.also_stdout)?;
     Ok(())
 }
 

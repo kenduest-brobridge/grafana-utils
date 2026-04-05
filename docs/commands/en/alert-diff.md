@@ -20,6 +20,10 @@ Compare local alerting export files against live Grafana resources.
 ```bash
 # Purpose: Compare local alerting export files against live Grafana resources.
 grafana-util alert diff --url http://localhost:3000 --diff-dir ./alerts/raw
+```
+
+```bash
+# Purpose: Compare local alerting export files against live Grafana resources.
 grafana-util alert diff --url http://localhost:3000 --diff-dir ./alerts/raw --json
 ```
 

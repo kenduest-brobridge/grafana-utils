@@ -18,6 +18,66 @@
 
 ---
 
+## 輸出旗標規則
+
+`grafana-util` 現在把畫面 / 表格 / JSON / YAML 這類格式選擇統一收斂到 `--output-format`。
+
+### 標準格式旗標：`--output-format`
+
+很多 list、review、inspect、dry-run 類指令都用 `--output-format`。
+
+常見對應關係：
+
+- `--output-format table` = `--table`
+- `--output-format json` = `--json`
+- `--output-format csv` = `--csv`
+- `--output-format yaml` = `--yaml`
+- `--output-format text` = `--text`
+
+如果你是在腳本、CI 或可重複使用的範本裡，通常建議用完整寫法。  
+如果你是在終端直接操作，短旗標會比較順手。
+
+### 幾個常見例外
+
+- 不是每個 command 都會把所有短旗標都做齊
+- 有些指令只支援一兩種輸出形態
+- `dashboard topology` 是特例：它支援 `text`、`json`、`mermaid`、`dot`，但沒有 `--table` 這類快捷旗標
+- `--output-file`，或某些匯出 / draft 指令裡的 `--output`，代表的是輸出檔案路徑，不是輸出格式
+
+如果你不確定某個 command 到底支援哪些格式，最準的還是該 command 的獨立說明頁。
+
+### 給 CI 用的 `change` JSON 文件
+
+`change` 指令群組會輸出多種 JSON contract。最穩妥的判斷順序是：
+
+1. 先看 `kind`
+2. 再確認 `schemaVersion`
+3. 最後才根據 `summary`、`operations`、`checks`、`drifts` 等欄位往下判斷
+
+CLI 內建快速查詢：
+
+- `grafana-util change --help-schema`
+- `grafana-util change plan --help-schema`
+- `grafana-util change apply --help-schema`
+- `grafana-util change audit --help-schema`
+
+常見對應：
+
+- `change summary --output-format json` -> `grafana-utils-sync-summary`
+- `change plan --output-format json` -> `grafana-utils-sync-plan`
+- `change review --output-format json` -> `grafana-utils-sync-plan`
+- `change apply --output-format json` -> `grafana-utils-sync-apply-intent`
+- `change apply --execute-live --output-format json` -> live apply result
+- `change audit --output-format json` -> `grafana-utils-sync-audit`
+- `change preflight --output-format json` -> `grafana-utils-sync-preflight`
+- `change assess-alerts --output-format json` -> `grafana-utils-alert-sync-plan`
+- `change bundle-preflight --output-format json` -> `grafana-utils-sync-bundle-preflight`
+- `change promotion-preflight --output-format json` -> `grafana-utils-sync-promotion-preflight`
+
+如果你需要每種文件的 top-level 欄位細節，直接看 [change 指令頁](../../commands/zh-TW/change.md) 會最快。
+
+---
+
 ## 🔐 Profile、連線與 secret 處理
 
 Profile 是專案本地的設定。`grafana-util profile` 會讀寫目前工作目錄中的 `grafana-util.yaml`，`--profile` 則是從這個檔案裡挑選一個命名 profile。
@@ -92,9 +152,25 @@ password_store:
 ```bash
 # 用途：2. 初始化、新增並列出 profile。
 grafana-util profile init --overwrite
+```
+
+```bash
+# 用途：2. 初始化、新增並列出 profile。
 grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password
+```
+
+```bash
+# 用途：2. 初始化、新增並列出 profile。
 grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN --store-secret os
+```
+
+```bash
+# 用途：2. 初始化、新增並列出 profile。
 grafana-util profile list
+```
+
+```bash
+# 用途：2. 初始化、新增並列出 profile。
 grafana-util profile example --mode full
 ```
 **預期輸出：**
@@ -109,6 +185,10 @@ prod
 ```bash
 # 用途：3. 顯示已解析的 profile。
 grafana-util profile show --profile prod --output-format yaml
+```
+
+```bash
+# 用途：3. 顯示已解析的 profile。
 grafana-util profile show --profile prod --show-secrets --output-format yaml
 ```
 **預期輸出：**
@@ -183,9 +263,17 @@ profiles:
 ### 5. 日常使用時的三種常見驗證範例
 ```bash
 # 用途：5. 日常使用時的三種常見驗證範例。
-grafana-util status live --profile prod --output yaml
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output yaml
-grafana-util overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output json
+grafana-util status live --profile prod --output-format yaml
+```
+
+```bash
+# 用途：5. 日常使用時的三種常見驗證範例。
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
+```
+
+```bash
+# 用途：5. 日常使用時的三種常見驗證範例。
+grafana-util overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 預設請以 `--profile` 為主。直接 Basic auth 比較適合管理員型流程；token 則適合你已經很清楚權限邊界的 scoped automation。
 
@@ -195,20 +283,42 @@ grafana-util overview live --url http://localhost:3000 --token "$GRAFANA_API_TOK
 # 用環境變數承載密碼，建立可重複使用的本機 profile。
 export GRAFANA_PROD_PASSWORD='change-me'
 grafana-util profile add prod --url https://grafana.example.com --basic-user admin --password-env GRAFANA_PROD_PASSWORD
-grafana-util status live --profile prod --output yaml
+```
 
+```bash
+# 用環境變數承載密碼，建立可重複使用的本機 profile。
+grafana-util status live --profile prod --output-format yaml
+```
+
+```bash
 # 在 macOS 或 Linux 桌面上，把 secret 放進 OS secret store。
 grafana-util profile add prod-os --url https://grafana.example.com --basic-user admin --prompt-password --store-secret os
-grafana-util overview live --profile prod-os --output interactive
+```
 
+```bash
+# 在 macOS 或 Linux 桌面上，把 secret 放進 OS secret store。
+grafana-util overview live --profile prod-os --output-format interactive
+```
+
+```bash
 # 使用帶 passphrase 的加密 secret file。
 grafana-util profile add prod-encrypted --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file --prompt-secret-passphrase
-grafana-util status live --profile prod-encrypted --output yaml
+```
 
+```bash
+# 使用帶 passphrase 的加密 secret file。
+grafana-util status live --profile prod-encrypted --output-format yaml
+```
+
+```bash
 # 在自動化流程中，以環境變數承載 scoped token。
 export GRAFANA_CI_TOKEN='replace-me'
 grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN
-grafana-util overview live --profile ci --output json
+```
+
+```bash
+# 在自動化流程中，以環境變數承載 scoped token。
+grafana-util overview live --profile ci --output-format json
 ```
 
 這組範例的重點是：
@@ -248,7 +358,7 @@ grafana-util overview live --profile ci --output json
 | :--- | :--- | :--- | :--- |
 | 直接切換常見格式 | `--text`、`--table`、`--csv`、`--json`、`--yaml` | `text` / `table` / `csv` / `json` / `yaml` | 適合 list、review、inspect、部分 import / delete dry-run 這類輸出面。 |
 | 用單一旗標切換格式 | `--output-format <FORMAT>` | `text` / `table` / `csv` / `json` / `yaml` | 也可能出現 command 專用值，例如 `report-table`、`governance-json`、`mermaid`、`dot`。 |
-| live status / overview 類入口 | `--output <FORMAT>` | `table` / `csv` / `text` / `json` / `yaml` / `interactive` | 這條路徑不是 `--output-format`。 |
+| live status / overview 類入口 | `--output-format <FORMAT>` | `table` / `csv` / `text` / `json` / `yaml` / `interactive` | 這條路徑現在也統一使用 `--output-format`。 |
 | 將結果另外寫入檔案 | `--output-file <PATH>` 或 command 專用旗標 | 視指令而定 | 常見於 topology、governance gate、screenshot 這類輸出型指令。 |
 
 ### 1. 表格或 JSON 的選擇
@@ -271,21 +381,25 @@ grafana-util dashboard list -h
 ```bash
 # 用途：2. Live status 與 overview 的輸出選擇器。
 grafana-util status live -h
+```
+
+```bash
+# 用途：2. Live status 與 overview 的輸出選擇器。
 grafana-util overview live -h
 ```
 **預期輸出：**
 ```text
 Render project status from live Grafana read surfaces. Use current Grafana state plus optional staged context files.
 ...
---output <OUTPUT>
+--output-format <OUTPUT_FORMAT>
     Render project status as table, csv, text, json, yaml, or interactive output.
 
 Render a live overview by delegating to the shared status live path.
 ...
---output <OUTPUT>
+--output-format <OUTPUT_FORMAT>
     Render project status as table, csv, text, json, yaml, or interactive output.
 ```
-這兩個 live 入口現在都用 `--output`，不是舊文件常見的 `--output-format` 寫法。
+這兩個 live 入口現在都用 `--output-format`。
 
 ---
 
@@ -311,7 +425,7 @@ grafana-util dashboard list --profile prod --json | jq -r '.[] | select(.orgId =
 ### 2. 處理結束代碼 (Exit Codes)
 ```bash
 # 用途：2. 處理結束代碼 (Exit Codes)。
-grafana-util status live --profile prod --output json
+grafana-util status live --profile prod --output-format json
 if [ $? -eq 2 ]; then
   echo "CRITICAL: Grafana 連線受阻！"
   exit 1

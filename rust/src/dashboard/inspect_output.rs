@@ -353,6 +353,7 @@ mod tests {
             help_full: false,
             no_header: false,
             output_file: None,
+            also_stdout: false,
             interactive: false,
         };
 
@@ -386,6 +387,7 @@ mod tests {
             help_full: false,
             no_header: false,
             output_file: None,
+            also_stdout: false,
             interactive: false,
         };
 
@@ -417,6 +419,7 @@ mod tests {
             help_full: false,
             no_header: false,
             output_file: None,
+            also_stdout: false,
             interactive: false,
         };
         let yaml_args = InspectExportArgs {

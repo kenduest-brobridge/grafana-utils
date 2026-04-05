@@ -19,7 +19,7 @@ use crate::snapshot::root_command as snapshot_root_command;
 use crate::sync::{SyncGroupCommand, SyncOutputFormat, DEFAULT_REVIEW_TOKEN};
 use clap::{CommandFactory, Parser};
 use std::cell::RefCell;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 fn render_unified_help() -> String {
     render_unified_help_text(false)
@@ -318,7 +318,7 @@ fn parse_cli_supports_snapshot_group_export_and_review_commands() {
         "review",
         "--input-dir",
         "./snapshot",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -339,7 +339,7 @@ fn parse_cli_supports_snapshot_group_export_and_review_commands() {
         UnifiedCommand::Snapshot { command } => match command {
             super::SnapshotCommand::Review(inner) => {
                 assert_eq!(inner.input_dir, Path::new("./snapshot"));
-                assert_eq!(inner.output, OverviewOutputFormat::Json);
+                assert_eq!(inner.output_format, OverviewOutputFormat::Json);
                 assert!(!inner.interactive);
             }
             _ => panic!("expected snapshot review"),
@@ -363,7 +363,7 @@ fn parse_cli_supports_snapshot_review_interactive_shortcut() {
         UnifiedCommand::Snapshot { command } => match command {
             super::SnapshotCommand::Review(inner) => {
                 assert_eq!(inner.input_dir, Path::new("./snapshot"));
-                assert_eq!(inner.output, OverviewOutputFormat::Text);
+                assert_eq!(inner.output_format, OverviewOutputFormat::Text);
                 assert!(inner.interactive);
             }
             _ => panic!("expected snapshot review"),
@@ -716,7 +716,7 @@ fn parse_cli_supports_dashboard_group_graph_alias() {
     match args.command {
         UnifiedCommand::Dashboard { command } => match command {
             super::DashboardGroupCommand::Topology(topology_args) => {
-                assert_eq!(topology_args.governance, Path::new("./governance.json"));
+                assert_eq!(topology_args.governance, PathBuf::from("./governance.json"));
             }
             _ => panic!("expected dashboard topology"),
         },
@@ -856,7 +856,7 @@ fn parse_cli_supports_alert_plan_group_command() {
         "--desired-dir",
         "./alerts/desired",
         "--prune",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -865,7 +865,7 @@ fn parse_cli_supports_alert_plan_group_command() {
             Some(crate::alert::AlertGroupCommand::Plan(plan_args)) => {
                 assert_eq!(plan_args.desired_dir, Path::new("./alerts/desired"));
                 assert!(plan_args.prune);
-                assert_eq!(format!("{:?}", plan_args.output), "Json");
+                assert_eq!(format!("{:?}", plan_args.output_format), "Json");
             }
             _ => panic!("expected alert plan"),
         },
@@ -1165,7 +1165,7 @@ fn parse_cli_supports_alert_plan_normalized_args() {
         "./dashboard-map.json",
         "--panel-id-map",
         "./panel-map.json",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -1700,7 +1700,7 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
     assert!(alert_help.contains("alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dry-run --json"));
     assert!(alert_help
         .contains("alert diff --url http://localhost:3000 --diff-dir ./alerts/raw --json"));
-    assert!(alert_help.contains("alert plan --desired-dir ./alerts/desired --prune --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json --output json"));
+    assert!(alert_help.contains("alert plan --desired-dir ./alerts/desired --prune --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json --output-format json"));
     assert!(alert_help.contains("alert apply --plan-file ./alert-plan-reviewed.json --approve"));
     assert!(alert_help
         .contains("alert delete --kind policy-tree --identity default --allow-policy-reset"));
@@ -1760,7 +1760,7 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
     assert!(snapshot_help.contains("Export and review Grafana snapshot inventory bundles."));
     assert!(snapshot_help.contains("Review a local snapshot inventory without touching Grafana."));
     assert!(snapshot_help
-        .contains("grafana-util snapshot review --input-dir ./snapshot --output table"));
+        .contains("grafana-util snapshot review --input-dir ./snapshot --output-format table"));
     assert!(
         snapshot_help.contains("grafana-util snapshot review --input-dir ./snapshot --interactive")
     );
@@ -1770,17 +1770,17 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
     assert!(snapshot_review_help.contains(
         "Render the snapshot inventory review as table, csv, text, json, yaml, or interactive browser output."
     ));
-    assert!(snapshot_review_help.contains("Shortcut for --output interactive."));
+    assert!(snapshot_review_help.contains("Shortcut for --output-format interactive."));
     assert!(snapshot_review_help
-        .contains("grafana-util snapshot review --input-dir ./snapshot --output table"));
+        .contains("grafana-util snapshot review --input-dir ./snapshot --output-format table"));
     assert!(snapshot_review_help
-        .contains("grafana-util snapshot review --input-dir ./snapshot --output csv"));
+        .contains("grafana-util snapshot review --input-dir ./snapshot --output-format csv"));
     assert!(snapshot_review_help
-        .contains("grafana-util snapshot review --input-dir ./snapshot --output text"));
+        .contains("grafana-util snapshot review --input-dir ./snapshot --output-format text"));
     assert!(snapshot_review_help
-        .contains("grafana-util snapshot review --input-dir ./snapshot --output json"));
+        .contains("grafana-util snapshot review --input-dir ./snapshot --output-format json"));
     assert!(snapshot_review_help
-        .contains("grafana-util snapshot review --input-dir ./snapshot --output yaml"));
+        .contains("grafana-util snapshot review --input-dir ./snapshot --output-format yaml"));
     assert!(snapshot_review_help
         .contains("grafana-util snapshot review --input-dir ./snapshot --interactive"));
 
@@ -1822,13 +1822,42 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
 }
 
 #[test]
+fn maybe_render_unified_help_from_os_args_supports_change_schema_root() {
+    let help = maybe_render_unified_help_from_os_args(
+        ["grafana-util", "change", "--help-schema"],
+        false,
+    )
+    .unwrap();
+    assert!(help.contains("Change JSON schema guide"));
+    assert!(help.contains("grafana-utils-sync-summary"));
+    assert!(help.contains("grafana-utils-sync-plan"));
+    assert!(help.contains("grafana-utils-sync-apply-intent"));
+    assert!(help.contains("grafana-utils-alert-sync-plan"));
+    assert!(help.contains("grafana-util change plan --help-schema"));
+}
+
+#[test]
+fn maybe_render_unified_help_from_os_args_supports_change_subcommand_schema_help() {
+    let help = maybe_render_unified_help_from_os_args(
+        ["grafana-util", "change", "apply", "--help-schema"],
+        false,
+    )
+    .unwrap();
+    assert!(help.contains("Change apply JSON schema"));
+    assert!(help.contains("grafana-utils-sync-apply-intent"));
+    assert!(help.contains("Live execute shape (`--execute-live`)"));
+    assert!(help.contains("appliedCount"));
+    assert!(help.contains("results[]"));
+}
+
+#[test]
 fn alert_help_subcommands_document_management_flags_and_examples() {
     let plan_help = render_alert_subcommand_help(&["plan"]);
     assert!(plan_help.contains("--desired-dir"));
     assert!(plan_help.contains("--prune"));
     assert!(plan_help.contains("--dashboard-uid-map"));
     assert!(plan_help.contains("--panel-id-map"));
-    assert!(plan_help.contains("--output"));
+    assert!(plan_help.contains("--output-format"));
     assert!(plan_help.contains("grafana-util alert plan"));
 
     let apply_help = render_alert_subcommand_help(&["apply"]);
@@ -1926,7 +1955,7 @@ fn parse_cli_supports_change_group_command() {
         "summary",
         "--desired-file",
         "./desired.json",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -1934,7 +1963,7 @@ fn parse_cli_supports_change_group_command() {
         UnifiedCommand::Change { command } => match command {
             SyncGroupCommand::Summary(inner) => {
                 assert_eq!(inner.desired_file, Path::new("./desired.json"));
-                assert_eq!(inner.output, SyncOutputFormat::Json);
+                assert_eq!(inner.output_format, SyncOutputFormat::Json);
             }
             _ => panic!("expected change summary"),
         },
@@ -1950,7 +1979,7 @@ fn parse_cli_supports_change_assess_alerts_group_command() {
         "assess-alerts",
         "--alerts-file",
         "./alerts.json",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -1958,7 +1987,7 @@ fn parse_cli_supports_change_assess_alerts_group_command() {
         UnifiedCommand::Change { command } => match command {
             SyncGroupCommand::AssessAlerts(inner) => {
                 assert_eq!(inner.alerts_file, Path::new("./alerts.json"));
-                assert_eq!(inner.output, SyncOutputFormat::Json);
+                assert_eq!(inner.output_format, SyncOutputFormat::Json);
             }
             _ => panic!("expected change assess-alerts"),
         },
@@ -1978,7 +2007,7 @@ fn parse_cli_supports_change_plan_group_command() {
         "./live.json",
         "--trace-id",
         "trace-explicit",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -1991,7 +2020,7 @@ fn parse_cli_supports_change_plan_group_command() {
                     Some(Path::new("./live.json").to_path_buf())
                 );
                 assert_eq!(inner.trace_id, Some("trace-explicit".to_string()));
-                assert_eq!(inner.output, SyncOutputFormat::Json);
+                assert_eq!(inner.output_format, SyncOutputFormat::Json);
             }
             _ => panic!("expected change plan"),
         },
@@ -2110,7 +2139,7 @@ fn parse_cli_supports_change_review_group_command() {
         "./plan.json",
         "--review-token",
         "reviewed-change-plan",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -2119,7 +2148,7 @@ fn parse_cli_supports_change_review_group_command() {
             SyncGroupCommand::Review(inner) => {
                 assert_eq!(inner.plan_file, Path::new("./plan.json"));
                 assert_eq!(inner.review_token, DEFAULT_REVIEW_TOKEN);
-                assert_eq!(inner.output, SyncOutputFormat::Json);
+                assert_eq!(inner.output_format, SyncOutputFormat::Json);
                 assert_eq!(inner.reviewed_by, None);
                 assert_eq!(inner.reviewed_at, None);
                 assert_eq!(inner.review_note, None);

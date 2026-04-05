@@ -8,14 +8,39 @@
 
 說明：如果你需要一份離線 snapshot，之後不用重新連到 Grafana 也能繼續檢視，先看這一頁最合適。`snapshot` 指令群組適合交接、備份、事件回顧，或任何想先留下本機 artifact 再往下分析的工作流。
 
+## 採用前後對照
+
+- **採用前**：snapshot 式檢視通常代表要重新查 Grafana，或一個一個打開 dashboard 與 datasource。
+- **採用後**：先匯出，再把本機 bundle 當成可重複檢視的 artifact，不用再碰 live server。
+
+## 成功判準
+
+- 你可以把 snapshot root 交給別人，對方不用再跟你要 live 存取也能看
+- 匯出結果是可保存的 artifact，不是短命的 UI session
+- review 輸出清楚到可以接後續分析或事故紀錄
+
+## 失敗時先檢查
+
+- 如果 snapshot export 看起來是空的，先核對 auth profile 或 live 連線，不要先假設來源系統沒資料
+- 如果 review 輸出和預期差很多，先確認你指向的是不是正確的 snapshot 目錄
+- 如果要交給自動化，請把 `--output-format` 寫清楚，讓下游 parser 知道 contract
+
 主要旗標：root 指令本身只是指令群組；操作旗標都在 `export` 和 `review`。共用的 root 旗標是 `--color`。
 
 範例：
 
 ```bash
-# 用途：Root。
+# 用途：從 live Grafana 匯出本機 snapshot bundle。
 grafana-util snapshot export --profile prod --export-dir ./snapshot
-grafana-util snapshot review --input-dir ./snapshot --output json
+```
+
+```bash
+# 用途：用 JSON 檢視已匯出的 snapshot bundle。
+grafana-util snapshot review --input-dir ./snapshot --output-format json
+```
+
+```bash
+# 用途：用 token 認證從 live Grafana 匯出 snapshot bundle。
 grafana-util snapshot export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --export-dir ./snapshot
 ```
 
@@ -34,7 +59,15 @@ grafana-util snapshot export --url http://localhost:3000 --token "$GRAFANA_API_T
 ```bash
 # 用途：export。
 grafana-util snapshot export --profile prod --export-dir ./snapshot
+```
+
+```bash
+# 用途：export。
 grafana-util snapshot export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./snapshot --overwrite
+```
+
+```bash
+# 用途：export。
 grafana-util snapshot export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --export-dir ./snapshot
 ```
 
@@ -46,13 +79,17 @@ grafana-util snapshot export --url http://localhost:3000 --token "$GRAFANA_API_T
 
 適用時機：當你想把匯出的 snapshot root 以 table、csv、text、json、yaml 或 interactive 格式查看時。
 
-主要旗標：`--input-dir`、`--interactive`、`--output`。
+主要旗標：`--input-dir`、`--interactive`、`--output-format`。
 
 範例：
 
 ```bash
-# 用途：review。
-grafana-util snapshot review --input-dir ./snapshot --output table
+# 用途：在不接觸 Grafana 的情況下檢視本機 snapshot inventory。
+grafana-util snapshot review --input-dir ./snapshot --output-format table
+```
+
+```bash
+# 用途：在不接觸 Grafana 的情況下檢視本機 snapshot inventory。
 grafana-util snapshot review --input-dir ./snapshot --interactive
 ```
 

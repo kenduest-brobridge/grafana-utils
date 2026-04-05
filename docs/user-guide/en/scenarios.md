@@ -14,6 +14,23 @@ This chapter turns command families into end-to-end operator workflows so you ca
 - Show which validation step should happen before the next mutation.
 - Reduce guesswork when moving between live, staged, export, and replay work.
 
+## Before / After
+
+- Before: a reader had to infer the operator story from many separate command pages.
+- After: each scenario frames the problem, the lane, and the expected evidence before the command sequence starts.
+
+## What success looks like
+
+- You can pick the scenario that matches the problem you are trying to solve.
+- You know whether the next step is inventory, replay, review, or troubleshooting.
+- You can explain the expected output before you run the flow.
+
+## Failure checks
+
+- If the scenario starts with the wrong lane, stop and switch to the chapter that matches the actual workflow.
+- If the expected output does not line up with the stage you are in, resolve the mismatch before continuing.
+- If you still need exact flags more than workflow context, switch to the command reference.
+
 For the exact flags behind each workflow, see [dashboard](../../commands/en/dashboard.md), [access](../../commands/en/access.md), [alert](../../commands/en/alert.md), [change](../../commands/en/change.md), [status](../../commands/en/status.md), and [overview](../../commands/en/overview.md).
 
 ---
@@ -22,11 +39,23 @@ For the exact flags behind each workflow, see [dashboard](../../commands/en/dash
 
 Prove connectivity and version alignment before making changes.
 
+**Before**: You are not sure whether the CLI is pointing at the right Grafana, which credentials are active, or whether the live surface is healthy enough to continue.
+
+**After**: You have one verified live target, one readable readiness result, and one browsable overview before any mutation starts.
+
 ```bash
 # Purpose: Prove connectivity and version alignment before making changes.
 grafana-util profile list
-grafana-util status live --profile prod --output table
-grafana-util overview live --profile prod --output interactive
+```
+
+```bash
+# Purpose: Prove connectivity and version alignment before making changes.
+grafana-util status live --profile prod --output-format table
+```
+
+```bash
+# Purpose: Prove connectivity and version alignment before making changes.
+grafana-util overview live --profile prod --output-format interactive
 ```
 **Expected Output:**
 ```text
@@ -38,7 +67,7 @@ OVERALL: status=ready
 Project overview
 Live status: ready
 ```
-Start with `profile list` to confirm which repo-local defaults are active, then use `status live` for the gate and `overview live --output interactive` when you want the same live surface in a browsable TUI.
+Start with `profile list` to confirm which repo-local defaults are active, then use `status live` for the gate and `overview live --output-format interactive` when you want the same live surface in a browsable TUI.
 
 ---
 
@@ -46,9 +75,17 @@ Start with `profile list` to confirm which repo-local defaults are active, then 
 
 Inventory all assets across all organizations.
 
+**Before**: You know there are dashboards, orgs, and users in the estate, but you cannot quickly answer what exists or who owns what without jumping between screens.
+
+**After**: You have one inventory surface for dashboards and one for access state, so you can explain the current estate before export, replay, or cleanup work.
+
 ```bash
 # Purpose: Inventory all assets across all organizations.
 grafana-util dashboard list --profile prod --all-orgs --with-sources --table
+```
+
+```bash
+# Purpose: Inventory all assets across all organizations.
 grafana-util access org list --basic-user admin --basic-password admin --with-users --output-format yaml
 ```
 **Expected Output:**
@@ -70,10 +107,22 @@ Use the dashboard and access inventory together when you need to answer what exi
 
 Export live dashboards into a durable tree.
 
+**Before**: A "backup" is either a UI export or a one-off file dump with weak review value.
+
+**After**: You have a reviewable export tree that can feed inspection, replay, migration, and Git-based review.
+
 ```bash
 # Purpose: Export live dashboards into a durable tree.
 grafana-util dashboard export --export-dir ./backups --overwrite --progress
+```
+
+```bash
+# Purpose: Export live dashboards into a durable tree.
 grafana-util access org export --export-dir ./access-orgs
+```
+
+```bash
+# Purpose: Export live dashboards into a durable tree.
 grafana-util access service-account export --export-dir ./access-service-accounts
 ```
 **Expected Output:**
@@ -94,9 +143,17 @@ Keep dashboard, org, and service-account exports together when the goal is a rep
 
 Replay a backup into a live Grafana instance.
 
+**Before**: Restore means hoping the export is complete and finding out too late whether the import will overwrite something important.
+
+**After**: You preview the replay with dry-run tables first, then decide whether the import is safe enough to continue.
+
 ```bash
 # Purpose: Replay a backup into a live Grafana instance.
 grafana-util dashboard import --import-dir ./backups/raw --replace-existing --dry-run --table
+```
+
+```bash
+# Purpose: Replay a backup into a live Grafana instance.
 grafana-util access team import --import-dir ./access-teams --replace-existing --dry-run --table
 ```
 **Expected Output:**
@@ -120,8 +177,16 @@ Move alerting changes through a reviewed lifecycle.
 ```bash
 # Purpose: Move alerting changes through a reviewed lifecycle.
 grafana-util change summary --desired-file ./desired.json
-grafana-util change preflight --desired-file ./desired.json --output json
-grafana-util alert plan --profile prod --desired-dir ./alerts/desired --output json
+```
+
+```bash
+# Purpose: Move alerting changes through a reviewed lifecycle.
+grafana-util change preflight --desired-file ./desired.json --output-format json
+```
+
+```bash
+# Purpose: Move alerting changes through a reviewed lifecycle.
+grafana-util alert plan --profile prod --desired-dir ./alerts/desired --output-format json
 ```
 **Expected Output (Snippet):**
 ```text
@@ -149,7 +214,15 @@ Manage users, teams, and service accounts through snapshots.
 ```bash
 # Purpose: Manage users, teams, and service accounts through snapshots.
 grafana-util access user import --import-dir ./access-users --dry-run --table
+```
+
+```bash
+# Purpose: Manage users, teams, and service accounts through snapshots.
 grafana-util access service-account token add --service-account-id 15 --token-name nightly --seconds-to-live 3600 --json
+```
+
+```bash
+# Purpose: Manage users, teams, and service accounts through snapshots.
 grafana-util access service-account token delete --service-account-id 15 --token-name nightly --yes --json
 ```
 **Expected Output:**

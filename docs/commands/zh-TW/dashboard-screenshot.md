@@ -26,7 +26,15 @@
 ```bash
 # 用途：在無頭瀏覽器中開啟一個儀表板，並擷取圖片或 PDF 輸出。
 grafana-util dashboard screenshot --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --profile prod --output ./cpu-main.png --full-page --header-title --header-url --header-captured-at
+```
+
+```bash
+# 用途：在無頭瀏覽器中開啟一個儀表板，並擷取圖片或 PDF 輸出。
 grafana-util dashboard screenshot --url https://grafana.example.com --dashboard-uid rYdddlPWk --panel-id 20 --vars-query 'var-datasource=prom-main&var-job=node-exporter&var-node=host01:9100' --basic-user admin --prompt-password --output ./panel.png --header-title 'CPU Busy' --header-text 'Solo panel debug capture'
+```
+
+```bash
+# 用途：在無頭瀏覽器中開啟一個儀表板，並擷取圖片或 PDF 輸出。
 grafana-util dashboard screenshot --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --token "$GRAFANA_API_TOKEN" --output ./cpu-main.png --full-page --header-title --header-url --header-captured-at
 ```
 

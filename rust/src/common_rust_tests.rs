@@ -3,9 +3,13 @@
 //! resolution logic for all Rust domains.
 use super::{
     editor, invalid_header_name, invalid_header_value, invalid_url, parse_error,
-    resolve_auth_headers, resolve_auth_headers_with_prompt, sanitize_path_component, tui,
-    validation, GrafanaCliError,
+    resolve_auth_headers, resolve_auth_headers_with_prompt, sanitize_path_component,
+    should_print_stdout, strip_ansi_codes, tui, validation, write_plain_output_file,
+    GrafanaCliError,
 };
+use std::fs;
+use std::path::Path;
+use tempfile::tempdir;
 
 #[test]
 fn sanitize_path_component_normalizes_symbols_and_spaces() {
@@ -116,6 +120,14 @@ fn resolve_auth_headers_supports_prompt_password() {
 }
 
 #[test]
+fn should_print_stdout_only_when_no_output_file_or_also_stdout() {
+    let path = Path::new("/tmp/output.json");
+    assert!(should_print_stdout(None, false));
+    assert!(!should_print_stdout(Some(path), false));
+    assert!(should_print_stdout(Some(path), true));
+}
+
+#[test]
 fn resolve_auth_headers_rejects_prompt_without_username() {
     let error = resolve_auth_headers_with_prompt(
         None,
@@ -185,4 +197,25 @@ fn resolve_auth_headers_rejects_prompt_token_with_explicit_token() {
     assert!(error
         .to_string()
         .contains("Choose either --token / --api-token or --prompt-token, not both."));
+}
+
+#[test]
+fn strip_ansi_codes_removes_terminal_color_sequences() {
+    let rendered = "{\n  \u{1b}[1;36m\"summary\"\u{1b}[0m: \u{1b}[33m1\u{1b}[0m\n}";
+    assert_eq!(strip_ansi_codes(rendered), "{\n  \"summary\": 1\n}");
+}
+
+#[test]
+fn write_plain_output_file_persists_plain_text_without_ansi() {
+    let temp = tempdir().unwrap();
+    let output_path = temp.path().join("rendered.json");
+
+    write_plain_output_file(
+        &output_path,
+        "{\n  \u{1b}[1;36m\"summary\"\u{1b}[0m: \u{1b}[33m1\u{1b}[0m\n}\n",
+    )
+    .unwrap();
+
+    let raw = fs::read_to_string(output_path).unwrap();
+    assert_eq!(raw, "{\n  \"summary\": 1\n}\n");
 }

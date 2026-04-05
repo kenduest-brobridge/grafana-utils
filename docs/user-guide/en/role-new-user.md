@@ -28,6 +28,23 @@ Profiles matter because they remove repetition, not because direct flags are uns
 - Understand when direct flags are enough and when a profile becomes the cleaner choice.
 - Avoid pasting secrets into long command lines unless you are bootstrapping.
 
+## Before / After
+
+- Before: new users had to guess whether they should start with a profile, a token, or direct flags.
+- After: prove one direct read-only connection first, then move the repeatable parts into a profile.
+
+## What success looks like
+
+- You can run one safe live command and understand the output.
+- You know which auth form you are using and why.
+- You can explain when a profile is useful and when direct flags are enough.
+
+## Failure checks
+
+- If the first live read fails, stop and fix connection or auth before touching mutation workflows.
+- If you do not know which auth source is active, inspect the command line and profile file before proceeding.
+- If you are tempted to paste secrets into shell history, switch to env-backed or prompted auth first.
+
 ## Typical First-Day Tasks
 
 - Confirm the installed binary is on `PATH`.
@@ -63,11 +80,31 @@ The key idea is simple: direct flags prove the connection, profiles simplify rep
 ```bash
 # Purpose: First Commands To Run.
 grafana-util --version
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output yaml
+```
+
+```bash
+# Purpose: First Commands To Run.
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
+```
+
+```bash
+# Purpose: First Commands To Run.
 grafana-util profile init --overwrite
+```
+
+```bash
+# Purpose: First Commands To Run.
 grafana-util profile example --mode basic
+```
+
+```bash
+# Purpose: First Commands To Run.
 grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password
-grafana-util status live --profile dev --output yaml
+```
+
+```bash
+# Purpose: First Commands To Run.
+grafana-util status live --profile dev --output-format yaml
 ```
 
 The sequence matters:
@@ -81,14 +118,14 @@ If you do not have a profile yet, this is the shortest safe bootstrap:
 
 ```bash
 # Purpose: If you do not have a profile yet, this is the shortest safe bootstrap.
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output yaml
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
 ```
 
 If you already have a scoped token, you can check the same live surface without a profile:
 
 ```bash
 # Purpose: If you already have a scoped token, you can check the same live surface without a profile.
-grafana-util overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output json
+grafana-util overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 
 If your shell already exports auth variables, you can also keep the command shorter:
@@ -97,7 +134,7 @@ If your shell already exports auth variables, you can also keep the command shor
 # Purpose: If your shell already exports auth variables, you can also keep the command shorter.
 export GRAFANA_USERNAME=admin
 export GRAFANA_PASSWORD=admin
-grafana-util status live --url http://localhost:3000 --output yaml
+grafana-util status live --url http://localhost:3000 --output-format yaml
 ```
 
 ## What Good Looks Like

@@ -17,6 +17,23 @@ If you want the high-level framing first, including the pain points this tool is
 
 - [What grafana-util is for](what-is-grafana-util.md)
 
+## Before / After
+
+- Before: you had to guess which chapter to open when you wanted to understand the workflow.
+- After: start with the purpose page, then choose the handbook path that matches your role.
+
+## What success looks like
+
+- You know which chapter to open for your current task.
+- You can separate the handbook from the exact command reference.
+- You can move from first read-only checks into the right workflow lane without guessing.
+
+## Failure checks
+
+- If you still do not know whether you need dashboard, alert, access, or change guidance, stop at the purpose page and read the role map first.
+- If the first live read fails, fix connection or auth before opening mutation chapters.
+- If you only need exact flags, switch to the command docs instead of trying to infer them from the handbook.
+
 ---
 
 ## 30-Second Quick Start
@@ -38,7 +55,7 @@ grafana-util --version
 ### 3. Run Your First Global Audit
 ```bash
 # Generates a high-level health and inventory report of your Grafana estate
-grafana-util overview live --url http://localhost:3000 --basic-user admin --prompt-password --output interactive
+grafana-util overview live --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
 **Why this matters:** In 30 seconds, you have confirmed connectivity, checked dashboards and alerts, and found the first obvious data source problems before you make changes.

@@ -71,6 +71,7 @@ fn governance_gate_help_mentions_policy_and_queries_inputs() {
     assert!(help.contains("--json-output"));
     assert!(help.contains("--output-format"));
     assert!(help.contains("governance-gate"));
+    assert!(help.contains("inspect-live or inspect-export"));
 }
 
 #[test]
@@ -135,7 +136,32 @@ fn parse_cli_supports_dashboard_topology_command() {
                 topology_args.output_file,
                 Some(PathBuf::from("./dashboard-topology.mmd"))
             );
+            assert!(!topology_args.also_stdout);
             assert!(topology_args.interactive);
+        }
+        _ => panic!("expected topology command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_dashboard_topology_also_stdout() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "topology",
+        "--governance",
+        "./governance.json",
+        "--output-file",
+        "./dashboard-topology.mmd",
+        "--also-stdout",
+    ]);
+
+    match args.command {
+        DashboardCommand::Topology(topology_args) => {
+            assert_eq!(
+                topology_args.output_file,
+                Some(PathBuf::from("./dashboard-topology.mmd"))
+            );
+            assert!(topology_args.also_stdout);
         }
         _ => panic!("expected topology command"),
     }
@@ -149,11 +175,14 @@ fn topology_help_mentions_alert_contract_and_visual_formats() {
     assert!(help.contains("--alert-contract"));
     assert!(help.contains("--output-format"));
     assert!(help.contains("--output-file"));
+    assert!(help.contains("--also-stdout"));
     assert!(help.contains("--interactive"));
+    assert!(help.contains("inspect-live or inspect-export"));
+    assert!(help.contains("governance.json"));
     assert!(help.contains("mermaid"));
     assert!(help.contains("dot"));
     assert!(help.contains("graph"));
-    assert!(help.contains("variable"));
+    assert!(help.contains("governance JSON"));
     assert!(help.contains("topology"));
 }
 

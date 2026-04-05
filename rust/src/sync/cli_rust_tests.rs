@@ -31,7 +31,7 @@ fn run_sync_cli_summary_accepts_local_desired_file() {
 
     let result = run_sync_cli(SyncGroupCommand::Summary(SyncSummaryArgs {
         desired_file,
-        output: SyncOutputFormat::Json,
+        output_format: SyncOutputFormat::Json,
     }));
 
     assert!(result.is_ok(), "{result:?}");
@@ -78,7 +78,7 @@ fn run_sync_cli_plan_accepts_local_inputs() {
         org_id: None,
         page_size: 500,
         allow_prune: false,
-        output: SyncOutputFormat::Json,
+        output_format: SyncOutputFormat::Json,
         trace_id: None,
     }));
 
@@ -108,7 +108,7 @@ fn run_sync_cli_assess_alerts_accepts_local_inputs() {
 
     let result = run_sync_cli(SyncGroupCommand::AssessAlerts(SyncAssessAlertsArgs {
         alerts_file,
-        output: SyncOutputFormat::Json,
+        output_format: SyncOutputFormat::Json,
     }));
 
     assert!(result.is_ok());

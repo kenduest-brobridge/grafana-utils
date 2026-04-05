@@ -298,6 +298,7 @@ mod tests {
             help_full: false,
             no_header: false,
             output_file: None,
+            also_stdout: false,
             interactive: false,
         };
         let report = make_report(&import_dir.display().to_string());

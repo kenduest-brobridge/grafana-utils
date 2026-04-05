@@ -18,11 +18,32 @@
 - `--json` 將 dry-run 輸出呈現為結構化 JSON。
 - `--dashboard-uid-map` 與 `--panel-id-map` 用來在匯入時修正關聯的 alert 規則。
 
+## 採用前後對照
+
+- 之前：一筆一筆手動重建 alert 資源，或把 JSON 分開貼回 Grafana。
+- 之後：直接匯入整份匯出套件，讓命令自己處理整個資源集。
+
+## 成功判準
+
+- dry-run 輸出看起來跟你預期要匯入的資源一致。
+- 實際匯入後，規則、聯絡點、靜音時段、範本與政策都回到預期狀態。
+- 如果有 dashboard 連動規則，匯入後的對應也還是對的。
+
+## 失敗時先檢查
+
+- `--import-dir` 要指向 `raw/` 目錄，不要只指到上層匯出資料夾。
+- 如果 dashboard 連動規則有搬動，匯入前先補上 dashboard / panel 對應表。
+- 需要覆蓋既有資源時，記得加 `--replace-existing`。
+
 ## 範例
 
 ```bash
 # 用途：透過 Grafana API 匯入 alert 資源 JSON 檔。
 grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing
+```
+
+```bash
+# 用途：透過 Grafana API 匯入 alert 資源 JSON 檔。
 grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dry-run --json
 ```
 

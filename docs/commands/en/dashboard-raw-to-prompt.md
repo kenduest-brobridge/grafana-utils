@@ -50,10 +50,30 @@ Use this when someone gives you a normal Grafana dashboard export, legacy raw JS
 ```bash
 # Purpose: Convert ordinary dashboard JSON or `raw/` lane files into Grafana UI prompt JSON with `__inputs`.
 grafana-util dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json
+```
+
+```bash
+# Purpose: Convert ordinary dashboard JSON or `raw/` lane files into Grafana UI prompt JSON with `__inputs`.
 grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu.json --input-file ./legacy/logs.json --progress
+```
+
+```bash
+# Purpose: Convert ordinary dashboard JSON or `raw/` lane files into Grafana UI prompt JSON with `__inputs`.
 grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --overwrite
+```
+
+```bash
+# Purpose: Convert ordinary dashboard JSON or `raw/` lane files into Grafana UI prompt JSON with `__inputs`.
 grafana-util dashboard raw-to-prompt --input-dir ./legacy-json --output-dir ./converted/prompt --output-format table
+```
+
+```bash
+# Purpose: Convert ordinary dashboard JSON or `raw/` lane files into Grafana UI prompt JSON with `__inputs`.
 grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu.json --datasource-map ./datasource-map.yaml --resolution exact --log-file ./raw-to-prompt.log --log-format json
+```
+
+```bash
+# Purpose: Convert ordinary dashboard JSON or `raw/` lane files into Grafana UI prompt JSON with `__inputs`.
 grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu.json --profile prod --org-id 2 --resolution exact
 ```
 

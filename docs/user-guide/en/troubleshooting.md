@@ -14,6 +14,23 @@ Use this chapter when a command looks syntactically correct but the result is wr
 - Point you to the right companion chapter or command reference quickly.
 - Keep debugging focused on facts you can verify from the CLI.
 
+## Before / After
+
+- Before: people had to guess whether a bad result was a syntax problem, a scope problem, or a workflow problem.
+- After: the troubleshooting chapter separates connection, scope, staged input, and output-shape problems into readable checks.
+
+## What success looks like
+
+- You can identify the likely failure class before reading every command page.
+- You can decide whether to fix auth, scope, staged input, or output formatting.
+- You can tell when the problem belongs in the workflow chapter instead of here.
+
+## Failure checks
+
+- If the symptom is still unclear after the first check, do not continue mutating live state.
+- If a command syntax error hides the real problem, verify the selected lane and auth source before changing anything else.
+- If the output shape is surprising but the command exits cleanly, check the documented contract before assuming the renderer is wrong.
+
 It helps you diagnose real failures instead of guessing. The most useful split is not just "error code versus no error code", but:
 
 - auth versus scope
@@ -92,7 +109,7 @@ This is one of the most common operator mistakes.
 | Symptom | Likely Cause | Fix |
 | :--- | :--- | :--- |
 | parser in CI breaks unexpectedly | a human-oriented output mode was used | prefer `json`, `yaml`, or another machine-readable mode |
-| a command rejects `--output-format` | that surface uses `--output` instead | check the current command help or command-reference page |
+| a command rejects one `--output-format` value | that command only supports a narrower set of formats | check the current command help or command-reference page |
 | interactive output is confusing in a first-run check | too much presentation, not enough raw signal | switch to `yaml` or `json` first |
 
 ---

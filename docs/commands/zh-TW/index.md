@@ -12,6 +12,29 @@
 這個目錄收錄 `grafana-util` 各個 command 與 subcommand 的獨立頁面。  
 如果手冊章節是幫你理解整體工作流程，這裡就是用來查實際語法、常用旗標，以及相近命令差在哪裡的地方。
 
+## 輸出旗標慣例
+
+很多 list、review、dry-run 類指令，同時支援完整寫法與較短的快捷旗標。
+
+常見對應關係：
+
+- `--output-format table` 通常等於 `--table`
+- `--output-format json` 通常等於 `--json`
+- `--output-format csv` 通常等於 `--csv`
+- `--output-format yaml` 通常等於 `--yaml`
+- `--output-format text` 通常等於 `--text`
+
+如果你是在腳本、CI 或範本裡統一帶參數，建議優先用完整寫法。  
+如果你是在終端直接操作，快捷旗標會比較省事。
+
+但也有幾個重要例外：
+
+- 有些指令只支援部分快捷旗標，不一定每種格式都有短寫
+- `dashboard topology` 是特例：它支援 `text`、`json`、`mermaid`、`dot`，但沒有 `--table` 這類快捷旗標
+- `--output-file`，或某些匯出 / draft 指令裡的 `--output`，代表的是輸出檔案路徑，不是輸出格式
+
+所以如果你要確認某一條指令到底支援哪些格式，還是以該指令頁面為準。
+
 如果你是從繁體中文手冊進來，建議這樣使用：
 
 | 你要查什麼 | 建議閱讀順序 |
@@ -42,6 +65,7 @@
 - [dashboard inspect-vars](./dashboard-inspect-vars.md)
 - [dashboard governance-gate](./dashboard-governance-gate.md)
 - [dashboard topology](./dashboard-topology.md)
+- [dashboard impact](./dashboard-impact.md)
 - [dashboard screenshot](./dashboard-screenshot.md)
 
 ## Datasource

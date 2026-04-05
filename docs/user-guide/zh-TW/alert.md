@@ -14,6 +14,23 @@
 - 再做 plan / review / apply
 - 需要回放或遷移時，再走 export / import / diff
 
+## 採用前後對照
+
+- 以前：告警變更常混在 UI 與 YAML 的混合路徑裡，審查脈絡不夠清楚。
+- 現在：編寫 desired state、看 plan、真正 apply 分成不同關卡，證據也更明確。
+
+## 成功判準
+
+- 你能分清楚自己是在改 desired state、看 plan，還是要真的套用變更。
+- 你能在動 live state 前說清楚這次會影響 alert chain 的哪一段。
+- 你看得懂輸出，也能判斷 plan 是否可以繼續往下走。
+
+## 失敗時先檢查
+
+- 如果 plan 輸出少了你預期的 contact point 或 route，先檢查 staged input。
+- 如果 apply 會碰到比你預期更多的東西，先把它當成審查失敗，而不是 renderer 問題。
+- 如果你還說不出自己在 alert 哪條 lane，先回去看工作流章節，不要直接改 live。
+
 > **維運原則**：透過 **計畫 (Plan) -> 審查 (Review) -> 套用 (Apply)** 週期來謹慎變更告警，防止即時環境發生意外。
 
 ## 🔗 指令頁面
@@ -90,7 +107,7 @@ grafana-util alert add-rule \
 grafana-util alert plan \
   --url http://localhost:3000 \
   --basic-user admin --basic-password admin \
-  --desired-dir ./alerts/desired --prune --output json
+  --desired-dir ./alerts/desired --prune --output-format json
 ```
 
 **如何解讀計畫輸出：**
@@ -104,7 +121,7 @@ grafana-util alert plan \
 # 用途：僅在計畫審查完成並保存後執行。
 grafana-util alert apply \
   --plan-file ./alert-plan-reviewed.json \
-  --approve --output json
+  --approve --output-format json
 ```
 
 ---
@@ -115,7 +132,7 @@ grafana-util alert apply \
 | :--- | :--- |
 | **列出規則 (List)** | `grafana-util alert list-rules --all-orgs --table` |
 | **匯出 (Export)** | `grafana-util alert export --export-dir ./alerts --overwrite` |
-| **計畫 (Plan)** | `grafana-util alert plan --desired-dir ./alerts/desired --prune --output json` |
+| **計畫 (Plan)** | `grafana-util alert plan --desired-dir ./alerts/desired --prune --output-format json` |
 | **套用 (Apply)** | `grafana-util alert apply --plan-file ./plan.json --approve` |
 | **設定路由 (Set Route)** | `grafana-util alert set-route --desired-dir ./alerts/desired --receiver pagerduty` |
 | **新增規則 (New)** | `grafana-util alert new-rule --name <NAME> --folder <FOLDER> --output <FILE>` |
@@ -129,7 +146,7 @@ grafana-util alert apply \
 ### 1. 告警計畫摘錄
 ```bash
 # 用途：1. 告警計畫摘錄。
-grafana-util alert plan --desired-dir ./alerts/desired --prune --output json
+grafana-util alert plan --desired-dir ./alerts/desired --prune --output-format json
 ```
 **範例輸出：**
 ```json

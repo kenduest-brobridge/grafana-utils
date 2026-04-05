@@ -145,20 +145,48 @@ pre:hover .code-controls { opacity: 1; }
 #font-select { width: 138px; }
 #theme-select { width: 128px; }
 
-.layout { display: grid; grid-template-columns: 232px minmax(0, 1fr) 244px; gap: 20px; align-items: start; }
-.layout.layout-no-nav { grid-template-columns: minmax(0, 1fr) 244px; }
-.layout.layout-no-sidebar { grid-template-columns: 232px minmax(0, 1fr); }
+.layout {
+  --nav-width: 232px;
+  --sidebar-width: 244px;
+  display: grid;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr) var(--sidebar-width);
+  gap: 20px;
+  align-items: start;
+}
+.layout.layout-no-nav { --nav-width: 0px; grid-template-columns: minmax(0, 1fr) var(--sidebar-width); }
+.layout.layout-no-sidebar { --sidebar-width: 0px; grid-template-columns: var(--nav-width) minmax(0, 1fr); }
 .layout.layout-no-nav.layout-no-sidebar { grid-template-columns: minmax(0, 1fr); }
+.layout.layout-collapsed-nav:not(.layout-no-nav) { --nav-width: 26px; }
+.layout.layout-collapsed-sidebar:not(.layout-no-sidebar) { --sidebar-width: 26px; }
 @media (max-width: 1280px) { .layout { grid-template-columns: 210px minmax(0, 1fr); gap: 18px; } .sidebar { display: none !important; } }
 @media (max-width: 768px) { .layout { grid-template-columns: 1fr; } .nav-sidebar { display: none !important; } }
 
-.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 12px 0 0; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.nav-sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .nav-sidebar li { margin-bottom: 0; }
-.nav-sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; letter-spacing: 0.04em; }
+.nav-sidebar h2 {
+  margin: 0 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: none;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  opacity: 0.82;
+}
 .nav-section + .nav-section { margin-top: 18px; }
 .nav-group-block + .nav-group-block { margin-top: 14px; }
-.nav-group-title { margin: 0 0 6px; font-size: 0.76rem; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+.nav-group-title {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--heading);
+  letter-spacing: 0.01em;
+  line-height: 1.32;
+}
 .nav-tree,
 .nav-sub-list { list-style: none; margin: 0; padding: 0; position: relative; }
 .nav-tree::before,
@@ -167,24 +195,67 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 .nav-tree-node + .nav-tree-node { margin-top: 2px; }
 .nav-tree-node::before { display: none; }
 .nav-group { margin: 0; position: relative; }
-.nav-group + .nav-group { margin-top: 4px; }
-.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.92rem; }
+.nav-group + .nav-group { margin-top: 2px; }
+.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.9rem; }
 .nav-group-header:hover { color: var(--heading); }
-.nav-group-link { flex: 1; display: block; padding: 5px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 610; line-height: 1.42; }
+.nav-group-link { flex: 1; display: block; padding: 4px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 600; line-height: 1.4; }
 .nav-group-link:hover { background: var(--panel-strong); }
-.nav-item { display: block; padding: 5px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 550; font-size: 0.9rem; line-height: 1.44; }
+.nav-item { display: block; padding: 4px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 530; font-size: 0.84rem; line-height: 1.4; }
 .nav-group-link,
 .nav-item,
 .nav-command-entry { white-space: nowrap; }
 .nav-item:hover { background: var(--panel-strong); color: var(--heading); }
 .nav-item.active,
-.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 82%, white); color: var(--heading); font-weight: 620; box-shadow: inset 2px 0 0 var(--accent); }
+.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 70%, white); color: var(--heading); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .nav-sub-list { margin-top: 4px; margin-left: 10px; }
 .nav-sub-list .nav-item { color: var(--muted); font-weight: 520; }
-.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 610; }
-.nav-command-entry { display: block; padding: 5px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.88rem; font-weight: 560; line-height: 1.4; transition: 0.15s; }
+.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 590; }
+.nav-command-entry { display: block; padding: 4px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.82rem; font-weight: 540; line-height: 1.38; transition: 0.15s; }
 .nav-command-entry:hover { color: var(--heading); background: var(--panel-strong); }
 .nav-command-entry.active { color: var(--heading); font-weight: 620; background: color-mix(in srgb, var(--accent-soft) 60%, white); box-shadow: inset 2px 0 0 var(--accent); }
+
+.sidebar-toggle {
+  position: absolute;
+  top: 18px;
+  width: 18px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 92%, white);
+  color: var(--muted);
+  font: 700 10px var(--font-sans);
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  z-index: 5;
+}
+.sidebar-toggle:hover {
+  color: var(--heading);
+  border-color: color-mix(in srgb, var(--border) 55%, var(--accent));
+  background: var(--panel);
+}
+.sidebar-toggle-left { right: 0; transform: translateX(50%); }
+.sidebar-toggle-right { left: 0; transform: translateX(-50%); }
+.layout.layout-collapsed-nav .nav-sidebar-content,
+.layout.layout-collapsed-sidebar .sidebar-content {
+  opacity: 0;
+  pointer-events: none;
+}
+.layout.layout-collapsed-nav .nav-sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-sidebar .sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-nav .nav-sidebar,
+.layout.layout-collapsed-sidebar .sidebar {
+  min-width: 0;
+}
+.layout.layout-collapsed-nav .sidebar-toggle-left {
+  right: 4px;
+  transform: none;
+}
+.layout.layout-collapsed-sidebar .sidebar-toggle-right {
+  left: 4px;
+  transform: none;
+}
 
 .article { min-width: 0; padding: 10px 0 24px; }
 .article p,
@@ -328,8 +399,9 @@ html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0
 }
 .command-intro-list li { margin: 0.18rem 0; }
 
-.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0; max-height: calc(100vh - 24px); overflow-y: auto; font-family: var(--font-sans); letter-spacing: -0.01em; }
+.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0 12px; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
 html[lang="zh-TW"] .sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
 .sidebar li { margin-bottom: 0; }
 .sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.05em; }
 .sidebar-section + .sidebar-section { margin-top: 22px; }
@@ -680,13 +752,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 
       <div class="layout">
-  <aside class="nav-sidebar"><section class="nav-section"><h2>Handbook</h2><div class="nav-group-block"><div class="nav-group-title">Start</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/en/index.html" class="nav-item">Overview</a></li><li class="nav-tree-node"><a href="../../handbook/en/what-is-grafana-util.html" class="nav-item">What grafana-util is for</a></li><li class="nav-tree-node"><a href="../../handbook/en/getting-started.html" class="nav-item">Getting Started</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Role Paths</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/en/role-new-user.html" class="nav-item">New User Handbook</a></li><li class="nav-tree-node"><a href="../../handbook/en/role-sre-ops.html" class="nav-item">SRE / Operator Handbook</a></li><li class="nav-tree-node"><a href="../../handbook/en/role-automation-ci.html" class="nav-item">Automation / CI Handbook</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Core Operations</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/en/dashboard.html" class="nav-item">Dashboard Operator Handbook</a></li><li class="nav-tree-node"><a href="../../handbook/en/datasource.html" class="nav-item">Datasource Operator Handbook</a></li><li class="nav-tree-node"><a href="../../handbook/en/alert.html" class="nav-item">Alert Operator Handbook</a></li><li class="nav-tree-node"><a href="../../handbook/en/access.html" class="nav-item">Access Management (Identity &amp; Access)</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Governance</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/en/architecture.html" class="nav-item">Architecture &amp; Design Principles</a></li><li class="nav-tree-node"><a href="../../handbook/en/change-overview-status.html" class="nav-item">Project Status &amp; Change Overview</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Scenarios &amp; Reference</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/en/scenarios.html" class="nav-item">Operator Scenarios</a></li><li class="nav-tree-node"><a href="../../handbook/en/recipes.html" class="nav-item">Best Practices &amp; Real-World Recipes</a></li><li class="nav-tree-node"><a href="../../handbook/en/reference.html" class="nav-item">Technical Reference</a></li><li class="nav-tree-node"><a href="../../handbook/en/troubleshooting.html" class="nav-item">Troubleshooting &amp; Glossary</a></li></ul></div></section><section class="nav-section"><h2>Command Reference</h2><a href="index.html" class="nav-command-entry active">Open command docs</a></section></aside>
+  <aside class="nav-sidebar">
+  <button class="sidebar-toggle sidebar-toggle-left" type="button" aria-expanded="true" aria-label="Toggle handbook navigation">◀</button>
+  <div class="nav-sidebar-content"><section class="nav-section"><h2>Guide Map</h2><div class="nav-group-block"><div class="nav-group-title">Start</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/en/index.html" class="nav-item">Overview</a></li><li class="nav-tree-node"><a href="../../handbook/en/what-is-grafana-util.html" class="nav-item">What grafana-util is for</a></li><li class="nav-tree-node"><a href="../../handbook/en/getting-started.html" class="nav-item">Getting Started</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Role Paths</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/en/role-new-user.html" class="nav-item">New User Handbook</a></li><li class="nav-tree-node"><a href="../../handbook/en/role-sre-ops.html" class="nav-item">SRE / Operator Handbook</a></li><li class="nav-tree-node"><a href="../../handbook/en/role-automation-ci.html" class="nav-item">Automation / CI Handbook</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Core Operations</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/en/dashboard.html" class="nav-item">Dashboard Operator Handbook</a></li><li class="nav-tree-node"><a href="../../handbook/en/datasource.html" class="nav-item">Datasource Operator Handbook</a></li><li class="nav-tree-node"><a href="../../handbook/en/alert.html" class="nav-item">Alert Operator Handbook</a></li><li class="nav-tree-node"><a href="../../handbook/en/access.html" class="nav-item">Access Management (Identity &amp; Access)</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Governance</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/en/architecture.html" class="nav-item">Architecture &amp; Design Principles</a></li><li class="nav-tree-node"><a href="../../handbook/en/change-overview-status.html" class="nav-item">Project Status &amp; Change Overview</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Scenarios &amp; Reference</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/en/scenarios.html" class="nav-item">Operator Scenarios</a></li><li class="nav-tree-node"><a href="../../handbook/en/recipes.html" class="nav-item">Best Practices &amp; Real-World Recipes</a></li><li class="nav-tree-node"><a href="../../handbook/en/reference.html" class="nav-item">Technical Reference</a></li><li class="nav-tree-node"><a href="../../handbook/en/troubleshooting.html" class="nav-item">Troubleshooting &amp; Glossary</a></li></ul></div></section><section class="nav-section"><h2>Command Entry</h2><a href="index.html" class="nav-command-entry active">Open command docs</a></section></div>
+</aside>
 
   <article class="article">
     <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / grafana-util change</div>
 
-    <div class="hero-eyebrow">Docs</div>
-<h1><span class="hero-title-main">grafana-util change</span></h1>
+    <h1><span class="hero-title-main">grafana-util change</span></h1>
 
 
     <section class="command-intro">
@@ -708,107 +782,196 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>Purpose: review-first sync workflows with optional live Grafana fetch and apply paths.</p>
 <p>When to use: when you need to summarize desired resources, plan against live state, review a plan, apply a reviewed plan, audit drift, or build bundle and promotion preflight documents.</p>
 <p>Description: start here when your team follows a review-first change workflow and you need the whole path in one place. The <code>change</code> namespace is the control surface for summary, preflight, planning, review, audit, and apply, so operators can see how those steps fit together before they run one exact subcommand.</p>
-<p>Key flags: the root command is a namespace; the main operational flags live on the subcommands. Common workflow inputs include <code>--desired-file</code>, <code>--plan-file</code>, <code>--live-file</code>, <code>--fetch-live</code>, <code>--approve</code>, <code>--execute-live</code>, <code>--source-bundle</code>, <code>--target-inventory</code>, <code>--availability-file</code>, <code>--mapping-file</code>, and <code>--output</code>.</p>
+<p>Before / After:</p>
+<ul><li><strong>Before</strong>: a change package is just a pile of files and a risky apply path.</li><li><strong>After</strong>: the same package moves through summary, preflight, plan, review, and apply with explicit checkpoints.</li></ul>
+<p>Key flags: the root command is a namespace; the main operational flags live on the subcommands. Common workflow inputs include <code>--desired-file</code>, <code>--plan-file</code>, <code>--live-file</code>, <code>--fetch-live</code>, <code>--approve</code>, <code>--execute-live</code>, <code>--source-bundle</code>, <code>--target-inventory</code>, <code>--availability-file</code>, <code>--mapping-file</code>, and <code>--output-format</code>.</p>
+<h3 id="json-contracts-for-ci-and-scripts">JSON contracts for CI and scripts</h3>
+<p>If you want to automate around <code>change</code> outputs, treat <code>kind</code> plus <code>schemaVersion</code> as the contract guard before you inspect the rest of the payload.</p>
+<p>Quick lookups from the CLI:</p>
+<ul><li><code>grafana-util change --help-schema</code></li><li><code>grafana-util change summary --help-schema</code></li><li><code>grafana-util change plan --help-schema</code></li><li><code>grafana-util change apply --help-schema</code></li></ul>
+<table><thead><tr><th>Command</th><th>Output kind</th><th>Top-level fields to expect</th></tr></thead><tbody><tr><td><code>change summary --output-format json</code></td><td><code>grafana-utils-sync-summary</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>summary</code>, <code>resources</code></td></tr><tr><td><code>change plan --output-format json</code></td><td><code>grafana-utils-sync-plan</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>dryRun</code>, <code>reviewRequired</code>, <code>reviewed</code>, <code>allowPrune</code>, <code>summary</code>, <code>alertAssessment</code>, <code>operations</code>, <code>traceId</code>, <code>stage</code>, <code>stepIndex</code>, <code>parentTraceId</code></td></tr><tr><td><code>change review --output-format json</code></td><td><code>grafana-utils-sync-plan</code></td><td>same plan shape, plus <code>reviewedBy</code>, <code>reviewedAt</code>, <code>reviewNote</code>, and lineage moved to <code>stage=review</code></td></tr><tr><td><code>change apply --output-format json</code></td><td><code>grafana-utils-sync-apply-intent</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>mode</code>, <code>reviewed</code>, <code>reviewRequired</code>, <code>allowPrune</code>, <code>approved</code>, <code>summary</code>, <code>alertAssessment</code>, <code>operations</code>, optional <code>preflightSummary</code>, optional <code>bundlePreflightSummary</code>, <code>appliedBy</code>, <code>appliedAt</code>, <code>approvalReason</code>, <code>applyNote</code>, <code>traceId</code>, <code>stage</code>, <code>stepIndex</code>, <code>parentTraceId</code></td></tr><tr><td><code>change apply --execute-live --output-format json</code></td><td>live apply result</td><td><code>mode</code>, <code>appliedCount</code>, <code>results</code></td></tr><tr><td><code>change audit --output-format json</code></td><td><code>grafana-utils-sync-audit</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>summary</code>, <code>currentLock</code>, <code>baselineLock</code>, <code>drifts</code></td></tr><tr><td><code>change preflight --output-format json</code></td><td><code>grafana-utils-sync-preflight</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>summary</code>, <code>checks</code></td></tr><tr><td><code>change assess-alerts --output-format json</code></td><td><code>grafana-utils-alert-sync-plan</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>summary</code>, <code>alerts</code></td></tr><tr><td><code>change bundle-preflight --output-format json</code></td><td><code>grafana-utils-sync-bundle-preflight</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>summary</code>, <code>syncPreflight</code>, <code>alertArtifactAssessment</code>, <code>secretPlaceholderAssessment</code>, <code>providerAssessment</code></td></tr><tr><td><code>change promotion-preflight --output-format json</code></td><td><code>grafana-utils-sync-promotion-preflight</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>summary</code>, <code>bundlePreflight</code>, <code>mappingSummary</code>, <code>checkSummary</code>, <code>handoffSummary</code>, <code>continuationSummary</code>, <code>checks</code>, <code>resolvedChecks</code>, <code>blockingChecks</code></td></tr></tbody></table>
+<p>Notes:</p>
+<ul><li><code>change apply</code> has two JSON shapes. Without <code>--execute-live</code>, it emits a staged apply-intent document. With <code>--execute-live</code>, it emits the live execution result instead.</li><li><code>change summary</code>, <code>change plan</code>, <code>change review</code>, and <code>change apply</code> all keep <code>summary</code> as the main aggregate block, but the nested fields differ by stage.</li><li><code>change bundle</code> does not use <code>--output-format</code>; it writes the bundle contract with <code>--output-file</code>.</li></ul>
+<p>What success looks like:</p>
+<ul><li>you can explain the size and risk of a change before apply</li><li>staged inputs pass preflight before they enter plan or apply</li><li>reviewed plans carry explicit evidence instead of relying on operator memory</li></ul>
+<p>Failure checks:</p>
+<ul><li>if summary or preflight looks wrong, stop before plan or apply</li><li>if live fetch changes the result unexpectedly, compare staged inputs against the live target first</li><li>if automation consumes JSON, validate <code>kind</code> and <code>schemaVersion</code> before deeper parsing</li></ul>
 <p>Examples:</p>
-<pre><code># Purpose: Root.
-grafana-util change summary --desired-file ./desired.json
-grafana-util change plan --desired-file ./desired.json --fetch-live --profile prod
-grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --profile prod</code></pre>
+<pre><code># Purpose: Summarize desired sync resources before planning.
+grafana-util change summary --desired-file ./desired.json</code></pre>
+<pre><code># Purpose: Build a reviewed plan from desired and live state.
+grafana-util change plan \
+  --desired-file ./desired.json \
+  --fetch-live \
+  --profile prod</code></pre>
+<pre><code># Purpose: Apply a reviewed plan to live Grafana after explicit approval.
+grafana-util change apply \
+  --plan-file ./sync-plan-reviewed.json \
+  --approve \
+  --execute-live \
+  --profile prod</code></pre>
 <p>Related commands: <code>grafana-util overview</code>, <code>grafana-util status</code>, <code>grafana-util snapshot</code>.</p>
 <h2 id="summary"><code>summary</code></h2>
 <p>Purpose: summarize local desired sync resources.</p>
 <p>When to use: when you want a quick size check before planning or applying.</p>
-<p>Key flags: <code>--desired-file</code>, <code>--output</code>.</p>
+<p>Key flags: <code>--desired-file</code>, <code>--output-format</code>.</p>
+<p>JSON shape:</p>
+<ul><li><code>kind</code>: <code>grafana-utils-sync-summary</code></li><li><code>schemaVersion</code>: current contract version</li><li><code>toolVersion</code>: emitting CLI version</li><li><code>summary</code>: aggregate counts</li><li><code>resourceCount</code>, <code>dashboardCount</code>, <code>datasourceCount</code>, <code>folderCount</code>, <code>alertCount</code></li><li><code>resources</code>: normalized rows</li><li><code>kind</code>, <code>identity</code>, <code>title</code>, <code>managedFields</code>, <code>bodyFieldCount</code>, <code>sourcePath</code></li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: summary.
-grafana-util change summary --desired-file ./desired.json
-grafana-util change summary --desired-file ./desired.json --output json</code></pre>
+grafana-util change summary --desired-file ./desired.json</code></pre>
+<pre><code># Purpose: summary.
+grafana-util change summary --desired-file ./desired.json --output-format json</code></pre>
 <p>Related commands: <code>change plan</code>, <code>change preflight</code>.</p>
 <h2 id="plan"><code>plan</code></h2>
 <p>Purpose: build a staged sync plan from desired and live state.</p>
 <p>When to use: when you need a reviewable plan before marking work as reviewed or applying it.</p>
-<p>Key flags: <code>--desired-file</code>, <code>--live-file</code>, <code>--fetch-live</code>, <code>--org-id</code>, <code>--page-size</code>, <code>--allow-prune</code>, <code>--trace-id</code>, <code>--output</code>.</p>
+<p>Before / After:</p>
+<ul><li><strong>Before</strong>: &quot;what will this change?&quot; is answered by intuition or by reading raw desired files.</li><li><strong>After</strong>: one staged plan shows creates, updates, deletes, and blocked alert work before review or apply.</li></ul>
+<p>Key flags: <code>--desired-file</code>, <code>--live-file</code>, <code>--fetch-live</code>, <code>--org-id</code>, <code>--page-size</code>, <code>--allow-prune</code>, <code>--trace-id</code>, <code>--output-format</code>.</p>
+<p>JSON shape:</p>
+<ul><li><code>kind</code>: <code>grafana-utils-sync-plan</code></li><li><code>schemaVersion</code>, <code>toolVersion</code></li><li>staged metadata: <code>dryRun</code>, <code>reviewRequired</code>, <code>reviewed</code>, <code>allowPrune</code></li><li>lineage: <code>traceId</code>, <code>stage</code>, <code>stepIndex</code>, <code>parentTraceId</code></li><li><code>summary</code></li><li><code>would_create</code>, <code>would_update</code>, <code>would_delete</code>, <code>noop</code>, <code>unmanaged</code></li><li><code>alert_candidate</code>, <code>alert_plan_only</code>, <code>alert_blocked</code></li><li><code>alertAssessment</code>: nested alert sync summary and <code>alerts</code> rows</li><li><code>operations</code>: one row per desired/live comparison</li><li><code>kind</code>, <code>identity</code>, <code>title</code>, <code>action</code>, <code>reason</code>, <code>changedFields</code>, <code>managedFields</code>, <code>desired</code>, <code>live</code>, <code>sourcePath</code></li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: plan.
-grafana-util change plan --desired-file ./desired.json --live-file ./live.json
-grafana-util change plan --desired-file ./desired.json --fetch-live --profile prod --allow-prune --output json</code></pre>
+grafana-util change plan --desired-file ./desired.json --live-file ./live.json</code></pre>
+<pre><code># Purpose: plan.
+grafana-util change plan \
+  --desired-file ./desired.json \
+  --fetch-live \
+  --profile prod \
+  --allow-prune \
+  --output-format json</code></pre>
 <p>Related commands: <code>change review</code>, <code>change apply</code>, <code>change summary</code>.</p>
 <h2 id="review"><code>review</code></h2>
 <p>Purpose: mark a staged sync plan as reviewed.</p>
 <p>When to use: when a plan has been inspected and should carry an explicit review token before apply.</p>
-<p>Key flags: <code>--plan-file</code>, <code>--review-token</code>, <code>--reviewed-by</code>, <code>--reviewed-at</code>, <code>--review-note</code>, <code>--interactive</code>, <code>--output</code>.</p>
+<p>Before / After:</p>
+<ul><li><strong>Before</strong>: a team may say a plan was reviewed, but the file itself still does not carry review evidence.</li><li><strong>After</strong>: the staged plan records who reviewed it, when it was reviewed, and any review note needed before apply.</li></ul>
+<p>Key flags: <code>--plan-file</code>, <code>--review-token</code>, <code>--reviewed-by</code>, <code>--reviewed-at</code>, <code>--review-note</code>, <code>--interactive</code>, <code>--output-format</code>.</p>
+<p>JSON shape:</p>
+<ul><li>same base shape as <code>change plan</code></li><li>review state changes:</li><li><code>reviewed: true</code></li><li><code>stage: review</code></li><li><code>stepIndex: 2</code></li><li>review audit fields:</li><li><code>reviewedBy</code></li><li><code>reviewedAt</code></li><li><code>reviewNote</code></li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: review.
-grafana-util change review --plan-file ./sync-plan.json
-grafana-util change review --plan-file ./sync-plan.json --review-note &#x27;peer-reviewed&#x27; --output json</code></pre>
+grafana-util change review --plan-file ./sync-plan.json</code></pre>
+<pre><code># Purpose: review.
+grafana-util change review --plan-file ./sync-plan.json --review-note &#x27;peer-reviewed&#x27; --output-format json</code></pre>
+<p>What success looks like:</p>
+<ul><li>the reviewed plan is a distinct artifact, not just a verbal approval</li><li>downstream apply steps can tell that review already happened</li><li>the review note or reviewer identity is preserved for later audit or handoff</li></ul>
+<p>Failure checks:</p>
+<ul><li>if review output still shows <code>reviewed: false</code>, confirm you are reading the new reviewed file rather than the old plan</li><li>if review metadata is missing, check whether you expected <code>--reviewed-by</code>, <code>--reviewed-at</code>, or <code>--review-note</code> to be recorded</li><li>if a later step rejects the reviewed plan, inspect the <code>stage</code>, <code>stepIndex</code>, and review fields before assuming apply is broken</li></ul>
 <p>Related commands: <code>change plan</code>, <code>change apply</code>.</p>
 <h2 id="apply"><code>apply</code></h2>
 <p>Purpose: build a gated apply intent from a reviewed sync plan, and optionally execute it live.</p>
 <p>When to use: when a plan is already reviewed and you are ready to emit or execute the apply step.</p>
-<p>Key flags: <code>--plan-file</code>, <code>--preflight-file</code>, <code>--bundle-preflight-file</code>, <code>--approve</code>, <code>--execute-live</code>, <code>--allow-folder-delete</code>, <code>--allow-policy-reset</code>, <code>--org-id</code>, <code>--output</code>, <code>--applied-by</code>, <code>--applied-at</code>, <code>--approval-reason</code>, <code>--apply-note</code>.</p>
+<p>Before / After:</p>
+<ul><li><strong>Before</strong>: the last mile between a reviewed plan and a live mutation is often a vague operator step.</li><li><strong>After</strong>: apply turns that step into either a staged intent document or an explicit live execution with approval evidence attached.</li></ul>
+<p>Key flags: <code>--plan-file</code>, <code>--preflight-file</code>, <code>--bundle-preflight-file</code>, <code>--approve</code>, <code>--execute-live</code>, <code>--allow-folder-delete</code>, <code>--allow-policy-reset</code>, <code>--org-id</code>, <code>--output-format</code>, <code>--applied-by</code>, <code>--applied-at</code>, <code>--approval-reason</code>, <code>--apply-note</code>.</p>
+<p>JSON shape:</p>
+<ul><li>default <code>change apply --output-format json</code></li><li><code>kind</code>: <code>grafana-utils-sync-apply-intent</code></li><li><code>schemaVersion</code>, <code>toolVersion</code></li><li><code>mode: apply</code></li><li><code>reviewed</code>, <code>reviewRequired</code>, <code>allowPrune</code>, <code>approved</code></li><li><code>summary</code>, <code>alertAssessment</code>, <code>operations</code></li><li>optional <code>preflightSummary</code></li><li>optional <code>bundlePreflightSummary</code></li><li><code>appliedBy</code>, <code>appliedAt</code>, <code>approvalReason</code>, <code>applyNote</code></li><li><code>traceId</code>, <code>stage</code>, <code>stepIndex</code>, <code>parentTraceId</code></li><li><code>change apply --execute-live --output-format json</code></li><li><code>mode: live-apply</code></li><li><code>appliedCount</code></li><li><code>results</code></li><li>each row includes <code>kind</code>, <code>identity</code>, <code>action</code>, <code>response</code></li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: apply.
-grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve
-grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --allow-folder-delete --profile prod</code></pre>
+grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve</code></pre>
+<pre><code># Purpose: apply.
+grafana-util change apply \
+  --plan-file ./sync-plan-reviewed.json \
+  --approve \
+  --execute-live \
+  --allow-folder-delete \
+  --profile prod</code></pre>
+<p>What success looks like:</p>
+<ul><li>a reviewed plan can move into a gated apply step without losing the review lineage</li><li>staged apply intent JSON is explicit enough for approval workflows or change tickets</li><li>live apply output shows exactly how many operations ran and what each result was</li></ul>
+<p>Failure checks:</p>
+<ul><li>if apply refuses to proceed, confirm the input plan was reviewed and that approval flags such as <code>--approve</code> are present</li><li>if live execution behaves differently from the staged intent, compare the plan, optional preflight, and live target before retrying</li><li>if automation reads apply JSON, distinguish staged <code>grafana-utils-sync-apply-intent</code> from live <code>mode: live-apply</code> output before parsing fields</li></ul>
 <p>Related commands: <code>change review</code>, <code>change preflight</code>, <code>change bundle-preflight</code>.</p>
 <h2 id="audit"><code>audit</code></h2>
 <p>Purpose: audit managed Grafana resources against a checksum lock and current live state.</p>
 <p>When to use: when you need a drift check or want to refresh a lock snapshot.</p>
-<p>Key flags: <code>--managed-file</code>, <code>--lock-file</code>, <code>--live-file</code>, <code>--fetch-live</code>, <code>--org-id</code>, <code>--page-size</code>, <code>--write-lock</code>, <code>--fail-on-drift</code>, <code>--interactive</code>, <code>--output</code>.</p>
+<p>Key flags: <code>--managed-file</code>, <code>--lock-file</code>, <code>--live-file</code>, <code>--fetch-live</code>, <code>--org-id</code>, <code>--page-size</code>, <code>--write-lock</code>, <code>--fail-on-drift</code>, <code>--interactive</code>, <code>--output-format</code>.</p>
+<p>JSON shape:</p>
+<ul><li><code>kind</code>: <code>grafana-utils-sync-audit</code></li><li><code>schemaVersion</code>, <code>toolVersion</code></li><li><code>summary</code></li><li><code>managedCount</code>, <code>baselineCount</code>, <code>currentPresentCount</code>, <code>currentMissingCount</code></li><li><code>inSyncCount</code>, <code>driftCount</code>, <code>missingLockCount</code>, <code>missingLiveCount</code></li><li><code>currentLock</code>: newly built lock snapshot</li><li><code>baselineLock</code>: prior lock document or <code>null</code></li><li><code>drifts</code></li><li><code>kind</code>, <code>identity</code>, <code>title</code>, <code>status</code></li><li><code>baselineStatus</code>, <code>currentStatus</code></li><li><code>baselineChecksum</code>, <code>currentChecksum</code></li><li><code>driftedFields</code>, <code>sourcePath</code></li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: audit.
-grafana-util change audit --managed-file ./desired.json --live-file ./live.json --write-lock ./sync-lock.json
-grafana-util change audit --lock-file ./sync-lock.json --fetch-live --profile prod --fail-on-drift --output json</code></pre>
+grafana-util change audit --managed-file ./desired.json --live-file ./live.json --write-lock ./sync-lock.json</code></pre>
+<pre><code># Purpose: audit.
+grafana-util change audit --lock-file ./sync-lock.json --fetch-live --profile prod --fail-on-drift --output-format json</code></pre>
 <p>Related commands: <code>change preflight</code>, <code>change plan</code>, <code>status live</code>.</p>
 <h2 id="preflight"><code>preflight</code></h2>
 <p>Purpose: build a staged sync preflight document from desired resources and optional availability hints.</p>
 <p>When to use: when you need a structural gate before planning or applying.</p>
-<p>Key flags: <code>--desired-file</code>, <code>--availability-file</code>, <code>--fetch-live</code>, <code>--org-id</code>, <code>--output</code>.</p>
+<p>Before / After:</p>
+<ul><li><strong>Before</strong>: teams often discover missing folders, unavailable dependencies, or policy blockers only after they already built a plan.</li><li><strong>After</strong>: preflight turns those checks into an explicit document you can inspect before the workflow gets more expensive.</li></ul>
+<p>Key flags: <code>--desired-file</code>, <code>--availability-file</code>, <code>--fetch-live</code>, <code>--org-id</code>, <code>--output-format</code>.</p>
+<p>JSON shape:</p>
+<ul><li><code>kind</code>: <code>grafana-utils-sync-preflight</code></li><li><code>schemaVersion</code>, <code>toolVersion</code></li><li><code>summary</code></li><li><code>checkCount</code>, <code>okCount</code>, <code>blockingCount</code></li><li><code>checks</code></li><li><code>kind</code>, <code>identity</code>, <code>status</code>, <code>detail</code>, <code>blocking</code></li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: preflight.
-grafana-util change preflight --desired-file ./desired.json --availability-file ./availability.json
-grafana-util change preflight --desired-file ./desired.json --fetch-live --profile prod --output json</code></pre>
+grafana-util change preflight --desired-file ./desired.json --availability-file ./availability.json</code></pre>
+<pre><code># Purpose: preflight.
+grafana-util change preflight \
+  --desired-file ./desired.json \
+  --fetch-live \
+  --profile prod \
+  --output-format json</code></pre>
+<p>What success looks like:</p>
+<ul><li>the preflight document tells you whether the change is structurally ready to enter plan or apply</li><li>blocking checks are explicit enough that another operator or CI lane can stop safely</li><li>availability hints and live fetch data line up with the target environment you intend to change</li></ul>
+<p>Failure checks:</p>
+<ul><li>if preflight blocks unexpectedly, verify that the <code>desired</code> input and any <code>availability</code> input belong to the same environment</li><li>if a live-backed preflight looks wrong, confirm the auth, org, and target Grafana before trusting the result</li><li>if CI is parsing the JSON, use <code>kind</code> and <code>schemaVersion</code> first, then inspect <code>summary</code> and <code>checks</code></li></ul>
 <p>Related commands: <code>change summary</code>, <code>change plan</code>, <code>status staged</code>.</p>
 <h2 id="assess-alerts"><code>assess-alerts</code></h2>
 <p>Purpose: assess alert sync specs for candidate, plan-only, and blocked states.</p>
 <p>When to use: when you want a focused readout of how alert resources will be classified before bundling or applying.</p>
-<p>Key flags: <code>--alerts-file</code>, <code>--output</code>.</p>
+<p>Key flags: <code>--alerts-file</code>, <code>--output-format</code>.</p>
+<p>JSON shape:</p>
+<ul><li><code>kind</code>: <code>grafana-utils-alert-sync-plan</code></li><li><code>schemaVersion</code>, <code>toolVersion</code></li><li><code>summary</code></li><li><code>alertCount</code>, <code>candidateCount</code>, <code>planOnlyCount</code>, <code>blockedCount</code></li><li><code>alerts</code></li><li><code>identity</code>, <code>title</code>, <code>managedFields</code>, <code>status</code>, <code>liveApplyAllowed</code>, <code>detail</code></li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: assess-alerts.
-grafana-util change assess-alerts --alerts-file ./alerts.json
-grafana-util change assess-alerts --alerts-file ./alerts.json --output json</code></pre>
+grafana-util change assess-alerts --alerts-file ./alerts.json</code></pre>
+<pre><code># Purpose: assess-alerts.
+grafana-util change assess-alerts --alerts-file ./alerts.json --output-format json</code></pre>
 <p>Related commands: <code>change bundle</code>, <code>change bundle-preflight</code>, <code>overview</code>.</p>
 <h2 id="bundle"><code>bundle</code></h2>
 <p>Purpose: package exported dashboards, alerting resources, datasource inventory, and metadata into one local source bundle.</p>
 <p>When to use: when you want a single bundle artifact for later sync, review, or preflight steps.</p>
-<p>Key flags: <code>--dashboard-export-dir</code>, <code>--dashboard-provisioning-dir</code>, <code>--alert-export-dir</code>, <code>--datasource-export-file</code>, <code>--datasource-provisioning-file</code>, <code>--metadata-file</code>, <code>--output-file</code>, <code>--output</code>.</p>
+<p>Key flags: <code>--dashboard-export-dir</code>, <code>--dashboard-provisioning-dir</code>, <code>--alert-export-dir</code>, <code>--datasource-export-file</code>, <code>--datasource-provisioning-file</code>, <code>--metadata-file</code>, <code>--output-file</code>, <code>--output-format</code>.</p>
+<p>JSON shape:</p>
+<ul><li>this command has two output modes</li><li><code>--output-file</code>: writes the full source bundle contract to disk</li><li><code>--output-format json</code>: prints the same source bundle contract to stdout</li><li>source bundle top-level fields:</li><li><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code></li><li><code>summary</code></li><li><code>dashboards</code>, <code>datasources</code>, <code>folders</code>, <code>alerts</code></li><li>optional <code>alerting</code></li><li>optional <code>metadata</code></li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: bundle.
-grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json
+grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json</code></pre>
+<pre><code># Purpose: bundle.
 grafana-util change bundle --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json</code></pre>
 <p>Related commands: <code>change bundle-preflight</code>, <code>change promotion-preflight</code>, <code>snapshot export</code>.</p>
 <h2 id="bundle-preflight"><code>bundle-preflight</code></h2>
 <p>Purpose: build a staged bundle-level sync preflight document from a source bundle and target inventory.</p>
 <p>When to use: when you need to compare a source bundle against a target inventory before apply.</p>
-<p>Key flags: <code>--source-bundle</code>, <code>--target-inventory</code>, <code>--availability-file</code>, <code>--fetch-live</code>, <code>--org-id</code>, <code>--output</code>.</p>
+<p>Key flags: <code>--source-bundle</code>, <code>--target-inventory</code>, <code>--availability-file</code>, <code>--fetch-live</code>, <code>--org-id</code>, <code>--output-format</code>.</p>
+<p>JSON shape:</p>
+<ul><li><code>kind</code>: <code>grafana-utils-sync-bundle-preflight</code></li><li><code>schemaVersion</code></li><li><code>summary</code></li><li><code>resourceCount</code></li><li><code>syncBlockingCount</code></li><li><code>providerBlockingCount</code></li><li><code>secretPlaceholderBlockingCount</code></li><li><code>alertArtifactCount</code></li><li><code>alertArtifactBlockedCount</code></li><li><code>alertArtifactPlanOnlyCount</code></li><li><code>syncPreflight</code>: nested <code>grafana-utils-sync-preflight</code></li><li><code>providerAssessment</code>: provider summary, plans, and checks</li><li><code>secretPlaceholderAssessment</code>: placeholder summary, plans, and checks</li><li><code>alertArtifactAssessment</code>: alert artifact summary and checks</li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: bundle-preflight.
-grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output json
-grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --output json</code></pre>
+grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output-format json</code></pre>
+<pre><code># Purpose: bundle-preflight.
+grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --output-format json</code></pre>
 <p>Related commands: <code>change bundle</code>, <code>change promotion-preflight</code>, <code>status staged</code>.</p>
 <h2 id="promotion-preflight"><code>promotion-preflight</code></h2>
 <p>Purpose: build a staged promotion review handoff from a source bundle and target inventory.</p>
 <p>When to use: when you are preparing a promotion review and want an explicit mapping and availability view.</p>
-<p>Key flags: <code>--source-bundle</code>, <code>--target-inventory</code>, <code>--mapping-file</code>, <code>--availability-file</code>, <code>--fetch-live</code>, <code>--org-id</code>, <code>--output</code>.</p>
+<p>Key flags: <code>--source-bundle</code>, <code>--target-inventory</code>, <code>--mapping-file</code>, <code>--availability-file</code>, <code>--fetch-live</code>, <code>--org-id</code>, <code>--output-format</code>.</p>
+<p>JSON shape:</p>
+<ul><li><code>kind</code>: <code>grafana-utils-sync-promotion-preflight</code></li><li><code>schemaVersion</code>, <code>toolVersion</code></li><li><code>summary</code></li><li><code>resourceCount</code>, <code>directMatchCount</code>, <code>mappedCount</code></li><li><code>missingMappingCount</code>, <code>bundleBlockingCount</code>, <code>blockingCount</code></li><li><code>bundlePreflight</code>: nested bundle-preflight result</li><li><code>mappingSummary</code></li><li><code>mappingKind</code>, <code>mappingSchemaVersion</code>, <code>sourceEnvironment</code>, <code>targetEnvironment</code></li><li><code>folderMappingCount</code>, <code>datasourceUidMappingCount</code>, <code>datasourceNameMappingCount</code></li><li><code>checkSummary</code></li><li><code>folderRemapCount</code>, <code>datasourceUidRemapCount</code>, <code>datasourceNameRemapCount</code></li><li><code>resolvedCount</code>, <code>directCount</code>, <code>mappedCount</code>, <code>missingTargetCount</code></li><li><code>handoffSummary</code></li><li><code>continuationSummary</code></li><li><code>checks</code>, <code>resolvedChecks</code>, <code>blockingChecks</code></li><li>each row includes <code>kind</code>, <code>identity</code>, <code>sourceValue</code>, <code>targetValue</code>, <code>resolution</code>, <code>mappingSource</code>, <code>status</code>, <code>detail</code>, <code>blocking</code></li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: promotion-preflight.
-grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --output json
-grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --availability-file ./availability.json --output json</code></pre>
+grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --output-format json</code></pre>
+<pre><code># Purpose: promotion-preflight.
+grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --availability-file ./availability.json --output-format json</code></pre>
 <p>Related commands: <code>change bundle-preflight</code>, <code>change apply</code>, <code>status live</code>.</p>
     
   </article>
   <aside class="sidebar">
-  <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#root"><span class="toc-label">Root</span></a></li><li class="toc-level-2"><a href="#summary"><span class="toc-label">summary`</span></a></li><li class="toc-level-2"><a href="#plan"><span class="toc-label">plan`</span></a></li><li class="toc-level-2"><a href="#review"><span class="toc-label">review`</span></a></li><li class="toc-level-2"><a href="#apply"><span class="toc-label">apply`</span></a></li><li class="toc-level-2"><a href="#audit"><span class="toc-label">audit`</span></a></li><li class="toc-level-2"><a href="#preflight"><span class="toc-label">preflight`</span></a></li><li class="toc-level-2"><a href="#assess-alerts"><span class="toc-label">assess-alerts`</span></a></li><li class="toc-level-2"><a href="#bundle"><span class="toc-label">bundle`</span></a></li><li class="toc-level-2"><a href="#bundle-preflight"><span class="toc-label">bundle-preflight`</span></a></li><li class="toc-level-2"><a href="#promotion-preflight"><span class="toc-label">promotion-preflight`</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/en/change-overview-status.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/change.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
+  <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
+  <div class="sidebar-content">
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#root"><span class="toc-label">Root</span></a></li><li class="toc-level-3"><a href="#json-contracts-for-ci-and-scripts"><span class="toc-label">JSON contracts for CI and scripts</span></a></li><li class="toc-level-2"><a href="#summary"><span class="toc-label">summary`</span></a></li><li class="toc-level-2"><a href="#plan"><span class="toc-label">plan`</span></a></li><li class="toc-level-2"><a href="#review"><span class="toc-label">review`</span></a></li><li class="toc-level-2"><a href="#apply"><span class="toc-label">apply`</span></a></li><li class="toc-level-2"><a href="#audit"><span class="toc-label">audit`</span></a></li><li class="toc-level-2"><a href="#preflight"><span class="toc-label">preflight`</span></a></li><li class="toc-level-2"><a href="#assess-alerts"><span class="toc-label">assess-alerts`</span></a></li><li class="toc-level-2"><a href="#bundle"><span class="toc-label">bundle`</span></a></li><li class="toc-level-2"><a href="#bundle-preflight"><span class="toc-label">bundle-preflight`</span></a></li><li class="toc-level-2"><a href="#promotion-preflight"><span class="toc-label">promotion-preflight`</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/en/change-overview-status.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/change.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
+  </div>
 </aside>
 
 </div>
@@ -857,6 +1020,26 @@ grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.jso
 
   document.querySelectorAll(".nav-group-header").forEach(header => {
     header.onclick = () => { header.closest(".nav-group").classList.toggle("collapsed"); };
+  });
+
+  document.querySelectorAll(".sidebar-toggle-left").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-nav");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "▶" : "◀";
+    });
+  });
+
+  document.querySelectorAll(".sidebar-toggle-right").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-sidebar");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "◀" : "▶";
+    });
   });
 
   const jumpSelect = document.getElementById("jump-select");

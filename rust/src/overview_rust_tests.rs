@@ -369,7 +369,7 @@ fn build_overview_artifacts_rejects_empty_inputs() {
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: OverviewOutputFormat::Text,
+        output_format: OverviewOutputFormat::Text,
     };
 
     let error = build_overview_artifacts(&args).unwrap_err().to_string();
@@ -381,41 +381,41 @@ fn build_overview_artifacts_rejects_empty_inputs() {
 fn overview_args_parse_and_help_expose_output_mode() {
     let default_args = OverviewCliArgs::parse_from(["grafana-util"]);
     assert!(default_args.command.is_none());
-    assert_eq!(default_args.staged.output, OverviewOutputFormat::Text);
+    assert_eq!(default_args.staged.output_format, OverviewOutputFormat::Text);
 
-    let table_args = OverviewCliArgs::parse_from(["grafana-util", "--output", "table"]);
-    assert_eq!(table_args.staged.output, OverviewOutputFormat::Table);
+    let table_args = OverviewCliArgs::parse_from(["grafana-util", "--output-format", "table"]);
+    assert_eq!(table_args.staged.output_format, OverviewOutputFormat::Table);
 
-    let csv_args = OverviewCliArgs::parse_from(["grafana-util", "--output", "csv"]);
-    assert_eq!(csv_args.staged.output, OverviewOutputFormat::Csv);
+    let csv_args = OverviewCliArgs::parse_from(["grafana-util", "--output-format", "csv"]);
+    assert_eq!(csv_args.staged.output_format, OverviewOutputFormat::Csv);
 
-    let json_args = OverviewCliArgs::parse_from(["grafana-util", "--output", "json"]);
+    let json_args = OverviewCliArgs::parse_from(["grafana-util", "--output-format", "json"]);
     assert!(json_args.command.is_none());
-    assert_eq!(json_args.staged.output, OverviewOutputFormat::Json);
+    assert_eq!(json_args.staged.output_format, OverviewOutputFormat::Json);
 
-    let yaml_args = OverviewCliArgs::parse_from(["grafana-util", "--output", "yaml"]);
+    let yaml_args = OverviewCliArgs::parse_from(["grafana-util", "--output-format", "yaml"]);
     assert!(yaml_args.command.is_none());
-    assert_eq!(yaml_args.staged.output, OverviewOutputFormat::Yaml);
+    assert_eq!(yaml_args.staged.output_format, OverviewOutputFormat::Yaml);
 
     #[cfg(feature = "tui")]
     {
         let interactive_args =
-            OverviewCliArgs::parse_from(["grafana-util", "--output", "interactive"]);
+            OverviewCliArgs::parse_from(["grafana-util", "--output-format", "interactive"]);
         assert!(interactive_args.command.is_none());
         assert_eq!(
-            interactive_args.staged.output,
+            interactive_args.staged.output_format,
             OverviewOutputFormat::Interactive
         );
     }
     #[cfg(not(feature = "tui"))]
     {
         assert!(
-            OverviewCliArgs::try_parse_from(["grafana-util", "--output", "interactive"]).is_err()
+            OverviewCliArgs::try_parse_from(["grafana-util", "--output-format", "interactive"]).is_err()
         );
     }
 
     let help = OverviewCliArgs::command().render_long_help().to_string();
-    assert!(help.contains("--output <OUTPUT>"));
+    assert!(help.contains("--output-format <OUTPUT_FORMAT>"));
     assert!(help.contains(
         "Render the overview document as table, csv, text, json, yaml, or interactive output."
     ));
@@ -500,7 +500,7 @@ fn overview_args_support_datasource_provisioning_file() {
         "grafana-util",
         "--datasource-provisioning-file",
         "./datasources/provisioning/datasources.yaml",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -516,7 +516,7 @@ fn overview_args_support_dashboard_provisioning_dir() {
         "grafana-util",
         "--dashboard-provisioning-dir",
         "./dashboards/provisioning",
-        "--output",
+        "--output-format",
         "json",
     ]);
 
@@ -563,7 +563,7 @@ fn build_overview_artifacts_rejects_incomplete_bundle_context() {
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: OverviewOutputFormat::Text,
+        output_format: OverviewOutputFormat::Text,
     };
 
     let error = build_overview_artifacts(&args).unwrap_err().to_string();
@@ -900,7 +900,7 @@ fn build_overview_document_and_render_overview_text_for_all_sections() {
         alert_export_dir: None,
         availability_file: Some(availability_file),
         mapping_file: Some(mapping_file),
-        output: OverviewOutputFormat::Text,
+        output_format: OverviewOutputFormat::Text,
     };
 
     let artifacts = build_overview_artifacts(&args).unwrap();
@@ -1202,7 +1202,7 @@ fn build_overview_document_and_render_overview_text_for_change_summary_domain_st
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: OverviewOutputFormat::Json,
+        output_format: OverviewOutputFormat::Json,
     };
 
     let artifacts = build_overview_artifacts(&args).unwrap();
@@ -1288,7 +1288,7 @@ fn build_overview_document_preserves_the_shared_project_status_render_contract()
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: OverviewOutputFormat::Json,
+        output_format: OverviewOutputFormat::Json,
     };
 
     let artifacts = build_overview_artifacts(&args).unwrap();
@@ -1470,7 +1470,7 @@ fn build_overview_document_and_render_overview_text_for_bundle_preflight_assessm
         alert_export_dir: None,
         availability_file: Some(availability_file),
         mapping_file: None,
-        output: OverviewOutputFormat::Json,
+        output_format: OverviewOutputFormat::Json,
     };
 
     let artifacts = build_overview_artifacts(&args).unwrap();
@@ -1607,7 +1607,7 @@ fn build_overview_document_and_render_overview_text_for_datasource_export_sectio
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: OverviewOutputFormat::Json,
+        output_format: OverviewOutputFormat::Json,
     };
 
     let artifacts = build_overview_artifacts(&args).unwrap();
@@ -1710,7 +1710,7 @@ fn build_overview_document_and_render_overview_text_for_datasource_provisioning_
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: OverviewOutputFormat::Json,
+        output_format: OverviewOutputFormat::Json,
     };
 
     let artifacts = build_overview_artifacts(&args).unwrap();
@@ -1770,7 +1770,7 @@ fn build_overview_document_and_render_overview_text_accepts_combined_dashboard_a
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: OverviewOutputFormat::Json,
+        output_format: OverviewOutputFormat::Json,
     };
 
     let artifacts = build_overview_artifacts(&args).unwrap();
@@ -1837,7 +1837,7 @@ fn build_overview_artifacts_rejects_dashboard_root_for_dashboard_export_input() 
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: OverviewOutputFormat::Text,
+        output_format: OverviewOutputFormat::Text,
     };
 
     let error = build_overview_artifacts(&args).unwrap_err().to_string();
@@ -1875,7 +1875,7 @@ fn build_overview_artifacts_accepts_workspace_root_datasource_manifest() {
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: OverviewOutputFormat::Json,
+        output_format: OverviewOutputFormat::Json,
     };
 
     let artifacts = build_overview_artifacts(&args).unwrap();
@@ -1909,7 +1909,7 @@ fn build_overview_artifacts_rejects_datasource_unknown_root_scope_kind() {
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: OverviewOutputFormat::Text,
+        output_format: OverviewOutputFormat::Text,
     };
 
     let error = build_overview_artifacts(&args).unwrap_err().to_string();
@@ -1938,7 +1938,7 @@ fn build_overview_document_and_render_overview_text_for_alert_export_section() {
         alert_export_dir: Some(alert_export_dir),
         availability_file: None,
         mapping_file: None,
-        output: OverviewOutputFormat::Json,
+        output_format: OverviewOutputFormat::Json,
     };
 
     let artifacts = build_overview_artifacts(&args).unwrap();
@@ -2091,7 +2091,7 @@ fn build_overview_document_and_render_overview_text_for_access_export_sections()
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: OverviewOutputFormat::Json,
+        output_format: OverviewOutputFormat::Json,
     };
 
     let artifacts = build_overview_artifacts(&args).unwrap();
@@ -2250,7 +2250,7 @@ fn build_overview_artifacts_rejects_access_export_metadata_kind_mismatch() {
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: OverviewOutputFormat::Text,
+        output_format: OverviewOutputFormat::Text,
     };
 
     let error = build_overview_artifacts(&args).unwrap_err().to_string();
@@ -2290,7 +2290,7 @@ fn build_overview_artifacts_rejects_access_export_version_too_new() {
         alert_export_dir: None,
         availability_file: None,
         mapping_file: None,
-        output: OverviewOutputFormat::Text,
+        output_format: OverviewOutputFormat::Text,
     };
 
     let error = build_overview_artifacts(&args).unwrap_err().to_string();
@@ -2500,7 +2500,7 @@ fn sample_project_status_live_args(base_url: String) -> ProjectStatusLiveArgs {
         promotion_summary_file: None,
         mapping_file: None,
         availability_file: None,
-        output: crate::project_status_command::ProjectStatusOutputFormat::Text,
+        output_format: crate::project_status_command::ProjectStatusOutputFormat::Text,
     }
 }
 

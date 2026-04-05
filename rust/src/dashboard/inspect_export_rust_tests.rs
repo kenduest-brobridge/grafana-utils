@@ -391,6 +391,7 @@ fn analyze_export_dir_supports_explicit_provisioning_input_format() {
         help_full: false,
         no_header: false,
         output_file: None,
+        also_stdout: false,
         interactive: false,
     };
 
@@ -449,6 +450,7 @@ fn analyze_export_dir_accepts_workspace_wrapper_root_when_dashboards_metadata_ex
         help_full: false,
         no_header: false,
         output_file: None,
+        also_stdout: false,
         interactive: false,
     };
 
@@ -496,6 +498,7 @@ fn analyze_export_dir_requires_input_type_for_dashboard_root_with_raw_and_prompt
         help_full: false,
         no_header: false,
         output_file: None,
+        also_stdout: false,
         interactive: false,
     };
 

@@ -21,8 +21,29 @@ Use this when a datasource already exists and you need to update its URL, auth, 
 ```bash
 # Purpose: Modify one live Grafana datasource through the Grafana API.
 grafana-util datasource modify --url http://localhost:3000 --basic-user admin --basic-password admin --uid prom-main --set-url http://prometheus-v2:9090 --dry-run --json
+```
+
+```bash
+# Purpose: Modify one live Grafana datasource through the Grafana API.
 grafana-util datasource modify --profile prod --uid prom-main --set-default true --dry-run --table
 ```
+
+## Before / After
+
+- **Before**: updating a live datasource usually meant editing a blob of JSON or clicking through multiple UI tabs.
+- **After**: one command can preview the exact live update and keep the change reviewable before it lands.
+
+## What success looks like
+
+- the UID identifies the intended datasource before the mutation starts
+- `--dry-run` shows the new URL, auth, or JSON fields you expect
+- default flags and secret updates are visible before the live change
+
+## Failure checks
+
+- if the preview touches the wrong datasource, confirm the UID before retrying
+- if auth or TLS changes are incomplete, compare the previewed payload against the current live settings first
+- if a secret field does not resolve, check the placeholder mapping or the chosen profile defaults
 
 ## Related commands
 - [datasource add](./datasource-add.md)
