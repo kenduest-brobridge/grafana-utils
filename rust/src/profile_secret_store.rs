@@ -402,6 +402,8 @@ mod tests {
     use super::*;
     use std::cell::RefCell;
     use std::collections::BTreeMap;
+    #[cfg(target_os = "macos")]
+    use std::process::Command;
     use tempfile::tempdir;
 
     #[derive(Default)]
@@ -483,5 +485,78 @@ mod tests {
             normalize_secret_ref_path(config_path, secret_path),
             PathBuf::from(".grafana-util.secrets.yaml")
         );
+    }
+
+    #[cfg(target_os = "macos")]
+    fn delete_keychain_test_entry(key: &str) {
+        let _ = Command::new("security")
+            .args([
+                "delete-generic-password",
+                "-s",
+                PROFILE_SECRET_SERVICE,
+                "-a",
+                key,
+            ])
+            .output();
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    #[ignore = "Touches the logged-in macOS Keychain and is meant for manual compatibility smoke checks."]
+    fn system_os_store_reads_legacy_security_cli_entries_and_writes_cli_visible_entries() {
+        let key = format!(
+            "grafana-util/profile/test/macos-compat-{}",
+            std::process::id()
+        );
+        let legacy_value = "legacy-secret-value";
+        let new_value = "keyring-secret-value";
+        delete_keychain_test_entry(&key);
+
+        let add_output = Command::new("security")
+            .args([
+                "add-generic-password",
+                "-U",
+                "-A",
+                "-s",
+                PROFILE_SECRET_SERVICE,
+                "-a",
+                &key,
+                "-w",
+                legacy_value,
+            ])
+            .output()
+            .expect("run security add-generic-password");
+        assert!(
+            add_output.status.success(),
+            "security add-generic-password failed: {}",
+            String::from_utf8_lossy(&add_output.stderr).trim()
+        );
+
+        let store = SystemOsSecretStore;
+        let read_back = read_secret_from_os_store(&store, &key).expect("read legacy keychain item");
+        assert_eq!(read_back, legacy_value);
+
+        write_secret_to_os_store(&store, &key, new_value).expect("write keyring-backed keychain item");
+
+        let find_output = Command::new("security")
+            .args([
+                "find-generic-password",
+                "-s",
+                PROFILE_SECRET_SERVICE,
+                "-a",
+                &key,
+                "-w",
+            ])
+            .output()
+            .expect("run security find-generic-password");
+        assert!(
+            find_output.status.success(),
+            "security find-generic-password failed: {}",
+            String::from_utf8_lossy(&find_output.stderr).trim()
+        );
+        let cli_value = String::from_utf8(find_output.stdout).expect("decode keychain value");
+        assert_eq!(cli_value.trim_end(), new_value);
+
+        delete_keychain_test_entry(&key);
     }
 }
