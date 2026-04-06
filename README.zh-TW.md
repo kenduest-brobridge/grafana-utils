@@ -196,7 +196,7 @@ grafana-util datasource import --input-dir ./datasources --prompt-password
 
 請參考手冊瞭解維運情境，或參考指令頁面取得精確語法說明。
 
-如果您偏好瀏覽器介面，請開啟本地 HTML 文件 [docs/html/index.html](./docs/html/index.html)，或造訪官方文件站：<https://kenduest-brobridge.github.io/grafana-utils/>。
+如果您偏好瀏覽器介面，請開啟本地 HTML 文件 [docs/html/index.html](./docs/html/index.html)，或造訪官方文件站：<https://kenduest-brobridge.github.io/grafana-util/>。
 
 依需求進入：
 

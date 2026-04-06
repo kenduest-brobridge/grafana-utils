@@ -141,7 +141,7 @@ Format rule going forward:
 ### Changed
 
 - README and README.zh-TW now point to the correct published docs URL:
-  - `https://kenduest-brobridge.github.io/grafana-utils/`
+  - `https://kenduest-brobridge.github.io/grafana-util/`
 - The English README now presents the tool as an operational and
   administration CLI rather than as a marketing-style landing page.
 - The Traditional Chinese README now uses more natural Taiwan-oriented wording

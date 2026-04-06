@@ -195,7 +195,7 @@ grafana-util datasource import --input-dir ./datasources --prompt-password
 
 Use the handbook for workflow context and the command reference for exact CLI syntax.
 
-If you prefer a browser view, open the local HTML docs at [docs/html/index.html](./docs/html/index.html) or visit the published site: <https://kenduest-brobridge.github.io/grafana-utils/>.
+If you prefer a browser view, open the local HTML docs at [docs/html/index.html](./docs/html/index.html) or visit the published site: <https://kenduest-brobridge.github.io/grafana-util/>.
 
 Open by need:
 
