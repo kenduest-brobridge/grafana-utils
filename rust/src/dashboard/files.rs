@@ -6,6 +6,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::common::{message, object_field, string_field, tool_version, value_as_object, Result};
+use crate::export_metadata::{build_export_metadata_common, EXPORT_BUNDLE_KIND_ROOT};
 
 use super::{
     DashboardExportRootManifest, DashboardExportRootScopeKind, DashboardImportInputFormat,
@@ -136,6 +137,12 @@ pub(crate) fn build_export_metadata(
     org_name: Option<&str>,
     org_id: Option<&str>,
     orgs: Option<Vec<ExportOrgSummary>>,
+    source_kind: &str,
+    source_url: Option<&str>,
+    source_path: Option<&Path>,
+    source_profile: Option<&str>,
+    artifact_path: &Path,
+    metadata_path: &Path,
 ) -> ExportMetadata {
     let org_count = orgs.as_ref().map(|items| items.len() as u64);
     let scope_kind = if variant == "root" {
@@ -147,6 +154,30 @@ pub(crate) fn build_export_metadata(
     } else {
         None
     };
+    let org_scope = if variant == "root" {
+        if orgs.is_some() {
+            Some("all-orgs")
+        } else {
+            Some("org")
+        }
+    } else {
+        Some("org")
+    };
+    let common = build_export_metadata_common(
+        "dashboard",
+        "dashboards",
+        EXPORT_BUNDLE_KIND_ROOT,
+        source_kind,
+        source_url,
+        source_path,
+        source_profile,
+        org_scope,
+        org_id,
+        org_name,
+        artifact_path,
+        metadata_path,
+        dashboard_count,
+    );
     ExportMetadata {
         schema_version: TOOL_SCHEMA_VERSION,
         tool_version: Some(tool_version().to_string()),
@@ -163,6 +194,13 @@ pub(crate) fn build_export_metadata(
         org_id: org_id.map(str::to_owned),
         org_count,
         orgs,
+        metadata_version: Some(common.metadata_version),
+        domain: Some(common.domain),
+        resource_kind: Some(common.resource_kind),
+        bundle_kind: Some(common.bundle_kind),
+        source: Some(common.source),
+        capture: Some(common.capture),
+        paths: Some(common.paths),
     }
 }
 

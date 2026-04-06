@@ -112,7 +112,10 @@ fn build_live_export_args(args: &InspectLiveArgs, export_dir: PathBuf) -> Export
     export_args
 }
 
-pub(crate) fn prepare_live_analysis_import_dir(temp_root: &Path, all_orgs: bool) -> Result<PathBuf> {
+pub(crate) fn prepare_live_analysis_import_dir(
+    temp_root: &Path,
+    all_orgs: bool,
+) -> Result<PathBuf> {
     if !all_orgs {
         return Ok(temp_root.join(RAW_EXPORT_SUBDIR));
     }
@@ -531,6 +534,12 @@ fn merge_org_variant_exports_into_dir(
             None,
             None,
             None,
+            "local",
+            None,
+            source_root,
+            None,
+            inspect_variant_dir,
+            &inspect_variant_dir.join(EXPORT_METADATA_FILENAME),
         ),
         &inspect_variant_dir.join(EXPORT_METADATA_FILENAME),
     )?;

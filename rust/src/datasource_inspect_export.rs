@@ -498,10 +498,7 @@ pub(crate) fn render_datasource_inspect_export_output(
     let document = build_datasource_inspect_export_document(source);
     match format {
         DatasourceInspectExportRenderFormat::Text => {
-            output.push_str(&format!(
-                "Datasource list: {}\n",
-                source.input_path
-            ));
+            output.push_str(&format!("Datasource list: {}\n", source.input_path));
             output.push_str(&format!(
                 "Layer: {}\n",
                 datasource_inspect_export_output_layer(format)
@@ -538,10 +535,7 @@ pub(crate) fn render_datasource_inspect_export_output(
             }
         }
         DatasourceInspectExportRenderFormat::Table => {
-            output.push_str(&format!(
-                "Datasource list: {}\n",
-                source.input_path
-            ));
+            output.push_str(&format!("Datasource list: {}\n", source.input_path));
             output.push_str(&format!(
                 "Layer: {}\n",
                 datasource_inspect_export_output_layer(format)

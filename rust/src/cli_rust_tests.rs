@@ -1741,9 +1741,7 @@ fn unified_help_mentions_alert_access_and_shims() {
     assert!(help.contains("[Alert Export]"));
     assert!(help.contains("[Datasource Inventory]"));
     assert!(help.contains("grafana-util datasource list --input-dir ./datasources --json"));
-    assert!(help.contains(
-        "Run datasource list, browse-live, export, import, and diff workflows."
-    ));
+    assert!(help.contains("Run datasource list, browse-live, export, import, and diff workflows."));
     assert!(help.contains("[Access Local Inventory]"));
     assert!(help.contains("[Change Planning]"));
     assert!(help.contains("[Change Apply]"));
@@ -1963,10 +1961,14 @@ fn maybe_render_unified_help_from_os_args_handles_root_help_and_help_full_flags(
     assert!(dashboard_short_help.contains("Work with dashboard trees:"));
     assert!(dashboard_short_help.contains("Work with local drafts:"));
     assert!(dashboard_short_help.contains("Analyze and review risk:"));
-    assert!(dashboard_short_help.contains("analyze          Analyze live Grafana or a local export tree"));
+    assert!(dashboard_short_help
+        .contains("analyze          Analyze live Grafana or a local export tree"));
     assert!(dashboard_short_help.contains("Move dashboards:"));
-    assert!(dashboard_short_help.contains("fetch-live       Fetch one live dashboard into an API-safe local JSON draft."));
-    assert!(dashboard_short_help.contains("clone-live       Clone one live dashboard into a local draft with optional overrides."));
+    assert!(dashboard_short_help
+        .contains("fetch-live       Fetch one live dashboard into an API-safe local JSON draft."));
+    assert!(dashboard_short_help.contains(
+        "clone-live       Clone one live dashboard into a local draft with optional overrides."
+    ));
     assert!(dashboard_short_help.contains("screenshot       Open one dashboard in a headless browser and capture image or PDF output."));
     assert!(dashboard_short_help.contains("grafana-util dashboard <COMMAND> --help-full"));
     assert!(maybe_render_unified_help_from_os_args(

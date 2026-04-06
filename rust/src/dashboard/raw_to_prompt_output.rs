@@ -215,6 +215,7 @@ pub(crate) fn write_prompt_lane_metadata(
     let source_metadata = metadata.and_then(|(_, metadata)| metadata.as_ref());
     let source_org = source_metadata.and_then(|item| item.org.as_deref());
     let source_org_id = source_metadata.and_then(|item| item.org_id.as_deref());
+    let source_path = metadata.map(|(path, _)| path.as_path());
     let mut index_items = Vec::new();
     for item in items {
         if item.status != RawToPromptStatus::Ok {
@@ -267,6 +268,12 @@ pub(crate) fn write_prompt_lane_metadata(
             source_org,
             source_org_id,
             None,
+            "local",
+            None,
+            source_path,
+            None,
+            output_root,
+            &output_root.join(EXPORT_METADATA_FILENAME),
         ),
         &output_root.join(EXPORT_METADATA_FILENAME),
     )?;

@@ -1,7 +1,5 @@
 //! Live inspect core-family parity regressions.
-use super::super::test_support::{
-    self, InspectExportArgs, InspectLiveArgs, InspectOutputFormat,
-};
+use super::super::test_support::{self, InspectExportArgs, InspectLiveArgs, InspectOutputFormat};
 use super::{
     assert_governance_documents_match, assert_json_query_report_row_parity,
     core_family_inspect_live_request_fixture, make_common_args,

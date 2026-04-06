@@ -48,12 +48,21 @@ fn build_artifacts_from_export_dir(
     input_type: Option<InspectExportInputType>,
 ) -> Result<DashboardAnalysisArtifacts> {
     let temp_dir = TempInspectDir::new("dashboard-analysis-source")?;
-    let resolved =
-        resolve_inspect_export_import_dir(&temp_dir.path, import_dir, input_format, input_type, false)?;
-    let summary =
-        build_export_inspection_summary_for_variant(&resolved.import_dir, resolved.expected_variant)?;
-    let report =
-        build_export_inspection_query_report_for_variant(&resolved.import_dir, resolved.expected_variant)?;
+    let resolved = resolve_inspect_export_import_dir(
+        &temp_dir.path,
+        import_dir,
+        input_format,
+        input_type,
+        false,
+    )?;
+    let summary = build_export_inspection_summary_for_variant(
+        &resolved.import_dir,
+        resolved.expected_variant,
+    )?;
+    let report = build_export_inspection_query_report_for_variant(
+        &resolved.import_dir,
+        resolved.expected_variant,
+    )?;
     Ok(DashboardAnalysisArtifacts {
         governance: serde_json::to_value(build_export_inspection_governance_document(
             &summary, &report,
@@ -62,7 +71,9 @@ fn build_artifacts_from_export_dir(
     })
 }
 
-fn build_artifacts_from_live(source: &DashboardAnalysisSourceArgs<'_>) -> Result<DashboardAnalysisArtifacts> {
+fn build_artifacts_from_live(
+    source: &DashboardAnalysisSourceArgs<'_>,
+) -> Result<DashboardAnalysisArtifacts> {
     let temp_dir = TempInspectDir::new("dashboard-analysis-live")?;
     let export_args: ExportArgs = build_analysis_live_export_args(
         source.common,
@@ -106,7 +117,10 @@ pub(crate) fn resolve_dashboard_analysis_artifacts(
             Some(path) => load_object(path, "Dashboard query report JSON")?,
             None => Value::Null,
         };
-        return Ok(DashboardAnalysisArtifacts { governance, queries });
+        return Ok(DashboardAnalysisArtifacts {
+            governance,
+            queries,
+        });
     }
 
     build_artifacts_from_live(source)
@@ -262,7 +276,10 @@ mod tests {
 
         assert_eq!(artifacts.governance["summary"]["dashboardCount"], json!(1));
         assert_eq!(artifacts.queries["summary"]["dashboardCount"], json!(1));
-        assert_eq!(artifacts.queries["queries"][0]["dashboardUid"], json!("cpu-main"));
+        assert_eq!(
+            artifacts.queries["queries"][0]["dashboardUid"],
+            json!("cpu-main")
+        );
     }
 
     #[test]
@@ -290,8 +307,8 @@ mod tests {
         })
         .unwrap_err();
 
-        assert!(error
-            .to_string()
-            .contains("--queries is required when reusing saved analysis artifacts for governance-gate"));
+        assert!(error.to_string().contains(
+            "--queries is required when reusing saved analysis artifacts for governance-gate"
+        ));
     }
 }

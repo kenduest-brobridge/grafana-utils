@@ -253,7 +253,9 @@ fn dashboard_history_list_rejects_mismatched_local_artifact_uid() {
     )
     .unwrap_err();
 
-    assert!(error.to_string().contains("contains dashboard UID cpu-main instead of memory-main"));
+    assert!(error
+        .to_string()
+        .contains("contains dashboard UID cpu-main instead of memory-main"));
 }
 
 #[test]
@@ -351,7 +353,9 @@ fn dashboard_history_list_rejects_ambiguous_uid_in_export_tree() {
     )
     .unwrap_err();
 
-    assert!(error.to_string().contains("Multiple dashboard history artifacts for UID cpu-main"));
+    assert!(error
+        .to_string()
+        .contains("Multiple dashboard history artifacts for UID cpu-main"));
 }
 
 #[test]

@@ -23,7 +23,8 @@ pub(crate) const DASHBOARD_HISTORY_RESTORE_MESSAGE: &str =
 pub(crate) const DASHBOARD_HISTORY_LIST_KIND: &str = "grafana-util-dashboard-history-list";
 pub(crate) const DASHBOARD_HISTORY_RESTORE_KIND: &str = "grafana-util-dashboard-history-restore";
 pub(crate) const DASHBOARD_HISTORY_EXPORT_KIND: &str = "grafana-util-dashboard-history-export";
-pub(crate) const DASHBOARD_HISTORY_INVENTORY_KIND: &str = "grafana-util-dashboard-history-inventory";
+pub(crate) const DASHBOARD_HISTORY_INVENTORY_KIND: &str =
+    "grafana-util-dashboard-history-inventory";
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct DashboardHistoryVersion {
@@ -427,7 +428,9 @@ fn render_dashboard_history_inventory_text(document: &DashboardHistoryInventoryD
     lines.join("\n")
 }
 
-fn render_dashboard_history_inventory_table(document: &DashboardHistoryInventoryDocument) -> String {
+fn render_dashboard_history_inventory_table(
+    document: &DashboardHistoryInventoryDocument,
+) -> String {
     render_table(
         &[
             "dashboardUid",
@@ -523,8 +526,11 @@ where
     let dashboard_uid = args.dashboard_uid.as_deref().ok_or_else(|| {
         message("Dashboard history list requires --dashboard-uid unless --input or --import-dir is set.")
     })?;
-    let document =
-        build_dashboard_history_list_document_with_request(&mut request_json, dashboard_uid, args.limit)?;
+    let document = build_dashboard_history_list_document_with_request(
+        &mut request_json,
+        dashboard_uid,
+        args.limit,
+    )?;
     render_dashboard_history_list_output(&document, args.output_format)
 }
 
@@ -849,8 +855,9 @@ fn run_dashboard_history_list_from_import_dir(
                 )))
             }
             1 => {
-                let document =
-                    build_dashboard_history_list_document_from_export_document(&matching[0].document);
+                let document = build_dashboard_history_list_document_from_export_document(
+                    &matching[0].document,
+                );
                 return render_dashboard_history_list_output(&document, args.output_format);
             }
             _ => {

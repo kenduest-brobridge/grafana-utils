@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::dashboard::{resolve_dashboard_import_source, DashboardImportInputFormat};
+use std::path::Path;
 
 #[test]
 fn build_export_metadata_serializes_expected_shape() {
@@ -16,6 +17,12 @@ fn build_export_metadata_serializes_expected_shape() {
         Some("Main Org."),
         Some("1"),
         None,
+        "live",
+        Some("http://127.0.0.1:3000"),
+        None,
+        None,
+        Path::new("/tmp/raw"),
+        Path::new("/tmp/raw/export-metadata.json"),
     ))
     .unwrap();
 
@@ -33,7 +40,27 @@ fn build_export_metadata_serializes_expected_shape() {
             "datasourcesFile": "datasources.json",
             "permissionsFile": "permissions.json",
             "org": "Main Org.",
-            "orgId": "1"
+            "orgId": "1",
+            "metadataVersion": 2,
+            "domain": "dashboard",
+            "resourceKind": "dashboards",
+            "bundleKind": "export-root",
+            "source": {
+                "kind": "live",
+                "url": "http://127.0.0.1:3000",
+                "orgScope": "org",
+                "orgId": "1",
+                "orgName": "Main Org."
+            },
+            "capture": {
+                "toolVersion": crate::common::TOOL_VERSION,
+                "capturedAt": value["capture"]["capturedAt"],
+                "recordCount": 2
+            },
+            "paths": {
+                "artifact": "/tmp/raw",
+                "metadata": "/tmp/raw/export-metadata.json"
+            }
         })
     );
 }

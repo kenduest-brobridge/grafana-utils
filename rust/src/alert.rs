@@ -47,6 +47,11 @@ mod alert_runtime_support;
 mod alert_support;
 
 #[cfg(test)]
+pub(crate) use crate::grafana_api::alert_live::{
+    determine_import_action_with_request, fetch_live_compare_document_with_request,
+    import_resource_document_with_request,
+};
+#[cfg(test)]
 pub(crate) use crate::grafana_api::{expect_object_list, parse_template_list_response};
 pub use alert_cli_defs::{
     build_auth_context, cli_args_from_common, normalize_alert_group_command,
@@ -80,11 +85,6 @@ pub use alert_runtime_support::{
     ALERT_PLAN_KIND,
 };
 pub use alert_runtime_support::{build_alert_diff_document, build_alert_import_dry_run_document};
-#[cfg(test)]
-pub(crate) use crate::grafana_api::alert_live::{
-    determine_import_action_with_request, fetch_live_compare_document_with_request,
-    import_resource_document_with_request,
-};
 pub use alert_support::{
     build_contact_point_export_document, build_contact_point_import_payload,
     build_contact_point_output_path, build_empty_root_index, build_import_operation,

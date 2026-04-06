@@ -357,11 +357,7 @@ fn parse_cli_supports_org_commands() {
             command: OrgCommand::List(list_args),
         } => {
             assert_eq!(
-                list_args
-                    .input_dir
-                    .as_ref()
-                    .unwrap()
-                    .to_string_lossy(),
+                list_args.input_dir.as_ref().unwrap().to_string_lossy(),
                 "/tmp/access-orgs"
             );
             assert!(list_args.table);
@@ -504,11 +500,7 @@ fn parse_cli_supports_team_list_local_input_dir() {
             command: TeamCommand::List(list_args),
         } => {
             assert_eq!(
-                list_args
-                    .input_dir
-                    .as_ref()
-                    .unwrap()
-                    .to_string_lossy(),
+                list_args.input_dir.as_ref().unwrap().to_string_lossy(),
                 "/tmp/access-teams"
             );
             assert!(list_args.csv);
@@ -560,11 +552,7 @@ fn parse_cli_supports_org_list_local_input_dir() {
             command: OrgCommand::List(list_args),
         } => {
             assert_eq!(
-                list_args
-                    .input_dir
-                    .as_ref()
-                    .unwrap()
-                    .to_string_lossy(),
+                list_args.input_dir.as_ref().unwrap().to_string_lossy(),
                 "/tmp/access-orgs"
             );
             assert!(list_args.json);
@@ -616,11 +604,7 @@ fn parse_cli_supports_service_account_list_local_input_dir() {
             command: ServiceAccountCommand::List(list_args),
         } => {
             assert_eq!(
-                list_args
-                    .input_dir
-                    .as_ref()
-                    .unwrap()
-                    .to_string_lossy(),
+                list_args.input_dir.as_ref().unwrap().to_string_lossy(),
                 "/tmp/access-service-accounts"
             );
             assert!(list_args.yaml);
@@ -672,11 +656,7 @@ fn parse_cli_supports_user_list_local_input_dir() {
             command: UserCommand::List(list_args),
         } => {
             assert_eq!(
-                list_args
-                    .input_dir
-                    .as_ref()
-                    .unwrap()
-                    .to_string_lossy(),
+                list_args.input_dir.as_ref().unwrap().to_string_lossy(),
                 "/tmp/access-users"
             );
             assert!(list_args.table);

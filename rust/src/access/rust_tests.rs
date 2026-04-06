@@ -458,6 +458,12 @@ fn team_export_with_request_writes_bundle_with_members_and_admins() {
         metadata.get("sourceDir"),
         Some(&json!(temp_dir.path().to_string_lossy().to_string()))
     );
+    assert_eq!(metadata.get("metadataVersion"), Some(&json!(2)));
+    assert_eq!(metadata.get("domain"), Some(&json!("access")));
+    assert_eq!(metadata.get("resourceKind"), Some(&json!("teams")));
+    assert_eq!(metadata.get("bundleKind"), Some(&json!("export-root")));
+    assert_eq!(metadata["source"]["kind"], json!("live"));
+    assert_eq!(metadata["capture"]["recordCount"], json!(1));
 }
 
 #[test]

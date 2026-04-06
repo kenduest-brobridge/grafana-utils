@@ -65,6 +65,7 @@ where
             &metadata_path,
             &Value::Object(build_service_account_export_metadata(
                 &args.common.url,
+                args.common.profile.as_deref(),
                 &args.export_dir,
                 records.len(),
             )),

@@ -413,8 +413,11 @@ pub(crate) fn run_dashboard_impact(args: &ImpactArgs) -> Result<()> {
         Some(path) => Some(load_object(path)?),
         None => None,
     };
-    let document =
-        build_impact_document(&artifacts.governance, alert_contract.as_ref(), &args.datasource_uid)?;
+    let document = build_impact_document(
+        &artifacts.governance,
+        alert_contract.as_ref(),
+        &args.datasource_uid,
+    )?;
     if args.interactive {
         #[cfg(all(feature = "tui", not(test)))]
         {

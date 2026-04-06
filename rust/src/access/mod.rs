@@ -10,14 +10,14 @@ use crate::http::JsonHttpClient;
 
 // Internal modules stay split by resource kind so user/org/team/service-account
 // workflows can evolve independently while this file keeps only domain routing.
-#[path = "browse_terminal.rs"]
-mod browse_terminal;
 #[path = "browse_support.rs"]
 mod browse_support;
-#[path = "facade_support.rs"]
-mod facade_support;
+#[path = "browse_terminal.rs"]
+mod browse_terminal;
 #[path = "cli_defs.rs"]
 mod cli_defs;
+#[path = "facade_support.rs"]
+mod facade_support;
 #[path = "live_project_status.rs"]
 mod live_project_status;
 #[path = "org.rs"]
@@ -46,17 +46,18 @@ mod user_browse;
 pub use cli_defs::{
     build_auth_context, build_http_client, build_http_client_no_org_id, normalize_access_cli_args,
     parse_cli_from, root_command, AccessAuthContext, AccessCliArgs, AccessCommand, CommonCliArgs,
-    DryRunOutputFormat, OrgAddArgs, OrgCommand, OrgDeleteArgs, OrgDiffArgs, OrgExportArgs,
-    OrgImportArgs, OrgListArgs, OrgModifyArgs, Scope, ServiceAccountAddArgs, ServiceAccountCommand,
-    ServiceAccountDiffArgs, ServiceAccountExportArgs, ServiceAccountImportArgs,
-    ServiceAccountListArgs, ServiceAccountTokenAddArgs, ServiceAccountTokenCommand, TeamAddArgs,
-    TeamBrowseArgs, TeamCommand, TeamDiffArgs, TeamExportArgs, TeamImportArgs, TeamListArgs,
-    TeamModifyArgs, UserAddArgs, UserBrowseArgs, UserCommand, UserDeleteArgs, UserDiffArgs,
-    UserExportArgs, UserImportArgs, UserListArgs, UserModifyArgs, ACCESS_EXPORT_KIND_ORGS,
-    ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS, ACCESS_EXPORT_KIND_TEAMS, ACCESS_EXPORT_KIND_USERS,
-    ACCESS_EXPORT_METADATA_FILENAME, ACCESS_EXPORT_VERSION, ACCESS_ORG_EXPORT_FILENAME,
-    ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME, ACCESS_TEAM_EXPORT_FILENAME,
-    ACCESS_USER_EXPORT_FILENAME, DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT, DEFAULT_URL,
+    CommonCliArgsNoOrgId, DryRunOutputFormat, OrgAddArgs, OrgCommand, OrgDeleteArgs, OrgDiffArgs,
+    OrgExportArgs, OrgImportArgs, OrgListArgs, OrgModifyArgs, Scope, ServiceAccountAddArgs,
+    ServiceAccountCommand, ServiceAccountDiffArgs, ServiceAccountExportArgs,
+    ServiceAccountImportArgs, ServiceAccountListArgs, ServiceAccountTokenAddArgs,
+    ServiceAccountTokenCommand, TeamAddArgs, TeamBrowseArgs, TeamCommand, TeamDiffArgs,
+    TeamExportArgs, TeamImportArgs, TeamListArgs, TeamModifyArgs, UserAddArgs, UserBrowseArgs,
+    UserCommand, UserDeleteArgs, UserDiffArgs, UserExportArgs, UserImportArgs, UserListArgs,
+    UserModifyArgs, ACCESS_EXPORT_KIND_ORGS, ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS,
+    ACCESS_EXPORT_KIND_TEAMS, ACCESS_EXPORT_KIND_USERS, ACCESS_EXPORT_METADATA_FILENAME,
+    ACCESS_EXPORT_VERSION, ACCESS_ORG_EXPORT_FILENAME, ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME,
+    ACCESS_TEAM_EXPORT_FILENAME, ACCESS_USER_EXPORT_FILENAME, DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT,
+    DEFAULT_URL,
 };
 #[allow(unused_imports)]
 pub(crate) use facade_support::{

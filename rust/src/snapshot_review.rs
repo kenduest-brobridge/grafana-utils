@@ -58,6 +58,25 @@ pub fn render_snapshot_review_text(document: &Value) -> Result<Vec<String>> {
                 .and_then(Value::as_u64)
                 .unwrap_or(0),
         ),
+        format!(
+            "Access totals: {} user(s), {} team(s), {} org(s), {} service-account(s)",
+            summary
+                .get("accessUserCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0),
+            summary
+                .get("accessTeamCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0),
+            summary
+                .get("accessOrgCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0),
+            summary
+                .get("accessServiceAccountCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0),
+        ),
     ];
     if let Some(lanes) = document.get("lanes").and_then(Value::as_object) {
         let dashboard = lanes
@@ -116,6 +135,43 @@ pub fn render_snapshot_review_text(document: &Value) -> Result<Vec<String>> {
                 .and_then(Value::as_u64)
                 .unwrap_or(0),
         ));
+        if let Some(access) = lanes.get("access").and_then(Value::as_object) {
+            if !access
+                .get("present")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+            {
+                // Old snapshots may not carry access lanes.
+            } else {
+                lines.push(format!(
+                    "Access lanes: users {}, teams {}, orgs {}, service-accounts {}",
+                    access
+                        .get("users")
+                        .and_then(Value::as_object)
+                        .and_then(|lane| lane.get("recordCount"))
+                        .and_then(Value::as_u64)
+                        .unwrap_or(0),
+                    access
+                        .get("teams")
+                        .and_then(Value::as_object)
+                        .and_then(|lane| lane.get("recordCount"))
+                        .and_then(Value::as_u64)
+                        .unwrap_or(0),
+                    access
+                        .get("orgs")
+                        .and_then(Value::as_object)
+                        .and_then(|lane| lane.get("recordCount"))
+                        .and_then(Value::as_u64)
+                        .unwrap_or(0),
+                    access
+                        .get("serviceAccounts")
+                        .and_then(Value::as_object)
+                        .and_then(|lane| lane.get("recordCount"))
+                        .and_then(Value::as_u64)
+                        .unwrap_or(0),
+                ));
+            }
+        }
     }
     let datasource_types = document
         .get("datasourceTypes")
@@ -264,6 +320,25 @@ pub(crate) fn build_snapshot_review_summary_lines(document: &Value) -> Result<Ve
                 .and_then(Value::as_u64)
                 .unwrap_or(0),
         ),
+        format!(
+            "Access totals: {} user(s), {} team(s), {} org(s), {} service-account(s)",
+            summary
+                .get("accessUserCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0),
+            summary
+                .get("accessTeamCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0),
+            summary
+                .get("accessOrgCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0),
+            summary
+                .get("accessServiceAccountCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0),
+        ),
         if warnings.is_empty() {
             "Warnings: none".to_string()
         } else {
@@ -362,6 +437,34 @@ pub(crate) fn build_snapshot_review_browser_items(document: &Value) -> Result<Ve
                 "Default datasources: {}",
                 summary
                     .get("defaultDatasourceCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(0)
+            ),
+            format!(
+                "Access users: {}",
+                summary
+                    .get("accessUserCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(0)
+            ),
+            format!(
+                "Access teams: {}",
+                summary
+                    .get("accessTeamCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(0)
+            ),
+            format!(
+                "Access orgs: {}",
+                summary
+                    .get("accessOrgCount")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(0)
+            ),
+            format!(
+                "Access service accounts: {}",
+                summary
+                    .get("accessServiceAccountCount")
                     .and_then(Value::as_u64)
                     .unwrap_or(0)
             ),
@@ -510,6 +613,83 @@ pub(crate) fn build_snapshot_review_browser_items(document: &Value) -> Result<Ve
                     ),
                 ],
             });
+        }
+        if let Some(access) = lanes.get("access").and_then(Value::as_object) {
+            if access
+                .get("present")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+            {
+                items.push(BrowserItem {
+                    kind: "lane".to_string(),
+                    title: "Access lanes".to_string(),
+                    meta: format!(
+                        "users {}  teams {}  orgs {}  service-accounts {}",
+                        access
+                            .get("users")
+                            .and_then(Value::as_object)
+                            .and_then(|lane| lane.get("recordCount"))
+                            .and_then(Value::as_u64)
+                            .unwrap_or(0),
+                        access
+                            .get("teams")
+                            .and_then(Value::as_object)
+                            .and_then(|lane| lane.get("recordCount"))
+                            .and_then(Value::as_u64)
+                            .unwrap_or(0),
+                        access
+                            .get("orgs")
+                            .and_then(Value::as_object)
+                            .and_then(|lane| lane.get("recordCount"))
+                            .and_then(Value::as_u64)
+                            .unwrap_or(0),
+                        access
+                            .get("serviceAccounts")
+                            .and_then(Value::as_object)
+                            .and_then(|lane| lane.get("recordCount"))
+                            .and_then(Value::as_u64)
+                            .unwrap_or(0),
+                    ),
+                    details: vec![
+                        format!(
+                            "Users: {}",
+                            access
+                                .get("users")
+                                .and_then(Value::as_object)
+                                .and_then(|lane| lane.get("recordCount"))
+                                .and_then(Value::as_u64)
+                                .unwrap_or(0)
+                        ),
+                        format!(
+                            "Teams: {}",
+                            access
+                                .get("teams")
+                                .and_then(Value::as_object)
+                                .and_then(|lane| lane.get("recordCount"))
+                                .and_then(Value::as_u64)
+                                .unwrap_or(0)
+                        ),
+                        format!(
+                            "Orgs: {}",
+                            access
+                                .get("orgs")
+                                .and_then(Value::as_object)
+                                .and_then(|lane| lane.get("recordCount"))
+                                .and_then(Value::as_u64)
+                                .unwrap_or(0)
+                        ),
+                        format!(
+                            "Service accounts: {}",
+                            access
+                                .get("serviceAccounts")
+                                .and_then(Value::as_object)
+                                .and_then(|lane| lane.get("recordCount"))
+                                .and_then(Value::as_u64)
+                                .unwrap_or(0)
+                        ),
+                    ],
+                });
+            }
         }
     }
 
@@ -850,12 +1030,28 @@ fn build_snapshot_review_tabular_rows(document: &Value) -> Result<Vec<Vec<String
             .unwrap_or(0)
             .to_string(),
         format!(
-            "orgs={} datasources={}",
+            "orgs={} datasources={} access-users={} access-teams={} access-orgs={} access-service-accounts={}",
             summary.get("orgCount").and_then(Value::as_u64).unwrap_or(0),
             summary
                 .get("datasourceCount")
                 .and_then(Value::as_u64)
-                .unwrap_or(0)
+                .unwrap_or(0),
+            summary
+                .get("accessUserCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0),
+            summary
+                .get("accessTeamCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0),
+            summary
+                .get("accessOrgCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0),
+            summary
+                .get("accessServiceAccountCount")
+                .and_then(Value::as_u64)
+                .unwrap_or(0),
         ),
     ]];
     for org in document
@@ -923,6 +1119,55 @@ fn build_snapshot_review_tabular_rows(document: &Value) -> Result<Vec<Vec<String
                 .unwrap_or_default()
                 .to_string(),
         ]);
+    }
+    if let Some(access) = document
+        .get("lanes")
+        .and_then(Value::as_object)
+        .and_then(|lanes| lanes.get("access"))
+        .and_then(Value::as_object)
+    {
+        if access
+            .get("present")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        {
+            let user_count = access
+                .get("users")
+                .and_then(Value::as_object)
+                .and_then(|lane| lane.get("recordCount"))
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
+            let team_count = access
+                .get("teams")
+                .and_then(Value::as_object)
+                .and_then(|lane| lane.get("recordCount"))
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
+            let org_count = access
+                .get("orgs")
+                .and_then(Value::as_object)
+                .and_then(|lane| lane.get("recordCount"))
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
+            let service_account_count = access
+                .get("serviceAccounts")
+                .and_then(Value::as_object)
+                .and_then(|lane| lane.get("recordCount"))
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
+            rows.push(vec![
+                "lane".to_string(),
+                "access".to_string(),
+                "ready".to_string(),
+                user_count.to_string(),
+                String::new(),
+                String::new(),
+                format!(
+                    "users={} teams={} orgs={} serviceAccounts={}",
+                    user_count, team_count, org_count, service_account_count
+                ),
+            ]);
+        }
     }
     Ok(rows)
 }

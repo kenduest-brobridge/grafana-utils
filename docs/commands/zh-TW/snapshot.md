@@ -4,19 +4,20 @@
 
 用途：匯出並檢視 Grafana snapshot inventory bundles。
 
-適用時機：當你想建立一個本機 snapshot root，收錄 dashboard 與 datasource inventory，供後續檢視時。
+適用時機：當你想建立一個本機 snapshot root，收錄 dashboard、datasource 與 access inventory，供後續檢視時。
 
-說明：如果你需要一份離線 snapshot，之後不用重新連到 Grafana 也能繼續檢視，先看這一頁最合適。`snapshot` 指令群組適合交接、備份、事件回顧，或任何想先留下本機 artifact 再往下分析的工作流。
+說明：如果你需要一份離線 snapshot，之後不用重新連到 Grafana 也能繼續檢視，先看這一頁最合適。`snapshot` 指令群組適合交接、備份、事件回顧，或任何想先留下本機 artifact 再往下分析的工作流。snapshot export 現在會把 dashboard、datasource、access 幾條 lane 收斂到同一個 root，並寫出 `snapshot-metadata.json`，讓後續工具不用靠猜路徑就能找出 lane。
 
 ## 採用前後對照
 
-- **採用前**：snapshot 式檢視通常代表要重新查 Grafana，或一個一個打開 dashboard 與 datasource。
+- **採用前**：snapshot 式檢視通常代表要重新查 Grafana，或一個一個打開 dashboard、datasource 與 access 資料。
 - **採用後**：先匯出，再把本機 bundle 當成可重複檢視的 artifact，不用再碰 live server。
 
 ## 成功判準
 
 - 你可以把 snapshot root 交給別人，對方不用再跟你要 live 存取也能看
 - 匯出結果是可保存的 artifact，不是短命的 UI session
+- snapshot root 會帶 lane metadata，後續分析不用重掃整棵目錄猜 shape
 - review 輸出清楚到可以接後續分析或事故紀錄
 
 ## 失敗時先檢查
@@ -48,9 +49,19 @@ grafana-util snapshot export --url http://localhost:3000 --token "$GRAFANA_API_T
 
 ## `export`
 
-用途：將 dashboard 與 datasource inventory 匯出到本機 snapshot bundle。
+用途：將 dashboard、datasource 與 access inventory 匯出到本機 snapshot bundle。
 
 適用時機：當你需要一個不必連到 Grafana 也能檢視的本機 snapshot root 時。
+
+會寫出的內容：
+
+- `snapshot/dashboards/`
+- `snapshot/datasources/`
+- `snapshot/access/users/`
+- `snapshot/access/teams/`
+- `snapshot/access/orgs/`
+- `snapshot/access/service-accounts/`
+- `snapshot/snapshot-metadata.json`
 
 主要旗標：`--export-dir`、`--overwrite`，以及共用的 Grafana 連線與驗證旗標。
 
@@ -78,6 +89,8 @@ grafana-util snapshot export --url http://localhost:3000 --token "$GRAFANA_API_T
 用途：在不接觸 Grafana 的情況下檢視本機 snapshot inventory。
 
 適用時機：當你想把匯出的 snapshot root 以 table、csv、text、json、yaml 或 interactive 格式查看時。
+
+review summary 現在也會一起顯示 users、teams、orgs、service accounts 的 access 計數。
 
 主要旗標：`--input-dir`、`--interactive`、`--output-format`。
 

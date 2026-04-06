@@ -77,7 +77,7 @@ fn parse_cli_supports_inspect_export_baseline_output_formats() {
             DashboardCommand::InspectExport(inspect_args) => {
                 assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
                 assert_eq!(inspect_args.output_format, Some(expected));
-                    assert!(!inspect_args.json);
+                assert!(!inspect_args.json);
                 assert!(!inspect_args.table);
             }
             _ => panic!("expected inspect-export command"),
@@ -376,7 +376,7 @@ fn analyze_export_dir_supports_explicit_provisioning_input_format() {
         table: false,
         yaml: false,
         output_format: None,
-                report_columns: Vec::new(),
+        report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,
         help_full: false,
@@ -434,7 +434,7 @@ fn analyze_export_dir_accepts_workspace_wrapper_root_when_dashboards_metadata_ex
         table: false,
         yaml: false,
         output_format: None,
-                report_columns: Vec::new(),
+        report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,
         help_full: false,
@@ -480,7 +480,7 @@ fn analyze_export_dir_requires_input_type_for_dashboard_root_with_raw_and_prompt
         json: false,
         table: false,
         yaml: false,
-                output_format: None,
+        output_format: None,
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,

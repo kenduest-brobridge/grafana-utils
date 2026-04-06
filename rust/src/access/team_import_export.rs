@@ -106,8 +106,10 @@ where
             &metadata_path,
             &Value::Object(build_team_access_export_metadata(
                 &args.common.url,
+                args.common.profile.as_deref(),
                 &args.export_dir,
                 records.len(),
+                args.with_members,
             )),
             args.overwrite,
         )?;

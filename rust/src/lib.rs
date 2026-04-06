@@ -57,6 +57,8 @@ pub(crate) mod datasource_project_status;
 pub(crate) mod datasource_provider;
 /// Datasource secret placeholder planning helpers used by staged sync review.
 pub(crate) mod datasource_secret;
+/// Shared additive export-metadata contract helpers.
+pub(crate) mod export_metadata;
 /// Shared internal Grafana connection/client layer used by live runtime paths.
 pub(crate) mod grafana_api;
 /// Centralized Clap help styling configuration.
@@ -115,6 +117,8 @@ mod bundle_preflight_rust_tests;
 mod datasource_provider_rust_tests;
 #[cfg(test)]
 mod datasource_secret_rust_tests;
+#[cfg(test)]
+mod export_metadata_rust_tests;
 #[cfg(test)]
 mod overview_rust_tests;
 #[cfg(test)]

@@ -11,10 +11,17 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use chrono::{DateTime, Utc};
 use clap::{Args, CommandFactory, Parser, Subcommand};
 use rpassword::prompt_password;
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 
+use crate::access::{
+    self, AccessCliArgs, AccessCommand, CommonCliArgs as AccessCommonCliArgs,
+    CommonCliArgsNoOrgId as AccessCommonCliArgsNoOrgId, OrgCommand, OrgExportArgs, Scope,
+    ServiceAccountCommand, ServiceAccountExportArgs, TeamCommand, TeamExportArgs, UserCommand,
+    UserExportArgs,
+};
 use crate::common::{CliColorChoice, GrafanaCliError, Result};
 use crate::dashboard::{
     self, CommonCliArgs, DashboardCliArgs, DashboardCommand, ExportArgs as DashboardExportArgs,
@@ -36,10 +43,16 @@ pub(crate) use self::snapshot_review::{
 
 pub const SNAPSHOT_DASHBOARD_DIR: &str = "dashboards";
 pub const SNAPSHOT_DATASOURCE_DIR: &str = "datasources";
+pub const SNAPSHOT_ACCESS_DIR: &str = "access";
+pub const SNAPSHOT_ACCESS_USERS_DIR: &str = "users";
+pub const SNAPSHOT_ACCESS_TEAMS_DIR: &str = "teams";
+pub const SNAPSHOT_ACCESS_ORGS_DIR: &str = "orgs";
+pub const SNAPSHOT_ACCESS_SERVICE_ACCOUNTS_DIR: &str = "service-accounts";
 pub const SNAPSHOT_DATASOURCE_EXPORT_FILENAME: &str = "datasources.json";
 pub const SNAPSHOT_DATASOURCE_EXPORT_METADATA_FILENAME: &str = "export-metadata.json";
 pub const SNAPSHOT_DATASOURCE_ROOT_INDEX_KIND: &str = "grafana-utils-datasource-export-index";
 pub const SNAPSHOT_DATASOURCE_TOOL_SCHEMA_VERSION: i64 = 1;
+pub const SNAPSHOT_METADATA_FILENAME: &str = "snapshot-metadata.json";
 const SNAPSHOT_REVIEW_KIND: &str = "grafana-utils-snapshot-review";
 const SNAPSHOT_REVIEW_SCHEMA_VERSION: i64 = 1;
 const SNAPSHOT_ROOT_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot --overwrite\n\n  grafana-util snapshot review --input-dir ./snapshot --output-format table\n\n  grafana-util snapshot review --input-dir ./snapshot --interactive";
@@ -93,6 +106,373 @@ fn annotate_snapshot_root_scope_kinds(export_dir: &Path) -> Result<()> {
         "workspace-root",
     )?;
     Ok(())
+}
+
+fn snapshot_common_source(common: &CommonCliArgs) -> Map<String, Value> {
+    let mut source = Map::from_iter(vec![("url".to_string(), Value::String(common.url.clone()))]);
+    if let Some(profile) = &common.profile {
+        source.insert("profile".to_string(), Value::String(profile.clone()));
+    }
+    source
+}
+
+fn access_common_from_snapshot(common: &CommonCliArgs) -> AccessCommonCliArgs {
+    AccessCommonCliArgs {
+        profile: common.profile.clone(),
+        url: common.url.clone(),
+        api_token: common.api_token.clone(),
+        username: common.username.clone(),
+        password: common.password.clone(),
+        prompt_password: common.prompt_password,
+        prompt_token: common.prompt_token,
+        org_id: None,
+        timeout: common.timeout,
+        verify_ssl: common.verify_ssl,
+        insecure: false,
+        ca_cert: None,
+    }
+}
+
+fn access_common_no_org_id_from_snapshot(common: &CommonCliArgs) -> AccessCommonCliArgsNoOrgId {
+    AccessCommonCliArgsNoOrgId {
+        profile: common.profile.clone(),
+        url: common.url.clone(),
+        api_token: common.api_token.clone(),
+        username: common.username.clone(),
+        password: common.password.clone(),
+        prompt_password: common.prompt_password,
+        prompt_token: common.prompt_token,
+        timeout: common.timeout,
+        verify_ssl: common.verify_ssl,
+        insecure: false,
+        ca_cert: None,
+    }
+}
+
+fn build_snapshot_access_user_export_args(args: &SnapshotExportArgs) -> UserExportArgs {
+    UserExportArgs {
+        common: access_common_from_snapshot(&args.common),
+        export_dir: build_snapshot_paths(&args.export_dir)
+            .access
+            .join(SNAPSHOT_ACCESS_USERS_DIR),
+        overwrite: args.overwrite,
+        dry_run: false,
+        scope: Scope::Org,
+        with_teams: true,
+    }
+}
+
+fn build_snapshot_access_team_export_args(args: &SnapshotExportArgs) -> TeamExportArgs {
+    TeamExportArgs {
+        common: access_common_from_snapshot(&args.common),
+        export_dir: build_snapshot_paths(&args.export_dir)
+            .access
+            .join(SNAPSHOT_ACCESS_TEAMS_DIR),
+        overwrite: args.overwrite,
+        dry_run: false,
+        with_members: true,
+    }
+}
+
+fn build_snapshot_access_org_export_args(args: &SnapshotExportArgs) -> OrgExportArgs {
+    OrgExportArgs {
+        common: access_common_no_org_id_from_snapshot(&args.common),
+        org_id: None,
+        export_dir: build_snapshot_paths(&args.export_dir)
+            .access
+            .join(SNAPSHOT_ACCESS_ORGS_DIR),
+        overwrite: args.overwrite,
+        dry_run: false,
+        name: None,
+        with_users: true,
+    }
+}
+
+fn build_snapshot_access_service_account_export_args(
+    args: &SnapshotExportArgs,
+) -> ServiceAccountExportArgs {
+    ServiceAccountExportArgs {
+        common: access_common_from_snapshot(&args.common),
+        export_dir: build_snapshot_paths(&args.export_dir)
+            .access
+            .join(SNAPSHOT_ACCESS_SERVICE_ACCOUNTS_DIR),
+        overwrite: args.overwrite,
+        dry_run: false,
+    }
+}
+
+fn load_metadata_count(metadata_path: &Path, count_keys: &[&str]) -> Result<Option<usize>> {
+    if !metadata_path.is_file() {
+        return Ok(None);
+    }
+    let metadata = crate::common::load_json_object_file(metadata_path, "Snapshot lane metadata")?;
+    let object = metadata
+        .as_object()
+        .ok_or_else(|| crate::common::message("Snapshot lane metadata must be a JSON object."))?;
+    for key in count_keys {
+        if let Some(count) = object.get(*key).and_then(Value::as_u64) {
+            return Ok(Some(count as usize));
+        }
+    }
+    Ok(None)
+}
+
+fn load_snapshot_lane_metadata_summary(
+    lane_dir: &Path,
+    payload_filename: &str,
+    count_keys: &[&str],
+    lane_kind: &str,
+    lane_resource: &str,
+) -> Result<Value> {
+    let metadata_path = lane_dir.join(EXPORT_METADATA_FILENAME);
+    let payload_path = lane_dir.join(payload_filename);
+    let metadata_present = metadata_path.is_file();
+    let payload_present = payload_path.is_file();
+    let record_count = load_metadata_count(&metadata_path, count_keys)?.unwrap_or_else(|| {
+        if payload_present {
+            match fs::read_to_string(&payload_path)
+                .ok()
+                .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
+            {
+                Some(Value::Array(values)) => values.len(),
+                Some(Value::Object(object)) => object
+                    .get("records")
+                    .and_then(Value::as_array)
+                    .map(Vec::len)
+                    .unwrap_or_default(),
+                _ => 0,
+            }
+        } else {
+            0
+        }
+    });
+    Ok(json!({
+        "present": metadata_present || payload_present,
+        "metadataPresent": metadata_present,
+        "payloadPresent": payload_present,
+        "path": lane_dir.to_string_lossy(),
+        "metadataPath": metadata_path.to_string_lossy(),
+        "payloadPath": payload_path.to_string_lossy(),
+        "kind": lane_kind,
+        "resource": lane_resource,
+        "recordCount": record_count,
+    }))
+}
+
+fn build_snapshot_access_lane_summaries(
+    export_dir: &Path,
+) -> Result<(Value, SnapshotAccessReviewCounts, Vec<Value>)> {
+    let access_root = export_dir.join(SNAPSHOT_ACCESS_DIR);
+    if !access_root.exists() {
+        return Ok((
+            json!({
+                "present": false
+            }),
+            SnapshotAccessReviewCounts::default(),
+            Vec::new(),
+        ));
+    }
+
+    let users = load_snapshot_lane_metadata_summary(
+        &access_root.join(SNAPSHOT_ACCESS_USERS_DIR),
+        "users.json",
+        &["recordCount"],
+        access::ACCESS_EXPORT_KIND_USERS,
+        "users",
+    )?;
+    let teams = load_snapshot_lane_metadata_summary(
+        &access_root.join(SNAPSHOT_ACCESS_TEAMS_DIR),
+        "teams.json",
+        &["recordCount"],
+        access::ACCESS_EXPORT_KIND_TEAMS,
+        "teams",
+    )?;
+    let orgs = load_snapshot_lane_metadata_summary(
+        &access_root.join(SNAPSHOT_ACCESS_ORGS_DIR),
+        "orgs.json",
+        &["recordCount"],
+        access::ACCESS_EXPORT_KIND_ORGS,
+        "orgs",
+    )?;
+    let service_accounts = load_snapshot_lane_metadata_summary(
+        &access_root.join(SNAPSHOT_ACCESS_SERVICE_ACCOUNTS_DIR),
+        "service-accounts.json",
+        &["recordCount"],
+        access::ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS,
+        "service-accounts",
+    )?;
+
+    let mut warnings = Vec::new();
+    for (code, lane, label, payload_name) in [
+        ("access-users-lane-missing", &users, "users", "users.json"),
+        ("access-teams-lane-missing", &teams, "teams", "teams.json"),
+        ("access-orgs-lane-missing", &orgs, "orgs", "orgs.json"),
+        (
+            "access-service-accounts-lane-missing",
+            &service_accounts,
+            "service accounts",
+            "service-accounts.json",
+        ),
+    ] {
+        let present = lane
+            .get("present")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        if !present {
+            warnings.push(json!({
+                "code": code,
+                "message": format!("At least one access export scope is missing {}.", payload_name)
+            }));
+            continue;
+        }
+        let metadata_present = lane
+            .get("metadataPresent")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        let payload_present = lane
+            .get("payloadPresent")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        if !metadata_present || !payload_present {
+            warnings.push(json!({
+                "code": format!("{}-partial", code),
+                "message": format!(
+                    "Access lane {} is incomplete (metadata={}, payload={}).",
+                    label,
+                    metadata_present,
+                    payload_present
+                )
+            }));
+        }
+    }
+
+    let counts = SnapshotAccessReviewCounts {
+        user_count: users
+            .get("recordCount")
+            .and_then(Value::as_u64)
+            .unwrap_or(0) as usize,
+        team_count: teams
+            .get("recordCount")
+            .and_then(Value::as_u64)
+            .unwrap_or(0) as usize,
+        org_count: orgs.get("recordCount").and_then(Value::as_u64).unwrap_or(0) as usize,
+        service_account_count: service_accounts
+            .get("recordCount")
+            .and_then(Value::as_u64)
+            .unwrap_or(0) as usize,
+    };
+
+    Ok((
+        json!({
+            "present": true,
+            "users": users,
+            "teams": teams,
+            "orgs": orgs,
+            "serviceAccounts": service_accounts,
+        }),
+        counts,
+        warnings,
+    ))
+}
+
+pub(crate) fn build_snapshot_root_metadata(
+    export_dir: &Path,
+    common: &CommonCliArgs,
+) -> Result<Value> {
+    let paths = build_snapshot_paths(export_dir);
+    let dashboard_metadata = load_snapshot_lane_metadata_summary(
+        &paths.dashboards,
+        "index.json",
+        &["dashboardCount"],
+        ROOT_INDEX_KIND,
+        "dashboards",
+    )?;
+    let datasource_metadata = load_snapshot_lane_metadata_summary(
+        &paths.datasources,
+        SNAPSHOT_DATASOURCE_EXPORT_FILENAME,
+        &["datasourceCount"],
+        SNAPSHOT_DATASOURCE_ROOT_INDEX_KIND,
+        "datasources",
+    )?;
+    let access_root = paths.access.clone();
+    let access_users = load_snapshot_lane_metadata_summary(
+        &access_root.join(SNAPSHOT_ACCESS_USERS_DIR),
+        "users.json",
+        &["recordCount"],
+        access::ACCESS_EXPORT_KIND_USERS,
+        "users",
+    )?;
+    let access_teams = load_snapshot_lane_metadata_summary(
+        &access_root.join(SNAPSHOT_ACCESS_TEAMS_DIR),
+        "teams.json",
+        &["recordCount"],
+        access::ACCESS_EXPORT_KIND_TEAMS,
+        "teams",
+    )?;
+    let access_orgs = load_snapshot_lane_metadata_summary(
+        &access_root.join(SNAPSHOT_ACCESS_ORGS_DIR),
+        "orgs.json",
+        &["recordCount"],
+        access::ACCESS_EXPORT_KIND_ORGS,
+        "orgs",
+    )?;
+    let access_service_accounts = load_snapshot_lane_metadata_summary(
+        &access_root.join(SNAPSHOT_ACCESS_SERVICE_ACCOUNTS_DIR),
+        "service-accounts.json",
+        &["recordCount"],
+        access::ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS,
+        "service-accounts",
+    )?;
+    let summary = json!({
+        "dashboardCount": dashboard_metadata
+            .get("recordCount")
+            .and_then(Value::as_u64)
+            .unwrap_or(0),
+        "datasourceCount": datasource_metadata
+            .get("recordCount")
+            .and_then(Value::as_u64)
+            .unwrap_or(0),
+        "accessUserCount": access_users
+            .get("recordCount")
+            .and_then(Value::as_u64)
+            .unwrap_or(0),
+        "accessTeamCount": access_teams
+            .get("recordCount")
+            .and_then(Value::as_u64)
+            .unwrap_or(0),
+        "accessOrgCount": access_orgs
+            .get("recordCount")
+            .and_then(Value::as_u64)
+            .unwrap_or(0),
+        "accessServiceAccountCount": access_service_accounts
+            .get("recordCount")
+            .and_then(Value::as_u64)
+            .unwrap_or(0),
+    });
+    Ok(json!({
+        "kind": "grafana-utils-snapshot-root",
+        "schemaVersion": 2,
+        "toolVersion": crate::common::tool_version(),
+        "capturedAt": DateTime::<Utc>::from(std::time::SystemTime::now()).to_rfc3339(),
+        "source": snapshot_common_source(common),
+        "paths": {
+            "root": export_dir.to_string_lossy(),
+            "dashboards": paths.dashboards.to_string_lossy(),
+            "datasources": paths.datasources.to_string_lossy(),
+            "access": paths.access.to_string_lossy(),
+        },
+        "summary": summary,
+        "lanes": {
+            "dashboards": dashboard_metadata,
+            "datasources": datasource_metadata,
+            "access": {
+                "users": access_users,
+                "teams": access_teams,
+                "orgs": access_orgs,
+                "serviceAccounts": access_service_accounts,
+            },
+        }
+    }))
 }
 
 #[cfg(feature = "tui")]
@@ -183,6 +563,12 @@ pub enum SnapshotCommand {
 pub struct SnapshotPaths {
     pub dashboards: PathBuf,
     pub datasources: PathBuf,
+    pub access: PathBuf,
+    pub access_users: PathBuf,
+    pub access_teams: PathBuf,
+    pub access_orgs: PathBuf,
+    pub access_service_accounts: PathBuf,
+    pub metadata: PathBuf,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -196,10 +582,25 @@ struct SnapshotReviewOrgCounts {
     datasource_types: BTreeMap<String, usize>,
 }
 
+#[derive(Debug, Clone, Default)]
+struct SnapshotAccessReviewCounts {
+    user_count: usize,
+    team_count: usize,
+    org_count: usize,
+    service_account_count: usize,
+}
+
 pub fn build_snapshot_paths(export_dir: &Path) -> SnapshotPaths {
+    let access = export_dir.join(SNAPSHOT_ACCESS_DIR);
     SnapshotPaths {
         dashboards: export_dir.join(SNAPSHOT_DASHBOARD_DIR),
         datasources: export_dir.join(SNAPSHOT_DATASOURCE_DIR),
+        access_users: access.join(SNAPSHOT_ACCESS_USERS_DIR),
+        access_teams: access.join(SNAPSHOT_ACCESS_TEAMS_DIR),
+        access_orgs: access.join(SNAPSHOT_ACCESS_ORGS_DIR),
+        access_service_accounts: access.join(SNAPSHOT_ACCESS_SERVICE_ACCOUNTS_DIR),
+        access,
+        metadata: export_dir.join(SNAPSHOT_METADATA_FILENAME),
     }
 }
 
@@ -214,10 +615,10 @@ pub fn build_snapshot_overview_args(args: &SnapshotReviewArgs) -> OverviewArgs {
         dashboard_provisioning_dir: None,
         datasource_export_dir: Some(paths.datasources),
         datasource_provisioning_file: None,
-        access_user_export_dir: None,
-        access_team_export_dir: None,
-        access_org_export_dir: None,
-        access_service_account_export_dir: None,
+        access_user_export_dir: Some(paths.access_users),
+        access_team_export_dir: Some(paths.access_teams),
+        access_org_export_dir: Some(paths.access_orgs),
+        access_service_account_export_dir: Some(paths.access_service_accounts),
         desired_file: None,
         source_bundle: None,
         target_inventory: None,
@@ -839,6 +1240,8 @@ pub fn build_snapshot_review_document(
     let dashboard_lane_summary = build_dashboard_lane_summary(&dashboard_scope_dirs);
     let datasource_lane_summary =
         build_datasource_lane_summary(datasource_lane_dir, &datasource_scope_dirs);
+    let (access_lane_summary, access_counts, mut access_warnings) =
+        build_snapshot_access_lane_summaries(dashboard_dir.parent().unwrap_or(dashboard_dir))?;
     let (dashboard_org_rows, dashboard_count, missing_dashboard_org_scope) =
         collect_dashboard_org_counts(&dashboard_metadata, &dashboard_index)?;
     let dashboard_org_count = dashboard_org_rows.len();
@@ -914,6 +1317,8 @@ pub fn build_snapshot_review_document(
         missing_dashboard_org_scope,
         missing_datasource_org_scope,
     );
+    let mut warnings = warnings;
+    warnings.append(&mut access_warnings);
 
     Ok(json!({
         "kind": SNAPSHOT_REVIEW_KIND,
@@ -927,6 +1332,10 @@ pub fn build_snapshot_review_document(
             "datasourceCount": datasource_count,
             "datasourceTypeCount": datasource_type_totals.len(),
             "defaultDatasourceCount": default_datasource_count,
+            "accessUserCount": access_counts.user_count,
+            "accessTeamCount": access_counts.team_count,
+            "accessOrgCount": access_counts.org_count,
+            "accessServiceAccountCount": access_counts.service_account_count,
         },
         "orgs": orgs.into_iter().map(|org| json!({
             "org": org.org,
@@ -940,6 +1349,7 @@ pub fn build_snapshot_review_document(
         "lanes": {
             "dashboard": dashboard_lane_summary,
             "datasource": datasource_lane_summary,
+            "access": access_lane_summary,
         },
         "folders": folder_rows,
         "datasourceTypes": datasource_type_documents,
@@ -1027,8 +1437,41 @@ fn normalize_snapshot_datasource_dir(temp_root: &Path, datasource_dir: &Path) ->
     Ok(normalized_dir)
 }
 
+fn run_snapshot_access_exports(args: &SnapshotExportArgs) -> Result<()> {
+    access::run_access_cli(AccessCliArgs {
+        command: AccessCommand::User {
+            command: UserCommand::Export(build_snapshot_access_user_export_args(args)),
+        },
+    })?;
+    access::run_access_cli(AccessCliArgs {
+        command: AccessCommand::Team {
+            command: TeamCommand::Export(build_snapshot_access_team_export_args(args)),
+        },
+    })?;
+    access::run_access_cli(AccessCliArgs {
+        command: AccessCommand::Org {
+            command: OrgCommand::Export(build_snapshot_access_org_export_args(args)),
+        },
+    })?;
+    access::run_access_cli(AccessCliArgs {
+        command: AccessCommand::ServiceAccount {
+            command: ServiceAccountCommand::Export(
+                build_snapshot_access_service_account_export_args(args),
+            ),
+        },
+    })?;
+    Ok(())
+}
+
+fn write_snapshot_root_metadata_file(args: &SnapshotExportArgs) -> Result<()> {
+    let metadata_path = build_snapshot_paths(&args.export_dir).metadata;
+    let metadata = build_snapshot_root_metadata(&args.export_dir, &args.common)?;
+    fs::write(metadata_path, serde_json::to_string_pretty(&metadata)?)?;
+    Ok(())
+}
+
 pub(crate) fn run_snapshot_export_with_handlers<FD, FS>(
-    mut args: SnapshotExportArgs,
+    args: SnapshotExportArgs,
     mut run_dashboard: FD,
     mut run_datasource: FS,
 ) -> Result<()>
@@ -1036,7 +1479,6 @@ where
     FD: FnMut(DashboardCliArgs) -> Result<()>,
     FS: FnMut(DatasourceGroupCommand) -> Result<()>,
 {
-    args.common = materialize_snapshot_common_auth(args.common)?;
     run_dashboard(DashboardCliArgs {
         color: args.common.color,
         command: DashboardCommand::Export(build_snapshot_dashboard_export_args(&args)),
@@ -1049,11 +1491,18 @@ where
 }
 
 pub fn run_snapshot_export(args: SnapshotExportArgs) -> Result<()> {
+    let mut args = args;
+    args.common = materialize_snapshot_common_auth(args.common)?;
+    let export_args = args.clone();
     run_snapshot_export_with_handlers(
         args,
         dashboard::run_dashboard_cli,
         crate::datasource::run_datasource_cli,
-    )
+    )?;
+    run_snapshot_access_exports(&export_args)?;
+    annotate_snapshot_root_scope_kinds(&export_args.export_dir)?;
+    write_snapshot_root_metadata_file(&export_args)?;
+    Ok(())
 }
 
 pub(crate) fn run_snapshot_review_document_with_handler<FO>(

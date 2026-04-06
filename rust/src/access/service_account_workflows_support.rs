@@ -15,6 +15,9 @@ use crate::access::{
 use crate::common::{
     load_json_object_file, message, render_json_value, string_field, value_as_object, Result,
 };
+use crate::export_metadata::{
+    build_export_metadata_common, export_metadata_common_map, EXPORT_BUNDLE_KIND_ROOT,
+};
 
 type DiffPayload = (String, Map<String, Value>);
 type DiffPayloadMap = BTreeMap<String, DiffPayload>;
@@ -35,10 +38,11 @@ pub(super) fn assert_not_overwrite(path: &Path, dry_run: bool, overwrite: bool) 
 
 pub(super) fn build_service_account_export_metadata(
     source_url: &str,
+    source_profile: Option<&str>,
     source_dir: &Path,
     record_count: usize,
 ) -> Map<String, Value> {
-    Map::from_iter(vec![
+    let metadata = Map::from_iter(vec![
         (
             "kind".to_string(),
             Value::String(ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS.to_string()),
@@ -59,7 +63,34 @@ pub(super) fn build_service_account_export_metadata(
             "sourceDir".to_string(),
             Value::String(source_dir.to_string_lossy().to_string()),
         ),
-    ])
+        (
+            "serviceAccountCount".to_string(),
+            Value::Number((record_count as i64).into()),
+        ),
+        ("tokenFilePresent".to_string(), Value::Bool(false)),
+        (
+            "tokenMaterial".to_string(),
+            Value::String("omitted".to_string()),
+        ),
+    ]);
+    let common = build_export_metadata_common(
+        "access",
+        "service-accounts",
+        EXPORT_BUNDLE_KIND_ROOT,
+        "live",
+        Some(source_url),
+        None,
+        source_profile,
+        Some("org"),
+        None,
+        None,
+        source_dir,
+        &source_dir.join(ACCESS_EXPORT_METADATA_FILENAME),
+        record_count,
+    );
+    let mut metadata = metadata;
+    metadata.extend(export_metadata_common_map(&common));
+    metadata
 }
 
 pub(super) fn load_service_account_import_records(

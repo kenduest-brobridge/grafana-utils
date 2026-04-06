@@ -225,6 +225,12 @@ fn dashboard_export_root_manifest_classifies_root_scopes() {
         Some("Main Org."),
         Some("1"),
         None,
+        "live",
+        Some("http://127.0.0.1:3000"),
+        None,
+        None,
+        std::path::Path::new("/tmp/dashboard-root"),
+        std::path::Path::new("/tmp/dashboard-root/export-metadata.json"),
     ));
     assert_eq!(org_root.scope_kind, DashboardExportRootScopeKind::OrgRoot);
 
@@ -246,6 +252,12 @@ fn dashboard_export_root_manifest_classifies_root_scopes() {
             used_datasources: None,
             export_dir: None,
         }]),
+        "live",
+        Some("http://127.0.0.1:3000"),
+        None,
+        None,
+        std::path::Path::new("/tmp/dashboard-root"),
+        std::path::Path::new("/tmp/dashboard-root/export-metadata.json"),
     ));
     assert_eq!(
         all_orgs_root.scope_kind,
@@ -297,10 +309,11 @@ fn resolve_dashboard_export_root_detects_workspace_wrapper_root() {
     let temp = tempdir().unwrap();
     let workspace_root = temp.path().join("workspace");
     let dashboard_root = workspace_root.join("dashboards");
+    let metadata_path = dashboard_root.join(EXPORT_METADATA_FILENAME);
     fs::create_dir_all(workspace_root.join("datasources")).unwrap();
     fs::create_dir_all(dashboard_root.join("org_1_Main_Org").join("raw")).unwrap();
     fs::write(
-        dashboard_root.join(EXPORT_METADATA_FILENAME),
+        &metadata_path,
         serde_json::to_string_pretty(&build_export_metadata(
             "root",
             1,
@@ -319,6 +332,12 @@ fn resolve_dashboard_export_root_detects_workspace_wrapper_root() {
                 used_datasources: None,
                 export_dir: None,
             }]),
+            "local",
+            None,
+            Some(std::path::Path::new("/tmp/workspace")),
+            None,
+            std::path::Path::new("/tmp/workspace/dashboards"),
+            &metadata_path,
         ))
         .unwrap(),
     )

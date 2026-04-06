@@ -5,6 +5,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::export_metadata::{ExportMetadataCapture, ExportMetadataPaths, ExportMetadataSource};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DashboardExportRootScopeKind {
     OrgRoot,
@@ -95,6 +97,32 @@ pub(crate) struct ExportMetadata {
     pub org_count: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub orgs: Option<Vec<ExportOrgSummary>>,
+    #[serde(
+        rename = "metadataVersion",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
+    pub metadata_version: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub domain: Option<String>,
+    #[serde(
+        rename = "resourceKind",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
+    pub resource_kind: Option<String>,
+    #[serde(
+        rename = "bundleKind",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
+    pub bundle_kind: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub source: Option<ExportMetadataSource>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub capture: Option<ExportMetadataCapture>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub paths: Option<ExportMetadataPaths>,
 }
 
 /// Struct definition for ExportOrgSummary.

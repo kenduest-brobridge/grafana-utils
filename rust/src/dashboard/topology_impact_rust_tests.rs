@@ -46,7 +46,10 @@ fn parse_cli_supports_dashboard_governance_gate_command() {
             assert_eq!(gate_args.policy_source, GovernancePolicySource::File);
             assert_eq!(gate_args.policy, Some(PathBuf::from("./policy.json")));
             assert!(gate_args.builtin_policy.is_none());
-            assert_eq!(gate_args.governance, Some(PathBuf::from("./governance.json")));
+            assert_eq!(
+                gate_args.governance,
+                Some(PathBuf::from("./governance.json"))
+            );
             assert_eq!(gate_args.queries, Some(PathBuf::from("./queries.json")));
             assert_eq!(gate_args.output_format, GovernanceGateOutputFormat::Json);
             assert_eq!(
@@ -62,7 +65,9 @@ fn parse_cli_supports_dashboard_governance_gate_command() {
 fn governance_gate_help_mentions_policy_and_queries_inputs() {
     let help = render_dashboard_subcommand_help("governance-gate");
 
-    assert!(help.contains("Check dashboard findings against a policy from live Grafana or a local export tree."));
+    assert!(help.contains(
+        "Check dashboard findings against a policy from live Grafana or a local export tree."
+    ));
     assert!(help.contains("--policy-source"));
     assert!(help.contains("--policy"));
     assert!(help.contains("--builtin-policy"));
@@ -97,7 +102,10 @@ fn parse_cli_supports_dashboard_governance_gate_builtin_policy_command() {
             assert_eq!(gate_args.policy_source, GovernancePolicySource::Builtin);
             assert!(gate_args.policy.is_none());
             assert_eq!(gate_args.builtin_policy.as_deref(), Some("default"));
-            assert_eq!(gate_args.governance, Some(PathBuf::from("./governance.json")));
+            assert_eq!(
+                gate_args.governance,
+                Some(PathBuf::from("./governance.json"))
+            );
             assert_eq!(gate_args.queries, Some(PathBuf::from("./queries.json")));
             assert_eq!(gate_args.output_format, GovernanceGateOutputFormat::Text);
         }
@@ -208,7 +216,9 @@ fn parse_cli_supports_dashboard_topology_live_source_flags() {
 fn topology_help_mentions_alert_contract_and_visual_formats() {
     let help = render_dashboard_subcommand_help("topology");
 
-    assert!(help.contains("Show dashboard dependencies directly from live Grafana or a local export tree."));
+    assert!(help.contains(
+        "Show dashboard dependencies directly from live Grafana or a local export tree."
+    ));
     assert!(help.contains("--import-dir"));
     assert!(help.contains("--governance"));
     assert!(help.contains("--alert-contract"));
@@ -244,7 +254,10 @@ fn parse_cli_supports_dashboard_governance_gate_import_dir() {
     match args.command {
         DashboardCommand::GovernanceGate(gate_args) => {
             assert_eq!(gate_args.import_dir, Some(PathBuf::from("./dashboards")));
-            assert_eq!(gate_args.input_format, crate::dashboard::DashboardImportInputFormat::Raw);
+            assert_eq!(
+                gate_args.input_format,
+                crate::dashboard::DashboardImportInputFormat::Raw
+            );
             assert!(gate_args.governance.is_none());
             assert!(gate_args.queries.is_none());
         }

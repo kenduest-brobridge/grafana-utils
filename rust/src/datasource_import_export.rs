@@ -12,9 +12,7 @@ use serde_json::{Map, Value};
 use std::path::Path;
 
 use crate::common::{message, render_json_value, Result};
-use crate::dashboard::{
-    build_api_client, build_http_client_for_org_from_api, DEFAULT_ORG_ID,
-};
+use crate::dashboard::{build_api_client, build_http_client_for_org_from_api, DEFAULT_ORG_ID};
 use crate::datasource::{
     render_import_table, resolve_match, DatasourceImportArgs, DatasourceImportInputFormat,
 };

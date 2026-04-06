@@ -14,7 +14,7 @@ use crate::overview::OverviewOutputFormat;
 use crate::snapshot::{
     build_snapshot_overview_args, build_snapshot_paths, build_snapshot_review_browser_items,
     build_snapshot_review_document, build_snapshot_review_summary_lines,
-    render_snapshot_review_text, run_snapshot_export_with_handlers,
+    build_snapshot_root_metadata, render_snapshot_review_text, run_snapshot_export_with_handlers,
     run_snapshot_review_document_with_handler, SnapshotCliArgs, SnapshotExportArgs,
     SnapshotReviewArgs, SNAPSHOT_DATASOURCE_EXPORT_FILENAME,
     SNAPSHOT_DATASOURCE_EXPORT_METADATA_FILENAME, SNAPSHOT_DATASOURCE_ROOT_INDEX_KIND,
@@ -161,12 +161,55 @@ fn write_snapshot_datasource_inventory_root(
     write_datasource_inventory_rows(datasource_root, rows);
 }
 
+fn write_snapshot_access_lane_bundle(
+    lane_root: &Path,
+    payload_filename: &str,
+    kind: &str,
+    record_count: usize,
+) {
+    fs::create_dir_all(lane_root).unwrap();
+    fs::write(
+        lane_root.join(payload_filename),
+        serde_json::to_string_pretty(&Value::Array(
+            (0..record_count)
+                .map(|index| json!({ "id": index + 1 }))
+                .collect(),
+        ))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::write(
+        lane_root.join("export-metadata.json"),
+        serde_json::to_string_pretty(&json!({
+            "kind": kind,
+            "version": 1,
+            "recordCount": record_count,
+            "sourceUrl": "http://grafana.example.com",
+            "sourceDir": lane_root.to_string_lossy(),
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+}
+
 #[test]
 fn snapshot_export_derives_expected_child_paths() {
     let paths = build_snapshot_paths(&PathBuf::from("./snapshot"));
 
     assert_eq!(paths.dashboards, PathBuf::from("./snapshot/dashboards"));
     assert_eq!(paths.datasources, PathBuf::from("./snapshot/datasources"));
+    assert_eq!(paths.access, PathBuf::from("./snapshot/access"));
+    assert_eq!(paths.access_users, PathBuf::from("./snapshot/access/users"));
+    assert_eq!(paths.access_teams, PathBuf::from("./snapshot/access/teams"));
+    assert_eq!(paths.access_orgs, PathBuf::from("./snapshot/access/orgs"));
+    assert_eq!(
+        paths.access_service_accounts,
+        PathBuf::from("./snapshot/access/service-accounts")
+    );
+    assert_eq!(
+        paths.metadata,
+        PathBuf::from("./snapshot/snapshot-metadata.json")
+    );
 }
 
 #[test]
@@ -186,6 +229,22 @@ fn snapshot_review_builds_overview_args_for_interactive_output() {
     assert_eq!(
         overview_args.datasource_export_dir,
         Some(PathBuf::from("./snapshot/datasources"))
+    );
+    assert_eq!(
+        overview_args.access_user_export_dir,
+        Some(PathBuf::from("./snapshot/access/users"))
+    );
+    assert_eq!(
+        overview_args.access_team_export_dir,
+        Some(PathBuf::from("./snapshot/access/teams"))
+    );
+    assert_eq!(
+        overview_args.access_org_export_dir,
+        Some(PathBuf::from("./snapshot/access/orgs"))
+    );
+    assert_eq!(
+        overview_args.access_service_account_export_dir,
+        Some(PathBuf::from("./snapshot/access/service-accounts"))
     );
     assert_eq!(
         overview_args.output_format,
@@ -460,6 +519,7 @@ fn snapshot_review_document_summarizes_inventory_counts_without_actions() {
     let snapshot_root = temp.path().join("snapshot");
     let dashboard_root = snapshot_root.join("dashboards");
     let datasource_root = snapshot_root.join("datasources");
+    let access_root = snapshot_root.join("access");
 
     write_snapshot_dashboard_metadata(
         &dashboard_root,
@@ -511,6 +571,30 @@ fn snapshot_review_document_summarizes_inventory_counts_without_actions() {
         ],
     );
     write_datasource_provisioning_lane(&datasource_root);
+    write_snapshot_access_lane_bundle(
+        &access_root.join("users"),
+        "users.json",
+        "grafana-utils-access-user-export-index",
+        2,
+    );
+    write_snapshot_access_lane_bundle(
+        &access_root.join("teams"),
+        "teams.json",
+        "grafana-utils-access-team-export-index",
+        3,
+    );
+    write_snapshot_access_lane_bundle(
+        &access_root.join("orgs"),
+        "orgs.json",
+        "grafana-utils-access-org-export-index",
+        1,
+    );
+    write_snapshot_access_lane_bundle(
+        &access_root.join("service-accounts"),
+        "service-accounts.json",
+        "grafana-utils-access-service-account-export-index",
+        4,
+    );
 
     let document =
         build_snapshot_review_document(&dashboard_root, &datasource_root, &datasource_root)
@@ -523,6 +607,10 @@ fn snapshot_review_document_summarizes_inventory_counts_without_actions() {
     assert_eq!(document["summary"]["datasourceCount"], json!(3));
     assert_eq!(document["summary"]["folderCount"], json!(1));
     assert_eq!(document["summary"]["datasourceTypeCount"], json!(3));
+    assert_eq!(document["summary"]["accessUserCount"], json!(2));
+    assert_eq!(document["summary"]["accessTeamCount"], json!(3));
+    assert_eq!(document["summary"]["accessOrgCount"], json!(1));
+    assert_eq!(document["summary"]["accessServiceAccountCount"], json!(4));
     let warning_codes: Vec<&str> = document["warnings"]
         .as_array()
         .unwrap()
@@ -552,6 +640,10 @@ fn snapshot_review_document_summarizes_inventory_counts_without_actions() {
     assert!(summary_lines
         .iter()
         .any(|line| line.contains("3 dashboard(s), 1 folder(s), 3 datasource(s)")));
+    assert!(summary_lines
+        .iter()
+        .any(|line| line
+            .contains("Access totals: 2 user(s), 3 team(s), 1 org(s), 4 service-account(s)")));
     assert_eq!(document["lanes"]["dashboard"]["scopeCount"], json!(2));
     assert_eq!(document["lanes"]["dashboard"]["rawScopeCount"], json!(2));
     assert_eq!(document["lanes"]["dashboard"]["promptScopeCount"], json!(2));
@@ -576,13 +668,30 @@ fn snapshot_review_document_summarizes_inventory_counts_without_actions() {
         document["lanes"]["datasource"]["provisioningScopeCount"],
         json!(1)
     );
+    assert_eq!(document["lanes"]["access"]["present"], json!(true));
+    assert_eq!(
+        document["lanes"]["access"]["users"]["recordCount"],
+        json!(2)
+    );
+    assert_eq!(
+        document["lanes"]["access"]["teams"]["recordCount"],
+        json!(3)
+    );
+    assert_eq!(document["lanes"]["access"]["orgs"]["recordCount"], json!(1));
+    assert_eq!(
+        document["lanes"]["access"]["serviceAccounts"]["recordCount"],
+        json!(4)
+    );
 
     let browser_items = build_snapshot_review_browser_items(&document).unwrap();
     let kinds: Vec<&str> = browser_items
         .iter()
         .map(|item| item.kind.as_str())
         .collect();
-    assert_eq!(&kinds[..5], ["snapshot", "lane", "lane", "org", "org"]);
+    assert_eq!(
+        &kinds[..6],
+        ["snapshot", "lane", "lane", "lane", "org", "org"]
+    );
     let folder_index = kinds
         .iter()
         .position(|kind| *kind == "folder")
@@ -622,9 +731,20 @@ fn snapshot_review_document_summarizes_inventory_counts_without_actions() {
         .details
         .iter()
         .any(|line| line == "Datasource orgs: 2"));
+    assert!(browser_items[0]
+        .details
+        .iter()
+        .any(|line| line == "Access users: 2"));
     assert!(browser_items
         .iter()
         .any(|item| item.kind == "org" && item.title == "Main Org."));
+    let access_lane = browser_items
+        .iter()
+        .find(|item| item.kind == "lane" && item.title == "Access lanes")
+        .expect("access lane browser item");
+    assert!(access_lane.meta.contains("users 2"));
+    assert!(access_lane.details.iter().any(|line| line == "Users: 2"));
+    assert!(access_lane.details.iter().any(|line| line == "Teams: 3"));
     let main_org = browser_items
         .iter()
         .find(|item| item.kind == "org" && item.title == "Main Org.")
@@ -683,6 +803,70 @@ fn snapshot_review_document_summarizes_inventory_counts_without_actions() {
     assert!(
         browser_items.iter().all(|item| item.kind != "warning"),
         "unexpected warning browser items: {browser_items:?}"
+    );
+}
+
+#[test]
+fn snapshot_root_metadata_captures_access_and_staged_lane_counts() {
+    let temp = tempdir().unwrap();
+    let snapshot_root = temp.path().join("snapshot");
+    let dashboard_root = snapshot_root.join("dashboards");
+    let datasource_root = snapshot_root.join("datasources");
+    let access_root = snapshot_root.join("access");
+
+    write_snapshot_dashboard_metadata(&dashboard_root, &[("1", "Main Org.", 2)]);
+    write_snapshot_dashboard_index(&dashboard_root, &[]);
+    write_snapshot_datasource_root_metadata(&datasource_root, 3, "root");
+    write_datasource_inventory_rows(&datasource_root, &[]);
+    write_snapshot_access_lane_bundle(
+        &access_root.join("users"),
+        "users.json",
+        "grafana-utils-access-user-export-index",
+        2,
+    );
+    write_snapshot_access_lane_bundle(
+        &access_root.join("teams"),
+        "teams.json",
+        "grafana-utils-access-team-export-index",
+        3,
+    );
+    write_snapshot_access_lane_bundle(
+        &access_root.join("orgs"),
+        "orgs.json",
+        "grafana-utils-access-org-export-index",
+        1,
+    );
+    write_snapshot_access_lane_bundle(
+        &access_root.join("service-accounts"),
+        "service-accounts.json",
+        "grafana-utils-access-service-account-export-index",
+        4,
+    );
+
+    let metadata = build_snapshot_root_metadata(&snapshot_root, &sample_common_args()).unwrap();
+    assert_eq!(metadata["kind"], json!("grafana-utils-snapshot-root"));
+    assert_eq!(metadata["summary"]["dashboardCount"], json!(2));
+    assert_eq!(metadata["summary"]["datasourceCount"], json!(3));
+    assert_eq!(metadata["summary"]["accessUserCount"], json!(2));
+    assert_eq!(metadata["summary"]["accessTeamCount"], json!(3));
+    assert_eq!(metadata["summary"]["accessOrgCount"], json!(1));
+    assert_eq!(metadata["summary"]["accessServiceAccountCount"], json!(4));
+    assert_eq!(
+        metadata["lanes"]["access"]["users"]["recordCount"],
+        json!(2)
+    );
+    assert_eq!(
+        metadata["lanes"]["access"]["teams"]["recordCount"],
+        json!(3)
+    );
+    assert_eq!(metadata["lanes"]["access"]["orgs"]["recordCount"], json!(1));
+    assert_eq!(
+        metadata["lanes"]["access"]["serviceAccounts"]["recordCount"],
+        json!(4)
+    );
+    assert_eq!(
+        metadata["source"]["url"],
+        json!("http://grafana.example.com")
     );
 }
 

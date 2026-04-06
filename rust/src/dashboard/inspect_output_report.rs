@@ -172,7 +172,9 @@ pub(crate) fn render_export_inspection_report_output(
             let governance = build_export_inspection_governance_document(&summary, report);
             render_export_inspection_governance_output(&summary, &governance, report_format)
         }
-        InspectExportReportFormat::QueriesJson => render_export_inspection_queries_json_output(report),
+        InspectExportReportFormat::QueriesJson => {
+            render_export_inspection_queries_json_output(report)
+        }
         InspectExportReportFormat::Dependency | InspectExportReportFormat::DependencyJson => {
             render_export_inspection_dependency_output(
                 import_dir,
@@ -240,6 +242,12 @@ mod tests {
             None,
             None,
             None,
+            "local",
+            None,
+            Some(import_dir),
+            None,
+            import_dir,
+            &import_dir.join("export-metadata.json"),
         );
         fs::write(
             import_dir.join("export-metadata.json"),

@@ -299,8 +299,12 @@ where
             &metadata_path,
             &Value::Object(build_org_export_metadata(
                 &args.common.url,
+                args.common.profile.as_deref(),
                 &args.export_dir,
                 records.len(),
+                args.with_users,
+                args.org_id,
+                args.name.as_deref(),
             )),
             args.overwrite,
         )?;

@@ -30,10 +30,10 @@ use crate::datasource_catalog::{
     render_supported_datasource_catalog_table, render_supported_datasource_catalog_text,
     render_supported_datasource_catalog_yaml,
 };
+use crate::grafana_api::DatasourceResourceClient;
 #[cfg(any(feature = "tui", test))]
 use crate::interactive_browser::run_interactive_browser;
 use crate::tabular_output::render_yaml;
-use crate::grafana_api::DatasourceResourceClient;
 
 #[path = "datasource_browse.rs"]
 mod datasource_browse;
@@ -72,8 +72,8 @@ pub(crate) use datasource_cli_defs::{normalize_datasource_group_command, root_co
 pub use datasource_cli_defs::{
     DatasourceAddArgs, DatasourceBrowseArgs, DatasourceCliArgs, DatasourceDeleteArgs,
     DatasourceDiffArgs, DatasourceExportArgs, DatasourceGroupCommand, DatasourceImportArgs,
-    DatasourceImportInputFormat, DatasourceListArgs, DatasourceModifyArgs,
-    DatasourceTypesArgs, DryRunOutputFormat, ListOutputFormat,
+    DatasourceImportInputFormat, DatasourceListArgs, DatasourceModifyArgs, DatasourceTypesArgs,
+    DryRunOutputFormat, ListOutputFormat,
 };
 pub(crate) use datasource_import_export::{
     build_all_orgs_export_index, build_all_orgs_export_metadata, build_all_orgs_output_dir,
@@ -656,6 +656,8 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                         .get("id")
                         .and_then(Value::as_i64)
                         .ok_or_else(|| message("Grafana org list entry is missing numeric id."))?;
+                    let org_id_string = org_id.to_string();
+                    let org_name = string_field(&org, "name", "");
                     let org_client = build_http_client_for_org_from_api(&admin_api, org_id)?;
                     let records = build_export_records(&org_client)?;
                     let scoped_output_dir = build_all_orgs_output_dir(&args.export_dir, &org);
@@ -678,7 +680,15 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                         )?;
                         write_json_file(
                             &metadata_path,
-                            &build_datasource_export_metadata(records.len()),
+                            &build_datasource_export_metadata(
+                                &args.common.url,
+                                args.common.profile.as_deref(),
+                                Some("org"),
+                                Some(&org_id_string),
+                                Some(&org_name),
+                                &scoped_output_dir,
+                                records.len(),
+                            ),
                             args.overwrite,
                         )?;
                         if !args.without_datasource_provisioning {
@@ -733,7 +743,13 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                     )?;
                     write_json_file(
                         &args.export_dir.join(EXPORT_METADATA_FILENAME),
-                        &build_all_orgs_export_metadata(org_count, total),
+                        &build_all_orgs_export_metadata(
+                            &args.common.url,
+                            args.common.profile.as_deref(),
+                            &args.export_dir,
+                            org_count,
+                            total,
+                        ),
                         args.overwrite,
                     )?;
                     if !args.without_datasource_provisioning {
@@ -762,6 +778,8 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                 args.overwrite,
                 args.dry_run,
                 !args.without_datasource_provisioning,
+                &args.common.url,
+                args.common.profile.as_deref(),
             )?;
             Ok(())
         }

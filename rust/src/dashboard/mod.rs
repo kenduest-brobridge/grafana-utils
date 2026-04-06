@@ -11,8 +11,8 @@ use std::path::Path;
 
 // Keep the dashboard surface area split by concern. This file should stay focused
 // on re-exports, shared constants, and top-level command dispatch.
-mod authoring;
 mod analysis_source;
+mod authoring;
 mod browse;
 mod browse_actions;
 mod browse_edit_dialog;
@@ -205,25 +205,24 @@ fn request_json_with_client(
     client.request_json(method, path, params, payload)
 }
 
+#[allow(unused_imports)]
+pub(crate) use facade_support::{
+    build_datasource_inventory_record, build_folder_path, build_live_dashboard_domain_status,
+    build_live_dashboard_domain_status_from_inputs, collect_folder_inventory_with_request,
+    collect_live_dashboard_project_status_inputs_with_request,
+    fetch_dashboard_if_exists_with_request, fetch_dashboard_permissions_with_request,
+    fetch_dashboard_with_request, fetch_folder_if_exists_with_request,
+    fetch_folder_permissions_with_request, format_folder_inventory_status_line,
+    import_dashboard_request_with_request, list_dashboard_summaries_with_request,
+    list_datasources_with_request, load_builtin_governance_policy, load_governance_policy,
+    load_governance_policy_file, load_governance_policy_source, LiveDashboardProjectStatusInputs,
+};
 pub(crate) use files::{
     build_dashboard_index_item, build_export_metadata, build_import_payload,
     build_preserved_web_import_document, build_root_export_index, build_variant_index,
     discover_dashboard_files, extract_dashboard_object, load_datasource_inventory,
     load_export_metadata, load_folder_inventory, load_json_file, resolve_dashboard_import_source,
     write_dashboard, write_json_document, ResolvedDashboardImportSource,
-};
-#[allow(unused_imports)]
-pub(crate) use facade_support::{
-    build_datasource_inventory_record, build_folder_path, collect_folder_inventory_with_request,
-    fetch_dashboard_if_exists_with_request, fetch_dashboard_permissions_with_request,
-    fetch_dashboard_with_request, fetch_folder_if_exists_with_request,
-    fetch_folder_permissions_with_request, format_folder_inventory_status_line,
-    import_dashboard_request_with_request, list_dashboard_summaries_with_request,
-    list_datasources_with_request, build_live_dashboard_domain_status,
-    build_live_dashboard_domain_status_from_inputs,
-    collect_live_dashboard_project_status_inputs_with_request, LiveDashboardProjectStatusInputs,
-    load_builtin_governance_policy, load_governance_policy, load_governance_policy_file,
-    load_governance_policy_source,
 };
 pub(crate) use inspect::build_export_inspection_summary_for_variant;
 pub(crate) use inspect_live::TempInspectDir;

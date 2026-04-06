@@ -410,6 +410,12 @@ where
                     Some(&current_org_name),
                     Some(&current_org_id),
                     None,
+                    "live",
+                    Some(&args.common.url),
+                    None,
+                    args.common.profile.as_deref(),
+                    raw_dir.as_path(),
+                    &metadata_path,
                 ),
                 &metadata_path,
             )?;
@@ -449,6 +455,12 @@ where
                     Some(&current_org_name),
                     Some(&current_org_id),
                     None,
+                    "live",
+                    Some(&args.common.url),
+                    None,
+                    args.common.profile.as_deref(),
+                    prompt_dir.as_path(),
+                    &metadata_path,
                 ),
                 &metadata_path,
             )?;
@@ -490,6 +502,12 @@ where
                     Some(&current_org_name),
                     Some(&current_org_id),
                     None,
+                    "live",
+                    Some(&args.common.url),
+                    None,
+                    args.common.profile.as_deref(),
+                    provisioning_dir.as_path(),
+                    &metadata_path,
                 ),
                 &metadata_path,
             )?;
@@ -546,6 +564,12 @@ where
                 Some(&current_org_name),
                 Some(&current_org_id),
                 None,
+                "live",
+                Some(&args.common.url),
+                None,
+                args.common.profile.as_deref(),
+                scope_output_dir.as_path(),
+                &scope_output_dir.join(EXPORT_METADATA_FILENAME),
             ),
             &scope_output_dir.join(EXPORT_METADATA_FILENAME),
         )?;
@@ -562,6 +586,8 @@ fn write_all_orgs_root_export_bundle(
     root_items: &[DashboardIndexItem],
     root_folders: &[FolderInventoryItem],
     org_summaries: Vec<ExportOrgSummary>,
+    source_url: &str,
+    source_profile: Option<&str>,
 ) -> Result<()> {
     write_json_document(
         &build_root_export_index(root_items, None, None, None, root_folders),
@@ -578,6 +604,12 @@ fn write_all_orgs_root_export_bundle(
             None,
             None,
             Some(org_summaries),
+            "live",
+            Some(source_url),
+            None,
+            source_profile,
+            export_dir,
+            &export_dir.join(EXPORT_METADATA_FILENAME),
         ),
         &export_dir.join(EXPORT_METADATA_FILENAME),
     )?;
@@ -619,6 +651,8 @@ where
                 &root_items,
                 &root_folders,
                 org_summaries,
+                &args.common.url,
+                args.common.profile.as_deref(),
             )?;
         }
         Ok(total)
@@ -671,6 +705,8 @@ pub(crate) fn export_dashboards_with_org_clients(args: &ExportArgs) -> Result<us
                 &root_items,
                 &root_folders,
                 org_summaries,
+                &args.common.url,
+                args.common.profile.as_deref(),
             )?;
         }
         Ok(total)

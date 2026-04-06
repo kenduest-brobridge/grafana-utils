@@ -30,9 +30,10 @@ fn main() {
         print!("{help_text}");
         return;
     }
-    if let Some(help_text) =
-        maybe_render_dashboard_subcommand_help_from_os_args(args.clone(), std::io::stdout().is_terminal())
-    {
+    if let Some(help_text) = maybe_render_dashboard_subcommand_help_from_os_args(
+        args.clone(),
+        std::io::stdout().is_terminal(),
+    ) {
         print!("{help_text}");
         return;
     }
