@@ -419,12 +419,8 @@ pub(crate) fn build_export_inspection_query_report_for_variant(
         let document_object =
             value_as_object(&document, "Dashboard payload must be a JSON object.")?;
         let dashboard = extract_dashboard_object(document_object)?;
-        let folder_path = resolve_export_folder_path(
-            document_object,
-            dashboard_file,
-            input_dir,
-            &folders_by_uid,
-        );
+        let folder_path =
+            resolve_export_folder_path(document_object, dashboard_file, input_dir, &folders_by_uid);
         let dashboard_uid = string_field(dashboard, "uid", DEFAULT_UNKNOWN_UID);
         let dashboard_title = string_field(dashboard, "title", DEFAULT_DASHBOARD_TITLE);
         let relative_dashboard_path = dashboard_file

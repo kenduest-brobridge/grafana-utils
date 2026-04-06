@@ -457,9 +457,9 @@ pub struct AnalyzeArgs {
 }
 
 /// Struct definition for InspectExportArgs.
-    #[derive(Debug, Clone, Args)]
-    pub struct InspectExportArgs {
-        #[arg(
+#[derive(Debug, Clone, Args)]
+pub struct InspectExportArgs {
+    #[arg(
         long = "input-dir",
         help = "Analyze dashboards from this directory. Use --input-format provisioning to point at a provisioning/ root or its dashboards/ subdirectory."
     )]

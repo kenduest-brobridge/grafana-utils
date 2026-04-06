@@ -887,13 +887,12 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
             let client = build_http_client(&args.common)?;
             let datasource_client = DatasourceResourceClient::new(&client);
             let live = datasource_client.list_datasources()?;
-            let (compared_count, differences) =
-                diff_datasources_with_live(
-                    &args.diff_dir,
-                    args.input_format,
-                    &live,
-                    args.output_format,
-                )?;
+            let (compared_count, differences) = diff_datasources_with_live(
+                &args.diff_dir,
+                args.input_format,
+                &live,
+                args.output_format,
+            )?;
             if differences > 0 {
                 return Err(message(format!(
                     "Found {} datasource difference(s) across {} exported datasource(s).",

@@ -94,8 +94,7 @@ pub(crate) fn discover_dashboard_files(input_dir: &Path) -> Result<Vec<PathBuf>>
             input_dir.display()
         )));
     }
-    if input_dir.join(RAW_EXPORT_SUBDIR).is_dir() && input_dir.join(PROMPT_EXPORT_SUBDIR).is_dir()
-    {
+    if input_dir.join(RAW_EXPORT_SUBDIR).is_dir() && input_dir.join(PROMPT_EXPORT_SUBDIR).is_dir() {
         return Err(message(format!(
             "Import path {} looks like the combined export root. Point --input-dir at {}.",
             input_dir.display(),

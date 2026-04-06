@@ -479,9 +479,7 @@ fn collect_dashboard_panel_types(panels: &[Value], panel_types: &mut BTreeSet<St
     }
 }
 
-fn dashboard_import_dependency_availability_requirements(
-    input_dir: &Path,
-) -> Result<(bool, bool)> {
+fn dashboard_import_dependency_availability_requirements(input_dir: &Path) -> Result<(bool, bool)> {
     let mut dashboard_files = discover_dashboard_files(input_dir)?;
     dashboard_files.retain(|path| {
         path.file_name().and_then(|name| name.to_str()) != Some(FOLDER_INVENTORY_FILENAME)

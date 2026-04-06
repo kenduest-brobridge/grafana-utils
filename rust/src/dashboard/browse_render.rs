@@ -315,11 +315,7 @@ fn detail_shortcut_lines(node: &DashboardBrowseNode, local_mode: bool) -> Vec<Li
                 tui_shell::plain("   "),
                 tui_shell::key_chip("/ ?", Color::Rgb(164, 116, 19)),
                 tui_shell::plain(" search"),
-                if local_mode {
-                    tui_shell::plain("   ")
-                } else {
-                    tui_shell::plain("   ")
-                },
+                tui_shell::plain("   "),
                 if local_mode {
                     tui_shell::key_chip("local", Color::Rgb(90, 98, 107))
                 } else {

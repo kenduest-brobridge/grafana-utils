@@ -255,11 +255,8 @@ fn fetch_live_resource_specs_with_request_ignores_null_template_list() {
                     .find(|(key, _)| key == "page")
                     .map(|(_, value)| value.as_str())
                     .unwrap_or("1");
-                if page == "1" {
-                    Ok(Some(json!([])))
-                } else {
-                    Ok(Some(json!([])))
-                }
+                let _ = page;
+                Ok(Some(json!([])))
             }
             (Method::GET, "/api/datasources") => Ok(Some(json!([]))),
             (Method::GET, "/api/v1/provisioning/alert-rules") => Ok(Some(json!([]))),

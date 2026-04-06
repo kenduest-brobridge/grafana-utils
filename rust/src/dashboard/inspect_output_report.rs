@@ -167,8 +167,7 @@ pub(crate) fn render_export_inspection_report_output(
 ) -> Result<ExportInspectionRenderedOutput> {
     match report_format {
         InspectExportReportFormat::Governance | InspectExportReportFormat::GovernanceJson => {
-            let summary =
-                build_export_inspection_summary_for_variant(input_dir, expected_variant)?;
+            let summary = build_export_inspection_summary_for_variant(input_dir, expected_variant)?;
             let governance = build_export_inspection_governance_document(&summary, report);
             render_export_inspection_governance_output(&summary, &governance, report_format)
         }

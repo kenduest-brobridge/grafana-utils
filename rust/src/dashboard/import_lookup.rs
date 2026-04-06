@@ -296,12 +296,12 @@ pub(crate) fn fetch_dashboard_if_exists_cached_with_client(
     if let Some(cached) = cache.dashboards_by_uid.get(uid) {
         return Ok(cached.clone());
     }
-    if let Ok(exists) = load_dashboard_uid_summary_cache_for_dashboard_client(client, cache)
-        .and_then(|_| {
-            Ok(cache
+    if let Ok(exists) =
+        load_dashboard_uid_summary_cache_for_dashboard_client(client, cache).map(|_| {
+            cache
                 .dashboard_uids_from_search
                 .as_ref()
-                .is_some_and(|known| known.contains(uid)))
+                .is_some_and(|known| known.contains(uid))
         })
     {
         if !exists {

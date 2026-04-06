@@ -183,11 +183,8 @@ fn resolve_raw_inspect_input(
                 input_dir.display()
             )));
         }
-        let inspect_variant_dir = prepare_inspect_export_import_dir_for_variant(
-            temp_root,
-            &input_dir,
-            selected_variant,
-        )?;
+        let inspect_variant_dir =
+            prepare_inspect_export_import_dir_for_variant(temp_root, &input_dir, selected_variant)?;
         return Ok(ResolvedInspectExportInput {
             input_dir: inspect_variant_dir,
             expected_variant: selected_variant,

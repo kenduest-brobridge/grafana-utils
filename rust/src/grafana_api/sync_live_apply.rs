@@ -306,7 +306,7 @@ fn apply_dashboard_operation_with_client(
     let action = operation.action.as_str();
     let identity = operation.identity.as_str();
     if action == "would-delete" {
-        return Ok(client.delete_dashboard(identity)?);
+        return client.delete_dashboard(identity);
     }
     let mut body = operation.desired.clone();
     body.insert("uid".to_string(), Value::String(identity.to_string()));
