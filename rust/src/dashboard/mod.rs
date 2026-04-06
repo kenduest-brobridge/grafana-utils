@@ -398,10 +398,7 @@ fn execute_dashboard_inspect_at_path(
     inspect::validate_inspect_export_report_args(args)?;
     if let Some(report_format) = inspect::effective_inspect_report_format(args) {
         let report = inspect::apply_query_report_filters(
-            inspect::build_export_inspection_query_report_for_variant(
-                input_dir,
-                expected_variant,
-            )?,
+            inspect::build_export_inspection_query_report_for_variant(input_dir, expected_variant)?,
             args.report_filter_datasource.as_deref(),
             args.report_filter_panel_id.as_deref(),
         );
@@ -426,8 +423,7 @@ fn execute_dashboard_inspect_at_path(
             }
             InspectExportReportFormat::Dependency | InspectExportReportFormat::DependencyJson => {
                 let metadata = load_export_metadata(input_dir, Some(expected_variant))?;
-                let datasource_inventory =
-                    load_datasource_inventory(input_dir, metadata.as_ref())?;
+                let datasource_inventory = load_datasource_inventory(input_dir, metadata.as_ref())?;
                 crate::dashboard_inspection_dependency_contract::build_offline_dependency_contract_from_report_rows(
                     &report.queries,
                     &datasource_inventory,

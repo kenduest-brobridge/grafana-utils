@@ -534,7 +534,7 @@ pub(crate) fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> R
     let mut org_rows = Vec::new();
     let mut plans = Vec::new();
     for scope in scopes {
-        let plan = resolve_export_org_target_plan(&admin_client, args, &scope)?;
+        let plan = resolve_export_org_target_plan(admin_client, args, &scope)?;
         let datasource_count = load_import_records(&plan.input_dir, args.input_format)?
             .1
             .len();

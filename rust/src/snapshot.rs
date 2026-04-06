@@ -17,16 +17,20 @@ use clap::{Args, Parser, Subcommand};
 use serde_json::{json, Value};
 
 use crate::common::CliColorChoice;
+use crate::common::Result;
 use crate::dashboard::{
     CommonCliArgs, EXPORT_METADATA_FILENAME, ROOT_INDEX_KIND, TOOL_SCHEMA_VERSION,
 };
 use crate::overview::OverviewOutputFormat;
-use crate::common::Result;
 use crate::staged_export_scopes::{
     resolve_dashboard_export_scope_dirs, resolve_datasource_export_scope_dirs,
 };
 
 pub use self::snapshot_review::render_snapshot_review_text;
+#[cfg(test)]
+pub(crate) use self::snapshot_review::{
+    build_snapshot_review_browser_items, build_snapshot_review_summary_lines,
+};
 #[allow(unused_imports)]
 #[cfg(any(feature = "tui", test))]
 pub use self::snapshot_support::root_command;
@@ -38,10 +42,6 @@ pub(crate) use self::snapshot_support::{
     build_snapshot_overview_args, build_snapshot_paths, build_snapshot_root_metadata,
     materialize_snapshot_common_auth_with_prompt, run_snapshot_export_with_handlers,
     run_snapshot_review_document_with_handler,
-};
-#[cfg(test)]
-pub(crate) use self::snapshot_review::{
-    build_snapshot_review_browser_items, build_snapshot_review_summary_lines,
 };
 
 pub const SNAPSHOT_DASHBOARD_DIR: &str = "dashboards";

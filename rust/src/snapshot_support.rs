@@ -625,10 +625,7 @@ pub fn run_snapshot_export(args: super::SnapshotExportArgs) -> Result<()> {
     Ok(())
 }
 
-fn normalize_snapshot_datasource_dir(
-    temp_root: &Path,
-    datasource_dir: &Path,
-) -> Result<PathBuf> {
+fn normalize_snapshot_datasource_dir(temp_root: &Path, datasource_dir: &Path) -> Result<PathBuf> {
     let metadata_path = datasource_dir.join(super::SNAPSHOT_DATASOURCE_EXPORT_METADATA_FILENAME);
     if !metadata_path.is_file() {
         return Ok(datasource_dir.to_path_buf());
@@ -717,8 +714,11 @@ where
     let paths = build_snapshot_paths(&args.input_dir);
     let temp_dir = TempInspectDir::new("snapshot-review")?;
     let datasource_dir = normalize_snapshot_datasource_dir(&temp_dir.path, &paths.datasources)?;
-    let document =
-        super::build_snapshot_review_document(&paths.dashboards, &datasource_dir, &paths.datasources)?;
+    let document = super::build_snapshot_review_document(
+        &paths.dashboards,
+        &datasource_dir,
+        &paths.datasources,
+    )?;
     run_review(document)
 }
 

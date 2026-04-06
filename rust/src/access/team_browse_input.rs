@@ -524,6 +524,8 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(map_get_text(&rows[0], "name"), "platform-team");
         assert_eq!(map_get_text(&rows[0], "members"), "alice,bob");
-        assert!(matches!(rows[0].get("memberRows"), Some(Value::Array(values)) if values.len() == 2));
+        assert!(
+            matches!(rows[0].get("memberRows"), Some(Value::Array(values)) if values.len() == 2)
+        );
     }
 }

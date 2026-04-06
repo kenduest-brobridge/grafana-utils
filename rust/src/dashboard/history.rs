@@ -524,7 +524,9 @@ where
     }
 
     let dashboard_uid = args.dashboard_uid.as_deref().ok_or_else(|| {
-        message("Dashboard history list requires --dashboard-uid unless --input or --input-dir is set.")
+        message(
+            "Dashboard history list requires --dashboard-uid unless --input or --input-dir is set.",
+        )
     })?;
     let document = build_dashboard_history_list_document_with_request(
         &mut request_json,

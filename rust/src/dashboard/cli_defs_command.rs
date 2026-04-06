@@ -10,14 +10,14 @@ use super::cli_defs_inspect::{
 
 #[path = "cli_defs_command_export.rs"]
 mod cli_defs_command_export;
+#[path = "cli_defs_command_history.rs"]
+mod cli_defs_command_history;
 #[path = "cli_defs_command_list.rs"]
 mod cli_defs_command_list;
 #[path = "cli_defs_command_live.rs"]
 mod cli_defs_command_live;
 #[path = "cli_defs_command_local.rs"]
 mod cli_defs_command_local;
-#[path = "cli_defs_command_history.rs"]
-mod cli_defs_command_history;
 
 pub use cli_defs_command_export::{ExportArgs, RawToPromptArgs};
 pub use cli_defs_command_history::{
@@ -25,7 +25,9 @@ pub use cli_defs_command_history::{
     HistoryRestoreArgs,
 };
 pub use cli_defs_command_list::ListArgs;
-pub use cli_defs_command_live::{BrowseArgs, CloneLiveArgs, DeleteArgs, DiffArgs, EditLiveArgs, GetArgs};
+pub use cli_defs_command_live::{
+    BrowseArgs, CloneLiveArgs, DeleteArgs, DiffArgs, EditLiveArgs, GetArgs,
+};
 pub use cli_defs_command_local::{ImportArgs, PatchFileArgs, PublishArgs, ReviewArgs, ServeArgs};
 
 /// Arguments for importing dashboards from a local export directory.

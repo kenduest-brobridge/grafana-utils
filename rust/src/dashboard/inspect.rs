@@ -199,12 +199,8 @@ fn build_export_inspection_summary_with_variant(
         let dashboard = extract_dashboard_object(document_object)?;
         let uid = string_field(dashboard, "uid", DEFAULT_UNKNOWN_UID);
         let title = string_field(dashboard, "title", DEFAULT_DASHBOARD_TITLE);
-        let folder_path = resolve_export_folder_path(
-            document_object,
-            dashboard_file,
-            input_dir,
-            &folders_by_uid,
-        );
+        let folder_path =
+            resolve_export_folder_path(document_object, dashboard_file, input_dir, &folders_by_uid);
         if !folder_counts.contains_key(&folder_path) {
             folder_order.push(folder_path.clone());
             folder_counts.insert(folder_path.clone(), 0usize);
@@ -318,9 +314,7 @@ fn build_export_inspection_summary_with_variant(
 }
 
 #[cfg_attr(not(feature = "tui"), allow(dead_code))]
-pub(crate) fn build_export_inspection_summary(
-    input_dir: &Path,
-) -> Result<ExportInspectionSummary> {
+pub(crate) fn build_export_inspection_summary(input_dir: &Path) -> Result<ExportInspectionSummary> {
     build_export_inspection_summary_with_variant(input_dir, Some(RAW_EXPORT_SUBDIR))
 }
 

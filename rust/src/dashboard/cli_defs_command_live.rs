@@ -3,9 +3,9 @@
 use clap::Args;
 use std::path::PathBuf;
 
-use crate::common::DiffOutputFormat;
 use super::super::super::{DEFAULT_IMPORT_MESSAGE, DEFAULT_PAGE_SIZE};
 use super::super::cli_defs_shared::{CommonCliArgs, DryRunOutputFormat};
+use crate::common::DiffOutputFormat;
 
 /// Arguments for editing one live dashboard through an external editor.
 #[derive(Debug, Clone, Args)]
