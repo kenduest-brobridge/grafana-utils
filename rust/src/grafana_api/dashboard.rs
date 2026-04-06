@@ -293,7 +293,10 @@ impl<'a> DashboardResourceClient<'a> {
         })?;
         let path = format!("/api/dashboards/uid/{uid}/versions");
         let params = vec![("limit".to_string(), "1".to_string())];
-        let response = self.request_json(Method::GET, &path, &params, None).ok().flatten()?;
+        let response = self
+            .request_json(Method::GET, &path, &params, None)
+            .ok()
+            .flatten()?;
         let versions = match response {
             Value::Array(items) => items,
             Value::Object(object) => object

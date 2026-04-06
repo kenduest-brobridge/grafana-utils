@@ -239,7 +239,10 @@ fn access_resource_client_lists_orgs_and_current_org() {
 #[test]
 fn access_resource_client_lists_users_teams_and_service_accounts() {
     let responses = vec![
-        http_response("200 OK", r#"[{"id":1,"login":"alice","email":"alice@example.com"}]"#),
+        http_response(
+            "200 OK",
+            r#"[{"id":1,"login":"alice","email":"alice@example.com"}]"#,
+        ),
         http_response(
             "200 OK",
             r#"[{"id":1,"login":"alice","email":"alice@example.com"},{"id":2,"login":"bob","email":"bob@example.com"}]"#,
@@ -443,10 +446,7 @@ fn dashboard_resource_client_builds_expected_dashboard_requests() {
 #[test]
 fn dashboard_resource_client_lists_and_updates_folders() {
     let responses = vec![
-        http_response(
-            "200 OK",
-            r#"[{"uid":"ops","title":"Operations"}]"#,
-        ),
+        http_response("200 OK", r#"[{"uid":"ops","title":"Operations"}]"#),
         http_response("200 OK", r#"{"uid":"ops","title":"Operations"}"#),
     ];
     let (base_url, requests, handle) = spawn_sequence_server(responses);
@@ -480,7 +480,10 @@ fn dashboard_resource_client_lists_and_updates_folders() {
 fn datasource_resource_client_crud_requests() {
     let responses = vec![
         http_response("200 OK", r#"{"uid":"prom-main","name":"Prometheus"}"#),
-        http_response("200 OK", r#"{"uid":"prom-main","name":"Prometheus Updated"}"#),
+        http_response(
+            "200 OK",
+            r#"{"uid":"prom-main","name":"Prometheus Updated"}"#,
+        ),
         http_response("200 OK", r#"{"status":"deleted"}"#),
     ];
     let (base_url, requests, handle) = spawn_sequence_server(responses);

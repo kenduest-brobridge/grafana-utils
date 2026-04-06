@@ -6,11 +6,10 @@
 use crate::common::{message, value_as_object, Result};
 use crate::dashboard::LiveDashboardProjectStatusInputs;
 use crate::grafana_api::{
-    AccessResourceClient, AlertingResourceClient, DashboardResourceClient,
-    DatasourceResourceClient,
+    AccessResourceClient, AlertingResourceClient, DashboardResourceClient, DatasourceResourceClient,
 };
 use crate::http::JsonHttpClient;
-use crate::project_status_freshness::{ProjectStatusFreshnessSample};
+use crate::project_status_freshness::ProjectStatusFreshnessSample;
 use reqwest::Method;
 use serde_json::{Map, Value};
 
@@ -119,8 +118,10 @@ pub(crate) fn project_status_freshness_samples_from_records<'a>(
 pub(crate) fn dashboard_project_status_freshness_samples<'a>(
     inputs: &'a LiveDashboardProjectStatusInputs,
 ) -> Vec<ProjectStatusFreshnessSample<'a>> {
-    let mut freshness_samples =
-        project_status_freshness_samples_from_records("dashboard-search", &inputs.dashboard_summaries);
+    let mut freshness_samples = project_status_freshness_samples_from_records(
+        "dashboard-search",
+        &inputs.dashboard_summaries,
+    );
     freshness_samples.extend(project_status_freshness_samples_from_records(
         "datasource-list",
         &inputs.datasources,
@@ -179,7 +180,9 @@ fn stamp_live_domain_freshness(
 }
 
 #[cfg(test)]
-pub(crate) fn build_live_dashboard_status_with_request<F>(mut request_json: F) -> ProjectDomainStatus
+pub(crate) fn build_live_dashboard_status_with_request<F>(
+    mut request_json: F,
+) -> ProjectDomainStatus
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
@@ -228,7 +231,7 @@ where
             )],
             warnings: Vec::new(),
             next_actions: vec![
-                "restore dashboard search access, then re-run live status".to_string(),
+                "restore dashboard search access, then re-run live status".to_string()
             ],
             freshness: Default::default(),
         },
@@ -289,8 +292,13 @@ where
         }
         let batch_len = batch.len();
         for item in batch {
-            let object = value_as_object(&item, "Unexpected dashboard summary payload from Grafana.")?;
-            let uid = object.get("uid").and_then(Value::as_str).map(str::trim).unwrap_or("");
+            let object =
+                value_as_object(&item, "Unexpected dashboard summary payload from Grafana.")?;
+            let uid = object
+                .get("uid")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .unwrap_or("");
             if uid.is_empty() || seen_uids.contains(uid) {
                 continue;
             }
@@ -320,7 +328,9 @@ where
     })
 }
 
-pub(crate) fn list_visible_orgs_with_request<F>(request_json: &mut F) -> Result<Vec<Map<String, Value>>>
+pub(crate) fn list_visible_orgs_with_request<F>(
+    request_json: &mut F,
+) -> Result<Vec<Map<String, Value>>>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
@@ -343,8 +353,7 @@ where
 {
     match request_json(Method::GET, "/api/org", &[], None)? {
         Some(value) => {
-            let object =
-                value_as_object(&value, "Unexpected current-org payload from Grafana.")?;
+            let object = value_as_object(&value, "Unexpected current-org payload from Grafana.")?;
             Ok(object.clone())
         }
         None => Err(message("Grafana did not return current-org metadata.")),
@@ -394,27 +403,37 @@ pub(crate) fn load_alert_surface_documents(
     let alerting = AlertingResourceClient::new(client);
     ProjectStatusAlertSurfaceDocuments {
         rules: request_json_best_effort_with_request(
-            &mut |method, path, params, payload| alerting.request_json(method, path, params, payload),
+            &mut |method, path, params, payload| {
+                alerting.request_json(method, path, params, payload)
+            },
             "/api/v1/provisioning/alert-rules",
             &[],
         ),
         contact_points: request_json_best_effort_with_request(
-            &mut |method, path, params, payload| alerting.request_json(method, path, params, payload),
+            &mut |method, path, params, payload| {
+                alerting.request_json(method, path, params, payload)
+            },
             "/api/v1/provisioning/contact-points",
             &[],
         ),
         mute_timings: request_json_best_effort_with_request(
-            &mut |method, path, params, payload| alerting.request_json(method, path, params, payload),
+            &mut |method, path, params, payload| {
+                alerting.request_json(method, path, params, payload)
+            },
             "/api/v1/provisioning/mute-timings",
             &[],
         ),
         policies: request_json_best_effort_with_request(
-            &mut |method, path, params, payload| alerting.request_json(method, path, params, payload),
+            &mut |method, path, params, payload| {
+                alerting.request_json(method, path, params, payload)
+            },
             "/api/v1/provisioning/policies",
             &[],
         ),
         templates: request_json_best_effort_with_request(
-            &mut |method, path, params, payload| alerting.request_json(method, path, params, payload),
+            &mut |method, path, params, payload| {
+                alerting.request_json(method, path, params, payload)
+            },
             "/api/v1/provisioning/templates",
             &[],
         ),
@@ -460,14 +479,13 @@ where
 #[cfg(test)]
 mod tests {
     use super::{
-        alert_project_status_freshness_samples,
-        collect_live_dashboard_project_status_inputs,
-        collect_live_dashboard_project_status_inputs_with_request, fetch_current_org,
+        alert_project_status_freshness_samples, collect_live_dashboard_project_status_inputs,
+        collect_live_dashboard_project_status_inputs_with_request,
+        dashboard_project_status_freshness_samples, fetch_current_org,
         fetch_current_org_with_request, latest_dashboard_version_timestamp,
         latest_dashboard_version_timestamp_with_request, list_visible_orgs,
         list_visible_orgs_with_request, load_alert_surface_documents,
         load_alert_surface_documents_with_request, ProjectStatusAlertSurfaceDocuments,
-        dashboard_project_status_freshness_samples,
     };
     use crate::dashboard::DEFAULT_PAGE_SIZE;
     use crate::http::{JsonHttpClient, JsonHttpClientConfig};
@@ -623,23 +641,27 @@ mod tests {
 
         assert_eq!(inputs.dashboard_summaries.len(), 1);
         assert_eq!(inputs.datasources.len(), 1);
-        assert_eq!(requests.lock().unwrap()[0], "GET /api/search?type=dash-db&limit=500&page=1 HTTP/1.1");
+        assert_eq!(
+            requests.lock().unwrap()[0],
+            "GET /api/search?type=dash-db&limit=500&page=1 HTTP/1.1"
+        );
         assert_eq!(requests.lock().unwrap()[1], "GET /api/datasources HTTP/1.1");
     }
 
     #[test]
     fn dashboard_project_status_freshness_samples_collects_dashboard_and_datasource_timestamps() {
         let (client, _, handle) = build_test_client(vec![
-                http_response(
-                    "200 OK",
-                    r#"[{"uid":"cpu-main","title":"CPU Main","updatedAt":"2026-01-01T00:00:00Z"}]"#,
-                ),
-                http_response(
-                    "200 OK",
-                    r#"[{"uid":"prom-main","name":"Prometheus Main","created":"2026-01-01T01:00:00Z"}]"#,
-                ),
-            ]);
-        let inputs = collect_live_dashboard_project_status_inputs(&client, DEFAULT_PAGE_SIZE).unwrap();
+            http_response(
+                "200 OK",
+                r#"[{"uid":"cpu-main","title":"CPU Main","updatedAt":"2026-01-01T00:00:00Z"}]"#,
+            ),
+            http_response(
+                "200 OK",
+                r#"[{"uid":"prom-main","name":"Prometheus Main","created":"2026-01-01T01:00:00Z"}]"#,
+            ),
+        ]);
+        let inputs =
+            collect_live_dashboard_project_status_inputs(&client, DEFAULT_PAGE_SIZE).unwrap();
         handle.join().unwrap();
 
         let samples = dashboard_project_status_freshness_samples(&inputs);
@@ -686,18 +708,19 @@ mod tests {
 
     #[test]
     fn load_alert_surface_documents_with_request_tolerates_null_templates() {
-        let docs = load_alert_surface_documents_with_request(&mut |method, path, params, _payload| {
-            assert_eq!(method, Method::GET);
-            assert!(params.is_empty());
-            match path {
-                "/api/v1/provisioning/alert-rules"
-                | "/api/v1/provisioning/contact-points"
-                | "/api/v1/provisioning/mute-timings" => Ok(Some(json!([]))),
-                "/api/v1/provisioning/policies" => Ok(Some(json!({}))),
-                "/api/v1/provisioning/templates" => Ok(Some(Value::Null)),
-                _ => Err(crate::common::message(format!("unexpected request {path}"))),
-            }
-        });
+        let docs =
+            load_alert_surface_documents_with_request(&mut |method, path, params, _payload| {
+                assert_eq!(method, Method::GET);
+                assert!(params.is_empty());
+                match path {
+                    "/api/v1/provisioning/alert-rules"
+                    | "/api/v1/provisioning/contact-points"
+                    | "/api/v1/provisioning/mute-timings" => Ok(Some(json!([]))),
+                    "/api/v1/provisioning/policies" => Ok(Some(json!({}))),
+                    "/api/v1/provisioning/templates" => Ok(Some(Value::Null)),
+                    _ => Err(crate::common::message(format!("unexpected request {path}"))),
+                }
+            });
 
         assert!(docs.templates.is_none());
     }

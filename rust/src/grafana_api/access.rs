@@ -84,7 +84,11 @@ impl<'a> AccessResourceClient<'a> {
                         })
                     })
                     .collect::<Result<Vec<Map<String, Value>>>>()?,
-                Some(_) => return Err(message("Unexpected global user list response from Grafana.")),
+                Some(_) => {
+                    return Err(message(
+                        "Unexpected global user list response from Grafana.",
+                    ))
+                }
                 None => Vec::new(),
             };
             if batch.is_empty() {

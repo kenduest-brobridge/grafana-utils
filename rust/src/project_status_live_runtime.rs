@@ -113,14 +113,19 @@ fn build_live_overall_freshness(domains: &[ProjectDomainStatus]) -> ProjectStatu
 }
 
 fn build_live_dashboard_status(client: &JsonHttpClient) -> ProjectDomainStatus {
-    match project_status_live::collect_live_dashboard_project_status_inputs(client, DEFAULT_PAGE_SIZE)
-    {
+    match project_status_live::collect_live_dashboard_project_status_inputs(
+        client,
+        DEFAULT_PAGE_SIZE,
+    ) {
         Ok(inputs) => {
             let status = build_live_dashboard_domain_status_from_inputs(&inputs);
             let mut freshness_samples =
                 project_status_live::dashboard_project_status_freshness_samples(&inputs);
             let dashboard_version_timestamp = if freshness_samples.is_empty() {
-                project_status_live::latest_dashboard_version_timestamp(client, &inputs.dashboard_summaries)
+                project_status_live::latest_dashboard_version_timestamp(
+                    client,
+                    &inputs.dashboard_summaries,
+                )
             } else {
                 None
             };
@@ -670,8 +675,7 @@ mod tests {
         let created =
             DateTime::<Utc>::from(SystemTime::now() - Duration::from_secs(60)).to_rfc3339();
         let status = project_status_live::build_live_dashboard_status_with_request(
-            |method, path, params: &[(String, String)], _payload| {
-                match (method, path) {
+            |method, path, params: &[(String, String)], _payload| match (method, path) {
                 (Method::GET, "/api/search") => {
                     assert!(params
                         .iter()
@@ -707,8 +711,7 @@ mod tests {
                     ])))
                 }
                 _ => Err(crate::common::message(format!("unexpected request {path}"))),
-                }
-            }
+            },
         );
 
         assert_eq!(status.status, "ready");
@@ -734,8 +737,10 @@ mod tests {
             }
         ]);
 
-        let samples =
-            project_status_live::project_status_freshness_samples_from_value("alert-rules", &document);
+        let samples = project_status_live::project_status_freshness_samples_from_value(
+            "alert-rules",
+            &document,
+        );
         let freshness = build_live_project_status_freshness_from_samples(&samples);
 
         assert_eq!(samples.len(), 2);

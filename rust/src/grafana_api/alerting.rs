@@ -359,12 +359,9 @@ where
     let Some(value) = value else {
         return Ok(None);
     };
-    Ok(Some(
-        value
-            .as_object()
-            .cloned()
-            .ok_or_else(|| message("Unexpected alert request object response."))?,
-    ))
+    Ok(Some(value.as_object().cloned().ok_or_else(|| {
+        message("Unexpected alert request object response.")
+    })?))
 }
 
 pub(crate) fn expect_object(

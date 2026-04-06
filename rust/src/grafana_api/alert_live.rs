@@ -7,11 +7,11 @@ use crate::alert::{
     TEMPLATE_KIND,
 };
 use crate::common::{message, string_field, Result};
+#[cfg(test)]
+pub(crate) use crate::grafana_api::alerting::request_object_with_request;
 pub(crate) use crate::grafana_api::alerting::{
     request_array_with_request, request_optional_object_with_request,
 };
-#[cfg(test)]
-pub(crate) use crate::grafana_api::alerting::request_object_with_request;
 use crate::grafana_api::parse_template_list_response;
 use reqwest::Method;
 use serde_json::{Map, Value};

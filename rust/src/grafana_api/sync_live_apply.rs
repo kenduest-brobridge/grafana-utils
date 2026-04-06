@@ -33,7 +33,11 @@ impl<'a> SyncLiveClient<'a> {
 
     pub(crate) fn delete_folder(&self, uid: &str) -> Result<Value> {
         Ok(Value::Object(
-            self.api.dashboard().delete_folder_request(uid)?.into_iter().collect(),
+            self.api
+                .dashboard()
+                .delete_folder_request(uid)?
+                .into_iter()
+                .collect(),
         ))
     }
 
@@ -102,7 +106,9 @@ impl<'a> SyncLiveClient<'a> {
         datasource_id: &str,
         payload: &Map<String, Value>,
     ) -> Result<Map<String, Value>> {
-        self.api.datasource().update_datasource(datasource_id, payload)
+        self.api
+            .datasource()
+            .update_datasource(datasource_id, payload)
     }
 
     pub(crate) fn delete_datasource(&self, datasource_id: &str) -> Result<Value> {
@@ -201,11 +207,9 @@ impl<'a> SyncLiveClient<'a> {
             let identity = operation.identity.as_str();
             let action = operation.action.as_str();
             let response = match kind {
-                "folder" => apply_folder_operation_with_client(
-                    self,
-                    operation,
-                    allow_folder_delete,
-                )?,
+                "folder" => {
+                    apply_folder_operation_with_client(self, operation, allow_folder_delete)?
+                }
                 "dashboard" => apply_dashboard_operation_with_client(self, operation)?,
                 "datasource" => apply_datasource_operation_with_client(self, operation)?,
                 "alert"

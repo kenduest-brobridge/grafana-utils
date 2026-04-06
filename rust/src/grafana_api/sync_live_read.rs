@@ -240,7 +240,10 @@ impl<'a> SyncLiveClient<'a> {
         }
 
         for mute_timing in self.list_mute_timings()? {
-            specs.push(build_live_alert_resource_spec("alert-mute-timing", mute_timing)?);
+            specs.push(build_live_alert_resource_spec(
+                "alert-mute-timing",
+                mute_timing,
+            )?);
         }
 
         specs.push(build_live_alert_resource_spec(

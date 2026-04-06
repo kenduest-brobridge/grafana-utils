@@ -12,7 +12,9 @@ use reqwest::Method;
 use serde_json::{Map, Value};
 
 use crate::common::Result;
-use crate::grafana_api::{project_status_live as project_status_live_support, AccessResourceClient};
+use crate::grafana_api::{
+    project_status_live as project_status_live_support, AccessResourceClient,
+};
 use crate::http::JsonHttpClient;
 use crate::project_status::{
     status_finding, ProjectDomainStatus, ProjectStatusFinding, PROJECT_STATUS_PARTIAL,

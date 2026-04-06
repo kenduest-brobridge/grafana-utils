@@ -71,7 +71,10 @@ impl<'a> DatasourceResourceClient<'a> {
         }
     }
 
-    pub(crate) fn create_datasource(&self, payload: &Map<String, Value>) -> Result<Map<String, Value>> {
+    pub(crate) fn create_datasource(
+        &self,
+        payload: &Map<String, Value>,
+    ) -> Result<Map<String, Value>> {
         match self.request_json(
             Method::POST,
             "/api/datasources",
@@ -79,7 +82,9 @@ impl<'a> DatasourceResourceClient<'a> {
             Some(&Value::Object(payload.clone())),
         )? {
             Some(Value::Object(object)) => Ok(object),
-            _ => Err(message("Unexpected datasource create response from Grafana.")),
+            _ => Err(message(
+                "Unexpected datasource create response from Grafana.",
+            )),
         }
     }
 
@@ -95,13 +100,20 @@ impl<'a> DatasourceResourceClient<'a> {
             Some(&Value::Object(payload.clone())),
         )? {
             Some(Value::Object(object)) => Ok(object),
-            _ => Err(message("Unexpected datasource update response from Grafana.")),
+            _ => Err(message(
+                "Unexpected datasource update response from Grafana.",
+            )),
         }
     }
 
     pub(crate) fn delete_datasource(&self, datasource_id: &str) -> Result<Value> {
         Ok(self
-            .request_json(Method::DELETE, &format!("/api/datasources/{datasource_id}"), &[], None)?
+            .request_json(
+                Method::DELETE,
+                &format!("/api/datasources/{datasource_id}"),
+                &[],
+                None,
+            )?
             .unwrap_or(Value::Null))
     }
 }

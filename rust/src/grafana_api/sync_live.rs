@@ -10,15 +10,15 @@ mod sync_live_apply;
 #[path = "sync_live_read.rs"]
 mod sync_live_read;
 
+pub(crate) use sync_live_apply::execute_live_apply_with_client;
 #[cfg(test)]
 pub(crate) use sync_live_apply::execute_live_apply_with_request;
-pub(crate) use sync_live_apply::execute_live_apply_with_client;
+pub(crate) use sync_live_read::{
+    fetch_live_availability_with_client, fetch_live_resource_specs_with_client,
+};
 #[cfg(test)]
 pub(crate) use sync_live_read::{
     fetch_live_availability_with_request, fetch_live_resource_specs_with_request,
-};
-pub(crate) use sync_live_read::{
-    fetch_live_availability_with_client, fetch_live_resource_specs_with_client,
 };
 
 pub(crate) fn merge_availability(base: Option<Value>, extra: &Value) -> Result<Value> {

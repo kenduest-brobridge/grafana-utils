@@ -89,7 +89,12 @@ pub(crate) fn execute_live_apply(
 ) -> Result<Value> {
     let api = build_sync_scoped_api_client(common, org_id)?;
     let client = SyncLiveClient::new(&api);
-    execute_sync_live_apply_with_client(&client, operations, allow_folder_delete, allow_policy_reset)
+    execute_sync_live_apply_with_client(
+        &client,
+        operations,
+        allow_folder_delete,
+        allow_policy_reset,
+    )
 }
 
 pub(crate) fn merge_availability(base: Option<Value>, extra: &Value) -> Result<Value> {
