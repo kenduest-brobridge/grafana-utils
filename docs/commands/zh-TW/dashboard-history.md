@@ -1,15 +1,27 @@
 # dashboard history
 
 ## 用途
-列出、還原或匯出單一 dashboard UID 的即時版本歷史。
+列出、還原或匯出單一 dashboard UID 的版本歷史，來源可以是 live Grafana，也可以是本機 history 成品。
 
 ## 何時使用
-當您需要檢查較早的 dashboard 版本、找回一個已知可用的版本，或把 dashboard 歷史匯出成可重用的成品給審查或 CI 時，使用這個指令。
+當您需要檢查較早的 dashboard 版本、找回一個已知可用的版本，或把 dashboard 歷史匯出成可重用的成品給審查或 CI 時，使用這個指令。您也可以直接從單一匯出成品或包含 history 的 export tree 讀回同一份歷史。
 
 還原時會建立一個新的最新 revision，不會直接覆蓋您選到的歷史版本。原本的舊版本仍然會留在 history 裡。
 
+## history list 的來源
+
+`dashboard history list` 可以直接讀 live Grafana，也可以讀本機成品：
+
+- live：使用 `--url` 和 `--dashboard-uid`
+- 單一 local 成品：使用 `dashboard history export` 產生的 `--input <history.json>`
+- export tree：使用 `dashboard export --include-history` 產生的 `--import-dir <export-root>`
+
+`dashboard history restore` 仍然只支援 live。
+
 ## 重點旗標
-- `--dashboard-uid`：要檢視版本歷史的 dashboard UID。
+- `--dashboard-uid`：要檢視版本歷史的 dashboard UID。做 live history list 與 restore 時必填；讀取 local export tree 時也可用來過濾特定 dashboard。
+- `--input`：讀取 `dashboard history export` 產生的一份可重用 history 成品。
+- `--import-dir`：讀取 `dashboard export --include-history` 產生的 export tree。
 - `--limit`：list 或 export 要包含多少個最近版本。
 - `--version`：要還原的歷史版本號。
 - `--message`：新還原 revision 要附帶的版本訊息。
@@ -44,6 +56,7 @@
 常見對應：
 
 - `dashboard history list --output-format json` -> `grafana-util-dashboard-history-list`
+- `dashboard history list --import-dir ./dashboards --output-format json` -> 如果沒有再用 `--dashboard-uid` 縮小，會是 `grafana-util-dashboard-history-inventory`
 - `dashboard history restore --dry-run --output-format json` -> `grafana-util-dashboard-history-restore`
 - `dashboard history restore --output-format json` -> 同一種 contract，但 live 執行仍會建立新的 latest revision
 - `dashboard history export --output ./cpu-main.history.json` -> `grafana-util-dashboard-history-export`
@@ -51,6 +64,7 @@
 幾個值得先記住的 top-level 欄位：
 
 - list -> `kind`、`schemaVersion`、`toolVersion`、`dashboardUid`、`versionCount`、`versions`
+- list inventory -> `kind`、`schemaVersion`、`toolVersion`、`artifactCount`、`artifacts`
 - restore -> `kind`、`schemaVersion`、`toolVersion`、`mode`、`dashboardUid`、`currentVersion`、`restoreVersion`、`currentTitle`、`restoredTitle`、可選的 `targetFolderUid`、`createsNewRevision`、`message`
 - export -> `kind`、`schemaVersion`、`toolVersion`、`dashboardUid`、`currentVersion`、`currentTitle`、`versionCount`、`versions`
 
@@ -58,6 +72,16 @@
 ```bash
 # 用途：列出最近 20 個 dashboard revision，方便審查。
 grafana-util dashboard history list --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --limit 20 --output-format table
+```
+
+```bash
+# 用途：直接讀取一份匯出的 dashboard history 成品，並在本機列出版本。
+grafana-util dashboard history list --input ./cpu-main.history.json --output-format table
+```
+
+```bash
+# 用途：讀取包含 history 的 dashboard export tree，並列出指定 dashboard 的版本。
+grafana-util dashboard history list --import-dir ./dashboards --dashboard-uid cpu-main --output-format table
 ```
 
 ```bash
@@ -90,7 +114,7 @@ grafana-util dashboard history export --url http://localhost:3000 --token "$GRAF
 
 ## 相關指令
 - [dashboard list](./dashboard-list.md)
-- [dashboard analyze-live](./dashboard-analyze-live.md)
-- [dashboard analyze-export](./dashboard-analyze-export.md)
+- [dashboard analyze（即時）](./dashboard-analyze-live.md)
+- [dashboard analyze（本地）](./dashboard-analyze-export.md)
 - [dashboard review](./dashboard-review.md)
 - [dashboard export](./dashboard-export.md)

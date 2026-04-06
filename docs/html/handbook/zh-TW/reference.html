@@ -790,12 +790,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>如果你需要每種文件的 top-level 欄位細節，直接看 <a href="../../commands/zh-TW/change.html">change 指令頁</a> 會最快。</p>
 <h3 id="給-ci-用的-dashboard-history-json-文件">給 CI 用的 <code>dashboard history</code> JSON 文件</h3>
 <p><code>dashboard history</code> 這組指令也有穩定的 JSON contract 可供自動化流程使用。</p>
+<p>如果你要做本機 history 檢視，<code>dashboard history list</code> 也可以直接讀：</p>
+<ul><li><code>dashboard history export --output ./cpu-main.history.json</code> 產生的單一成品</li><li><code>dashboard export --include-history --export-dir ./dashboards</code> 產生的 export tree</li></ul>
+<p><code>dashboard history restore</code> 仍然只支援 live。</p>
 <p>判斷順序同樣建議固定成：</p>
 <ol><li>先看 <code>kind</code></li><li>再確認 <code>schemaVersion</code></li><li>最後才往下讀巢狀欄位</li></ol>
 <p>CLI 內建快速查詢：</p>
 <ul><li><code>grafana-util dashboard history --help-schema</code></li><li><code>grafana-util dashboard history list --help-schema</code></li><li><code>grafana-util dashboard history restore --help-schema</code></li><li><code>grafana-util dashboard history export --help-schema</code></li></ul>
 <p>常見對應：</p>
-<ul><li><code>dashboard history list --output-format json</code> -&gt; <code>grafana-util-dashboard-history-list</code></li><li><code>dashboard history restore --dry-run --output-format json</code> -&gt; <code>grafana-util-dashboard-history-restore</code></li><li><code>dashboard history export --output ./cpu-main.history.json</code> -&gt; <code>grafana-util-dashboard-history-export</code></li></ul>
+<ul><li><code>dashboard history list --output-format json</code> -&gt; <code>grafana-util-dashboard-history-list</code></li><li><code>dashboard history list --import-dir ./dashboards --output-format json</code> -&gt; 如果沒有 <code>--dashboard-uid</code> 篩選，會是 <code>grafana-util-dashboard-history-inventory</code></li><li><code>dashboard history restore --dry-run --output-format json</code> -&gt; <code>grafana-util-dashboard-history-restore</code></li><li><code>dashboard history export --output ./cpu-main.history.json</code> -&gt; <code>grafana-util-dashboard-history-export</code></li></ul>
 <p>如果你需要每種文件的 top-level 欄位細節，直接看 <a href="../../commands/zh-TW/dashboard-history.html">dashboard history 指令頁</a> 會最快。</p>
 <h2 id="profile連線與-secret-處理">Profile、連線與 secret 處理</h2>
 <p>Profile 是專案本地的設定。<code>grafana-util profile</code> 會讀寫目前工作目錄中的 <code>grafana-util.yaml</code>，<code>--profile</code> 則是從這個檔案裡挑選一個命名 profile。</p>

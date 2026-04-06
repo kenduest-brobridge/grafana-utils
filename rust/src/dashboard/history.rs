@@ -5,8 +5,10 @@ use crate::common::{
 };
 use crate::tabular_output::{render_table, render_yaml};
 use reqwest::Method;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use std::fs;
+use std::path::{Path, PathBuf};
 
 use super::{
     fetch_dashboard_with_request, import_dashboard_request_with_request, write_json_document,
@@ -21,8 +23,9 @@ pub(crate) const DASHBOARD_HISTORY_RESTORE_MESSAGE: &str =
 pub(crate) const DASHBOARD_HISTORY_LIST_KIND: &str = "grafana-util-dashboard-history-list";
 pub(crate) const DASHBOARD_HISTORY_RESTORE_KIND: &str = "grafana-util-dashboard-history-restore";
 pub(crate) const DASHBOARD_HISTORY_EXPORT_KIND: &str = "grafana-util-dashboard-history-export";
+pub(crate) const DASHBOARD_HISTORY_INVENTORY_KIND: &str = "grafana-util-dashboard-history-inventory";
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct DashboardHistoryVersion {
     pub version: i64,
     pub created: String,
@@ -31,7 +34,7 @@ pub(crate) struct DashboardHistoryVersion {
     pub message: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct DashboardHistoryListDocument {
     pub kind: String,
     #[serde(rename = "schemaVersion")]
@@ -70,7 +73,7 @@ pub(crate) struct DashboardHistoryRestoreDocument {
     pub message: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct DashboardHistoryExportVersion {
     pub version: i64,
     pub created: String,
@@ -80,7 +83,7 @@ pub(crate) struct DashboardHistoryExportVersion {
     pub dashboard: Value,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub(crate) struct DashboardHistoryExportDocument {
     pub kind: String,
     #[serde(rename = "schemaVersion")]
@@ -98,12 +101,46 @@ pub(crate) struct DashboardHistoryExportDocument {
     pub versions: Vec<DashboardHistoryExportVersion>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub(crate) struct DashboardHistoryInventoryItem {
+    #[serde(rename = "dashboardUid")]
+    pub dashboard_uid: String,
+    #[serde(rename = "currentTitle")]
+    pub current_title: String,
+    #[serde(rename = "currentVersion")]
+    pub current_version: i64,
+    #[serde(rename = "versionCount")]
+    pub version_count: usize,
+    pub path: String,
+    #[serde(rename = "scope", skip_serializing_if = "Option::is_none")]
+    pub scope: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub(crate) struct DashboardHistoryInventoryDocument {
+    pub kind: String,
+    #[serde(rename = "schemaVersion")]
+    pub schema_version: i64,
+    #[serde(rename = "toolVersion")]
+    pub tool_version: String,
+    #[serde(rename = "artifactCount")]
+    pub artifact_count: usize,
+    pub artifacts: Vec<DashboardHistoryInventoryItem>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct DashboardRestorePreview {
     current_version: i64,
     current_title: String,
     restored_title: String,
     target_folder_uid: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct LocalHistoryArtifact {
+    path: PathBuf,
+    scope: Option<String>,
+    document: DashboardHistoryExportDocument,
 }
 
 pub(crate) fn list_dashboard_history_versions_with_request<F>(
@@ -370,6 +407,54 @@ fn render_dashboard_history_list_table(document: &DashboardHistoryListDocument) 
     .join("\n")
 }
 
+fn render_dashboard_history_inventory_text(document: &DashboardHistoryInventoryDocument) -> String {
+    let mut lines = vec![format!(
+        "Dashboard history artifacts: count={}",
+        document.artifact_count
+    )];
+    for item in &document.artifacts {
+        let scope = item.scope.as_deref().unwrap_or("current");
+        lines.push(format!(
+            "  {} title={} current-version={} versions={} scope={} path={}",
+            item.dashboard_uid,
+            item.current_title,
+            item.current_version,
+            item.version_count,
+            scope,
+            item.path
+        ));
+    }
+    lines.join("\n")
+}
+
+fn render_dashboard_history_inventory_table(document: &DashboardHistoryInventoryDocument) -> String {
+    render_table(
+        &[
+            "dashboardUid",
+            "currentTitle",
+            "currentVersion",
+            "versionCount",
+            "scope",
+            "path",
+        ],
+        &document
+            .artifacts
+            .iter()
+            .map(|item| {
+                vec![
+                    item.dashboard_uid.clone(),
+                    item.current_title.clone(),
+                    item.current_version.to_string(),
+                    item.version_count.to_string(),
+                    item.scope.clone().unwrap_or_else(|| "current".to_string()),
+                    item.path.clone(),
+                ]
+            })
+            .collect::<Vec<_>>(),
+    )
+    .join("\n")
+}
+
 fn render_dashboard_history_restore_text(document: &DashboardHistoryRestoreDocument) -> String {
     let mut lines = vec![format!(
         "Dashboard history restore: {} current-version={} restore-version={} mode={} creates-new-revision={}",
@@ -422,19 +507,25 @@ pub(crate) fn run_dashboard_history_list<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    let document = build_dashboard_history_list_document_with_request(
-        &mut request_json,
-        &args.dashboard_uid,
-        args.limit,
-    )?;
-    let rendered = match args.output_format {
-        HistoryOutputFormat::Text => render_dashboard_history_list_text(&document),
-        HistoryOutputFormat::Table => render_dashboard_history_list_table(&document),
-        HistoryOutputFormat::Json => render_json_value(&document)?.trim_end().to_string(),
-        HistoryOutputFormat::Yaml => render_yaml(&document)?.trim_end().to_string(),
-    };
-    println!("{rendered}");
-    Ok(())
+    if let Some(input_path) = &args.input {
+        let document = load_dashboard_history_export_document(input_path)?;
+        if let Some(uid) = &args.dashboard_uid {
+            ensure_history_artifact_uid_matches(uid, &document, input_path)?;
+        }
+        let list_document = build_dashboard_history_list_document_from_export_document(&document);
+        return render_dashboard_history_list_output(&list_document, args.output_format);
+    }
+
+    if let Some(import_dir) = &args.import_dir {
+        return run_dashboard_history_list_from_import_dir(import_dir, args);
+    }
+
+    let dashboard_uid = args.dashboard_uid.as_deref().ok_or_else(|| {
+        message("Dashboard history list requires --dashboard-uid unless --input or --import-dir is set.")
+    })?;
+    let document =
+        build_dashboard_history_list_document_with_request(&mut request_json, dashboard_uid, args.limit)?;
+    render_dashboard_history_list_output(&document, args.output_format)
 }
 
 pub(crate) fn run_dashboard_history_restore<F>(
@@ -566,6 +657,224 @@ fn display_value(value: &Value) -> String {
         Value::String(text) => text.clone(),
         _ => value.to_string(),
     }
+}
+
+fn render_dashboard_history_list_output(
+    document: &DashboardHistoryListDocument,
+    output_format: HistoryOutputFormat,
+) -> Result<()> {
+    let rendered = match output_format {
+        HistoryOutputFormat::Text => render_dashboard_history_list_text(document),
+        HistoryOutputFormat::Table => render_dashboard_history_list_table(document),
+        HistoryOutputFormat::Json => render_json_value(document)?.trim_end().to_string(),
+        HistoryOutputFormat::Yaml => render_yaml(document)?.trim_end().to_string(),
+    };
+    println!("{rendered}");
+    Ok(())
+}
+
+fn render_dashboard_history_inventory_output(
+    document: &DashboardHistoryInventoryDocument,
+    output_format: HistoryOutputFormat,
+) -> Result<()> {
+    let rendered = match output_format {
+        HistoryOutputFormat::Text => render_dashboard_history_inventory_text(document),
+        HistoryOutputFormat::Table => render_dashboard_history_inventory_table(document),
+        HistoryOutputFormat::Json => render_json_value(document)?.trim_end().to_string(),
+        HistoryOutputFormat::Yaml => render_yaml(document)?.trim_end().to_string(),
+    };
+    println!("{rendered}");
+    Ok(())
+}
+
+fn load_dashboard_history_export_document(path: &Path) -> Result<DashboardHistoryExportDocument> {
+    let raw = fs::read_to_string(path)?;
+    let document: DashboardHistoryExportDocument = serde_json::from_str(&raw).map_err(|error| {
+        message(format!(
+            "Failed to parse dashboard history artifact {}: {error}",
+            path.display()
+        ))
+    })?;
+    if document.kind != DASHBOARD_HISTORY_EXPORT_KIND {
+        return Err(message(format!(
+            "Expected {} at {}, found {}.",
+            DASHBOARD_HISTORY_EXPORT_KIND,
+            path.display(),
+            document.kind
+        )));
+    }
+    Ok(document)
+}
+
+fn ensure_history_artifact_uid_matches(
+    expected_uid: &str,
+    document: &DashboardHistoryExportDocument,
+    path: &Path,
+) -> Result<()> {
+    if document.dashboard_uid != expected_uid {
+        return Err(message(format!(
+            "History artifact {} contains dashboard UID {} instead of {}.",
+            path.display(),
+            document.dashboard_uid,
+            expected_uid
+        )));
+    }
+    Ok(())
+}
+
+fn build_dashboard_history_list_document_from_export_document(
+    document: &DashboardHistoryExportDocument,
+) -> DashboardHistoryListDocument {
+    DashboardHistoryListDocument {
+        kind: DASHBOARD_HISTORY_LIST_KIND.to_string(),
+        schema_version: TOOL_SCHEMA_VERSION,
+        tool_version: tool_version().to_string(),
+        dashboard_uid: document.dashboard_uid.clone(),
+        version_count: document.version_count,
+        versions: document
+            .versions
+            .iter()
+            .map(|item| DashboardHistoryVersion {
+                version: item.version,
+                created: item.created.clone(),
+                created_by: item.created_by.clone(),
+                message: item.message.clone(),
+            })
+            .collect(),
+    }
+}
+
+fn collect_history_artifact_paths(root: &Path, output: &mut Vec<PathBuf>) -> Result<()> {
+    for entry in fs::read_dir(root)? {
+        let entry = entry?;
+        let path = entry.path();
+        if entry.file_type()?.is_dir() {
+            collect_history_artifact_paths(&path, output)?;
+            continue;
+        }
+        if path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.ends_with(".history.json"))
+        {
+            output.push(path);
+        }
+    }
+    Ok(())
+}
+
+fn derive_history_artifact_scope(import_dir: &Path, artifact_path: &Path) -> Option<String> {
+    let relative = artifact_path.strip_prefix(import_dir).ok()?;
+    let mut scope_parts = Vec::new();
+    for component in relative.components() {
+        let piece = component.as_os_str().to_string_lossy().to_string();
+        if piece == "history" {
+            break;
+        }
+        scope_parts.push(piece);
+    }
+    if scope_parts.is_empty() {
+        None
+    } else {
+        Some(scope_parts.join("/"))
+    }
+}
+
+fn load_history_artifacts_from_import_dir(import_dir: &Path) -> Result<Vec<LocalHistoryArtifact>> {
+    let mut paths = Vec::new();
+    collect_history_artifact_paths(import_dir, &mut paths)?;
+    let mut artifacts = Vec::new();
+    for path in paths {
+        let document = load_dashboard_history_export_document(&path)?;
+        artifacts.push(LocalHistoryArtifact {
+            scope: derive_history_artifact_scope(import_dir, &path),
+            path,
+            document,
+        });
+    }
+    artifacts.sort_by(|left, right| left.path.cmp(&right.path));
+    Ok(artifacts)
+}
+
+fn build_dashboard_history_inventory_document(
+    import_dir: &Path,
+    artifacts: &[LocalHistoryArtifact],
+) -> DashboardHistoryInventoryDocument {
+    DashboardHistoryInventoryDocument {
+        kind: DASHBOARD_HISTORY_INVENTORY_KIND.to_string(),
+        schema_version: TOOL_SCHEMA_VERSION,
+        tool_version: tool_version().to_string(),
+        artifact_count: artifacts.len(),
+        artifacts: artifacts
+            .iter()
+            .map(|artifact| DashboardHistoryInventoryItem {
+                dashboard_uid: artifact.document.dashboard_uid.clone(),
+                current_title: artifact.document.current_title.clone(),
+                current_version: artifact.document.current_version,
+                version_count: artifact.document.version_count,
+                path: artifact
+                    .path
+                    .strip_prefix(import_dir)
+                    .unwrap_or(&artifact.path)
+                    .display()
+                    .to_string(),
+                scope: artifact.scope.clone(),
+            })
+            .collect(),
+    }
+}
+
+fn run_dashboard_history_list_from_import_dir(
+    import_dir: &Path,
+    args: &HistoryListArgs,
+) -> Result<()> {
+    let artifacts = load_history_artifacts_from_import_dir(import_dir)?;
+    if artifacts.is_empty() {
+        return Err(message(format!(
+            "No dashboard history artifacts found under {}. Export with `dashboard export --include-history` first.",
+            import_dir.display()
+        )));
+    }
+    if let Some(uid) = &args.dashboard_uid {
+        let matching = artifacts
+            .iter()
+            .filter(|artifact| artifact.document.dashboard_uid == *uid)
+            .collect::<Vec<_>>();
+        match matching.len() {
+            0 => {
+                return Err(message(format!(
+                    "No dashboard history artifact for UID {} found under {}.",
+                    uid,
+                    import_dir.display()
+                )))
+            }
+            1 => {
+                let document =
+                    build_dashboard_history_list_document_from_export_document(&matching[0].document);
+                return render_dashboard_history_list_output(&document, args.output_format);
+            }
+            _ => {
+                let scopes = matching
+                    .iter()
+                    .map(|artifact| {
+                        artifact
+                            .scope
+                            .clone()
+                            .unwrap_or_else(|| artifact.path.display().to_string())
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                return Err(message(format!(
+                    "Multiple dashboard history artifacts for UID {} found under {}: {}. Narrow the export root or inspect one artifact with --input.",
+                    uid,
+                    import_dir.display(),
+                    scopes
+                )));
+            }
+        }
+    }
+    let document = build_dashboard_history_inventory_document(import_dir, &artifacts);
+    render_dashboard_history_inventory_output(&document, args.output_format)
 }
 
 #[cfg(test)]

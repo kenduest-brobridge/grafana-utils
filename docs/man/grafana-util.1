@@ -62,7 +62,7 @@ export and review Grafana snapshot inventory bundles. Use when: Want a local sna
 .B grafana\-util\-dashboard\-browse(1)
 Open the live dashboard tree in an interactive terminal UI. Use when: You want to explore folders, select a dashboard, or inspect the live tree before fetching, diffing, importing, or deleting.
 .TP
-.B grafana\-util\-dashboard\-get(1)
+.B grafana\-util\-dashboard\-fetch\-live(1)
 Fetch one live dashboard into an API\-safe local JSON draft. Use when: You need a local copy of one live dashboard for review, patching, cloning, or later publish work.
 .TP
 .B grafana\-util\-dashboard\-clone\-live(1)
@@ -299,7 +299,7 @@ Fetch one live dashboard into an external editor with a safe local\-draft defaul
 .SS dashboard
 .TP
 .B grafana\-util\-dashboard\-history(1)
-List, restore, or export live dashboard revision history for one dashboard UID. Use when: You need to inspect earlier dashboard versions, recover a known\-good revision, or export dashboard history into a reusable artifact for review or CI.
+List, restore, or export dashboard revision history for one dashboard UID, whether it comes from live Grafana or from local history artifacts. Use when: You need to inspect earlier dashboard versions, recover a known\-good revision, or export dashboard history into a reusable artifact for review or CI. You can also read the same history back from a single exported artifact or an export tree with included history.
 .SS dashboard
 .TP
 .B grafana\-util\-dashboard\-impact(1)

@@ -1,15 +1,27 @@
 # dashboard history
 
 ## Purpose
-List, restore, or export live dashboard revision history for one dashboard UID.
+List, restore, or export dashboard revision history for one dashboard UID, whether it comes from live Grafana or from local history artifacts.
 
 ## When to use
-Use this when you need to inspect earlier dashboard versions, recover a known-good revision, or export dashboard history into a reusable artifact for review or CI.
+Use this when you need to inspect earlier dashboard versions, recover a known-good revision, or export dashboard history into a reusable artifact for review or CI. You can also read the same history back from a single exported artifact or an export tree with included history.
 
 Restore creates a new latest revision instead of overwriting the historical version you picked. The old version stays in history.
 
+## History list sources
+
+`dashboard history list` can read history from live Grafana or from local artifacts:
+
+- live: use `--url` and `--dashboard-uid`
+- single local artifact: use `--input <history.json>` from `dashboard history export`
+- export tree: use `--import-dir <export-root>` from `dashboard export --include-history`
+
+`dashboard history restore` stays live-only.
+
 ## Key flags
-- `--dashboard-uid`: the dashboard UID whose revision history you want.
+- `--dashboard-uid`: the dashboard UID whose revision history you want. Required for live history list and restore, and useful for filtering local export-tree history.
+- `--input`: read one reusable history artifact produced by `dashboard history export`.
+- `--import-dir`: read one export tree produced by `dashboard export --include-history`.
 - `--limit`: how many recent versions to include in list or export views.
 - `--version`: the historical version number to restore.
 - `--message`: revision message for the new restored revision.
@@ -44,6 +56,7 @@ Routing rule:
 Practical mapping:
 
 - `dashboard history list --output-format json` -> `grafana-util-dashboard-history-list`
+- `dashboard history list --import-dir ./dashboards --output-format json` -> `grafana-util-dashboard-history-inventory` when you do not narrow with `--dashboard-uid`
 - `dashboard history restore --dry-run --output-format json` -> `grafana-util-dashboard-history-restore`
 - `dashboard history restore --output-format json` -> the same contract shape, but live execution still creates a new latest revision
 - `dashboard history export --output ./cpu-main.history.json` -> `grafana-util-dashboard-history-export`
@@ -51,6 +64,7 @@ Practical mapping:
 Top-level keys worth remembering:
 
 - list -> `kind`, `schemaVersion`, `toolVersion`, `dashboardUid`, `versionCount`, `versions`
+- list inventory -> `kind`, `schemaVersion`, `toolVersion`, `artifactCount`, `artifacts`
 - restore -> `kind`, `schemaVersion`, `toolVersion`, `mode`, `dashboardUid`, `currentVersion`, `restoreVersion`, `currentTitle`, `restoredTitle`, optional `targetFolderUid`, `createsNewRevision`, `message`
 - export -> `kind`, `schemaVersion`, `toolVersion`, `dashboardUid`, `currentVersion`, `currentTitle`, `versionCount`, `versions`
 
@@ -58,6 +72,16 @@ Top-level keys worth remembering:
 ```bash
 # Purpose: List the last 20 dashboard revisions as a table for review.
 grafana-util dashboard history list --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --limit 20 --output-format table
+```
+
+```bash
+# Purpose: Read one exported dashboard history artifact and list its revisions locally.
+grafana-util dashboard history list --input ./cpu-main.history.json --output-format table
+```
+
+```bash
+# Purpose: Read a dashboard export tree with included history and list one dashboard by UID.
+grafana-util dashboard history list --import-dir ./dashboards --dashboard-uid cpu-main --output-format table
 ```
 
 ```bash
@@ -90,7 +114,7 @@ grafana-util dashboard history export --url http://localhost:3000 --token "$GRAF
 
 ## Related commands
 - [dashboard list](./dashboard-list.md)
-- [dashboard analyze-live](./dashboard-analyze-live.md)
-- [dashboard analyze-export](./dashboard-analyze-export.md)
+- [dashboard analyze (live)](./dashboard-analyze-live.md)
+- [dashboard analyze (local)](./dashboard-analyze-export.md)
 - [dashboard review](./dashboard-review.md)
 - [dashboard export](./dashboard-export.md)

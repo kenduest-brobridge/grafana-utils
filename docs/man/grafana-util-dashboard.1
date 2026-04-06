@@ -14,7 +14,7 @@ Use this namespace when you need to browse live dashboards, fetch or clone a liv
 .PP
 \- Browse and inventory: browse, list, and get.
 .PP
-\- Analyze dashboards and reports: analyze\-live, analyze\-export, list\-vars, and topology checks.
+\- Analyze dashboards and build reports: analyze, list\-vars, and topology checks.
 .PP
 \- Move: export, import, clone\-live, raw\-to\-prompt, diff, and publish paths.
 .PP
@@ -53,7 +53,7 @@ After: the dashboard namespace keeps browse, inspect, move, review, and capture 
 .B browse
 Open the live dashboard tree in an interactive terminal UI. Use when: You want to explore folders, select a dashboard, or inspect the live tree before fetching, diffing, importing, or deleting.
 .TP
-.B get
+.B fetch\-live
 Fetch one live dashboard into an API\-safe local JSON draft. Use when: You need a local copy of one live dashboard for review, patching, cloning, or later publish work.
 .TP
 .B clone\-live
@@ -84,19 +84,19 @@ Delete live dashboards by UID or folder path. Use when: You need to remove one d
 Compare local dashboard files against live Grafana dashboards. Use when: You want to see what would change before importing or publishing a dashboard bundle.
 .TP
 .B analyze\-export
-Analyze dashboard export directories with operator\-summary and report\-contract views. Use when: You want to read a local export tree, inspect its structure, or render governance and dependency reports without contacting Grafana.
+Analyze dashboard export directories through the canonical dashboard analyze command. Use when: You want to read a local export tree, inspect its structure, or render governance and dependency views without contacting Grafana. Prefer dashboard analyze \-\-import\-dir ... in new docs and scripts.
 .TP
 .B analyze\-live
-Analyze live Grafana dashboards via a temporary raw\-export snapshot. Use when: You need the same analysis views as analyze\-export, but sourced from live Grafana instead of a local export tree.
+Analyze live Grafana dashboards through the canonical dashboard analyze command. Use when: You need the same analysis views as the local export\-tree flow, but sourced from live Grafana instead of a local export tree. Prefer dashboard analyze \-\-url ... in new docs and scripts.
 .TP
 .B list\-vars
 List dashboard templating variables and datasource\-like choices from live Grafana. Use when: You need to list variable state, feed a screenshot workflow, or debug variable\-scoped dashboard URLs.
 .TP
 .B governance\-gate
-Evaluate governance policy against dashboard inspect JSON artifacts. Use when: You already have governance\-json and query\-report artifacts and want a policy pass or fail result before promotion.
+Evaluate governance policy against dashboard inspect JSON artifacts. Use when: You want a policy pass or fail result before promotion. Prefer direct live or local analysis inputs for the common path; keep governance\-json and queries\-json for advanced reuse and CI pipelines.
 .TP
 .B topology
-Build a deterministic dashboard topology graph from JSON artifacts. Use when: You need a graph view of dashboards, folders, variables, datasource links, and optional alert contract data. The command also accepts the graph alias.
+Build a deterministic dashboard topology graph directly from live Grafana, a local export tree, or reusable JSON artifacts. Use when: You need a graph view of dashboards, folders, variables, datasource links, and optional alert contract data. Prefer \-\-url or \-\-import\-dir for the common path; keep artifact inputs for reuse or CI. The command also accepts the graph alias.
 .TP
 .B screenshot
 Open one dashboard in a headless browser and capture image or PDF output. Use when: You need a reproducible dashboard or panel screenshot, especially for docs, incident notes, or visual debugging.
@@ -146,9 +146,9 @@ browse: Open the live dashboard tree in an interactive terminal UI.
 grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --basic-password admin
 .EE
 .PP
-get: Fetch one live dashboard into an API\-safe local JSON draft.
+fetch\-live: Fetch one live dashboard into an API\-safe local JSON draft.
 .EX
-grafana-util dashboard get --profile prod --dashboard-uid cpu-main --output ./cpu-main.json
+grafana-util dashboard fetch-live --profile prod --dashboard-uid cpu-main --output ./cpu-main.json
 .EE
 .PP
 clone\-live: Clone one live dashboard into a local draft with optional overrides.

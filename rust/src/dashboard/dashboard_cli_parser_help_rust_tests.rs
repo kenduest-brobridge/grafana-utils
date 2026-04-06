@@ -1,6 +1,7 @@
 //! Dashboard CLI parser/help regressions kept separate from runtime-heavy tests.
 use super::super::{
-    parse_cli_from, DashboardCliArgs, DashboardCommand, RawToPromptLogFormat,
+    parse_cli_from, DashboardCliArgs, DashboardCommand, DashboardHistorySubcommand,
+    RawToPromptLogFormat,
     RawToPromptOutputFormat, RawToPromptResolution, SimpleOutputFormat,
 };
 use crate::common::CliColorChoice;
@@ -20,6 +21,18 @@ pub(super) fn render_dashboard_subcommand_help(name: &str) -> String {
 pub(super) fn render_dashboard_help() -> String {
     let mut command = DashboardCliArgs::command();
     command.render_help().to_string()
+}
+
+pub(super) fn render_dashboard_history_subcommand_help(name: &str) -> String {
+    let mut command = DashboardCliArgs::command();
+    let history = command
+        .find_subcommand_mut("history")
+        .unwrap_or_else(|| panic!("missing history subcommand"));
+    history
+        .find_subcommand_mut(name)
+        .unwrap_or_else(|| panic!("missing history {name} subcommand"))
+        .render_help()
+        .to_string()
 }
 
 #[test]
@@ -1390,7 +1403,7 @@ fn parse_cli_supports_import_use_export_org_flags() {
 fn parse_cli_supports_dashboard_get_and_clone_live_commands() {
     let get_args = parse_cli_from([
         "grafana-util",
-        "get",
+        "fetch-live",
         "--profile",
         "prod",
         "--dashboard-uid",
@@ -1419,7 +1432,7 @@ fn parse_cli_supports_dashboard_get_and_clone_live_commands() {
             assert_eq!(args.dashboard_uid, "cpu-main");
             assert_eq!(args.output, PathBuf::from("./cpu-main.json"));
         }
-        _ => panic!("expected get command"),
+        _ => panic!("expected fetch-live command"),
     }
 
     match clone_args.command {
@@ -1435,21 +1448,94 @@ fn parse_cli_supports_dashboard_get_and_clone_live_commands() {
 }
 
 #[test]
-fn dashboard_get_help_mentions_local_draft_and_output_path() {
-    let help = render_dashboard_subcommand_help("get");
+fn dashboard_fetch_live_help_mentions_local_draft_and_output_path() {
+    let help = render_dashboard_subcommand_help("fetch-live");
     assert!(help.contains("API-safe local JSON draft"));
+    assert!(help.contains("What it does:"));
+    assert!(help.contains("When to use:"));
     assert!(help.contains("--dashboard-uid"));
     assert!(help.contains("--output"));
-    assert!(help.contains("grafana-util dashboard get"));
+    assert!(help.contains("grafana-util dashboard fetch-live"));
 }
 
 #[test]
 fn dashboard_clone_live_help_mentions_override_flags() {
     let help = render_dashboard_subcommand_help("clone-live");
     assert!(help.contains("optional overrides"));
+    assert!(help.contains("What it does:"));
+    assert!(help.contains("Related commands:"));
     assert!(help.contains("--source-uid"));
     assert!(help.contains("--name"));
     assert!(help.contains("--uid"));
     assert!(help.contains("--folder-uid"));
     assert!(help.contains("grafana-util dashboard clone-live"));
+}
+
+#[test]
+fn dashboard_fetch_live_help_colorizes_section_headings_and_example_commands() {
+    let help = crate::dashboard::maybe_render_dashboard_subcommand_help_from_os_args(
+        ["grafana-util", "dashboard", "fetch-live", "--help"],
+        true,
+    )
+    .expect("expected dashboard subcommand help");
+    assert!(help.contains("\u{1b}[1;36mWhat it does:\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[1;36mExamples:\u{1b}[0m"));
+    assert!(help.contains("    \u{1b}[1;97mgrafana-util dashboard fetch-live"));
+}
+
+#[test]
+fn parse_cli_supports_dashboard_history_list_input_sources() {
+    let input_args = parse_cli_from([
+        "grafana-util",
+        "history",
+        "list",
+        "--input",
+        "./cpu-main.history.json",
+        "--output-format",
+        "json",
+    ]);
+    let import_dir_args = parse_cli_from([
+        "grafana-util",
+        "history",
+        "list",
+        "--import-dir",
+        "./dashboards",
+        "--dashboard-uid",
+        "cpu-main",
+        "--output-format",
+        "yaml",
+    ]);
+
+    match input_args.command {
+        DashboardCommand::History(history_args) => match history_args.command {
+            DashboardHistorySubcommand::List(args) => {
+                assert_eq!(args.dashboard_uid, None);
+                assert_eq!(args.input, Some(PathBuf::from("./cpu-main.history.json")));
+                assert_eq!(args.import_dir, None);
+            }
+            _ => panic!("expected history list subcommand"),
+        },
+        _ => panic!("expected history command"),
+    }
+
+    match import_dir_args.command {
+        DashboardCommand::History(history_args) => match history_args.command {
+            DashboardHistorySubcommand::List(args) => {
+                assert_eq!(args.dashboard_uid.as_deref(), Some("cpu-main"));
+                assert_eq!(args.input, None);
+                assert_eq!(args.import_dir, Some(PathBuf::from("./dashboards")));
+            }
+            _ => panic!("expected history list subcommand"),
+        },
+        _ => panic!("expected history command"),
+    }
+}
+
+#[test]
+fn dashboard_history_list_help_mentions_local_inputs() {
+    let help = render_dashboard_history_subcommand_help("list");
+    assert!(help.contains("--input"));
+    assert!(help.contains("--import-dir"));
+    assert!(help.contains("dashboard history export"));
+    assert!(help.contains("dashboard export --include-history"));
 }

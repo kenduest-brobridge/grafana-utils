@@ -8,6 +8,27 @@ Current AI-maintained status only.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-status-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-31.md).
 
+## 2026-04-06 - Enable the real macOS Keychain backend for the profile secret store
+- State: Done
+- Scope: `rust/Cargo.toml`, `rust/src/profile_secret_store.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`, `docs/internal/ai-learnings.md`
+- Baseline: the new macOS compatibility smoke showed that `SystemOsSecretStore` could not read a `security` CLI-written Keychain item. Investigation showed the `keyring` crate was being compiled without its `apple-native` feature, so the macOS build silently fell back to `mock` instead of the real Keychain backend.
+- Current Update: narrowed the dependency fix to macOS first by enabling `keyring`'s `apple-native` feature only on the macOS target, updated the ignored Keychain compatibility smoke to allow non-interactive access, and recorded the root cause as a reusable maintainer lesson.
+- Result: the ignored macOS smoke now proves that legacy `security` CLI items can be read through `SystemOsSecretStore` and that new `keyring`-written items remain visible to `security find-generic-password`.
+
+## 2026-04-06 - Add local artifact and export-tree support to dashboard history list
+- State: Done
+- Scope: `rust/src/dashboard/cli_defs_command.rs`, `rust/src/dashboard/history.rs`, `rust/src/dashboard/history_cli_rust_tests.rs`, `rust/src/dashboard/dashboard_cli_parser_help_rust_tests.rs`, `docs/commands/en/dashboard-history.md`, `docs/commands/zh-TW/dashboard-history.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `dashboard history list` is live-only and always requires `--dashboard-uid` plus Grafana connection flags. The repo can already produce local history artifacts through `dashboard history export` and `dashboard export --include-history`, but there is no repo-owned way to list those local artifacts back through the CLI.
+- Current Update: `dashboard history list` now accepts `--input <history.json>` for a single artifact and `--import-dir <export-root>` for history-enabled export trees. A filtered local tree reuses the normal list contract, while an unfiltered tree emits a new inventory contract so duplicate UIDs stay explicit. Help/schema text and command docs were updated to explain the three list source modes, and restore remains live-only.
+- Result: local history review no longer requires calling Grafana after `dashboard history export` or `dashboard export --include-history`, and the CLI now has one repo-owned path for both live and local history inspection.
+
+## 2026-04-06 - Add macOS Keychain compatibility smoke for the new keyring-backed OS store
+- State: Done
+- Scope: `rust/src/profile_secret_store.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: the profile secret-store hardening switched macOS from direct `security` subprocess writes to the `keyring` backend, but there was no repo-owned smoke check showing that old `security`-written Keychain items and new `keyring`-written items still interoperate.
+- Current Update: added a macOS-only ignored test that creates a unique Keychain item through the legacy `security` CLI path, verifies `SystemOsSecretStore` can read it, overwrites it through the new `keyring` path, then verifies the `security` CLI can still read the updated value before cleaning up the item.
+- Result: the repo now has a manual macOS compatibility smoke that explicitly covers old/new Keychain item interoperability for the profile OS secret-store migration.
+
 ## 2026-04-06 - Harden profile secret storage against macOS argv leakage and repo-local secret commits
 - State: Done
 - Scope: `rust/src/profile_secret_store.rs`, `rust/src/profile_cli_runtime.rs`, `rust/src/profile_cli_rust_tests.rs`, `rust/Cargo.toml`, `docs/commands/en/profile.md`, `docs/commands/zh-TW/profile.md`, `docs/user-guide/en/reference.md`, `docs/user-guide/zh-TW/reference.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`

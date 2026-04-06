@@ -83,6 +83,13 @@ CLI 內建快速查詢：
 
 `dashboard history` 這組指令也有穩定的 JSON contract 可供自動化流程使用。
 
+如果你要做本機 history 檢視，`dashboard history list` 也可以直接讀：
+
+- `dashboard history export --output ./cpu-main.history.json` 產生的單一成品
+- `dashboard export --include-history --export-dir ./dashboards` 產生的 export tree
+
+`dashboard history restore` 仍然只支援 live。
+
 判斷順序同樣建議固定成：
 
 1. 先看 `kind`
@@ -99,6 +106,7 @@ CLI 內建快速查詢：
 常見對應：
 
 - `dashboard history list --output-format json` -> `grafana-util-dashboard-history-list`
+- `dashboard history list --import-dir ./dashboards --output-format json` -> 如果沒有 `--dashboard-uid` 篩選，會是 `grafana-util-dashboard-history-inventory`
 - `dashboard history restore --dry-run --output-format json` -> `grafana-util-dashboard-history-restore`
 - `dashboard history export --output ./cpu-main.history.json` -> `grafana-util-dashboard-history-export`
 

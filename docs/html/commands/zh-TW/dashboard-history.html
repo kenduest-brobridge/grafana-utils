@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">這頁在說什麼</p>
-  <p class="command-intro-text">列出、還原或匯出單一 dashboard UID 的即時版本歷史。</p>
+  <p class="command-intro-text">列出、還原或匯出單一 dashboard UID 的版本歷史，來源可以是 live Grafana，也可以是本機 history 成品。</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">什麼時候看這頁</p>
-  <ul class="command-intro-list"><li>當您需要檢查較早的 dashboard 版本、找回一個已知可用的版本，或把 dashboard 歷史匯出成可重用的成品給審查或 CI 時，使用這個指令。</li><li>還原時會建立一個新的最新 revision，不會直接覆蓋您選到的歷史版本。原本的舊版本仍然會留在 history 裡。</li></ul>
+  <ul class="command-intro-list"><li>當您需要檢查較早的 dashboard 版本、找回一個已知可用的版本，或把 dashboard 歷史匯出成可重用的成品給審查或 CI 時，使用這個指令。您也可以直接從單一匯出成品或包含 history 的 export tree 讀回同一份歷史。</li><li>還原時會建立一個新的最新 revision，不會直接覆蓋您選到的歷史版本。原本的舊版本仍然會留在 history 裡。</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">適合誰</p>
@@ -779,12 +779,16 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="用途">用途</h2>
-<p>列出、還原或匯出單一 dashboard UID 的即時版本歷史。</p>
+<p>列出、還原或匯出單一 dashboard UID 的版本歷史，來源可以是 live Grafana，也可以是本機 history 成品。</p>
 <h2 id="何時使用">何時使用</h2>
-<p>當您需要檢查較早的 dashboard 版本、找回一個已知可用的版本，或把 dashboard 歷史匯出成可重用的成品給審查或 CI 時，使用這個指令。</p>
+<p>當您需要檢查較早的 dashboard 版本、找回一個已知可用的版本，或把 dashboard 歷史匯出成可重用的成品給審查或 CI 時，使用這個指令。您也可以直接從單一匯出成品或包含 history 的 export tree 讀回同一份歷史。</p>
 <p>還原時會建立一個新的最新 revision，不會直接覆蓋您選到的歷史版本。原本的舊版本仍然會留在 history 裡。</p>
+<h2 id="history-list-的來源">history list 的來源</h2>
+<p><code>dashboard history list</code> 可以直接讀 live Grafana，也可以讀本機成品：</p>
+<ul><li>live：使用 <code>--url</code> 和 <code>--dashboard-uid</code></li><li>單一 local 成品：使用 <code>dashboard history export</code> 產生的 <code>--input &lt;history.json&gt;</code></li><li>export tree：使用 <code>dashboard export --include-history</code> 產生的 <code>--import-dir &lt;export-root&gt;</code></li></ul>
+<p><code>dashboard history restore</code> 仍然只支援 live。</p>
 <h2 id="重點旗標">重點旗標</h2>
-<ul><li><code>--dashboard-uid</code>：要檢視版本歷史的 dashboard UID。</li><li><code>--limit</code>：list 或 export 要包含多少個最近版本。</li><li><code>--version</code>：要還原的歷史版本號。</li><li><code>--message</code>：新還原 revision 要附帶的版本訊息。</li><li><code>--dry-run</code>：預覽還原，但不會真的變更 Grafana。</li><li><code>--yes</code>：確認真的執行還原。</li><li><code>--output-format</code>：把 list 或 restore 輸出成 text、table、json 或 yaml。</li><li><code>--output</code>：把匯出的歷史成品寫到 JSON 檔。</li><li><code>--overwrite</code>：覆蓋既有的匯出成品檔。</li></ul>
+<ul><li><code>--dashboard-uid</code>：要檢視版本歷史的 dashboard UID。做 live history list 與 restore 時必填；讀取 local export tree 時也可用來過濾特定 dashboard。</li><li><code>--input</code>：讀取 <code>dashboard history export</code> 產生的一份可重用 history 成品。</li><li><code>--import-dir</code>：讀取 <code>dashboard export --include-history</code> 產生的 export tree。</li><li><code>--limit</code>：list 或 export 要包含多少個最近版本。</li><li><code>--version</code>：要還原的歷史版本號。</li><li><code>--message</code>：新還原 revision 要附帶的版本訊息。</li><li><code>--dry-run</code>：預覽還原，但不會真的變更 Grafana。</li><li><code>--yes</code>：確認真的執行還原。</li><li><code>--output-format</code>：把 list 或 restore 輸出成 text、table、json 或 yaml。</li><li><code>--output</code>：把匯出的歷史成品寫到 JSON 檔。</li><li><code>--overwrite</code>：覆蓋既有的匯出成品檔。</li></ul>
 <h2 id="還原語意">還原語意</h2>
 <ul><li>被選到的歷史版本會被複製成新的最新 revision。</li><li>原本那個歷史版本仍然會保留在 dashboard history 中。</li><li><code>--dry-run</code> 只會顯示還原意圖，不會真的變更 Grafana。</li><li>真正要還原時，必須加上 <code>--yes</code>。</li></ul>
 <h2 id="給-ci-用的-json-contract">給 CI 用的 JSON contract</h2>
@@ -793,12 +797,16 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>判斷順序建議固定成：</p>
 <ol><li>先看 <code>kind</code></li><li>再確認 <code>schemaVersion</code></li><li>最後才往下讀巢狀欄位</li></ol>
 <p>常見對應：</p>
-<ul><li><code>dashboard history list --output-format json</code> -&gt; <code>grafana-util-dashboard-history-list</code></li><li><code>dashboard history restore --dry-run --output-format json</code> -&gt; <code>grafana-util-dashboard-history-restore</code></li><li><code>dashboard history restore --output-format json</code> -&gt; 同一種 contract，但 live 執行仍會建立新的 latest revision</li><li><code>dashboard history export --output ./cpu-main.history.json</code> -&gt; <code>grafana-util-dashboard-history-export</code></li></ul>
+<ul><li><code>dashboard history list --output-format json</code> -&gt; <code>grafana-util-dashboard-history-list</code></li><li><code>dashboard history list --import-dir ./dashboards --output-format json</code> -&gt; 如果沒有再用 <code>--dashboard-uid</code> 縮小，會是 <code>grafana-util-dashboard-history-inventory</code></li><li><code>dashboard history restore --dry-run --output-format json</code> -&gt; <code>grafana-util-dashboard-history-restore</code></li><li><code>dashboard history restore --output-format json</code> -&gt; 同一種 contract，但 live 執行仍會建立新的 latest revision</li><li><code>dashboard history export --output ./cpu-main.history.json</code> -&gt; <code>grafana-util-dashboard-history-export</code></li></ul>
 <p>幾個值得先記住的 top-level 欄位：</p>
-<ul><li>list -&gt; <code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>dashboardUid</code>、<code>versionCount</code>、<code>versions</code></li><li>restore -&gt; <code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>mode</code>、<code>dashboardUid</code>、<code>currentVersion</code>、<code>restoreVersion</code>、<code>currentTitle</code>、<code>restoredTitle</code>、可選的 <code>targetFolderUid</code>、<code>createsNewRevision</code>、<code>message</code></li><li>export -&gt; <code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>dashboardUid</code>、<code>currentVersion</code>、<code>currentTitle</code>、<code>versionCount</code>、<code>versions</code></li></ul>
+<ul><li>list -&gt; <code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>dashboardUid</code>、<code>versionCount</code>、<code>versions</code></li><li>list inventory -&gt; <code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>artifactCount</code>、<code>artifacts</code></li><li>restore -&gt; <code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>mode</code>、<code>dashboardUid</code>、<code>currentVersion</code>、<code>restoreVersion</code>、<code>currentTitle</code>、<code>restoredTitle</code>、可選的 <code>targetFolderUid</code>、<code>createsNewRevision</code>、<code>message</code></li><li>export -&gt; <code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>dashboardUid</code>、<code>currentVersion</code>、<code>currentTitle</code>、<code>versionCount</code>、<code>versions</code></li></ul>
 <h2 id="範例">範例</h2>
 <pre><code># 用途：列出最近 20 個 dashboard revision，方便審查。
 grafana-util dashboard history list --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --limit 20 --output-format table</code></pre>
+<pre><code># 用途：直接讀取一份匯出的 dashboard history 成品，並在本機列出版本。
+grafana-util dashboard history list --input ./cpu-main.history.json --output-format table</code></pre>
+<pre><code># 用途：讀取包含 history 的 dashboard export tree，並列出指定 dashboard 的版本。
+grafana-util dashboard history list --import-dir ./dashboards --dashboard-uid cpu-main --output-format table</code></pre>
 <pre><code># 用途：把某個歷史 dashboard revision 還原成新的最新 Grafana 版本。
 grafana-util dashboard history restore --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --version 17 --message &quot;Restore known good CPU dashboard after regression&quot; --dry-run --output-format table</code></pre>
 <pre><code># 用途：把最近的 dashboard history 匯出成可重用的 JSON 成品。
@@ -810,13 +818,13 @@ grafana-util dashboard history export --url http://localhost:3000 --token &quot;
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
 <ul><li>如果 list 是空的，先確認 dashboard UID 與驗證資訊是否真的看得到那個 dashboard</li><li>如果 restore 失敗，先確認目標版本是否存在，以及您是否已經加上 <code>--yes</code></li><li>如果 export 寫錯檔案或看起來像舊資料，先確認輸出路徑與 <code>--overwrite</code> 是否是您刻意要用的</li></ul>
 <h2 id="相關指令">相關指令</h2>
-<ul><li><a href="dashboard-list.html">dashboard list</a></li><li><a href="dashboard-analyze-live.html">dashboard analyze-live</a></li><li><a href="dashboard-analyze-export.html">dashboard analyze-export</a></li><li><a href="dashboard-review.html">dashboard review</a></li><li><a href="dashboard-export.html">dashboard export</a></li></ul>
+<ul><li><a href="dashboard-list.html">dashboard list</a></li><li><a href="dashboard-analyze-live.html">dashboard analyze（即時）</a></li><li><a href="dashboard-analyze-export.html">dashboard analyze（本地）</a></li><li><a href="dashboard-review.html">dashboard review</a></li><li><a href="dashboard-export.html">dashboard export</a></li></ul>
     
   </article>
   <aside class="sidebar">
   <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
   <div class="sidebar-content">
-    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#用途"><span class="toc-label">用途</span></a></li><li class="toc-level-2"><a href="#何時使用"><span class="toc-label">何時使用</span></a></li><li class="toc-level-2"><a href="#重點旗標"><span class="toc-label">重點旗標</span></a></li><li class="toc-level-2"><a href="#還原語意"><span class="toc-label">還原語意</span></a></li><li class="toc-level-2"><a href="#給-ci-用的-json-contract"><span class="toc-label">給 CI 用的 JSON contract</span></a></li><li class="toc-level-2"><a href="#範例"><span class="toc-label">範例</span></a></li><li class="toc-level-2"><a href="#採用前後對照"><span class="toc-label">採用前後對照</span></a></li><li class="toc-level-2"><a href="#成功判準"><span class="toc-label">成功判準</span></a></li><li class="toc-level-2"><a href="#失敗時先檢查"><span class="toc-label">失敗時先檢查</span></a></li><li class="toc-level-2"><a href="#相關指令"><span class="toc-label">相關指令</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/zh-TW/dashboard.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/dashboard-history.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#用途"><span class="toc-label">用途</span></a></li><li class="toc-level-2"><a href="#何時使用"><span class="toc-label">何時使用</span></a></li><li class="toc-level-2"><a href="#history-list-的來源"><span class="toc-label">history list 的來源</span></a></li><li class="toc-level-2"><a href="#重點旗標"><span class="toc-label">重點旗標</span></a></li><li class="toc-level-2"><a href="#還原語意"><span class="toc-label">還原語意</span></a></li><li class="toc-level-2"><a href="#給-ci-用的-json-contract"><span class="toc-label">給 CI 用的 JSON contract</span></a></li><li class="toc-level-2"><a href="#範例"><span class="toc-label">範例</span></a></li><li class="toc-level-2"><a href="#採用前後對照"><span class="toc-label">採用前後對照</span></a></li><li class="toc-level-2"><a href="#成功判準"><span class="toc-label">成功判準</span></a></li><li class="toc-level-2"><a href="#失敗時先檢查"><span class="toc-label">失敗時先檢查</span></a></li><li class="toc-level-2"><a href="#相關指令"><span class="toc-label">相關指令</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/zh-TW/dashboard.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/dashboard-history.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
   </div>
 </aside>
 

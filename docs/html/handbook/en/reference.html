@@ -791,12 +791,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>Use the dedicated <a href="../../commands/en/change.html">change command reference</a> when you need the exact top-level keys for each document.</p>
 <h3 id="dashboard-history-json-documents-for-ci"><code>dashboard history</code> JSON documents for CI</h3>
 <p><code>dashboard history</code> also exposes stable JSON contracts for automation.</p>
+<p>For local history inspection, <code>dashboard history list</code> can also read:</p>
+<ul><li>a single reusable artifact created by <code>dashboard history export --output ./cpu-main.history.json</code></li><li>an export tree created by <code>dashboard export --include-history --export-dir ./dashboards</code></li></ul>
+<p><code>dashboard history restore</code> remains live-only.</p>
 <p>The same routing rule applies:</p>
 <ol><li>inspect <code>kind</code></li><li>confirm <code>schemaVersion</code></li><li>only then branch on nested fields</li></ol>
 <p>Fast lookups from the CLI:</p>
 <ul><li><code>grafana-util dashboard history --help-schema</code></li><li><code>grafana-util dashboard history list --help-schema</code></li><li><code>grafana-util dashboard history restore --help-schema</code></li><li><code>grafana-util dashboard history export --help-schema</code></li></ul>
 <p>Practical mapping:</p>
-<ul><li><code>dashboard history list --output-format json</code> -&gt; <code>grafana-util-dashboard-history-list</code></li><li><code>dashboard history restore --dry-run --output-format json</code> -&gt; <code>grafana-util-dashboard-history-restore</code></li><li><code>dashboard history export --output ./cpu-main.history.json</code> -&gt; <code>grafana-util-dashboard-history-export</code></li></ul>
+<ul><li><code>dashboard history list --output-format json</code> -&gt; <code>grafana-util-dashboard-history-list</code></li><li><code>dashboard history list --import-dir ./dashboards --output-format json</code> -&gt; <code>grafana-util-dashboard-history-inventory</code> when no <code>--dashboard-uid</code> filter is present</li><li><code>dashboard history restore --dry-run --output-format json</code> -&gt; <code>grafana-util-dashboard-history-restore</code></li><li><code>dashboard history export --output ./cpu-main.history.json</code> -&gt; <code>grafana-util-dashboard-history-export</code></li></ul>
 <p>Use the dedicated <a href="../../commands/en/dashboard-history.html">dashboard history reference</a> when you need the exact top-level keys for each document.</p>
 <h2 id="profile-connection-and-secret-handling">Profile, connection, and secret handling</h2>
 <p>Profiles are repo-local. <code>grafana-util profile</code> reads and writes <code>grafana-util.yaml</code> in the current working directory, and <code>--profile</code> selects one named profile from that file.</p>
