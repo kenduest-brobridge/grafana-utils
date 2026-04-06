@@ -7,7 +7,7 @@ grafana\-util\-dashboard\-governance\-gate \- Evaluate governance policy against
 .SH DESCRIPTION
 Evaluate governance policy against dashboard inspect JSON artifacts.
 .PP
-Use this when you already have governance\-json and query\-report artifacts and want a policy pass or fail result before promotion.
+Use this when you want a policy pass or fail result before promotion. Prefer direct live or local analysis inputs for the common path; keep governance\-json and queries\-json for advanced reuse and CI pipelines.
 .SH BEFORE / AFTER
 .IP \(bu 2
 Before: teams can export dashboards and inspect them, but policy violations still need a human to spot them one by one.
@@ -23,6 +23,15 @@ policy file path when using file\-based policy input.
 .TP
 .B \-\-builtin\-policy
 named built\-in policy when using builtin policy input.
+.TP
+.B \-\-url
+analyze live Grafana directly.
+.TP
+.B \-\-import\-dir
+analyze a local export tree directly.
+.TP
+.B \-\-input\-format
+choose raw or provisioning when analyzing local exports.
 .TP
 .B \-\-governance
 path to dashboard inspect governance JSON.
@@ -56,7 +65,7 @@ if automation reads the result, prefer \-\-output\-format json and validate the 
 .PP
 Evaluate governance policy against dashboard inspect JSON artifacts.
 .EX
-grafana-util dashboard governance-gate --policy-source file --policy ./policy.yaml --governance ./governance.json --queries ./queries.json
+grafana-util dashboard governance-gate --url http://localhost:3000 --basic-user admin --basic-password admin --policy-source file --policy ./policy.yaml
 .EE
 .SH SEE ALSO
 \fBgrafana-util\fR(1),

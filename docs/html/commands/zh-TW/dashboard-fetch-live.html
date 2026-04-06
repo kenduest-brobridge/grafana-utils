@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>grafana-util-dashboard-get.1 · grafana-util docs</title>
+  <title>dashboard fetch-live · grafana-util docs</title>
   <style>:root {
   color-scheme: light dark;
   --font-scale: 1;
@@ -734,9 +734,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
   <div class="site">
     <div class="site-content">
       <div class="topbar">
-  <a class="brand" href="../index.html">grafana-util docs</a>
+  <a class="brand" href="../../index.html">grafana-util docs</a>
   <div class="themebar">
-    <select id="jump-select" aria-label="Jump"><option value="" selected>Jump to...</option><optgroup label="Handbook"><option value="../handbook/en/index.html">Overview</option><option value="../handbook/en/what-is-grafana-util.html">What grafana-util is for</option><option value="../handbook/en/getting-started.html">Getting Started</option><option value="../handbook/en/role-new-user.html">New User Handbook</option><option value="../handbook/en/role-sre-ops.html">SRE / Operator Handbook</option><option value="../handbook/en/role-automation-ci.html">Automation / CI Handbook</option><option value="../handbook/en/architecture.html">Architecture &amp; Design Principles</option><option value="../handbook/en/dashboard.html">Dashboard Operator Handbook</option><option value="../handbook/en/datasource.html">Datasource Operator Handbook</option><option value="../handbook/en/alert.html">Alert Operator Handbook</option><option value="../handbook/en/access.html">Access Management (Identity &amp; Access)</option><option value="../handbook/en/change-overview-status.html">Project Status &amp; Change Overview</option><option value="../handbook/en/scenarios.html">Operator Scenarios</option><option value="../handbook/en/recipes.html">Best Practices &amp; Real-World Recipes</option><option value="../handbook/en/reference.html">Technical Reference</option><option value="../handbook/en/troubleshooting.html">Troubleshooting &amp; Glossary</option></optgroup><optgroup label="Commands"><option value="../commands/en/dashboard.html">Dashboard</option><option value="../commands/en/alert.html">Alert</option><option value="../commands/en/datasource.html">Datasource</option><option value="../commands/en/access.html">Access</option><option value="../commands/en/profile.html">Profile</option><option value="../commands/en/status.html">Status</option><option value="../commands/en/overview.html">Overview</option><option value="../commands/en/change.html">Change</option><option value="../commands/en/snapshot.html">Snapshot</option></optgroup></select>
+    <select id="page-locale-select" aria-label="Language switch"><option value="" selected>Language: 繁體中文</option><option value="../en/dashboard-fetch-live.html">Switch to English</option></select><select id="jump-select" aria-label="Jump"><option value="" selected>快速跳轉...</option><optgroup label="使用手冊"><option value="../../handbook/zh-TW/index.html">概觀</option><option value="../../handbook/zh-TW/what-is-grafana-util.html">這個工具是做什麼的</option><option value="../../handbook/zh-TW/getting-started.html">開始使用</option><option value="../../handbook/zh-TW/role-new-user.html">新手快速入門</option><option value="../../handbook/zh-TW/role-sre-ops.html">SRE / 維運角色導讀</option><option value="../../handbook/zh-TW/role-automation-ci.html">自動化 / CI 角色導讀</option><option value="../../handbook/zh-TW/architecture.html">系統架構與設計原則</option><option value="../../handbook/zh-TW/dashboard.html">Dashboard 維運人員手冊</option><option value="../../handbook/zh-TW/datasource.html">Data source 維運手冊</option><option value="../../handbook/zh-TW/alert.html">Alert 維運人員手冊</option><option value="../../handbook/zh-TW/access.html">身分與存取管理</option><option value="../../handbook/zh-TW/change-overview-status.html">專案狀態與變更總覽</option><option value="../../handbook/zh-TW/scenarios.html">維運情境手冊</option><option value="../../handbook/zh-TW/recipes.html">實戰錦囊與最佳實踐</option><option value="../../handbook/zh-TW/reference.html">技術參考手冊</option><option value="../../handbook/zh-TW/troubleshooting.html">疑難排解與名詞解釋</option></optgroup><optgroup label="指令參考"><option value="dashboard.html">Dashboard</option><option value="alert.html">Alert</option><option value="datasource.html">Datasource</option><option value="access.html">Access</option><option value="profile.html">Profile</option><option value="status.html">Status</option><option value="overview.html">Overview</option><option value="change.html">Change</option><option value="snapshot.html">Snapshot</option></optgroup></select>
     <select id="font-select" aria-label="Font Size">
       <option value="0.9">Font: Compact</option>
       <option value="1">Font: Default</option>
@@ -754,33 +754,58 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
       <div class="layout">
   <aside class="nav-sidebar">
   <button class="sidebar-toggle sidebar-toggle-left" type="button" aria-expanded="true" aria-label="Toggle handbook navigation">◀</button>
-  <div class="nav-sidebar-content"><section class="nav-section"><h2>Guide Map</h2><div class="nav-group-block"><div class="nav-group-title">Start</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../handbook/en/index.html" class="nav-item">Overview</a></li><li class="nav-tree-node"><a href="../handbook/en/what-is-grafana-util.html" class="nav-item">What grafana-util is for</a></li><li class="nav-tree-node"><a href="../handbook/en/getting-started.html" class="nav-item">Getting Started</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Role Paths</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../handbook/en/role-new-user.html" class="nav-item">New User Handbook</a></li><li class="nav-tree-node"><a href="../handbook/en/role-sre-ops.html" class="nav-item">SRE / Operator Handbook</a></li><li class="nav-tree-node"><a href="../handbook/en/role-automation-ci.html" class="nav-item">Automation / CI Handbook</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Core Operations</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../handbook/en/dashboard.html" class="nav-item">Dashboard Operator Handbook</a></li><li class="nav-tree-node"><a href="../handbook/en/datasource.html" class="nav-item">Datasource Operator Handbook</a></li><li class="nav-tree-node"><a href="../handbook/en/alert.html" class="nav-item">Alert Operator Handbook</a></li><li class="nav-tree-node"><a href="../handbook/en/access.html" class="nav-item">Access Management (Identity &amp; Access)</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Governance</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../handbook/en/architecture.html" class="nav-item">Architecture &amp; Design Principles</a></li><li class="nav-tree-node"><a href="../handbook/en/change-overview-status.html" class="nav-item">Project Status &amp; Change Overview</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Scenarios &amp; Reference</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../handbook/en/scenarios.html" class="nav-item">Operator Scenarios</a></li><li class="nav-tree-node"><a href="../handbook/en/recipes.html" class="nav-item">Best Practices &amp; Real-World Recipes</a></li><li class="nav-tree-node"><a href="../handbook/en/reference.html" class="nav-item">Technical Reference</a></li><li class="nav-tree-node"><a href="../handbook/en/troubleshooting.html" class="nav-item">Troubleshooting &amp; Glossary</a></li></ul></div></section><section class="nav-section"><h2>Command Entry</h2><a href="../commands/en/index.html" class="nav-command-entry">Open command docs</a></section></div>
+  <div class="nav-sidebar-content"><section class="nav-section"><h2>手冊導覽</h2><div class="nav-group-block"><div class="nav-group-title">開始</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/zh-TW/index.html" class="nav-item">概觀</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/what-is-grafana-util.html" class="nav-item">這個工具是做什麼的</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/getting-started.html" class="nav-item">開始使用</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">角色路徑</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/zh-TW/role-new-user.html" class="nav-item">新手快速入門</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/role-sre-ops.html" class="nav-item">SRE / 維運角色導讀</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/role-automation-ci.html" class="nav-item">自動化 / CI 角色導讀</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">核心操作</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/zh-TW/dashboard.html" class="nav-item">Dashboard 維運人員手冊</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/datasource.html" class="nav-item">Data source 維運手冊</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/alert.html" class="nav-item">Alert 維運人員手冊</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/access.html" class="nav-item">身分與存取管理</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">治理</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/zh-TW/architecture.html" class="nav-item">系統架構與設計原則</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/change-overview-status.html" class="nav-item">專案狀態與變更總覽</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">實戰與參考</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../../handbook/zh-TW/scenarios.html" class="nav-item">維運情境手冊</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/recipes.html" class="nav-item">實戰錦囊與最佳實踐</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/reference.html" class="nav-item">技術參考手冊</a></li><li class="nav-tree-node"><a href="../../handbook/zh-TW/troubleshooting.html" class="nav-item">疑難排解與名詞解釋</a></li></ul></div></section><section class="nav-section"><h2>指令入口</h2><a href="index.html" class="nav-command-entry active">開啟指令參考</a></section></div>
 </aside>
 
   <article class="article">
-    <div class="breadcrumbs"><a href="../index.html">Home</a> / <a href="index.html">Manpages</a> / grafana-util-dashboard-get.1</div>
+    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / dashboard fetch-live</div>
 
-    <h1><span class="hero-title-main">grafana-util-dashboard-get.1</span></h1>
-<p class="hero-summary">Browser-readable rendering of a generated roff manpage.</p>
+    <h1><span class="hero-title-main">dashboard fetch-live</span></h1>
 
-    <div class="manpage-intro">
-  <p>This page renders the generated roff manpage into readable HTML for browser use. For richer per-subcommand detail, prefer the command-reference pages.</p>
-  <div class="manpage-rendered"><section class="man-section"><h2>NAME</h2><p>grafana-util-dashboard-get - Fetch one live dashboard into an API-safe local JSON draft.</p></section><section class="man-section"><h2>SYNOPSIS</h2><p><strong>grafana-util dashboard get [<em>OPTIONS</em>]</strong></p></section><section class="man-section"><h2>DESCRIPTION</h2><p>Fetch one live dashboard into an API-safe local JSON draft.</p><p>Use this when you need a local copy of one live dashboard for review, patching, cloning, or later publish work.</p></section><section class="man-section"><h2>COMMON OPTIONS</h2><dl class="man-definitions"><dt><strong>--dashboard-uid</strong></dt><dd>live Grafana dashboard UID to fetch.</dd><dt><strong>--output</strong></dt><dd>write the fetched draft to this path.</dd><dt><strong>Shared live flags</strong></dt><dd>--url, --token, --basic-user, --basic-password, --profile.</dd></dl></section><section class="man-section"><h2>EXAMPLES</h2><p>Fetch one live dashboard into an API-safe local JSON draft.</p><pre class="man-example"><code>grafana-util dashboard get --profile prod --dashboard-uid cpu-main --output ./cpu-main.json</code></pre></section><section class="man-section"><h2>SEE ALSO</h2><p><strong>grafana-util</strong>(1), <strong>grafana-util-dashboard</strong>(1)</p></section></div>
+
+    <section class="command-intro">
+  <div class="command-intro-grid"><div class="command-intro-block">
+  <p class="command-intro-label">這頁在說什麼</p>
+  <p class="command-intro-text">將一個線上儀表板抓取成 API 安全的本地 JSON 草稿。</p>
 </div>
-
+<div class="command-intro-block">
+  <p class="command-intro-label">什麼時候看這頁</p>
+  <ul class="command-intro-list"><li>當您需要把某個線上儀表板複製成本地版本，方便檢視、修補、複製或後續發佈時，使用這個指令。</li></ul>
+</div>
+<div class="command-intro-block">
+  <p class="command-intro-label">適合誰</p>
+  <p class="command-intro-text">適合 SRE、Grafana 維運人員，以及要處理 dashboard 盤點、搬遷、檢查或截圖的人。</p>
+</div>
+</div>
+</section>
+<h2 id="用途">用途</h2>
+<p>將一個線上儀表板抓取成 API 安全的本地 JSON 草稿。</p>
+<h2 id="何時使用">何時使用</h2>
+<p>當您需要把某個線上儀表板複製成本地版本，方便檢視、修補、複製或後續發佈時，使用這個指令。</p>
+<h2 id="重點旗標">重點旗標</h2>
+<ul><li><code>--dashboard-uid</code>：要抓取的線上 Grafana 儀表板 UID。</li><li><code>--output</code>：將抓回來的草稿寫到這個路徑。</li><li>共用線上旗標：<code>--url</code>、<code>--token</code>、<code>--basic-user</code>、<code>--basic-password</code>、<code>--profile</code>。</li></ul>
+<h2 id="範例">範例</h2>
+<pre><code># 用途：將一個線上儀表板抓取成 API 安全的本地 JSON 草稿。
+grafana-util dashboard fetch-live --profile prod --dashboard-uid cpu-main --output ./cpu-main.json</code></pre>
+<pre><code># 用途：將一個線上儀表板抓取成 API 安全的本地 JSON 草稿。
+grafana-util dashboard fetch-live --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --output ./cpu-main.json</code></pre>
+<pre><code># 用途：將一個線上儀表板抓取成 API 安全的本地 JSON 草稿。
+grafana-util dashboard fetch-live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --dashboard-uid cpu-main --output ./cpu-main.json</code></pre>
+<h2 id="相關指令">相關指令</h2>
+<ul><li><a href="dashboard-clone-live.html">dashboard clone-live</a></li><li><a href="dashboard-patch-file.html">dashboard patch-file</a></li><li><a href="dashboard-review.html">dashboard review</a></li></ul>
     
   </article>
   <aside class="sidebar">
   <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
   <div class="sidebar-content">
-    <section class="sidebar-section"><h2>On This Page</h2><p>This page renders the generated manpage into readable HTML sections.</p></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="index.html" class="sidebar-meta-link">Manpage index</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><p>English only. The manpage lane currently generates from English command docs.</p></section>
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#用途"><span class="toc-label">用途</span></a></li><li class="toc-level-2"><a href="#何時使用"><span class="toc-label">何時使用</span></a></li><li class="toc-level-2"><a href="#重點旗標"><span class="toc-label">重點旗標</span></a></li><li class="toc-level-2"><a href="#範例"><span class="toc-label">範例</span></a></li><li class="toc-level-2"><a href="#相關指令"><span class="toc-label">相關指令</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/zh-TW/dashboard.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/dashboard-fetch-live.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
   </div>
 </aside>
 
 </div>
 
     </div>
-    <footer class="site-footer">Source: <code>docs/man/grafana-util-dashboard-get.1</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+    <footer class="site-footer">Source: dashboard-fetch-live.md</footer>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js" async></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" async></script>

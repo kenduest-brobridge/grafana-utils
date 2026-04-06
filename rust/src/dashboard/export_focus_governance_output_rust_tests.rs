@@ -1,8 +1,10 @@
 //! Dashboard governance output contract regressions.
 use super::super::test_support;
 use super::super::{
+    CommonCliArgs, DashboardImportInputFormat,
     render_dashboard_governance_gate_result, GovernanceGateArgs, GovernanceGateOutputFormat,
 };
+use crate::common::CliColorChoice;
 use crate::dashboard::GovernancePolicySource;
 use serde_json::{json, Value};
 use std::fs;
@@ -17,6 +19,21 @@ fn read_json_output_file(path: &Path) -> Value {
         path.display()
     );
     serde_json::from_str(&raw).unwrap()
+}
+
+fn make_common_args() -> CommonCliArgs {
+    CommonCliArgs {
+        color: CliColorChoice::Never,
+        profile: None,
+        url: "http://127.0.0.1:3000".to_string(),
+        api_token: None,
+        username: None,
+        password: None,
+        prompt_password: false,
+        prompt_token: false,
+        timeout: 30,
+        verify_ssl: false,
+    }
 }
 
 #[test]
@@ -167,11 +184,18 @@ fn run_dashboard_governance_gate_writes_json_output_file() {
     .unwrap();
 
     let args = GovernanceGateArgs {
+        common: make_common_args(),
+        page_size: 500,
+        org_id: None,
+        all_orgs: false,
+        import_dir: None,
+        input_format: DashboardImportInputFormat::Raw,
+        input_type: None,
         policy_source: GovernancePolicySource::File,
         policy: Some(policy_path),
         builtin_policy: None,
-        governance: governance_path,
-        queries: queries_path,
+        governance: Some(governance_path),
+        queries: Some(queries_path),
         output_format: GovernanceGateOutputFormat::Json,
         json_output: Some(json_output.clone()),
         interactive: false,
@@ -281,11 +305,18 @@ enforcement:
     .unwrap();
 
     let args = GovernanceGateArgs {
+        common: make_common_args(),
+        page_size: 500,
+        org_id: None,
+        all_orgs: false,
+        import_dir: None,
+        input_format: DashboardImportInputFormat::Raw,
+        input_type: None,
         policy_source: GovernancePolicySource::File,
         policy: Some(policy_path),
         builtin_policy: None,
-        governance: governance_path,
-        queries: queries_path,
+        governance: Some(governance_path),
+        queries: Some(queries_path),
         output_format: GovernanceGateOutputFormat::Text,
         json_output: None,
         interactive: false,
@@ -377,11 +408,18 @@ fn run_dashboard_governance_gate_uses_builtin_policy_source() {
     .unwrap();
 
     let args = GovernanceGateArgs {
+        common: make_common_args(),
+        page_size: 500,
+        org_id: None,
+        all_orgs: false,
+        import_dir: None,
+        input_format: DashboardImportInputFormat::Raw,
+        input_type: None,
         policy_source: GovernancePolicySource::Builtin,
         policy: None,
         builtin_policy: Some("default".to_string()),
-        governance: governance_path,
-        queries: queries_path,
+        governance: Some(governance_path),
+        queries: Some(queries_path),
         output_format: GovernanceGateOutputFormat::Json,
         json_output: Some(json_output.clone()),
         interactive: false,

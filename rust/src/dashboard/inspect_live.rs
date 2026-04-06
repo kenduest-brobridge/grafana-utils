@@ -69,13 +69,19 @@ impl Drop for TempInspectDir {
     }
 }
 
-fn build_live_export_args(args: &InspectLiveArgs, export_dir: PathBuf) -> ExportArgs {
+pub(crate) fn build_analysis_live_export_args(
+    common: &crate::dashboard::CommonCliArgs,
+    export_dir: PathBuf,
+    page_size: usize,
+    org_id: Option<i64>,
+    all_orgs: bool,
+) -> ExportArgs {
     ExportArgs {
-        common: args.common.clone(),
+        common: common.clone(),
         export_dir,
-        page_size: args.page_size,
-        org_id: args.org_id,
-        all_orgs: args.all_orgs,
+        page_size,
+        org_id,
+        all_orgs,
         flat: false,
         overwrite: false,
         without_dashboard_raw: false,
@@ -89,9 +95,34 @@ fn build_live_export_args(args: &InspectLiveArgs, export_dir: PathBuf) -> Export
         provisioning_provider_allow_ui_updates: false,
         provisioning_provider_update_interval_seconds: 30,
         dry_run: false,
-        progress: args.progress,
+        progress: false,
         verbose: false,
     }
+}
+
+fn build_live_export_args(args: &InspectLiveArgs, export_dir: PathBuf) -> ExportArgs {
+    let mut export_args = build_analysis_live_export_args(
+        &args.common,
+        export_dir,
+        args.page_size,
+        args.org_id,
+        args.all_orgs,
+    );
+    export_args.progress = args.progress;
+    export_args
+}
+
+pub(crate) fn prepare_live_analysis_import_dir(temp_root: &Path, all_orgs: bool) -> Result<PathBuf> {
+    if !all_orgs {
+        return Ok(temp_root.join(RAW_EXPORT_SUBDIR));
+    }
+
+    let inspect_raw_dir = temp_root
+        .join("inspect-live-all-orgs")
+        .join(RAW_EXPORT_SUBDIR);
+    let org_raw_dirs = discover_org_variant_export_dirs(temp_root, RAW_EXPORT_SUBDIR)?;
+    merge_org_variant_exports_into_dir(&org_raw_dirs, &inspect_raw_dir, None, RAW_EXPORT_SUBDIR)?;
+    Ok(inspect_raw_dir)
 }
 
 fn build_live_scan_progress_bar(total: usize) -> ProgressBar {
@@ -376,7 +407,6 @@ fn build_export_inspect_args_from_live(
         json: args.json,
         table: args.table,
         yaml: args.yaml,
-        report: args.report,
         output_format: args.output_format,
         output_file: args.output_file.clone(),
         also_stdout: args.also_stdout,
@@ -544,16 +574,7 @@ pub(crate) fn prepare_inspect_live_import_dir(
     temp_root: &Path,
     args: &InspectLiveArgs,
 ) -> Result<PathBuf> {
-    if !args.all_orgs {
-        return Ok(temp_root.join(RAW_EXPORT_SUBDIR));
-    }
-
-    let inspect_raw_dir = temp_root
-        .join("inspect-live-all-orgs")
-        .join(RAW_EXPORT_SUBDIR);
-    let org_raw_dirs = discover_org_variant_export_dirs(temp_root, RAW_EXPORT_SUBDIR)?;
-    merge_org_variant_exports_into_dir(&org_raw_dirs, &inspect_raw_dir, None, RAW_EXPORT_SUBDIR)?;
-    Ok(inspect_raw_dir)
+    prepare_live_analysis_import_dir(temp_root, args.all_orgs)
 }
 
 #[cfg(test)]

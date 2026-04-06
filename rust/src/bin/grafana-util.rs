@@ -5,7 +5,10 @@
 //! - Fall back to normal unified CLI parse and dispatch.
 //! - Print any top-level error and exit with status 1.
 use grafana_utils_rust::cli::{maybe_render_unified_help_from_os_args, parse_cli_from, run_cli};
-use grafana_utils_rust::dashboard::maybe_render_dashboard_help_full_from_os_args;
+use grafana_utils_rust::dashboard::{
+    maybe_render_dashboard_help_full_from_os_args,
+    maybe_render_dashboard_subcommand_help_from_os_args,
+};
 use std::io::IsTerminal;
 
 /// Binary entrypoint for the Rust unified CLI.
@@ -24,6 +27,12 @@ fn main() {
     }
     // Dashboard help has special formatting behavior; keep this dispatch before parse.
     if let Some(help_text) = maybe_render_dashboard_help_full_from_os_args(args.clone()) {
+        print!("{help_text}");
+        return;
+    }
+    if let Some(help_text) =
+        maybe_render_dashboard_subcommand_help_from_os_args(args.clone(), std::io::stdout().is_terminal())
+    {
         print!("{help_text}");
         return;
     }

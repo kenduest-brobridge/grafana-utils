@@ -38,6 +38,6 @@ grafana-util dashboard edit-live --profile prod --dashboard-uid cpu-main --apply
 ```
 
 ## 相關指令
-- [dashboard get](./dashboard-get.md)
+- [dashboard fetch-live](./dashboard-fetch-live.md)
 - [dashboard clone-live](./dashboard-clone-live.md)
 - [dashboard publish](./dashboard-publish.md)

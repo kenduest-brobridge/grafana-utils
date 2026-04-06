@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">Analyze dashboard export directories with operator-summary and report-contract views.</p>
+  <p class="command-intro-text">Analyze dashboard export directories through the canonical dashboard analyze command.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>Use this when you want to read a local export tree, inspect its structure, or render governance and dependency reports without contacting Grafana.</li></ul>
+  <ul class="command-intro-list"><li>Use this when you want to read a local export tree, inspect its structure, or render governance and dependency views without contacting Grafana. Prefer dashboard analyze --import-dir ... in new docs and scripts.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -779,22 +779,22 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="purpose">Purpose</h2>
-<p>Analyze dashboard export directories with operator-summary and report-contract views.</p>
+<p>Analyze dashboard export directories through the canonical <code>dashboard analyze</code> command.</p>
 <h2 id="when-to-use">When to use</h2>
-<p>Use this when you want to read a local export tree, inspect its structure, or render governance and dependency reports without contacting Grafana.</p>
+<p>Use this when you want to read a local export tree, inspect its structure, or render governance and dependency views without contacting Grafana. Prefer <code>dashboard analyze --import-dir ...</code> in new docs and scripts.</p>
 <h2 id="before-after">Before / After</h2>
 <ul><li><strong>Before</strong>: an export tree is just a folder of JSON files, and you still have to guess which dashboards, variables, or policy checks matter.</li><li><strong>After</strong>: one analysis pass turns that tree into operator views you can review, hand to CI, or feed into later checks such as <code>topology</code> and <code>governance-gate</code>.</li></ul>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--import-dir</code>: dashboard export root to analyze.</li><li><code>--input-format</code>: choose <code>raw</code> or <code>provisioning</code>.</li><li><code>--input-type</code>: select <code>raw</code> or <code>source</code> when the export root has multiple dashboard variants.</li><li><code>--report</code>: render table, csv, json, tree, tree-table, dependency, dependency-json, governance, or governance-json views.</li><li><code>--output-format</code>: single-flag output selector.</li><li><code>--interactive</code>: open the shared analysis workbench.</li><li><code>--output-file</code>: write the result to disk.</li><li><code>--no-header</code>: suppress table-like headers.</li></ul>
+<ul><li><code>--import-dir</code>: dashboard export root to analyze.</li><li><code>--input-format</code>: choose <code>raw</code> or <code>provisioning</code>.</li><li><code>--input-type</code>: select <code>raw</code> or <code>source</code> when the export root has multiple dashboard variants.</li><li><code>--output-format</code>: render <code>text</code>, <code>table</code>, <code>csv</code>, <code>json</code>, <code>yaml</code>, <code>tree</code>, <code>tree-table</code>, <code>dependency</code>, <code>dependency-json</code>, <code>governance</code>, <code>governance-json</code>, or <code>queries-json</code> views.</li><li><code>--interactive</code>: open the shared analysis workbench.</li><li><code>--output-file</code>: write the result to disk.</li><li><code>--no-header</code>: suppress table-like headers.</li></ul>
 <h2 id="examples">Examples</h2>
-<pre><code># Purpose: Analyze dashboard export directories with operator-summary and report-contract views.
-grafana-util dashboard analyze-export --import-dir ./dashboards/raw --input-format raw --table</code></pre>
-<pre><code># Purpose: Analyze dashboard export directories with operator-summary and report-contract views.
-grafana-util dashboard analyze-export --import-dir ./dashboards/provisioning --input-format provisioning --report governance-json</code></pre>
+<pre><code># Purpose: Analyze dashboard export directories through the canonical dashboard analyze command.
+grafana-util dashboard analyze --import-dir ./dashboards/raw --input-format raw --output-format table</code></pre>
+<pre><code># Purpose: Analyze dashboard export directories through the canonical dashboard analyze command.
+grafana-util dashboard analyze --import-dir ./dashboards/provisioning --input-format provisioning --output-format governance-json</code></pre>
 <h2 id="what-success-looks-like">What success looks like</h2>
 <ul><li>you can explain what is inside an export tree without manually opening dozens of dashboard files</li><li>governance or dependency output is stable enough to hand to CI or a second operator</li><li>later checks such as <code>dashboard topology</code>, <code>dashboard impact</code>, or <code>dashboard governance-gate</code> can start from the inspect artifacts instead of re-reading the raw tree</li></ul>
 <h2 id="failure-checks">Failure checks</h2>
-<ul><li>if the export tree looks incomplete, confirm whether you are pointing at <code>raw</code> or <code>provisioning</code> content before you trust the report</li><li>if a later command cannot consume the result, check whether you emitted <code>governance-json</code> or another report shape by mistake</li><li>if the tree came from an older export, rerun <code>dashboard export</code> first so you do not analyze stale files</li></ul>
+<ul><li>if the export tree looks incomplete, confirm whether you are pointing at <code>raw</code> or <code>provisioning</code> content before you trust the report</li><li>if a later command cannot consume the result, check whether you emitted <code>governance-json</code> or another analysis artifact shape by mistake</li><li>if the tree came from an older export, rerun <code>dashboard export</code> first so you do not analyze stale files</li></ul>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-diff.html">dashboard diff</a></li><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li></ul>
     

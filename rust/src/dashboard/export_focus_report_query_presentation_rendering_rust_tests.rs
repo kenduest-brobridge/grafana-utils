@@ -18,7 +18,6 @@ fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
         json: false,
         table: false,
         yaml: false,
-        report: None,
         output_format: None,
         report_columns: Vec::new(),
         report_filter_datasource: None,
@@ -33,7 +32,7 @@ fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
     let error = test_support::validate_inspect_export_report_args(&args).unwrap_err();
     assert!(error
         .to_string()
-        .contains("--report-filter-panel-id is only supported together with --report or report-like --output-format"));
+        .contains("--report-filter-panel-id is only supported together with table, csv, tree-table, dependency, dependency-json, governance, governance-json, or queries-json output."));
 }
 
 #[test]

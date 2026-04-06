@@ -30,5 +30,5 @@ grafana-util dashboard browse --url http://localhost:3000 --token "$GRAFANA_API_
 
 ## 相關指令
 - [dashboard list](./dashboard-list.md)
-- [dashboard get](./dashboard-get.md)
+- [dashboard fetch-live](./dashboard-fetch-live.md)
 - [dashboard delete](./dashboard-delete.md)

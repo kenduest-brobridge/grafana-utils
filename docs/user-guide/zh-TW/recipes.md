@@ -81,10 +81,10 @@
 
 ```bash
 # 用途：解決方案：匯入前先跑 pre-import inspection。
-grafana-util dashboard analyze-export --import-dir ./backups/raw --output-format report-table
+grafana-util dashboard analyze --import-dir ./backups/raw --input-format raw --output-format dependency
 ```
 
-**檢查重點**：確認報告中 `Sources` 欄位列出的每個 UID，都存在於目標環境的 `datasource list`。
+**檢查重點**：確認依賴報告列出的每個 datasource，都存在於目標環境的 `datasource list`。
 
 **適合什麼時候用**：正式匯入前、promotion bundle 送審前，或確認某批 dashboard export 是否真的可攜時。
 

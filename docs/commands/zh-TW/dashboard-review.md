@@ -30,4 +30,4 @@ jsonnet dashboards/cpu.jsonnet | grafana-util dashboard review --input - --outpu
 ## 相關指令
 - [dashboard patch-file](./dashboard-patch-file.md)
 - [dashboard publish](./dashboard-publish.md)
-- [dashboard analyze-export](./dashboard-analyze-export.md)
+- [dashboard analyze（本地）](./dashboard-analyze-export.md)

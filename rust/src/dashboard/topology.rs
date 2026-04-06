@@ -7,6 +7,7 @@ use crate::common::{
     emit_plain_output, load_json_object_file, render_json_value, should_print_stdout, Result,
 };
 
+use super::analysis_source::{resolve_dashboard_analysis_artifacts, DashboardAnalysisSourceArgs};
 use super::{
     write_json_document, ImpactArgs, ImpactOutputFormat, TopologyArgs, TopologyOutputFormat,
 };
@@ -325,12 +326,23 @@ fn build_impact_interactive_summary(document: &ImpactDocument) -> Vec<String> {
 }
 
 pub(crate) fn run_dashboard_topology(args: &TopologyArgs) -> Result<()> {
-    let governance = load_object(&args.governance)?;
+    let artifacts = resolve_dashboard_analysis_artifacts(&DashboardAnalysisSourceArgs {
+        common: &args.common,
+        page_size: args.page_size,
+        org_id: args.org_id,
+        all_orgs: args.all_orgs,
+        import_dir: args.import_dir.as_deref(),
+        input_format: args.input_format,
+        input_type: args.input_type,
+        governance: args.governance.as_deref(),
+        queries: args.queries.as_deref(),
+        require_queries: false,
+    })?;
     let alert_contract = match args.alert_contract.as_ref() {
         Some(path) => Some(load_object(path)?),
         None => None,
     };
-    let document = build_topology_document(&governance, alert_contract.as_ref())?;
+    let document = build_topology_document(&artifacts.governance, alert_contract.as_ref())?;
     if args.interactive {
         #[cfg(all(feature = "tui", not(test)))]
         {
@@ -384,13 +396,24 @@ pub(crate) fn run_dashboard_topology(args: &TopologyArgs) -> Result<()> {
 }
 
 pub(crate) fn run_dashboard_impact(args: &ImpactArgs) -> Result<()> {
-    let governance = load_object(&args.governance)?;
+    let artifacts = resolve_dashboard_analysis_artifacts(&DashboardAnalysisSourceArgs {
+        common: &args.common,
+        page_size: args.page_size,
+        org_id: args.org_id,
+        all_orgs: args.all_orgs,
+        import_dir: args.import_dir.as_deref(),
+        input_format: args.input_format,
+        input_type: args.input_type,
+        governance: args.governance.as_deref(),
+        queries: args.queries.as_deref(),
+        require_queries: false,
+    })?;
     let alert_contract = match args.alert_contract.as_ref() {
         Some(path) => Some(load_object(path)?),
         None => None,
     };
     let document =
-        build_impact_document(&governance, alert_contract.as_ref(), &args.datasource_uid)?;
+        build_impact_document(&artifacts.governance, alert_contract.as_ref(), &args.datasource_uid)?;
     if args.interactive {
         #[cfg(all(feature = "tui", not(test)))]
         {
@@ -419,9 +442,25 @@ pub(crate) fn run_dashboard_impact(args: &ImpactArgs) -> Result<()> {
 #[cfg(test)]
 mod output_contract_tests {
     use super::*;
+    use crate::common::CliColorChoice;
     use serde_json::json;
     use std::fs;
     use tempfile::tempdir;
+
+    fn make_common_args() -> crate::dashboard::CommonCliArgs {
+        crate::dashboard::CommonCliArgs {
+            color: CliColorChoice::Never,
+            profile: None,
+            url: "http://127.0.0.1:3000".to_string(),
+            api_token: None,
+            username: None,
+            password: None,
+            prompt_password: false,
+            prompt_token: false,
+            timeout: 30,
+            verify_ssl: false,
+        }
+    }
 
     #[test]
     fn run_dashboard_topology_writes_plain_text_output_file_and_keeps_also_stdout_enabled() {
@@ -458,7 +497,14 @@ mod output_contract_tests {
         .unwrap();
 
         run_dashboard_topology(&TopologyArgs {
-            governance,
+            common: make_common_args(),
+            page_size: 500,
+            org_id: None,
+            all_orgs: false,
+            import_dir: None,
+            input_format: crate::dashboard::DashboardImportInputFormat::Raw,
+            input_type: None,
+            governance: Some(governance),
             queries: None,
             alert_contract: None,
             output_format: TopologyOutputFormat::Text,

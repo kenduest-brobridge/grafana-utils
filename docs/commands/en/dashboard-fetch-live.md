@@ -1,4 +1,4 @@
-# dashboard get
+# dashboard fetch-live
 
 ## Purpose
 Fetch one live dashboard into an API-safe local JSON draft.
@@ -14,12 +14,12 @@ Use this when you need a local copy of one live dashboard for review, patching, 
 ## Examples
 ```bash
 # Purpose: Fetch one live dashboard into an API-safe local JSON draft.
-grafana-util dashboard get --profile prod --dashboard-uid cpu-main --output ./cpu-main.json
+grafana-util dashboard fetch-live --profile prod --dashboard-uid cpu-main --output ./cpu-main.json
 ```
 
 ```bash
 # Purpose: Fetch one live dashboard into an API-safe local JSON draft.
-grafana-util dashboard get --profile prod --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --output ./cpu-main.json
+grafana-util dashboard fetch-live --profile prod --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --output ./cpu-main.json
 ```
 
 ## Related commands

@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">這頁在說什麼</p>
-  <p class="command-intro-text">透過暫時的 raw export 快照分析線上 Grafana 儀表板。</p>
+  <p class="command-intro-text">透過 canonical 的 dashboard analyze 指令分析 live Grafana。</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">什麼時候看這頁</p>
-  <ul class="command-intro-list"><li>當您需要和 analyze-export 相同的分析方式，但來源是線上 Grafana 而不是本地匯出樹時，使用這個指令。</li></ul>
+  <ul class="command-intro-list"><li>當您需要和本地匯出樹相同的分析方式，但來源是線上 Grafana 而不是本地匯出樹時，使用這個頁面。新文件與腳本請優先使用 grafana-util dashboard analyze --url ...。</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">適合誰</p>
@@ -779,20 +779,20 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="用途">用途</h2>
-<p>透過暫時的 raw export 快照分析線上 Grafana 儀表板。</p>
+<p>透過 canonical 的 <code>dashboard analyze</code> 指令分析 live Grafana。</p>
 <h2 id="何時使用">何時使用</h2>
-<p>當您需要和 <code>analyze-export</code> 相同的分析方式，但來源是線上 Grafana 而不是本地匯出樹時，使用這個指令。</p>
+<p>當您需要和本地匯出樹相同的分析方式，但來源是線上 Grafana 而不是本地匯出樹時，使用這個頁面。新文件與腳本請優先使用 <code>grafana-util dashboard analyze --url ...</code>。</p>
 <h2 id="重點旗標">重點旗標</h2>
-<ul><li><code>--page-size</code>：儀表板搜尋的每頁筆數。</li><li><code>--concurrency</code>：最大平行抓取工作數。</li><li><code>--org-id</code>：分析指定的 Grafana org。</li><li><code>--all-orgs</code>：跨所有可見 org 分析。</li><li><code>--report</code>、<code>--output-format</code>、<code>--output-file</code>、<code>--interactive</code>、<code>--no-header</code>：輸出控制。</li><li><code>--progress</code>：顯示抓取進度。</li></ul>
+<ul><li><code>--page-size</code>：儀表板搜尋的每頁筆數。</li><li><code>--concurrency</code>：最大平行抓取工作數。</li><li><code>--org-id</code>：分析指定的 Grafana org。</li><li><code>--all-orgs</code>：跨所有可見 org 分析。</li><li><code>--output-format</code>、<code>--output-file</code>、<code>--interactive</code>、<code>--no-header</code>：輸出控制。</li><li><code>--progress</code>：顯示抓取進度。</li></ul>
 <h2 id="範例">範例</h2>
-<pre><code># 用途：透過暫時的 raw export 快照分析線上 Grafana 儀表板。
-grafana-util dashboard analyze-live --profile prod --output-format governance-json</code></pre>
-<pre><code># 用途：透過暫時的 raw export 快照分析線上 Grafana 儀表板。
-grafana-util dashboard analyze-live --url http://localhost:3000 --basic-user admin --basic-password admin --interactive</code></pre>
-<pre><code># 用途：透過暫時的 raw export 快照分析線上 Grafana 儀表板。
-grafana-util dashboard analyze-live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format governance-json</code></pre>
+<pre><code># 用途：透過 canonical 的 dashboard analyze 指令分析 live Grafana。
+grafana-util dashboard analyze --profile prod --output-format governance</code></pre>
+<pre><code># 用途：透過 canonical 的 dashboard analyze 指令分析 live Grafana。
+grafana-util dashboard analyze --url http://localhost:3000 --basic-user admin --basic-password admin --interactive</code></pre>
+<pre><code># 用途：透過 canonical 的 dashboard analyze 指令分析 live Grafana。
+grafana-util dashboard analyze --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format governance</code></pre>
 <h2 id="相關指令">相關指令</h2>
-<ul><li><a href="dashboard-analyze-export.html">dashboard analyze-export</a></li><li><a href="dashboard-list-vars.html">dashboard list-vars</a></li><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li></ul>
+<ul><li><a href="dashboard-analyze-export.html">dashboard analyze（本地）</a></li><li><a href="dashboard-list-vars.html">dashboard list-vars</a></li><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li></ul>
     
   </article>
   <aside class="sidebar">

@@ -35,7 +35,7 @@
 
 當這次工作不是從整棵 export tree 開始，而是圍繞一份 dashboard 草稿反覆修改時，請直接走 authoring 這條路。
 
-- 如果 Grafana 裡已經有最接近的來源，先用 `dashboard get` 或 `dashboard clone-live` 取回草稿。
+- 如果 Grafana 裡已經有最接近的來源，先用 `dashboard fetch-live` 或 `dashboard clone-live` 取回草稿。
 - 如果你要一邊編修一邊在瀏覽器看本地草稿內容，先用 `dashboard serve` 開一個輕量 preview server。
 - 在任何 mutation 前先跑 `dashboard review`，確認 title、UID、tags、folder UID 與阻擋性驗證問題。
 - 要重寫本地草稿內容時，用 `dashboard patch-file` 原地修改或輸出成新檔。
@@ -94,7 +94,7 @@ grafana-util dashboard edit-live --profile prod --dashboard-uid cpu-main --outpu
 
 - [dashboard 指令總覽](../../commands/zh-TW/dashboard.md)
 - [dashboard browse](../../commands/zh-TW/dashboard-browse.md)
-- [dashboard get](../../commands/zh-TW/dashboard-get.md)
+- [dashboard fetch-live](../../commands/zh-TW/dashboard-fetch-live.md)
 - [dashboard clone-live](../../commands/zh-TW/dashboard-clone-live.md)
 - [dashboard list](../../commands/zh-TW/dashboard-list.md)
 - [dashboard export](../../commands/zh-TW/dashboard-export.md)
@@ -107,8 +107,8 @@ grafana-util dashboard edit-live --profile prod --dashboard-uid cpu-main --outpu
 - [dashboard publish](../../commands/zh-TW/dashboard-publish.md)
 - [dashboard delete](../../commands/zh-TW/dashboard-delete.md)
 - [dashboard diff](../../commands/zh-TW/dashboard-diff.md)
-- [dashboard analyze-export](../../commands/zh-TW/dashboard-analyze-export.md)
-- [dashboard analyze-live](../../commands/zh-TW/dashboard-analyze-live.md)
+- [dashboard analyze（本地）](../../commands/zh-TW/dashboard-analyze-export.md)
+- [dashboard analyze（即時）](../../commands/zh-TW/dashboard-analyze-live.md)
 - [dashboard list-vars](../../commands/zh-TW/dashboard-list-vars.md)
 - [dashboard history](../../commands/zh-TW/dashboard-history.md)
 - [dashboard governance-gate](../../commands/zh-TW/dashboard-governance-gate.md)
@@ -134,8 +134,8 @@ Dashboard 相關功能主要是為了處理大規模維運而設計：
 
 如果你的目標不是匯入或匯出，而是先看清楚 dashboard 目前長什麼樣、依賴哪些 data source、變數怎麼帶入，這一組指令應該先看。
 
-- `dashboard analyze-live`：直接分析 live dashboard 的結構、查詢與依賴。
-- `dashboard analyze-export`：離線分析已匯出的 dashboard 檔案。
+- `dashboard analyze（即時）`：直接分析 live dashboard 的結構、查詢與依賴。
+- `dashboard analyze（本地）`：離線分析已匯出的 dashboard 樹。
 - `dashboard list-vars`：確認變數、data source 選項與 URL 帶入值。
 - `dashboard screenshot`：用 headless browser 產生可重現的 dashboard 或 panel 截圖。
 - `dashboard topology`：快速掌握 dashboard 與上游依賴之間的關係。
@@ -222,7 +222,7 @@ spring-jmx-node-unified  Spring JMX + Node Unified Dashboard (VM)  Demo    ffhrm
 | **Raw 轉 Prompt** | `grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite --progress` |
 | **匯入 (Import)** | `grafana-util dashboard import --import-dir ./dashboards/raw --replace-existing --dry-run --table` |
 | **比對 (Diff)** | `grafana-util dashboard diff --import-dir ./dashboards/raw --input-format raw` |
-| **分析 (Analyze)** | `grafana-util dashboard analyze-export --import-dir ./dashboards/raw --output-format report-table` |
+| **分析 (Analyze)** | `grafana-util dashboard analyze --import-dir ./dashboards/raw --input-format raw --output-format dependency` |
 | **刪除 (Delete)** | `grafana-util dashboard delete --uid <UID> --url <URL> --basic-user admin --basic-password admin` |
 | **變數檢視 (List Vars)** | `grafana-util dashboard list-vars --uid <UID> --url <URL> --table` |
 | **檔案修正 (Patch)** | `grafana-util dashboard patch-file --input <FILE> --name "New Title" --output <FILE>` |

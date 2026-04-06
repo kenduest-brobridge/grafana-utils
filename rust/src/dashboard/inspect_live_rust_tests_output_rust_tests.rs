@@ -1,5 +1,5 @@
 //! Live inspect output/governance file regressions.
-use super::super::test_support::{self, InspectExportReportFormat, InspectLiveArgs};
+use super::super::test_support::{self, InspectLiveArgs, InspectOutputFormat};
 use super::{make_common_args, read_json_output_file};
 use crate::common::CliColorChoice;
 use serde_json::json;
@@ -23,8 +23,7 @@ fn inspect_live_dashboards_with_request_writes_governance_json_to_output_file_ma
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::GovernanceJson),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::GovernanceJson),
         report_columns: Vec::new(),
         report_filter_datasource: Some("prom-main".to_string()),
         report_filter_panel_id: Some("7".to_string()),
@@ -140,8 +139,7 @@ fn inspect_live_output_file_never_contains_ansi_even_when_color_is_always() {
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::GovernanceJson),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::GovernanceJson),
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,

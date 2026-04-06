@@ -105,8 +105,7 @@ fn parse_cli_supports_inspect_live_baseline_output_formats() {
             DashboardCommand::InspectLive(inspect_args) => {
                 assert_eq!(inspect_args.common.url, "https://grafana.example.com");
                 assert_eq!(inspect_args.output_format, Some(expected));
-                assert_eq!(inspect_args.report, None);
-                assert!(!inspect_args.json);
+                    assert!(!inspect_args.json);
                 assert!(!inspect_args.table);
             }
             _ => panic!("expected inspect-live command"),

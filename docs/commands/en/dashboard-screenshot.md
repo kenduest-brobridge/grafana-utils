@@ -35,5 +35,5 @@ grafana-util dashboard screenshot --url https://grafana.example.com --dashboard-
 
 ## Related commands
 - [dashboard list-vars](./dashboard-list-vars.md)
-- [dashboard analyze-live](./dashboard-analyze-live.md)
+- [dashboard analyze (live)](./dashboard-analyze-live.md)
 - [dashboard topology](./dashboard-topology.md)

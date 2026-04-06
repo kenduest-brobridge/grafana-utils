@@ -25,6 +25,7 @@ macro_rules! help_block {
 
 pub(crate) const HELP_COLOR_RESET: &str = "\x1b[0m";
 pub(crate) const HELP_COLOR_DASHBOARD: &str = "\x1b[1;36m";
+pub(crate) const HELP_COLOR_COMMAND: &str = "\x1b[1;97m";
 pub(crate) const HELP_COLOR_ALERT: &str = "\x1b[1;31m";
 pub(crate) const HELP_COLOR_DATASOURCE: &str = "\x1b[1;32m";
 pub(crate) const HELP_COLOR_ACCESS: &str = "\x1b[1;33m";
@@ -95,6 +96,11 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
         r#"grafana-util dashboard list-vars --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --token "$GRAFANA_API_TOKEN""#
     ),
     (
+        "[Dashboard Analyze]",
+        "Analyze live Grafana before topology or governance checks:",
+        r#"grafana-util dashboard analyze --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format governance-json"#
+    ),
+    (
         "[Dashboard Review]",
         "Review a local dashboard file before publish:",
         "grafana-util dashboard review --input ./drafts/cpu-main.json --output-format yaml"
@@ -159,9 +165,9 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
 pub(crate) const UNIFIED_HELP_FULL_TEXT: &str = help_block!(
     "Extended Examples:",
     (
-        "[Dashboard Inspect Export]",
+        "[Dashboard Analyze]",
         "Render a grouped dashboard dependency table from raw exports:",
-        "grafana-util dashboard analyze-export --import-dir ./dashboards/raw --input-format raw --output-format report-tree-table --report-columns dashboard_uid,panel_title,datasource_uid,query"
+        "grafana-util dashboard analyze --import-dir ./dashboards/raw --input-format raw --output-format tree-table --report-columns dashboard_uid,panel_title,datasource_uid,query"
     ),
     (
         "[Dashboard Raw To Prompt]",
@@ -169,14 +175,14 @@ pub(crate) const UNIFIED_HELP_FULL_TEXT: &str = help_block!(
         "grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite"
     ),
     (
-        "[Dashboard Inspect Export]",
+        "[Dashboard Analyze]",
         "Inspect a provisioning tree from the file-provisioning root:",
-        "grafana-util dashboard analyze-export --import-dir ./dashboards/provisioning --input-format provisioning --report tree-table"
+        "grafana-util dashboard analyze --import-dir ./dashboards/provisioning --input-format provisioning --output-format tree-table"
     ),
     (
-        "[Dashboard Inspect Live]",
+        "[Dashboard Analyze]",
         "Render datasource governance JSON directly from live Grafana:",
-        r#"grafana-util dashboard analyze-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format governance-json"#
+        r#"grafana-util dashboard analyze --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format governance-json"#
     ),
     (
         "[Datasource Import]",
@@ -426,11 +432,10 @@ pub(crate) const SYNC_HELP_FULL_TEXT: &str = help_block!(
     )
 );
 
-pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 31] = [
+pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 30] = [
     ("[Dashboard Export]", HELP_COLOR_DASHBOARD),
     ("[Dashboard Capture]", HELP_COLOR_DASHBOARD),
-    ("[Dashboard Inspect Export]", HELP_COLOR_DASHBOARD),
-    ("[Dashboard Inspect Live]", HELP_COLOR_DASHBOARD),
+    ("[Dashboard Analyze]", HELP_COLOR_DASHBOARD),
     ("[Alert Export]", HELP_COLOR_ALERT),
     ("[Alert Import]", HELP_COLOR_ALERT),
     ("[Alert List]", HELP_COLOR_ALERT),
@@ -474,24 +479,20 @@ pub(crate) fn colorize_dashboard_short_help(text: &str) -> String {
     for heading in [
         "Usage:",
         "Choose the task first:",
-        "Browse and inventory:",
-        "Analyze dashboards and build reports:",
+        "Work with live Grafana:",
+        "Work with local drafts:",
         "Move dashboards:",
-        "Edit one draft:",
-        "Review risk and recover:",
-        "Capture visual proof:",
+        "Analyze and review risk:",
         "More help:",
     ] {
         let colored_heading = format!("{HELP_COLOR_DASHBOARD}{heading}{HELP_COLOR_RESET}");
         colored = colored.replace(heading, &colored_heading);
     }
     for lane in [
-        "browse and inventory",
-        "analyze dashboards and reports",
+        "work with live Grafana",
+        "work with local drafts",
         "move dashboards",
-        "edit one draft",
-        "review risk and recover",
-        "capture visual proof",
+        "analyze and review risk",
     ] {
         let colored_lane = format!("{HELP_COLOR_DASHBOARD}{lane}{HELP_COLOR_RESET}");
         colored = colored.replace(lane, &colored_lane);
@@ -499,11 +500,12 @@ pub(crate) fn colorize_dashboard_short_help(text: &str) -> String {
     for command in [
         "browse",
         "list",
+        "fetch-live",
+        "analyze",
         "export",
         "import",
         "diff",
         "delete",
-        "get",
         "clone-live",
         "serve",
         "edit-live",
@@ -520,12 +522,39 @@ pub(crate) fn colorize_dashboard_short_help(text: &str) -> String {
         "governance-gate",
     ] {
         let needle = format!("\n  {command}");
-        let replacement = format!(
-            "\n  {HELP_COLOR_DASHBOARD}{command}{HELP_COLOR_RESET}"
-        );
+        let replacement = format!("\n  {HELP_COLOR_COMMAND}{command}{HELP_COLOR_RESET}");
         colored = colored.replace(&needle, &replacement);
     }
     colored
+}
+
+pub(crate) fn colorize_dashboard_subcommand_help(text: &str) -> String {
+    let mut lines = Vec::new();
+    for line in text.lines() {
+        let trimmed = line.trim_start();
+        let indent = &line[..line.len() - trimmed.len()];
+        let colored = match line {
+            "Options:" | "What it does:" | "When to use:" | "Related commands:" | "Examples:"
+            | "Arguments:" | "More help:" => {
+                format!("{HELP_COLOR_DASHBOARD}{line}{HELP_COLOR_RESET}")
+            }
+            _ if line.starts_with("Usage: ") => {
+                let rest = line.trim_start_matches("Usage: ");
+                format!(
+                    "{HELP_COLOR_DASHBOARD}Usage:{HELP_COLOR_RESET} {HELP_COLOR_COMMAND}{rest}{HELP_COLOR_RESET}"
+                )
+            }
+            _ if trimmed.starts_with("grafana-util ") => {
+                format!("{indent}{HELP_COLOR_COMMAND}{trimmed}{HELP_COLOR_RESET}")
+            }
+            _ if trimmed.starts_with("- dashboard ") => {
+                format!("{indent}{HELP_COLOR_COMMAND}{trimmed}{HELP_COLOR_RESET}")
+            }
+            _ => line.to_string(),
+        };
+        lines.push(colored);
+    }
+    lines.join("\n")
 }
 
 pub(crate) fn inject_help_full_hint(help: String) -> String {

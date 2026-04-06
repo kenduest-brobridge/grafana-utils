@@ -7,7 +7,7 @@
 | 盤點與瀏覽 live dashboard | `browse`、`list`、`get` |
 | 單一 dashboard 草稿 authoring | `get`、`clone-live`、`serve`、`patch-file`、`edit-live`、`review`、`publish` |
 | 匯出 / 匯入 / 比對 | `get`、`clone-live`、`export`、`import`、`diff`、`review`、`patch-file`、`publish`、`delete` |
-| 分析與報表 | `analyze-live`、`analyze-export`、`list-vars` |
+| 分析與報表 | `analyze`、`list-vars`、`topology` |
 | 變更前檢查 | `governance-gate` |
 | 拓樸與影響面 | `topology`、`impact` |
 | 歷史與還原 | `history list`、`history restore`、`history export` |
@@ -16,9 +16,9 @@
 ## 從這裡開始
 
 - 先看現況：`dashboard browse` 或 `dashboard list`
-- 先做草稿：`dashboard get`、`dashboard clone-live`、`dashboard export`
+- 先做草稿：`dashboard fetch-live`、`dashboard clone-live`、`dashboard export`
 - 先做比對：`dashboard diff`、`dashboard review`
-- 先做分析：`dashboard analyze-export`、`dashboard analyze-live`、`dashboard list-vars`
+- 先做分析：`dashboard analyze --import-dir ...`、`dashboard analyze --url ...`、`dashboard list-vars`
 - 先做上線前檢查：`dashboard governance-gate`
 - 先看影響面：`dashboard topology`、`dashboard impact`
 - 先處理歷史版本：`dashboard history list`、`dashboard history restore`、`dashboard history export`
@@ -87,12 +87,12 @@ grafana-util dashboard list --profile prod
 
 ```bash
 # 先做 live 分析，再決定要不要匯出或截圖。
-grafana-util dashboard analyze-live --url http://localhost:3000 --basic-user admin --basic-password admin --interactive
+grafana-util dashboard analyze --url http://localhost:3000 --basic-user admin --basic-password admin --interactive
 ```
 
 ```bash
-# 先產生治理成品，留給 topology 或 governance-gate 接著用。
-grafana-util dashboard analyze-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format governance-json
+# 先產生治理輸出，留給 topology 或 governance-gate 接著用。
+grafana-util dashboard analyze --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format governance
 ```
 
 ```bash
@@ -120,7 +120,7 @@ grafana-util dashboard edit-live --profile prod --dashboard-uid cpu-main --outpu
 ### 盤點
 
 - [dashboard browse](./dashboard-browse.md)
-- [dashboard get](./dashboard-get.md)
+- [dashboard fetch-live](./dashboard-fetch-live.md)
 - [dashboard clone-live](./dashboard-clone-live.md)
 - [dashboard list](./dashboard-list.md)
 
@@ -138,8 +138,8 @@ grafana-util dashboard edit-live --profile prod --dashboard-uid cpu-main --outpu
 
 ### 分析與報表
 
-- [dashboard analyze-export](./dashboard-analyze-export.md)
-- [dashboard analyze-live](./dashboard-analyze-live.md)
+- [dashboard analyze（即時）](./dashboard-analyze-live.md)
+- [dashboard analyze（本地）](./dashboard-analyze-export.md)
 - [dashboard list-vars](./dashboard-list-vars.md)
 - [dashboard topology](./dashboard-topology.md)
 

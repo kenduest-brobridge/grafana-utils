@@ -794,8 +794,8 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p><strong>After</strong>: Missing datasource dependencies are visible before import, while there is still time to fix mapping or target inventory.</p>
 <p><strong>Solution</strong>: Run a <strong>pre-import inspection</strong>.</p>
 <pre><code># Generate a report of all required datasources in your export tree
-grafana-util dashboard analyze-export --import-dir ./backups/raw --output-format report-table</code></pre>
-<p><strong>What to check</strong>: Ensure every <code>UID</code> listed in the &quot;Sources&quot; column exists in your target Grafana&#x27;s <code>datasource list</code>.</p>
+grafana-util dashboard analyze --import-dir ./backups/raw --input-format raw --output-format dependency</code></pre>
+<p><strong>What to check</strong>: Ensure every datasource listed in the dependency report exists in your target Grafana&#x27;s <code>datasource list</code>.</p>
 <p><strong>Use this when</strong>: you are preparing an import, validating a promotion bundle, or checking whether a dashboard export is portable enough for another environment.</p>
 <p><strong>Success looks like</strong>:</p>
 <ul><li>every required datasource UID is present in the target</li><li>missing dependencies are known before import time</li><li>you can explain which dashboards are blocked and why</li></ul>

@@ -148,6 +148,27 @@ class PublicDocsEvidenceTests(unittest.TestCase):
             for marker in markers:
                 self.assertIn(marker, text, path.name)
 
+    def test_dashboard_analyze_docs_use_canonical_analyze_and_output_names(self):
+        expectations = {
+            REPO_ROOT / "README.md": ["dashboard analyze --import-dir ./dashboards/raw --input-format raw --output-format dependency"],
+            REPO_ROOT / "README.zh-TW.md": ["dashboard analyze --import-dir ./dashboards/raw --input-format raw --output-format dependency"],
+            REPO_ROOT / "docs" / "commands" / "en" / "dashboard-analyze-live.md": ["dashboard analyze --url", "--output-format", "governance"],
+            REPO_ROOT / "docs" / "commands" / "en" / "dashboard-analyze-export.md": ["dashboard analyze --import-dir", "--output-format", "governance-json", "queries-json"],
+            REPO_ROOT / "docs" / "commands" / "en" / "dashboard-governance-gate.md": ["--url", "--import-dir", "governance-json", "queries-json"],
+            REPO_ROOT / "docs" / "commands" / "en" / "dashboard-topology.md": ["--url", "--import-dir", "governance-json", "queries-json"],
+            REPO_ROOT / "docs" / "commands" / "en" / "dashboard-impact.md": ["--url", "--import-dir", "governance-json"],
+            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-analyze-live.md": ["dashboard analyze --url", "--output-format", "governance"],
+            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-analyze-export.md": ["dashboard analyze --import-dir", "--output-format", "governance-json", "queries-json"],
+            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-governance-gate.md": ["--url", "--import-dir", "governance-json", "queries-json"],
+            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-topology.md": ["--url", "--import-dir", "governance-json", "queries-json"],
+            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-impact.md": ["--url", "--import-dir", "governance-json"],
+        }
+        for path, markers in expectations.items():
+            text = path.read_text(encoding="utf-8")
+            self.assertNotIn("--report", text, path.name)
+            for marker in markers:
+                self.assertIn(marker, text, path.name)
+
     def test_dashboard_history_docs_cover_schema_help_and_contract_markers(self):
         expectations = {
             REPO_ROOT / "docs" / "commands" / "en" / "dashboard-history.md": [

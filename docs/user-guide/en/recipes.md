@@ -81,10 +81,10 @@ This chapter provides practical solutions for common Grafana operational headach
 
 ```bash
 # Generate a report of all required datasources in your export tree
-grafana-util dashboard analyze-export --import-dir ./backups/raw --output-format report-table
+grafana-util dashboard analyze --import-dir ./backups/raw --input-format raw --output-format dependency
 ```
 
-**What to check**: Ensure every `UID` listed in the "Sources" column exists in your target Grafana's `datasource list`.
+**What to check**: Ensure every datasource listed in the dependency report exists in your target Grafana's `datasource list`.
 
 **Use this when**: you are preparing an import, validating a promotion bundle, or checking whether a dashboard export is portable enough for another environment.
 

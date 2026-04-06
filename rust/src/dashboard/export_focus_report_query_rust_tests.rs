@@ -490,7 +490,7 @@ fn report_format_supports_columns_matches_inspection_contract() {
         InspectExportReportFormat::TreeTable
     ));
     assert!(!test_support::report_format_supports_columns(
-        InspectExportReportFormat::Json
+        InspectExportReportFormat::QueriesJson
     ));
     assert!(!test_support::report_format_supports_columns(
         InspectExportReportFormat::Tree

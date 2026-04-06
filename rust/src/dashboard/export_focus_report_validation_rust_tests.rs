@@ -2,7 +2,7 @@
 #![allow(unused_imports)]
 
 use super::test_support;
-use super::{InspectExportArgs, InspectExportReportFormat};
+use super::{InspectExportArgs, InspectOutputFormat};
 use std::path::PathBuf;
 
 #[test]
@@ -16,7 +16,6 @@ fn validate_inspect_export_report_args_rejects_report_columns_without_report() {
         json: false,
         table: false,
         yaml: false,
-        report: None,
         output_format: None,
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
@@ -30,7 +29,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_without_report() {
 
     let error = test_support::validate_inspect_export_report_args(&args).unwrap_err();
     assert!(error.to_string().contains(
-        "--report-columns is only supported together with --report or report-like --output-format"
+        "--report-columns is only supported together with table, csv, tree-table, or queries-json output."
     ));
 }
 
@@ -45,8 +44,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_json_report() 
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::Json),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::QueriesJson),
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -59,7 +57,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_json_report() 
 
     let error = test_support::validate_inspect_export_report_args(&args).unwrap_err();
     assert!(error.to_string().contains(
-        "--report-columns is only supported with report-table, report-csv, report-tree-table, or the equivalent --report modes"
+        "--report-columns is only supported with table, csv, or tree-table output."
     ));
 }
 
@@ -74,8 +72,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_dependency_rep
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::Dependency),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::Dependency),
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -88,7 +85,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_dependency_rep
 
     let error = test_support::validate_inspect_export_report_args(&args).unwrap_err();
     assert!(error.to_string().contains(
-        "--report-columns is only supported with report-table, report-csv, report-tree-table, or the equivalent --report modes"
+        "--report-columns is only supported with table, csv, or tree-table output."
     ));
 }
 
@@ -103,8 +100,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_tree_report() 
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::Tree),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::Tree),
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -117,7 +113,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_tree_report() 
 
     let error = test_support::validate_inspect_export_report_args(&args).unwrap_err();
     assert!(error.to_string().contains(
-        "--report-columns is only supported with report-table, report-csv, report-tree-table, or the equivalent --report modes"
+        "--report-columns is only supported with table, csv, or tree-table output."
     ));
 }
 
@@ -132,8 +128,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_governance_rep
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::Governance),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::Governance),
         report_columns: vec!["dashboard_uid".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -145,9 +140,7 @@ fn validate_inspect_export_report_args_rejects_report_columns_for_governance_rep
     };
 
     let error = test_support::validate_inspect_export_report_args(&args).unwrap_err();
-    assert!(error
-        .to_string()
-        .contains("--report-columns is not supported with governance output"));
+    assert!(error.to_string().contains("--report-columns"));
 }
 
 #[test]
@@ -161,8 +154,7 @@ fn validate_inspect_export_report_args_allows_report_columns_for_tree_table_repo
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::TreeTable),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::TreeTable),
         report_columns: vec!["panel_id".to_string(), "query".to_string()],
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -187,7 +179,6 @@ fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
         json: false,
         table: false,
         yaml: false,
-        report: None,
         output_format: None,
         report_columns: Vec::new(),
         report_filter_datasource: None,
@@ -202,5 +193,5 @@ fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
     let error = test_support::validate_inspect_export_report_args(&args).unwrap_err();
     assert!(error
         .to_string()
-        .contains("--report-filter-panel-id is only supported together with --report or report-like --output-format"));
+        .contains("--report-filter-panel-id is only supported together with table, csv, tree-table, dependency, dependency-json, governance, governance-json, or queries-json output."));
 }

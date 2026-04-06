@@ -4,7 +4,7 @@
 針對儀表板 inspect JSON 成品套用治理政策檢查。
 
 ## 何時使用
-當您已經有 `governance-json` 與 query-report 成品，想在推進之前先得到政策通過或失敗結果時，使用這個指令。
+當您想在推進之前先得到政策通過或失敗結果時，使用這個指令。常見流程應直接用 live 或 local 輸入；只有進階重用與 CI pipeline 才保留 `governance-json` 與 `queries-json`。
 
 ## 採用前後對照
 
@@ -15,6 +15,9 @@
 - `--policy-source`：選擇 `file` 或 `builtin`。
 - `--policy`：使用檔案型政策輸入時的政策檔路徑。
 - `--builtin-policy`：使用內建政策輸入時的名稱。
+- `--url`：直接分析線上 Grafana。
+- `--import-dir`：直接分析本地匯出樹。
+- `--input-format`：分析本地匯出時選擇 `raw` 或 `provisioning`。
 - `--governance`：儀表板 inspect governance JSON 路徑。
 - `--queries`：儀表板 inspect query-report JSON 路徑。
 - `--output-format`：輸出文字或 JSON。
@@ -23,12 +26,17 @@
 
 ## 範例
 ```bash
-# 用途：針對儀表板 inspect JSON 成品套用治理政策檢查。
-grafana-util dashboard governance-gate --policy-source file --policy ./policy.yaml --governance ./governance.json --queries ./queries.json
+# 用途：直接對線上 Grafana 套用治理政策檢查。
+grafana-util dashboard governance-gate --url http://localhost:3000 --basic-user admin --basic-password admin --policy-source file --policy ./policy.yaml
 ```
 
 ```bash
-# 用途：針對儀表板 inspect JSON 成品套用治理政策檢查。
+# 用途：直接對本地匯出樹套用治理政策檢查。
+grafana-util dashboard governance-gate --import-dir ./dashboards/raw --input-format raw --policy-source builtin --builtin-policy default --output-format json --json-output ./governance-check.json
+```
+
+```bash
+# 用途：對可重用的分析成品套用治理政策檢查。
 grafana-util dashboard governance-gate --policy-source builtin --builtin-policy default --governance ./governance.json --queries ./queries.json --output-format json --json-output ./governance-check.json
 ```
 
@@ -45,6 +53,6 @@ grafana-util dashboard governance-gate --policy-source builtin --builtin-policy 
 - 如果自動化要讀結果，建議用 `--output-format json`，並先驗證 contract 再把 pass/fail 當成最終結果
 
 ## 相關指令
-- [dashboard analyze-export](./dashboard-analyze-export.md)
-- [dashboard analyze-live](./dashboard-analyze-live.md)
+- [dashboard analyze（本地）](./dashboard-analyze-export.md)
+- [dashboard analyze（即時）](./dashboard-analyze-live.md)
 - [dashboard topology](./dashboard-topology.md)

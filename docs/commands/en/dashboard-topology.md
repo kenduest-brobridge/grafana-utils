@@ -1,10 +1,10 @@
 # dashboard topology
 
 ## Purpose
-Build a deterministic dashboard topology graph from JSON artifacts.
+Build a deterministic dashboard topology graph directly from live Grafana, a local export tree, or reusable JSON artifacts.
 
 ## When to use
-Use this when you need a graph view of dashboards, folders, variables, datasource links, and optional alert contract data. The command also accepts the `graph` alias.
+Use this when you need a graph view of dashboards, folders, variables, datasource links, and optional alert contract data. Prefer `--url` or `--import-dir` for the common path; keep artifact inputs for reuse or CI. The command also accepts the `graph` alias.
 
 ## Before / After
 
@@ -12,8 +12,11 @@ Use this when you need a graph view of dashboards, folders, variables, datasourc
 - **After**: one topology run gives you a reproducible graph you can inspect in text form, hand to Mermaid, or ship to Graphviz.
 
 ## Key flags
-- `--governance`: dashboard governance JSON input.
-- `--queries`: optional dashboard query-report JSON input.
+- `--url`: analyze live Grafana directly.
+- `--import-dir`: analyze a local export tree directly.
+- `--input-format`: choose `raw` or `provisioning` when analyzing local exports.
+- `--governance`: dashboard governance JSON input (`governance-json` artifact).
+- `--queries`: optional dashboard query-report JSON input (`queries-json` artifact).
 - `--alert-contract`: optional alert contract JSON input.
 - `--output-format`: render `text`, `json`, `mermaid`, or `dot`.
 - `--output-file`: write the rendered topology to disk.
@@ -21,22 +24,30 @@ Use this when you need a graph view of dashboards, folders, variables, datasourc
 
 ## Examples
 ```bash
-# Purpose: Build a deterministic dashboard topology graph from JSON artifacts.
+# Purpose: Build a deterministic dashboard topology graph directly from live Grafana.
+grafana-util dashboard topology \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
+  --output-format mermaid
+```
+
+```bash
+# Purpose: Build a deterministic dashboard topology graph from a local export tree.
+grafana-util dashboard graph \
+  --import-dir ./dashboards/raw \
+  --input-format raw \
+  --output-format dot \
+  --output-file ./dashboard-topology.dot
+```
+
+```bash
+# Purpose: Build a deterministic dashboard topology graph from reusable artifacts.
 grafana-util dashboard topology \
   --governance ./governance.json \
   --queries ./queries.json \
   --alert-contract ./alert-contract.json \
   --output-format mermaid
-```
-
-```bash
-# Purpose: Build a deterministic dashboard topology graph from JSON artifacts.
-grafana-util dashboard graph \
-  --governance ./governance.json \
-  --queries ./queries.json \
-  --alert-contract ./alert-contract.json \
-  --output-format dot \
-  --output-file ./dashboard-topology.dot
 ```
 
 ## What success looks like
@@ -52,6 +63,6 @@ grafana-util dashboard graph \
 - if a downstream visual tool rejects the result, double-check whether you emitted `mermaid`, `dot`, `json`, or plain `text`
 
 ## Related commands
-- [dashboard analyze-export](./dashboard-analyze-export.md)
+- [dashboard analyze (local)](./dashboard-analyze-export.md)
 - [dashboard governance-gate](./dashboard-governance-gate.md)
 - [dashboard screenshot](./dashboard-screenshot.md)

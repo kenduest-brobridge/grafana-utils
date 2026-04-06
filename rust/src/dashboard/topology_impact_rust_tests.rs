@@ -10,7 +10,7 @@ use super::test_support::{
 use crate::dashboard::GovernancePolicySource;
 use clap::CommandFactory;
 use serde_json::json;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 fn render_dashboard_subcommand_help(name: &str) -> String {
     let mut command = DashboardCliArgs::command();
@@ -46,8 +46,8 @@ fn parse_cli_supports_dashboard_governance_gate_command() {
             assert_eq!(gate_args.policy_source, GovernancePolicySource::File);
             assert_eq!(gate_args.policy, Some(PathBuf::from("./policy.json")));
             assert!(gate_args.builtin_policy.is_none());
-            assert_eq!(gate_args.governance, Path::new("./governance.json"));
-            assert_eq!(gate_args.queries, Path::new("./queries.json"));
+            assert_eq!(gate_args.governance, Some(PathBuf::from("./governance.json")));
+            assert_eq!(gate_args.queries, Some(PathBuf::from("./queries.json")));
             assert_eq!(gate_args.output_format, GovernanceGateOutputFormat::Json);
             assert_eq!(
                 gate_args.json_output,
@@ -66,12 +66,13 @@ fn governance_gate_help_mentions_policy_and_queries_inputs() {
     assert!(help.contains("--policy"));
     assert!(help.contains("--builtin-policy"));
     assert!(help.contains("JSON or YAML"));
+    assert!(help.contains("--import-dir"));
     assert!(help.contains("--governance"));
     assert!(help.contains("--queries"));
     assert!(help.contains("--json-output"));
     assert!(help.contains("--output-format"));
     assert!(help.contains("governance-gate"));
-    assert!(help.contains("analyze-live or analyze-export"));
+    assert!(help.contains("Check live Grafana directly"));
 }
 
 #[test]
@@ -94,8 +95,8 @@ fn parse_cli_supports_dashboard_governance_gate_builtin_policy_command() {
             assert_eq!(gate_args.policy_source, GovernancePolicySource::Builtin);
             assert!(gate_args.policy.is_none());
             assert_eq!(gate_args.builtin_policy.as_deref(), Some("default"));
-            assert_eq!(gate_args.governance, Path::new("./governance.json"));
-            assert_eq!(gate_args.queries, Path::new("./queries.json"));
+            assert_eq!(gate_args.governance, Some(PathBuf::from("./governance.json")));
+            assert_eq!(gate_args.queries, Some(PathBuf::from("./queries.json")));
             assert_eq!(gate_args.output_format, GovernanceGateOutputFormat::Text);
         }
         _ => panic!("expected governance-gate command"),
@@ -126,7 +127,10 @@ fn parse_cli_supports_dashboard_topology_command() {
 
     match args.command {
         DashboardCommand::Topology(topology_args) => {
-            assert_eq!(topology_args.governance, Path::new("./governance.json"));
+            assert_eq!(
+                topology_args.governance,
+                Some(PathBuf::from("./governance.json"))
+            );
             assert_eq!(
                 topology_args.alert_contract,
                 Some(PathBuf::from("./alert-contract.json"))
@@ -168,22 +172,80 @@ fn parse_cli_supports_dashboard_topology_also_stdout() {
 }
 
 #[test]
+fn parse_cli_supports_dashboard_topology_live_source_flags() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "topology",
+        "--url",
+        "http://localhost:3000",
+        "--basic-user",
+        "admin",
+        "--basic-password",
+        "admin",
+        "--org-id",
+        "7",
+        "--page-size",
+        "250",
+        "--output-format",
+        "mermaid",
+    ]);
+
+    match args.command {
+        DashboardCommand::Topology(topology_args) => {
+            assert_eq!(topology_args.common.url, "http://localhost:3000");
+            assert_eq!(topology_args.org_id, Some(7));
+            assert_eq!(topology_args.page_size, 250);
+            assert!(topology_args.import_dir.is_none());
+            assert!(topology_args.governance.is_none());
+        }
+        _ => panic!("expected topology command"),
+    }
+}
+
+#[test]
 fn topology_help_mentions_alert_contract_and_visual_formats() {
     let help = render_dashboard_subcommand_help("topology");
 
+    assert!(help.contains("--import-dir"));
     assert!(help.contains("--governance"));
     assert!(help.contains("--alert-contract"));
     assert!(help.contains("--output-format"));
     assert!(help.contains("--output-file"));
     assert!(help.contains("--also-stdout"));
     assert!(help.contains("--interactive"));
-    assert!(help.contains("analyze-live or analyze-export"));
+    assert!(help.contains("Analyze live Grafana directly"));
     assert!(help.contains("governance.json"));
     assert!(help.contains("mermaid"));
     assert!(help.contains("dot"));
     assert!(help.contains("graph"));
-    assert!(help.contains("governance JSON"));
+    assert!(help.contains("depend on each other"));
     assert!(help.contains("topology"));
+}
+
+#[test]
+fn parse_cli_supports_dashboard_governance_gate_import_dir() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "governance-gate",
+        "--policy-source",
+        "builtin",
+        "--builtin-policy",
+        "default",
+        "--import-dir",
+        "./dashboards",
+        "--input-format",
+        "raw",
+    ]);
+
+    match args.command {
+        DashboardCommand::GovernanceGate(gate_args) => {
+            assert_eq!(gate_args.import_dir, Some(PathBuf::from("./dashboards")));
+            assert_eq!(gate_args.input_format, crate::dashboard::DashboardImportInputFormat::Raw);
+            assert!(gate_args.governance.is_none());
+            assert!(gate_args.queries.is_none());
+        }
+        _ => panic!("expected governance-gate command"),
+    }
 }
 
 #[test]
@@ -204,7 +266,10 @@ fn parse_cli_supports_dashboard_impact_command() {
 
     match args.command {
         DashboardCommand::Impact(impact_args) => {
-            assert_eq!(impact_args.governance, Path::new("./governance.json"));
+            assert_eq!(
+                impact_args.governance,
+                Some(PathBuf::from("./governance.json"))
+            );
             assert_eq!(impact_args.datasource_uid, "prom-main");
             assert_eq!(
                 impact_args.alert_contract,
@@ -218,15 +283,45 @@ fn parse_cli_supports_dashboard_impact_command() {
 }
 
 #[test]
+fn parse_cli_supports_dashboard_impact_import_dir_source() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "impact",
+        "--import-dir",
+        "./dashboards",
+        "--input-format",
+        "raw",
+        "--datasource-uid",
+        "prom-main",
+    ]);
+
+    match args.command {
+        DashboardCommand::Impact(impact_args) => {
+            assert_eq!(impact_args.import_dir, Some(PathBuf::from("./dashboards")));
+            assert_eq!(
+                impact_args.input_format,
+                crate::dashboard::DashboardImportInputFormat::Raw
+            );
+            assert!(impact_args.governance.is_none());
+            assert_eq!(impact_args.datasource_uid, "prom-main");
+        }
+        _ => panic!("expected impact command"),
+    }
+}
+
+#[test]
 fn impact_help_mentions_datasource_uid_and_output_format() {
     let help = render_dashboard_subcommand_help("impact");
 
+    assert!(help.contains("--import-dir"));
+    assert!(help.contains("--url"));
     assert!(help.contains("--governance"));
     assert!(help.contains("--datasource-uid"));
     assert!(help.contains("--alert-contract"));
     assert!(help.contains("--output-format"));
     assert!(help.contains("--interactive"));
     assert!(help.contains("blast radius"));
+    assert!(help.contains("Check blast radius directly from live Grafana"));
 }
 
 #[test]

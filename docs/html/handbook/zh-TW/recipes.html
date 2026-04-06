@@ -794,8 +794,8 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p><strong>採用後</strong>：在正式匯入前，就能先知道缺哪個 data source、哪批 dashboard 會被卡住。</p>
 <p><strong>解決方案</strong>：匯入前先跑 <strong>pre-import inspection</strong>。</p>
 <pre><code># 用途：解決方案：匯入前先跑 pre-import inspection。
-grafana-util dashboard analyze-export --import-dir ./backups/raw --output-format report-table</code></pre>
-<p><strong>檢查重點</strong>：確認報告中 <code>Sources</code> 欄位列出的每個 UID，都存在於目標環境的 <code>datasource list</code>。</p>
+grafana-util dashboard analyze --import-dir ./backups/raw --input-format raw --output-format dependency</code></pre>
+<p><strong>檢查重點</strong>：確認依賴報告列出的每個 datasource，都存在於目標環境的 <code>datasource list</code>。</p>
 <p><strong>適合什麼時候用</strong>：正式匯入前、promotion bundle 送審前，或確認某批 dashboard export 是否真的可攜時。</p>
 <p><strong>成功判準</strong>：</p>
 <ul><li>所有必要 data source UID 都在目標環境存在</li><li>缺少的依賴在匯入前就已被找出</li><li>你能說清楚哪些 dashboard 被阻擋、原因是什麼</li></ul>

@@ -137,9 +137,10 @@ This is the starting point for backup, migration, review, and CI-style inspectio
 
 ```bash
 # Audit datasource dependencies and structural issues in an exported dashboard tree.
-grafana-util dashboard analyze-export \
+grafana-util dashboard analyze \
   --import-dir ./backup/raw \
-  --output-format report-table
+  --input-format raw \
+  --output-format dependency
 ```
 
 Use this before import when you want to catch broken datasource references or suspicious structure early.
@@ -147,7 +148,7 @@ Use this before import when you want to catch broken datasource references or su
 Expected result:
 
 ```text
-Sources
+Dependency report:
   prometheus-main
   loki-prod
 ```
@@ -239,7 +240,7 @@ If you want one end-to-end path instead of isolated commands, use this sequence:
 
 1. `overview live` to confirm the target Grafana is reachable and worth inspecting
 2. `dashboard export` to create a reviewable tree
-3. `dashboard analyze-export` to find missing datasource dependencies before import
+3. `grafana-util dashboard analyze --import-dir ./dashboards/raw --input-format raw --output-format dependency` to find missing datasource dependencies before import
 4. `dashboard import --dry-run` to preview replay behavior before live mutation
 
 That sequence is the shortest public proof that the tool is doing more than wrapping a single endpoint.

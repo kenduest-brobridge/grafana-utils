@@ -764,9 +764,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 
 
     <h2 id="這一頁對應的工作流">這一頁對應的工作流</h2>
-<table><thead><tr><th>工作流</th><th>常用子命令</th></tr></thead><tbody><tr><td>盤點與瀏覽 live dashboard</td><td><code>browse</code>、<code>list</code>、<code>get</code></td></tr><tr><td>單一 dashboard 草稿 authoring</td><td><code>get</code>、<code>clone-live</code>、<code>serve</code>、<code>patch-file</code>、<code>edit-live</code>、<code>review</code>、<code>publish</code></td></tr><tr><td>匯出 / 匯入 / 比對</td><td><code>get</code>、<code>clone-live</code>、<code>export</code>、<code>import</code>、<code>diff</code>、<code>review</code>、<code>patch-file</code>、<code>publish</code>、<code>delete</code></td></tr><tr><td>分析與報表</td><td><code>analyze-live</code>、<code>analyze-export</code>、<code>list-vars</code></td></tr><tr><td>變更前檢查</td><td><code>governance-gate</code></td></tr><tr><td>拓樸與影響面</td><td><code>topology</code>、<code>impact</code></td></tr><tr><td>歷史與還原</td><td><code>history list</code>、<code>history restore</code>、<code>history export</code></td></tr><tr><td>截圖與素材</td><td><code>screenshot</code>、<code>raw-to-prompt</code></td></tr></tbody></table>
+<table><thead><tr><th>工作流</th><th>常用子命令</th></tr></thead><tbody><tr><td>盤點與瀏覽 live dashboard</td><td><code>browse</code>、<code>list</code>、<code>get</code></td></tr><tr><td>單一 dashboard 草稿 authoring</td><td><code>get</code>、<code>clone-live</code>、<code>serve</code>、<code>patch-file</code>、<code>edit-live</code>、<code>review</code>、<code>publish</code></td></tr><tr><td>匯出 / 匯入 / 比對</td><td><code>get</code>、<code>clone-live</code>、<code>export</code>、<code>import</code>、<code>diff</code>、<code>review</code>、<code>patch-file</code>、<code>publish</code>、<code>delete</code></td></tr><tr><td>分析與報表</td><td><code>analyze</code>、<code>list-vars</code>、<code>topology</code></td></tr><tr><td>變更前檢查</td><td><code>governance-gate</code></td></tr><tr><td>拓樸與影響面</td><td><code>topology</code>、<code>impact</code></td></tr><tr><td>歷史與還原</td><td><code>history list</code>、<code>history restore</code>、<code>history export</code></td></tr><tr><td>截圖與素材</td><td><code>screenshot</code>、<code>raw-to-prompt</code></td></tr></tbody></table>
 <h2 id="從這裡開始">從這裡開始</h2>
-<ul><li>先看現況：<code>dashboard browse</code> 或 <code>dashboard list</code></li><li>先做草稿：<code>dashboard get</code>、<code>dashboard clone-live</code>、<code>dashboard export</code></li><li>先做比對：<code>dashboard diff</code>、<code>dashboard review</code></li><li>先做分析：<code>dashboard analyze-export</code>、<code>dashboard analyze-live</code>、<code>dashboard list-vars</code></li><li>先做上線前檢查：<code>dashboard governance-gate</code></li><li>先看影響面：<code>dashboard topology</code>、<code>dashboard impact</code></li><li>先處理歷史版本：<code>dashboard history list</code>、<code>dashboard history restore</code>、<code>dashboard history export</code></li><li>先拿素材：<code>dashboard screenshot</code>、<code>dashboard raw-to-prompt</code></li></ul>
+<ul><li>先看現況：<code>dashboard browse</code> 或 <code>dashboard list</code></li><li>先做草稿：<code>dashboard fetch-live</code>、<code>dashboard clone-live</code>、<code>dashboard export</code></li><li>先做比對：<code>dashboard diff</code>、<code>dashboard review</code></li><li>先做分析：<code>dashboard analyze --import-dir ...</code>、<code>dashboard analyze --url ...</code>、<code>dashboard list-vars</code></li><li>先做上線前檢查：<code>dashboard governance-gate</code></li><li>先看影響面：<code>dashboard topology</code>、<code>dashboard impact</code></li><li>先處理歷史版本：<code>dashboard history list</code>、<code>dashboard history restore</code>、<code>dashboard history export</code></li><li>先拿素材：<code>dashboard screenshot</code>、<code>dashboard raw-to-prompt</code></li></ul>
 <h2 id="說明">說明</h2>
 <p><code>grafana-util dashboard</code> 把 dashboard 相關工作收在同一個入口：從瀏覽、草稿、匯出、匯入、比對，到拓樸、影響面和截圖。它也可用 <code>grafana-util db</code> 呼叫。</p>
 <p>如果是單一 dashboard 的 authoring 路徑，建議把它想成：</p>
@@ -790,9 +790,9 @@ grafana-util dashboard browse --profile prod</code></pre>
 <pre><code># 先盤點現況，再決定要走 browse 或 export。
 grafana-util dashboard list --profile prod</code></pre>
 <pre><code># 先做 live 分析，再決定要不要匯出或截圖。
-grafana-util dashboard analyze-live --url http://localhost:3000 --basic-user admin --basic-password admin --interactive</code></pre>
-<pre><code># 先產生治理成品，留給 topology 或 governance-gate 接著用。
-grafana-util dashboard analyze-live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format governance-json</code></pre>
+grafana-util dashboard analyze --url http://localhost:3000 --basic-user admin --basic-password admin --interactive</code></pre>
+<pre><code># 先產生治理輸出，留給 topology 或 governance-gate 接著用。
+grafana-util dashboard analyze --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format governance</code></pre>
 <pre><code># 先從標準輸入 review 一份生成儀表板，再決定要不要 publish。
 jsonnet dashboards/cpu.jsonnet | grafana-util dashboard review --input - --output-format json</code></pre>
 <pre><code># 編修本地草稿時，每次儲存後自動重跑 publish dry-run。
@@ -803,13 +803,13 @@ grafana-util dashboard serve --input ./drafts/cpu-main.json --port 18080 --open-
 grafana-util dashboard edit-live --profile prod --dashboard-uid cpu-main --output ./drafts/cpu-main.edited.json</code></pre>
 <h2 id="相關指令">相關指令</h2>
 <h3 id="盤點">盤點</h3>
-<ul><li><a href="dashboard-browse.html">dashboard browse</a></li><li><a href="dashboard-get.html">dashboard get</a></li><li><a href="dashboard-clone-live.html">dashboard clone-live</a></li><li><a href="dashboard-list.html">dashboard list</a></li></ul>
+<ul><li><a href="dashboard-browse.html">dashboard browse</a></li><li><a href="dashboard-fetch-live.html">dashboard fetch-live</a></li><li><a href="dashboard-clone-live.html">dashboard clone-live</a></li><li><a href="dashboard-list.html">dashboard list</a></li></ul>
 <h3 id="搬移">搬移</h3>
 <ul><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-raw-to-prompt.html">dashboard raw-to-prompt</a></li><li><a href="dashboard-patch-file.html">dashboard patch-file</a></li></ul>
 <h3 id="草稿-authoring">草稿 authoring</h3>
 <ul><li><a href="dashboard-serve.html">dashboard serve</a></li><li><a href="dashboard-edit-live.html">dashboard edit-live</a></li></ul>
 <h3 id="分析與報表">分析與報表</h3>
-<ul><li><a href="dashboard-analyze-export.html">dashboard analyze-export</a></li><li><a href="dashboard-analyze-live.html">dashboard analyze-live</a></li><li><a href="dashboard-list-vars.html">dashboard list-vars</a></li><li><a href="dashboard-topology.html">dashboard topology</a></li></ul>
+<ul><li><a href="dashboard-analyze-live.html">dashboard analyze（即時）</a></li><li><a href="dashboard-analyze-export.html">dashboard analyze（本地）</a></li><li><a href="dashboard-list-vars.html">dashboard list-vars</a></li><li><a href="dashboard-topology.html">dashboard topology</a></li></ul>
 <h3 id="變更前檢查">變更前檢查</h3>
 <ul><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li></ul>
 <h3 id="變更與套用">變更與套用</h3>

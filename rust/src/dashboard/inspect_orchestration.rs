@@ -61,25 +61,20 @@ fn map_output_format_to_report(
         | InspectOutputFormat::Csv
         | InspectOutputFormat::Json
         | InspectOutputFormat::Yaml => None,
-        InspectOutputFormat::ReportTable => Some(InspectExportReportFormat::Table),
-        InspectOutputFormat::ReportCsv => Some(InspectExportReportFormat::Csv),
-        InspectOutputFormat::ReportJson => Some(InspectExportReportFormat::Json),
-        InspectOutputFormat::ReportTree => Some(InspectExportReportFormat::Tree),
-        InspectOutputFormat::ReportTreeTable => Some(InspectExportReportFormat::TreeTable),
-        InspectOutputFormat::ReportDependency => Some(InspectExportReportFormat::Dependency),
-        InspectOutputFormat::ReportDependencyJson => {
-            Some(InspectExportReportFormat::DependencyJson)
-        }
+        InspectOutputFormat::Tree => Some(InspectExportReportFormat::Tree),
+        InspectOutputFormat::TreeTable => Some(InspectExportReportFormat::TreeTable),
+        InspectOutputFormat::Dependency => Some(InspectExportReportFormat::Dependency),
+        InspectOutputFormat::DependencyJson => Some(InspectExportReportFormat::DependencyJson),
         InspectOutputFormat::Governance => Some(InspectExportReportFormat::Governance),
         InspectOutputFormat::GovernanceJson => Some(InspectExportReportFormat::GovernanceJson),
+        InspectOutputFormat::QueriesJson => Some(InspectExportReportFormat::QueriesJson),
     }
 }
 
 pub(crate) fn effective_inspect_report_format(
     args: &InspectExportArgs,
 ) -> Option<InspectExportReportFormat> {
-    args.report
-        .or_else(|| args.output_format.and_then(map_output_format_to_report))
+    args.output_format.and_then(map_output_format_to_report)
 }
 
 pub(crate) fn effective_inspect_output_format(args: &InspectExportArgs) -> InspectOutputFormat {
@@ -596,34 +591,20 @@ pub(crate) fn validate_inspect_export_report_args(args: &InspectExportArgs) -> R
     if report_format.is_none() {
         if !args.report_columns.is_empty() {
             return Err(message(
-                "--report-columns is only supported together with --report or report-like --output-format.",
+                "--report-columns is only supported together with table, csv, tree-table, or queries-json output.",
             ));
         }
         if args.report_filter_datasource.is_some() {
             return Err(message(
-                "--report-filter-datasource is only supported together with --report or report-like --output-format.",
+                "--report-filter-datasource is only supported together with table, csv, tree-table, dependency, dependency-json, governance, governance-json, or queries-json output.",
             ));
         }
         if args.report_filter_panel_id.is_some() {
             return Err(message(
-                "--report-filter-panel-id is only supported together with --report or report-like --output-format.",
+                "--report-filter-panel-id is only supported together with table, csv, tree-table, dependency, dependency-json, governance, governance-json, or queries-json output.",
             ));
         }
         return Ok(());
-    }
-    if report_format
-        .map(|format| {
-            matches!(
-                format,
-                InspectExportReportFormat::Governance | InspectExportReportFormat::GovernanceJson
-            )
-        })
-        .unwrap_or(false)
-        && !args.report_columns.is_empty()
-    {
-        return Err(message(
-            "--report-columns is not supported with governance output.",
-        ));
     }
     if report_format
         .map(|format| !report_format_supports_columns(format))
@@ -631,7 +612,7 @@ pub(crate) fn validate_inspect_export_report_args(args: &InspectExportArgs) -> R
         && !args.report_columns.is_empty()
     {
         return Err(message(
-            "--report-columns is only supported with report-table, report-csv, report-tree-table, or the equivalent --report modes.",
+            "--report-columns is only supported with table, csv, or tree-table output.",
         ));
     }
     let _ = resolve_report_column_ids_for_format(report_format, &args.report_columns)?;

@@ -27,5 +27,5 @@ grafana-util dashboard list-vars --url https://grafana.example.com --dashboard-u
 
 ## Related commands
 - [dashboard screenshot](./dashboard-screenshot.md)
-- [dashboard analyze-live](./dashboard-analyze-live.md)
+- [dashboard analyze (live)](./dashboard-analyze-live.md)
 - [dashboard browse](./dashboard-browse.md)

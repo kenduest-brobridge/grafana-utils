@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>dashboard get · grafana-util docs</title>
+  <title>dashboard fetch-live · grafana-util docs</title>
   <style>:root {
   color-scheme: light dark;
   --font-scale: 1;
@@ -736,7 +736,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
       <div class="topbar">
   <a class="brand" href="../../index.html">grafana-util docs</a>
   <div class="themebar">
-    <select id="page-locale-select" aria-label="Language switch"><option value="" selected>Language: English</option><option value="../zh-TW/dashboard-get.html">Switch to 繁體中文</option></select><select id="jump-select" aria-label="Jump"><option value="" selected>Jump to...</option><optgroup label="Handbook"><option value="../../handbook/en/index.html">Overview</option><option value="../../handbook/en/what-is-grafana-util.html">What grafana-util is for</option><option value="../../handbook/en/getting-started.html">Getting Started</option><option value="../../handbook/en/role-new-user.html">New User Handbook</option><option value="../../handbook/en/role-sre-ops.html">SRE / Operator Handbook</option><option value="../../handbook/en/role-automation-ci.html">Automation / CI Handbook</option><option value="../../handbook/en/architecture.html">Architecture &amp; Design Principles</option><option value="../../handbook/en/dashboard.html">Dashboard Operator Handbook</option><option value="../../handbook/en/datasource.html">Datasource Operator Handbook</option><option value="../../handbook/en/alert.html">Alert Operator Handbook</option><option value="../../handbook/en/access.html">Access Management (Identity &amp; Access)</option><option value="../../handbook/en/change-overview-status.html">Project Status &amp; Change Overview</option><option value="../../handbook/en/scenarios.html">Operator Scenarios</option><option value="../../handbook/en/recipes.html">Best Practices &amp; Real-World Recipes</option><option value="../../handbook/en/reference.html">Technical Reference</option><option value="../../handbook/en/troubleshooting.html">Troubleshooting &amp; Glossary</option></optgroup><optgroup label="Commands"><option value="dashboard.html">Dashboard</option><option value="alert.html">Alert</option><option value="datasource.html">Datasource</option><option value="access.html">Access</option><option value="profile.html">Profile</option><option value="status.html">Status</option><option value="overview.html">Overview</option><option value="change.html">Change</option><option value="snapshot.html">Snapshot</option></optgroup></select>
+    <select id="page-locale-select" aria-label="Language switch"><option value="" selected>Language: English</option><option value="../zh-TW/dashboard-fetch-live.html">Switch to 繁體中文</option></select><select id="jump-select" aria-label="Jump"><option value="" selected>Jump to...</option><optgroup label="Handbook"><option value="../../handbook/en/index.html">Overview</option><option value="../../handbook/en/what-is-grafana-util.html">What grafana-util is for</option><option value="../../handbook/en/getting-started.html">Getting Started</option><option value="../../handbook/en/role-new-user.html">New User Handbook</option><option value="../../handbook/en/role-sre-ops.html">SRE / Operator Handbook</option><option value="../../handbook/en/role-automation-ci.html">Automation / CI Handbook</option><option value="../../handbook/en/architecture.html">Architecture &amp; Design Principles</option><option value="../../handbook/en/dashboard.html">Dashboard Operator Handbook</option><option value="../../handbook/en/datasource.html">Datasource Operator Handbook</option><option value="../../handbook/en/alert.html">Alert Operator Handbook</option><option value="../../handbook/en/access.html">Access Management (Identity &amp; Access)</option><option value="../../handbook/en/change-overview-status.html">Project Status &amp; Change Overview</option><option value="../../handbook/en/scenarios.html">Operator Scenarios</option><option value="../../handbook/en/recipes.html">Best Practices &amp; Real-World Recipes</option><option value="../../handbook/en/reference.html">Technical Reference</option><option value="../../handbook/en/troubleshooting.html">Troubleshooting &amp; Glossary</option></optgroup><optgroup label="Commands"><option value="dashboard.html">Dashboard</option><option value="alert.html">Alert</option><option value="datasource.html">Datasource</option><option value="access.html">Access</option><option value="profile.html">Profile</option><option value="status.html">Status</option><option value="overview.html">Overview</option><option value="change.html">Change</option><option value="snapshot.html">Snapshot</option></optgroup></select>
     <select id="font-select" aria-label="Font Size">
       <option value="0.9">Font: Compact</option>
       <option value="1">Font: Default</option>
@@ -758,9 +758,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </aside>
 
   <article class="article">
-    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / dashboard get</div>
+    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / dashboard fetch-live</div>
 
-    <h1><span class="hero-title-main">dashboard get</span></h1>
+    <h1><span class="hero-title-main">dashboard fetch-live</span></h1>
 
 
     <section class="command-intro">
@@ -786,9 +786,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <ul><li><code>--dashboard-uid</code>: live Grafana dashboard UID to fetch.</li><li><code>--output</code>: write the fetched draft to this path.</li><li>Shared live flags: <code>--url</code>, <code>--token</code>, <code>--basic-user</code>, <code>--basic-password</code>, <code>--profile</code>.</li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Fetch one live dashboard into an API-safe local JSON draft.
-grafana-util dashboard get --profile prod --dashboard-uid cpu-main --output ./cpu-main.json</code></pre>
+grafana-util dashboard fetch-live --profile prod --dashboard-uid cpu-main --output ./cpu-main.json</code></pre>
 <pre><code># Purpose: Fetch one live dashboard into an API-safe local JSON draft.
-grafana-util dashboard get --profile prod --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --output ./cpu-main.json</code></pre>
+grafana-util dashboard fetch-live --profile prod --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --output ./cpu-main.json</code></pre>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="dashboard-clone-live.html">dashboard clone-live</a></li><li><a href="dashboard-patch-file.html">dashboard patch-file</a></li><li><a href="dashboard-review.html">dashboard review</a></li></ul>
     
@@ -796,14 +796,14 @@ grafana-util dashboard get --profile prod --url http://localhost:3000 --basic-us
   <aside class="sidebar">
   <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
   <div class="sidebar-content">
-    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#purpose"><span class="toc-label">Purpose</span></a></li><li class="toc-level-2"><a href="#when-to-use"><span class="toc-label">When to use</span></a></li><li class="toc-level-2"><a href="#key-flags"><span class="toc-label">Key flags</span></a></li><li class="toc-level-2"><a href="#examples"><span class="toc-label">Examples</span></a></li><li class="toc-level-2"><a href="#related-commands"><span class="toc-label">Related commands</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/en/dashboard.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/dashboard-get.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#purpose"><span class="toc-label">Purpose</span></a></li><li class="toc-level-2"><a href="#when-to-use"><span class="toc-label">When to use</span></a></li><li class="toc-level-2"><a href="#key-flags"><span class="toc-label">Key flags</span></a></li><li class="toc-level-2"><a href="#examples"><span class="toc-label">Examples</span></a></li><li class="toc-level-2"><a href="#related-commands"><span class="toc-label">Related commands</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/en/dashboard.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/dashboard-fetch-live.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
   </div>
 </aside>
 
 </div>
 
     </div>
-    <footer class="site-footer">Source: dashboard-get.md</footer>
+    <footer class="site-footer">Source: dashboard-fetch-live.md</footer>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js" async></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" async></script>

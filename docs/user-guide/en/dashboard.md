@@ -35,7 +35,7 @@ This guide is for operators who need to inventory dashboards, export or import t
 
 Use the authoring lane when the work starts from one dashboard draft instead of a full export tree.
 
-- Start from a live draft with `dashboard get` or `dashboard clone-live` when Grafana already has the closest source dashboard.
+- Start from a live draft with `dashboard fetch-live` or `dashboard clone-live` when Grafana already has the closest source dashboard.
 - Use `dashboard serve` when you want a lightweight local preview browser for one draft file, one draft directory, or one generator script output while you edit.
 - Use `dashboard review` before mutation to confirm title, UID, tags, folder UID, and any blocking validation issues.
 - Use `dashboard patch-file` when you need to rewrite one local draft in place or write a new patched file.
@@ -94,7 +94,7 @@ Need the command-by-command surface instead of the workflow guide?
 
 - [dashboard command overview](../../commands/en/dashboard.md)
 - [dashboard browse](../../commands/en/dashboard-browse.md)
-- [dashboard get](../../commands/en/dashboard-get.md)
+- [dashboard fetch-live](../../commands/en/dashboard-fetch-live.md)
 - [dashboard clone-live](../../commands/en/dashboard-clone-live.md)
 - [dashboard list](../../commands/en/dashboard-list.md)
 - [dashboard export](../../commands/en/dashboard-export.md)
@@ -107,8 +107,8 @@ Need the command-by-command surface instead of the workflow guide?
 - [dashboard publish](../../commands/en/dashboard-publish.md)
 - [dashboard delete](../../commands/en/dashboard-delete.md)
 - [dashboard diff](../../commands/en/dashboard-diff.md)
-- [dashboard analyze-export](../../commands/en/dashboard-analyze-export.md)
-- [dashboard analyze-live](../../commands/en/dashboard-analyze-live.md)
+- [dashboard analyze (local)](../../commands/en/dashboard-analyze-export.md)
+- [dashboard analyze (live)](../../commands/en/dashboard-analyze-live.md)
 - [dashboard list-vars](../../commands/en/dashboard-list-vars.md)
 - [dashboard history](../../commands/en/dashboard-history.md)
 - [dashboard governance-gate](../../commands/en/dashboard-governance-gate.md)
@@ -134,8 +134,8 @@ Use the dashboard area for estate-level governance:
 
 If your goal is not export or import, but understanding what a dashboard currently looks like, which dependencies it carries, and how variables resolve, start here.
 
-- `dashboard analyze-live`: analyze one live dashboard's structure, queries, and dependencies.
-- `dashboard analyze-export`: analyze an exported dashboard file offline.
+- `dashboard analyze (live)`: analyze one live dashboard's structure, queries, and dependencies.
+- `dashboard analyze (local)`: analyze an exported dashboard tree offline.
 - `dashboard list-vars`: verify variables, datasource choices, and URL-scoped inputs.
 - `dashboard screenshot`: generate a reproducible dashboard or panel capture with a headless browser.
 - `dashboard topology`: trace the dashboard's upstream relationships at a glance.
@@ -222,7 +222,7 @@ spring-jmx-node-unified  Spring JMX + Node Unified Dashboard (VM)  Demo    ffhrm
 | **Raw to Prompt** | `grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite --progress` |
 | **Import** | `grafana-util dashboard import --import-dir ./dashboards/raw --replace-existing --dry-run --table` |
 | **Diff** | `grafana-util dashboard diff --import-dir ./dashboards/raw --input-format raw` |
-| **Analyze** | `grafana-util dashboard analyze-export --import-dir ./dashboards/raw --output-format report-table` |
+| **Analyze** | `grafana-util dashboard analyze --import-dir ./dashboards/raw --input-format raw --output-format dependency` |
 | **Delete** | `grafana-util dashboard delete --uid <UID> --url <URL> --basic-user admin --basic-password admin` |
 | **List Vars** | `grafana-util dashboard list-vars --uid <UID> --url <URL> --table` |
 | **Patch File** | `grafana-util dashboard patch-file --input <FILE> --name "New Title" --output <FILE>` |

@@ -2,8 +2,7 @@
 //! Keeps the export-inspection parser coverage separate from the large dashboard test file.
 
 use super::test_support::{
-    parse_cli_from, DashboardCommand, DashboardImportInputFormat, InspectExportReportFormat,
-    InspectOutputFormat,
+    parse_cli_from, DashboardCommand, DashboardImportInputFormat, InspectOutputFormat,
 };
 use crate::dashboard::cli_defs::InspectExportInputType;
 use serde_json::json;
@@ -39,7 +38,7 @@ fn parse_cli_supports_inspect_export_output_format_flag() {
         "--import-dir",
         "./dashboards/raw",
         "--output-format",
-        "report-tree-table",
+        "tree-table",
     ]);
 
     match args.command {
@@ -47,9 +46,8 @@ fn parse_cli_supports_inspect_export_output_format_flag() {
             assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
             assert_eq!(
                 inspect_args.output_format,
-                Some(InspectOutputFormat::ReportTreeTable)
+                Some(InspectOutputFormat::TreeTable)
             );
-            assert_eq!(inspect_args.report, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -79,8 +77,7 @@ fn parse_cli_supports_inspect_export_baseline_output_formats() {
             DashboardCommand::InspectExport(inspect_args) => {
                 assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
                 assert_eq!(inspect_args.output_format, Some(expected));
-                assert_eq!(inspect_args.report, None);
-                assert!(!inspect_args.json);
+                    assert!(!inspect_args.json);
                 assert!(!inspect_args.table);
             }
             _ => panic!("expected inspect-export command"),
@@ -96,7 +93,7 @@ fn parse_cli_supports_inspect_export_output_format_dependency_flag() {
         "--import-dir",
         "./dashboards/raw",
         "--output-format",
-        "report-dependency",
+        "dependency",
     ]);
 
     match args.command {
@@ -104,9 +101,8 @@ fn parse_cli_supports_inspect_export_output_format_dependency_flag() {
             assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
             assert_eq!(
                 inspect_args.output_format,
-                Some(InspectOutputFormat::ReportDependency)
+                Some(InspectOutputFormat::Dependency)
             );
-            assert_eq!(inspect_args.report, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -122,7 +118,7 @@ fn parse_cli_supports_inspect_export_output_file() {
         "--import-dir",
         "./dashboards/raw",
         "--output-format",
-        "report-json",
+        "queries-json",
         "--output-file",
         "/tmp/inspect-export.txt",
     ]);
@@ -135,7 +131,7 @@ fn parse_cli_supports_inspect_export_output_file() {
             );
             assert_eq!(
                 inspect_args.output_format,
-                Some(InspectOutputFormat::ReportJson)
+                Some(InspectOutputFormat::QueriesJson)
             );
         }
         _ => panic!("expected inspect-export command"),
@@ -191,15 +187,17 @@ fn parse_cli_supports_inspect_export_report_json_flag() {
         "inspect-export",
         "--import-dir",
         "./dashboards/raw",
-        "--report",
-        "json",
+        "--output-format",
+        "queries-json",
     ]);
 
     match args.command {
         DashboardCommand::InspectExport(inspect_args) => {
             assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
-            assert_eq!(inspect_args.report, Some(InspectExportReportFormat::Json));
-            assert_eq!(inspect_args.output_format, None);
+            assert_eq!(
+                inspect_args.output_format,
+                Some(InspectOutputFormat::QueriesJson)
+            );
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -214,15 +212,14 @@ fn parse_cli_supports_inspect_export_report_csv_flag() {
         "inspect-export",
         "--import-dir",
         "./dashboards/raw",
-        "--report",
+        "--output-format",
         "csv",
     ]);
 
     match args.command {
         DashboardCommand::InspectExport(inspect_args) => {
             assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
-            assert_eq!(inspect_args.report, Some(InspectExportReportFormat::Csv));
-            assert_eq!(inspect_args.output_format, None);
+            assert_eq!(inspect_args.output_format, Some(InspectOutputFormat::Csv));
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -237,15 +234,14 @@ fn parse_cli_supports_inspect_export_report_tree_flag() {
         "inspect-export",
         "--import-dir",
         "./dashboards/raw",
-        "--report",
+        "--output-format",
         "tree",
     ]);
 
     match args.command {
         DashboardCommand::InspectExport(inspect_args) => {
             assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
-            assert_eq!(inspect_args.report, Some(InspectExportReportFormat::Tree));
-            assert_eq!(inspect_args.output_format, None);
+            assert_eq!(inspect_args.output_format, Some(InspectOutputFormat::Tree));
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -260,7 +256,7 @@ fn parse_cli_supports_inspect_export_report_tree_table_flag() {
         "inspect-export",
         "--import-dir",
         "./dashboards/raw",
-        "--report",
+        "--output-format",
         "tree-table",
     ]);
 
@@ -268,10 +264,9 @@ fn parse_cli_supports_inspect_export_report_tree_table_flag() {
         DashboardCommand::InspectExport(inspect_args) => {
             assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
             assert_eq!(
-                inspect_args.report,
-                Some(InspectExportReportFormat::TreeTable)
+                inspect_args.output_format,
+                Some(InspectOutputFormat::TreeTable)
             );
-            assert_eq!(inspect_args.output_format, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -286,7 +281,7 @@ fn parse_cli_supports_inspect_export_report_dependency_flag() {
         "inspect-export",
         "--import-dir",
         "./dashboards/raw",
-        "--report",
+        "--output-format",
         "dependency",
     ]);
 
@@ -294,10 +289,9 @@ fn parse_cli_supports_inspect_export_report_dependency_flag() {
         DashboardCommand::InspectExport(inspect_args) => {
             assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
             assert_eq!(
-                inspect_args.report,
-                Some(InspectExportReportFormat::Dependency)
+                inspect_args.output_format,
+                Some(InspectOutputFormat::Dependency)
             );
-            assert_eq!(inspect_args.output_format, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -312,7 +306,7 @@ fn parse_cli_supports_inspect_export_report_dependency_json_flag() {
         "inspect-export",
         "--import-dir",
         "./dashboards/raw",
-        "--report",
+        "--output-format",
         "dependency-json",
     ]);
 
@@ -320,10 +314,9 @@ fn parse_cli_supports_inspect_export_report_dependency_json_flag() {
         DashboardCommand::InspectExport(inspect_args) => {
             assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
             assert_eq!(
-                inspect_args.report,
-                Some(InspectExportReportFormat::DependencyJson)
+                inspect_args.output_format,
+                Some(InspectOutputFormat::DependencyJson)
             );
-            assert_eq!(inspect_args.output_format, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -338,7 +331,7 @@ fn parse_cli_supports_inspect_export_report_governance_flag() {
         "inspect-export",
         "--import-dir",
         "./dashboards/raw",
-        "--report",
+        "--output-format",
         "governance",
     ]);
 
@@ -346,10 +339,9 @@ fn parse_cli_supports_inspect_export_report_governance_flag() {
         DashboardCommand::InspectExport(inspect_args) => {
             assert_eq!(inspect_args.import_dir, Path::new("./dashboards/raw"));
             assert_eq!(
-                inspect_args.report,
-                Some(InspectExportReportFormat::Governance)
+                inspect_args.output_format,
+                Some(InspectOutputFormat::Governance)
             );
-            assert_eq!(inspect_args.output_format, None);
             assert!(!inspect_args.json);
             assert!(!inspect_args.table);
         }
@@ -383,9 +375,8 @@ fn analyze_export_dir_supports_explicit_provisioning_input_format() {
         json: false,
         table: false,
         yaml: false,
-        report: None,
         output_format: None,
-        report_columns: Vec::new(),
+                report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,
         help_full: false,
@@ -442,9 +433,8 @@ fn analyze_export_dir_accepts_workspace_wrapper_root_when_dashboards_metadata_ex
         json: false,
         table: false,
         yaml: false,
-        report: None,
         output_format: None,
-        report_columns: Vec::new(),
+                report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,
         help_full: false,
@@ -490,8 +480,7 @@ fn analyze_export_dir_requires_input_type_for_dashboard_root_with_raw_and_prompt
         json: false,
         table: false,
         yaml: false,
-        report: None,
-        output_format: None,
+                output_format: None,
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -535,7 +524,8 @@ fn parse_cli_supports_inspect_export_report_columns_and_filter() {
         "inspect-export",
         "--import-dir",
         "./dashboards/raw",
-        "--report",
+        "--output-format",
+        "tree-table",
         "--report-columns",
         "org,orgId,dashboard_uid,datasource,query",
         "--report-filter-datasource",
@@ -546,7 +536,10 @@ fn parse_cli_supports_inspect_export_report_columns_and_filter() {
 
     match args.command {
         DashboardCommand::InspectExport(inspect_args) => {
-            assert_eq!(inspect_args.report, Some(InspectExportReportFormat::Table));
+            assert_eq!(
+                inspect_args.output_format,
+                Some(InspectOutputFormat::TreeTable)
+            );
             assert_eq!(
                 inspect_args.report_columns,
                 vec![
@@ -574,15 +567,18 @@ fn parse_cli_supports_inspect_export_report_columns_all() {
         "inspect-export",
         "--import-dir",
         "./dashboards/raw",
-        "--report",
-        "csv",
+        "--output-format",
+        "tree-table",
         "--report-columns",
         "all",
     ]);
 
     match args.command {
         DashboardCommand::InspectExport(inspect_args) => {
-            assert_eq!(inspect_args.report, Some(InspectExportReportFormat::Csv));
+            assert_eq!(
+                inspect_args.output_format,
+                Some(InspectOutputFormat::TreeTable)
+            );
             assert_eq!(inspect_args.report_columns, vec!["all".to_string()]);
         }
         _ => panic!("expected inspect-export command"),

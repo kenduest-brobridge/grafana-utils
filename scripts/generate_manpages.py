@@ -39,7 +39,7 @@ NAMESPACE_SPECS: tuple[NamespaceSpec, ...] = (
         aliases=("grafana-util db",),
         sub_docs=(
             "dashboard-browse.md",
-            "dashboard-get.md",
+            "dashboard-fetch-live.md",
             "dashboard-clone-live.md",
             "dashboard-list.md",
             "dashboard-export.md",

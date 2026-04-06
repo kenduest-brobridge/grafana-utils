@@ -34,4 +34,4 @@ jsonnet dashboards/cpu.jsonnet | grafana-util dashboard patch-file --input - --o
 ## Related commands
 - [dashboard review](./dashboard-review.md)
 - [dashboard publish](./dashboard-publish.md)
-- [dashboard get](./dashboard-get.md)
+- [dashboard fetch-live](./dashboard-fetch-live.md)

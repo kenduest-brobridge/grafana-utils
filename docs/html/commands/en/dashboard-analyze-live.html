@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">Analyze live Grafana dashboards via a temporary raw-export snapshot.</p>
+  <p class="command-intro-text">Analyze live Grafana dashboards through the canonical dashboard analyze command.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>Use this when you need the same analysis views as analyze-export, but sourced from live Grafana instead of a local export tree.</li></ul>
+  <ul class="command-intro-list"><li>Use this when you need the same analysis views as the local export-tree flow, but sourced from live Grafana instead of a local export tree. Prefer dashboard analyze --url ... in new docs and scripts.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -779,18 +779,18 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="purpose">Purpose</h2>
-<p>Analyze live Grafana dashboards via a temporary raw-export snapshot.</p>
+<p>Analyze live Grafana dashboards through the canonical <code>dashboard analyze</code> command.</p>
 <h2 id="when-to-use">When to use</h2>
-<p>Use this when you need the same analysis views as <code>analyze-export</code>, but sourced from live Grafana instead of a local export tree.</p>
+<p>Use this when you need the same analysis views as the local export-tree flow, but sourced from live Grafana instead of a local export tree. Prefer <code>dashboard analyze --url ...</code> in new docs and scripts.</p>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--page-size</code>: dashboard search page size.</li><li><code>--concurrency</code>: maximum parallel fetch workers.</li><li><code>--org-id</code>: analyze one explicit Grafana org.</li><li><code>--all-orgs</code>: analyze across visible orgs.</li><li><code>--report</code>, <code>--output-format</code>, <code>--output-file</code>, <code>--interactive</code>, <code>--no-header</code>: output controls.</li><li><code>--progress</code>: show fetch progress.</li></ul>
+<ul><li><code>--page-size</code>: dashboard search page size.</li><li><code>--concurrency</code>: maximum parallel fetch workers.</li><li><code>--org-id</code>: analyze one explicit Grafana org.</li><li><code>--all-orgs</code>: analyze across visible orgs.</li><li><code>--output-format</code>, <code>--output-file</code>, <code>--interactive</code>, <code>--no-header</code>: output controls.</li><li><code>--progress</code>: show fetch progress.</li></ul>
 <h2 id="examples">Examples</h2>
-<pre><code># Purpose: Analyze live Grafana dashboards via a temporary raw-export snapshot.
-grafana-util dashboard analyze-live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format governance-json</code></pre>
-<pre><code># Purpose: Analyze live Grafana dashboards via a temporary raw-export snapshot.
-grafana-util dashboard analyze-live --url http://localhost:3000 --basic-user admin --basic-password admin --interactive</code></pre>
+<pre><code># Purpose: Analyze live Grafana dashboards through the canonical dashboard analyze command.
+grafana-util dashboard analyze --url http://localhost:3000 --basic-user admin --basic-password admin --output-format governance</code></pre>
+<pre><code># Purpose: Analyze live Grafana dashboards through the canonical dashboard analyze command.
+grafana-util dashboard analyze --url http://localhost:3000 --basic-user admin --basic-password admin --interactive</code></pre>
 <h2 id="related-commands">Related commands</h2>
-<ul><li><a href="dashboard-analyze-export.html">dashboard analyze-export</a></li><li><a href="dashboard-list-vars.html">dashboard list-vars</a></li><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li></ul>
+<ul><li><a href="dashboard-analyze-export.html">dashboard analyze (local)</a></li><li><a href="dashboard-list-vars.html">dashboard list-vars</a></li><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li></ul>
     
   </article>
   <aside class="sidebar">

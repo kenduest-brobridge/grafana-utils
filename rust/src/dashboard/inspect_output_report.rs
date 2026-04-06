@@ -116,7 +116,7 @@ fn render_export_inspection_tree_output(
     }
 }
 
-fn render_export_inspection_json_output(
+fn render_export_inspection_queries_json_output(
     report: &ExportInspectionQueryReport,
 ) -> Result<ExportInspectionRenderedOutput> {
     let document = build_export_inspection_query_report_document(report);
@@ -172,7 +172,7 @@ pub(crate) fn render_export_inspection_report_output(
             let governance = build_export_inspection_governance_document(&summary, report);
             render_export_inspection_governance_output(&summary, &governance, report_format)
         }
-        InspectExportReportFormat::Json => render_export_inspection_json_output(report),
+        InspectExportReportFormat::QueriesJson => render_export_inspection_queries_json_output(report),
         InspectExportReportFormat::Dependency | InspectExportReportFormat::DependencyJson => {
             render_export_inspection_dependency_output(
                 import_dir,
@@ -193,7 +193,9 @@ pub(crate) fn render_export_inspection_report_output(
 #[cfg(test)]
 mod tests {
     use super::render_export_inspection_report_output;
-    use crate::dashboard::cli_defs::{InspectExportArgs, InspectExportReportFormat};
+    use crate::dashboard::cli_defs::{
+        InspectExportArgs, InspectExportReportFormat, InspectOutputFormat,
+    };
     use crate::dashboard::files::build_export_metadata;
     use crate::dashboard::inspect_report::{ExportInspectionQueryReport, QueryReportSummary};
     use crate::dashboard::test_support::make_core_family_report_row;
@@ -290,8 +292,7 @@ mod tests {
             json: false,
             table: false,
             yaml: false,
-            report: Some(InspectExportReportFormat::Dependency),
-            output_format: None,
+            output_format: Some(InspectOutputFormat::Dependency),
             report_columns: Vec::new(),
             report_filter_datasource: None,
             report_filter_panel_id: None,

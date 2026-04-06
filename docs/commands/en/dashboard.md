@@ -14,7 +14,7 @@ If you are an SRE, Grafana operator, or responder, this page should help you dec
 ## Workflow lanes
 
 - **Browse and inventory**: browse, list, and get.
-- **Analyze dashboards and reports**: analyze-live, analyze-export, list-vars, and topology checks.
+- **Analyze dashboards and build reports**: analyze, list-vars, and topology checks.
 - **Move**: export, import, clone-live, raw-to-prompt, diff, and publish paths.
 - **Author**: get, clone-live, serve, patch-file, edit-live, review, and publish around one dashboard draft.
 - **Review Before Mutate**: review, governance-gate, and impact analysis.
@@ -105,12 +105,12 @@ grafana-util dashboard edit-live --profile prod --dashboard-uid cpu-main --outpu
 
 ```bash
 # Purpose: Analyze live dashboard governance data for downstream review.
-grafana-util dashboard analyze-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format governance-json
+grafana-util dashboard analyze --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format governance
 ```
 
 ```bash
 # Purpose: Open the interactive analysis workbench for a live dashboard.
-grafana-util dashboard analyze-live --url http://localhost:3000 --basic-user admin --basic-password admin --interactive
+grafana-util dashboard analyze --url http://localhost:3000 --basic-user admin --basic-password admin --interactive
 ```
 
 ## Related commands
@@ -119,9 +119,9 @@ grafana-util dashboard analyze-live --url http://localhost:3000 --basic-user adm
 
 - [dashboard browse](./dashboard-browse.md)
 - [dashboard list](./dashboard-list.md)
-- [dashboard get](./dashboard-get.md)
-- [dashboard analyze-live](./dashboard-analyze-live.md)
-- [dashboard analyze-export](./dashboard-analyze-export.md)
+- [dashboard fetch-live](./dashboard-fetch-live.md)
+- [dashboard analyze (live)](./dashboard-analyze-live.md)
+- [dashboard analyze (local)](./dashboard-analyze-export.md)
 - [dashboard list-vars](./dashboard-list-vars.md)
 
 ### Move
